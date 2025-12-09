@@ -4,8 +4,14 @@
  */
 package com.sdrerc.ui.views.expedientes;
 
+import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
+import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
-
+import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.util.TextFieldRules;
+import java.sql.Date;
+import javax.swing.JOptionPane;
 /**
  *
  * @author usuario
@@ -17,19 +23,41 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
      */
     public JPanelRegistrarExpediente() {
         initComponents();
-        cargarComboTipoSOlicitud();
+        
+        
+        TextFieldRules.apply(textNumeroDocumentoRemitente).onlyNumbers().max(8);
+        TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
+        
+        TextFieldRules.apply(textNumeroDocumentoSolicitante).onlyNumbers().max(8);
+        TextFieldRules.apply(textApellidosNombresSolicitante).onlyLetters().max(300);
+        
+        TextFieldRules.apply(textNumeroDocumentoTitular).onlyNumbers().max(8);
+        TextFieldRules.apply(textApellidosNombresTitular).onlyLetters().max(300);
+        
+        cargarComboTipoSolicitud(); 
         cargarComboTipoDocumento();
         cargarComboTipoProcedimientoRegistral(); 
         cargarComboTipoActa();
         cargarComboTipoGrupoFamiliar();
     }
     
+    private void cargarComboTipoSolicitud() {
+    cboTipoSolicitud.addItem("---- SELECCIONE ----");
+
+    for (TipoSolicitud t : TipoSolicitud.values()) {
+        cboTipoSolicitud.addItem(t.getDescripcion());
+    }
+}
+    
+    /*
     private void cargarComboTipoSOlicitud() 
     {
         cboTipoSolicitud.addItem("---- SELECCIONE ----");
         cboTipoSolicitud.addItem("PARTE");
         cboTipoSolicitud.addItem("OFICIO");
     }
+    */
+    
     private void cargarComboTipoDocumento() 
     {
         cboTipoDocumento.addItem("---- SELECCIONE ----");
@@ -79,30 +107,30 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
 
         jPanelPrincipal = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento = new javax.swing.JTextField();
+        textfechaSolicitud = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento1 = new javax.swing.JTextField();
+        textNumeroTramiteDocumento = new javax.swing.JTextField();
         jLabel4 = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento4 = new javax.swing.JTextField();
+        textNumeroDocumentoRemitente = new javax.swing.JTextField();
         jLabel7 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento5 = new javax.swing.JTextField();
+        textApellidosNombreRemitente = new javax.swing.JTextField();
         jLabel10 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento8 = new javax.swing.JTextField();
-        textBusquedaNroTramiteDocumento9 = new javax.swing.JTextField();
+        textNumeroDocumentoSolicitante = new javax.swing.JTextField();
+        textApellidosNombresSolicitante = new javax.swing.JTextField();
         jLabel14 = new javax.swing.JLabel();
         jLabel15 = new javax.swing.JLabel();
         jLabel16 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento14 = new javax.swing.JTextField();
+        textNumeroActa = new javax.swing.JTextField();
         jLabel17 = new javax.swing.JLabel();
         jLabel11 = new javax.swing.JLabel();
         jLabel22 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento20 = new javax.swing.JTextField();
+        textNumeroGrupoFamiliar = new javax.swing.JTextField();
         jLabel12 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento10 = new javax.swing.JTextField();
+        textNumeroDocumentoTitular = new javax.swing.JTextField();
         jLabel13 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento11 = new javax.swing.JTextField();
+        textApellidosNombresTitular = new javax.swing.JTextField();
         btnGuardar = new javax.swing.JButton();
         btnRegresar = new javax.swing.JButton();
         btnLimpiar = new javax.swing.JButton();
@@ -132,7 +160,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
         jLabel6.setText("DNI / Nro Documento");
 
         jLabel7.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel7.setText("Nombre ciudadano / Remitente");
+        jLabel7.setText("Apellidos y Nombres ciudadano / Remitente");
 
         jLabel10.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel10.setText("Apellidos y Nombres Solicitante");
@@ -207,24 +235,24 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                                 .addGap(22, 22, 22)
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(textBusquedaNroTramiteDocumento11, javax.swing.GroupLayout.PREFERRED_SIZE, 640, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addComponent(textBusquedaNroTramiteDocumento10, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(textApellidosNombresTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 640, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(0, 17, Short.MAX_VALUE))
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(textBusquedaNroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(textfechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addGap(37, 37, 37)
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(textBusquedaNroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addGap(40, 40, 40)
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
                                     .addComponent(cboTipoSolicitud, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                            .addComponent(textBusquedaNroTramiteDocumento8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(textNumeroDocumentoSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
@@ -235,11 +263,11 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(textBusquedaNroTramiteDocumento4, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(textNumeroDocumentoRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addGap(37, 37, 37)
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel7)
-                                    .addComponent(textBusquedaNroTramiteDocumento5)))
+                                    .addComponent(textApellidosNombreRemitente)))
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(195, 195, 195)
@@ -259,7 +287,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                                             .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(textBusquedaNroTramiteDocumento14, javax.swing.GroupLayout.DEFAULT_SIZE, 130, Short.MAX_VALUE)
+                                            .addComponent(textNumeroActa, javax.swing.GroupLayout.DEFAULT_SIZE, 130, Short.MAX_VALUE)
                                             .addComponent(jLabel16, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                         .addGap(18, 18, 18)
                                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -267,10 +295,10 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                                             .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(textBusquedaNroTramiteDocumento20)
+                                            .addComponent(textNumeroGrupoFamiliar)
                                             .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
                                     .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(textBusquedaNroTramiteDocumento9))))
+                                    .addComponent(textApellidosNombresSolicitante))))
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
         jPanelPrincipalLayout.setVerticalGroup(
@@ -288,22 +316,22 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                         .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                             .addComponent(jLabel3)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(textBusquedaNroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                             .addComponent(jLabel2)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(textBusquedaNroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(textfechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addComponent(jLabel5))
                 .addGap(30, 30, 30)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addComponent(jLabel7)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(textBusquedaNroTramiteDocumento5, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(textApellidosNombreRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addComponent(jLabel6)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(textBusquedaNroTramiteDocumento4, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(textNumeroDocumentoRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel10)
@@ -312,15 +340,15 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(textBusquedaNroTramiteDocumento9, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(textBusquedaNroTramiteDocumento8, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(textApellidosNombresSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(textNumeroDocumentoSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(18, 18, 18)
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addComponent(jLabel16)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(textBusquedaNroTramiteDocumento14, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
@@ -333,7 +361,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                         .addComponent(jLabel22)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(textBusquedaNroTramiteDocumento20, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(textNumeroGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addGap(14, 14, 14)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -341,8 +369,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                     .addComponent(jLabel12))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(textBusquedaNroTramiteDocumento11, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textBusquedaNroTramiteDocumento10, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(textApellidosNombresTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(btnGuardar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -375,8 +403,85 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
     }//GEN-LAST:event_btnRegresarActionPerformed
 
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
-        // TODO add your handling code here:
-        MenuPrincipal.ShowJPanel(new JPanelRegistrarExpediente());
+                                                  
+        try 
+        {
+
+            ExpedienteService expedienteService = new ExpedienteService();
+            Expediente expediente = new Expediente();
+
+            // FECHA
+            //expediente.setFechaSolicitud(java.sql.Date.valueOf(textfechaSolicitud.getText())); 
+            expediente.setNumeroTramiteDocumento(textNumeroTramiteDocumento.getText());
+
+            // COMBO: tipoSolicitud (guarda el texto)
+            
+            //String seleccionado = cboTipoSolicitud.getSelectedItem().toString();
+            TipoSolicitud tipo = TipoSolicitud.fromDescripcion(cboTipoSolicitud.getSelectedItem().toString());
+            int tipoSolicitudInt = (tipo != null) ? tipo.getId() : 0;
+            expediente.setTipoSolicitud(tipoSolicitudInt);
+
+
+            // COMBO: tipoDocumento
+            //expediente.setTipoDocumento(cboTipoDocumento.getSelectedItem().toString());
+            expediente.setTipoDocumento(2);
+
+            expediente.setDniRemitente(textNumeroDocumentoRemitente.getText());
+            expediente.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
+
+            expediente.setDniSolicitante(textNumeroDocumentoSolicitante.getText());
+            expediente.setApellidoNombreSolicitante(textApellidosNombresSolicitante.getText());
+
+            // COMBO: tipo Procedimiento Registral            
+            //expediente.setTipoProcedimientoRegistral(cboTipoProcedimientoRegistral.getSelectedItem().toString());
+              expediente.setTipoProcedimientoRegistral(2);
+
+            // COMBO: tipo acta
+            //expediente.setTipoActa(cboTipoActa.getSelectedItem().toString());
+              expediente.setTipoActa(1);
+
+            expediente.setNumeroActa(textNumeroActa.getText());
+
+            // COMBO: tipo grupo familiar
+            //expediente.setTipoGrupoFamiliar(cboGrupoFamiliar.getSelectedItem().toString());
+            expediente.setTipoGrupoFamiliar(2);
+
+            expediente.setNumeroGrupoFamiliar(textNumeroGrupoFamiliar.getText());
+
+            expediente.setDniTitular(textNumeroDocumentoTitular.getText());
+            expediente.setApellidoNombreTitular(textApellidosNombresTitular.getText());
+
+            // ESTADO
+            expediente.setEstado("A");
+
+            // Auditoría
+            expediente.setIdUsuarioCrea(1);
+            //expediente.setFechaRegistra(new Date());
+
+            /*
+            JOptionPane.showMessageDialog(this,
+                    "Expediente registrado correctamente.\nID generado: " + 5,
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+            */
+            
+            // Llamar al servicio
+            ExpedienteResponse response = expedienteService.agregarExpediente(expediente);
+
+            JOptionPane.showMessageDialog(this,
+                    "Expediente registrado correctamente.\nID generado: " + response.getIdExpediente(),
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+            
+        } 
+        catch (Exception ex) 
+        {
+            JOptionPane.showMessageDialog(this,
+                    "Error al guardar: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+        
     }//GEN-LAST:event_btnGuardarActionPerformed
 
 
@@ -405,15 +510,15 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JPanel jPanelPrincipal;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento1;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento10;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento11;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento14;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento20;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento4;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento5;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento8;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento9;
+    private javax.swing.JTextField textApellidosNombreRemitente;
+    private javax.swing.JTextField textApellidosNombresSolicitante;
+    private javax.swing.JTextField textApellidosNombresTitular;
+    private javax.swing.JTextField textNumeroActa;
+    private javax.swing.JTextField textNumeroDocumentoRemitente;
+    private javax.swing.JTextField textNumeroDocumentoSolicitante;
+    private javax.swing.JTextField textNumeroDocumentoTitular;
+    private javax.swing.JTextField textNumeroGrupoFamiliar;
+    private javax.swing.JTextField textNumeroTramiteDocumento;
+    private javax.swing.JTextField textfechaSolicitud;
     // End of variables declaration//GEN-END:variables
 }

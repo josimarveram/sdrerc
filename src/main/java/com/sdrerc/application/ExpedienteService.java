@@ -4,6 +4,7 @@
  */
 package com.sdrerc.application;
 
+import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.infrastructure.repository.ExpedienteRepository;
 
@@ -22,17 +23,25 @@ public class ExpedienteService
 
     public ExpedienteResponse ListarExpediente(String username, String password) throws Exception 
     {
-        if (username.isBlank() || password.isBlank()) 
-        {
-           throw new Exception("Debe ingresar usuario y contraseña.");
-        }
+        //if(username.isBlank() || password.isBlank()) 
+        //{
+        //   throw new Exception("Debe ingresar usuario y contraseña.");
+        //}
 
         ExpedienteResponse expedienteResponse = expedienteRepository_.ListarExpediente(username, password);
 
-        if (expedienteResponse == null) {
-            throw new Exception("Credenciales incorrectas.");
-        }
-
         return expedienteResponse;
     }   
+    
+    public ExpedienteResponse agregarExpediente(Expediente expediente) throws Exception 
+    {
+        // Validaciones mínimas
+        if (expediente == null) {
+            throw new Exception("El expediente no puede ser nulo.");
+        }
+        // Llamar al repositorio (DAO)
+        ExpedienteResponse response = expedienteRepository_.agregarExpediente(expediente);
+        return response;
+    }
+    
 }
