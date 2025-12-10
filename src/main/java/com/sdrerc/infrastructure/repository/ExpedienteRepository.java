@@ -12,6 +12,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -43,7 +45,7 @@ public class ExpedienteRepository
                      " fecha_registra               AS \"fechaRegistra\", " +
                      " id_usuario_modifica          AS \"idUsuarioModifica\", " +
                      " fecha_modifica               AS \"fechaModifica\" " +
-                     " FROM trs_expediente ";
+                     " FROM EXPEDIENTE ";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) 
@@ -68,7 +70,7 @@ public class ExpedienteRepository
                         rs.getString("numeroGrupoFamiliar"),
                         rs.getString("dniTitular"),
                         rs.getString("apellidoNombreTitular"),
-                        rs.getString("estado"),
+                        rs.getInt("estado"),
                         rs.getInt("idUsuarioCrea"),
                         rs.getDate("fechaRegistra"),
                         rs.getInt("idUsuarioModifica"),
@@ -82,7 +84,7 @@ public class ExpedienteRepository
     public ExpedienteResponse agregarExpediente(Expediente expediente) throws SQLException 
     {
 
-        String sql = "INSERT INTO trs_expediente (" +
+        String sql = "INSERT INTO EXPEDIENTE (" +
                 " fecha_solicitud, numero_tramite_documento, tipo_solicitud, tipo_documento, " +
                 " dni_remitente, apellido_nombre_remitente, dni_solicitante, apellido_nombre_solicitante, " +
                 " tipo_procedimiento_registral, tipo_acta, numero_acta, tipo_grupo_familiar, " +
@@ -109,7 +111,7 @@ public class ExpedienteRepository
             stmt.setString(13, expediente.getNumeroGrupoFamiliar());
             stmt.setString(14, expediente.getDniTitular());
             stmt.setString(15, expediente.getApellidoNombreTitular());
-            stmt.setString(16, expediente.getEstado());
+            stmt.setInt(16, expediente.getEstado());
             stmt.setInt(17, expediente.getIdUsuarioCrea());
             stmt.setDate(18, new java.sql.Date(System.currentTimeMillis()));
 
@@ -146,6 +148,95 @@ public class ExpedienteRepository
                     expediente.getFechaModifica()
             );
         }     
+    }
+    
+    public List<Expediente> listar() throws SQLException {
+        List<Expediente> lista = new ArrayList<>();
+
+        String sql = "SELECT * FROM EXPEDIENTE ORDER BY ID_EXPEDIENTE DESC";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(mapRow(rs));
+            }
+        }
+        return lista;
+    }
+    
+    public List<Expediente> buscarPorEstado(int estado) throws SQLException {
+        List<Expediente> lista = new ArrayList<>();
+
+        String sql = "SELECT * FROM EXPEDIENTE WHERE ESTADO = ?";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, estado);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                lista.add(mapRow(rs));
+            }
+        }
+        return lista;
+    }
+    
+    public List<Expediente> buscarPorCampo(String campo, String valor,int estadoItem) throws SQLException {
+        List<Expediente> lista = new ArrayList<>();
+
+        //String sql = "SELECT * FROM EXPEDIENTE WHERE " + campo + " LIKE ?";
+        
+        StringBuilder sql = new StringBuilder("SELECT * FROM EXPEDIENTE WHERE " + campo + " LIKE ? ");
+
+        
+        // Si el estado no es "TODOS", agregamos AND
+        boolean filtrarEstado = estadoItem != 0;
+
+        if (filtrarEstado) {
+            sql.append("AND ESTADO = ?");
+        }
+
+        
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            ps.setString(1, "%" + valor + "%");
+            
+            if (filtrarEstado) {
+                ps.setInt(2, estadoItem);
+            }
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                lista.add(mapRow(rs));
+            }
+        }
+        return lista;
+    }
+    
+    private Expediente mapRow(ResultSet rs) throws SQLException {
+        return new Expediente(
+            rs.getInt("ID_EXPEDIENTE"),
+            rs.getDate("FECHA_SOLICITUD"),
+            rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
+            rs.getInt("TIPO_SOLICITUD"),
+            rs.getInt("TIPO_DOCUMENTO"),
+            rs.getString("DNI_REMITENTE"),
+            rs.getString("APELLIDO_NOMBRE_REMITENTE"),
+            rs.getString("DNI_SOLICITANTE"),
+            rs.getString("APELLIDO_NOMBRE_SOLICITANTE"),
+            rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
+            rs.getInt("TIPO_ACTA"),
+            rs.getString("NUMERO_ACTA"),
+            rs.getInt("TIPO_GRUPO_FAMILIAR"),
+            rs.getString("NUMERO_GRUPO_FAMILIAR"),
+            rs.getString("DNI_TITULAR"),
+            rs.getString("APELLIDO_NOMBRE_TITULAR"),
+            rs.getInt("ESTADO")
+        );
     }
     
     

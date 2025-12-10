@@ -28,7 +28,7 @@ public class Expediente
     private String numeroGrupoFamiliar;			
     private String dniTitular;					
     private String apellidoNombreTitular;		
-    private String estado;						
+    private int estado;						
     private int idUsuarioCrea;				
     private Date fechaRegistra;				
     private int idUsuarioModifica;			
@@ -37,8 +37,17 @@ public class Expediente
     public Expediente() 
     {
     }
+    
+    
 
-    public Expediente(int idExpediente, Date fechaSolicitud, String numeroTramiteDocumento, int tipoSolicitud, int tipoDocumento, String dniRemitente, String apellidoNombreRemitente, String dniSolicitante, String apellidoNombreSolicitante, int tipoProcedimientoRegistral, int tipoActa, String numeroActa, int tipoGrupoFamiliar, String numeroGrupoFamiliar, String dniTitular, String apellidoNombreTitular, String estado, int idUsuarioCrea, Date fechaRegistra, int idUsuarioModifica, Date fechaModifica) {
+    public Expediente(int idExpediente, Date fechaSolicitud, String numeroTramiteDocumento,
+                      int tipoSolicitud, int tipoDocumento, String dniRemitente,
+                      String apellidoNombreRemitente, String dniSolicitante,
+                      String apellidoNombreSolicitante, int tipoProcedimientoRegistral,
+                      int tipoActa, String numeroActa, int tipoGrupoFamiliar,
+                      String numeroGrupoFamiliar, String dniTitular,
+                      String apellidoNombreTitular, int estado) {
+
         this.idExpediente = idExpediente;
         this.fechaSolicitud = fechaSolicitud;
         this.numeroTramiteDocumento = numeroTramiteDocumento;
@@ -56,10 +65,8 @@ public class Expediente
         this.dniTitular = dniTitular;
         this.apellidoNombreTitular = apellidoNombreTitular;
         this.estado = estado;
-        this.idUsuarioCrea = idUsuarioCrea;
-        this.fechaRegistra = fechaRegistra;
-        this.idUsuarioModifica = idUsuarioModifica;
-        this.fechaModifica = fechaModifica;
+        
+        
     }
 
     public int getIdExpediente() {
@@ -190,11 +197,11 @@ public class Expediente
         this.apellidoNombreTitular = apellidoNombreTitular;
     }
 
-    public String getEstado() {
+    public int getEstado() {
         return estado;
     }
 
-    public void setEstado(String estado) {
+    public void setEstado(int estado) {
         this.estado = estado;
     }
 

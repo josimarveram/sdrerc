@@ -7,6 +7,8 @@ package com.sdrerc.application;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.infrastructure.repository.ExpedienteRepository;
+import java.sql.SQLException;
+import java.util.List;
 
 /**
  *
@@ -42,6 +44,14 @@ public class ExpedienteService
         // Llamar al repositorio (DAO)
         ExpedienteResponse response = expedienteRepository_.agregarExpediente(expediente);
         return response;
+    }
+    
+    public List<Expediente> listarExpedientes() throws SQLException {
+        return expedienteRepository_.listar();
+    }
+    
+    public List<Expediente> buscar(String campo, String valor, int estado) throws Exception {
+        return expedienteRepository_.buscarPorCampo(campo, valor,estado);
     }
     
 }

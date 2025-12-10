@@ -475,7 +475,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
             expediente.setApellidoNombreTitular(textApellidosNombresTitular.getText());
 
             // ESTADO
-            expediente.setEstado("A");
+            expediente.setEstado(8);
 
             // Auditoría
             expediente.setIdUsuarioCrea(1);
