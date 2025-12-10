@@ -4,25 +4,122 @@
  */
 package com.sdrerc.ui.views.expedientes;
 
+import com.sdrerc.application.CatalogoItemService;
+import com.sdrerc.application.CatalogoService;
+import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.domain.model.CatalogoItem;
+import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
+import java.util.List;
+import javax.swing.table.DefaultTableModel;
 
 /**
  *
  * @author betom
  */
 public class JPanelRegistroExpediente extends javax.swing.JPanel {
+    
+    
+    private final ExpedienteService expedienteService;
+    private final CatalogoService catalogoService;
+    private final CatalogoItemService catalogoItemService;
 
     /**
      * Creates new form JPanelRegistroExpediente
      */
-    public JPanelRegistroExpediente() {
+    public JPanelRegistroExpediente() 
+    {
         initComponents();
+        this.expedienteService = new ExpedienteService();
+        this.catalogoService = new CatalogoService();
+        this.catalogoItemService = new CatalogoItemService();
+        cargarTiposBusqueda();
+        cargarComboEstados();    
+        buscarExpedientes();
     }
     
-     private void ListarRegistroExpediente()
-     {
-         
-     }
+    
+    private void cargarComboEstados() 
+    {
+        cmbEstado.removeAllItems();
+        //cmbEstado.addItem("TODOS");
+        
+        cmbEstado.addItem(new CatalogoItem(0, 0, "TODOS", 1));
+
+        List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
+
+        for (CatalogoItem estado : lista) {
+            cmbEstado.addItem(estado);
+        }
+    }
+    
+    private void cargarTiposBusqueda() 
+    {
+        cmbTipoBusqueda.removeAllItems();
+        cmbTipoBusqueda.addItem("NUMERO_TRAMITE_DOCUMENTO");
+        cmbTipoBusqueda.addItem("TIPO_SOLICITUD");
+        cmbTipoBusqueda.addItem("DNI_REMITENTE");
+        cmbTipoBusqueda.addItem("APELLIDO_NOMBRE_REMITENTE");
+        cmbTipoBusqueda.addItem("TIPO_PROCEDIMIENTO_REGISTRAL");
+    }
+    
+     
+      private void buscarExpedientes() 
+      {
+        try {
+            String campo = cmbTipoBusqueda.getSelectedItem().toString();
+            String valor = txtValorBusqueda.getText();            
+            CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
+            int idestado = estado.getIdCatalogoItem();                    
+            //String estado = cmbEstado.getSelectedItem();
+            List<Expediente> lista = expedienteService.buscar(campo, valor,idestado);
+            cargarTablaNueva(lista);
+        } 
+        catch (Exception e) {
+        }
+      }
+      
+      private void limpiarCampos() 
+    {
+        // Limpiar JTextFields
+        txtValorBusqueda.setText("");
+        // Resetear JComboBoxes al primer elemento
+        if (cmbTipoBusqueda.getItemCount() > 0) cmbTipoBusqueda.setSelectedIndex(0);
+        if (cmbEstado.getItemCount() > 0) cmbEstado.setSelectedIndex(0);
+        
+        buscarExpedientes();
+    }
+      
+    private void cargarTablaNueva(List<Expediente> lista) 
+    {        
+        String[] columnas = 
+        {
+          "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Estado"
+        };
+        
+        DefaultTableModel model = new DefaultTableModel(columnas, 0)
+        {        
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };      
+                
+        //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        model.setRowCount(0);
+        for (Expediente e : lista) {
+            Object[] fila = {
+                    e.getIdExpediente(),
+                    e.getFechaSolicitud(),
+                    e.getNumeroTramiteDocumento(),
+                    e.getApellidoNombreSolicitante(),
+                    e.getApellidoNombreTitular(),
+                    e.getEstado()
+            };
+            model.addRow(fila);
+        }
+        jTable1.setModel(model);
+    }  
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -35,17 +132,16 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
 
         jPanelPrincipal = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
-        jLabel2 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento = new javax.swing.JTextField();
-        jLabel3 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento1 = new javax.swing.JTextField();
         jLabel4 = new javax.swing.JLabel();
-        textBusquedaNroTramiteDocumento2 = new javax.swing.JTextField();
         btnNuevo = new javax.swing.JButton();
         btnLimpiar = new javax.swing.JButton();
         btnBuscar = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTable1 = new javax.swing.JTable();
+        jLabel5 = new javax.swing.JLabel();
+        cmbTipoBusqueda = new javax.swing.JComboBox();
+        txtValorBusqueda = new javax.swing.JTextField();
+        cmbEstado = new javax.swing.JComboBox();
 
         setBackground(new java.awt.Color(255, 255, 255));
         setPreferredSize(new java.awt.Dimension(900, 570));
@@ -57,14 +153,8 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
         jLabel1.setText("FILTRO BUSQUEDA");
         jLabel1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
 
-        jLabel2.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel2.setText("Nro Tramite Documento");
-
-        jLabel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel3.setText("Nro Tramite Documento");
-
         jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel4.setText("Nro Tramite Documento");
+        jLabel4.setText("Estado del trámite");
 
         btnNuevo.setText("NUEVO");
         btnNuevo.addActionListener(new java.awt.event.ActionListener() {
@@ -74,6 +164,11 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
         });
 
         btnLimpiar.setText("Limpiar");
+        btnLimpiar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLimpiarActionPerformed(evt);
+            }
+        });
 
         btnBuscar.setText("BUSCAR");
         btnBuscar.addActionListener(new java.awt.event.ActionListener() {
@@ -112,41 +207,53 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
             jTable1.getColumnModel().getColumn(5).setMaxWidth(150);
         }
 
+        jLabel5.setText("Tipo de búsqueda");
+
+        cmbTipoBusqueda.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        cmbTipoBusqueda.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmbTipoBusquedaActionPerformed(evt);
+            }
+        });
+
+        txtValorBusqueda.setText("jTextField1");
+        txtValorBusqueda.setEnabled(false);
+
+        cmbEstado.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
         javax.swing.GroupLayout jPanelPrincipalLayout = new javax.swing.GroupLayout(jPanelPrincipal);
         jPanelPrincipal.setLayout(jPanelPrincipalLayout);
         jPanelPrincipalLayout.setHorizontalGroup(
             jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                .addGap(260, 260, 260)
-                .addComponent(btnBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(40, 40, 40)
-                .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(btnNuevo, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
-            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                            .addGap(497, 497, 497)
+                            .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(94, 94, 94)
+                            .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                            .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(btnBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                            .addComponent(btnNuevo, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addGap(15, 15, 15)
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGap(15, 15, 15)
-                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(165, 165, 165)
-                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(140, 140, 140)
-                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGap(15, 15, 15)
-                        .addComponent(textBusquedaNroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(165, 165, 165)
-                        .addComponent(textBusquedaNroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(140, 140, 140)
-                        .addComponent(textBusquedaNroTramiteDocumento2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGap(15, 15, 15)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(0, 0, Short.MAX_VALUE))
+                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                                .addGap(28, 28, 28)
+                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                                        .addComponent(cmbTipoBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(txtValorBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(68, 68, 68)
+                                .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                .addGap(0, 17, Short.MAX_VALUE))
         );
         jPanelPrincipalLayout.setVerticalGroup(
             jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -154,28 +261,20 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
                 .addGap(6, 6, 6)
                 .addComponent(jLabel1)
                 .addGap(12, 12, 12)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel2)
-                    .addComponent(jLabel3)
-                    .addComponent(jLabel4))
+                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(3, 3, 3)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGap(3, 3, 3)
-                        .addComponent(textBusquedaNroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(textBusquedaNroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textBusquedaNroTramiteDocumento2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGap(17, 17, 17)
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(btnBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(8, 8, 8))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelPrincipalLayout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(btnNuevo, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)))
+                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(cmbTipoBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtValorBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(20, 20, 20)
+                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnNuevo, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(8, 8, 8)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 419, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
@@ -192,9 +291,7 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnBuscarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBuscarActionPerformed
-        
-        //Agregamos los filtros
-        //Metodo de Listado
+        buscarExpedientes();
     }//GEN-LAST:event_btnBuscarActionPerformed
 
     private void btnNuevoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNuevoActionPerformed
@@ -202,20 +299,33 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
         MenuPrincipal.ShowJPanel(new JPanelRegistrarExpediente());
     }//GEN-LAST:event_btnNuevoActionPerformed
 
+    private void cmbTipoBusquedaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbTipoBusquedaActionPerformed
+        if (cmbTipoBusqueda.getSelectedItem() != null) {
+            txtValorBusqueda.setEnabled(true);
+            txtValorBusqueda.setText("");
+            txtValorBusqueda.requestFocus();
+        }
+        // TODO add your handling code here:
+    }//GEN-LAST:event_cmbTipoBusquedaActionPerformed
+
+    private void btnLimpiarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarActionPerformed
+        // TODO add your handling code here:
+        limpiarCampos();
+    }//GEN-LAST:event_btnLimpiarActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnBuscar;
     private javax.swing.JButton btnLimpiar;
     private javax.swing.JButton btnNuevo;
+    private javax.swing.JComboBox cmbEstado;
+    private javax.swing.JComboBox cmbTipoBusqueda;
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
     private javax.swing.JPanel jPanelPrincipal;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable jTable1;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento1;
-    private javax.swing.JTextField textBusquedaNroTramiteDocumento2;
+    private javax.swing.JTextField txtValorBusqueda;
     // End of variables declaration//GEN-END:variables
 }

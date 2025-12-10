@@ -34,8 +34,9 @@ public class MenuPrincipal extends javax.swing.JFrame {
         lbl_TituloFormulario.putClientProperty( "FlatLaf.style", "font: 200% $light.font" );
     }
     
-        private void InitContent() 
+    private void InitContent() 
     {
+        lbl_TituloFormulario.setText("FORMULARIO HOME");
         ShowJPanel(new jPanelHome());
     }
     
@@ -70,10 +71,11 @@ public class MenuPrincipal extends javax.swing.JFrame {
         jPanelBody = new javax.swing.JPanel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setBackground(new java.awt.Color(255, 255, 255));
         setMaximumSize(null);
         setMinimumSize(null);
 
-        background.setBackground(new java.awt.Color(255, 204, 204));
+        background.setBackground(new java.awt.Color(255, 255, 255));
         background.setMinimumSize(new java.awt.Dimension(0, 0));
         background.setPreferredSize(new java.awt.Dimension(1180, 640));
 
@@ -126,11 +128,6 @@ public class MenuPrincipal extends javax.swing.JFrame {
                 btnMenuExpedienteMouseClicked(evt);
             }
         });
-        btnMenuExpediente.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnMenuExpedienteActionPerformed(evt);
-            }
-        });
         jpanelMenu.add(btnMenuExpediente, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 160, 270, 50));
 
         btnMenuAsignacion.setBackground(new java.awt.Color(25, 120, 210));
@@ -161,7 +158,8 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
         jPanelHeader.setPreferredSize(new java.awt.Dimension(900, 60));
 
-        lbl_TituloFormulario.setText("INICIO");
+        lbl_TituloFormulario.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        lbl_TituloFormulario.setText("title");
 
         javax.swing.GroupLayout jPanelHeaderLayout = new javax.swing.GroupLayout(jPanelHeader);
         jPanelHeader.setLayout(jPanelHeaderLayout);
@@ -170,14 +168,14 @@ public class MenuPrincipal extends javax.swing.JFrame {
             .addGroup(jPanelHeaderLayout.createSequentialGroup()
                 .addGap(30, 30, 30)
                 .addComponent(lbl_TituloFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, 305, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(583, Short.MAX_VALUE))
+                .addContainerGap(591, Short.MAX_VALUE))
         );
         jPanelHeaderLayout.setVerticalGroup(
             jPanelHeaderLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelHeaderLayout.createSequentialGroup()
                 .addGap(18, 18, 18)
                 .addComponent(lbl_TituloFormulario)
-                .addContainerGap(26, Short.MAX_VALUE))
+                .addContainerGap(17, Short.MAX_VALUE))
         );
 
         jPanelBody.setBackground(new java.awt.Color(255, 255, 255));
@@ -203,8 +201,10 @@ public class MenuPrincipal extends javax.swing.JFrame {
                 .addComponent(jpanelMenu, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 918, Short.MAX_VALUE)
-                    .addComponent(jPanelHeader, javax.swing.GroupLayout.DEFAULT_SIZE, 918, Short.MAX_VALUE))
+                    .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 926, Short.MAX_VALUE)
+                    .addGroup(backgroundLayout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(jPanelHeader, javax.swing.GroupLayout.PREFERRED_SIZE, 926, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         backgroundLayout.setVerticalGroup(
@@ -235,17 +235,15 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
     private void btnMenuExpedienteMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedienteMouseClicked
         // TODO add your handling code here:
+         lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTE");
          ShowJPanel(new JPanelRegistroExpediente());
     }//GEN-LAST:event_btnMenuExpedienteMouseClicked
 
     private void btnMenuHomeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuHomeMouseClicked
         // TODO add your handling code here:
+        lbl_TituloFormulario.setText("FORMULARIO HOME");
          ShowJPanel(new jPanelHome());
     }//GEN-LAST:event_btnMenuHomeMouseClicked
-
-    private void btnMenuExpedienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuExpedienteActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnMenuExpedienteActionPerformed
 
     private void btnMenuHomeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuHomeActionPerformed
         // TODO add your handling code here:
@@ -257,6 +255,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
     private void btnMenuAsignacionMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuAsignacionMouseClicked
         try {
+            lbl_TituloFormulario.setText("FORMULARIO ASIGNACIÓN");
             ShowJPanel(new JPanelFiltroBusqueda());
             // TODO add your handling code here:
         } catch (Exception ex) {
