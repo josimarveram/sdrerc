@@ -11,6 +11,7 @@ import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
@@ -292,16 +293,29 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     }//GEN-LAST:event_cmbTipoBusquedaActionPerformed
 
     private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
-        if (evt.getClickCount() == 2) {
+        if (evt.getClickCount() == 2 && jTable1.getSelectedRow() != -1) {
 
             int fila = jTable1.getSelectedRow();
             if (fila >= 0) {
-
+                // Obtener datos de la fila
+                String idExpediente = jTable1.getValueAt(fila, 0).toString();
+                String descripcion = jTable1.getValueAt(fila, 1).toString();
+                String fecha = jTable1.getValueAt(fila, 2).toString();
                 //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
                 //Expediente expedienteSeleccionado = model.get(fila);
 
+                // Crear el panel al que quieres ir
+                JPanelRegistroAsignacion panel = new JPanelRegistroAsignacion();
+                
+                try {
+                    // Si el panel necesita recibir datos:
+                    panel.cargarExpediente(idExpediente);
+                } catch (Exception ex) {
+                    Logger.getLogger(JPanelFiltroBusqueda.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                
                 // Abrir formulario de edición
-                MenuPrincipal.ShowJPanel(new JPanelRegistroAsignacion());
+                MenuPrincipal.ShowJPanel(panel);
             }
         }
         // TODO add your handling code here:

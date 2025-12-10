@@ -54,4 +54,8 @@ public class ExpedienteService
         return expedienteRepository_.buscarPorCampo(campo, valor,estado);
     }
     
+    public Expediente buscarporid(int id) throws Exception {
+        return expedienteRepository_.buscarPorId(id);
+    }
+    
 }

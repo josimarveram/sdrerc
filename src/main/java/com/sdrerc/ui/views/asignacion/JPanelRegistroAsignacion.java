@@ -4,6 +4,20 @@
  */
 package com.sdrerc.ui.views.asignacion;
 
+import com.sdrerc.application.CatalogoItemService;
+import com.sdrerc.application.ExpedienteAsignacionService;
+import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.application.TecnicoService;
+import com.sdrerc.domain.model.CatalogoItem;
+import com.sdrerc.domain.model.Expediente.Expediente;
+import com.sdrerc.domain.model.ExpedienteAsignacion;
+import com.sdrerc.domain.model.Tecnico;
+import java.sql.SQLException;
+import java.util.Date;
+import java.util.List;
+import javax.swing.JComboBox;
+import javax.swing.JOptionPane;
+
 /**
  *
  * @author David
@@ -13,8 +27,77 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
     /**
      * Creates new form JPanelRegistroAsignacion
      */
+    private final ExpedienteService expedienteService;    
+    private final CatalogoItemService catalogoItemService;
+    private final TecnicoService tecnicoService;
+    private final ExpedienteAsignacionService expedienteAsignacionService;
+    
     public JPanelRegistroAsignacion() {
         initComponents();
+        this.expedienteService = new ExpedienteService();
+        this.catalogoItemService = new CatalogoItemService();
+        this.tecnicoService = new TecnicoService();
+        this.expedienteAsignacionService = new ExpedienteAsignacionService();
+        cargarComboEstados();
+        cargarTecnicos();
+    }
+    
+    
+    public void cargarExpediente(String idExpediente) throws Exception {
+        // Aquí consultas la BD y llenas los campos
+        // Ejemplo:
+        
+        
+        Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));
+        
+        txtIdExpediente.setText("" + lista.getIdExpediente());
+        txtFechaSolicitud.setText(lista.getFechaSolicitud().toString());
+        
+        txtDniRemitente.setText(lista.getDniRemitente());
+        txtNombresRemitente.setText(lista.getApellidoNombreRemitente());
+        //cmbEstado.setSelectedItem(lista.getEstado());
+        
+        seleccionarEstadoEnCombo(cmbEstado, lista.getEstado());
+        
+/*
+        txtNumero.setText(lista.());
+        txtDni.setText(exp.getDniRemitente());
+        txtNombre.setText(exp.getApellidoNombreRemitente());
+        cmbEstado.setSelectedItem(exp.getEstado());
+        */
+        
+        
+    }
+    
+    
+    private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            CatalogoItem item = combo.getItemAt(i);
+            if (item.getIdCatalogoItem() == idEstado) {
+                combo.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+    
+    private void cargarComboEstados() {
+        cmbEstado.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
+
+        for (CatalogoItem estado : lista) {
+            cmbEstado.addItem(estado);
+        }
+    }
+    
+    private void cargarTecnicos(){
+        
+            List<Tecnico> tecnicos = tecnicoService.listarTecnicos();
+            cboTecnico.removeAllItems();
+
+            for (Tecnico t : tecnicos) {
+                cboTecnico.addItem(t);
+            }
+
     }
 
     /**
@@ -27,19 +110,110 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
     private void initComponents() {
 
         jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        txtIdExpediente = new javax.swing.JTextField();
+        jLabel3 = new javax.swing.JLabel();
+        txtFechaSolicitud = new javax.swing.JTextField();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        txtDniRemitente = new javax.swing.JTextField();
+        txtNombresRemitente = new javax.swing.JTextField();
+        jLabel6 = new javax.swing.JLabel();
+        cmbEstado = new javax.swing.JComboBox();
+        jButton1 = new javax.swing.JButton();
+        jLabel7 = new javax.swing.JLabel();
+        cboTecnico = new javax.swing.JComboBox();
+        jLabel8 = new javax.swing.JLabel();
+        spFechaAsignacion = new javax.swing.JSpinner();
 
         jLabel1.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("NUEVO REGISTRO ASIGNACION");
         jLabel1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
 
+        jLabel2.setText("Id Expediente");
+
+        txtIdExpediente.setText("jTextField1");
+        txtIdExpediente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtIdExpedienteActionPerformed(evt);
+            }
+        });
+
+        jLabel3.setText("Fecha Solicitud");
+
+        txtFechaSolicitud.setText("jTextField1");
+
+        jLabel4.setText("Nombres Remitente");
+
+        jLabel5.setText("DNI Remitente");
+
+        txtDniRemitente.setText("jTextField1");
+
+        txtNombresRemitente.setText("jTextField1");
+
+        jLabel6.setText("Estado Trámite");
+
+        cmbEstado.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jButton1.setText("GENERAR ASIGNACIÓN");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
+
+        jLabel7.setText("Seleccionar Técnico: ");
+
+        cboTecnico.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jLabel8.setText("Fecha de Asignación:");
+
+        spFechaAsignacion.setModel(new javax.swing.SpinnerDateModel());
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(75, 75, 75)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addGroup(layout.createSequentialGroup()
+                                    .addComponent(jLabel2)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(txtIdExpediente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel3)
+                                        .addComponent(jLabel5))
+                                    .addGap(48, 48, 48)
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(txtFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtDniRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtNombresRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addComponent(jLabel6)
+                            .addComponent(jLabel4))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(118, 118, 118)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel7)
+                                    .addComponent(jLabel8))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(cboTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 135, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 182, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(29, 29, 29)))))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
@@ -47,12 +221,84 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
             .addGroup(layout.createSequentialGroup()
                 .addGap(28, 28, 28)
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(241, Short.MAX_VALUE))
+                .addGap(40, 40, 40)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(txtIdExpediente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel7)
+                    .addComponent(cboTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel3)
+                    .addComponent(txtFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel5)
+                            .addComponent(txtDniRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel8)
+                            .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(41, 41, 41)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel4)
+                            .addComponent(txtNombresRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel6)
+                            .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(62, 62, 62)
+                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 69, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(118, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
+    private void txtIdExpedienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtIdExpedienteActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtIdExpedienteActionPerformed
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        
+        try {
+            ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
+            asignacion.setIdExpediente(6);
+                        
+            Tecnico tecnico = (Tecnico) cboTecnico.getSelectedItem();
+            int idTecnico = tecnico.getIdTecnico();  
+            asignacion.setIdTecnico(idTecnico);
+            
+            Date fecha = (Date) spFechaAsignacion.getValue();
+            
+            asignacion.setFechaAsignacion(fecha);
+
+            expedienteAsignacionService.agregarExpediente(asignacion);
+
+            JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
+        }
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButton1ActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JComboBox cboTecnico;
+    private javax.swing.JComboBox cmbEstado;
+    private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JSpinner spFechaAsignacion;
+    private javax.swing.JTextField txtDniRemitente;
+    private javax.swing.JTextField txtFechaSolicitud;
+    private javax.swing.JTextField txtIdExpediente;
+    private javax.swing.JTextField txtNombresRemitente;
     // End of variables declaration//GEN-END:variables
 }

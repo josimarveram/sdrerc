@@ -217,6 +217,24 @@ public class ExpedienteRepository
         return lista;
     }
     
+    public Expediente buscarPorId(int id) throws SQLException {
+        Expediente lista = new Expediente();
+
+        String sql = "SELECT * FROM EXPEDIENTE WHERE ID_EXPEDIENTE = ?";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                lista = mapRow(rs); 
+            }
+        }
+        return lista;
+    }
+    
     private Expediente mapRow(ResultSet rs) throws SQLException {
         return new Expediente(
             rs.getInt("ID_EXPEDIENTE"),
