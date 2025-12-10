@@ -22,17 +22,27 @@ import java.util.List;
 public class CatalogoDetalleRepository {
     public List<CatalogoItem> listarCatalogoItem(int idCatalogo) throws SQLException {
         
+        
+        System.out.println("➡ Ejecutando consulta con id_catalogo = " + idCatalogo);
+    
         List<CatalogoItem> lista = new ArrayList<>();
-        String sql = "SELECT id_catalogo_item,id_catalogo, descripcion, active FROM catalogo_item";
+        //idCatalogo = 2;
+        String sql = "SELECT id_catalogo_item,id_catalogo, descripcion, active FROM catalogo_item WHERE id_catalogo = ?";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             
-            //ps.setInt(1, idCatalogo);
+            ps.setInt(1, idCatalogo);
             
             ResultSet rs = ps.executeQuery();
             
+            if (!rs.isBeforeFirst()) {
+                System.out.println("⚠ NO se encontraron registros en catalogo_item.");
+            }
+            
             while (rs.next()) {
+                
+                System.out.println("✔ Registro encontrado: " + rs.getString("DESCRIPCION"));
                 lista.add(new CatalogoItem(
                             rs.getInt("ID_CATALOGO_ITEM"),
                             rs.getInt("ID_CATALOGO"),
@@ -40,10 +50,36 @@ public class CatalogoDetalleRepository {
                             rs.getInt("ACTIVE")                            
                 ));
             }
-        } catch(SQLException ex){
+        } 
+        catch(SQLException ex){
             throw new RuntimeException("Error listando catalogos" + ex.getMessage());
         }
 
         return lista; // usuario no encontrado
+    }
+    
+    public List<CatalogoItem> obtenerEstados() {
+        List<CatalogoItem> estados = new ArrayList<>();
+
+        String sql = "SELECT ID_CATALOGO_ITEM,ID_CATALOGO, DESCRIPCION, ACTIVE FROM CATALOGO_ITEM WHERE ID_CATALOGO = 5";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs= stmt.executeQuery()) {
+
+            while (rs.next()) {
+                estados.add(new CatalogoItem(
+                            rs.getInt("ID_CATALOGO_ITEM"),
+                            rs.getInt("ID_CATALOGO"),
+                            rs.getString("DESCRIPCION"),
+                            rs.getInt("ACTIVE")  
+                ));
+            }
+
+        } catch(SQLException ex){
+            throw new RuntimeException("Error listando catalogos" + ex.getMessage());
+        }
+
+        return estados;
     }
 }

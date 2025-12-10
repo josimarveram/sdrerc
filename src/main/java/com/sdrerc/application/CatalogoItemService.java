@@ -26,4 +26,8 @@ public class CatalogoItemService {
         List<CatalogoItem> catalogoitem = repository.listarCatalogoItem(idCatalogo);
         return catalogoitem;
     }
+    
+    public List<CatalogoItem> obtenerEstados() {        
+        return repository.obtenerEstados();
+    }
 }

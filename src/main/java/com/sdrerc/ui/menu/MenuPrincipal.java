@@ -5,9 +5,12 @@
 package com.sdrerc.ui.menu;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.ui.views.expedientes.JPanelRegistroExpediente;
 import com.sdrerc.ui.views.home.jPanelHome;
 import java.awt.BorderLayout;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JPanel;
 import javax.swing.UIManager;
 
@@ -100,6 +103,11 @@ public class MenuPrincipal extends javax.swing.JFrame {
                 btnMenuHomeMouseClicked(evt);
             }
         });
+        btnMenuHome.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnMenuHomeActionPerformed(evt);
+            }
+        });
         jpanelMenu.add(btnMenuHome, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 110, 270, 50));
 
         btnMenuExpediente.setBackground(new java.awt.Color(25, 120, 210));
@@ -118,6 +126,11 @@ public class MenuPrincipal extends javax.swing.JFrame {
                 btnMenuExpedienteMouseClicked(evt);
             }
         });
+        btnMenuExpediente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnMenuExpedienteActionPerformed(evt);
+            }
+        });
         jpanelMenu.add(btnMenuExpediente, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 160, 270, 50));
 
         btnMenuAsignacion.setBackground(new java.awt.Color(25, 120, 210));
@@ -131,6 +144,16 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuAsignacion.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         btnMenuAsignacion.setIconTextGap(10);
         btnMenuAsignacion.setInheritsPopupMenu(true);
+        btnMenuAsignacion.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                btnMenuAsignacionMouseClicked(evt);
+            }
+        });
+        btnMenuAsignacion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnMenuAsignacionActionPerformed(evt);
+            }
+        });
         jpanelMenu.add(btnMenuAsignacion, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 210, 270, 50));
 
         jSeparator2.setForeground(new java.awt.Color(255, 255, 255));
@@ -138,7 +161,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
         jPanelHeader.setPreferredSize(new java.awt.Dimension(900, 60));
 
-        lbl_TituloFormulario.setText("HOLA MUNDO");
+        lbl_TituloFormulario.setText("INICIO");
 
         javax.swing.GroupLayout jPanelHeaderLayout = new javax.swing.GroupLayout(jPanelHeader);
         jPanelHeader.setLayout(jPanelHeaderLayout);
@@ -219,6 +242,27 @@ public class MenuPrincipal extends javax.swing.JFrame {
         // TODO add your handling code here:
          ShowJPanel(new jPanelHome());
     }//GEN-LAST:event_btnMenuHomeMouseClicked
+
+    private void btnMenuExpedienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuExpedienteActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnMenuExpedienteActionPerformed
+
+    private void btnMenuHomeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuHomeActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnMenuHomeActionPerformed
+
+    private void btnMenuAsignacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuAsignacionActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnMenuAsignacionActionPerformed
+
+    private void btnMenuAsignacionMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuAsignacionMouseClicked
+        try {
+            ShowJPanel(new JPanelFiltroBusqueda());
+            // TODO add your handling code here:
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnMenuAsignacionMouseClicked
 
     /**
      * @param args the command line arguments

@@ -39,5 +39,29 @@ public class CatalogoRepository {
         return lista; // usuario no encontrado
     }
     
+    public List<Catalogo> obtenerEstados() {
+        List<Catalogo> estados = new ArrayList<>();
+
+        String sql = "SELECT ID_CATALOGO, DESCRIPCION, ACTIVE FROM CATALOGO WHERE ID_CATALOGO = 5";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs= stmt.executeQuery()) {
+
+            while (rs.next()) {
+                estados.add(new Catalogo(
+                        rs.getInt("ID_CATALOGO"),
+                        rs.getString("DESCRIPCION"),
+                        rs.getInt("ACTIVE")
+                ));
+            }
+
+        } catch(SQLException ex){
+            throw new RuntimeException("Error listando catalogos" + ex.getMessage());
+        }
+
+        return estados;
+    }
+    
     
 }
