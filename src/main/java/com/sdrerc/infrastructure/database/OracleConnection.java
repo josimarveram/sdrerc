@@ -12,9 +12,9 @@ import java.sql.SQLException;
  * @author David
  */
 public class OracleConnection {
-    private static final String URL = "jdbc:oracle:thin:@localhost:1521/orclpdb.minedu.local";
-    private static final String USER = "david";
-    private static final String PASSWORD = "MiClave2025";
+    private static final String URL = "jdbc:oracle:thin:@localhost:1521/xe";
+    private static final String USER = "system";
+    private static final String PASSWORD = "123456789";
 
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);

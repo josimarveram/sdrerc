@@ -264,7 +264,7 @@ public class FrmLogin extends javax.swing.JFrame
         String password = new String(txt_contraseña.getPassword());
 
         try {
-            //User u = new LoginService().login(username, password);
+             User u = new LoginService().login(username, password);
             
             /*
             JOptionPane.showMessageDialog(this,

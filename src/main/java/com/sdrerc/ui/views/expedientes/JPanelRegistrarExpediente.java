@@ -95,6 +95,28 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
         cboGrupoFamiliar.addItem("GRUPO FAMILIAR");
         cboGrupoFamiliar.addItem("SIN GRUPO FAMILIAR");
     }
+      
+        private void limpiarCampos() 
+    {
+        // Limpiar JTextFields
+        textApellidosNombreRemitente.setText("");
+        textApellidosNombresSolicitante.setText("");
+        textApellidosNombresTitular.setText("");
+        textNumeroActa.setText("");
+        textNumeroDocumentoRemitente.setText("");
+        textNumeroDocumentoSolicitante.setText("");
+        textNumeroDocumentoTitular.setText("");
+        textNumeroGrupoFamiliar.setText("");
+        textNumeroTramiteDocumento.setText("");
+        textfechaSolicitud.setText("");
+
+        // Resetear JComboBoxes al primer elemento
+        if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
+        if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(0);
+        if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
+        if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
+        if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -395,6 +417,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
 
     private void btnLimpiarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarActionPerformed
         // TODO add your handling code here:
+        limpiarCampos();
     }//GEN-LAST:event_btnLimpiarActionPerformed
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
@@ -457,13 +480,6 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
             // Auditoría
             expediente.setIdUsuarioCrea(1);
             //expediente.setFechaRegistra(new Date());
-
-            /*
-            JOptionPane.showMessageDialog(this,
-                    "Expediente registrado correctamente.\nID generado: " + 5,
-                    "Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
-            */
             
             // Llamar al servicio
             ExpedienteResponse response = expedienteService.agregarExpediente(expediente);
@@ -472,7 +488,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                     "Expediente registrado correctamente.\nID generado: " + response.getIdExpediente(),
                     "Éxito",
                     JOptionPane.INFORMATION_MESSAGE);
-            
+            limpiarCampos();
         } 
         catch (Exception ex) 
         {
