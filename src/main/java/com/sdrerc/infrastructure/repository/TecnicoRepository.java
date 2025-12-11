@@ -21,8 +21,8 @@ public class TecnicoRepository {
     public List<Tecnico> listarTecnicos() {
         List<Tecnico> lista = new ArrayList<>();
 
-        String sql = "SELECT ID_TECNICO, APELLIDO_PATERNO, APELLIDO_MATERNO, NOMBRES " +
-                     "FROM TECNICO WHERE ACTIVE = 1 ORDER BY APELLIDO_PATERNO";
+        String sql = "SELECT ID_TECNICO, NUMERO_DOCUMENTO,APELLIDO_PATERNO, APELLIDO_MATERNO, NOMBRES,APELLIDO_PATERNO || ' ' || APELLIDO_MATERNO || ' ' || NOMBRES AS NOMBRE_COMPLETO " +
+                     "FROM TECNICO WHERE ACTIVE = 1 ORDER BY ID_TECNICO ASC";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -31,9 +31,11 @@ public class TecnicoRepository {
             while (rs.next()) {
                 lista.add(new Tecnico(
                         rs.getInt("ID_TECNICO"),
+                        rs.getInt("NUMERO_DOCUMENTO"),
                         rs.getString("APELLIDO_PATERNO"),
                         rs.getString("APELLIDO_MATERNO"),
-                        rs.getString("NOMBRES")
+                        rs.getString("NOMBRES"),
+                        rs.getString("NOMBRE_COMPLETO")
                 ));
             }
         }catch(SQLException ex){

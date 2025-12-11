@@ -21,10 +21,8 @@ public class CatalogoItemService {
         this.repository = new CatalogoDetalleRepository();
     }
     
-    public List<CatalogoItem> listarCatalogoItem(int idCatalogo) throws Exception {
-        
-        List<CatalogoItem> catalogoitem = repository.listarCatalogoItem(idCatalogo);
-        return catalogoitem;
+    public List<CatalogoItem> listarCatalogoItem(int idCatalogo){        
+        return repository.listarCatalogoItem(idCatalogo);
     }
     
     public List<CatalogoItem> obtenerEstados() {        

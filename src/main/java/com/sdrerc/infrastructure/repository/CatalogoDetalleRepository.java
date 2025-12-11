@@ -20,7 +20,7 @@ import java.util.List;
  * @author DESARROLLADOR84_USI
  */
 public class CatalogoDetalleRepository {
-    public List<CatalogoItem> listarCatalogoItem(int idCatalogo) throws SQLException {
+    public List<CatalogoItem> listarCatalogoItem(int idCatalogo){
         
         
         System.out.println("➡ Ejecutando consulta con id_catalogo = " + idCatalogo);

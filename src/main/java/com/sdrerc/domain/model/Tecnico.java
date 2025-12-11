@@ -10,19 +10,27 @@ package com.sdrerc.domain.model;
  */
 public class Tecnico {
     private int idTecnico;
+    private int numeroDocumento;
     private String apellidoPaterno;
     private String apellidoMaterno;
     private String nombres;
+    private String nombreCompleto;
 
-    public Tecnico(int idTecnico, String apellidoPaterno, String apellidoMaterno, String nombres) {
+    public Tecnico(int idTecnico, int numeroDocumento,String apellidoPaterno, String apellidoMaterno, String nombres, String nombreCompleto) {
         this.idTecnico = idTecnico;
+        this.numeroDocumento = numeroDocumento;
         this.apellidoPaterno = apellidoPaterno;
         this.apellidoMaterno = apellidoMaterno;
         this.nombres = nombres;
+        this.nombreCompleto = nombreCompleto;
     }
 
     public int getIdTecnico() {
         return idTecnico;
+    }
+    
+    public int getNumeroDocumento() {
+        return numeroDocumento;
     }
 
     public String getApellidoPaterno() {
@@ -35,6 +43,9 @@ public class Tecnico {
 
     public String getNombres() {
         return nombres;
+    }
+    public String getNombreCompleto() {
+        return nombreCompleto;
     }
 
     @Override
