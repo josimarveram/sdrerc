@@ -356,9 +356,20 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     }//GEN-LAST:event_jTable1MouseClicked
 
     private void btnLimpiarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarActionPerformed
+        limpiarCampos();
         // TODO add your handling code here:
     }//GEN-LAST:event_btnLimpiarActionPerformed
-
+    
+    private void limpiarCampos() 
+    {
+        // Limpiar JTextFields
+        txtValorBusqueda.setText("");
+        // Resetear JComboBoxes al primer elemento
+        if (cmbTipoBusqueda.getItemCount() > 0) cmbTipoBusqueda.setSelectedIndex(0);
+        if (cmbEstado.getItemCount() > 0) cmbEstado.setSelectedIndex(0);
+        
+        buscarExpedientes();
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnBuscar;

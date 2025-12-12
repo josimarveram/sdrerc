@@ -453,14 +453,48 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        
+        if (!validarFormulario()) {
+            return; // Detiene el proceso si hay errores
+        }
+
         try {
+            
+            //objeto EXPEDIENTE
+            Expediente exp = new Expediente();
+            
+            CatalogoItem itemTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistral.getSelectedItem();
+            CatalogoItem itemTipoActa = (CatalogoItem) cboTipoActa.getSelectedItem();
+            CatalogoItem itemGrupoFamiliar = (CatalogoItem) cboGrupoFamiliar.getSelectedItem();
+            CatalogoItem itemTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
+            CatalogoItem itemTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
+            
+            exp.setIdExpediente(idExpedienteOculto);
+            exp.setFechaSolicitud((Date) spFechaSolicitud.getValue());
+            exp.setNumeroTramiteDocumento(textNumeroTramiteDocumento.getText());
+            exp.setTipoSolicitud(itemTipoSolicitud.getIdCatalogoItem());
+            exp.setTipoDocumento(itemTipoDocumento.getIdCatalogoItem());
+            exp.setTipoProcedimientoRegistral(itemTipoProcedimientoRegistral.getIdCatalogoItem());
+            exp.setTipoActa(itemTipoActa.getIdCatalogoItem());
+            exp.setNumeroActa(textNumeroActa.getText());
+            exp.setTipoGrupoFamiliar(itemGrupoFamiliar.getIdCatalogoItem());
+            exp.setNumeroGrupoFamiliar(textNumeroGrupoFamiliar.getText());
+            exp.setDniRemitente(textNumeroDocumentoRemitente.getText());
+            exp.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
+            exp.setDniSolicitante(textNumeroDocumentoSolicitante.getText());
+            exp.setApellidoNombreSolicitante(textApellidosNombresSolicitante.getText());
+            exp.setDniTitular(textNumeroDocumentoTitular.getText());
+            exp.setApellidoNombreTitular(textApellidosNombresTitular.getText());
+            exp.setEstado(1);
+            exp.setIdUsuarioModifica(11);
+            exp.setFechaModifica(new Date());
+
             ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
             asignacion.setIdExpediente(idExpedienteOculto);
             asignacion.setIdTecnico(Integer.parseInt(txtIdTecnico.getText()));            
             Date fecha = (Date) spFechaAsignacion.getValue();            
             asignacion.setFechaAsignacion(fecha);
-            expedienteAsignacionService.agregarExpediente(asignacion);
+            
+            expedienteAsignacionService.agregarExpediente(asignacion,exp);
 
             JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
 
@@ -470,6 +504,101 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
         // TODO add your handling code here:
     }//GEN-LAST:event_jButton1ActionPerformed
 
+    private boolean validarFormulario() {
+
+        if (spFechaSolicitud.getValue() == null) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar la Fecha de Solicitud.");
+            spFechaSolicitud.requestFocus();
+            return false;
+        }
+
+        if (textNumeroTramiteDocumento.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar el Número de Trámite.");
+            textNumeroTramiteDocumento.requestFocus();
+            return false;
+        }
+
+        if (cboTipoSolicitud.getSelectedIndex() == 0) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Solicitud.");
+            cboTipoSolicitud.requestFocus();
+            return false;
+        }
+
+        if (cboTipoDocumento.getSelectedIndex() == 0) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Documento.");
+            cboTipoDocumento.requestFocus();
+            return false;
+        }
+
+        if (textNumeroDocumentoRemitente.getText().trim().length() != 8) {
+            JOptionPane.showMessageDialog(this, "El DNI del Remitente debe tener 8 dígitos.");
+            textNumeroDocumentoRemitente.requestFocus();
+            return false;
+        }
+
+        if (textApellidosNombreRemitente.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Remitente.");
+            textApellidosNombreRemitente.requestFocus();
+            return false;
+        }
+
+        if (textNumeroDocumentoSolicitante.getText().trim().length() != 8) {
+            JOptionPane.showMessageDialog(this, "El DNI del Solicitante debe tener 8 dígitos.");
+            textNumeroDocumentoSolicitante.requestFocus();
+            return false;
+        }
+
+        if (textApellidosNombresSolicitante.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Solicitante.");
+            textApellidosNombresSolicitante.requestFocus();
+            return false;
+        }
+
+        if (cboTipoActa.getSelectedIndex() == 0) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar Tipo de Acta.");
+            cboTipoActa.requestFocus();
+            return false;
+        }
+
+        if (textNumeroActa.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Acta.");
+            textNumeroActa.requestFocus();
+            return false;
+        }
+
+        if (cboGrupoFamiliar.getSelectedIndex() == 0) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar Grupo Familiar.");
+            cboGrupoFamiliar.requestFocus();
+            return false;
+        }
+
+        if (textNumeroGrupoFamiliar.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Grupo Familiar.");
+            textNumeroGrupoFamiliar.requestFocus();
+            return false;
+        }
+
+        if (textNumeroDocumentoTitular.getText().trim().length() != 8) {
+            JOptionPane.showMessageDialog(this, "El DNI del Titular debe tener 8 dígitos.");
+            textNumeroDocumentoTitular.requestFocus();
+            return false;
+        }
+
+        if (textApellidosNombresTitular.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar Apellidos y Nombres del Titular.");
+            textApellidosNombresTitular.requestFocus();
+            return false;
+        }
+
+        if (txtNombreTecnico.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un Técnico.");
+            txtNombreTecnico.requestFocus();
+            return false;
+        }
+
+        return true; // Todo OK
+    }
+    
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         // Obtener el JFrame que contiene este JPanel
         java.awt.Window parent = SwingUtilities.getWindowAncestor(this);

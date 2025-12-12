@@ -4,6 +4,7 @@
  */
 package com.sdrerc.application;
 
+import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.repository.ExpedienteAsignacionRepository;
 
@@ -20,7 +21,7 @@ public class ExpedienteAsignacionService {
         this.expedienteAsignacionRepository = new ExpedienteAsignacionRepository();
     }
     
-    public void agregarExpediente(ExpedienteAsignacion asignacion) throws Exception 
+    public void agregarExpediente(ExpedienteAsignacion asignacion, Expediente expediente) throws Exception 
     {
         // Validaciones mínimas
         if (asignacion == null) {
@@ -32,6 +33,6 @@ public class ExpedienteAsignacionService {
         }
 
         // Registrar en la BD → Llama al DAO
-        expedienteAsignacionRepository.registrar(asignacion);
+        expedienteAsignacionRepository.registrar(asignacion,expediente);
     }
 }

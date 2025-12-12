@@ -9,6 +9,7 @@ import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.infrastructure.repository.ExpedienteRepository;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Date;
 
 /**
  *

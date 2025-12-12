@@ -4,7 +4,7 @@
  */
 package com.sdrerc.domain.model.Expediente;
 
-import java.sql.Date;
+import java.util.Date;
 
 /**
  *

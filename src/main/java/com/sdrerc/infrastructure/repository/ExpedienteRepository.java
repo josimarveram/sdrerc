@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.Date;
 
 /**
  *
@@ -123,10 +124,32 @@ public class ExpedienteRepository
                 int idGenerado = rs.getInt(1);
                 expediente.setIdExpediente(idGenerado);
             }
+            
+            // convertir fechaSolicitud (puede ser null)
+            java.sql.Date sqlFechaSolicitud = null;
+            if (expediente.getFechaSolicitud() != null) {
+                sqlFechaSolicitud = new java.sql.Date(expediente.getFechaSolicitud().getTime());
+            }
+            
+            // fecha_registra (si quieres usar la fecha que viene en el objeto)
+            java.sql.Date sqlFechaRegistra = null;
+            if (expediente.getFechaRegistra() != null) {
+                sqlFechaRegistra = new java.sql.Date(expediente.getFechaRegistra().getTime());
+            } else {
+                sqlFechaRegistra = new java.sql.Date(System.currentTimeMillis());
+            }
+            // fecha_registra (si quieres usar la fecha que viene en el objeto)
+            java.sql.Date sqlFechaModifica = null;
+            if (expediente.getFechaModifica()!= null) {
+                sqlFechaModifica = new java.sql.Date(expediente.getFechaModifica().getTime());
+            } else {
+                sqlFechaModifica = new java.sql.Date(System.currentTimeMillis());
+            }
 
             return new ExpedienteResponse(
                     expediente.getIdExpediente(),
-                    expediente.getFechaSolicitud(),
+                    //expediente.getFechaSolicitud(),
+                    sqlFechaSolicitud,
                     expediente.getNumeroTramiteDocumento(),
                     expediente.getTipoSolicitud(),
                     expediente.getTipoDocumento(),
@@ -143,9 +166,11 @@ public class ExpedienteRepository
                     expediente.getApellidoNombreTitular(),
                     expediente.getEstado(),
                     expediente.getIdUsuarioCrea(),
-                    expediente.getFechaRegistra(),
+                    //expediente.getFechaRegistra(),
+                    sqlFechaRegistra,
                     expediente.getIdUsuarioModifica(),
-                    expediente.getFechaModifica()
+                    //expediente.getFechaModifica()
+                    sqlFechaModifica
             );
         }     
     }
@@ -206,10 +231,33 @@ public class ExpedienteRepository
             {
                 throw new SQLException("No se encontró el expediente con ID: " + expediente.getIdExpediente());
             }
+            
+            java.sql.Date sqlFechaSolicitud = null;
+            if (expediente.getFechaSolicitud() != null) {
+                sqlFechaSolicitud = new java.sql.Date(expediente.getFechaSolicitud().getTime());
+            } else {
+                sqlFechaSolicitud = new java.sql.Date(System.currentTimeMillis());
+            }
+
+            java.sql.Date sqlFechaModifica = null;
+            if (expediente.getFechaModifica() != null) {
+                sqlFechaModifica = new java.sql.Date(expediente.getFechaModifica().getTime());
+            } else {
+                sqlFechaModifica = new java.sql.Date(System.currentTimeMillis());
+            }
+            
+            java.sql.Date sqlFechaRegistra = null;
+            if (expediente.getFechaRegistra()!= null) {
+                sqlFechaRegistra = new java.sql.Date(expediente.getFechaRegistra().getTime());
+            } else {
+                sqlFechaRegistra = new java.sql.Date(System.currentTimeMillis());
+            }
+            
             // Devuelves la respuesta igual que en el INSERT
             return new ExpedienteResponse(
                     expediente.getIdExpediente(),
-                    expediente.getFechaSolicitud(),
+                    //expediente.getFechaSolicitud(),
+                    sqlFechaSolicitud,
                     expediente.getNumeroTramiteDocumento(),
                     expediente.getTipoSolicitud(),
                     expediente.getTipoDocumento(),
@@ -226,9 +274,11 @@ public class ExpedienteRepository
                     expediente.getApellidoNombreTitular(),
                     expediente.getEstado(),
                     expediente.getIdUsuarioCrea(),
-                    expediente.getFechaRegistra(),
+                    //expediente.getFechaRegistra(),
+                    sqlFechaRegistra,
                     expediente.getIdUsuarioModifica(),
-                    expediente.getFechaModifica()
+                    //expediente.getFechaModifica()
+                    sqlFechaModifica
             );
         }
     }
