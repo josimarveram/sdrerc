@@ -150,6 +150,91 @@ public class ExpedienteRepository
         }     
     }
     
+    
+    public ExpedienteResponse actualizarExpediente(Expediente expediente) throws SQLException 
+    {
+        String sql = "UPDATE EXPEDIENTE SET " +
+                    " fecha_solicitud = ?, " +
+                    " numero_tramite_documento = ?, " +
+                    " tipo_solicitud = ?, " +
+                    " tipo_documento = ?, " +
+                    " dni_remitente = ?, " +
+                    " apellido_nombre_remitente = ?, " +
+                    " dni_solicitante = ?, " +
+                    " apellido_nombre_solicitante = ?, " +
+                    " tipo_procedimiento_registral = ?, " +
+                    " tipo_acta = ?, " +
+                    " numero_acta = ?, " +
+                    " tipo_grupo_familiar = ?, " +
+                    " numero_grupo_familiar = ?, " +
+                    " dni_titular = ?, " +
+                    " apellido_nombre_titular = ?, " +
+                    " estado = ?, " +
+                    " id_usuario_modifica = ?, " +
+                    " fecha_modifica = ? " +
+                    " WHERE id_expediente = ?";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) 
+        {
+            // Datos para actualizar
+            stmt.setDate(1, new java.sql.Date(System.currentTimeMillis())); // fecha_solicitud
+            stmt.setString(2, expediente.getNumeroTramiteDocumento());
+            stmt.setInt(3, expediente.getTipoSolicitud());
+            stmt.setInt(4, expediente.getTipoDocumento());
+            stmt.setString(5, expediente.getDniRemitente());
+            stmt.setString(6, expediente.getApellidoNombreRemitente());
+            stmt.setString(7, expediente.getDniSolicitante());
+            stmt.setString(8, expediente.getApellidoNombreSolicitante());
+            stmt.setInt(9, expediente.getTipoProcedimientoRegistral());
+            stmt.setInt(10, expediente.getTipoActa());
+            stmt.setString(11, expediente.getNumeroActa());
+            stmt.setInt(12, expediente.getTipoGrupoFamiliar());
+            stmt.setString(13, expediente.getNumeroGrupoFamiliar());
+            stmt.setString(14, expediente.getDniTitular());
+            stmt.setString(15, expediente.getApellidoNombreTitular());
+            stmt.setInt(16, expediente.getEstado());
+            stmt.setInt(17, expediente.getIdUsuarioModifica());
+            stmt.setDate(18, new java.sql.Date(System.currentTimeMillis())); // fecha_modifica
+
+            // WHERE id_expediente = ?
+            stmt.setInt(19, expediente.getIdExpediente());
+
+            int rows = stmt.executeUpdate();
+
+            if (rows == 0) 
+            {
+                throw new SQLException("No se encontró el expediente con ID: " + expediente.getIdExpediente());
+            }
+            // Devuelves la respuesta igual que en el INSERT
+            return new ExpedienteResponse(
+                    expediente.getIdExpediente(),
+                    expediente.getFechaSolicitud(),
+                    expediente.getNumeroTramiteDocumento(),
+                    expediente.getTipoSolicitud(),
+                    expediente.getTipoDocumento(),
+                    expediente.getDniRemitente(),
+                    expediente.getApellidoNombreRemitente(),
+                    expediente.getDniSolicitante(),
+                    expediente.getApellidoNombreSolicitante(),
+                    expediente.getTipoProcedimientoRegistral(),
+                    expediente.getTipoActa(),
+                    expediente.getNumeroActa(),
+                    expediente.getTipoGrupoFamiliar(),
+                    expediente.getNumeroGrupoFamiliar(),
+                    expediente.getDniTitular(),
+                    expediente.getApellidoNombreTitular(),
+                    expediente.getEstado(),
+                    expediente.getIdUsuarioCrea(),
+                    expediente.getFechaRegistra(),
+                    expediente.getIdUsuarioModifica(),
+                    expediente.getFechaModifica()
+            );
+        }
+    }
+    
+    
+    
     public List<Expediente> listar() throws SQLException {
         List<Expediente> lista = new ArrayList<>();
 

@@ -4,26 +4,36 @@
  */
 package com.sdrerc.ui.views.expedientes;
 
+import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.util.TextFieldRules;
 import java.sql.Date;
+import java.util.List;
+import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 /**
  *
  * @author usuario
  */
-public class JPanelRegistrarExpediente extends javax.swing.JPanel {
-
+public class JPanelRegistrarExpediente extends javax.swing.JPanel 
+{
+    private final ExpedienteService expedienteService;
+    private final CatalogoItemService catalogoItemService;
+    private Integer idExpedienteOculto = 0;
+    
     /**
      * Creates new form JPanelRegistrarExpediente
      */
     public JPanelRegistrarExpediente() {
         initComponents();
         
+        this.expedienteService = new ExpedienteService();
+        this.catalogoItemService = new CatalogoItemService();
         
         TextFieldRules.apply(textNumeroDocumentoRemitente).onlyNumbers().max(8);
         TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
@@ -33,68 +43,91 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
         
         TextFieldRules.apply(textNumeroDocumentoTitular).onlyNumbers().max(8);
         TextFieldRules.apply(textApellidosNombresTitular).onlyLetters().max(300);
-        
+                
         cargarComboTipoSolicitud(); 
         cargarComboTipoDocumento();
         cargarComboTipoProcedimientoRegistral(); 
         cargarComboTipoActa();
-        cargarComboTipoGrupoFamiliar();
+        cargarComboGrupoFamiliar();        
+    }
+    
+    
+    public void cargarExpediente(String idExpediente) throws Exception 
+    {        
+        Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
+        textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
+        seleccionarEstadoEnCombo(cboTipoSolicitud, lista.getTipoSolicitud()); 
+        seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
+        seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
+        seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
+        seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar());      
+        spFechaSolicitud.setValue(lista.getFechaSolicitud());
+        textNumeroDocumentoRemitente.setText(lista.getDniRemitente());
+        textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
+        textNumeroDocumentoSolicitante.setText(lista.getDniSolicitante());
+        textApellidosNombresSolicitante.setText(lista.getApellidoNombreSolicitante());
+        textNumeroActa.setText(lista.getNumeroActa());
+        textNumeroGrupoFamiliar.setText(lista.getNumeroGrupoFamiliar());
+        textNumeroDocumentoTitular.setText(lista.getDniTitular());
+        textApellidosNombresTitular.setText(lista.getApellidoNombreTitular());
+        idExpedienteOculto = lista.getIdExpediente();
+    }
+    
+    private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            CatalogoItem item = combo.getItemAt(i);
+            if (item.getIdCatalogoItem() == idEstado) {
+                combo.setSelectedIndex(i);
+                break;
+            }
+        }
     }
     
     private void cargarComboTipoSolicitud() {
-    cboTipoSolicitud.addItem("---- SELECCIONE ----");
+        cboTipoSolicitud.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(1);
 
-    for (TipoSolicitud t : TipoSolicitud.values()) {
-        cboTipoSolicitud.addItem(t.getDescripcion());
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoSolicitud.addItem(catalogoitem);
+        }
     }
-}
     
-    /*
-    private void cargarComboTipoSOlicitud() 
-    {
-        cboTipoSolicitud.addItem("---- SELECCIONE ----");
-        cboTipoSolicitud.addItem("PARTE");
-        cboTipoSolicitud.addItem("OFICIO");
+    private void cargarComboTipoDocumento() {
+        cboTipoDocumento.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(2);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoDocumento.addItem(catalogoitem);
+        }
     }
-    */
     
-    private void cargarComboTipoDocumento() 
-    {
-        cboTipoDocumento.addItem("---- SELECCIONE ----");
-        cboTipoDocumento.addItem("SOLICITUD");
-        cboTipoDocumento.addItem("CARTA");
-        cboTipoDocumento.addItem("INFORME");
-        cboTipoDocumento.addItem("OFICIO");
-        cboTipoDocumento.addItem("RESOLUCIÒN");
-        cboTipoDocumento.addItem("HOJA DE ENVIO");
-        cboTipoDocumento.addItem("MEMORANDO");
-        cboTipoDocumento.addItem("HOJA DE ELEVACIÒN");
-        cboTipoDocumento.addItem("PROVEIDO");
+    private void cargarComboTipoProcedimientoRegistral() {
+        cboTipoProcedimientoRegistral.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(3);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoProcedimientoRegistral.addItem(catalogoitem);
+        }
     }
-    private void cargarComboTipoProcedimientoRegistral() 
-    {
-        cboTipoProcedimientoRegistral.addItem("---- SELECCIONE ----");
-        cboTipoProcedimientoRegistral.addItem("RECTIFICACION");
-        cboTipoProcedimientoRegistral.addItem("TITULO DE NACIONALIDAD");
-        cboTipoProcedimientoRegistral.addItem("CANCELACIÒN");
-        cboTipoProcedimientoRegistral.addItem("RECONSIDERACIÒN");
-        cboTipoProcedimientoRegistral.addItem("RECONSTITUCIÒN");
-        cboTipoProcedimientoRegistral.addItem("APELACIÒN");    
-        cboTipoProcedimientoRegistral.addItem("ACTUALIZACIÒN DE DATOS");    
-    }    
-    private void cargarComboTipoActa() 
-    {
-        cboTipoActa.addItem("---- SELECCIONE ----");
-        cboTipoActa.addItem("NACIMIENTO");
-        cboTipoActa.addItem("MATRIMONIO");
-        cboTipoActa.addItem("DEFUNCIÒN");
+    
+    private void cargarComboTipoActa() {
+        cboTipoActa.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(4);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoActa.addItem(catalogoitem);
+        }
     }
-      private void cargarComboTipoGrupoFamiliar() 
-    {
-        cboGrupoFamiliar.addItem("---- SELECCIONE ----");
-        cboGrupoFamiliar.addItem("GRUPO FAMILIAR");
-        cboGrupoFamiliar.addItem("SIN GRUPO FAMILIAR");
+    
+    private void cargarComboGrupoFamiliar() {
+        cboGrupoFamiliar.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(6);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboGrupoFamiliar.addItem(catalogoitem);
+        }
     }
+    
       
         private void limpiarCampos() 
     {
@@ -108,7 +141,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
         textNumeroDocumentoTitular.setText("");
         textNumeroGrupoFamiliar.setText("");
         textNumeroTramiteDocumento.setText("");
-        textfechaSolicitud.setText("");
+        //spFechaSolicitud.setText("");
 
         // Resetear JComboBoxes al primer elemento
         if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
@@ -129,7 +162,6 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
 
         jPanelPrincipal = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
-        textfechaSolicitud = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         textNumeroTramiteDocumento = new javax.swing.JTextField();
         jLabel4 = new javax.swing.JLabel();
@@ -156,11 +188,12 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
         btnGuardar = new javax.swing.JButton();
         btnRegresar = new javax.swing.JButton();
         btnLimpiar = new javax.swing.JButton();
-        cboTipoSolicitud = new javax.swing.JComboBox<>();
-        cboTipoActa = new javax.swing.JComboBox<>();
-        cboTipoDocumento = new javax.swing.JComboBox<>();
-        cboGrupoFamiliar = new javax.swing.JComboBox<>();
-        cboTipoProcedimientoRegistral = new javax.swing.JComboBox<>();
+        spFechaSolicitud = new javax.swing.JSpinner();
+        cboTipoSolicitud = new javax.swing.JComboBox();
+        cboTipoDocumento = new javax.swing.JComboBox();
+        cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
+        cboTipoActa = new javax.swing.JComboBox();
+        cboGrupoFamiliar = new javax.swing.JComboBox();
 
         setPreferredSize(new java.awt.Dimension(900, 570));
 
@@ -241,6 +274,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
             }
         });
 
+        spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
+
         cboTipoSolicitud.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
 
         javax.swing.GroupLayout jPanelPrincipalLayout = new javax.swing.GroupLayout(jPanelPrincipal);
@@ -264,8 +299,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(textfechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+                                    .addComponent(spFechaSolicitud))
                                 .addGap(37, 37, 37)
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -275,7 +310,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                                     .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
                                     .addComponent(cboTipoSolicitud, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                             .addComponent(textNumeroDocumentoSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 30, Short.MAX_VALUE)
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
                             .addComponent(cboTipoDocumento, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -312,9 +347,9 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                                             .addComponent(textNumeroActa, javax.swing.GroupLayout.DEFAULT_SIZE, 130, Short.MAX_VALUE)
                                             .addComponent(jLabel16, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                         .addGap(18, 18, 18)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLabel17, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                            .addComponent(jLabel17, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+                                            .addComponent(cboGrupoFamiliar, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                             .addComponent(textNumeroGrupoFamiliar)
@@ -342,7 +377,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                         .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                             .addComponent(jLabel2)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(textfechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addComponent(jLabel5))
                 .addGap(30, 30, 30)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -369,10 +404,11 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addComponent(jLabel16)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                                     .addComponent(jLabel15)
@@ -429,25 +465,21 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
                                                   
         try 
         {
-
-            ExpedienteService expedienteService = new ExpedienteService();
             Expediente expediente = new Expediente();
 
             // FECHA
             //expediente.setFechaSolicitud(java.sql.Date.valueOf(textfechaSolicitud.getText())); 
             expediente.setNumeroTramiteDocumento(textNumeroTramiteDocumento.getText());
 
-            // COMBO: tipoSolicitud (guarda el texto)
-            
-            //String seleccionado = cboTipoSolicitud.getSelectedItem().toString();
-            TipoSolicitud tipo = TipoSolicitud.fromDescripcion(cboTipoSolicitud.getSelectedItem().toString());
-            int tipoSolicitudInt = (tipo != null) ? tipo.getId() : 0;
-            expediente.setTipoSolicitud(tipoSolicitudInt);
-
+            // COMBO: tipoSolicitud
+            CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
+            int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem();            
+            expediente.setTipoSolicitud(idTipoSolicitud);
 
             // COMBO: tipoDocumento
-            //expediente.setTipoDocumento(cboTipoDocumento.getSelectedItem().toString());
-            expediente.setTipoDocumento(2);
+            CatalogoItem catalogoTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
+            int idTipoDocumento = catalogoTipoDocumento.getIdCatalogoItem();            
+            expediente.setTipoDocumento(idTipoDocumento);
 
             expediente.setDniRemitente(textNumeroDocumentoRemitente.getText());
             expediente.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
@@ -455,19 +487,23 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
             expediente.setDniSolicitante(textNumeroDocumentoSolicitante.getText());
             expediente.setApellidoNombreSolicitante(textApellidosNombresSolicitante.getText());
 
-            // COMBO: tipo Procedimiento Registral            
-            //expediente.setTipoProcedimientoRegistral(cboTipoProcedimientoRegistral.getSelectedItem().toString());
-              expediente.setTipoProcedimientoRegistral(2);
+            // COMBO: tipo Procedimiento Registral       
+            CatalogoItem catalogoTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistral.getSelectedItem();
+            int idTipoProcedimientoRegistral = catalogoTipoProcedimientoRegistral.getIdCatalogoItem();
+            expediente.setTipoProcedimientoRegistral(idTipoProcedimientoRegistral);
+              
 
             // COMBO: tipo acta
-            //expediente.setTipoActa(cboTipoActa.getSelectedItem().toString());
-              expediente.setTipoActa(1);
+            CatalogoItem catalogoTipoActa = (CatalogoItem) cboTipoActa.getSelectedItem();
+            int idTipoActa = catalogoTipoActa.getIdCatalogoItem();
+            expediente.setTipoActa(idTipoActa);
 
             expediente.setNumeroActa(textNumeroActa.getText());
 
             // COMBO: tipo grupo familiar
-            //expediente.setTipoGrupoFamiliar(cboGrupoFamiliar.getSelectedItem().toString());
-            expediente.setTipoGrupoFamiliar(2);
+            CatalogoItem catalogoGrupoFamiliar = (CatalogoItem) cboGrupoFamiliar.getSelectedItem();
+            int idGrupoFamiliar = catalogoGrupoFamiliar.getIdCatalogoItem();
+            expediente.setTipoGrupoFamiliar(idGrupoFamiliar);
 
             expediente.setNumeroGrupoFamiliar(textNumeroGrupoFamiliar.getText());
 
@@ -480,14 +516,28 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
             // Auditoría
             expediente.setIdUsuarioCrea(1);
             //expediente.setFechaRegistra(new Date());
-            
+                                             
+            ExpedienteResponse response;            
             // Llamar al servicio
-            ExpedienteResponse response = expedienteService.agregarExpediente(expediente);
-
-            JOptionPane.showMessageDialog(this,
+            if(idExpedienteOculto == 0)
+            {                
+                response = expedienteService.agregarExpediente(expediente);
+                JOptionPane.showMessageDialog(this,
                     "Expediente registrado correctamente.\nID generado: " + response.getIdExpediente(),
                     "Éxito",
                     JOptionPane.INFORMATION_MESSAGE);
+            }                
+            else
+            {
+                expediente.setIdExpediente(idExpedienteOculto);
+                response = expedienteService.actualizarExpediente(expediente);
+                JOptionPane.showMessageDialog(this,
+                    "Expediente actualizo correctamente.\nID generado: " + response.getIdExpediente(),
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+                
+                idExpedienteOculto = 0;
+            }                     
             limpiarCampos();
         } 
         catch (Exception ex) 
@@ -505,11 +555,11 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
     private javax.swing.JButton btnGuardar;
     private javax.swing.JButton btnLimpiar;
     private javax.swing.JButton btnRegresar;
-    private javax.swing.JComboBox<String> cboGrupoFamiliar;
-    private javax.swing.JComboBox<String> cboTipoActa;
-    private javax.swing.JComboBox<String> cboTipoDocumento;
-    private javax.swing.JComboBox<String> cboTipoProcedimientoRegistral;
-    private javax.swing.JComboBox<String> cboTipoSolicitud;
+    private javax.swing.JComboBox cboGrupoFamiliar;
+    private javax.swing.JComboBox cboTipoActa;
+    private javax.swing.JComboBox cboTipoDocumento;
+    private javax.swing.JComboBox cboTipoProcedimientoRegistral;
+    private javax.swing.JComboBox cboTipoSolicitud;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel12;
@@ -526,6 +576,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JPanel jPanelPrincipal;
+    private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JTextField textApellidosNombreRemitente;
     private javax.swing.JTextField textApellidosNombresSolicitante;
     private javax.swing.JTextField textApellidosNombresTitular;
@@ -535,6 +586,5 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel {
     private javax.swing.JTextField textNumeroDocumentoTitular;
     private javax.swing.JTextField textNumeroGrupoFamiliar;
     private javax.swing.JTextField textNumeroTramiteDocumento;
-    private javax.swing.JTextField textfechaSolicitud;
     // End of variables declaration//GEN-END:variables
 }

@@ -10,7 +10,11 @@ import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
+import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
+import com.sdrerc.ui.views.asignacion.JPanelRegistroAsignacion;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -188,6 +192,11 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
                 "Nª", "Nro Tramite Documento", "Fecha Solicitud", "Tipo Solicitud", "Nombre Ciudadano / Entidad", "Estado Registro"
             }
         ));
+        jTable1.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTable1MouseClicked(evt);
+            }
+        });
         jScrollPane1.setViewportView(jTable1);
         if (jTable1.getColumnModel().getColumnCount() > 0) {
             jTable1.getColumnModel().getColumn(0).setMinWidth(50);
@@ -275,7 +284,8 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
                     .addComponent(btnNuevo, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(8, 8, 8)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 419, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 388, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
@@ -312,6 +322,36 @@ public class JPanelRegistroExpediente extends javax.swing.JPanel {
         // TODO add your handling code here:
         limpiarCampos();
     }//GEN-LAST:event_btnLimpiarActionPerformed
+
+    private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
+       if (evt.getClickCount() == 2 && jTable1.getSelectedRow() != -1)
+       {
+            int fila = jTable1.getSelectedRow();
+            if (fila >= 0) 
+            {
+                // Obtener datos de la fila
+                String idExpediente = jTable1.getValueAt(fila, 0).toString();
+                String descripcion = jTable1.getValueAt(fila, 1).toString();
+                String fecha = jTable1.getValueAt(fila, 2).toString();
+                //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+                //Expediente expedienteSeleccionado = model.get(fila);
+
+                // Crear el panel al que quieres ir
+                JPanelRegistrarExpediente panel = new JPanelRegistrarExpediente();              
+                try 
+                {
+                    // Si el panel necesita recibir datos:
+                    panel.cargarExpediente(idExpediente);
+                } 
+                catch (Exception ex) 
+                {
+                    Logger.getLogger(JPanelFiltroBusqueda.class.getName()).log(Level.SEVERE, null, ex);
+                }                
+                // Abrir formulario de edición
+                MenuPrincipal.ShowJPanel(panel);
+            }
+        }
+    }//GEN-LAST:event_jTable1MouseClicked
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

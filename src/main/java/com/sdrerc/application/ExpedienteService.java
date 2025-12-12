@@ -46,6 +46,18 @@ public class ExpedienteService
         return response;
     }
     
+    public ExpedienteResponse actualizarExpediente(Expediente expediente) throws Exception 
+    {
+        // Validaciones mínimas
+        if (expediente == null) {
+            throw new Exception("El expediente no puede ser nulo.");
+        }
+        // Llamar al repositorio (DAO)
+        ExpedienteResponse response = expedienteRepository_.actualizarExpediente(expediente);
+        return response;
+    }
+    
+    
     public List<Expediente> listarExpedientes() throws SQLException {
         return expedienteRepository_.listar();
     }
