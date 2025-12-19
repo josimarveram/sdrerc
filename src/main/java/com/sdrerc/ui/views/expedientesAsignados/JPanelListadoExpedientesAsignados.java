@@ -4,17 +4,121 @@
  */
 package com.sdrerc.ui.views.expedientesAsignados;
 
+import com.sdrerc.application.CatalogoItemService;
+import com.sdrerc.application.CatalogoService;
+import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.domain.model.CatalogoItem;
+import com.sdrerc.domain.model.Expediente.Expediente;
+import java.util.List;
+import javax.swing.table.DefaultTableModel;
+
+import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
+import com.sdrerc.ui.views.asignacion.JPanelRegistroAsignacion;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import com.sdrerc.ui.menu.MenuPrincipal;
+
 /**
  *
  * @author betom
  */
 public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
 
+    private final ExpedienteService expedienteService;
+    private final CatalogoService catalogoService;
+    private final CatalogoItemService catalogoItemService;
     /**
      * Creates new form JPanelListadoExpedientesAsignados
      */
     public JPanelListadoExpedientesAsignados() {
         initComponents();
+        this.expedienteService = new ExpedienteService();
+        this.catalogoService = new CatalogoService();
+        this.catalogoItemService = new CatalogoItemService();
+        cargarTiposBusqueda();
+        cargarComboEstados();    
+        buscarExpedientes();
+    }
+    private void cargarComboEstados() 
+    {
+        cmbEstado.removeAllItems();
+        //cmbEstado.addItem("TODOS");
+        
+        cmbEstado.addItem(new CatalogoItem(0, 0, "TODOS", 1));
+
+        List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
+
+        for (CatalogoItem estado : lista) {
+            cmbEstado.addItem(estado);
+        }
+    }
+    
+    private void cargarTiposBusqueda() 
+    {
+        cmbTipoBusqueda.removeAllItems();
+        cmbTipoBusqueda.addItem("NUMERO_TRAMITE_DOCUMENTO");
+        cmbTipoBusqueda.addItem("TIPO_SOLICITUD");
+        cmbTipoBusqueda.addItem("DNI_REMITENTE");
+        cmbTipoBusqueda.addItem("APELLIDO_NOMBRE_REMITENTE");
+        cmbTipoBusqueda.addItem("TIPO_PROCEDIMIENTO_REGISTRAL");
+    }
+    
+     
+      private void buscarExpedientes() 
+      {
+        try {
+            String campo = cmbTipoBusqueda.getSelectedItem().toString();
+            String valor = txtValorBusqueda.getText();            
+            CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
+            int idestado = estado.getIdCatalogoItem();                    
+            //String estado = cmbEstado.getSelectedItem();
+            List<Expediente> lista = expedienteService.buscar(campo, valor,idestado);
+            cargarTablaNueva(lista);
+        } 
+        catch (Exception e) {
+        }
+      }
+      
+    private void limpiarCampos() 
+    {
+        // Limpiar JTextFields
+        txtValorBusqueda.setText("");
+        // Resetear JComboBoxes al primer elemento
+        if (cmbTipoBusqueda.getItemCount() > 0) cmbTipoBusqueda.setSelectedIndex(0);
+        if (cmbEstado.getItemCount() > 0) cmbEstado.setSelectedIndex(0);
+        
+        buscarExpedientes();
+    }
+      
+    private void cargarTablaNueva(List<Expediente> lista) 
+    {        
+        String[] columnas = 
+        {
+          "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Estado"
+        };
+        
+        DefaultTableModel model = new DefaultTableModel(columnas, 0)
+        {        
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };      
+                
+        //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        model.setRowCount(0);
+        for (Expediente e : lista) {
+            Object[] fila = {
+                    e.getIdExpediente(),
+                    e.getFechaSolicitud(),
+                    e.getNumeroTramiteDocumento(),
+                    e.getApellidoNombreSolicitante(),
+                    e.getApellidoNombreTitular(),
+                    e.getEstado()
+            };
+            model.addRow(fila);
+        }
+        jTable1.setModel(model);
     }
 
     /**
@@ -26,30 +130,207 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jPanel1 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        cmbTipoBusqueda = new javax.swing.JComboBox();
+        txtValorBusqueda = new javax.swing.JTextField();
+        jLabel4 = new javax.swing.JLabel();
+        cmbEstado = new javax.swing.JComboBox();
+        btnLimpiar = new javax.swing.JButton();
+        btnBuscar = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTable1 = new javax.swing.JTable();
 
-        jLabel1.setText("Holi");
+        jPanel1.setBackground(new java.awt.Color(255, 255, 255));
+
+        jLabel1.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
+        jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel1.setText("FILTRO BUSQUEDA");
+        jLabel1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+
+        jLabel5.setText("Tipo de búsqueda");
+
+        cmbTipoBusqueda.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        cmbTipoBusqueda.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmbTipoBusquedaActionPerformed(evt);
+            }
+        });
+
+        txtValorBusqueda.setText("jTextField1");
+        txtValorBusqueda.setEnabled(false);
+
+        jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel4.setText("Estado del trámite");
+
+        cmbEstado.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        btnLimpiar.setText("Limpiar");
+        btnLimpiar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLimpiarActionPerformed(evt);
+            }
+        });
+
+        btnBuscar.setText("BUSCAR");
+        btnBuscar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnBuscarActionPerformed(evt);
+            }
+        });
+
+        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null}
+            },
+            new String [] {
+                "Nª", "Nro Tramite Documento", "Fecha Solicitud", "Tipo Solicitud", "Nombre Ciudadano / Entidad", "Estado Registro"
+            }
+        ));
+        jTable1.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTable1MouseClicked(evt);
+            }
+        });
+        jScrollPane1.setViewportView(jTable1);
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(22, 22, 22)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(cmbTipoBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(txtValorBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(btnBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(363, 363, 363)
+                        .addComponent(jLabel1))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(18, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addComponent(jLabel1)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(21, 21, 21)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(btnBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGap(19, 19, 19)
+                                .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(jLabel4)
+                                .addGap(42, 42, 42)))
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                            .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(3, 3, 3)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(cmbTipoBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(txtValorBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                .addGap(70, 70, 70)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 388, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 17, Short.MAX_VALUE))
+        );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(200, Short.MAX_VALUE)
-                .addComponent(jLabel1)
-                .addGap(178, 178, 178))
+            .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGap(135, 135, 135)
-                .addComponent(jLabel1)
-                .addContainerGap(149, Short.MAX_VALUE))
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
     }// </editor-fold>//GEN-END:initComponents
 
+    private void cmbTipoBusquedaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbTipoBusquedaActionPerformed
+        if (cmbTipoBusqueda.getSelectedItem() != null) {
+            txtValorBusqueda.setEnabled(true);
+            txtValorBusqueda.setText("");
+            txtValorBusqueda.requestFocus();
+        }
+        // TODO add your handling code here:
+    }//GEN-LAST:event_cmbTipoBusquedaActionPerformed
+
+    private void btnLimpiarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarActionPerformed
+        // TODO add your handling code here:
+        limpiarCampos();
+    }//GEN-LAST:event_btnLimpiarActionPerformed
+
+    private void btnBuscarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBuscarActionPerformed
+        buscarExpedientes();
+    }//GEN-LAST:event_btnBuscarActionPerformed
+
+    private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
+        if (evt.getClickCount() == 2 && jTable1.getSelectedRow() != -1)
+        {
+            int fila = jTable1.getSelectedRow();
+            if (fila >= 0)
+            {
+                // Obtener datos de la fila
+                String idExpediente = jTable1.getValueAt(fila, 0).toString();
+                String descripcion = jTable1.getValueAt(fila, 1).toString();
+                String fecha = jTable1.getValueAt(fila, 2).toString();
+                //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+                //Expediente expedienteSeleccionado = model.get(fila);
+
+                // Crear el panel al que quieres ir
+                JPanelRegistrarExpedientePorRecibido panel = new JPanelRegistrarExpedientePorRecibido();
+                try
+                {
+                    // Si el panel necesita recibir datos:
+                    panel.cargarExpediente(idExpediente);
+                }
+                catch (Exception ex)
+                {
+                    Logger.getLogger(JPanelFiltroBusqueda.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                // Abrir formulario de edición
+                MenuPrincipal.ShowJPanel(panel);
+            }
+        }
+    }//GEN-LAST:event_jTable1MouseClicked
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnBuscar;
+    private javax.swing.JButton btnLimpiar;
+    private javax.swing.JComboBox cmbEstado;
+    private javax.swing.JComboBox cmbTipoBusqueda;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTable1;
+    private javax.swing.JTextField txtValorBusqueda;
     // End of variables declaration//GEN-END:variables
 }
