@@ -6,12 +6,14 @@ package com.sdrerc.ui.views.expedientesAsignados;
 
 import com.sdrerc.ui.views.expedientes.*;
 import com.sdrerc.application.CatalogoItemService;
+import com.sdrerc.application.ExpedienteAsignacionService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.util.TextFieldRules;
 import java.sql.Date;
 import java.util.List;
@@ -24,6 +26,7 @@ import javax.swing.JOptionPane;
 public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel 
 {
     private final ExpedienteService expedienteService;
+    private final ExpedienteAsignacionService expedienteAsignacionService;
     private final CatalogoItemService catalogoItemService;
     private Integer idExpedienteOculto = 0;
     
@@ -35,6 +38,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
+        this.expedienteAsignacionService = new ExpedienteAsignacionService();
         
         TextFieldRules.apply(textNumeroDocumentoRemitente).onlyNumbers().max(8);
         TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
@@ -130,7 +134,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
     }
     
       
-        private void limpiarCampos() 
+    private void limpiarCampos() 
     {
         // Limpiar JTextFields
         textApellidosNombreRemitente.setText("");
@@ -186,7 +190,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         textNumeroDocumentoTitular = new javax.swing.JTextField();
         jLabel13 = new javax.swing.JLabel();
         textApellidosNombresTitular = new javax.swing.JTextField();
-        btnGuardar = new javax.swing.JButton();
+        btnAceptarExpediente = new javax.swing.JButton();
         btnRegresar = new javax.swing.JButton();
         spFechaSolicitud = new javax.swing.JSpinner();
         cboTipoSolicitud = new javax.swing.JComboBox();
@@ -262,13 +266,13 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
 
         textApellidosNombresTitular.setEnabled(false);
 
-        btnGuardar.setBackground(new java.awt.Color(25, 120, 210));
-        btnGuardar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        btnGuardar.setForeground(new java.awt.Color(255, 255, 255));
-        btnGuardar.setText("ACEPTAR EXPEDIENTE");
-        btnGuardar.addActionListener(new java.awt.event.ActionListener() {
+        btnAceptarExpediente.setBackground(new java.awt.Color(25, 120, 210));
+        btnAceptarExpediente.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnAceptarExpediente.setForeground(new java.awt.Color(255, 255, 255));
+        btnAceptarExpediente.setText("ACEPTAR EXPEDIENTE");
+        btnAceptarExpediente.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnGuardarActionPerformed(evt);
+                btnAceptarExpedienteActionPerformed(evt);
             }
         });
 
@@ -346,7 +350,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(298, 298, 298)
-                                .addComponent(btnGuardar))
+                                .addComponent(btnAceptarExpediente))
                             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -447,7 +451,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
                     .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnGuardar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnAceptarExpediente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(38, Short.MAX_VALUE))
         );
@@ -468,101 +472,35 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
         // TODO add your handling code here:        
-        MenuPrincipal.ShowJPanel(new JPanelRegistroExpediente());
+        MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesAsignados());
     }//GEN-LAST:event_btnRegresarActionPerformed
 
-    private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
-                                                  
+    private void btnAceptarExpedienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAceptarExpedienteActionPerformed
+                                              
         try 
         {
-            Expediente expediente = new Expediente();
-
-            // FECHA
-            //expediente.setFechaSolicitud(java.sql.Date.valueOf(textfechaSolicitud.getText())); 
-            expediente.setNumeroTramiteDocumento(textNumeroTramiteDocumento.getText());
-
-            // COMBO: tipoSolicitud
-            CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
-            int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem();            
-            expediente.setTipoSolicitud(idTipoSolicitud);
-
-            // COMBO: tipoDocumento
-            CatalogoItem catalogoTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
-            int idTipoDocumento = catalogoTipoDocumento.getIdCatalogoItem();            
-            expediente.setTipoDocumento(idTipoDocumento);
-
-            expediente.setDniRemitente(textNumeroDocumentoRemitente.getText());
-            expediente.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
-
-            expediente.setDniSolicitante(textNumeroDocumentoSolicitante.getText());
-            expediente.setApellidoNombreSolicitante(textApellidosNombresSolicitante.getText());
-
-            // COMBO: tipo Procedimiento Registral       
-            CatalogoItem catalogoTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistral.getSelectedItem();
-            int idTipoProcedimientoRegistral = catalogoTipoProcedimientoRegistral.getIdCatalogoItem();
-            expediente.setTipoProcedimientoRegistral(idTipoProcedimientoRegistral);
-              
-
-            // COMBO: tipo acta
-            CatalogoItem catalogoTipoActa = (CatalogoItem) cboTipoActa.getSelectedItem();
-            int idTipoActa = catalogoTipoActa.getIdCatalogoItem();
-            expediente.setTipoActa(idTipoActa);
-
-            expediente.setNumeroActa(textNumeroActa.getText());
-
-            // COMBO: tipo grupo familiar
-            CatalogoItem catalogoGrupoFamiliar = (CatalogoItem) cboGrupoFamiliar.getSelectedItem();
-            int idGrupoFamiliar = catalogoGrupoFamiliar.getIdCatalogoItem();
-            expediente.setTipoGrupoFamiliar(idGrupoFamiliar);
-
-            expediente.setNumeroGrupoFamiliar(textNumeroGrupoFamiliar.getText());
-
-            expediente.setDniTitular(textNumeroDocumentoTitular.getText());
-            expediente.setApellidoNombreTitular(textApellidosNombresTitular.getText());
-
-            // ESTADO
-            expediente.setEstado(8);
-
-            // Auditoría
-            expediente.setIdUsuarioCrea(1);
-            //expediente.setFechaRegistra(new Date());
-                                             
-            ExpedienteResponse response;            
+            ExpedienteAsignacion oExpedienteAsignacion = new ExpedienteAsignacion();            
+            oExpedienteAsignacion.setIdExpediente(idExpedienteOculto);
+            oExpedienteAsignacion.setAceptaRecepcion(1);
+            oExpedienteAsignacion.setIdUsuarioModifica(1);                       
             // Llamar al servicio
             if(idExpedienteOculto == 0)
-            {                
-                response = expedienteService.agregarExpediente(expediente);
-                JOptionPane.showMessageDialog(this,
-                    "Expediente registrado correctamente.\nID generado: " + response.getIdExpediente(),
-                    "Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
-            }                
-            else
-            {
-                expediente.setIdExpediente(idExpedienteOculto);
-                response = expedienteService.actualizarExpediente(expediente);
-                JOptionPane.showMessageDialog(this,
-                    "Expediente actualizo correctamente.\nID generado: " + response.getIdExpediente(),
-                    "Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
-                
-                idExpedienteOculto = 0;
-            }                     
+               JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
+                        
+            expedienteAsignacionService.actualizarRecepcionExpediente(oExpedienteAsignacion);            
+            JOptionPane.showMessageDialog(this, "Se realizo la recepción del expediente","Éxito", JOptionPane.INFORMATION_MESSAGE);
+            
             limpiarCampos();
         } 
         catch (Exception ex) 
         {
-            JOptionPane.showMessageDialog(this,
-                    "Error al guardar: " + ex.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-        
-    }//GEN-LAST:event_btnGuardarActionPerformed
+            JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }        
+    }//GEN-LAST:event_btnAceptarExpedienteActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnGuardar;
+    private javax.swing.JButton btnAceptarExpediente;
     private javax.swing.JButton btnRegresar;
     private javax.swing.JComboBox cboGrupoFamiliar;
     private javax.swing.JComboBox cboTipoActa;

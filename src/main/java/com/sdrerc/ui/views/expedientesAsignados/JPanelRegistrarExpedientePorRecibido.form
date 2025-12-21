@@ -104,7 +104,7 @@
                               <Group type="102" attributes="0">
                                   <Component id="btnRegresar" min="-2" pref="110" max="-2" attributes="0"/>
                                   <EmptySpace min="-2" pref="298" max="-2" attributes="0"/>
-                                  <Component id="btnGuardar" min="-2" max="-2" attributes="0"/>
+                                  <Component id="btnAceptarExpediente" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <Group type="102" attributes="0">
                                   <Group type="103" groupAlignment="0" attributes="0">
@@ -242,7 +242,7 @@
                   </Group>
                   <EmptySpace type="separate" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
-                      <Component id="btnGuardar" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                      <Component id="btnAceptarExpediente" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                       <Component id="btnRegresar" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                   </Group>
                   <EmptySpace pref="38" max="32767" attributes="0"/>
@@ -416,7 +416,7 @@
             <Property name="enabled" type="boolean" value="false"/>
           </Properties>
         </Component>
-        <Component class="javax.swing.JButton" name="btnGuardar">
+        <Component class="javax.swing.JButton" name="btnAceptarExpediente">
           <Properties>
             <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
               <Color blue="d2" green="78" red="19" type="rgb"/>
@@ -430,7 +430,7 @@
             <Property name="text" type="java.lang.String" value="ACEPTAR EXPEDIENTE"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnGuardarActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnAceptarExpedienteActionPerformed"/>
           </Events>
         </Component>
         <Component class="javax.swing.JButton" name="btnRegresar">

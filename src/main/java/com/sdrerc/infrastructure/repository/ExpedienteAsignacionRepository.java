@@ -5,6 +5,7 @@
 package com.sdrerc.infrastructure.repository;
 
 import com.sdrerc.domain.model.Expediente.Expediente;
+import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import java.sql.Connection;
@@ -107,7 +108,48 @@ public class ExpedienteAsignacionRepository {
             if (conn != null) conn.close();
         }
     }
-                
-        
     
+    public boolean actualizarRecepcionExpediente(ExpedienteAsignacion oExpedienteAsignacion) throws SQLException 
+    {
+        String updateExpedienteAsignacionSql = "UPDATE EXPEDIENTE_ASIGNACION SET " +
+                    " acepta_recepcion = ?, " +
+                    " fecha_recepcion = ?, " +
+                    " usuario_modificacion = ?, " +
+                    " fecha_modificacion = ? " +
+                    " WHERE id_expediente = ?";
+
+        Connection conn = null;        
+        try 
+        {
+            conn = OracleConnection.getConnection();
+            conn.setAutoCommit(false);             
+            try(PreparedStatement psUpdate = conn.prepareStatement(updateExpedienteAsignacionSql))
+            {
+                // Datos para actualizar
+                psUpdate.setInt(1, 1);                                               // acepta_recepcion
+                psUpdate.setDate(2, new java.sql.Date(System.currentTimeMillis()));  // fecha_recepcion
+                psUpdate.setInt(3, oExpedienteAsignacion.getIdUsuarioModifica());    // id_usuario_modifica    
+                psUpdate.setDate(4, new java.sql.Date(System.currentTimeMillis()));  // fecha_modifica
+                
+                psUpdate.setInt(5, oExpedienteAsignacion.getIdExpediente());         // WHERE id_expediente = ?                
+                psUpdate.executeUpdate();
+            } 
+            conn.commit(); 
+            return true;   
+        }
+        catch (SQLException ex) 
+        {
+            if (conn != null) 
+            {
+                conn.rollback(); 
+            }
+            return false;   
+        } 
+        finally 
+        {
+            if (conn != null) conn.setAutoCommit(true); // volver a modo normal
+            if (conn != null) conn.close();
+        }               
+    }  
+      
 }

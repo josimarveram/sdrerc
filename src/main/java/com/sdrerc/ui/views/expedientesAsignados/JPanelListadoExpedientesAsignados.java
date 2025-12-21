@@ -13,7 +13,6 @@ import java.util.List;
 import javax.swing.table.DefaultTableModel;
 
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
-import com.sdrerc.ui.views.asignacion.JPanelRegistroAsignacion;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.sdrerc.ui.menu.MenuPrincipal;

@@ -5,6 +5,7 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.Expediente.Expediente;
+import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.repository.ExpedienteAsignacionRepository;
 
@@ -35,4 +36,16 @@ public class ExpedienteAsignacionService {
         // Registrar en la BD → Llama al DAO
         expedienteAsignacionRepository.registrar(asignacion,expediente);
     }
+    
+    public boolean  actualizarRecepcionExpediente(ExpedienteAsignacion oExpedienteAsignacion) throws Exception 
+    {
+        // Validaciones mínimas
+        if (oExpedienteAsignacion == null) {
+            throw new Exception("El expediente no puede ser nulo.");
+        }
+        // Llamar al repositorio (DAO)
+        boolean respuesta = expedienteAsignacionRepository.actualizarRecepcionExpediente(oExpedienteAsignacion);
+        return respuesta;
+    }
+    
 }
