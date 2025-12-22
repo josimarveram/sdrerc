@@ -8,6 +8,7 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.repository.ExpedienteAsignacionRepository;
+import java.util.List;
 
 /**
  *
@@ -45,7 +46,11 @@ public class ExpedienteAsignacionService {
         }
         // Llamar al repositorio (DAO)
         boolean respuesta = expedienteAsignacionRepository.actualizarRecepcionExpediente(oExpedienteAsignacion);
-        return respuesta;
-    }
+        return respuesta; 
+    } 
     
+    public List<Expediente> ListarExpedientesAsignadosPorTrabajador(int idTecnico, int aceptaRecepcion,int estadoItem) throws Exception 
+    {
+        return expedienteAsignacionRepository.ListarExpedientesAsignadosPorTrabajador(idTecnico, aceptaRecepcion, estadoItem);
+    }
 }

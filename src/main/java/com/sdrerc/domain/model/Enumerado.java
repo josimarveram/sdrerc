@@ -10,31 +10,71 @@ package com.sdrerc.domain.model;
  */
 public class Enumerado 
 {
-   public enum TipoSolicitud {
-    PARTE(1, "PARTE"),
-    OFICIO(2, "OFICIO"),
-    CARTA(3, "CARTA");
+    private Enumerado() 
+    {
+        // Evita instanciación
+    }  
 
-    private final int id;
-    private final String descripcion;
+    // ======================
+    // ESTADO EXPEDIENTE
+    // ======================
+    public enum EstadoExpediente 
+    {
 
-    TipoSolicitud(int id, String descripcion) {
-        this.id = id;
-        this.descripcion = descripcion;
-    }
+        RegistroExpediente(34),
+        ExpedienteAsignado(35),
+        ExpedienteRecibido(36),
+        ExpedienteAtendido(37);
 
-    public int getId() { return id; }
-    public String getDescripcion() { return descripcion; }
+        private final int id;
 
-    // Buscar por descripcion
-    public static TipoSolicitud fromDescripcion(String descripcion) {
-        for (TipoSolicitud t : values()) {
-            if (t.getDescripcion().equalsIgnoreCase(descripcion)) {
-                return t;
-            }
+        EstadoExpediente(int id) 
+        {
+            this.id = id;
         }
-        return null;
+
+        public int getId() 
+        {
+            return id;
+        }
+
+        public static EstadoExpediente fromId(int id) {
+            for (EstadoExpediente e : values()) {
+                if (e.id == id) {
+                    return e;
+                }
+            }
+            throw new IllegalArgumentException("EstadoExpediente no válido: " + id);
+        }
     }
-}
-    
+
+    // ======================
+    // TIPO SOLICITUD
+    // ======================
+    public enum TipoSolicitud {
+
+        CARTA(1),
+        OFICIO(2),
+        MEMO(3);
+
+        private final int id;
+
+        TipoSolicitud(int id) {
+            this.id = id;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public static TipoSolicitud fromId(int id) {
+            for (TipoSolicitud t : values()) {
+                if (t.id == id) {
+                    return t;
+                }
+            }
+            throw new IllegalArgumentException("TipoSolicitud no válido: " + id);
+        }
+    }
+
 }

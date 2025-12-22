@@ -9,6 +9,7 @@ import com.sdrerc.application.ExpedienteAsignacionService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.TecnicoService;
 import com.sdrerc.domain.model.CatalogoItem;
+import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Tecnico;
@@ -484,7 +485,10 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
             exp.setApellidoNombreSolicitante(textApellidosNombresSolicitante.getText());
             exp.setDniTitular(textNumeroDocumentoTitular.getText());
             exp.setApellidoNombreTitular(textApellidosNombresTitular.getText());
-            exp.setEstado(1);
+            
+            Enumerado.EstadoExpediente estadoExpedienteAsignado = Enumerado.EstadoExpediente.ExpedienteAsignado;
+            exp.setEstado(estadoExpedienteAsignado.getId());
+            
             exp.setIdUsuarioModifica(11);
             exp.setFechaModifica(new Date());
 

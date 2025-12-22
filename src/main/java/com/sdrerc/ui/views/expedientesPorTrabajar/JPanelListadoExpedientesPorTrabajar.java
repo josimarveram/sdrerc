@@ -2,8 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
-package com.sdrerc.ui.views.expedientesAsignados;
+package com.sdrerc.ui.views.expedientesPorTrabajar;
 
+import com.sdrerc.ui.views.expedientesAsignados.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
@@ -23,7 +24,7 @@ import com.sdrerc.ui.menu.MenuPrincipal;
  *
  * @author betom
  */
-public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
+public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel {
 
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
@@ -33,7 +34,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
     /**
      * Creates new form JPanelListadoExpedientesAsignados
      */
-    public JPanelListadoExpedientesAsignados() {
+    public JPanelListadoExpedientesPorTrabajar() {
         initComponents();
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
@@ -73,15 +74,12 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
       {
         try 
         {
-            String campo = cmbTipoBusqueda.getSelectedItem().toString();
             String valor = txtValorBusqueda.getText();            
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
-            int idestado = estado.getIdCatalogoItem();                    
-            //String estado = cmbEstado.getSelectedItem();
+                        
+            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
             
-            Enumerado.EstadoExpediente estadoExpediente = Enumerado.EstadoExpediente.ExpedienteAsignado;
-            
-            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpediente.getId());
+            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpedienteRecibido.getId());
             cargarTablaNueva(lista);
         } 
         catch (Exception e) {
@@ -242,7 +240,6 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(21, 21, 21)
@@ -254,9 +251,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
                             .addGroup(jPanel1Layout.createSequentialGroup()
                                 .addGap(19, 19, 19)
                                 .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(jLabel4)
-                                .addGap(42, 42, 42)))
+                            .addComponent(jLabel4))
                         .addGroup(jPanel1Layout.createSequentialGroup()
                             .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGap(3, 3, 3)

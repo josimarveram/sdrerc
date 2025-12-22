@@ -5,12 +5,14 @@
 package com.sdrerc.infrastructure.repository;
 
 import com.sdrerc.domain.model.Expediente.Expediente;
-import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -117,12 +119,29 @@ public class ExpedienteAsignacionRepository {
                     " usuario_modificacion = ?, " +
                     " fecha_modificacion = ? " +
                     " WHERE id_expediente = ?";
+        
+        String updateExpedienteSql = "UPDATE EXPEDIENTE SET " +
+                    " ESTADO = ?, " +
+                    " id_usuario_modifica = ?, " +
+                    " fecha_modifica      = ? " +
+                    " WHERE id_expediente = ?";
 
         Connection conn = null;        
         try 
         {
             conn = OracleConnection.getConnection();
             conn.setAutoCommit(false);             
+            
+            try(PreparedStatement psupdateExpediente = conn.prepareStatement(updateExpedienteSql))
+            {
+                // Datos para actualizar
+                psupdateExpediente.setInt(1, oExpedienteAsignacion.getIdEstadoExpediente());   // IdEstadoExpediente                
+                psupdateExpediente.setInt(2, oExpedienteAsignacion.getIdUsuarioModifica());    // id_usuario_modifica    
+                psupdateExpediente.setDate(3, new java.sql.Date(System.currentTimeMillis()));  // fecha_modifica                
+                psupdateExpediente.setInt(4, oExpedienteAsignacion.getIdExpediente());         // WHERE id_expediente = ?                
+                psupdateExpediente.executeUpdate();
+            } 
+            
             try(PreparedStatement psUpdate = conn.prepareStatement(updateExpedienteAsignacionSql))
             {
                 // Datos para actualizar
@@ -152,4 +171,82 @@ public class ExpedienteAsignacionRepository {
         }               
     }  
       
+    
+    public List<Expediente> ListarExpedientesAsignadosPorTrabajador(int idTecnico, int aceptaRecepcion,int estadoItem) throws SQLException 
+    {        
+        List<Expediente> lista = new ArrayList<>();
+        
+        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT * FROM EXPEDIENTE INNER JOIN EXPEDIENTE_ASIGNACION ON EXPEDIENTE.ID_EXPEDIENTE = EXPEDIENTE_ASIGNACION.ID_EXPEDIENTE WHERE EXPEDIENTE_ASIGNACION.id_tecnico = ?");
+        
+        // Si el estado no es "TODOS", agregamos AND
+        boolean filtrarEstado = estadoItem != 0;
+        boolean filtrarAceptaRecepcion = aceptaRecepcion != 0;
+
+        if(filtrarEstado) 
+        {
+            sqlListaExpediente.append("AND EXPEDIENTE.estado = ?");
+        }
+        if(filtrarAceptaRecepcion) 
+        {
+            sqlListaExpediente.append("AND expediente_asignacion.acepta_recepcion = ?");
+        }
+        
+        Connection conn = null;
+        try
+        {
+            conn = OracleConnection.getConnection();
+            conn.setAutoCommit(false);             
+            try(PreparedStatement psListar = conn.prepareStatement(sqlListaExpediente.toString()))
+            {
+                psListar.setInt(1, idTecnico);
+                
+                if(filtrarEstado) 
+                    psListar.setInt(2, estadoItem);
+                
+                if(filtrarAceptaRecepcion) 
+                    psListar.setInt(3, aceptaRecepcion);
+
+                ResultSet rs = psListar.executeQuery();
+                while (rs.next()) 
+                {
+                    lista.add(mapRow(rs));
+                }
+            } 
+            return lista;                        
+        }
+        catch(SQLException ex)
+        {
+            throw ex;
+        }
+        finally 
+        {
+            if(conn != null) 
+               conn.setAutoCommit(true); // volver a modo normal
+            if(conn != null) 
+               conn.close();
+        }   
+    }
+    
+    private Expediente mapRow(ResultSet rs) throws SQLException {
+        return new Expediente(
+            rs.getInt("ID_EXPEDIENTE"),
+            rs.getDate("FECHA_SOLICITUD"),
+            rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
+            rs.getInt("TIPO_SOLICITUD"),
+            rs.getInt("TIPO_DOCUMENTO"),
+            rs.getString("DNI_REMITENTE"),
+            rs.getString("APELLIDO_NOMBRE_REMITENTE"),
+            rs.getString("DNI_SOLICITANTE"),
+            rs.getString("APELLIDO_NOMBRE_SOLICITANTE"),
+            rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
+            rs.getInt("TIPO_ACTA"),
+            rs.getString("NUMERO_ACTA"),
+            rs.getInt("TIPO_GRUPO_FAMILIAR"),
+            rs.getString("NUMERO_GRUPO_FAMILIAR"),
+            rs.getString("DNI_TITULAR"),
+            rs.getString("APELLIDO_NOMBRE_TITULAR"),
+            rs.getInt("ESTADO")
+        );
+    }
+    
 }

@@ -19,11 +19,12 @@ public class ExpedienteAsignacion
     private int aceptaRecepcion;
     private Date fechaRecepcion;
     private int idUsuarioModifica;
-    private Date fechaModifica;        
-       
+    private Date fechaModifica;       
+    private int idEstadoExpediente;
+ 
     public ExpedienteAsignacion() {}
     
-    public ExpedienteAsignacion(int idExpediente, int idTecnico, Date fechaAsignacion,int aceptaRecepcion, Date fechaRecepcion, int idUsuarioModifica, Date fechaModifica) 
+    public ExpedienteAsignacion(int idExpediente, int idTecnico, Date fechaAsignacion,int aceptaRecepcion, Date fechaRecepcion, int idUsuarioModifica, Date fechaModifica, int idEstadoExpediente) 
     {
         this.idExpediente = idExpediente;
         this.idTecnico = idTecnico;
@@ -32,6 +33,7 @@ public class ExpedienteAsignacion
         this.fechaRecepcion = fechaRecepcion;        
         this.idUsuarioModifica = idUsuarioModifica;
         this.fechaModifica = fechaModifica;
+        this.idEstadoExpediente = idEstadoExpediente;
     }
     
     // Getters y setters
@@ -42,6 +44,7 @@ public class ExpedienteAsignacion
     public Date getFechaRecepcion() { return fechaRecepcion; }
     public int getIdUsuarioModifica() { return idUsuarioModifica; }
     public Date getFechaModifica() { return fechaModifica; }
+    public int getIdEstadoExpediente() { return idEstadoExpediente; }
     
     public void setFechaAsignacion(Date fechaAsignacion) {
         this.fechaAsignacion = fechaAsignacion;
@@ -73,6 +76,11 @@ public class ExpedienteAsignacion
     public void setFechaRecepcion(Date fechaRecepcion) 
     {
         this.fechaRecepcion = fechaRecepcion;
+    }
+    
+    public void setIdEstadoExpediente(int idEstadoExpediente) 
+    {
+        this.idEstadoExpediente = idEstadoExpediente;
     }
     
 }

@@ -2,8 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
-package com.sdrerc.ui.views.expedientesAsignados;
+package com.sdrerc.ui.views.expedientesPorTrabajar;
 
+import com.sdrerc.ui.views.expedientesAsignados.*;
 import com.sdrerc.ui.views.expedientes.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.ExpedienteAsignacionService;
@@ -473,7 +474,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
         // TODO add your handling code here:        
-        MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesAsignados());
+        MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
     }//GEN-LAST:event_btnRegresarActionPerformed
 
     private void btnAceptarExpedienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAceptarExpedienteActionPerformed
