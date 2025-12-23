@@ -9,6 +9,7 @@ package com.sdrerc.domain.model;
  * @author David
  */
 public class User {
+    /*
     private int id;
     private String username;
     private String fullname;
@@ -25,4 +26,84 @@ public class User {
     public String getUsername() { return username; }
     public String getFullname() { return fullname; }
     public String getRole() { return role; }
+    
+    */
+    
+    private Long userId;
+    private String username;
+    private String passwordHash;
+    private String fullName;
+    private String status;
+
+    // 🔹 Constructor vacío
+    public User() {
+    }
+
+    // 🔹 Constructor útil (opcional)
+    public User(Long userId, String username, String passwordHash,
+                String fullName, String status) {
+        this.userId = userId;
+        this.username = username;
+        this.passwordHash = passwordHash;
+        this.fullName = fullName;
+        this.status = status;
+    }
+
+    // ===== GETTERS =====
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    /**
+     * ✔ Necesario para autenticación
+     * ✔ Usado por LoginUseCase y PasswordEncoder
+     */
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    // ===== SETTERS =====
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    /**
+     * ⚠️ Nunca guardar password plano
+     * Siempre asignar el hash
+     */
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    // ===== MÉTODOS DE APOYO (OPCIONAL) =====
+
+    public boolean isActive() {
+        return "ACTIVE".equalsIgnoreCase(status);
+    }
 }

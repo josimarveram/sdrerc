@@ -6,6 +6,7 @@ package com.sdrerc.application;
 
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.repository.UserRepository;
+import com.sdrerc.infrastructure.security.PasswordEncoder;
 /**
  *
  * @author David
@@ -18,6 +19,7 @@ public class LoginService {
     }
 
     public User login(String username, String password) throws Exception {
+        /*
         if (username.isBlank() || password.isBlank()) {
             throw new Exception("Debe ingresar usuario y contraseña.");
         }
@@ -29,5 +31,12 @@ public class LoginService {
         }
 
         return user;
+        
+        */
+        
+        User u = repository.findByUsername(username);
+        if (u == null || !PasswordEncoder.matches(password, u.getPasswordHash()))
+            throw new RuntimeException("Credenciales inválidas");
+        return u;
     }
 }
