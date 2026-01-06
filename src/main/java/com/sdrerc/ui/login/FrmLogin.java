@@ -6,6 +6,7 @@ package com.sdrerc.ui.login;
 
 import com.sdrerc.application.LoginService;
 import com.sdrerc.domain.model.User;
+import com.sdrerc.infrastructure.security.PasswordEncoder;
 import com.sdrerc.ui.common.FrmPrincipal;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import java.awt.Color;
@@ -296,6 +297,7 @@ public class FrmLogin extends javax.swing.JFrame
             PasswordEncoder.hash("seg123")
         );
         */
+        
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
