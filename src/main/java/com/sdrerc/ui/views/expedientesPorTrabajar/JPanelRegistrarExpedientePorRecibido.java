@@ -17,10 +17,22 @@ import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.util.TextFieldRules;
+import java.awt.Desktop;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.Date;
 import java.util.List;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 /**
  *
  * @author usuario
@@ -45,9 +57,6 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         TextFieldRules.apply(textNumeroDocumentoRemitente).onlyNumbers().max(8);
         TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
         
-        TextFieldRules.apply(textNumeroDocumentoSolicitante).onlyNumbers().max(8);
-        TextFieldRules.apply(textApellidosNombresSolicitante).onlyLetters().max(300);
-        
         TextFieldRules.apply(textNumeroDocumentoTitular).onlyNumbers().max(8);
         TextFieldRules.apply(textApellidosNombresTitular).onlyLetters().max(300);
                 
@@ -71,8 +80,6 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         spFechaSolicitud.setValue(lista.getFechaSolicitud());
         textNumeroDocumentoRemitente.setText(lista.getDniRemitente());
         textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
-        textNumeroDocumentoSolicitante.setText(lista.getDniSolicitante());
-        textApellidosNombresSolicitante.setText(lista.getApellidoNombreSolicitante());
         textNumeroActa.setText(lista.getNumeroActa());
         textNumeroGrupoFamiliar.setText(lista.getNumeroGrupoFamiliar());
         textNumeroDocumentoTitular.setText(lista.getDniTitular());
@@ -135,16 +142,15 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         }
     }
     
+    
       
     private void limpiarCampos() 
     {
         // Limpiar JTextFields
         textApellidosNombreRemitente.setText("");
-        textApellidosNombresSolicitante.setText("");
         textApellidosNombresTitular.setText("");
         textNumeroActa.setText("");
         textNumeroDocumentoRemitente.setText("");
-        textNumeroDocumentoSolicitante.setText("");
         textNumeroDocumentoTitular.setText("");
         textNumeroGrupoFamiliar.setText("");
         textNumeroTramiteDocumento.setText("");
@@ -157,6 +163,67 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
         if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
     }
+    
+    private Path generarDocxLibreOffice(String plantilla, String nroActa, String tipoActa, String titular, String dni) throws Exception 
+    {
+        Path tempDir = Files.createTempDirectory("docgen");
+        Path copia = tempDir.resolve("documento.docx");
+        Files.copy(Paths.get(plantilla), copia, StandardCopyOption.REPLACE_EXISTING);
+        // Reemplazo simple (Apache POI)
+        try (XWPFDocument doc = new XWPFDocument(Files.newInputStream(copia))) 
+        {
+
+            for (XWPFParagraph p : doc.getParagraphs()) {
+                for (XWPFRun r : p.getRuns()) 
+                {
+                    String text = r.getText(0);
+                    if (text != null) {
+                        text = text.replace("[nro_acta]", nroActa)
+                                   .replace("[tipo_acta]", tipoActa)
+                                   .replace("#nomTitular#", titular)
+                                   .replace("[dni_titular]", dni);
+                        r.setText(text, 0);
+                    }
+                }
+            }
+            try (OutputStream out = Files.newOutputStream(copia)) {
+                doc.write(out);
+            }
+        }
+        // Abrir documento
+        //Desktop.getDesktop().open(copia.toFile());
+        return copia;
+    }
+    
+    private void guardarDocumento( Path archivoGenerado, String nombreSugerido) throws IOException 
+    {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Guardar documento");
+        chooser.setSelectedFile(new File(nombreSugerido));
+
+        int result = chooser.showSaveDialog(this);
+
+        if (result == JFileChooser.APPROVE_OPTION) {
+        File destino = chooser.getSelectedFile();
+
+        // asegurar extensión .docx
+        if (!destino.getName().toLowerCase().endsWith(".docx")) {
+            destino = new File(destino.getAbsolutePath() + ".docx");
+        }
+
+        Files.copy(
+                archivoGenerado,
+                destino.toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+        );
+
+        JOptionPane.showMessageDialog(this,
+                "Documento guardado correctamente");
+        }
+    }
+        
+        
+    
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -177,15 +244,11 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         textNumeroDocumentoRemitente = new javax.swing.JTextField();
         jLabel7 = new javax.swing.JLabel();
         textApellidosNombreRemitente = new javax.swing.JTextField();
-        jLabel10 = new javax.swing.JLabel();
-        textNumeroDocumentoSolicitante = new javax.swing.JTextField();
-        textApellidosNombresSolicitante = new javax.swing.JTextField();
         jLabel14 = new javax.swing.JLabel();
         jLabel15 = new javax.swing.JLabel();
         jLabel16 = new javax.swing.JLabel();
         textNumeroActa = new javax.swing.JTextField();
         jLabel17 = new javax.swing.JLabel();
-        jLabel11 = new javax.swing.JLabel();
         jLabel22 = new javax.swing.JLabel();
         textNumeroGrupoFamiliar = new javax.swing.JTextField();
         jLabel12 = new javax.swing.JLabel();
@@ -193,13 +256,19 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         jLabel13 = new javax.swing.JLabel();
         textApellidosNombresTitular = new javax.swing.JTextField();
         btnAceptarExpediente = new javax.swing.JButton();
-        btnRegresar = new javax.swing.JButton();
+        btnGenerarDocumento = new javax.swing.JButton();
         spFechaSolicitud = new javax.swing.JSpinner();
         cboTipoSolicitud = new javax.swing.JComboBox();
         cboTipoDocumento = new javax.swing.JComboBox();
         cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
         cboTipoActa = new javax.swing.JComboBox();
         cboGrupoFamiliar = new javax.swing.JComboBox();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTextArea1 = new javax.swing.JTextArea();
+        jLabel8 = new javax.swing.JLabel();
+        jLabel18 = new javax.swing.JLabel();
+        cboTipoProcedimientoRegistral1 = new javax.swing.JComboBox();
+        btnRegresar1 = new javax.swing.JButton();
 
         setPreferredSize(new java.awt.Dimension(900, 570));
 
@@ -229,13 +298,6 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
 
         textApellidosNombreRemitente.setEnabled(false);
 
-        jLabel10.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel10.setText("Apellidos y Nombres Solicitante");
-
-        textNumeroDocumentoSolicitante.setEnabled(false);
-
-        textApellidosNombresSolicitante.setEnabled(false);
-
         jLabel14.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel14.setText("Tipo Procedimiento Registral");
 
@@ -249,9 +311,6 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
 
         jLabel17.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel17.setText("Grupo Familiar");
-
-        jLabel11.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel11.setText("DNI / Nro Documento");
 
         jLabel22.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel22.setText("Nro Grupo F");
@@ -271,20 +330,20 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         btnAceptarExpediente.setBackground(new java.awt.Color(25, 120, 210));
         btnAceptarExpediente.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnAceptarExpediente.setForeground(new java.awt.Color(255, 255, 255));
-        btnAceptarExpediente.setText("ACEPTAR EXPEDIENTE");
+        btnAceptarExpediente.setText("MODIFICAR");
         btnAceptarExpediente.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnAceptarExpedienteActionPerformed(evt);
             }
         });
 
-        btnRegresar.setBackground(new java.awt.Color(25, 120, 210));
-        btnRegresar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        btnRegresar.setForeground(new java.awt.Color(255, 255, 255));
-        btnRegresar.setText("REGRESAR");
-        btnRegresar.addActionListener(new java.awt.event.ActionListener() {
+        btnGenerarDocumento.setBackground(new java.awt.Color(25, 120, 210));
+        btnGenerarDocumento.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnGenerarDocumento.setForeground(new java.awt.Color(255, 255, 255));
+        btnGenerarDocumento.setText("Generar Documento");
+        btnGenerarDocumento.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnRegresarActionPerformed(evt);
+                btnGenerarDocumentoActionPerformed(evt);
             }
         });
 
@@ -302,6 +361,28 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
 
         cboGrupoFamiliar.setEnabled(false);
 
+        jTextArea1.setColumns(20);
+        jTextArea1.setRows(5);
+        jScrollPane1.setViewportView(jTextArea1);
+
+        jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel8.setText("Descripción del Analisis");
+
+        jLabel18.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel18.setText("Tipo Procedimiento Registral");
+
+        cboTipoProcedimientoRegistral1.setEnabled(false);
+
+        btnRegresar1.setBackground(new java.awt.Color(25, 120, 210));
+        btnRegresar1.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnRegresar1.setForeground(new java.awt.Color(255, 255, 255));
+        btnRegresar1.setText("REGRESAR");
+        btnRegresar1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRegresar1ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanelPrincipalLayout = new javax.swing.GroupLayout(jPanelPrincipal);
         jPanelPrincipal.setLayout(jPanelPrincipalLayout);
         jPanelPrincipalLayout.setHorizontalGroup(
@@ -311,37 +392,24 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(22, 22, 22)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(textApellidosNombresTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 640, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(0, 17, Short.MAX_VALUE))
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
-                                    .addComponent(spFechaSolicitud))
-                                .addGap(37, 37, 37)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(40, 40, 40)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
-                                    .addComponent(cboTipoSolicitud, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                            .addComponent(textNumeroDocumentoSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+                            .addComponent(spFechaSolicitud))
+                        .addGap(37, 37, 37)
+                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(40, 40, 40)
+                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+                            .addComponent(cboTipoSolicitud, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 30, Short.MAX_VALUE)
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
                             .addComponent(cboTipoDocumento, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addGap(17, 17, 17))
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanelPrincipalLayout.createSequentialGroup()
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(textNumeroDocumentoRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -349,41 +417,62 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
                                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel7)
                                     .addComponent(textApellidosNombreRemitente)))
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(298, 298, 298)
-                                .addComponent(btnAceptarExpediente))
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(22, 22, 22)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanelPrincipalLayout.createSequentialGroup()
+                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(cboTipoProcedimientoRegistral1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel18, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                            .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(textNumeroActa, javax.swing.GroupLayout.DEFAULT_SIZE, 130, Short.MAX_VALUE)
-                                            .addComponent(jLabel16, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                                        .addGap(18, 18, 18)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(jLabel17, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
-                                            .addComponent(cboGrupoFamiliar, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(textNumeroGrupoFamiliar)
-                                            .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                    .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(textApellidosNombresSolicitante))))
+                                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelPrincipalLayout.createSequentialGroup()
+                                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                    .addComponent(jLabel14, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(37, 37, 37)
+                                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                                    .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                    .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                                    .addComponent(textNumeroActa, javax.swing.GroupLayout.DEFAULT_SIZE, 130, Short.MAX_VALUE)
+                                                    .addComponent(jLabel16, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                                .addGap(18, 18, 18)
+                                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                                    .addComponent(jLabel17, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+                                                    .addComponent(cboGrupoFamiliar, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
+                                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                    .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                    .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(22, 22, 22)
+                                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                                                        .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addGap(197, 197, 197))
+                                                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                                                        .addComponent(textApellidosNombresTitular, javax.swing.GroupLayout.DEFAULT_SIZE, 534, Short.MAX_VALUE)
+                                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))))
+                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(btnAceptarExpediente)
+                                            .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                                .addComponent(textNumeroGrupoFamiliar)
+                                                .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                    .addComponent(btnRegresar1, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(0, 0, Short.MAX_VALUE)))
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 179, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 663, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(33, 33, 33)
+                        .addComponent(btnGenerarDocumento)
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
         jPanelPrincipalLayout.setVerticalGroup(
             jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                .addGap(31, 31, 31)
+                .addContainerGap()
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                         .addGroup(jPanelPrincipalLayout.createSequentialGroup()
@@ -401,7 +490,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                             .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addComponent(jLabel5))
-                .addGap(30, 30, 30)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addComponent(jLabel7)
@@ -411,51 +500,53 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
                         .addComponent(jLabel6)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(textNumeroDocumentoRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(18, 18, 18)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel10)
-                    .addComponent(jLabel11))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                        .addComponent(jLabel16)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(textApellidosNombresSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(textNumeroDocumentoSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, 18)
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addComponent(jLabel16)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel15)
-                                    .addComponent(jLabel14)
-                                    .addComponent(jLabel17))
-                                .addGap(46, 46, 46))))
+                            .addComponent(jLabel15)
+                            .addComponent(jLabel14)
+                            .addComponent(jLabel17))
+                        .addGap(46, 46, 46))
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
                         .addComponent(jLabel22)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(textNumeroGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(14, 14, 14)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel13)
                     .addComponent(jLabel12))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(textApellidosNombresTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(textApellidosNombresTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(btnAceptarExpediente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel8)
+                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
+                        .addGap(17, 17, 17)
+                        .addComponent(btnGenerarDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 31, Short.MAX_VALUE)
+                .addComponent(btnRegresar1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnAceptarExpediente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(38, Short.MAX_VALUE))
+                .addComponent(cboTipoProcedimientoRegistral1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel18)
+                .addGap(14, 14, 14))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
@@ -467,15 +558,41 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(6, 6, 6)
-                .addComponent(jPanelPrincipal, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap()
+                .addComponent(jPanelPrincipal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
+    private void btnGenerarDocumentoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarDocumentoActionPerformed
         // TODO add your handling code here:        
-        MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
-    }//GEN-LAST:event_btnRegresarActionPerformed
+        //MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
+        
+        String rutaBase = "C:\\file_server_reniec";
+        String plantilla = "archivo_reniec.docx";
+        String rutaPlantilla = rutaBase + File.separator + plantilla;
+        
+        String nroActa = "";
+        String tipoActa = "";
+        String titular = "Somos RENIEC";
+        String dni = "";
+        
+        try
+        {
+           Path archivoGenerado =  this.generarDocxLibreOffice(
+                rutaPlantilla,
+                nroActa,
+                tipoActa,
+                titular,
+                dni
+            ); 
+          this.guardarDocumento(archivoGenerado,"Norepetir.docx");
+        }
+        catch(Exception ex) 
+        {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
+        }                     
+    }//GEN-LAST:event_btnGenerarDocumentoActionPerformed
 
     private void btnAceptarExpedienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAceptarExpedienteActionPerformed
                                               
@@ -503,23 +620,28 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         }        
     }//GEN-LAST:event_btnAceptarExpedienteActionPerformed
 
+    private void btnRegresar1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar1ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnRegresar1ActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAceptarExpediente;
-    private javax.swing.JButton btnRegresar;
+    private javax.swing.JButton btnGenerarDocumento;
+    private javax.swing.JButton btnRegresar1;
     private javax.swing.JComboBox cboGrupoFamiliar;
     private javax.swing.JComboBox cboTipoActa;
     private javax.swing.JComboBox cboTipoDocumento;
     private javax.swing.JComboBox cboTipoProcedimientoRegistral;
+    private javax.swing.JComboBox cboTipoProcedimientoRegistral1;
     private javax.swing.JComboBox cboTipoSolicitud;
-    private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel16;
     private javax.swing.JLabel jLabel17;
+    private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel3;
@@ -527,14 +649,15 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
     private javax.swing.JPanel jPanelPrincipal;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTextArea jTextArea1;
     private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JTextField textApellidosNombreRemitente;
-    private javax.swing.JTextField textApellidosNombresSolicitante;
     private javax.swing.JTextField textApellidosNombresTitular;
     private javax.swing.JTextField textNumeroActa;
     private javax.swing.JTextField textNumeroDocumentoRemitente;
-    private javax.swing.JTextField textNumeroDocumentoSolicitante;
     private javax.swing.JTextField textNumeroDocumentoTitular;
     private javax.swing.JTextField textNumeroGrupoFamiliar;
     private javax.swing.JTextField textNumeroTramiteDocumento;
