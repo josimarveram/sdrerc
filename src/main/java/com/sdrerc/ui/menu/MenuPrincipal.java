@@ -10,6 +10,7 @@ import com.sdrerc.ui.views.expedientes.JPanelRegistroExpediente;
 import com.sdrerc.ui.views.expedientesAsignados.JPanelListadoExpedientesAsignados;
 import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTrabajar;
 import com.sdrerc.ui.views.home.jPanelHome;
+import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.crear.JPanelListadoUsuario;
 import java.awt.BorderLayout;
 import java.util.logging.Level;
@@ -69,9 +70,10 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpediente = new javax.swing.JButton();
         btnMenuExpedientesAsignados = new javax.swing.JButton();
         jSeparator2 = new javax.swing.JSeparator();
-        btnMenuUsuario = new javax.swing.JButton();
+        btnRole = new javax.swing.JButton();
         btnMenuExpedientesPorTrabajar = new javax.swing.JButton();
         btnMenuAsignacion1 = new javax.swing.JButton();
+        btnMenuUsuario1 = new javax.swing.JButton();
         jPanelHeader = new javax.swing.JPanel();
         lbl_TituloFormulario = new javax.swing.JLabel();
         jPanelBody = new javax.swing.JPanel();
@@ -152,28 +154,28 @@ public class MenuPrincipal extends javax.swing.JFrame {
         jSeparator2.setForeground(new java.awt.Color(255, 255, 255));
         jpanelMenu.add(jSeparator2, new org.netbeans.lib.awtextra.AbsoluteConstraints(62, 52, 155, 10));
 
-        btnMenuUsuario.setBackground(new java.awt.Color(25, 120, 210));
-        btnMenuUsuario.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
-        btnMenuUsuario.setForeground(new java.awt.Color(255, 255, 255));
-        btnMenuUsuario.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuUsuario.setText("USUARIO");
-        btnMenuUsuario.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
-        btnMenuUsuario.setBorderPainted(false);
-        btnMenuUsuario.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
-        btnMenuUsuario.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        btnMenuUsuario.setIconTextGap(10);
-        btnMenuUsuario.setInheritsPopupMenu(true);
-        btnMenuUsuario.addMouseListener(new java.awt.event.MouseAdapter() {
+        btnRole.setBackground(new java.awt.Color(25, 120, 210));
+        btnRole.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
+        btnRole.setForeground(new java.awt.Color(255, 255, 255));
+        btnRole.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
+        btnRole.setText("ROLE");
+        btnRole.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
+        btnRole.setBorderPainted(false);
+        btnRole.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        btnRole.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        btnRole.setIconTextGap(10);
+        btnRole.setInheritsPopupMenu(true);
+        btnRole.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                btnMenuUsuarioMouseClicked(evt);
+                btnRoleMouseClicked(evt);
             }
         });
-        btnMenuUsuario.addActionListener(new java.awt.event.ActionListener() {
+        btnRole.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnMenuUsuarioActionPerformed(evt);
+                btnRoleActionPerformed(evt);
             }
         });
-        jpanelMenu.add(btnMenuUsuario, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 370, 270, 50));
+        jpanelMenu.add(btnRole, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 420, 270, 50));
 
         btnMenuExpedientesPorTrabajar.setBackground(new java.awt.Color(25, 120, 210));
         btnMenuExpedientesPorTrabajar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
@@ -215,6 +217,29 @@ public class MenuPrincipal extends javax.swing.JFrame {
             }
         });
         jpanelMenu.add(btnMenuAsignacion1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 210, 270, 50));
+
+        btnMenuUsuario1.setBackground(new java.awt.Color(25, 120, 210));
+        btnMenuUsuario1.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
+        btnMenuUsuario1.setForeground(new java.awt.Color(255, 255, 255));
+        btnMenuUsuario1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
+        btnMenuUsuario1.setText("USUARIO");
+        btnMenuUsuario1.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
+        btnMenuUsuario1.setBorderPainted(false);
+        btnMenuUsuario1.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        btnMenuUsuario1.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        btnMenuUsuario1.setIconTextGap(10);
+        btnMenuUsuario1.setInheritsPopupMenu(true);
+        btnMenuUsuario1.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                btnMenuUsuario1MouseClicked(evt);
+            }
+        });
+        btnMenuUsuario1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnMenuUsuario1ActionPerformed(evt);
+            }
+        });
+        jpanelMenu.add(btnMenuUsuario1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 370, 270, 50));
 
         jPanelHeader.setPreferredSize(new java.awt.Dimension(900, 60));
 
@@ -315,10 +340,10 @@ public class MenuPrincipal extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_btnMenuExpedientesAsignadosMouseClicked
 
-    private void btnMenuUsuarioMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuUsuarioMouseClicked
-        lbl_TituloFormulario.setText("FORMULARIO USUARIO");
-        ShowJPanel(new JPanelListadoUsuario());
-    }//GEN-LAST:event_btnMenuUsuarioMouseClicked
+    private void btnRoleMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnRoleMouseClicked
+        lbl_TituloFormulario.setText("FORMULARIO ROLE");
+        ShowJPanel(new JPanelListadoRole());
+    }//GEN-LAST:event_btnRoleMouseClicked
 
     private void btnMenuExpedientesPorTrabajarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorTrabajarMouseClicked
         try {
@@ -334,7 +359,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_btnMenuAsignacion1MouseClicked
 
-    private void btnMenuUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuUsuarioActionPerformed
+    private void btnRoleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRoleActionPerformed
          try {
             lbl_TituloFormulario.setText("FORMULARIO USUARIO");
             ShowJPanel(new JPanelListadoUsuario());
@@ -344,11 +369,19 @@ public class MenuPrincipal extends javax.swing.JFrame {
         }
 
         // TODO add your handling code here:
-    }//GEN-LAST:event_btnMenuUsuarioActionPerformed
+    }//GEN-LAST:event_btnRoleActionPerformed
 
     private void btnMenuAsignacion1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuAsignacion1ActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_btnMenuAsignacion1ActionPerformed
+
+    private void btnMenuUsuario1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuUsuario1MouseClicked
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnMenuUsuario1MouseClicked
+
+    private void btnMenuUsuario1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuUsuario1ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnMenuUsuario1ActionPerformed
 
     /**
      * @param args the command line arguments
@@ -397,7 +430,8 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private javax.swing.JButton btnMenuExpedientesAsignados;
     private javax.swing.JButton btnMenuExpedientesPorTrabajar;
     private javax.swing.JButton btnMenuHome;
-    private javax.swing.JButton btnMenuUsuario;
+    private javax.swing.JButton btnMenuUsuario1;
+    private javax.swing.JButton btnRole;
     private javax.swing.JLabel jLabel1;
     private static javax.swing.JPanel jPanelBody;
     private javax.swing.JPanel jPanelHeader;

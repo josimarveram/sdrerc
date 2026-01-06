@@ -7,6 +7,7 @@ package com.sdrerc.ui.views.usuario.crear;
 import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.User;
 import java.util.List;
+import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
@@ -90,6 +91,11 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
+        jTablaUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTablaUsuariosMouseClicked(evt);
+            }
+        });
         jScrollPane1.setViewportView(jTablaUsuarios);
 
         btnBuscar.setText("BUSCAR");
@@ -135,6 +141,41 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         buscarUsuarios(txtFilter.getText());
         // TODO add your handling code here:
     }//GEN-LAST:event_btnBuscarActionPerformed
+
+    private void jTablaUsuariosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTablaUsuariosMouseClicked
+        int row = jTablaUsuarios.getSelectedRow();
+        int col = jTablaUsuarios.getSelectedColumn();
+
+        if (col != 4) return;
+
+        Long userId = Long.parseLong(jTablaUsuarios.getValueAt(row, 0).toString());
+        String status = jTablaUsuarios.getValueAt(row, 3).toString();
+
+        Object[] options = {"Editar", "Activar/Inactivar", "Roles"};
+
+        int op = JOptionPane.showOptionDialog(
+            this,
+            "Seleccione acción",
+            "Usuario",
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.INFORMATION_MESSAGE,
+            null,
+            options,
+            options[0]
+        );
+        /*
+        switch (op) {
+            case 0 -> new UserForm(userId).setVisible(true);
+            case 1 -> statusUC.execute(userId,
+                    status.equals("ACTIVE") ? "INACTIVE" : "ACTIVE");
+            case 2 -> new UserRolesForm(userId).setVisible(true);
+        }
+
+        loadUsers(txtFilter.getText());
+        
+        */
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTablaUsuariosMouseClicked
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
