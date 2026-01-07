@@ -6,7 +6,7 @@ package com.sdrerc.ui.menu;
 
 import com.formdev.flatlaf.FlatLightLaf;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
-import com.sdrerc.ui.views.expedientes.JPanelRegistroExpediente;
+import com.sdrerc.ui.views.expedientes.JPanelListadoRegistroExpediente;
 import com.sdrerc.ui.views.expedientesAsignados.JPanelListadoExpedientesAsignados;
 import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTrabajar;
 import com.sdrerc.ui.views.home.jPanelHome;
@@ -46,7 +46,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
     
     public static void ShowJPanel(JPanel p) 
     {
-        p.setSize(1200, 646);
+        p.setSize(2000, 700);
         p.setLocation(0,0);        
         jPanelBody.removeAll();
         jPanelBody.add(p, BorderLayout.CENTER);
@@ -137,7 +137,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpedientesAsignados.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuExpedientesAsignados.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuExpedientesAsignados.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuExpedientesAsignados.setText("Expediente Asignados");
+        btnMenuExpedientesAsignados.setText("Exp. Asignados");
         btnMenuExpedientesAsignados.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuExpedientesAsignados.setBorderPainted(false);
         btnMenuExpedientesAsignados.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -181,7 +181,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpedientesPorTrabajar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuExpedientesPorTrabajar.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuExpedientesPorTrabajar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuExpedientesPorTrabajar.setText("Expediente Por Trabajar");
+        btnMenuExpedientesPorTrabajar.setText("Exp. Por Trabajar");
         btnMenuExpedientesPorTrabajar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuExpedientesPorTrabajar.setBorderPainted(false);
         btnMenuExpedientesPorTrabajar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -209,11 +209,6 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuAsignacion1.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 btnMenuAsignacion1MouseClicked(evt);
-            }
-        });
-        btnMenuAsignacion1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnMenuAsignacion1ActionPerformed(evt);
             }
         });
         jpanelMenu.add(btnMenuAsignacion1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 210, 270, 50));
@@ -253,7 +248,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
             .addGroup(jPanelHeaderLayout.createSequentialGroup()
                 .addGap(30, 30, 30)
                 .addComponent(lbl_TituloFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, 599, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(297, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanelHeaderLayout.setVerticalGroup(
             jPanelHeaderLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -271,7 +266,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         jPanelBody.setLayout(jPanelBodyLayout);
         jPanelBodyLayout.setHorizontalGroup(
             jPanelBodyLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
+            .addGap(0, 1068, Short.MAX_VALUE)
         );
         jPanelBodyLayout.setVerticalGroup(
             jPanelBodyLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -286,31 +281,29 @@ public class MenuPrincipal extends javax.swing.JFrame {
                 .addComponent(jpanelMenu, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 926, Short.MAX_VALUE)
-                    .addGroup(backgroundLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(jPanelHeader, javax.swing.GroupLayout.PREFERRED_SIZE, 926, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 1068, Short.MAX_VALUE)
+                    .addComponent(jPanelHeader, javax.swing.GroupLayout.DEFAULT_SIZE, 1068, Short.MAX_VALUE))
                 .addContainerGap())
         );
         backgroundLayout.setVerticalGroup(
             backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(backgroundLayout.createSequentialGroup()
                 .addGap(60, 60, 60)
-                .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 580, Short.MAX_VALUE))
+                .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 634, Short.MAX_VALUE))
             .addComponent(jPanelHeader, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-            .addComponent(jpanelMenu, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(jpanelMenu, javax.swing.GroupLayout.DEFAULT_SIZE, 694, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(background, javax.swing.GroupLayout.DEFAULT_SIZE, 1200, Short.MAX_VALUE)
+            .addComponent(background, javax.swing.GroupLayout.DEFAULT_SIZE, 1350, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(background, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(background, javax.swing.GroupLayout.DEFAULT_SIZE, 694, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -321,7 +314,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private void btnMenuExpedienteMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedienteMouseClicked
         // TODO add your handling code here:
          lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTE");
-         ShowJPanel(new JPanelRegistroExpediente());
+         ShowJPanel(new JPanelListadoRegistroExpediente());
     }//GEN-LAST:event_btnMenuExpedienteMouseClicked
 
     private void btnMenuHomeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuHomeMouseClicked
@@ -357,6 +350,13 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
     private void btnMenuAsignacion1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuAsignacion1MouseClicked
         // TODO add your handling code here:
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO ASIGNACIÖN");
+            ShowJPanel(new JPanelFiltroBusqueda());
+            // TODO add your handling code here:
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }//GEN-LAST:event_btnMenuAsignacion1MouseClicked
 
     private void btnRoleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRoleActionPerformed
@@ -370,10 +370,6 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
         // TODO add your handling code here:
     }//GEN-LAST:event_btnRoleActionPerformed
-
-    private void btnMenuAsignacion1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuAsignacion1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnMenuAsignacion1ActionPerformed
 
     private void btnMenuUsuario1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuUsuario1MouseClicked
         // TODO add your handling code here:

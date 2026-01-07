@@ -307,7 +307,7 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel {
                 //Expediente expedienteSeleccionado = model.get(fila);
 
                 // Crear el panel al que quieres ir
-                JPanelRegistrarExpedientePorRecibido panel = new JPanelRegistrarExpedientePorRecibido();
+                JPanelRegistrarExpedientePorTrabajar panel = new JPanelRegistrarExpedientePorTrabajar();
                 try
                 {
                     // Si el panel necesita recibir datos:
