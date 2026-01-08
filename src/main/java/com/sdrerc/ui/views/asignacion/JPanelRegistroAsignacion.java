@@ -68,8 +68,6 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
         spFechaSolicitud.setValue(lista.getFechaSolicitud());
         textNumeroDocumentoRemitente.setText(lista.getDniRemitente());
         textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
-        textNumeroDocumentoSolicitante.setText(lista.getDniSolicitante());
-        textApellidosNombresSolicitante.setText(lista.getApellidoNombreSolicitante());
         textNumeroActa.setText(lista.getNumeroActa());
         textNumeroGrupoFamiliar.setText(lista.getNumeroGrupoFamiliar());
         textNumeroDocumentoTitular.setText(lista.getDniTitular());
@@ -481,8 +479,6 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
             exp.setNumeroGrupoFamiliar(textNumeroGrupoFamiliar.getText());
             exp.setDniRemitente(textNumeroDocumentoRemitente.getText());
             exp.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
-            exp.setDniSolicitante(textNumeroDocumentoSolicitante.getText());
-            exp.setApellidoNombreSolicitante(textApellidosNombresSolicitante.getText());
             exp.setDniTitular(textNumeroDocumentoTitular.getText());
             exp.setApellidoNombreTitular(textApellidosNombresTitular.getText());
             

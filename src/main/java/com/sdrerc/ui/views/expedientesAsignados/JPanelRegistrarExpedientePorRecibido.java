@@ -70,8 +70,6 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         spFechaSolicitud.setValue(lista.getFechaSolicitud());
         textNumeroDocumentoRemitente.setText(lista.getDniRemitente());
         textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
-        textNumeroDocumentoSolicitante.setText(lista.getDniSolicitante());
-        textApellidosNombresSolicitante.setText(lista.getApellidoNombreSolicitante());
         textNumeroActa.setText(lista.getNumeroActa());
         textNumeroGrupoFamiliar.setText(lista.getNumeroGrupoFamiliar());
         textNumeroDocumentoTitular.setText(lista.getDniTitular());

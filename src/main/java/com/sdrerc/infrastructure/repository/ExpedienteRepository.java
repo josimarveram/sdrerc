@@ -62,8 +62,6 @@ public class ExpedienteRepository
                         rs.getInt("tipoDocumento"),
                         rs.getString("dniRemitente"),
                         rs.getString("apellidoNombreRemitente"),
-                        rs.getString("dniSolicitante"),
-                        rs.getString("apellidoNombreSolicitante"),
                         rs.getInt("tipoProcedimientoRegistral"),
                         rs.getInt("tipoActa"),
                         rs.getString("numeroActa"),
@@ -103,8 +101,6 @@ public class ExpedienteRepository
             stmt.setInt(4, expediente.getTipoDocumento());
             stmt.setString(5, expediente.getDniRemitente());
             stmt.setString(6, expediente.getApellidoNombreRemitente());
-            stmt.setString(7, expediente.getDniSolicitante());
-            stmt.setString(8, expediente.getApellidoNombreSolicitante());
             stmt.setInt(9, expediente.getTipoProcedimientoRegistral());
             stmt.setInt(10, expediente.getTipoActa());
             stmt.setString(11, expediente.getNumeroActa());
@@ -155,8 +151,6 @@ public class ExpedienteRepository
                     expediente.getTipoDocumento(),
                     expediente.getDniRemitente(),
                     expediente.getApellidoNombreRemitente(),
-                    expediente.getDniSolicitante(),
-                    expediente.getApellidoNombreSolicitante(),
                     expediente.getTipoProcedimientoRegistral(),
                     expediente.getTipoActa(),
                     expediente.getNumeroActa(),
@@ -209,8 +203,6 @@ public class ExpedienteRepository
             stmt.setInt(4, expediente.getTipoDocumento());
             stmt.setString(5, expediente.getDniRemitente());
             stmt.setString(6, expediente.getApellidoNombreRemitente());
-            stmt.setString(7, expediente.getDniSolicitante());
-            stmt.setString(8, expediente.getApellidoNombreSolicitante());
             stmt.setInt(9, expediente.getTipoProcedimientoRegistral());
             stmt.setInt(10, expediente.getTipoActa());
             stmt.setString(11, expediente.getNumeroActa());
@@ -263,8 +255,6 @@ public class ExpedienteRepository
                     expediente.getTipoDocumento(),
                     expediente.getDniRemitente(),
                     expediente.getApellidoNombreRemitente(),
-                    expediente.getDniSolicitante(),
-                    expediente.getApellidoNombreSolicitante(),
                     expediente.getTipoProcedimientoRegistral(),
                     expediente.getTipoActa(),
                     expediente.getNumeroActa(),
@@ -379,8 +369,6 @@ public class ExpedienteRepository
             rs.getInt("TIPO_DOCUMENTO"),
             rs.getString("DNI_REMITENTE"),
             rs.getString("APELLIDO_NOMBRE_REMITENTE"),
-            rs.getString("DNI_SOLICITANTE"),
-            rs.getString("APELLIDO_NOMBRE_SOLICITANTE"),
             rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
             rs.getInt("TIPO_ACTA"),
             rs.getString("NUMERO_ACTA"),

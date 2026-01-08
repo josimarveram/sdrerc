@@ -67,8 +67,6 @@ public class ExpedienteAsignacionRepository {
                 psUpdate.setInt(4, expediente.getTipoDocumento());
                 psUpdate.setString(5, expediente.getDniRemitente());
                 psUpdate.setString(6, expediente.getApellidoNombreRemitente());
-                psUpdate.setString(7, expediente.getDniSolicitante());
-                psUpdate.setString(8, expediente.getApellidoNombreSolicitante());
                 psUpdate.setInt(9, expediente.getTipoProcedimientoRegistral());
                 psUpdate.setInt(10, expediente.getTipoActa());
                 psUpdate.setString(11, expediente.getNumeroActa());
@@ -236,8 +234,6 @@ public class ExpedienteAsignacionRepository {
             rs.getInt("TIPO_DOCUMENTO"),
             rs.getString("DNI_REMITENTE"),
             rs.getString("APELLIDO_NOMBRE_REMITENTE"),
-            rs.getString("DNI_SOLICITANTE"),
-            rs.getString("APELLIDO_NOMBRE_SOLICITANTE"),
             rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
             rs.getInt("TIPO_ACTA"),
             rs.getString("NUMERO_ACTA"),

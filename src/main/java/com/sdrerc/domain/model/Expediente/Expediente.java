@@ -11,62 +11,76 @@ import java.util.Date;
  * @author usuario
  */
 public class Expediente 
-{
-    private int idExpediente;					
-    private Date fechaSolicitud;				
+{   
+    private int idExpediente;
+    private String esRegistroSdrerc;
+    private String hojaEnvioExpediente;
     private String numeroTramiteDocumento;
-    private int tipoSolicitud;				
-    private int tipoDocumento;				
-    private String dniRemitente;					
-    private String apellidoNombreRemitente;		
-    private String dniSolicitante;				
-    private String apellidoNombreSolicitante;	
-    private int tipoProcedimientoRegistral;	
-    private int tipoActa;						
-    private String numeroActa;					
-    private int tipoGrupoFamiliar;			
-    private String numeroGrupoFamiliar;			
-    private String dniTitular;					
-    private String apellidoNombreTitular;		
-    private int estado;						
-    private int idUsuarioCrea;				
-    private Date fechaRegistra;				
-    private int idUsuarioModifica;			
+    private Date fechaRecepcion;
+    private Date fechaSolicitud;
+    private int tipoDocumento;
+    private String numeroDocumento;
+    private int tipoActa;
+    private String numeroActa;
+    private int tipoGrupoFamiliar;
+    private int gradoParentesco;
+    private int tipoProcedimientoRegistral;
+    private int tipoSolicitud;
+    private String dniRemitente;
+    private String apellidoNombreRemitente;
+    private int unidadOrganica;
+    private String dniTitular;
+    private String apellidoNombreTitular;
+    private int departamento;
+    private int provincia;
+    private int distrito;
+    private int direccionDomiciliaria;
+    private String domicilio;
+    private String correoElectronico;
+    private String celular;
+    private int estado;
+    private int idUsuarioCrea;
+    private Date fechaRegistra;
+    private int idUsuarioModifica;
     private Date fechaModifica;
+    
     
     public Expediente() 
     {
     }
-    
-    
 
-    public Expediente(int idExpediente, Date fechaSolicitud, String numeroTramiteDocumento,
-                      int tipoSolicitud, int tipoDocumento, String dniRemitente,
-                      String apellidoNombreRemitente, String dniSolicitante,
-                      String apellidoNombreSolicitante, int tipoProcedimientoRegistral,
-                      int tipoActa, String numeroActa, int tipoGrupoFamiliar,
-                      String numeroGrupoFamiliar, String dniTitular,
-                      String apellidoNombreTitular, int estado) {
-
+    public Expediente(int idExpediente, String esRegistroSdrerc, String hojaEnvioExpediente, String numeroTramiteDocumento, Date fechaRecepcion, Date fechaSolicitud, int tipoDocumento, String numeroDocumento, int tipoActa, String numeroActa, int tipoGrupoFamiliar, int gradoParentesco, int tipoProcedimientoRegistral, int tipoSolicitud, String dniRemitente, String apellidoNombreRemitente, int unidadOrganica, String dniTitular, String apellidoNombreTitular, int departamento, int provincia, int distrito, int direccionDomiciliaria, String domicilio, String correoElectronico, String celular, int estado, int idUsuarioCrea, Date fechaRegistra, int idUsuarioModifica, Date fechaModifica) {
         this.idExpediente = idExpediente;
-        this.fechaSolicitud = fechaSolicitud;
+        this.esRegistroSdrerc = esRegistroSdrerc;
+        this.hojaEnvioExpediente = hojaEnvioExpediente;
         this.numeroTramiteDocumento = numeroTramiteDocumento;
-        this.tipoSolicitud = tipoSolicitud;
+        this.fechaRecepcion = fechaRecepcion;
+        this.fechaSolicitud = fechaSolicitud;
         this.tipoDocumento = tipoDocumento;
-        this.dniRemitente = dniRemitente;
-        this.apellidoNombreRemitente = apellidoNombreRemitente;
-        this.dniSolicitante = dniSolicitante;
-        this.apellidoNombreSolicitante = apellidoNombreSolicitante;
-        this.tipoProcedimientoRegistral = tipoProcedimientoRegistral;
+        this.numeroDocumento = numeroDocumento;
         this.tipoActa = tipoActa;
         this.numeroActa = numeroActa;
         this.tipoGrupoFamiliar = tipoGrupoFamiliar;
-        this.numeroGrupoFamiliar = numeroGrupoFamiliar;
+        this.gradoParentesco = gradoParentesco;
+        this.tipoProcedimientoRegistral = tipoProcedimientoRegistral;
+        this.tipoSolicitud = tipoSolicitud;
+        this.dniRemitente = dniRemitente;
+        this.apellidoNombreRemitente = apellidoNombreRemitente;
+        this.unidadOrganica = unidadOrganica;
         this.dniTitular = dniTitular;
         this.apellidoNombreTitular = apellidoNombreTitular;
+        this.departamento = departamento;
+        this.provincia = provincia;
+        this.distrito = distrito;
+        this.direccionDomiciliaria = direccionDomiciliaria;
+        this.domicilio = domicilio;
+        this.correoElectronico = correoElectronico;
+        this.celular = celular;
         this.estado = estado;
-        
-        
+        this.idUsuarioCrea = idUsuarioCrea;
+        this.fechaRegistra = fechaRegistra;
+        this.idUsuarioModifica = idUsuarioModifica;
+        this.fechaModifica = fechaModifica;
     }
 
     public int getIdExpediente() {
@@ -77,12 +91,20 @@ public class Expediente
         this.idExpediente = idExpediente;
     }
 
-    public Date getFechaSolicitud() {
-        return fechaSolicitud;
+    public String getEsRegistroSdrerc() {
+        return esRegistroSdrerc;
     }
 
-    public void setFechaSolicitud(Date fechaSolicitud) {
-        this.fechaSolicitud = fechaSolicitud;
+    public void setEsRegistroSdrerc(String esRegistroSdrerc) {
+        this.esRegistroSdrerc = esRegistroSdrerc;
+    }
+
+    public String getHojaEnvioExpediente() {
+        return hojaEnvioExpediente;
+    }
+
+    public void setHojaEnvioExpediente(String hojaEnvioExpediente) {
+        this.hojaEnvioExpediente = hojaEnvioExpediente;
     }
 
     public String getNumeroTramiteDocumento() {
@@ -93,12 +115,20 @@ public class Expediente
         this.numeroTramiteDocumento = numeroTramiteDocumento;
     }
 
-    public int getTipoSolicitud() {
-        return tipoSolicitud;
+    public Date getFechaRecepcion() {
+        return fechaRecepcion;
     }
 
-    public void setTipoSolicitud(int tipoSolicitud) {
-        this.tipoSolicitud = tipoSolicitud;
+    public void setFechaRecepcion(Date fechaRecepcion) {
+        this.fechaRecepcion = fechaRecepcion;
+    }
+
+    public Date getFechaSolicitud() {
+        return fechaSolicitud;
+    }
+
+    public void setFechaSolicitud(Date fechaSolicitud) {
+        this.fechaSolicitud = fechaSolicitud;
     }
 
     public int getTipoDocumento() {
@@ -109,44 +139,12 @@ public class Expediente
         this.tipoDocumento = tipoDocumento;
     }
 
-    public String getDniRemitente() {
-        return dniRemitente;
+    public String getNumeroDocumento() {
+        return numeroDocumento;
     }
 
-    public void setDniRemitente(String dniRemitente) {
-        this.dniRemitente = dniRemitente;
-    }
-
-    public String getApellidoNombreRemitente() {
-        return apellidoNombreRemitente;
-    }
-
-    public void setApellidoNombreRemitente(String apellidoNombreRemitente) {
-        this.apellidoNombreRemitente = apellidoNombreRemitente;
-    }
-
-    public String getDniSolicitante() {
-        return dniSolicitante;
-    }
-
-    public void setDniSolicitante(String dniSolicitante) {
-        this.dniSolicitante = dniSolicitante;
-    }
-
-    public String getApellidoNombreSolicitante() {
-        return apellidoNombreSolicitante;
-    }
-
-    public void setApellidoNombreSolicitante(String apellidoNombreSolicitante) {
-        this.apellidoNombreSolicitante = apellidoNombreSolicitante;
-    }
-
-    public int getTipoProcedimientoRegistral() {
-        return tipoProcedimientoRegistral;
-    }
-
-    public void setTipoProcedimientoRegistral(int tipoProcedimientoRegistral) {
-        this.tipoProcedimientoRegistral = tipoProcedimientoRegistral;
+    public void setNumeroDocumento(String numeroDocumento) {
+        this.numeroDocumento = numeroDocumento;
     }
 
     public int getTipoActa() {
@@ -173,12 +171,52 @@ public class Expediente
         this.tipoGrupoFamiliar = tipoGrupoFamiliar;
     }
 
-    public String getNumeroGrupoFamiliar() {
-        return numeroGrupoFamiliar;
+    public int getGradoParentesco() {
+        return gradoParentesco;
     }
 
-    public void setNumeroGrupoFamiliar(String numeroGrupoFamiliar) {
-        this.numeroGrupoFamiliar = numeroGrupoFamiliar;
+    public void setGradoParentesco(int gradoParentesco) {
+        this.gradoParentesco = gradoParentesco;
+    }
+
+    public int getTipoProcedimientoRegistral() {
+        return tipoProcedimientoRegistral;
+    }
+
+    public void setTipoProcedimientoRegistral(int tipoProcedimientoRegistral) {
+        this.tipoProcedimientoRegistral = tipoProcedimientoRegistral;
+    }
+
+    public int getTipoSolicitud() {
+        return tipoSolicitud;
+    }
+
+    public void setTipoSolicitud(int tipoSolicitud) {
+        this.tipoSolicitud = tipoSolicitud;
+    }
+
+    public String getDniRemitente() {
+        return dniRemitente;
+    }
+
+    public void setDniRemitente(String dniRemitente) {
+        this.dniRemitente = dniRemitente;
+    }
+
+    public String getApellidoNombreRemitente() {
+        return apellidoNombreRemitente;
+    }
+
+    public void setApellidoNombreRemitente(String apellidoNombreRemitente) {
+        this.apellidoNombreRemitente = apellidoNombreRemitente;
+    }
+
+    public int getUnidadOrganica() {
+        return unidadOrganica;
+    }
+
+    public void setUnidadOrganica(int unidadOrganica) {
+        this.unidadOrganica = unidadOrganica;
     }
 
     public String getDniTitular() {
@@ -195,6 +233,62 @@ public class Expediente
 
     public void setApellidoNombreTitular(String apellidoNombreTitular) {
         this.apellidoNombreTitular = apellidoNombreTitular;
+    }
+
+    public int getDepartamento() {
+        return departamento;
+    }
+
+    public void setDepartamento(int departamento) {
+        this.departamento = departamento;
+    }
+
+    public int getProvincia() {
+        return provincia;
+    }
+
+    public void setProvincia(int provincia) {
+        this.provincia = provincia;
+    }
+
+    public int getDistrito() {
+        return distrito;
+    }
+
+    public void setDistrito(int distrito) {
+        this.distrito = distrito;
+    }
+
+    public int getDireccionDomiciliaria() {
+        return direccionDomiciliaria;
+    }
+
+    public void setDireccionDomiciliaria(int direccionDomiciliaria) {
+        this.direccionDomiciliaria = direccionDomiciliaria;
+    }
+
+    public String getDomicilio() {
+        return domicilio;
+    }
+
+    public void setDomicilio(String domicilio) {
+        this.domicilio = domicilio;
+    }
+
+    public String getCorreoElectronico() {
+        return correoElectronico;
+    }
+
+    public void setCorreoElectronico(String correoElectronico) {
+        this.correoElectronico = correoElectronico;
+    }
+
+    public String getCelular() {
+        return celular;
+    }
+
+    public void setCelular(String celular) {
+        this.celular = celular;
     }
 
     public int getEstado() {
@@ -235,8 +329,5 @@ public class Expediente
 
     public void setFechaModifica(Date fechaModifica) {
         this.fechaModifica = fechaModifica;
-    }
-            
-    
-
+    }              
 }

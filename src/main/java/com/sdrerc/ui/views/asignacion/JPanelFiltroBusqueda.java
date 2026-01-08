@@ -58,7 +58,6 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
                     e.getIdExpediente(),
                     e.getFechaSolicitud(),
                     e.getNumeroTramiteDocumento(),
-                    e.getApellidoNombreSolicitante(),
                     e.getApellidoNombreTitular(),
                     e.getEstado()
             };
@@ -134,7 +133,6 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
                     e.getIdExpediente(),
                     e.getFechaSolicitud(),
                     e.getNumeroTramiteDocumento(),
-                    e.getApellidoNombreSolicitante(),
                     e.getApellidoNombreTitular(),
                     e.getEstado()
             };

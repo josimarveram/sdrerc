@@ -116,7 +116,6 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                     e.getIdExpediente(),
                     e.getFechaSolicitud(),
                     e.getNumeroTramiteDocumento(),
-                    e.getApellidoNombreSolicitante(),
                     e.getApellidoNombreTitular(),
                     e.getEstado()
             };
