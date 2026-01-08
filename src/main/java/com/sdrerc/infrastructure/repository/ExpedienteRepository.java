@@ -55,25 +55,37 @@ public class ExpedienteRepository
             if (rs.next()) 
             {
                 return new ExpedienteResponse(
-                        rs.getInt("idExpediente"),
-                        rs.getDate("fechaSolicitud"),
-                        rs.getString("numeroTramiteDocumento"),
-                        rs.getInt("tipoSolicitud"),
-                        rs.getInt("tipoDocumento"),
-                        rs.getString("dniRemitente"),
-                        rs.getString("apellidoNombreRemitente"),
-                        rs.getInt("tipoProcedimientoRegistral"),
-                        rs.getInt("tipoActa"),
-                        rs.getString("numeroActa"),
-                        rs.getInt("tipoGrupoFamiliar"),
-                        rs.getString("numeroGrupoFamiliar"),
-                        rs.getString("dniTitular"),
-                        rs.getString("apellidoNombreTitular"),
-                        rs.getInt("estado"),
-                        rs.getInt("idUsuarioCrea"),
-                        rs.getDate("fechaRegistra"),
-                        rs.getInt("idUsuarioModifica"),
-                        rs.getDate("fechaModifica")
+                            rs.getInt("ID_EXPEDIENTE"),
+                            rs.getString("ES_REGISTRO_SDRERC"),
+                            rs.getString("HOJA_ENVIO_EXPEDIENTE"),
+                            rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
+                            rs.getDate("FECHA_RECEPCION"),
+                            rs.getDate("FECHA_SOLICITUD"),
+                            rs.getInt("TIPO_DOCUMENTO"),
+                            rs.getString("NUMERO_DOCUMENTO"),
+                            rs.getInt("TIPO_ACTA"),
+                            rs.getString("NUMERO_ACTA"),
+                            rs.getInt("TIPO_GRUPO_FAMILIAR"),
+                            rs.getInt("GRADO_PARENTESCO"),
+                            rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
+                            rs.getInt("TIPO_SOLICITUD"),
+                            rs.getString("DNI_REMITENTE"),
+                            rs.getString("APELLIDO_NOMBRE_REMITENTE"),
+                            rs.getInt("UNIDAD_ORGANICA"),
+                            rs.getString("DNI_TITULAR"),
+                            rs.getString("APELLIDO_NOMBRE_TITULAR"),
+                            rs.getInt("DEPARTAMENTO"),
+                            rs.getInt("PROVINCIA"),
+                            rs.getInt("DISTRITO"),
+                            rs.getInt("DIRECCION_DOMICILIARIA"),
+                            rs.getString("DOMICILIO"),
+                            rs.getString("CORREO_ELECTRONICO"),
+                            rs.getString("CELULAR"),
+                            rs.getInt("ESTADO"),
+                            rs.getInt("ID_USUARIO_CREA"),
+                            rs.getDate("FECHA_REGISTRA"),
+                            rs.getInt("ID_USUARIO_MODIFICA"),
+                            rs.getDate("FECHA_MODIFICA")
                 );
             }
         }
@@ -105,7 +117,6 @@ public class ExpedienteRepository
             stmt.setInt(10, expediente.getTipoActa());
             stmt.setString(11, expediente.getNumeroActa());
             stmt.setInt(12, expediente.getTipoGrupoFamiliar());
-            stmt.setString(13, expediente.getNumeroGrupoFamiliar());
             stmt.setString(14, expediente.getDniTitular());
             stmt.setString(15, expediente.getApellidoNombreTitular());
             stmt.setInt(16, expediente.getEstado());
@@ -143,8 +154,8 @@ public class ExpedienteRepository
             }
 
             return new ExpedienteResponse(
+                    /*
                     expediente.getIdExpediente(),
-                    //expediente.getFechaSolicitud(),
                     sqlFechaSolicitud,
                     expediente.getNumeroTramiteDocumento(),
                     expediente.getTipoSolicitud(),
@@ -155,16 +166,47 @@ public class ExpedienteRepository
                     expediente.getTipoActa(),
                     expediente.getNumeroActa(),
                     expediente.getTipoGrupoFamiliar(),
-                    expediente.getNumeroGrupoFamiliar(),
                     expediente.getDniTitular(),
                     expediente.getApellidoNombreTitular(),
                     expediente.getEstado(),
                     expediente.getIdUsuarioCrea(),
-                    //expediente.getFechaRegistra(),
                     sqlFechaRegistra,
                     expediente.getIdUsuarioModifica(),
-                    //expediente.getFechaModifica()
                     sqlFechaModifica
+                    */
+                    
+                    expediente.getIdExpediente(),
+                    expediente.getEsRegistroSdrerc(),
+                    expediente.getHojaEnvioExpediente(),
+                    expediente.getNumeroTramiteDocumento(),
+                    expediente.getFechaRecepcion(),
+                    expediente.getFechaSolicitud(),
+                    expediente.getTipoDocumento(),
+                    expediente.getNumeroDocumento(),
+                    expediente.getTipoActa(),
+                    expediente.getNumeroActa(),
+                    expediente.getTipoGrupoFamiliar(),
+                    expediente.getGradoParentesco(),
+                    expediente.getTipoProcedimientoRegistral(),
+                    expediente.getTipoSolicitud(),
+                    expediente.getDniRemitente(),
+                    expediente.getApellidoNombreRemitente(),
+                    expediente.getUnidadOrganica(),
+                    expediente.getDniTitular(),
+                    expediente.getApellidoNombreTitular(),
+                    expediente.getDepartamento(),
+                    expediente.getProvincia(),
+                    expediente.getDistrito(),
+                    expediente.getDireccionDomiciliaria(),
+                    expediente.getDomicilio(),
+                    expediente.getCorreoElectronico(),
+                    expediente.getCelular(),
+                    expediente.getEstado(),
+                    expediente.getIdUsuarioCrea(),
+                    expediente.getFechaRegistra(),
+                    expediente.getIdUsuarioModifica(),
+                    expediente.getFechaModifica()
+                    
             );
         }     
     }
@@ -207,7 +249,6 @@ public class ExpedienteRepository
             stmt.setInt(10, expediente.getTipoActa());
             stmt.setString(11, expediente.getNumeroActa());
             stmt.setInt(12, expediente.getTipoGrupoFamiliar());
-            stmt.setString(13, expediente.getNumeroGrupoFamiliar());
             stmt.setString(14, expediente.getDniTitular());
             stmt.setString(15, expediente.getApellidoNombreTitular());
             stmt.setInt(16, expediente.getEstado());
@@ -247,6 +288,7 @@ public class ExpedienteRepository
             
             // Devuelves la respuesta igual que en el INSERT
             return new ExpedienteResponse(
+                    /*
                     expediente.getIdExpediente(),
                     //expediente.getFechaSolicitud(),
                     sqlFechaSolicitud,
@@ -259,7 +301,6 @@ public class ExpedienteRepository
                     expediente.getTipoActa(),
                     expediente.getNumeroActa(),
                     expediente.getTipoGrupoFamiliar(),
-                    expediente.getNumeroGrupoFamiliar(),
                     expediente.getDniTitular(),
                     expediente.getApellidoNombreTitular(),
                     expediente.getEstado(),
@@ -269,6 +310,39 @@ public class ExpedienteRepository
                     expediente.getIdUsuarioModifica(),
                     //expediente.getFechaModifica()
                     sqlFechaModifica
+                    */
+                    expediente.getIdExpediente(),
+                    expediente.getEsRegistroSdrerc(),
+                    expediente.getHojaEnvioExpediente(),
+                    expediente.getNumeroTramiteDocumento(),
+                    expediente.getFechaRecepcion(),
+                    expediente.getFechaSolicitud(),
+                    expediente.getTipoDocumento(),
+                    expediente.getNumeroDocumento(),
+                    expediente.getTipoActa(),
+                    expediente.getNumeroActa(),
+                    expediente.getTipoGrupoFamiliar(),
+                    expediente.getGradoParentesco(),
+                    expediente.getTipoProcedimientoRegistral(),
+                    expediente.getTipoSolicitud(),
+                    expediente.getDniRemitente(),
+                    expediente.getApellidoNombreRemitente(),
+                    expediente.getUnidadOrganica(),
+                    expediente.getDniTitular(),
+                    expediente.getApellidoNombreTitular(),
+                    expediente.getDepartamento(),
+                    expediente.getProvincia(),
+                    expediente.getDistrito(),
+                    expediente.getDireccionDomiciliaria(),
+                    expediente.getDomicilio(),
+                    expediente.getCorreoElectronico(),
+                    expediente.getCelular(),
+                    expediente.getEstado(),
+                    expediente.getIdUsuarioCrea(),
+                    expediente.getFechaRegistra(),
+                    expediente.getIdUsuarioModifica(),
+                    expediente.getFechaModifica()
+                    
             );
         }
     }
@@ -362,21 +436,37 @@ public class ExpedienteRepository
     
     private Expediente mapRow(ResultSet rs) throws SQLException {
         return new Expediente(
-            rs.getInt("ID_EXPEDIENTE"),
-            rs.getDate("FECHA_SOLICITUD"),
-            rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
-            rs.getInt("TIPO_SOLICITUD"),
-            rs.getInt("TIPO_DOCUMENTO"),
-            rs.getString("DNI_REMITENTE"),
-            rs.getString("APELLIDO_NOMBRE_REMITENTE"),
-            rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
-            rs.getInt("TIPO_ACTA"),
-            rs.getString("NUMERO_ACTA"),
-            rs.getInt("TIPO_GRUPO_FAMILIAR"),
-            rs.getString("NUMERO_GRUPO_FAMILIAR"),
-            rs.getString("DNI_TITULAR"),
-            rs.getString("APELLIDO_NOMBRE_TITULAR"),
-            rs.getInt("ESTADO")
+                            rs.getInt("ID_EXPEDIENTE"),
+                            rs.getString("ES_REGISTRO_SDRERC"),
+                            rs.getString("HOJA_ENVIO_EXPEDIENTE"),
+                            rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
+                            rs.getDate("FECHA_RECEPCION"),
+                            rs.getDate("FECHA_SOLICITUD"),
+                            rs.getInt("TIPO_DOCUMENTO"),
+                            rs.getString("NUMERO_DOCUMENTO"),
+                            rs.getInt("TIPO_ACTA"),
+                            rs.getString("NUMERO_ACTA"),
+                            rs.getInt("TIPO_GRUPO_FAMILIAR"),
+                            rs.getInt("GRADO_PARENTESCO"),
+                            rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
+                            rs.getInt("TIPO_SOLICITUD"),
+                            rs.getString("DNI_REMITENTE"),
+                            rs.getString("APELLIDO_NOMBRE_REMITENTE"),
+                            rs.getInt("UNIDAD_ORGANICA"),
+                            rs.getString("DNI_TITULAR"),
+                            rs.getString("APELLIDO_NOMBRE_TITULAR"),
+                            rs.getInt("DEPARTAMENTO"),
+                            rs.getInt("PROVINCIA"),
+                            rs.getInt("DISTRITO"),
+                            rs.getInt("DIRECCION_DOMICILIARIA"),
+                            rs.getString("DOMICILIO"),
+                            rs.getString("CORREO_ELECTRONICO"),
+                            rs.getString("CELULAR"),
+                            rs.getInt("ESTADO"),
+                            rs.getInt("ID_USUARIO_CREA"),
+                            rs.getDate("FECHA_REGISTRA"),
+                            rs.getInt("ID_USUARIO_MODIFICA"),
+                            rs.getDate("FECHA_MODIFICA")
         );
     }
     

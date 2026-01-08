@@ -71,7 +71,6 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         textNumeroDocumentoRemitente.setText(lista.getDniRemitente());
         textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
         textNumeroActa.setText(lista.getNumeroActa());
-        textNumeroGrupoFamiliar.setText(lista.getNumeroGrupoFamiliar());
         textNumeroDocumentoTitular.setText(lista.getDniTitular());
         textApellidosNombresTitular.setText(lista.getApellidoNombreTitular());
         idExpedienteOculto = lista.getIdExpediente();

@@ -69,7 +69,6 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
         textNumeroDocumentoRemitente.setText(lista.getDniRemitente());
         textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
         textNumeroActa.setText(lista.getNumeroActa());
-        textNumeroGrupoFamiliar.setText(lista.getNumeroGrupoFamiliar());
         textNumeroDocumentoTitular.setText(lista.getDniTitular());
         textApellidosNombresTitular.setText(lista.getApellidoNombreTitular());
         idExpedienteOculto = lista.getIdExpediente();
@@ -476,7 +475,6 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
             exp.setTipoActa(itemTipoActa.getIdCatalogoItem());
             exp.setNumeroActa(textNumeroActa.getText());
             exp.setTipoGrupoFamiliar(itemGrupoFamiliar.getIdCatalogoItem());
-            exp.setNumeroGrupoFamiliar(textNumeroGrupoFamiliar.getText());
             exp.setDniRemitente(textNumeroDocumentoRemitente.getText());
             exp.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
             exp.setDniTitular(textNumeroDocumentoTitular.getText());
