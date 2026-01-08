@@ -6,11 +6,14 @@ package com.sdrerc.ui.views.expedientes;
 
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
+import com.sdrerc.domain.model.Departamento;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.util.TextFieldRules;
 import java.sql.Date;
 import java.util.List;
@@ -24,6 +27,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
 {
     private final ExpedienteService expedienteService;
     private final CatalogoItemService catalogoItemService;
+    private final UbigeoService ubigeoService;
     private Integer idExpedienteOculto = 0;
     
     /**
@@ -34,6 +38,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
+        this.ubigeoService = new UbigeoService();
         
         TextFieldRules.apply(textNumeroDocumentoRemitente).onlyNumbers().max(8);
         TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
@@ -45,9 +50,85 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         cargarComboTipoDocumento();
         cargarComboTipoProcedimientoRegistral(); 
         cargarComboTipoActa();
-        cargarComboGrupoFamiliar();        
+        cargarComboGrupoFamiliar();
+        cargarComboParentesco();
+        cargarComboDireccionDomiciliaria();
+        cargarComboUnidadOrganica();
+        
+        cargarDepartamentos();
+
+        cboProvincia.setEnabled(false);
+        cboDistrito.setEnabled(false);
+        
+        registrarEventos();
+        
+        textNumeroDocumentoRemitente.setEnabled(false);
+        textApellidosNombreRemitente.setEnabled(false);
+        cboUnidadOrganica.setEnabled(false);
     }
     
+    
+    private void registrarEventos() {
+
+        cboDepartamento.addActionListener(e -> {
+            if (cboDepartamento.getSelectedIndex() != -1) {
+                cboProvincia.setEnabled(true);
+                cargarProvincias();
+            }
+        });
+
+        cboProvincia.addActionListener(e -> {
+            if (cboProvincia.getSelectedIndex() != -1) {
+                cboDistrito.setEnabled(true);
+                cargarDistritos();
+            }
+        });
+        
+        cboTipoSolicitud.addActionListener(e -> {
+            if (cboTipoSolicitud.getSelectedIndex() == 1) {
+                textNumeroDocumentoRemitente.setEnabled(true);
+                textApellidosNombreRemitente.setEnabled(true);
+                cboUnidadOrganica.setEnabled(false);
+            }else{
+                textNumeroDocumentoRemitente.setEnabled(false);
+                textApellidosNombreRemitente.setEnabled(false);
+                cboUnidadOrganica.setEnabled(true);
+            }
+            
+        });
+        
+    }
+    
+    private void cargarDepartamentos() {
+        cboDepartamento.removeAllItems();
+        ubigeoService.listarDepartamentos()
+                     .forEach(cboDepartamento::addItem);
+    }
+    
+    private void cargarProvincias() {
+        cboProvincia.removeAllItems();
+        cboDistrito.removeAllItems();
+
+        Departamento d = (Departamento) cboDepartamento.getSelectedItem();
+        if (d == null) return;
+
+        ubigeoService.listarProvincias(d.getIdDepartamento())
+                     .forEach(cboProvincia::addItem);
+
+        cboProvincia.setSelectedIndex(-1);
+    }
+    
+    private void cargarDistritos() {
+        cboDistrito.removeAllItems();
+
+        Provincia p = (Provincia) cboProvincia.getSelectedItem();
+        if (p == null) return;
+
+        ubigeoService.listarDistritos(p.getIdProvincia())
+                     .forEach(cboDistrito::addItem);
+
+        cboDistrito.setSelectedIndex(-1);
+    }
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {        
@@ -119,6 +200,33 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
 
         for (CatalogoItem catalogoitem : lista) {
             cboGrupoFamiliar.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboParentesco() {
+        cboGradoParentesco.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(7);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboGradoParentesco.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboDireccionDomiciliaria() {
+        cboDireccionDomiciliaria.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(8);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboDireccionDomiciliaria.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboUnidadOrganica() {
+        cboUnidadOrganica.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(9);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboUnidadOrganica.addItem(catalogoitem);
         }
     }
     
