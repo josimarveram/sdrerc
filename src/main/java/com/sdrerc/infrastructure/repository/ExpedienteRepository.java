@@ -24,29 +24,39 @@ public class ExpedienteRepository
 {
     public ExpedienteResponse ListarExpediente(String username, String password) throws SQLException 
     {
-        String sql = "SELECT                      " +
-                     " id_expediente                AS \"idExpediente\", " +
-                     " fecha_solicitud              AS \"fechaSolicitud\", " +
-                     " numero_tramite_documento     AS \"numeroTramiteDocumento\", " +
-                     " tipo_solicitud               AS \"tipoSolicitud\", " +
-                     " tipo_documento               AS \"tipoDocumento\", " +
-                     " dni_remitente                AS \"dniRemitente\", " +
-                     " apellido_nombre_remitente    AS \"apellidoNombreRemitente\", " +
-                     " dni_solicitante              AS \"dniSolicitante\", " +
-                     " apellido_nombre_solicitante  AS \"apellidoNombreSolicitante\", " +
-                     " tipo_procedimiento_registral AS \"tipoProcedimientoRegistral\", " +
-                     " tipo_acta                    AS \"tipoActa\", " +
-                     " numero_acta                  AS \"numeroActa\", " +
-                     " tipo_grupo_familiar          AS \"tipoGrupoFamiliar\", " +
-                     " numero_grupo_familiar        AS \"numeroGrupoFamiliar\", " +
-                     " dni_titular                  AS \"dniTitular\", " +
-                     " apellido_nombre_titular      AS \"apellidoNombreTitular\", " +
-                     " estado, " +
-                     " id_usuario_crea              AS \"idUsuarioCrea\", " +
-                     " fecha_registra               AS \"fechaRegistra\", " +
-                     " id_usuario_modifica          AS \"idUsuarioModifica\", " +
-                     " fecha_modifica               AS \"fechaModifica\" " +
-                     " FROM EXPEDIENTE ";
+        String sql = "SELECT " +
+                                "ID_EXPEDIENTE                AS \"idExpediente\", " +
+                                "ES_REGISTRO_SDRERC           AS \"esRegistroSdrerc\", " +
+                                "HOJA_ENVIO_EXPEDIENTE        AS \"hojaEnvioExpediente\", " +
+                                "NUMERO_TRAMITE_DOCUMENTO     AS \"numeroTramiteDocumento\", " +
+                                "FECHA_RECEPCION              AS \"fechaRecepcion\", " +
+                                "FECHA_SOLICITUD              AS \"fechaSolicitud\", " +
+                                "TIPO_DOCUMENTO               AS \"tipoDocumento\", " +
+                                "NUMERO_DOCUMENTO             AS \"numeroDocumento\", " +
+                                "TIPO_ACTA                    AS \"tipoActa\", " +
+                                "NUMERO_ACTA                  AS \"numeroActa\", " +
+                                "TIPO_GRUPO_FAMILIAR          AS \"tipoGrupoFamiliar\", " +
+                                "GRADO_PARENTESCO             AS \"gradoParentesco\", " +
+                                "TIPO_PROCEDIMIENTO_REGISTRAL AS \"tipoProcedimientoRegistral\", " +
+                                "TIPO_SOLICITUD               AS \"tipoSolicitud\", " +
+                                "DNI_REMITENTE                AS \"dniRemitente\", " +
+                                "APELLIDO_NOMBRE_REMITENTE    AS \"apellidoNombreRemitente\", " +
+                                "UNIDAD_ORGANICA              AS \"unidadOrganica\", " +
+                                "DNI_TITULAR                  AS \"dniTitular\", " +
+                                "APELLIDO_NOMBRE_TITULAR      AS \"apellidoNombreTitular\", " +
+                                "DEPARTAMENTO                 AS \"departamento\", " +
+                                "PROVINCIA                    AS \"provincia\", " +
+                                "DISTRITO                     AS \"distrito\", " +
+                                "DIRECCION_DOMICILIARIA       AS \"direccionDomiciliaria\", " +
+                                "DOMICILIO                    AS \"domicilio\", " +
+                                "CORREO_ELECTRONICO           AS \"correoElectronico\", " +
+                                "CELULAR                      AS \"celular\", " +
+                                "ESTADO                       AS \"estado\", " +
+                                "ID_USUARIO_CREA              AS \"idUsuarioCrea\", " +
+                                "FECHA_REGISTRA               AS \"fechaRegistra\", " +
+                                "ID_USUARIO_MODIFICA          AS \"idUsuarioModifica\", " +
+                                "FECHA_MODIFICA               AS \"fechaModifica\" " +
+                                "FROM EXPEDIENTE";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) 
@@ -417,8 +427,7 @@ public class ExpedienteRepository
                     expediente.getIdUsuarioCrea(),
                     expediente.getFechaRegistra(),
                     expediente.getIdUsuarioModifica(),
-                    expediente.getFechaModifica()
-                    
+                    expediente.getFechaModifica()                    
             );
         }
     }
