@@ -142,19 +142,80 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
     public void cargarExpediente(String idExpediente) throws Exception 
     {        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
-        textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
-        seleccionarEstadoEnCombo(cboTipoSolicitud, lista.getTipoSolicitud()); 
-        seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
-        seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
-        seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
-        seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar());      
-        spFechaSolicitud.setValue(lista.getFechaSolicitud());
-        textDniRemitente.setText(lista.getDniRemitente());
-        textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
-        textNumeroActa.setText(lista.getNumeroActa());
-        textApellidosNombreTitular.setText(lista.getDniTitular());
-        textNumeroDocumentoTitular.setText(lista.getApellidoNombreTitular());
         idExpedienteOculto = lista.getIdExpediente();
+        
+        //esRegistroSdrerc 
+        jRadiButonNoCorresponde.setSelected(lista.getEsRegistroSdrerc() == 1? true : false);
+
+        //hojaEnvioExpediente
+        textHojaEnvioExpediente.setText(lista.getHojaEnvioExpediente());                          
+
+        //numeroTramiteDocumento 
+        textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
+
+        //fechaRecepcion
+        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
+        
+        //fechaSolicitud
+        spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
+
+        //tipoDocumento
+        seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
+
+        //numeroDocumento
+        textNumeroDocumento.setText(lista.getNumeroDocumento());   
+
+        //tipoActa
+        seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
+
+        //numeroActa
+        textNumeroActa.setText(lista.getNumeroActa());
+
+        //tipoGrupoFamiliar
+        seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar()); 
+
+        //gradoParentesco
+        seleccionarEstadoEnCombo(cboGradoParentesco, lista.getGradoParentesco()); 
+        
+        //tipoProcedimientoRegistral
+        seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
+
+        //tipoSolicitud
+        seleccionarEstadoEnCombo(cboTipoSolicitud, lista.getTipoSolicitud()); 
+
+        //dniRemitente
+        textDniRemitente.setText(lista.getDniRemitente());
+
+        //apellidoNombreRemitente
+        textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
+
+        //unidadOrganica
+        seleccionarEstadoEnCombo(cboUnidadOrganica, lista.getUnidadOrganica());
+
+        //dniTitular
+        textNumeroDocumentoTitular.setText(lista.getDniTitular());
+
+        //apellidoNombreTitular
+        textApellidosNombreTitular.setText(lista.getApellidoNombreTitular());
+
+        //departamento
+
+        //provincia
+
+        //distrito
+
+        //direccionDomiciliaria
+        seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
+
+        //domicilio
+        textDomicilio.setText(lista.getDomicilio());
+
+        //correoElectronico
+        textCorreoElectronico.setText(lista.getCorreoElectronico());
+
+        //celular
+        textCelular.setText(lista.getCelular());
+        
     }
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 

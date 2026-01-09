@@ -314,8 +314,8 @@ public class ExpedienteRepository
             stmt.setInt(1, expediente.getEsRegistroSdrerc());
             stmt.setString(2, expediente.getHojaEnvioExpediente());
             stmt.setString(3, expediente.getNumeroTramiteDocumento());
-            stmt.setDate(4, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
-            stmt.setDate(5, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
+            stmt.setDate(4, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(4, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
+            stmt.setDate(5, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(5, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
             stmt.setInt(6, expediente.getTipoDocumento());
             stmt.setString(7, expediente.getNumeroDocumento());
             stmt.setInt(8, expediente.getTipoActa());
@@ -338,7 +338,7 @@ public class ExpedienteRepository
             stmt.setString(25, expediente.getCelular());
             stmt.setInt(26, expediente.getEstado());
             stmt.setInt(27, expediente.getIdUsuarioModifica());
-            stmt.setDate(28, new java.sql.Date(expediente.getFechaModifica().getTime()));
+            stmt.setDate(28, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(28, new java.sql.Date(expediente.getFechaModifica().getTime()));
             // WHERE
             stmt.setInt(29, expediente.getIdExpediente());
 
