@@ -11,7 +11,7 @@ import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
-import com.sdrerc.ui.views.asignacion.JPanelRegistroAsignacion;
+import com.sdrerc.ui.views.asignacion.JPanelRegistroAsignacionOlds;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;

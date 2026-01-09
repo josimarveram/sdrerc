@@ -4,78 +4,218 @@
  */
 package com.sdrerc.ui.views.asignacion;
 
+import com.sdrerc.ui.views.expedientes.*;
 import com.sdrerc.application.CatalogoItemService;
-import com.sdrerc.application.ExpedienteAsignacionService;
 import com.sdrerc.application.ExpedienteService;
-import com.sdrerc.application.TecnicoService;
+import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
-import com.sdrerc.domain.model.Enumerado;
+import com.sdrerc.domain.model.Departamento;
+import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
-import com.sdrerc.domain.model.ExpedienteAsignacion;
-import com.sdrerc.domain.model.Tecnico;
-import java.sql.SQLException;
-import java.util.Date;
+import com.sdrerc.ui.menu.MenuPrincipal;
+import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.util.TextFieldRules;
+import java.sql.Date;
 import java.util.List;
+import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-
 /**
  *
- * @author David
+ * @author usuario
  */
-public class JPanelRegistroAsignacion extends javax.swing.JPanel {
-
-    /**
-     * Creates new form JPanelRegistroAsignacion
-     */
-    private final ExpedienteService expedienteService;    
+public class JPanelRegistroAsignacion extends javax.swing.JPanel 
+{
+    private final ExpedienteService expedienteService;
     private final CatalogoItemService catalogoItemService;
-    private final TecnicoService tecnicoService;
-    private final ExpedienteAsignacionService expedienteAsignacionService;
-    private Integer idExpedienteOculto;
+    private final UbigeoService ubigeoService;
+    private Integer idExpedienteOculto = 0;
     
+    /**
+     * Creates new form JPanelRegistrarExpediente
+     */
     public JPanelRegistroAsignacion() {
         initComponents();
+        
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
-        this.tecnicoService = new TecnicoService();
-        this.expedienteAsignacionService = new ExpedienteAsignacionService();
-        cargarComboGrupoFamiliar();
-        cargarComboTipoActa();
-        cargarComboTipoDocumento();
-        cargarComboTipoProcedimientoRegistral();
-        cargarComboTipoSolicitud();
-        bloquearCamposTecnico();
-    }
-    
-    private void bloquearCamposTecnico() {
-        txtIdTecnico.setEditable(false);
-        txtNombreTecnico.setEditable(false);
+        this.ubigeoService = new UbigeoService();
         
-        txtIdTecnico.setEnabled(false);
-        txtNombreTecnico.setEnabled(false);
+        TextFieldRules.apply(textDniRemitente).onlyNumbers().max(8);
+        TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
+        
+        TextFieldRules.apply(textNumeroDocumentoTitular).onlyNumbers().max(8);
+        TextFieldRules.apply(textApellidosNombreTitular).onlyLetters().max(300);
+        
+        TextFieldRules.apply(textCelular).onlyNumbers().max(9);
+        
+                
+        cargarComboTipoSolicitud(); 
+        cargarComboTipoDocumento();
+        cargarComboTipoProcedimientoRegistral(); 
+        cargarComboTipoActa();
+        cargarComboGrupoFamiliar();
+        cargarComboParentesco();
+        cargarComboDireccionDomiciliaria();
+        cargarComboUnidadOrganica();
+                
+        registrarEventos();
+        
+        textDniRemitente.setEnabled(false);
+        textApellidosNombreRemitente.setEnabled(false);
+        cboUnidadOrganica.setEnabled(false);
     }
     
-    public void cargarExpediente(String idExpediente) throws Exception {        
+    
+    private void registrarEventos() {
+
+        /*
+        cboDepartamento.addActionListener(e -> {
+            if (cboDepartamento.getSelectedIndex() != -1) {
+                cboProvincia.setEnabled(true);
+                cargarProvincias();
+            }
+        });
+
+        cboProvincia.addActionListener(e -> {
+            if (cboProvincia.getSelectedIndex() != -1) {
+                cboDistrito.setEnabled(true);
+                cargarDistritos();
+            }
+        });
+        */
+      
+        /*
+        cboTipoSolicitud.addActionListener(e -> {
+            if (cboTipoSolicitud.getSelectedIndex() == 1) {
+                textDniRemitente.setEnabled(true);
+                textApellidosNombreRemitente.setEnabled(true);
+                cboUnidadOrganica.setEnabled(false);
+            }else{
+                textDniRemitente.setEnabled(false);
+                textApellidosNombreRemitente.setEnabled(false);
+                cboUnidadOrganica.setEnabled(true);
+            }            
+        });
+        */
+        
+    }
+    
+    /*
+    private void cargarDepartamentos() {
+        cboDepartamento.removeAllItems();
+        ubigeoService.listarDepartamentos()
+                     .forEach(cboDepartamento::addItem);
+    }
+    
+    private void cargarProvincias() {
+        cboProvincia.removeAllItems();
+        cboDistrito.removeAllItems();
+
+        Departamento d = (Departamento) cboDepartamento.getSelectedItem();
+        if (d == null) return;
+
+        ubigeoService.listarProvincias(d.getIdDepartamento())
+                     .forEach(cboProvincia::addItem);
+
+        cboProvincia.setSelectedIndex(-1);
+    }
+    
+    private void cargarDistritos() {
+        cboDistrito.removeAllItems();
+
+        Provincia p = (Provincia) cboProvincia.getSelectedItem();
+        if (p == null) return;
+
+        ubigeoService.listarDistritos(p.getIdProvincia())
+                     .forEach(cboDistrito::addItem);
+
+        cboDistrito.setSelectedIndex(-1);
+    }
+    */
+    
+    public void cargarExpediente(String idExpediente) throws Exception 
+    {        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
-        textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
-        seleccionarEstadoEnCombo(cboTipoSolicitud, lista.getTipoSolicitud()); 
-        seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
-        seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
-        seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
-        seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar());      
-        spFechaSolicitud.setValue(lista.getFechaSolicitud());
-        textNumeroDocumentoRemitente.setText(lista.getDniRemitente());
-        textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
-        textNumeroActa.setText(lista.getNumeroActa());
-        textNumeroDocumentoTitular.setText(lista.getDniTitular());
-        textApellidosNombresTitular.setText(lista.getApellidoNombreTitular());
         idExpedienteOculto = lista.getIdExpediente();
+        
+        //esRegistroSdrerc 
+        //jRadiButonNoCorresponde.setSelected(lista.getEsRegistroSdrerc() == 1? true : false);
+
+        //hojaEnvioExpediente
+        //textHojaEnvioExpediente.setText(lista.getHojaEnvioExpediente());                          
+
+        //numeroTramiteDocumento 
+        textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
+
+        //fechaRecepcion
+        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
+        
+        //fechaSolicitud
+        spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
+
+        //tipoDocumento
+        seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
+
+        //numeroDocumento
+        textNumeroDocumento.setText(lista.getNumeroDocumento());   
+
+        //tipoActa
+        seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
+
+        //numeroActa
+        textNumeroActa.setText(lista.getNumeroActa());
+
+        //tipoGrupoFamiliar
+        seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar()); 
+
+        //gradoParentesco
+        seleccionarEstadoEnCombo(cboGradoParentesco, lista.getGradoParentesco()); 
+        
+        //tipoProcedimientoRegistral
+        seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
+
+        //tipoSolicitud
+        seleccionarEstadoEnCombo(cboTipoSolicitud, lista.getTipoSolicitud()); 
+
+        //dniRemitente
+        textDniRemitente.setText(lista.getDniRemitente());
+
+        //apellidoNombreRemitente
+        textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
+
+        //unidadOrganica
+        seleccionarEstadoEnCombo(cboUnidadOrganica, lista.getUnidadOrganica());
+
+        //dniTitular
+        textNumeroDocumentoTitular.setText(lista.getDniTitular());
+
+        //apellidoNombreTitular
+        textApellidosNombreTitular.setText(lista.getApellidoNombreTitular());
+
+        //departamento
+
+        //provincia
+
+        //distrito
+
+        //direccionDomiciliaria
+        seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
+
+        //domicilio
+        textDomicilio.setText(lista.getDomicilio());
+
+        //correoElectronico
+        textCorreoElectronico.setText(lista.getCorreoElectronico());
+
+        //celular
+        textCelular.setText(lista.getCelular());
+        
     }
     
-    
-    private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) {
+    private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
+    {
         for (int i = 0; i < combo.getItemCount(); i++) {
             CatalogoItem item = combo.getItemAt(i);
             if (item.getIdCatalogoItem() == idEstado) {
@@ -84,8 +224,6 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
             }
         }
     }
-    
-    
     
     private void cargarComboTipoSolicitud() {
         cboTipoSolicitud.removeAllItems();    
@@ -132,8 +270,54 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
         }
     }
     
-    
+    private void cargarComboParentesco() {
+        cboGradoParentesco.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(7);
 
+        for (CatalogoItem catalogoitem : lista) {
+            cboGradoParentesco.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboDireccionDomiciliaria() {
+        cboDireccionDomiciliaria.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(8);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboDireccionDomiciliaria.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboUnidadOrganica() {
+        cboUnidadOrganica.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(9);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboUnidadOrganica.addItem(catalogoitem);
+        }
+    }
+    
+      
+    private void limpiarCampos() 
+    {
+        // Limpiar JTextFields
+        textApellidosNombreRemitente.setText("");
+        textNumeroDocumentoTitular.setText("");
+        textNumeroActa.setText("");
+        textDniRemitente.setText("");
+        textApellidosNombreTitular.setText("");
+        textNumeroTramiteDocumento.setText("");
+        //spFechaSolicitud.setText("");
+
+        // Resetear JComboBoxes al primer elemento
+        if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
+        if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(0);
+        if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
+        if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
+        if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
+    }   
+  
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -143,288 +327,401 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jLabel1 = new javax.swing.JLabel();
         jPanelPrincipal = new javax.swing.JPanel();
-        jLabel10 = new javax.swing.JLabel();
-        textNumeroTramiteDocumento = new javax.swing.JTextField();
-        jLabel11 = new javax.swing.JLabel();
-        jLabel12 = new javax.swing.JLabel();
-        jLabel13 = new javax.swing.JLabel();
-        textNumeroDocumentoRemitente = new javax.swing.JTextField();
-        jLabel14 = new javax.swing.JLabel();
-        textApellidosNombreRemitente = new javax.swing.JTextField();
-        jLabel15 = new javax.swing.JLabel();
-        textNumeroDocumentoSolicitante = new javax.swing.JTextField();
-        textApellidosNombresSolicitante = new javax.swing.JTextField();
-        jLabel16 = new javax.swing.JLabel();
-        jLabel17 = new javax.swing.JLabel();
-        jLabel18 = new javax.swing.JLabel();
-        textNumeroActa = new javax.swing.JTextField();
-        jLabel19 = new javax.swing.JLabel();
-        jLabel20 = new javax.swing.JLabel();
-        jLabel22 = new javax.swing.JLabel();
-        textNumeroGrupoFamiliar = new javax.swing.JTextField();
-        jLabel21 = new javax.swing.JLabel();
-        textNumeroDocumentoTitular = new javax.swing.JTextField();
-        jLabel23 = new javax.swing.JLabel();
-        textApellidosNombresTitular = new javax.swing.JTextField();
-        cboTipoSolicitud = new javax.swing.JComboBox();
-        cboTipoActa = new javax.swing.JComboBox();
-        cboTipoDocumento = new javax.swing.JComboBox();
-        cboGrupoFamiliar = new javax.swing.JComboBox();
-        cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
-        jButton2 = new javax.swing.JButton();
-        txtIdTecnico = new javax.swing.JTextField();
-        txtNombreTecnico = new javax.swing.JTextField();
-        jButton1 = new javax.swing.JButton();
-        jLabel8 = new javax.swing.JLabel();
-        spFechaAsignacion = new javax.swing.JSpinner();
-        jLabel24 = new javax.swing.JLabel();
+        jPanelDatosSolicitud = new javax.swing.JPanel();
+        jLabel2 = new javax.swing.JLabel();
         spFechaSolicitud = new javax.swing.JSpinner();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        cboTipoSolicitud = new javax.swing.JComboBox();
+        jLabel5 = new javax.swing.JLabel();
+        cboTipoDocumento = new javax.swing.JComboBox();
+        jLabel8 = new javax.swing.JLabel();
+        spFechaRecepcion = new javax.swing.JSpinner();
+        jLabel9 = new javax.swing.JLabel();
+        textNumeroDocumento = new javax.swing.JTextField();
+        jLabel15 = new javax.swing.JLabel();
+        cboTipoActa = new javax.swing.JComboBox();
+        jLabel16 = new javax.swing.JLabel();
+        textNumeroActa = new javax.swing.JTextField();
+        jLabel17 = new javax.swing.JLabel();
+        cboGrupoFamiliar = new javax.swing.JComboBox();
+        jLabel18 = new javax.swing.JLabel();
+        cboGradoParentesco = new javax.swing.JComboBox();
+        jLabel12 = new javax.swing.JLabel();
+        textNumeroDocumentoTitular = new javax.swing.JTextField();
+        textApellidosNombreTitular = new javax.swing.JTextField();
+        jLabel13 = new javax.swing.JLabel();
+        jLabel20 = new javax.swing.JLabel();
+        cboUnidadOrganica = new javax.swing.JComboBox();
+        jLabel6 = new javax.swing.JLabel();
+        textDniRemitente = new javax.swing.JTextField();
+        jLabel7 = new javax.swing.JLabel();
+        textApellidosNombreRemitente = new javax.swing.JTextField();
+        textNumeroTramiteDocumento = new javax.swing.JTextField();
+        jLabel14 = new javax.swing.JLabel();
+        cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
+        jPanelParaNotificacion = new javax.swing.JPanel();
+        jLabel21 = new javax.swing.JLabel();
+        textCorreoElectronico = new javax.swing.JTextField();
+        textCelular = new javax.swing.JTextField();
+        jLabel22 = new javax.swing.JLabel();
+        jLabel23 = new javax.swing.JLabel();
+        textDomicilio = new javax.swing.JTextField();
+        cboDireccionDomiciliaria = new javax.swing.JComboBox();
+        jLabel26 = new javax.swing.JLabel();
+        btnRegresar = new javax.swing.JButton();
+        btnLimpiar = new javax.swing.JButton();
+        btnGuardar = new javax.swing.JButton();
+        jPanelDatosUbicacion = new javax.swing.JPanel();
 
         setBackground(new java.awt.Color(255, 255, 255));
 
-        jLabel1.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
-        jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel1.setText("NUEVO REGISTRO ASIGNACION");
-        jLabel1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-
         jPanelPrincipal.setBackground(new java.awt.Color(255, 255, 255));
+        jPanelPrincipal.setPreferredSize(new java.awt.Dimension(908, 558));
 
-        jLabel10.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel10.setText("Nro Tramite Documento");
+        jPanelDatosSolicitud.setBackground(new java.awt.Color(255, 255, 255));
+        jPanelDatosSolicitud.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la solicitud"));
 
-        jLabel11.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel11.setText("Tipo Solicitud");
-
-        jLabel12.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel12.setText("Tipo Documento");
-
-        jLabel13.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel13.setText("DNI / Nro Documento");
-
-        jLabel14.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel14.setText("Apellidos y Nombres ciudadano / Remitente");
-
-        jLabel15.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel15.setText("Apellidos y Nombres Solicitante");
-
-        jLabel16.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel16.setText("Tipo Procedimiento Registral");
-
-        jLabel17.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel17.setText("Tipo Acta");
-
-        jLabel18.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel18.setText("Nro Acta");
-
-        jLabel19.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel19.setText("Grupo Familiar");
-
-        jLabel20.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel20.setText("DNI / Nro Documento");
-
-        jLabel22.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel22.setText("Nro Grupo F");
-
-        jLabel21.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel21.setText("DNI / Nro Documento");
-
-        jLabel23.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel23.setText("Apellidos y Nombres Titular");
-
-        cboTipoSolicitud.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-
-        jButton2.setText("Seleccionar Abogado");
-        jButton2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton2ActionPerformed(evt);
-            }
-        });
-
-        jButton1.setText("GENERAR ASIGNACIÓN");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
-            }
-        });
-
-        jLabel8.setText("Fecha de Asignación:");
-
-        spFechaAsignacion.setModel(new javax.swing.SpinnerDateModel());
-
-        jLabel24.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel24.setText("Fecha Solicitud");
+        jLabel2.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel2.setText("Fecha Solicitud ");
 
         spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
+
+        jLabel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel3.setText("Nro. Tramite Web");
+
+        jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel4.setText("Tipo Solicitud");
+
+        cboTipoSolicitud.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        cboTipoSolicitud.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cboTipoSolicitudActionPerformed(evt);
+            }
+        });
+
+        jLabel5.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel5.setText("Tipo Documento");
+
+        jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel8.setText("Fecha Recepción ");
+
+        spFechaRecepcion.setModel(new javax.swing.SpinnerDateModel());
+
+        jLabel9.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel9.setText("Nro. Documento");
+
+        jLabel15.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel15.setText("Tipo Acta");
+
+        jLabel16.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel16.setText("Nro Acta");
+
+        jLabel17.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel17.setText("Grupo Familiar");
+
+        jLabel18.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel18.setText("Grado de Parentesco");
+
+        jLabel12.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel12.setText("DNI / Nro Documento");
+
+        jLabel13.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel13.setText("Apellidos y Nombres Titular");
+
+        jLabel20.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel20.setText("Unidad Organica");
+
+        cboUnidadOrganica.setEnabled(false);
+
+        jLabel6.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel6.setText("DNI");
+
+        jLabel7.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel7.setText("Apellidos y Nombres Remitente");
+
+        textApellidosNombreRemitente.setEnabled(false);
+
+        jLabel14.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel14.setText("Tipo Procedimiento Registral");
+
+        javax.swing.GroupLayout jPanelDatosSolicitudLayout = new javax.swing.GroupLayout(jPanelDatosSolicitud);
+        jPanelDatosSolicitud.setLayout(jPanelDatosSolicitudLayout);
+        jPanelDatosSolicitudLayout.setHorizontalGroup(
+            jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGap(6, 6, 6)
+                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(9, 9, 9)
+                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(67, 67, 67)
+                        .addComponent(jLabel9))
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGap(5, 5, 5)
+                        .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(cboTipoDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(20, 20, 20)
+                        .addComponent(textNumeroDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGap(5, 5, 5)
+                        .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(109, 109, 109)
+                        .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(117, 117, 117)
+                        .addComponent(jLabel17, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(jLabel18, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(30, 30, 30)
+                        .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGap(5, 5, 5)
+                        .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(cboGradoParentesco, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(20, 20, 20)
+                        .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGap(5, 5, 5)
+                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 108, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(52, 52, 52)
+                        .addComponent(jLabel6)
+                        .addGap(118, 118, 118)
+                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 280, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(90, 90, 90)
+                        .addComponent(jLabel20, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGap(5, 5, 5)
+                        .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                                .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 149, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(51, 51, 51)
+                                .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                                .addComponent(cboTipoSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(10, 10, 10)
+                                .addComponent(textDniRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(10, 10, 10)
+                                .addComponent(textApellidosNombreRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 360, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(10, 10, 10)
+                                .addComponent(cboUnidadOrganica, javax.swing.GroupLayout.PREFERRED_SIZE, 330, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                                .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(10, 10, 10)
+                                .addComponent(textApellidosNombreTitular)))))
+                .addContainerGap(19, Short.MAX_VALUE))
+        );
+        jPanelDatosSolicitudLayout.setVerticalGroup(
+            jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGap(2, 2, 2)
+                        .addComponent(jLabel8))
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel3)
+                    .addComponent(jLabel5)
+                    .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(1, 1, 1)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboTipoDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textNumeroDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel15)
+                    .addComponent(jLabel16)
+                    .addComponent(jLabel17, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel18)
+                    .addComponent(jLabel14))
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboGradoParentesco, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel4)
+                    .addComponent(jLabel6)
+                    .addComponent(jLabel7)
+                    .addComponent(jLabel20))
+                .addGap(3, 3, 3)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(cboTipoSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textDniRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textApellidosNombreRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboUnidadOrganica, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(20, 20, 20)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel12)
+                    .addComponent(jLabel13))
+                .addGap(3, 3, 3)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textApellidosNombreTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+        );
+
+        jPanelParaNotificacion.setBackground(new java.awt.Color(255, 255, 255));
+        jPanelParaNotificacion.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos para Notificación"));
+
+        jLabel21.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel21.setText("Correo Electrónico");
+
+        jLabel22.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel22.setText("Celular");
+
+        jLabel23.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel23.setText("Domicilio");
+
+        cboDireccionDomiciliaria.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        jLabel26.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel26.setText("Dirección Domiciliaria");
+
+        javax.swing.GroupLayout jPanelParaNotificacionLayout = new javax.swing.GroupLayout(jPanelParaNotificacion);
+        jPanelParaNotificacion.setLayout(jPanelParaNotificacionLayout);
+        jPanelParaNotificacionLayout.setHorizontalGroup(
+            jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelParaNotificacionLayout.createSequentialGroup()
+                .addGap(5, 5, 5)
+                .addGroup(jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel21, javax.swing.GroupLayout.PREFERRED_SIZE, 149, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textCorreoElectronico, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(47, 47, 47)
+                .addGroup(jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 149, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textCelular, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(cboDireccionDomiciliaria, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel26, javax.swing.GroupLayout.PREFERRED_SIZE, 152, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(44, 44, 44)
+                .addGroup(jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 149, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textDomicilio, javax.swing.GroupLayout.PREFERRED_SIZE, 292, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(15, 15, 15))
+        );
+        jPanelParaNotificacionLayout.setVerticalGroup(
+            jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelParaNotificacionLayout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addGroup(jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel21)
+                    .addComponent(jLabel23))
+                .addGap(3, 3, 3)
+                .addGroup(jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(textCorreoElectronico, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textDomicilio, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelParaNotificacionLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanelParaNotificacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelParaNotificacionLayout.createSequentialGroup()
+                        .addComponent(jLabel22)
+                        .addGap(3, 3, 3)
+                        .addComponent(textCelular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelParaNotificacionLayout.createSequentialGroup()
+                        .addComponent(jLabel26)
+                        .addGap(3, 3, 3)
+                        .addComponent(cboDireccionDomiciliaria, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
+        );
+
+        btnRegresar.setBackground(new java.awt.Color(25, 120, 210));
+        btnRegresar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnRegresar.setForeground(new java.awt.Color(255, 255, 255));
+        btnRegresar.setText("REGRESAR");
+        btnRegresar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRegresarActionPerformed(evt);
+            }
+        });
+
+        btnLimpiar.setBackground(new java.awt.Color(25, 120, 210));
+        btnLimpiar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnLimpiar.setForeground(new java.awt.Color(255, 255, 255));
+        btnLimpiar.setText("LIMPIAR");
+        btnLimpiar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLimpiarActionPerformed(evt);
+            }
+        });
+
+        btnGuardar.setBackground(new java.awt.Color(25, 120, 210));
+        btnGuardar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnGuardar.setForeground(new java.awt.Color(255, 255, 255));
+        btnGuardar.setText("GUARDAR");
+        btnGuardar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnGuardarActionPerformed(evt);
+            }
+        });
+
+        jPanelDatosUbicacion.setBackground(new java.awt.Color(255, 255, 255));
+        jPanelDatosUbicacion.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos Asignación"));
+
+        javax.swing.GroupLayout jPanelDatosUbicacionLayout = new javax.swing.GroupLayout(jPanelDatosUbicacion);
+        jPanelDatosUbicacion.setLayout(jPanelDatosUbicacionLayout);
+        jPanelDatosUbicacionLayout.setHorizontalGroup(
+            jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 1024, Short.MAX_VALUE)
+        );
+        jPanelDatosUbicacionLayout.setVerticalGroup(
+            jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 162, Short.MAX_VALUE)
+        );
 
         javax.swing.GroupLayout jPanelPrincipalLayout = new javax.swing.GroupLayout(jPanelPrincipal);
         jPanelPrincipal.setLayout(jPanelPrincipalLayout);
         jPanelPrincipalLayout.setHorizontalGroup(
             jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                .addGap(16, 16, 16)
+                .addContainerGap()
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jPanelDatosUbicacion, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanelParaNotificacion, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanelDatosSolicitud, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(jLabel13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(textNumeroDocumentoRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel24, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGap(37, 37, 37)
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel14)
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addComponent(textApellidosNombreRemitente)
-                                .addGap(17, 17, 17))))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelPrincipalLayout.createSequentialGroup()
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel21, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(22, 22, 22)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                        .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addGap(0, 0, Short.MAX_VALUE))
-                                    .addComponent(textApellidosNombresTitular)))
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanelPrincipalLayout.createSequentialGroup()
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                        .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 182, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addGap(45, 45, 45)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(jLabel10, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addGap(40, 40, 40)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(jLabel11, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
-                                            .addComponent(cboTipoSolicitud, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                                    .addComponent(textNumeroDocumentoSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
-                                    .addComponent(cboTipoDocumento, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanelPrincipalLayout.createSequentialGroup()
-                                .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtIdTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtNombreTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 268, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(26, 26, 26)
-                                .addComponent(jLabel8)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(18, 18, 18)
-                                .addComponent(jButton1))
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanelPrincipalLayout.createSequentialGroup()
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel20, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(22, 22, 22)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                            .addComponent(jLabel17, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(textNumeroActa, javax.swing.GroupLayout.DEFAULT_SIZE, 130, Short.MAX_VALUE)
-                                            .addComponent(jLabel18, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                                        .addGap(18, 18, 18)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(jLabel19, javax.swing.GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
-                                            .addComponent(cboGrupoFamiliar, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(textNumeroGrupoFamiliar)))
-                                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                        .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addGap(0, 0, Short.MAX_VALUE))
-                                    .addComponent(textApellidosNombresSolicitante))))
-                        .addGap(17, 17, 17))))
+                        .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(270, 270, 270)
+                        .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(btnGuardar, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE))))
         );
         jPanelPrincipalLayout.setVerticalGroup(
             jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                .addGap(31, 31, 31)
+                .addContainerGap()
+                .addComponent(jPanelDatosSolicitud, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanelParaNotificacion, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanelDatosUbicacion, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(33, 33, 33)
                 .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                        .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                            .addComponent(jLabel11)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(cboTipoSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(cboTipoDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                            .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(jLabel10)
-                                .addComponent(jLabel24))
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                    .addComponent(jLabel12))
-                .addGap(30, 30, 30)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addComponent(jLabel14)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(textApellidosNombreRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addComponent(jLabel13)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(textNumeroDocumentoRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(18, 18, 18)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel15)
-                    .addComponent(jLabel20))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(textApellidosNombresSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(textNumeroDocumentoSolicitante, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, 18)
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addComponent(jLabel18)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel17)
-                                    .addComponent(jLabel16)
-                                    .addComponent(jLabel19))
-                                .addGap(46, 46, 46))))
-                    .addGroup(jPanelPrincipalLayout.createSequentialGroup()
-                        .addComponent(jLabel22)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(textNumeroGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(14, 14, 14)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel23)
-                    .addComponent(jLabel21))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textApellidosNombresTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtIdTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtNombreTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel8)
-                    .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(121, Short.MAX_VALUE))
+                    .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanelPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(btnLimpiar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(btnGuardar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
@@ -432,204 +729,191 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 876, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jPanelPrincipal, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(2, 2, 2))
+                .addComponent(jPanelPrincipal, javax.swing.GroupLayout.PREFERRED_SIZE, 1040, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 20, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(28, 28, 28)
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jPanelPrincipal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap()
+                .addComponent(jPanelPrincipal, javax.swing.GroupLayout.DEFAULT_SIZE, 722, Short.MAX_VALUE)
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        if (!validarFormulario()) {
-            return; // Detiene el proceso si hay errores
-        }
-
-        try {
-            
-            //objeto EXPEDIENTE
-            Expediente exp = new Expediente();
-            
-            CatalogoItem itemTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistral.getSelectedItem();
-            CatalogoItem itemTipoActa = (CatalogoItem) cboTipoActa.getSelectedItem();
-            CatalogoItem itemGrupoFamiliar = (CatalogoItem) cboGrupoFamiliar.getSelectedItem();
-            CatalogoItem itemTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
-            CatalogoItem itemTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
-            
-            exp.setIdExpediente(idExpedienteOculto);
-            exp.setFechaSolicitud((Date) spFechaSolicitud.getValue());
-            exp.setNumeroTramiteDocumento(textNumeroTramiteDocumento.getText());
-            exp.setTipoSolicitud(itemTipoSolicitud.getIdCatalogoItem());
-            exp.setTipoDocumento(itemTipoDocumento.getIdCatalogoItem());
-            exp.setTipoProcedimientoRegistral(itemTipoProcedimientoRegistral.getIdCatalogoItem());
-            exp.setTipoActa(itemTipoActa.getIdCatalogoItem());
-            exp.setNumeroActa(textNumeroActa.getText());
-            exp.setTipoGrupoFamiliar(itemGrupoFamiliar.getIdCatalogoItem());
-            exp.setDniRemitente(textNumeroDocumentoRemitente.getText());
-            exp.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
-            exp.setDniTitular(textNumeroDocumentoTitular.getText());
-            exp.setApellidoNombreTitular(textApellidosNombresTitular.getText());
-            
-            Enumerado.EstadoExpediente estadoExpedienteAsignado = Enumerado.EstadoExpediente.ExpedienteAsignado;
-            exp.setEstado(estadoExpedienteAsignado.getId());
-            
-            exp.setIdUsuarioModifica(11);
-            exp.setFechaModifica(new Date());
-
-            ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
-            asignacion.setIdExpediente(idExpedienteOculto);
-            asignacion.setIdTecnico(Integer.parseInt(txtIdTecnico.getText()));            
-            Date fecha = (Date) spFechaAsignacion.getValue();            
-            asignacion.setFechaAsignacion(fecha);
-            
-            expedienteAsignacionService.agregarExpediente(asignacion,exp);
-
-            JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage());
-        }
+    private void btnLimpiarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jButton1ActionPerformed
+        limpiarCampos();
+    }//GEN-LAST:event_btnLimpiarActionPerformed
 
-    private boolean validarFormulario() {
+    private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
+        // TODO add your handling code here:        
+        MenuPrincipal.ShowJPanel(new JPanelListadoRegistroExpediente());
+    }//GEN-LAST:event_btnRegresarActionPerformed
 
-        if (spFechaSolicitud.getValue() == null) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar la Fecha de Solicitud.");
-            spFechaSolicitud.requestFocus();
-            return false;
-        }
+    private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
+                                                  
+        try 
+        {
+            Expediente expediente = new Expediente();  
 
-        if (textNumeroTramiteDocumento.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar el Número de Trámite.");
-            textNumeroTramiteDocumento.requestFocus();
-            return false;
-        }
+            //esRegistroSdrerc 
+            //int noPertenece = jRadiButonNoCorresponde.isSelected()? 1 : 0;
+            //expediente.setEsRegistroSdrerc(noPertenece);            
+            
+            //hojaEnvioExpediente
+            //expediente.setHojaEnvioExpediente(textHojaEnvioExpediente.getText());            
+            
+            //numeroTramiteDocumento 
+            expediente.setNumeroTramiteDocumento(textNumeroTramiteDocumento.getText());
+            
+            //fechaRecepcion
+            //fechaSolicitud
+            
+            //tipoDocumento
+            CatalogoItem catalogoTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
+            int idTipoDocumento = catalogoTipoDocumento.getIdCatalogoItem();            
+            expediente.setTipoDocumento(idTipoDocumento);
+           
+            //numeroDocumento
+            expediente.setNumeroDocumento(textNumeroDocumento.getText());
+            
+            //tipoActa
+            CatalogoItem catalogoTipoActa = (CatalogoItem) cboTipoActa.getSelectedItem();
+            int idTipoActa = catalogoTipoActa.getIdCatalogoItem();
+            expediente.setTipoActa(idTipoActa);
+            
+            //numeroActa
+            expediente.setNumeroActa(textNumeroActa.getText());
+            
+            //tipoGrupoFamiliar
+            CatalogoItem catalogoGrupoFamiliar = (CatalogoItem) cboGrupoFamiliar.getSelectedItem();
+            int idGrupoFamiliar = catalogoGrupoFamiliar.getIdCatalogoItem();
+            expediente.setTipoGrupoFamiliar(idGrupoFamiliar);
+            
+            //gradoParentesco
+            CatalogoItem catalogoGradoParentesco = (CatalogoItem) cboGradoParentesco.getSelectedItem();
+            int idgradoParentesco = catalogoGradoParentesco.getIdCatalogoItem();
+            expediente.setGradoParentesco(idgradoParentesco);  //// MODIFICARRRRRRRRRRRRRRRRRRR
+            
+            //tipoProcedimientoRegistral
+            CatalogoItem catalogoTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistral.getSelectedItem();
+            int idTipoProcedimientoRegistral = catalogoTipoProcedimientoRegistral.getIdCatalogoItem();
+            expediente.setTipoProcedimientoRegistral(idTipoProcedimientoRegistral);
+            
+            //tipoSolicitud
+            CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
+            int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem();            
+            expediente.setTipoSolicitud(idTipoSolicitud);
+            
+            //dniRemitente
+            expediente.setDniRemitente(textDniRemitente.getText());
+            
+            //apellidoNombreRemitente
+            expediente.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
+            
+            //unidadOrganica
+            CatalogoItem catalogoUnidadOrganica = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
+            int idUnidadOrganica = catalogoUnidadOrganica.getIdCatalogoItem();            
+            expediente.setUnidadOrganica(idUnidadOrganica);  //// MODIFICARRRRRRRRRRRRRRRRRRR
+            
+            //dniTitular
+            expediente.setDniTitular(textNumeroDocumentoTitular.getText());
+            
+            //apellidoNombreTitular
+            expediente.setApellidoNombreTitular(textApellidosNombreTitular.getText());
+                        
+            //direccionDomiciliaria
+            CatalogoItem catalogoDireccionDomiciliaria = (CatalogoItem) cboDireccionDomiciliaria.getSelectedItem();
+            int idDireccionDomiciliaria = catalogoDireccionDomiciliaria.getIdCatalogoItem();            
+            expediente.setDireccionDomiciliaria(idDireccionDomiciliaria);  //// MODIFICARRRRRRRRRRRRRRRRRRR
+            
+            //domicilio
+            expediente.setDomicilio(textDomicilio.getText());
+             
+            //correoElectronico
+            expediente.setCorreoElectronico(textCorreoElectronico.getText());
+            
+            //celular
+            expediente.setCelular(textCelular.getText());
+            
+            
+                                             
+            ExpedienteResponse response;              
+            
+            if(idExpedienteOculto == 0)
+            {
+                //idUsuarioCrea
+                //fechaRegistra      
+                
+                //estado
+                expediente.setEstado(56);
+                
+                response = expedienteService.agregarExpediente(expediente);
+                JOptionPane.showMessageDialog(this,
+                    "Expediente registrado correctamente.\nID generado: " + response.getIdExpediente(),
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }                
+            else
+            {
+                //idExpediente
+                expediente.setIdExpediente(idExpedienteOculto);                
+                //idUsuarioModifica
+                //fechaModifica
+                
+                response = expedienteService.actualizarExpediente(expediente);
+                JOptionPane.showMessageDialog(this,
+                    "Expediente actualizo correctamente.\nID generado: " + response.getIdExpediente(),
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+                
+                idExpedienteOculto = 0;
+            }    
+           
+            limpiarCampos();
+        } 
+        catch (Exception ex) 
+        {
+            JOptionPane.showMessageDialog(this,
+                    "Error al guardar: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }        
+    }//GEN-LAST:event_btnGuardarActionPerformed
 
-        if (cboTipoSolicitud.getSelectedIndex() == 0) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Solicitud.");
-            cboTipoSolicitud.requestFocus();
-            return false;
-        }
-
-        if (cboTipoDocumento.getSelectedIndex() == 0) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Documento.");
-            cboTipoDocumento.requestFocus();
-            return false;
-        }
-
-        if (textNumeroDocumentoRemitente.getText().trim().length() != 8) {
-            JOptionPane.showMessageDialog(this, "El DNI del Remitente debe tener 8 dígitos.");
-            textNumeroDocumentoRemitente.requestFocus();
-            return false;
-        }
-
-        if (textApellidosNombreRemitente.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Remitente.");
-            textApellidosNombreRemitente.requestFocus();
-            return false;
-        }
-
-        if (textNumeroDocumentoSolicitante.getText().trim().length() != 8) {
-            JOptionPane.showMessageDialog(this, "El DNI del Solicitante debe tener 8 dígitos.");
-            textNumeroDocumentoSolicitante.requestFocus();
-            return false;
-        }
-
-        if (textApellidosNombresSolicitante.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Solicitante.");
-            textApellidosNombresSolicitante.requestFocus();
-            return false;
-        }
-
-        if (cboTipoActa.getSelectedIndex() == 0) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar Tipo de Acta.");
-            cboTipoActa.requestFocus();
-            return false;
-        }
-
-        if (textNumeroActa.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Acta.");
-            textNumeroActa.requestFocus();
-            return false;
-        }
-
-        if (cboGrupoFamiliar.getSelectedIndex() == 0) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar Grupo Familiar.");
-            cboGrupoFamiliar.requestFocus();
-            return false;
-        }
-
-        if (textNumeroGrupoFamiliar.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Grupo Familiar.");
-            textNumeroGrupoFamiliar.requestFocus();
-            return false;
-        }
-
-        if (textNumeroDocumentoTitular.getText().trim().length() != 8) {
-            JOptionPane.showMessageDialog(this, "El DNI del Titular debe tener 8 dígitos.");
-            textNumeroDocumentoTitular.requestFocus();
-            return false;
-        }
-
-        if (textApellidosNombresTitular.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar Apellidos y Nombres del Titular.");
-            textApellidosNombresTitular.requestFocus();
-            return false;
-        }
-
-        if (txtNombreTecnico.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar un Técnico.");
-            txtNombreTecnico.requestFocus();
-            return false;
-        }
-
-        return true; // Todo OK
-    }
-    
-    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        // Obtener el JFrame que contiene este JPanel
-        java.awt.Window parent = SwingUtilities.getWindowAncestor(this);
+    private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
         
-        // Crear el JDialog
-        JDialogTecnico dialog = new JDialogTecnico((java.awt.Frame) parent, true);
-
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-
-        // Recuperar los valores del técnico seleccionado
-        String idTec = dialog.getIdTecnicoSeleccionado();
-        String nomTec = dialog.getNombreTecnicoSeleccionado();
-
-        if (idTec != null) {
-            txtIdTecnico.setText(idTec);
-            txtNombreTecnico.setText(nomTec);
+        CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
+        int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
+        
+        if(idTipoSolicitud == 10)
+        {
+          textDniRemitente.setEnabled(true);
+          textApellidosNombreRemitente.setEnabled(true);
+          cboUnidadOrganica.setEnabled(false);
         }
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton2ActionPerformed
+        else
+        {
+           textDniRemitente.setEnabled(false);
+           textApellidosNombreRemitente.setEnabled(false);
+           cboUnidadOrganica.setEnabled(true); 
+        }
+    }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnGuardar;
+    private javax.swing.JButton btnLimpiar;
+    private javax.swing.JButton btnRegresar;
+    private javax.swing.JComboBox cboDireccionDomiciliaria;
+    private javax.swing.JComboBox cboGradoParentesco;
     private javax.swing.JComboBox cboGrupoFamiliar;
     private javax.swing.JComboBox cboTipoActa;
     private javax.swing.JComboBox cboTipoDocumento;
     private javax.swing.JComboBox cboTipoProcedimientoRegistral;
     private javax.swing.JComboBox cboTipoSolicitud;
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
+    private javax.swing.JComboBox cboUnidadOrganica;
     private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel14;
@@ -637,26 +921,34 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel16;
     private javax.swing.JLabel jLabel17;
     private javax.swing.JLabel jLabel18;
-    private javax.swing.JLabel jLabel19;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel23;
-    private javax.swing.JLabel jLabel24;
+    private javax.swing.JLabel jLabel26;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
+    private javax.swing.JPanel jPanelDatosSolicitud;
+    private javax.swing.JPanel jPanelDatosUbicacion;
+    private javax.swing.JPanel jPanelParaNotificacion;
     private javax.swing.JPanel jPanelPrincipal;
-    private javax.swing.JSpinner spFechaAsignacion;
+    private javax.swing.JSpinner spFechaRecepcion;
     private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JTextField textApellidosNombreRemitente;
-    private javax.swing.JTextField textApellidosNombresSolicitante;
-    private javax.swing.JTextField textApellidosNombresTitular;
+    private javax.swing.JTextField textApellidosNombreTitular;
+    private javax.swing.JTextField textCelular;
+    private javax.swing.JTextField textCorreoElectronico;
+    private javax.swing.JTextField textDniRemitente;
+    private javax.swing.JTextField textDomicilio;
     private javax.swing.JTextField textNumeroActa;
-    private javax.swing.JTextField textNumeroDocumentoRemitente;
-    private javax.swing.JTextField textNumeroDocumentoSolicitante;
+    private javax.swing.JTextField textNumeroDocumento;
     private javax.swing.JTextField textNumeroDocumentoTitular;
-    private javax.swing.JTextField textNumeroGrupoFamiliar;
     private javax.swing.JTextField textNumeroTramiteDocumento;
-    private javax.swing.JTextField txtIdTecnico;
-    private javax.swing.JTextField txtNombreTecnico;
     // End of variables declaration//GEN-END:variables
 }
