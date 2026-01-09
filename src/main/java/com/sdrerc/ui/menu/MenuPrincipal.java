@@ -46,7 +46,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
     
     public static void ShowJPanel(JPanel p) 
     {
-        p.setSize(2000, 700);
+        p.setSize(2000, 750);
         p.setLocation(0,0);        
         jPanelBody.removeAll();
         jPanelBody.add(p, BorderLayout.CENTER);
@@ -289,9 +289,9 @@ public class MenuPrincipal extends javax.swing.JFrame {
             backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(backgroundLayout.createSequentialGroup()
                 .addGap(60, 60, 60)
-                .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 634, Short.MAX_VALUE))
+                .addComponent(jPanelBody, javax.swing.GroupLayout.DEFAULT_SIZE, 684, Short.MAX_VALUE))
             .addComponent(jPanelHeader, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-            .addComponent(jpanelMenu, javax.swing.GroupLayout.DEFAULT_SIZE, 694, Short.MAX_VALUE)
+            .addComponent(jpanelMenu, javax.swing.GroupLayout.DEFAULT_SIZE, 744, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -303,7 +303,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(background, javax.swing.GroupLayout.DEFAULT_SIZE, 694, Short.MAX_VALUE)
+                .addComponent(background, javax.swing.GroupLayout.DEFAULT_SIZE, 744, Short.MAX_VALUE)
                 .addContainerGap())
         );
 

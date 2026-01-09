@@ -38,7 +38,7 @@
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
-              <Component id="background" pref="694" max="32767" attributes="0"/>
+              <Component id="background" pref="744" max="32767" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
@@ -79,10 +79,10 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
                   <EmptySpace min="-2" pref="60" max="-2" attributes="0"/>
-                  <Component id="jPanelBody" pref="634" max="32767" attributes="0"/>
+                  <Component id="jPanelBody" pref="684" max="32767" attributes="0"/>
               </Group>
               <Component id="jPanelHeader" min="-2" max="-2" attributes="0"/>
-              <Component id="jpanelMenu" pref="694" max="32767" attributes="0"/>
+              <Component id="jpanelMenu" pref="744" max="32767" attributes="0"/>
           </Group>
         </DimensionLayout>
       </Layout>

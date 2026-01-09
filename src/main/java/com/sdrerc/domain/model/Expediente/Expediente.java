@@ -13,7 +13,7 @@ import java.util.Date;
 public class Expediente 
 {   
     private int idExpediente;
-    private String esRegistroSdrerc;
+    private int esRegistroSdrerc;
     private String hojaEnvioExpediente;
     private String numeroTramiteDocumento;
     private Date fechaRecepcion;
@@ -49,7 +49,7 @@ public class Expediente
     {
     }
 
-    public Expediente(int idExpediente, String esRegistroSdrerc, String hojaEnvioExpediente, String numeroTramiteDocumento, Date fechaRecepcion, Date fechaSolicitud, int tipoDocumento, String numeroDocumento, int tipoActa, String numeroActa, int tipoGrupoFamiliar, int gradoParentesco, int tipoProcedimientoRegistral, int tipoSolicitud, String dniRemitente, String apellidoNombreRemitente, int unidadOrganica, String dniTitular, String apellidoNombreTitular, int departamento, int provincia, int distrito, int direccionDomiciliaria, String domicilio, String correoElectronico, String celular, int estado, int idUsuarioCrea, Date fechaRegistra, int idUsuarioModifica, Date fechaModifica) {
+    public Expediente(int idExpediente, int esRegistroSdrerc, String hojaEnvioExpediente, String numeroTramiteDocumento, Date fechaRecepcion, Date fechaSolicitud, int tipoDocumento, String numeroDocumento, int tipoActa, String numeroActa, int tipoGrupoFamiliar, int gradoParentesco, int tipoProcedimientoRegistral, int tipoSolicitud, String dniRemitente, String apellidoNombreRemitente, int unidadOrganica, String dniTitular, String apellidoNombreTitular, int departamento, int provincia, int distrito, int direccionDomiciliaria, String domicilio, String correoElectronico, String celular, int estado, int idUsuarioCrea, Date fechaRegistra, int idUsuarioModifica, Date fechaModifica) {
         this.idExpediente = idExpediente;
         this.esRegistroSdrerc = esRegistroSdrerc;
         this.hojaEnvioExpediente = hojaEnvioExpediente;
@@ -91,11 +91,11 @@ public class Expediente
         this.idExpediente = idExpediente;
     }
 
-    public String getEsRegistroSdrerc() {
+    public int getEsRegistroSdrerc() {
         return esRegistroSdrerc;
     }
 
-    public void setEsRegistroSdrerc(String esRegistroSdrerc) {
+    public void setEsRegistroSdrerc(int esRegistroSdrerc) {
         this.esRegistroSdrerc = esRegistroSdrerc;
     }
 

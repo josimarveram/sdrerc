@@ -57,7 +57,7 @@
                       <Component id="jPanelDatosUbicacion" alignment="0" max="32767" attributes="0"/>
                       <Component id="jPanelParaNotificacion" alignment="0" max="32767" attributes="0"/>
                       <Component id="jPanelDatosSolicitud" alignment="0" max="32767" attributes="0"/>
-                      <Component id="jPanel1" alignment="0" pref="1034" max="32767" attributes="0"/>
+                      <Component id="jPanelCorrespondeSdrerc" alignment="0" pref="1034" max="32767" attributes="0"/>
                       <Group type="102" alignment="0" attributes="0">
                           <Component id="btnRegresar" min="-2" pref="110" max="-2" attributes="0"/>
                           <EmptySpace min="270" pref="270" max="-2" attributes="0"/>
@@ -73,8 +73,8 @@
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
-                  <EmptySpace min="-2" pref="12" max="-2" attributes="0"/>
-                  <Component id="jPanel1" min="-2" pref="88" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="jPanelCorrespondeSdrerc" min="-2" pref="94" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanelDatosSolicitud" max="32767" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
@@ -134,7 +134,7 @@
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                               <Component id="cboTipoDocumento" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="20" pref="20" max="-2" attributes="0"/>
-                              <Component id="textNumeroDocumentoRemitente1" min="-2" pref="190" max="-2" attributes="0"/>
+                              <Component id="textNumeroDocumento" min="-2" pref="190" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" attributes="0">
                               <EmptySpace min="5" pref="5" max="-2" attributes="0"/>
@@ -181,16 +181,16 @@
                                   <Group type="102" attributes="0">
                                       <Component id="cboTipoSolicitud" min="-2" pref="150" max="-2" attributes="0"/>
                                       <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
-                                      <Component id="textNumeroDocumentoRemitente" min="-2" pref="130" max="-2" attributes="0"/>
+                                      <Component id="textDniRemitente" min="-2" pref="130" max="-2" attributes="0"/>
                                       <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                                       <Component id="textApellidosNombreRemitente" min="-2" pref="360" max="-2" attributes="0"/>
                                       <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                                       <Component id="cboUnidadOrganica" min="-2" pref="330" max="-2" attributes="0"/>
                                   </Group>
                                   <Group type="102" attributes="0">
-                                      <Component id="textApellidosNombresTitular" min="-2" pref="190" max="-2" attributes="0"/>
+                                      <Component id="textNumeroDocumentoTitular" min="-2" pref="190" max="-2" attributes="0"/>
                                       <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
-                                      <Component id="textNumeroDocumentoTitular" max="32767" attributes="0"/>
+                                      <Component id="textApellidosNombreTitular" max="32767" attributes="0"/>
                                   </Group>
                               </Group>
                           </Group>
@@ -219,7 +219,7 @@
                           <Component id="spFechaSolicitud" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="textNumeroTramiteDocumento" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="cboTipoDocumento" min="-2" pref="40" max="-2" attributes="0"/>
-                          <Component id="textNumeroDocumentoRemitente1" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="textNumeroDocumento" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
@@ -246,7 +246,7 @@
                       <EmptySpace min="3" pref="3" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="cboTipoSolicitud" min="-2" pref="40" max="-2" attributes="0"/>
-                          <Component id="textNumeroDocumentoRemitente" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="textDniRemitente" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="textApellidosNombreRemitente" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="cboUnidadOrganica" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
@@ -257,8 +257,8 @@
                       </Group>
                       <EmptySpace min="3" pref="3" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="textApellidosNombresTitular" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="textNumeroDocumentoTitular" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="textApellidosNombreTitular" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
                   </Group>
               </Group>
@@ -302,6 +302,9 @@
                   <Font name="Segoe UI" size="12" style="1"/>
                 </Property>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cboTipoSolicitudActionPerformed"/>
+              </Events>
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
@@ -339,10 +342,10 @@
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Arial" size="14" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Nro Documento"/>
+                <Property name="text" type="java.lang.String" value="Nro. Documento"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JTextField" name="textNumeroDocumentoRemitente1">
+            <Component class="javax.swing.JTextField" name="textNumeroDocumento">
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel15">
               <Properties>
@@ -401,9 +404,9 @@
                 <Property name="text" type="java.lang.String" value="DNI / Nro Documento"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JTextField" name="textApellidosNombresTitular">
-            </Component>
             <Component class="javax.swing.JTextField" name="textNumeroDocumentoTitular">
+            </Component>
+            <Component class="javax.swing.JTextField" name="textApellidosNombreTitular">
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel13">
               <Properties>
@@ -437,14 +440,14 @@
                 <Property name="text" type="java.lang.String" value="DNI"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JTextField" name="textNumeroDocumentoRemitente">
+            <Component class="javax.swing.JTextField" name="textDniRemitente">
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel7">
               <Properties>
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Arial" size="14" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Apellidos y Nombres del Remitente"/>
+                <Property name="text" type="java.lang.String" value="Apellidos y Nombres Remitente"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JTextField" name="textApellidosNombreRemitente">
@@ -761,7 +764,7 @@
             </Component>
           </SubComponents>
         </Container>
-        <Container class="javax.swing.JPanel" name="jPanel1">
+        <Container class="javax.swing.JPanel" name="jPanelCorrespondeSdrerc">
           <Properties>
             <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
               <Color blue="ff" green="ff" red="ff" type="rgb"/>
@@ -781,16 +784,17 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="checkBoxCorrespondeSdrerc" min="-2" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Component id="jRadiButonSiCorresponde" max="32767" attributes="0"/>
+                          <Component id="jRadiButonNoCorresponde" pref="215" max="32767" attributes="0"/>
+                      </Group>
+                      <EmptySpace min="-2" pref="34" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" attributes="0">
-                              <EmptySpace min="-2" pref="33" max="-2" attributes="0"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <EmptySpace min="-2" pref="1" max="-2" attributes="0"/>
                               <Component id="textHojaEnvioExpediente" min="-2" pref="190" max="-2" attributes="0"/>
                           </Group>
-                          <Group type="102" alignment="0" attributes="0">
-                              <EmptySpace min="-2" pref="32" max="-2" attributes="0"/>
-                              <Component id="jLabel25" min="-2" pref="113" max="-2" attributes="0"/>
-                          </Group>
+                          <Component id="jLabel25" alignment="0" min="-2" pref="113" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace max="32767" attributes="0"/>
                   </Group>
@@ -798,35 +802,52 @@
             </DimensionLayout>
             <DimensionLayout dim="1">
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
-                      <Component id="checkBoxCorrespondeSdrerc" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="32767" attributes="0"/>
-                  </Group>
-                  <Group type="102" alignment="0" attributes="0">
+                  <Group type="102" alignment="1" attributes="0">
                       <Component id="jLabel25" min="-2" max="-2" attributes="0"/>
                       <EmptySpace min="3" pref="3" max="-2" attributes="0"/>
                       <Component id="textHojaEnvioExpediente" min="-2" pref="40" max="-2" attributes="0"/>
-                      <EmptySpace min="0" pref="5" max="32767" attributes="0"/>
+                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                  </Group>
+                  <Group type="102" attributes="0">
+                      <EmptySpace min="-2" pref="12" max="-2" attributes="0"/>
+                      <Component id="jRadiButonSiCorresponde" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="jRadiButonNoCorresponde" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace pref="11" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
           </Layout>
           <SubComponents>
-            <Component class="javax.swing.JCheckBox" name="checkBoxCorrespondeSdrerc">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="No corresponde a la SDRERC"/>
-              </Properties>
-            </Component>
             <Component class="javax.swing.JLabel" name="jLabel25">
               <Properties>
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Arial" size="14" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Hoja de Envi&#xf3;"/>
+                <Property name="text" type="java.lang.String" value="Hoja de Envio"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JTextField" name="textHojaEnvioExpediente">
+              <Properties>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JRadioButton" name="jRadiButonSiCorresponde">
+              <Properties>
+                <Property name="selected" type="boolean" value="true"/>
+                <Property name="text" type="java.lang.String" value="Si corresponde a la SDRERC"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jRadiButonSiCorrespondeActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JRadioButton" name="jRadiButonNoCorresponde">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="No corresponde a la SDRERC"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jRadiButonNoCorrespondeActionPerformed"/>
+              </Events>
             </Component>
           </SubComponents>
         </Container>

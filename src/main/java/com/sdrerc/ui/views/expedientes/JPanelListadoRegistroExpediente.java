@@ -98,7 +98,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {        
         String[] columnas = 
         {
-          "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Estado"
+          "ID", "Fecha", "N° Trámite Web", "Remitente", "Titular", "Estado"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -116,6 +116,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                     e.getIdExpediente(),
                     e.getFechaSolicitud(),
                     e.getNumeroTramiteDocumento(),
+                    e.getApellidoNombreRemitente(),
                     e.getApellidoNombreTitular(),
                     e.getEstado()
             };
@@ -147,10 +148,8 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         cmbEstado = new javax.swing.JComboBox();
 
         setBackground(new java.awt.Color(204, 255, 255));
-        setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         jPanelPrincipal.setBackground(new java.awt.Color(255, 255, 204));
-        jPanelPrincipal.setPreferredSize(null);
         jPanelPrincipal.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         jLabel1.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
@@ -242,7 +241,16 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         cmbEstado.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         jPanelPrincipal.add(cmbEstado, new org.netbeans.lib.awtextra.AbsoluteConstraints(576, 60, 190, 40));
 
-        add(jPanelPrincipal, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 1040, 650));
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanelPrincipal, javax.swing.GroupLayout.PREFERRED_SIZE, 1040, javax.swing.GroupLayout.PREFERRED_SIZE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanelPrincipal, javax.swing.GroupLayout.PREFERRED_SIZE, 650, javax.swing.GroupLayout.PREFERRED_SIZE)
+        );
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnBuscarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBuscarActionPerformed

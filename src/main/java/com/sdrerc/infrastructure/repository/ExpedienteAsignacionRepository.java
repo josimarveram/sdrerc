@@ -227,7 +227,7 @@ public class ExpedienteAsignacionRepository {
     private Expediente mapRow(ResultSet rs) throws SQLException {
         return new Expediente(
                             rs.getInt("ID_EXPEDIENTE"),
-                            rs.getString("ES_REGISTRO_SDRERC"),
+                            rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
                             rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
                             rs.getDate("FECHA_RECEPCION"),

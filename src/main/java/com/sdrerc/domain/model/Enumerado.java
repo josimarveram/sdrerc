@@ -21,10 +21,10 @@ public class Enumerado
     public enum EstadoExpediente 
     {
 
-        RegistroExpediente(34),
-        ExpedienteAsignado(35),
-        ExpedienteRecibido(36),
-        ExpedienteAtendido(37);
+        RegistroExpediente(56),
+        ExpedienteAsignado(57),
+        ExpedienteRecibido(58),
+        ExpedienteAtendido(59);
 
         private final int id;
 

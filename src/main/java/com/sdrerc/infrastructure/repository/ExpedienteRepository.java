@@ -66,7 +66,7 @@ public class ExpedienteRepository
             {
                 return new ExpedienteResponse(
                             rs.getInt("ID_EXPEDIENTE"),
-                            rs.getString("ES_REGISTRO_SDRERC"),
+                            rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
                             rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
                             rs.getDate("FECHA_RECEPCION"),
@@ -157,11 +157,11 @@ public class ExpedienteRepository
             stmt.setDate(18, new java.sql.Date(System.currentTimeMillis()));
             */
             
-            stmt.setString(1, expediente.getEsRegistroSdrerc());
+            stmt.setInt(1, expediente.getEsRegistroSdrerc());
             stmt.setString(2, expediente.getHojaEnvioExpediente());
             stmt.setString(3, expediente.getNumeroTramiteDocumento());
-            stmt.setDate(4, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
-            stmt.setDate(5, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
+            stmt.setDate(4, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(4, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
+            stmt.setDate(5, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(5, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
             stmt.setInt(6, expediente.getTipoDocumento());
             stmt.setString(7, expediente.getNumeroDocumento());
             stmt.setInt(8, expediente.getTipoActa());
@@ -184,10 +184,8 @@ public class ExpedienteRepository
             stmt.setString(25, expediente.getCelular());
             stmt.setInt(26, expediente.getEstado());
             stmt.setInt(27, expediente.getIdUsuarioCrea());
-            stmt.setDate(28, new java.sql.Date(expediente.getFechaRegistra().getTime()));
+            stmt.setDate(28, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(28, new java.sql.Date(expediente.getFechaRegistra().getTime()));           
             
-            
-
             stmt.executeUpdate();
 
             // Obtener el ID generado (IDENTITY)
@@ -313,7 +311,7 @@ public class ExpedienteRepository
              PreparedStatement stmt = conn.prepareStatement(sql)) 
         {
             // Datos para actualizar
-            stmt.setString(1, expediente.getEsRegistroSdrerc());
+            stmt.setInt(1, expediente.getEsRegistroSdrerc());
             stmt.setString(2, expediente.getHojaEnvioExpediente());
             stmt.setString(3, expediente.getNumeroTramiteDocumento());
             stmt.setDate(4, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
@@ -522,7 +520,7 @@ public class ExpedienteRepository
     private Expediente mapRow(ResultSet rs) throws SQLException {
         return new Expediente(
                             rs.getInt("ID_EXPEDIENTE"),
-                            rs.getString("ES_REGISTRO_SDRERC"),
+                            rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
                             rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
                             rs.getDate("FECHA_RECEPCION"),
