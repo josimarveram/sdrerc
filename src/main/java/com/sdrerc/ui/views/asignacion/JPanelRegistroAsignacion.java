@@ -6,6 +6,7 @@ package com.sdrerc.ui.views.asignacion;
 
 import com.sdrerc.ui.views.expedientes.*;
 import com.sdrerc.application.CatalogoItemService;
+import com.sdrerc.application.ExpedienteAsignacionService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
@@ -14,20 +15,26 @@ import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.util.TextFieldRules;
-import java.sql.Date;
+import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 /**
  *
  * @author usuario
  */
 public class JPanelRegistroAsignacion extends javax.swing.JPanel 
 {
+    
     private final ExpedienteService expedienteService;
+    private final ExpedienteAsignacionService expedienteAsignacionService;
     private final CatalogoItemService catalogoItemService;
     private final UbigeoService ubigeoService;
     private Integer idExpedienteOculto = 0;
@@ -39,6 +46,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         initComponents();
         
         this.expedienteService = new ExpedienteService();
+        this.expedienteAsignacionService = new ExpedienteAsignacionService();
         this.catalogoItemService = new CatalogoItemService();
         this.ubigeoService = new UbigeoService();
         
@@ -308,6 +316,8 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         textApellidosNombreTitular.setText("");
         textNumeroTramiteDocumento.setText("");
         //spFechaSolicitud.setText("");
+        
+        
 
         // Resetear JComboBoxes al primer elemento
         if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
@@ -374,6 +384,13 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         btnLimpiar = new javax.swing.JButton();
         btnGuardar = new javax.swing.JButton();
         jPanelDatosUbicacion = new javax.swing.JPanel();
+        jButton2 = new javax.swing.JButton();
+        txtIdTecnico = new javax.swing.JTextField();
+        txtNombreTecnico = new javax.swing.JTextField();
+        jLabel10 = new javax.swing.JLabel();
+        spFechaAsignacion = new javax.swing.JSpinner();
+        jLabel25 = new javax.swing.JLabel();
+        textHojaEnvioAsignacion = new javax.swing.JTextField();
 
         setBackground(new java.awt.Color(255, 255, 255));
 
@@ -667,7 +684,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         btnGuardar.setBackground(new java.awt.Color(25, 120, 210));
         btnGuardar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnGuardar.setForeground(new java.awt.Color(255, 255, 255));
-        btnGuardar.setText("GUARDAR");
+        btnGuardar.setText("GENERAR");
         btnGuardar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnGuardarActionPerformed(evt);
@@ -677,15 +694,57 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         jPanelDatosUbicacion.setBackground(new java.awt.Color(255, 255, 255));
         jPanelDatosUbicacion.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos Asignación"));
 
+        jButton2.setText("Seleccionar Abogado");
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
+
+        jLabel10.setText("Fecha de Asignación:");
+
+        spFechaAsignacion.setModel(new javax.swing.SpinnerDateModel());
+
+        jLabel25.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel25.setText("Hoja de Envio");
+
         javax.swing.GroupLayout jPanelDatosUbicacionLayout = new javax.swing.GroupLayout(jPanelDatosUbicacion);
         jPanelDatosUbicacion.setLayout(jPanelDatosUbicacionLayout);
         jPanelDatosUbicacionLayout.setHorizontalGroup(
             jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 1024, Short.MAX_VALUE)
+            .addGroup(jPanelDatosUbicacionLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanelDatosUbicacionLayout.createSequentialGroup()
+                        .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtIdTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtNombreTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 268, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(26, 26, 26)
+                        .addComponent(jLabel10)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelDatosUbicacionLayout.createSequentialGroup()
+                        .addGap(1, 1, 1)
+                        .addComponent(textHojaEnvioAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel25, javax.swing.GroupLayout.PREFERRED_SIZE, 113, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanelDatosUbicacionLayout.setVerticalGroup(
             jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 162, Short.MAX_VALUE)
+            .addGroup(jPanelDatosUbicacionLayout.createSequentialGroup()
+                .addGroup(jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtIdTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtNombreTecnico, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel10)
+                    .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel25)
+                .addGap(3, 3, 3)
+                .addComponent(textHojaEnvioAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 49, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout jPanelPrincipalLayout = new javax.swing.GroupLayout(jPanelPrincipal);
@@ -747,12 +806,114 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     }//GEN-LAST:event_btnLimpiarActionPerformed
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
-        // TODO add your handling code here:        
-        MenuPrincipal.ShowJPanel(new JPanelListadoRegistroExpediente());
+        MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
     }//GEN-LAST:event_btnRegresarActionPerformed
 
+    
+    private boolean validarFormulario() {
+
+        if (spFechaSolicitud.getValue() == null) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar la Fecha de Solicitud.");
+            spFechaSolicitud.requestFocus();
+            return false;
+        }
+
+        if (textNumeroTramiteDocumento.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar el Número de Trámite.");
+            textNumeroTramiteDocumento.requestFocus();
+            return false;
+        }
+
+        if (cboTipoSolicitud.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Solicitud.");
+            cboTipoSolicitud.requestFocus();
+            return false;
+        }
+
+        if (cboTipoDocumento.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Documento.");
+            cboTipoDocumento.requestFocus();
+            return false;
+        }
+/*
+        if (textNumeroDocumento.getText().trim().length() != 8) {
+            JOptionPane.showMessageDialog(this, "El DNI del Remitente debe tener 8 dígitos.");
+            textNumeroDocumento.requestFocus();
+            return false;
+        }
+
+        if (textApellidosNombreRemitente.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Remitente.");
+            textApellidosNombreRemitente.requestFocus();
+            return false;
+        }
+
+        if (textNumeroDocumentoSolicitante.getText().trim().length() != 8) {
+            JOptionPane.showMessageDialog(this, "El DNI del Solicitante debe tener 8 dígitos.");
+            textNumeroDocumentoSolicitante.requestFocus();
+            return false;
+        }
+
+        if (textApellidosNombresSolicitante.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Solicitante.");
+            textApellidosNombresSolicitante.requestFocus();
+            return false;
+        }
+        
+        */
+
+        if (cboTipoActa.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar Tipo de Acta.");
+            cboTipoActa.requestFocus();
+            return false;
+        }
+
+        if (textNumeroActa.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Acta.");
+            textNumeroActa.requestFocus();
+            return false;
+        }
+
+        if (cboGrupoFamiliar.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar Grupo Familiar.");
+            cboGrupoFamiliar.requestFocus();
+            return false;
+        }
+        /*
+        if (textNumeroGrupoFamiliar.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Grupo Familiar.");
+            textNumeroGrupoFamiliar.requestFocus();
+            return false;
+        }
+        */
+
+        if (textNumeroDocumentoTitular.getText().trim().length() != 8) {
+            JOptionPane.showMessageDialog(this, "El DNI del Titular debe tener 8 dígitos.");
+            textNumeroDocumentoTitular.requestFocus();
+            return false;
+        }
+/*
+        if (textApellidosNombresTitular.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar Apellidos y Nombres del Titular.");
+            textApellidosNombresTitular.requestFocus();
+            return false;
+        }
+        
+        */
+
+        if (txtNombreTecnico.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un Técnico.");
+            txtNombreTecnico.requestFocus();
+            return false;
+        }
+
+        return true; // Todo OK
+    }
+    
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
-                                                  
+        if (!validarFormulario()) {
+            return; // Detiene el proceso si hay errores
+        }
         try 
         {
             Expediente expediente = new Expediente();  
@@ -769,6 +930,10 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
             
             //fechaRecepcion
             //fechaSolicitud
+            
+            expediente.setFechaSolicitud((Date) spFechaSolicitud.getValue());
+            expediente.setFechaRecepcion((Date) spFechaRecepcion.getValue());
+            
             
             //tipoDocumento
             CatalogoItem catalogoTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
@@ -837,10 +1002,23 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
             //celular
             expediente.setCelular(textCelular.getText());
             
-            
+            expediente.setIdExpediente(idExpedienteOculto);
                                              
             ExpedienteResponse response;              
+            ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
+            asignacion.setIdExpediente(idExpedienteOculto);
+            asignacion.setIdTecnico(Integer.parseInt(txtIdTecnico.getText()));            
+            Date fecha = (Date) spFechaAsignacion.getValue();            
+            asignacion.setFechaAsignacion(fecha);
             
+            asignacion.setHojaEnvioAsignacion(textHojaEnvioAsignacion.getText());
+            
+            expedienteAsignacionService.agregarExpediente(asignacion,expediente);
+
+            JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
+
+            MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
+            /*
             if(idExpedienteOculto == 0)
             {
                 //idUsuarioCrea
@@ -872,6 +1050,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
             }    
            
             limpiarCampos();
+            */
         } 
         catch (Exception ex) 
         {
@@ -901,6 +1080,27 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         }
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        // Obtener el JFrame que contiene este JPanel
+        java.awt.Window parent = SwingUtilities.getWindowAncestor(this);
+
+        // Crear el JDialog
+        JDialogTecnico dialog = new JDialogTecnico((java.awt.Frame) parent, true);
+
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        // Recuperar los valores del técnico seleccionado
+        String idTec = dialog.getIdTecnicoSeleccionado();
+        String nomTec = dialog.getNombreTecnicoSeleccionado();
+
+        if (idTec != null) {
+            txtIdTecnico.setText(idTec);
+            txtNombreTecnico.setText(nomTec);
+        }
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButton2ActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnGuardar;
@@ -914,6 +1114,8 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     private javax.swing.JComboBox cboTipoProcedimientoRegistral;
     private javax.swing.JComboBox cboTipoSolicitud;
     private javax.swing.JComboBox cboUnidadOrganica;
+    private javax.swing.JButton jButton2;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel14;
@@ -926,6 +1128,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel23;
+    private javax.swing.JLabel jLabel25;
     private javax.swing.JLabel jLabel26;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
@@ -938,6 +1141,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     private javax.swing.JPanel jPanelDatosUbicacion;
     private javax.swing.JPanel jPanelParaNotificacion;
     private javax.swing.JPanel jPanelPrincipal;
+    private javax.swing.JSpinner spFechaAsignacion;
     private javax.swing.JSpinner spFechaRecepcion;
     private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JTextField textApellidosNombreRemitente;
@@ -946,9 +1150,12 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     private javax.swing.JTextField textCorreoElectronico;
     private javax.swing.JTextField textDniRemitente;
     private javax.swing.JTextField textDomicilio;
+    private javax.swing.JTextField textHojaEnvioAsignacion;
     private javax.swing.JTextField textNumeroActa;
     private javax.swing.JTextField textNumeroDocumento;
     private javax.swing.JTextField textNumeroDocumentoTitular;
     private javax.swing.JTextField textNumeroTramiteDocumento;
+    private javax.swing.JTextField txtIdTecnico;
+    private javax.swing.JTextField txtNombreTecnico;
     // End of variables declaration//GEN-END:variables
 }

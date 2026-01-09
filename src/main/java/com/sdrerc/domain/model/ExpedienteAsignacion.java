@@ -20,11 +20,12 @@ public class ExpedienteAsignacion
     private Date fechaRecepcion;
     private int idUsuarioModifica;
     private Date fechaModifica;       
-    private int idEstadoExpediente;
+    private int idEstadoExpediente;   
+    private String hojaEnvioAsignacion;
  
     public ExpedienteAsignacion() {}
     
-    public ExpedienteAsignacion(int idExpediente, int idTecnico, Date fechaAsignacion,int aceptaRecepcion, Date fechaRecepcion, int idUsuarioModifica, Date fechaModifica, int idEstadoExpediente) 
+    public ExpedienteAsignacion(int idExpediente, int idTecnico, Date fechaAsignacion,int aceptaRecepcion, Date fechaRecepcion, int idUsuarioModifica, Date fechaModifica, int idEstadoExpediente, String hojaEnvioAsignacion) 
     {
         this.idExpediente = idExpediente;
         this.idTecnico = idTecnico;
@@ -34,6 +35,7 @@ public class ExpedienteAsignacion
         this.idUsuarioModifica = idUsuarioModifica;
         this.fechaModifica = fechaModifica;
         this.idEstadoExpediente = idEstadoExpediente;
+        this.hojaEnvioAsignacion = hojaEnvioAsignacion;
     }
     
     // Getters y setters
@@ -45,6 +47,7 @@ public class ExpedienteAsignacion
     public int getIdUsuarioModifica() { return idUsuarioModifica; }
     public Date getFechaModifica() { return fechaModifica; }
     public int getIdEstadoExpediente() { return idEstadoExpediente; }
+    public String getHojaEnvioAsignacion() { return hojaEnvioAsignacion; }
     
     public void setFechaAsignacion(Date fechaAsignacion) {
         this.fechaAsignacion = fechaAsignacion;
@@ -82,5 +85,7 @@ public class ExpedienteAsignacion
     {
         this.idEstadoExpediente = idEstadoExpediente;
     }
-    
+    public void setHojaEnvioAsignacion(String hojaEnvioAsignacion) {
+        this.hojaEnvioAsignacion = hojaEnvioAsignacion;
+    }
 }

@@ -33,7 +33,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private final CatalogoItemService catalogoItemService;
     
     
-    public JPanelFiltroBusqueda() throws Exception {
+    public JPanelFiltroBusqueda(){
         initComponents();
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
