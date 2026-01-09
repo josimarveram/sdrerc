@@ -199,10 +199,13 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         textApellidosNombreTitular.setText(lista.getApellidoNombreTitular());
 
         //departamento
-
+        //seleccionarEstadoEnCombo(cboDepartamento, lista.getDepartamento());
+        
         //provincia
-
+        //seleccionarEstadoEnCombo(cboProvincia, lista.getProvincia());
+        
         //distrito
+        //seleccionarEstadoEnCombo(cboDistrito, lista.getDistrito());
 
         //direccionDomiciliaria
         seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
@@ -952,17 +955,17 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
             expediente.setApellidoNombreTitular(textApellidosNombreTitular.getText());
             
             //departamento
-            CatalogoItem catalogoDepartamento = (CatalogoItem) cboDepartamento.getSelectedItem();
+            CatalogoItem catalogoDepartamento = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
             int idDepartamento = catalogoDepartamento.getIdCatalogoItem();            
             expediente.setDepartamento(idDepartamento);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //provincia
-            CatalogoItem catalogoProvincia = (CatalogoItem) cboProvincia.getSelectedItem();
+            CatalogoItem catalogoProvincia = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
             int idProvincia = catalogoProvincia.getIdCatalogoItem();            
             expediente.setProvincia(idProvincia);
             
             //distrito
-            CatalogoItem catalogoDistrito = (CatalogoItem) cboDistrito.getSelectedItem();
+            CatalogoItem catalogoDistrito = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
             int idDistrito = catalogoDistrito.getIdCatalogoItem();            
             expediente.setDistrito(idDistrito);             //// MODIFICARRRRRRRRRRRRRRRRRRR
             

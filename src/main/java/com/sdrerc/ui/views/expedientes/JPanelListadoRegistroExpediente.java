@@ -147,9 +147,9 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         txtValorBusqueda = new javax.swing.JTextField();
         cmbEstado = new javax.swing.JComboBox();
 
-        setBackground(new java.awt.Color(204, 255, 255));
+        setBackground(new java.awt.Color(255, 255, 255));
 
-        jPanelPrincipal.setBackground(new java.awt.Color(255, 255, 204));
+        jPanelPrincipal.setBackground(new java.awt.Color(255, 255, 255));
         jPanelPrincipal.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         jLabel1.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
