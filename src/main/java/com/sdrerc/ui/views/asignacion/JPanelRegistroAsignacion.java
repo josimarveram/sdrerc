@@ -11,6 +11,7 @@ import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Departamento;
+import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
@@ -1003,6 +1004,9 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
             expediente.setCelular(textCelular.getText());
             
             expediente.setIdExpediente(idExpedienteOculto);
+            
+            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteAsignado;
+            expediente.setEstado(estadoExpedienteRecibido.getId());
                                              
             ExpedienteResponse response;              
             ExpedienteAsignacion asignacion = new ExpedienteAsignacion();

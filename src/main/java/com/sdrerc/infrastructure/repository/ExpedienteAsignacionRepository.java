@@ -19,8 +19,9 @@ import java.util.List;
  * @author David
  */
 public class ExpedienteAsignacionRepository {
-    public void registrar(ExpedienteAsignacion asignacion, Expediente expediente) throws SQLException {
-        
+    
+    public void registrar(ExpedienteAsignacion asignacion, Expediente expediente) throws SQLException 
+    {        
         // Primero, actualizar la tabla EXPEDIENTE con los nuevos valores
         String updateExpedienteSql =
             "UPDATE EXPEDIENTE SET "
@@ -67,10 +68,6 @@ public class ExpedienteAsignacionRepository {
             conn.setAutoCommit(false); 
                 
             try (PreparedStatement psUpdate = conn.prepareStatement(updateExpedienteSql)) {
-
-                
-                
-                
                 psUpdate.setDate(1, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
                 psUpdate.setString(2, expediente.getNumeroTramiteDocumento());
                 psUpdate.setInt(3, expediente.getTipoSolicitud());
@@ -93,8 +90,7 @@ public class ExpedienteAsignacionRepository {
                 psUpdate.setString(19, expediente.getDomicilio());
                 psUpdate.setInt(20, expediente.getDireccionDomiciliaria());
                 psUpdate.setInt(21, expediente.getGradoParentesco());
-                psUpdate.setInt(22, expediente.getUnidadOrganica());
-                
+                psUpdate.setInt(22, expediente.getUnidadOrganica());                
 
                 psUpdate.setInt(23, expediente.getIdExpediente()); // WHERE
 
