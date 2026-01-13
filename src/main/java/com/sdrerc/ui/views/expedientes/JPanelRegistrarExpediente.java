@@ -9,6 +9,8 @@ import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Departamento;
+import com.sdrerc.domain.model.Distrito;
+import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
@@ -20,6 +22,7 @@ import java.util.List;
 import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 /**
  *
  * @author usuario
@@ -75,72 +78,90 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
     }
     
+	private boolean modoEdicion = false;
     
     private void registrarEventos() {
 
-        cboDepartamento.addActionListener(e -> {
-            if (cboDepartamento.getSelectedIndex() != -1) {
-                cboProvincia.setEnabled(true);
-                cargarProvincias();
-            }
-        });
+    cboDepartamento.addActionListener(e -> {
+        if (cboDepartamento.getSelectedItem() == null) return;
 
-        cboProvincia.addActionListener(e -> {
-            if (cboProvincia.getSelectedIndex() != -1) {
-                cboDistrito.setEnabled(true);
-                cargarDistritos();
-            }
-        });
-      
-        /*
-        cboTipoSolicitud.addActionListener(e -> {
-            if (cboTipoSolicitud.getSelectedIndex() == 1) {
-                textDniRemitente.setEnabled(true);
-                textApellidosNombreRemitente.setEnabled(true);
-                cboUnidadOrganica.setEnabled(false);
-            }else{
-                textDniRemitente.setEnabled(false);
-                textApellidosNombreRemitente.setEnabled(false);
-                cboUnidadOrganica.setEnabled(true);
-            }            
-        });
-        */
-        
-    }
+        cboProvincia.setEnabled(true);
+        cargarProvincias();
+
+        if (!modoEdicion) {
+            cboProvincia.setSelectedIndex(-1);
+            cboDistrito.removeAllItems();
+            cboDistrito.setEnabled(false);
+        }
+    });
+
+		cboProvincia.addActionListener(e -> {
+			if (cboProvincia.getSelectedItem() == null) return;
+
+			cboDistrito.setEnabled(true);
+			cargarDistritos();
+
+			if (!modoEdicion) {
+				cboDistrito.setSelectedIndex(-1);
+			}
+		});
+	}
+	
     
-    private void cargarDepartamentos() {
-        cboDepartamento.removeAllItems();
-        ubigeoService.listarDepartamentos()
-                     .forEach(cboDepartamento::addItem);
-    }
-    
-    private void cargarProvincias() {
-        cboProvincia.removeAllItems();
-        cboDistrito.removeAllItems();
+	private void cargarDepartamentos() {
+		cboDepartamento.removeAllItems();
+		ubigeoService.listarDepartamentos()
+				 .forEach(cboDepartamento::addItem);
+	}
 
-        Departamento d = (Departamento) cboDepartamento.getSelectedItem();
-        if (d == null) return;
+	private void cargarProvincias() {
+		cboProvincia.removeAllItems();
+		cboDistrito.removeAllItems();
 
-        ubigeoService.listarProvincias(d.getIdDepartamento())
-                     .forEach(cboProvincia::addItem);
+		Departamento d = (Departamento) cboDepartamento.getSelectedItem();
+		if (d == null) return;
 
-        cboProvincia.setSelectedIndex(-1);
-    }
-    
-    private void cargarDistritos() {
-        cboDistrito.removeAllItems();
+		ubigeoService.listarProvincias(d.getIdDepartamento())
+				 .forEach(cboProvincia::addItem);
+	}
 
-        Provincia p = (Provincia) cboProvincia.getSelectedItem();
-        if (p == null) return;
+	private void cargarDistritos() {
+		cboDistrito.removeAllItems();
 
-        ubigeoService.listarDistritos(p.getIdProvincia())
-                     .forEach(cboDistrito::addItem);
+		Provincia p = (Provincia) cboProvincia.getSelectedItem();
+		if (p == null) return;
 
-        cboDistrito.setSelectedIndex(-1);
-    }
+		ubigeoService.listarDistritos(p.getIdProvincia())
+				 .forEach(cboDistrito::addItem);
+	}
+	
+	private void cargarUbigeo(Expediente exp) 
+	{
+		if (exp == null) return;
+		modoEdicion = true;
+		seleccionarDepartamento(exp.getDepartamento());
+		seleccionarProvincia(exp.getProvincia());
+		seleccionarDistrito(exp.getDistrito());
+		modoEdicion = false;
+	}
+	
+		
     
     public void cargarExpediente(String idExpediente) throws Exception 
-    {        
+    {
+        if(idExpediente != null) 
+        {
+                modoEdicion = true;
+                idExpedienteOculto = Integer.parseInt(idExpediente);
+        } 
+        else 
+        {
+                modoEdicion = false;
+                idExpedienteOculto = null;
+        }
+
+        if(!modoEdicion) return;
+        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
         idExpedienteOculto = lista.getIdExpediente();
         
@@ -206,6 +227,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         
         //distrito
         //seleccionarEstadoEnCombo(cboDistrito, lista.getDistrito());
+	SwingUtilities.invokeLater(() -> cargarUbigeo(lista));
 
         //direccionDomiciliaria
         seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
@@ -220,6 +242,37 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         textCelular.setText(lista.getCelular());
         
     }
+	
+	private void seleccionarDepartamento(int idDepartamento) {
+    for (int i = 0; i < cboDepartamento.getItemCount(); i++) {
+        Departamento d = (Departamento) cboDepartamento.getItemAt(i);
+        if (d.getIdDepartamento() == idDepartamento) {
+            cboDepartamento.setSelectedIndex(i);
+            return;
+        }
+    }
+	}
+
+	private void seleccionarProvincia(int idProvincia) {
+    for (int i = 0; i < cboProvincia.getItemCount(); i++) {
+        Provincia p = (Provincia) cboProvincia.getItemAt(i);
+        if (p.getIdProvincia() == idProvincia) {
+            cboProvincia.setSelectedIndex(i);
+            return;
+        }
+    }
+}
+
+private void seleccionarDistrito(int idDistrito) {
+    for (int i = 0; i < cboDistrito.getItemCount(); i++) {
+        Distrito d = (Distrito) cboDistrito.getItemAt(i);
+        if (d.getIdDistrito() == idDistrito) {
+            cboDistrito.setSelectedIndex(i);
+            return;
+        }
+    }
+}
+	
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
     {
@@ -303,10 +356,16 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
             cboUnidadOrganica.addItem(catalogoitem);
         }
     }
-    
-      
-    private void limpiarCampos() 
+         
+    private void limpiarFormulario() 
     {
+        // Ubigeo
+        cboDepartamento.setSelectedIndex(-1);
+        cboProvincia.removeAllItems();
+        cboProvincia.setEnabled(false);
+        cboDistrito.removeAllItems();
+        cboDistrito.setEnabled(false);
+	
         // Limpiar JTextFields
         textApellidosNombreRemitente.setText("");
         textNumeroDocumentoTitular.setText("");
@@ -314,6 +373,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         textDniRemitente.setText("");
         textApellidosNombreTitular.setText("");
         textNumeroTramiteDocumento.setText("");
+        textCelular.setText("");
         //spFechaSolicitud.setText("");
 
         // Resetear JComboBoxes al primer elemento
@@ -323,7 +383,6 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
         if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
     }
-
     
     private void validarGuardar()
     {
@@ -873,7 +932,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
 
     private void btnLimpiarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarActionPerformed
         // TODO add your handling code here:
-        limpiarCampos();
+        limpiarFormulario();
     }//GEN-LAST:event_btnLimpiarActionPerformed
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
@@ -882,8 +941,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
     }//GEN-LAST:event_btnRegresarActionPerformed
 
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
-                                                  
-        try 
+                                                
+     try 
         {
             Expediente expediente = new Expediente();  
             this.validarGuardar();
@@ -955,18 +1014,18 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
             expediente.setApellidoNombreTitular(textApellidosNombreTitular.getText());
             
             //departamento
-            CatalogoItem catalogoDepartamento = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
-            int idDepartamento = catalogoDepartamento.getIdCatalogoItem();            
+            Departamento departamento = (Departamento) cboDepartamento.getSelectedItem();
+            int idDepartamento = departamento.getIdDepartamento();
             expediente.setDepartamento(idDepartamento);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //provincia
-            CatalogoItem catalogoProvincia = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
-            int idProvincia = catalogoProvincia.getIdCatalogoItem();            
+            Provincia provincia = (Provincia) cboProvincia.getSelectedItem();
+            int idProvincia = provincia.getIdProvincia();         
             expediente.setProvincia(idProvincia);
             
             //distrito
-            CatalogoItem catalogoDistrito = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
-            int idDistrito = catalogoDistrito.getIdCatalogoItem();            
+            Distrito distrito = (Distrito) cboDistrito.getSelectedItem();
+            int idDistrito = distrito.getIdDistrito();        
             expediente.setDistrito(idDistrito);             //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //direccionDomiciliaria
@@ -982,42 +1041,36 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
             
             //celular
             expediente.setCelular(textCelular.getText());
+            Enumerado.EstadoExpediente estadoCreacionExpediente = Enumerado.EstadoExpediente.RegistroExpediente;
             
-            
-                                             
-            ExpedienteResponse response;              
-            
+            ExpedienteResponse response;                         
+             
             if(idExpedienteOculto == 0)
             {
                 //idUsuarioCrea
                 //fechaRegistra      
                 
                 //estado
-                expediente.setEstado(56);
+                expediente.setEstado(estadoCreacionExpediente.getId());
                 
                 response = expedienteService.agregarExpediente(expediente);
-                JOptionPane.showMessageDialog(this,
-                    "Expediente registrado correctamente.\nID generado: " + response.getIdExpediente(),
-                    "Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this,"Expediente registrado correctamente.\nID generado: " + response.getIdExpediente(),"Éxito",JOptionPane.INFORMATION_MESSAGE);
             }                
             else
             {
+                //estado
+                expediente.setEstado(estadoCreacionExpediente.getId());
+                
                 //idExpediente
                 expediente.setIdExpediente(idExpedienteOculto);                
                 //idUsuarioModifica
                 //fechaModifica
                 
                 response = expedienteService.actualizarExpediente(expediente);
-                JOptionPane.showMessageDialog(this,
-                    "Expediente actualizo correctamente.\nID generado: " + response.getIdExpediente(),
-                    "Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
-                
+                JOptionPane.showMessageDialog(this,"Expediente actualizo correctamente.\nID generado: " + response.getIdExpediente(),"Éxito",JOptionPane.INFORMATION_MESSAGE);                
                 idExpedienteOculto = 0;
-            }    
-           
-            limpiarCampos();
+            }           
+            limpiarFormulario();
         } 
         catch (Exception ex) 
         {
