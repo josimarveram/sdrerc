@@ -9,6 +9,7 @@ import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.ui.views.expedientes.JPanelListadoRegistroExpediente;
 import com.sdrerc.ui.views.expedientesAsignados.JPanelListadoExpedientesAsignados;
 import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTrabajar;
+import com.sdrerc.ui.views.expedientesPorVerificar.JPanelListadoExpedientesPorVerificar;
 import com.sdrerc.ui.views.home.jPanelHome;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.crear.JPanelListadoUsuario;
@@ -71,9 +72,11 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpedientesAsignados = new javax.swing.JButton();
         jSeparator2 = new javax.swing.JSeparator();
         btnRole = new javax.swing.JButton();
-        btnMenuExpedientesPorTrabajar = new javax.swing.JButton();
+        btnMenuExpedientesPorNotificar = new javax.swing.JButton();
         btnMenuAsignacion1 = new javax.swing.JButton();
         btnMenuUsuario1 = new javax.swing.JButton();
+        btnMenuExpedientesPorTrabajar = new javax.swing.JButton();
+        btnMenuExpedientesPorVerificar = new javax.swing.JButton();
         jPanelHeader = new javax.swing.JPanel();
         lbl_TituloFormulario = new javax.swing.JLabel();
         jPanelBody = new javax.swing.JPanel();
@@ -83,7 +86,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         setMaximumSize(null);
         setMinimumSize(null);
 
-        background.setBackground(new java.awt.Color(255, 255, 255));
+        background.setBackground(new java.awt.Color(25, 120, 210));
         background.setMinimumSize(new java.awt.Dimension(0, 0));
         background.setPreferredSize(new java.awt.Dimension(1180, 640));
 
@@ -137,7 +140,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpedientesAsignados.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuExpedientesAsignados.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuExpedientesAsignados.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuExpedientesAsignados.setText("Exp. Asignados");
+        btnMenuExpedientesAsignados.setText("EXP. ASIGNADOS");
         btnMenuExpedientesAsignados.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuExpedientesAsignados.setBorderPainted(false);
         btnMenuExpedientesAsignados.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -175,25 +178,25 @@ public class MenuPrincipal extends javax.swing.JFrame {
                 btnRoleActionPerformed(evt);
             }
         });
-        jpanelMenu.add(btnRole, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 420, 270, 50));
+        jpanelMenu.add(btnRole, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 520, 270, 50));
 
-        btnMenuExpedientesPorTrabajar.setBackground(new java.awt.Color(25, 120, 210));
-        btnMenuExpedientesPorTrabajar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
-        btnMenuExpedientesPorTrabajar.setForeground(new java.awt.Color(255, 255, 255));
-        btnMenuExpedientesPorTrabajar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuExpedientesPorTrabajar.setText("Exp. Por Trabajar");
-        btnMenuExpedientesPorTrabajar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
-        btnMenuExpedientesPorTrabajar.setBorderPainted(false);
-        btnMenuExpedientesPorTrabajar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
-        btnMenuExpedientesPorTrabajar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        btnMenuExpedientesPorTrabajar.setIconTextGap(10);
-        btnMenuExpedientesPorTrabajar.setInheritsPopupMenu(true);
-        btnMenuExpedientesPorTrabajar.addMouseListener(new java.awt.event.MouseAdapter() {
+        btnMenuExpedientesPorNotificar.setBackground(new java.awt.Color(25, 120, 210));
+        btnMenuExpedientesPorNotificar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
+        btnMenuExpedientesPorNotificar.setForeground(new java.awt.Color(255, 255, 255));
+        btnMenuExpedientesPorNotificar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
+        btnMenuExpedientesPorNotificar.setText("Exp. Por Notificar");
+        btnMenuExpedientesPorNotificar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
+        btnMenuExpedientesPorNotificar.setBorderPainted(false);
+        btnMenuExpedientesPorNotificar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        btnMenuExpedientesPorNotificar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        btnMenuExpedientesPorNotificar.setIconTextGap(10);
+        btnMenuExpedientesPorNotificar.setInheritsPopupMenu(true);
+        btnMenuExpedientesPorNotificar.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                btnMenuExpedientesPorTrabajarMouseClicked(evt);
+                btnMenuExpedientesPorNotificarMouseClicked(evt);
             }
         });
-        jpanelMenu.add(btnMenuExpedientesPorTrabajar, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 320, 270, 50));
+        jpanelMenu.add(btnMenuExpedientesPorNotificar, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 410, 270, 50));
 
         btnMenuAsignacion1.setBackground(new java.awt.Color(25, 120, 210));
         btnMenuAsignacion1.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
@@ -234,7 +237,43 @@ public class MenuPrincipal extends javax.swing.JFrame {
                 btnMenuUsuario1ActionPerformed(evt);
             }
         });
-        jpanelMenu.add(btnMenuUsuario1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 370, 270, 50));
+        jpanelMenu.add(btnMenuUsuario1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 470, 270, 50));
+
+        btnMenuExpedientesPorTrabajar.setBackground(new java.awt.Color(25, 120, 210));
+        btnMenuExpedientesPorTrabajar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
+        btnMenuExpedientesPorTrabajar.setForeground(new java.awt.Color(255, 255, 255));
+        btnMenuExpedientesPorTrabajar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
+        btnMenuExpedientesPorTrabajar.setText("Exp. Por Trabajar");
+        btnMenuExpedientesPorTrabajar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
+        btnMenuExpedientesPorTrabajar.setBorderPainted(false);
+        btnMenuExpedientesPorTrabajar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        btnMenuExpedientesPorTrabajar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        btnMenuExpedientesPorTrabajar.setIconTextGap(10);
+        btnMenuExpedientesPorTrabajar.setInheritsPopupMenu(true);
+        btnMenuExpedientesPorTrabajar.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                btnMenuExpedientesPorTrabajarMouseClicked(evt);
+            }
+        });
+        jpanelMenu.add(btnMenuExpedientesPorTrabajar, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 310, 270, 50));
+
+        btnMenuExpedientesPorVerificar.setBackground(new java.awt.Color(25, 120, 210));
+        btnMenuExpedientesPorVerificar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
+        btnMenuExpedientesPorVerificar.setForeground(new java.awt.Color(255, 255, 255));
+        btnMenuExpedientesPorVerificar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
+        btnMenuExpedientesPorVerificar.setText("Exp. Por Verificar");
+        btnMenuExpedientesPorVerificar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
+        btnMenuExpedientesPorVerificar.setBorderPainted(false);
+        btnMenuExpedientesPorVerificar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        btnMenuExpedientesPorVerificar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        btnMenuExpedientesPorVerificar.setIconTextGap(10);
+        btnMenuExpedientesPorVerificar.setInheritsPopupMenu(true);
+        btnMenuExpedientesPorVerificar.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                btnMenuExpedientesPorVerificarMouseClicked(evt);
+            }
+        });
+        jpanelMenu.add(btnMenuExpedientesPorVerificar, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 360, 270, 50));
 
         jPanelHeader.setPreferredSize(new java.awt.Dimension(900, 60));
 
@@ -338,15 +377,15 @@ public class MenuPrincipal extends javax.swing.JFrame {
         ShowJPanel(new JPanelListadoRole());
     }//GEN-LAST:event_btnRoleMouseClicked
 
-    private void btnMenuExpedientesPorTrabajarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorTrabajarMouseClicked
+    private void btnMenuExpedientesPorNotificarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorNotificarMouseClicked
         try {
-            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR TRABAJAR");
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR NOTIFICAR");
             ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
             // TODO add your handling code here:
         } catch (Exception ex) {
             Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }//GEN-LAST:event_btnMenuExpedientesPorTrabajarMouseClicked
+    }//GEN-LAST:event_btnMenuExpedientesPorNotificarMouseClicked
 
     private void btnMenuAsignacion1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuAsignacion1MouseClicked
         // TODO add your handling code here:
@@ -378,6 +417,34 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private void btnMenuUsuario1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuUsuario1ActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_btnMenuUsuario1ActionPerformed
+
+    private void btnMenuExpedientesPorTrabajarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorTrabajarMouseClicked
+        // TODO add your handling code here:
+        try 
+        {
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR TRABAJAR");
+            ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
+            // TODO add your handling code here:
+        } 
+        catch (Exception ex) 
+        {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnMenuExpedientesPorTrabajarMouseClicked
+
+    private void btnMenuExpedientesPorVerificarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorVerificarMouseClicked
+        // TODO add your handling code here:
+        try 
+        {
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR VERIFICAR");
+            ShowJPanel(new JPanelListadoExpedientesPorVerificar());
+            // TODO add your handling code here:
+        } 
+        catch (Exception ex) 
+        {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnMenuExpedientesPorVerificarMouseClicked
 
     /**
      * @param args the command line arguments
@@ -424,7 +491,9 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private javax.swing.JButton btnMenuAsignacion1;
     private javax.swing.JButton btnMenuExpediente;
     private javax.swing.JButton btnMenuExpedientesAsignados;
+    private javax.swing.JButton btnMenuExpedientesPorNotificar;
     private javax.swing.JButton btnMenuExpedientesPorTrabajar;
+    private javax.swing.JButton btnMenuExpedientesPorVerificar;
     private javax.swing.JButton btnMenuHome;
     private javax.swing.JButton btnMenuUsuario1;
     private javax.swing.JButton btnRole;
