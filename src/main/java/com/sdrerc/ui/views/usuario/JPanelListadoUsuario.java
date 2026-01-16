@@ -2,10 +2,13 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
-package com.sdrerc.ui.views.role;
+package com.sdrerc.ui.views.usuario;
 
+import com.sdrerc.ui.views.role.*;
 import com.sdrerc.application.RoleService;
+import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.Role;
+import com.sdrerc.domain.model.User;
 import com.sdrerc.ui.table.ButtonEditor;
 import com.sdrerc.ui.table.ButtonRenderer;
 import java.awt.Dialog;
@@ -20,11 +23,11 @@ import javax.swing.table.DefaultTableModel;
  *
  * @author David
  */
-public class JPanelListadoRole extends javax.swing.JPanel {
+public class JPanelListadoUsuario extends javax.swing.JPanel {
 
     private DefaultTableModel model;
     private Role role;
-    private RoleService roleService; // 👈 AQUÍ
+    private UserService userService; // 👈 AQUÍ
     private Long roleIdSeleccionado;
     private String roleNameSeleccionado;
     private String roleDescriptionSeleccionado;
@@ -39,10 +42,10 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     /**
      * Creates new form JPanelListadoRole
      */
-    public JPanelListadoRole() {
+    public JPanelListadoUsuario() {
         initComponents();
         role = new Role();
-        roleService = new RoleService(); // 👈 SE INICIALIZA AQUÍ        
+        userService = new UserService(); // 👈 SE INICIALIZA AQUÍ        
         initTable();
         initFiltros(); 
         initEventos(); 
@@ -61,7 +64,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     
     private void initEventos() {
         
-        
+        /*
         tblRoles.getColumn("EDITAR")
         .setCellRenderer(new ButtonRenderer("Editar"));
         tblRoles.getColumn("EDITAR")
@@ -73,7 +76,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                 .setCellEditor(new ButtonEditor(tblRoles, this, 5));
         
         
-        txtBuscarRol.addKeyListener(new java.awt.event.KeyAdapter() {
+        txtBuscarUsuario.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
@@ -90,6 +93,8 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                 }
             }
         });
+        
+        */
     }
     
     
@@ -128,6 +133,8 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     }
     
     public void cambiarEstadoDesdeTabla(int row) {
+        
+        /*
         Long id = Long.parseLong(model.getValueAt(row, 0).toString());
         String estadoActual = model.getValueAt(row, 3).toString();
         String nuevoEstado = estadoActual.equals("ACTIVE") ? "INACTIVE" : "ACTIVE";
@@ -161,20 +168,21 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                 JOptionPane.showMessageDialog(this, e.getMessage());
             }
         }
+        */
     }
     
     private void buscarRoles() {
         try {
             model.setRowCount(0);
 
-            String nombre = txtBuscarRol.getText().trim();
+            String nombre = txtBuscarUsuario.getText().trim();
             String estado = cboFiltroEstado.getSelectedItem().toString();
 
-            for (Role r : roleService.buscar(nombre, estado)) {
+            for (User r : userService.buscar(nombre, estado)) {
                 model.addRow(new Object[]{
-                    r.getRoleId(),
-                    r.getRoleName(),
-                    r.getDescription(),
+                    r.getUserId(),
+                    r.getUsername(),
+                    r.getFullName(),
                     r.getStatus(),
                     "Editar",
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar"
@@ -186,7 +194,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     }
     
     private void resetFiltros() {
-        txtBuscarRol.setText("");
+        txtBuscarUsuario.setText("");
         cboFiltroEstado.setSelectedIndex(0);
         buscarRoles();
     }
@@ -220,7 +228,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         jScrollPane2 = new javax.swing.JScrollPane();
         tblRoles = new javax.swing.JTable();
         jLabel7 = new javax.swing.JLabel();
-        txtBuscarRol = new javax.swing.JTextField();
+        txtBuscarUsuario = new javax.swing.JTextField();
         jLabel8 = new javax.swing.JLabel();
 
         cmbEstado.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
@@ -288,7 +296,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
 
         jLabel2.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel2.setText("MANTENIMIENTO DE ROLES");
+        jLabel2.setText("MANTENIMIENTO DE USUARIOS");
         jLabel2.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
 
         btnNuevo1.setText("NUEVO");
@@ -330,11 +338,11 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         });
         jScrollPane2.setViewportView(tblRoles);
 
-        jLabel7.setText("Buscar rol:");
+        jLabel7.setText("Buscar usuario:");
 
-        txtBuscarRol.addActionListener(new java.awt.event.ActionListener() {
+        txtBuscarUsuario.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtBuscarRolActionPerformed(evt);
+                txtBuscarUsuarioActionPerformed(evt);
             }
         });
 
@@ -349,9 +357,9 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 632, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 66, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(txtBuscarRol, javax.swing.GroupLayout.PREFERRED_SIZE, 151, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 82, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(txtBuscarUsuario, javax.swing.GroupLayout.PREFERRED_SIZE, 129, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
                         .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 66, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -375,7 +383,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(btnBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnLimpiar1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtBuscarRol, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtBuscarUsuario, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(cboFiltroEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -414,30 +422,15 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     }//GEN-LAST:event_cmbTipoBusquedaActionPerformed
 
     private void btnNuevo1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNuevo1ActionPerformed
-        /*
-        Window parent = SwingUtilities.getWindowAncestor(this);
-        DlgEditarRol dlg = new DlgEditarRol(parent, Dialog.ModalityType.APPLICATION_MODAL, null, roleService);
-        dlg.setLocationRelativeTo(parent);
-        dlg.setVisible(true);
-        buscarRoles();
-        */
         
         /*
-        DefaultTableModel model = (DefaultTableModel) tblRoles.getModel();
-
-        Role role = new Role();
-        role.setRoleId(Long.parseLong(model.getValueAt(row, COL_ID).toString()));
-        role.setRoleName(model.getValueAt(row, COL_NOMBRE).toString());
-        role.setDescription(model.getValueAt(row, COL_DESCRIPCION).toString());
-        role.setStatus(model.getValueAt(row, COL_ESTADO).toString());
-        */
-
         Window parent = SwingUtilities.getWindowAncestor(this);
         DlgEditarRol dlg = new DlgEditarRol(parent, Dialog.ModalityType.APPLICATION_MODAL, role, roleService,false);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
 
         buscarRoles();
+        */
         
         
     }//GEN-LAST:event_btnNuevo1ActionPerformed
@@ -456,9 +449,9 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         
     }//GEN-LAST:event_tblRolesMouseClicked
 
-    private void txtBuscarRolActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtBuscarRolActionPerformed
+    private void txtBuscarUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtBuscarUsuarioActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_txtBuscarRolActionPerformed
+    }//GEN-LAST:event_txtBuscarUsuarioActionPerformed
     
     
     private void initTable() {
@@ -475,7 +468,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     }
     
     public void editarDesdeTabla(int row) { 
-        
+        /*
         DefaultTableModel model = (DefaultTableModel) tblRoles.getModel();
 
         Role role = new Role();
@@ -490,6 +483,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         dlg.setVisible(true);
 
         buscarRoles();
+        */
         
         /*
         roleIdSeleccionado = Long.parseLong(model.getValueAt(row, 0).toString());
@@ -553,7 +547,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTable jTable1;
     private javax.swing.JTable tblRoles;
-    private javax.swing.JTextField txtBuscarRol;
+    private javax.swing.JTextField txtBuscarUsuario;
     private javax.swing.JTextField txtValorBusqueda;
     // End of variables declaration//GEN-END:variables
 }

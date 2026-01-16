@@ -6,6 +6,7 @@ package com.sdrerc.application;
 
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.repository.UserRepository;
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -22,5 +23,9 @@ public class UserService {
 
     public List<User> execute(String filter) {
         return repo.findAll(filter);
+    }
+    
+    public List<User> buscar(String nombre, String estado) throws SQLException{
+        return repo.buscar(nombre, estado);
     }
 }

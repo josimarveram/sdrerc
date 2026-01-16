@@ -95,6 +95,44 @@ public class UserRepository {
         return list;
     }
     
+    public List<User> buscar(String nombre, String estado) throws SQLException {
+
+        List<User> lista = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT USER_ID, USERNAME, FULL_NAME, STATUS ");
+        sql.append("FROM APP_USERS ");
+        sql.append("WHERE UPPER(USERNAME) LIKE ? ");
+
+        if (!"TODOS".equals(estado)) {
+            sql.append(" AND STATUS = ? ");
+        }
+
+        sql.append(" ORDER BY USER_ID ");
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql.toString())) {
+
+            ps.setString(1, "%" + nombre.toUpperCase() + "%");
+
+            if (!"TODOS".equals(estado)) {
+                ps.setString(2, estado);
+            }
+
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                lista.add(new User(
+                    rs.getLong("USER_ID"),
+                    rs.getString("USERNAME"),
+                    rs.getString("FULL_NAME"),
+                    rs.getString("STATUS")
+                ));
+            }
+        }
+        return lista;
+    }
+    
     public void deactivate(Long userId) {
         String sql = "UPDATE APP_USERS SET STATUS = 'INACTIVE' WHERE USER_ID = ?";
         try (Connection conn = OracleConnection.getConnection();

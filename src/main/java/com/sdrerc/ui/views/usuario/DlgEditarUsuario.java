@@ -2,8 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JDialog.java to edit this template
  */
-package com.sdrerc.ui.views.role;
+package com.sdrerc.ui.views.usuario;
 
+import com.sdrerc.ui.views.role.*;
 import com.sdrerc.application.RoleService;
 import com.sdrerc.domain.model.Role;
 import java.awt.Window;
@@ -16,7 +17,7 @@ import javax.swing.JOptionPane;
  *
  * @author David
  */
-public class DlgEditarRol extends javax.swing.JDialog {
+public class DlgEditarUsuario extends javax.swing.JDialog {
 
     /**
      * Creates new form DlgEditarRol
@@ -26,7 +27,7 @@ public class DlgEditarRol extends javax.swing.JDialog {
     private RoleService roleService;
     private boolean modoEdicion = false;
     
-    public DlgEditarRol(Window parent, ModalityType modalityType, Role role, RoleService roleService, boolean Edicion) {
+    public DlgEditarUsuario(Window parent, ModalityType modalityType, Role role, RoleService roleService, boolean Edicion) {
         super(parent, modalityType);
         initComponents();
         
@@ -168,7 +169,7 @@ public class DlgEditarRol extends javax.swing.JDialog {
         try {
             roleService.actualizar(role);
         } catch (SQLException ex) {
-            Logger.getLogger(DlgEditarRol.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DlgEditarUsuario.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         JOptionPane.showMessageDialog(this, "Rol actualizado correctamente");
@@ -183,7 +184,7 @@ public class DlgEditarRol extends javax.swing.JDialog {
         try {
             roleService.registrar(role);
         } catch (SQLException ex) {
-            Logger.getLogger(DlgEditarRol.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DlgEditarUsuario.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         JOptionPane.showMessageDialog(this, "Rol registrado correctamente");
@@ -208,14 +209,15 @@ public class DlgEditarRol extends javax.swing.JDialog {
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(DlgEditarRol.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(DlgEditarUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(DlgEditarRol.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(DlgEditarUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(DlgEditarRol.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(DlgEditarUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(DlgEditarRol.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(DlgEditarUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
         //</editor-fold>
 
         
