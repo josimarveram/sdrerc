@@ -6,12 +6,16 @@ package com.sdrerc.ui.views.usuario;
 
 import com.sdrerc.ui.views.role.*;
 import com.sdrerc.application.RoleService;
+import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.Role;
+import com.sdrerc.domain.model.User;
 import java.awt.Window;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import org.mindrot.jbcrypt.BCrypt;
 
 /**
  *
@@ -23,18 +27,18 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
      * Creates new form DlgEditarRol
      */
     
-    private Role role;
-    private RoleService roleService;
+    private User usuario;
+    private UserService userService;
     private boolean modoEdicion = false;
     
-    public DlgEditarUsuario(Window parent, ModalityType modalityType, Role role, RoleService roleService, boolean Edicion) {
+    public DlgEditarUsuario(Window parent, ModalityType modalityType, User usuario, UserService userService, boolean Edicion) {
         super(parent, modalityType);
         initComponents();
         
         modoEdicion = Edicion;
         inicializarCombo();
-        this.role = role;
-        this.roleService = roleService;
+        this.usuario = usuario;
+        this.userService = userService;
         cargarDatos();
         configurarBotones();
     }
@@ -42,7 +46,12 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
     private void configurarBotones() {
         btnGuardar.setVisible(!modoEdicion);
         btnActualizar.setVisible(modoEdicion);
-    }
+        
+        pwdPassword.setVisible(!modoEdicion);
+        pwdConfirmar.setVisible(!modoEdicion);
+        lblPassword.setVisible(!modoEdicion);
+        lblConfirmar.setVisible(!modoEdicion);        
+    }    
     
     private void inicializarCombo() {
         cboStatus.removeAllItems();
@@ -51,9 +60,9 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
     }
     
     private void cargarDatos() {
-        txtRoleName.setText(role.getRoleName());
-        txtDescription.setText(role.getDescription());
-        cboStatus.setSelectedItem(role.getStatus());
+        txtUsuario.setText(usuario.getUsername());
+        txtFullName.setText(usuario.getFullName());
+        cboStatus.setSelectedItem(usuario.getStatus());
     }
 
     /**
@@ -65,29 +74,33 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        txtRoleName = new javax.swing.JTextField();
+        txtUsuario = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
-        txtDescription = new javax.swing.JTextField();
+        txtFullName = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
         cboStatus = new javax.swing.JComboBox<>();
-        jLabel3 = new javax.swing.JLabel();
+        lblStatus = new javax.swing.JLabel();
         btnActualizar = new javax.swing.JButton();
         btnCancelar = new javax.swing.JButton();
         btnGuardar = new javax.swing.JButton();
+        lblPassword = new javax.swing.JLabel();
+        lblConfirmar = new javax.swing.JLabel();
+        pwdConfirmar = new javax.swing.JPasswordField();
+        pwdPassword = new javax.swing.JPasswordField();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
-        jLabel1.setText("Nombre:");
+        jLabel1.setText("Usuario:");
 
-        txtDescription.addActionListener(new java.awt.event.ActionListener() {
+        txtFullName.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtDescriptionActionPerformed(evt);
+                txtFullNameActionPerformed(evt);
             }
         });
 
-        jLabel2.setText("Descripción:");
+        jLabel2.setText("Fullname:");
 
-        jLabel3.setText("Estado:");
+        lblStatus.setText("Estado:");
 
         btnActualizar.setText("Actualizar");
         btnActualizar.addActionListener(new java.awt.event.ActionListener() {
@@ -97,6 +110,11 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
         });
 
         btnCancelar.setText("Cancelar");
+        btnCancelar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCancelarActionPerformed(evt);
+            }
+        });
 
         btnGuardar.setText("Guardar");
         btnGuardar.addActionListener(new java.awt.event.ActionListener() {
@@ -105,93 +123,146 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
             }
         });
 
+        lblPassword.setText("Contraseña:");
+
+        lblConfirmar.setText("Confirmar contraseña:");
+
+        pwdConfirmar.setText("jPasswordField1");
+
+        pwdPassword.setText("jPasswordField1");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addGap(31, 31, 31)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(cboStatus, 0, 151, Short.MAX_VALUE)
-                    .addComponent(txtDescription)
-                    .addComponent(txtRoleName))
-                .addGap(103, 103, 103))
-            .addGroup(layout.createSequentialGroup()
-                .addGap(25, 25, 25)
-                .addComponent(btnGuardar)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(btnActualizar)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(btnCancelar)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(btnGuardar, javax.swing.GroupLayout.PREFERRED_SIZE, 72, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnActualizar, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnCancelar))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(lblStatus, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(lblPassword, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(lblConfirmar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(31, 31, 31)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(cboStatus, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(txtUsuario, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(txtFullName, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(pwdConfirmar, javax.swing.GroupLayout.DEFAULT_SIZE, 148, Short.MAX_VALUE)
+                            .addComponent(pwdPassword))))
+                .addGap(114, 114, 114))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addGap(27, 27, 27)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txtRoleName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtUsuario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txtDescription, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtFullName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel2))
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 15, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cboStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3))
-                .addGap(39, 39, 39)
+                    .addComponent(lblPassword)
+                    .addComponent(pwdPassword, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblConfirmar, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pwdConfirmar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblStatus)
+                    .addComponent(cboStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(21, 21, 21)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnGuardar)
                     .addComponent(btnActualizar)
-                    .addComponent(btnCancelar)
-                    .addComponent(btnGuardar))
-                .addContainerGap(45, Short.MAX_VALUE))
+                    .addComponent(btnCancelar))
+                .addGap(31, 31, 31))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void txtDescriptionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtDescriptionActionPerformed
+    private void txtFullNameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtFullNameActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_txtDescriptionActionPerformed
+    }//GEN-LAST:event_txtFullNameActionPerformed
 
     private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnActualizarActionPerformed
         // TODO add your handling code here:
-        role.setRoleName(txtRoleName.getText().trim());
-        role.setDescription(txtDescription.getText().trim());
-        role.setStatus(cboStatus.getSelectedItem().toString());
+        usuario.setUsername(txtUsuario.getText().trim());
+        usuario.setFullName(txtFullName.getText().trim());
+        usuario.setStatus(cboStatus.getSelectedItem().toString());
 
         try {
-            roleService.actualizar(role);
+            userService.actualizar(usuario);
         } catch (SQLException ex) {
             Logger.getLogger(DlgEditarUsuario.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        JOptionPane.showMessageDialog(this, "Rol actualizado correctamente");
+        JOptionPane.showMessageDialog(this, "Usuario actualizado correctamente");
         dispose(); // cerrar popup
     }//GEN-LAST:event_btnActualizarActionPerformed
 
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
-        role.setRoleName(txtRoleName.getText().trim());
-        role.setDescription(txtDescription.getText().trim());
-        role.setStatus(cboStatus.getSelectedItem().toString());
-
+        
+        
+        this.validar();
+        
+        usuario.setUsername(txtUsuario.getText().trim());
+        usuario.setFullName(txtFullName.getText().trim());
+        usuario.setStatus(cboStatus.getSelectedItem().toString());
+        
+        String rawPassword = new String(pwdPassword.getPassword());
+        String hash = BCrypt.hashpw(rawPassword, BCrypt.gensalt());
+        usuario.setPasswordHash(hash);
+        
         try {
-            roleService.registrar(role);
+            userService.registrar(usuario);
         } catch (SQLException ex) {
             Logger.getLogger(DlgEditarUsuario.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        JOptionPane.showMessageDialog(this, "Rol registrado correctamente");
+        JOptionPane.showMessageDialog(this, "Usuario registrado correctamente");
         dispose();
         // TODO add your handling code here:
     }//GEN-LAST:event_btnGuardarActionPerformed
 
+    private void btnCancelarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelarActionPerformed
+        dispose();
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnCancelarActionPerformed
+
+    private boolean validar() {
+
+        if (txtUsuario.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Ingrese usuario");
+            return false;
+        }
+
+        if (pwdPassword.getPassword().length == 0) {
+            JOptionPane.showMessageDialog(this,"La contraseña es obligatoria");
+            return false;
+        }
+
+        if (!Arrays.equals(pwdPassword.getPassword(), pwdConfirmar.getPassword())) {
+            JOptionPane.showMessageDialog(this,"Las contraseñas no coinciden");
+            return false;
+        }
+
+        return true;
+    }
+    
     /**
      * @param args the command line arguments
      */
@@ -230,8 +301,12 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
     private javax.swing.JComboBox<String> cboStatus;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JTextField txtDescription;
-    private javax.swing.JTextField txtRoleName;
+    private javax.swing.JLabel lblConfirmar;
+    private javax.swing.JLabel lblPassword;
+    private javax.swing.JLabel lblStatus;
+    private javax.swing.JPasswordField pwdConfirmar;
+    private javax.swing.JPasswordField pwdPassword;
+    private javax.swing.JTextField txtFullName;
+    private javax.swing.JTextField txtUsuario;
     // End of variables declaration//GEN-END:variables
 }

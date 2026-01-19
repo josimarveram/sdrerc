@@ -7,9 +7,9 @@ package com.sdrerc.ui.views.usuario;
 import com.sdrerc.ui.views.role.*;
 import com.sdrerc.application.RoleService;
 import com.sdrerc.application.UserService;
-import com.sdrerc.domain.model.Role;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.ui.table.ButtonEditor;
+import com.sdrerc.ui.table.ButtonEditorUsuario;
 import com.sdrerc.ui.table.ButtonRenderer;
 import java.awt.Dialog;
 import java.awt.Window;
@@ -26,8 +26,9 @@ import javax.swing.table.DefaultTableModel;
 public class JPanelListadoUsuario extends javax.swing.JPanel {
 
     private DefaultTableModel model;
-    private Role role;
     private UserService userService; // 👈 AQUÍ
+    private RoleService roleService; // 👈 AQUÍ
+    private User usuario;
     private Long roleIdSeleccionado;
     private String roleNameSeleccionado;
     private String roleDescriptionSeleccionado;
@@ -39,19 +40,22 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private static final int COL_ESTADO = 3;
     private static final int COL_EDITAR = 4;
     private static final int COL_ACTIVAR = 5;
+    private static final int COL_RESET = 6;
+    private static final int COL_ASIGNAR_ROL = 7;
     /**
      * Creates new form JPanelListadoRole
      */
     public JPanelListadoUsuario() {
         initComponents();
-        role = new Role();
-        userService = new UserService(); // 👈 SE INICIALIZA AQUÍ        
+        usuario = new User();
+        userService = new UserService(); // 👈 SE INICIALIZA AQUÍ   
+        roleService = new RoleService(); // 👈 SE INICIALIZA AQUÍ      
         initTable();
         initFiltros(); 
         initEventos(); 
         configurarEventosTabla(); // 👈 AQUÍ
         //cargarRoles();
-        buscarRoles();
+        buscarUsuarios();
         
     }
     
@@ -64,48 +68,58 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     
     private void initEventos() {
         
-        /*
-        tblRoles.getColumn("EDITAR")
+        
+        tblUsuarios.getColumn("EDITAR")
         .setCellRenderer(new ButtonRenderer("Editar"));
-        tblRoles.getColumn("EDITAR")
-                .setCellEditor(new ButtonEditor(tblRoles, this, 4));
+        tblUsuarios.getColumn("EDITAR")
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 4));
 
-        tblRoles.getColumn("ACTIVAR")
+        tblUsuarios.getColumn("ACTIVAR")
                 .setCellRenderer(new ButtonRenderer("Activar / Inactivar"));
-        tblRoles.getColumn("ACTIVAR")
-                .setCellEditor(new ButtonEditor(tblRoles, this, 5));
+        tblUsuarios.getColumn("ACTIVAR")
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 5));
+        
+        tblUsuarios.getColumn("CAMBIAR_CLAVE")
+        .setCellRenderer(new ButtonRenderer("Resetear"));
+        tblUsuarios.getColumn("CAMBIAR_CLAVE")
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 6));
+        
+        tblUsuarios.getColumn("ASIGNAR_ROL")
+        .setCellRenderer(new ButtonRenderer("Asignar Rol"));
+        tblUsuarios.getColumn("ASIGNAR_ROL")
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 7));
         
         
         txtBuscarUsuario.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-                    buscarRoles();
+                    buscarUsuarios();
                 }
             }
         });
         
-        tblRoles.addMouseListener(new java.awt.event.MouseAdapter() {
+        tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                if (evt.getClickCount() == 2 && tblRoles.getSelectedRow() != -1) {
+                if (evt.getClickCount() == 2 && tblUsuarios.getSelectedRow() != -1) {
                     cargarRolDesdeTabla();
                 }
             }
         });
         
-        */
+        
     }
     
     
     private void configurarEventosTabla() {
 
-        tblRoles.addMouseListener(new MouseAdapter() {
+        tblUsuarios.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
 
-                int row = tblRoles.rowAtPoint(e.getPoint());
-                int col = tblRoles.columnAtPoint(e.getPoint());
+                int row = tblUsuarios.rowAtPoint(e.getPoint());
+                int col = tblUsuarios.columnAtPoint(e.getPoint());
 
                 if (row < 0 || col < 0) return;
 
@@ -118,13 +132,25 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                 if (col == COL_EDITAR) {
                     editarDesdeTabla(row);
                 }
+                
+                // Columna RESET
+                if (col == COL_RESET) {
+                    resetearClaveDesdeTabla(row);
+                }
+                
+                // Columna COL_ASIGNAR_ROL
+                if (col == COL_ASIGNAR_ROL) {
+                    asignarRolesDesdeTabla(row);
+                }
+                
+                
             }
         });
     }
     
     private void cargarRolDesdeTabla() {
 
-        int row = tblRoles.getSelectedRow();
+        int row = tblUsuarios.getSelectedRow();
         
         roleIdSeleccionado = Long.parseLong(model.getValueAt(row, 0).toString());
         roleNameSeleccionado = model.getValueAt(row, 1).toString();
@@ -133,8 +159,6 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     }
     
     public void cambiarEstadoDesdeTabla(int row) {
-        
-        /*
         Long id = Long.parseLong(model.getValueAt(row, 0).toString());
         String estadoActual = model.getValueAt(row, 3).toString();
         String nuevoEstado = estadoActual.equals("ACTIVE") ? "INACTIVE" : "ACTIVE";
@@ -148,11 +172,11 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
         if (r == JOptionPane.YES_OPTION) {
             try {
-                roleService.cambiarEstado(id, nuevoEstado);
+                userService.cambiarEstado(id, nuevoEstado);
                 
                 // 🔥 IMPORTANTE: cerrar edición si existe
-                if (tblRoles.isEditing()) {
-                    tblRoles.getCellEditor().stopCellEditing();
+                if (tblUsuarios.isEditing()) {
+                    tblUsuarios.getCellEditor().stopCellEditing();
                 }
                 
                 model.setValueAt(nuevoEstado, row, 3);
@@ -168,10 +192,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                 JOptionPane.showMessageDialog(this, e.getMessage());
             }
         }
-        */
     }
     
-    private void buscarRoles() {
+    private void buscarUsuarios() {
         try {
             model.setRowCount(0);
 
@@ -185,7 +208,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                     r.getFullName(),
                     r.getStatus(),
                     "Editar",
-                    r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar"
+                    r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar",
+                    "Resetear",
+                    "Asignar Rol",
                 });
             }
         } catch (Exception e) {
@@ -196,7 +221,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private void resetFiltros() {
         txtBuscarUsuario.setText("");
         cboFiltroEstado.setSelectedIndex(0);
-        buscarRoles();
+        buscarUsuarios();
     }
     
 
@@ -226,7 +251,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         btnLimpiar1 = new javax.swing.JButton();
         btnBusqueda = new javax.swing.JButton();
         jScrollPane2 = new javax.swing.JScrollPane();
-        tblRoles = new javax.swing.JTable();
+        tblUsuarios = new javax.swing.JTable();
         jLabel7 = new javax.swing.JLabel();
         txtBuscarUsuario = new javax.swing.JTextField();
         jLabel8 = new javax.swing.JLabel();
@@ -320,7 +345,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
             }
         });
 
-        tblRoles.setModel(new javax.swing.table.DefaultTableModel(
+        tblUsuarios.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
                 {},
                 {},
@@ -331,12 +356,12 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
             }
         ));
-        tblRoles.addMouseListener(new java.awt.event.MouseAdapter() {
+        tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                tblRolesMouseClicked(evt);
+                tblUsuariosMouseClicked(evt);
             }
         });
-        jScrollPane2.setViewportView(tblRoles);
+        jScrollPane2.setViewportView(tblUsuarios);
 
         jLabel7.setText("Buscar usuario:");
 
@@ -423,14 +448,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
     private void btnNuevo1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNuevo1ActionPerformed
         
-        /*
+        
         Window parent = SwingUtilities.getWindowAncestor(this);
-        DlgEditarRol dlg = new DlgEditarRol(parent, Dialog.ModalityType.APPLICATION_MODAL, role, roleService,false);
+        DlgEditarUsuario dlg = new DlgEditarUsuario(parent, Dialog.ModalityType.APPLICATION_MODAL, usuario, userService,false);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
 
-        buscarRoles();
-        */
+        buscarUsuarios();
+        
         
         
     }//GEN-LAST:event_btnNuevo1ActionPerformed
@@ -442,12 +467,12 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     }//GEN-LAST:event_btnLimpiar1ActionPerformed
 
     private void btnBusquedaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBusquedaActionPerformed
-        buscarRoles();        
+        buscarUsuarios();        
     }//GEN-LAST:event_btnBusquedaActionPerformed
 
-    private void tblRolesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblRolesMouseClicked
+    private void tblUsuariosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblUsuariosMouseClicked
         
-    }//GEN-LAST:event_tblRolesMouseClicked
+    }//GEN-LAST:event_tblUsuariosMouseClicked
 
     private void txtBuscarUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtBuscarUsuarioActionPerformed
         // TODO add your handling code here:
@@ -456,76 +481,76 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     
     private void initTable() {
         model = new DefaultTableModel(
-            new Object[]{"ID", "ROL", "DESCRIPCIÓN", "ESTADO", "EDITAR", "ACTIVAR"}, 0
+            new Object[]{"ID", "ROL", "DESCRIPCIÓN", "ESTADO", "EDITAR", "ACTIVAR","CAMBIAR_CLAVE","ASIGNAR_ROL"}, 0
         ) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 // Solo las columnas de botones
-                return column == 4 || column == 5;
+                return column == 4 || column == 5 || column == 6;
             }
         };
-        tblRoles.setModel(model);
+        tblUsuarios.setModel(model);
     }
     
     public void editarDesdeTabla(int row) { 
-        /*
-        DefaultTableModel model = (DefaultTableModel) tblRoles.getModel();
+        DefaultTableModel model = (DefaultTableModel) tblUsuarios.getModel();
 
-        Role role = new Role();
-        role.setRoleId(Long.parseLong(model.getValueAt(row, COL_ID).toString()));
-        role.setRoleName(model.getValueAt(row, COL_NOMBRE).toString());
-        role.setDescription(model.getValueAt(row, COL_DESCRIPCION).toString());
-        role.setStatus(model.getValueAt(row, COL_ESTADO).toString());
+        User usuario = new User();
+        usuario.setUserId(Long.parseLong(model.getValueAt(row, COL_ID).toString()));
+        usuario.setUsername(model.getValueAt(row, COL_NOMBRE).toString());
+        usuario.setFullName(model.getValueAt(row, COL_DESCRIPCION).toString());
+        usuario.setStatus(model.getValueAt(row, COL_ESTADO).toString());
 
         Window parent = SwingUtilities.getWindowAncestor(this);
-        DlgEditarRol dlg = new DlgEditarRol(parent, Dialog.ModalityType.APPLICATION_MODAL, role, roleService,true);
+        DlgEditarUsuario dlg = new DlgEditarUsuario(parent, Dialog.ModalityType.APPLICATION_MODAL, usuario, userService,true);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
 
-        buscarRoles();
-        */
-        
-        /*
-        roleIdSeleccionado = Long.parseLong(model.getValueAt(row, 0).toString());
-        roleNameSeleccionado = model.getValueAt(row, 1).toString();
-        roleDescriptionSeleccionado = model.getValueAt(row, 2).toString();
-        statusSeleccionado = model.getValueAt(row, 3).toString();     
-        
-        DefaultTableModel model = (DefaultTableModel) tblRoles.getModel();
-
-        txtRoleId.setText(model.getValueAt(row, COL_ID).toString());
-        txtRoleName.setText(model.getValueAt(row, COL_NOMBRE).toString());
-        txtDescription.setText(model.getValueAt(row, COL_DESCRIPCION).toString());
-        cboStatus.setSelectedItem(model.getValueAt(row, COL_ESTADO).toString());
-
-        modoEdicion = true;
-
-        btnGuardar.setEnabled(false);
-        btnActualizar.setEnabled(true);
-
-        txtRoleName.requestFocus();
-        */
+        buscarUsuarios();
         
     }
-    /*
-    private void cargarRoles() {
-        try {
-            model.setRowCount(0);
-            for (Role r : service.listar()) {
-                model.addRow(new Object[]{
-                    r.getRoleId(),
-                    r.getRoleName(),
-                    r.getDescription(),
-                    r.getStatus(),
-                    "Editar",
-                    r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar"
-                });
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, e.getMessage());
-        }
+    
+    public void resetearClaveDesdeTabla(int row) { 
+        DefaultTableModel model = (DefaultTableModel) tblUsuarios.getModel();
+        Long userId = (Long) model.getValueAt(row, COL_ID);
+
+        Window parent = SwingUtilities.getWindowAncestor(this);
+
+        DlgResetPasswordUsuario dlg = new DlgResetPasswordUsuario(
+                parent,
+                Dialog.ModalityType.APPLICATION_MODAL,
+                userId,
+                userService
+        );
+
+        dlg.setLocationRelativeTo(parent);
+        dlg.setVisible(true);
+        
+        buscarUsuarios();
     }
-    */
+    
+    public void asignarRolesDesdeTabla(int row) { 
+        DefaultTableModel model = (DefaultTableModel) tblUsuarios.getModel();
+        Long userId = (Long) model.getValueAt(row, COL_ID);
+
+        String username = model.getValueAt(row, 1).toString();
+        
+        Window parent = SwingUtilities.getWindowAncestor(this);
+
+        DlgAsignarRolesUsuario  dlg = new DlgAsignarRolesUsuario (
+                parent,
+                userId,
+                username,
+                userService,
+                roleService
+        );
+
+        dlg.setLocationRelativeTo(parent);
+        dlg.setVisible(true);
+        
+        buscarUsuarios();
+    }
+    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnBuscar;
@@ -546,7 +571,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTable jTable1;
-    private javax.swing.JTable tblRoles;
+    private javax.swing.JTable tblUsuarios;
     private javax.swing.JTextField txtBuscarUsuario;
     private javax.swing.JTextField txtValorBusqueda;
     // End of variables declaration//GEN-END:variables

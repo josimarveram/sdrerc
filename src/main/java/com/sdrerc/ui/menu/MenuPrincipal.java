@@ -12,7 +12,7 @@ import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTra
 import com.sdrerc.ui.views.expedientesPorVerificar.JPanelListadoExpedientesPorVerificar;
 import com.sdrerc.ui.views.home.jPanelHome;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
-import com.sdrerc.ui.views.usuario.crear.JPanelListadoUsuario;
+import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
 import java.awt.BorderLayout;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -400,8 +400,8 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
     private void btnRoleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRoleActionPerformed
          try {
-            lbl_TituloFormulario.setText("FORMULARIO USUARIO");
-            ShowJPanel(new JPanelListadoUsuario());
+            lbl_TituloFormulario.setText("FORMULARIO ROLE");
+            ShowJPanel(new JPanelListadoRole());
             // TODO add your handling code here:
         } catch (Exception ex) {
             Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
@@ -415,6 +415,13 @@ public class MenuPrincipal extends javax.swing.JFrame {
     }//GEN-LAST:event_btnMenuUsuario1MouseClicked
 
     private void btnMenuUsuario1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuUsuario1ActionPerformed
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO USUARIO");
+            ShowJPanel(new JPanelListadoUsuario());
+            // TODO add your handling code here:
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
         // TODO add your handling code here:
     }//GEN-LAST:event_btnMenuUsuario1ActionPerformed
 

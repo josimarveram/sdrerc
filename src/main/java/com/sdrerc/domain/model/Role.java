@@ -54,4 +54,8 @@ public class Role {
     public void setStatus(String status) {
         this.status = status;
     }
+    
+    public String toString() {
+        return roleName;
+    }
 }

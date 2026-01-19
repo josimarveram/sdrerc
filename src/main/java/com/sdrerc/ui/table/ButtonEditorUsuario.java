@@ -5,6 +5,7 @@
 package com.sdrerc.ui.table;
 
 import com.sdrerc.ui.views.role.JPanelListadoRole;
+import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -18,15 +19,15 @@ import javax.swing.table.TableCellEditor;
  *
  * @author David
  */
-public class ButtonEditor extends AbstractCellEditor
+public class ButtonEditorUsuario extends AbstractCellEditor
         implements TableCellEditor, ActionListener {
 
     private JButton button;
     private JTable table;
-    private JPanelListadoRole form;
+    private JPanelListadoUsuario form;
     private int column;
 
-    public ButtonEditor(JTable table, JPanelListadoRole form, int column) {
+    public ButtonEditorUsuario(JTable table, JPanelListadoUsuario form, int column) {
         this.table = table;
         this.form = form;
         this.column = column;
