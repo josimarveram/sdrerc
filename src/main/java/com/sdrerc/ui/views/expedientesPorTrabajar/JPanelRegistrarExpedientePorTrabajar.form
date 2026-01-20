@@ -485,7 +485,7 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" max="-2" attributes="0">
                           <Component id="jLabel19" pref="205" max="32767" attributes="0"/>
-                          <Component id="cboTipoProcedimientoRegistral1" max="32767" attributes="0"/>
+                          <Component id="cboPlantillaDocumento" max="32767" attributes="0"/>
                       </Group>
                       <EmptySpace min="-2" pref="28" max="-2" attributes="0"/>
                       <Component id="btnGenerarDocumento" min="-2" pref="168" max="-2" attributes="0"/>
@@ -500,7 +500,7 @@
                       <Component id="jLabel19" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="cboTipoProcedimientoRegistral1" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="cboPlantillaDocumento" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="btnGenerarDocumento" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace pref="17" max="32767" attributes="0"/>
@@ -509,7 +509,7 @@
             </DimensionLayout>
           </Layout>
           <SubComponents>
-            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral1">
+            <Component class="javax.swing.JComboBox" name="cboPlantillaDocumento">
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
@@ -568,7 +568,7 @@
                           <Group type="102" attributes="0">
                               <Group type="103" groupAlignment="0" max="-2" attributes="0">
                                   <Component id="jLabel24" alignment="0" pref="205" max="32767" attributes="0"/>
-                                  <Component id="cboTipoProcedimientoRegistral2" alignment="0" max="32767" attributes="0"/>
+                                  <Component id="cboTipoDocumentoAnalizado" alignment="0" max="32767" attributes="0"/>
                               </Group>
                               <EmptySpace min="-2" pref="26" max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
@@ -577,16 +577,16 @@
                                       <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                                   </Group>
                                   <Group type="102" alignment="0" attributes="0">
-                                      <Component id="textNumeroDocumentoTitular1" min="-2" pref="190" max="-2" attributes="0"/>
+                                      <Component id="textDescripcionDocumentoAnalisis" min="-2" pref="190" max="-2" attributes="0"/>
                                       <EmptySpace max="32767" attributes="0"/>
-                                      <Component id="btnGenerarDocumento1" min="-2" pref="40" max="-2" attributes="0"/>
+                                      <Component id="btnAgregarTipoAnalisis" min="-2" pref="40" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel27" min="-2" pref="183" max="-2" attributes="0"/>
-                                  <Component id="cboTipoProcedimientoRegistral3" min="-2" pref="290" max="-2" attributes="0"/>
+                                  <Component id="cboAnalisisAbogado" min="-2" pref="290" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace max="32767" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
@@ -608,14 +608,14 @@
                               <Component id="jLabel25" min="-2" max="-2" attributes="0"/>
                               <EmptySpace min="3" pref="3" max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="3" attributes="0">
-                                  <Component id="textNumeroDocumentoTitular1" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
-                                  <Component id="btnGenerarDocumento1" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                                  <Component id="textDescripcionDocumentoAnalisis" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                                  <Component id="btnAgregarTipoAnalisis" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                           <Group type="102" attributes="0">
                               <Component id="jLabel24" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="cboTipoProcedimientoRegistral2" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="cboTipoDocumentoAnalizado" min="-2" pref="40" max="-2" attributes="0"/>
                           </Group>
                       </Group>
                       <EmptySpace type="separate" max="-2" attributes="0"/>
@@ -625,7 +625,7 @@
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="jLabel27" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="cboTipoProcedimientoRegistral3" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="cboAnalisisAbogado" min="-2" pref="40" max="-2" attributes="0"/>
                               <EmptySpace min="-2" pref="14" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
@@ -647,13 +647,14 @@
 
               <Layout class="org.netbeans.modules.form.compat2.layouts.support.JScrollPaneSupportLayout"/>
               <SubComponents>
-                <Component class="javax.swing.JTable" name="jTable2">
+                <Component class="javax.swing.JTable" name="jTableDocumentosAnalisis">
                   <Properties>
                     <Property name="model" type="javax.swing.table.TableModel" editor="org.netbeans.modules.form.editors2.TableModelEditor">
-                      <Table columnCount="3" rowCount="4">
-                        <Column editable="true" title="N&#xaa;" type="java.lang.Object"/>
-                        <Column editable="true" title="Tipo Documento Generado" type="java.lang.Object"/>
-                        <Column editable="true" title="Documento" type="java.lang.Object"/>
+                      <Table columnCount="4" rowCount="4">
+                        <Column editable="false" title="N&#xaa;" type="java.lang.Object"/>
+                        <Column editable="false" title="Tipo Documento Generado" type="java.lang.Object"/>
+                        <Column editable="false" title="Descripci&#xf3;n" type="java.lang.Object"/>
+                        <Column editable="false" title="Accion" type="java.lang.Object"/>
                       </Table>
                     </Property>
                     <Property name="tableHeader" type="javax.swing.table.JTableHeader" editor="org.netbeans.modules.form.editors2.JTableHeaderEditor">
@@ -661,17 +662,17 @@
                     </Property>
                   </Properties>
                   <Events>
-                    <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jTable2MouseClicked"/>
+                    <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jTableDocumentosAnalisisMouseClicked"/>
                   </Events>
                 </Component>
               </SubComponents>
             </Container>
-            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral2">
+            <Component class="javax.swing.JComboBox" name="cboTipoDocumentoAnalizado">
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
             </Component>
-            <Component class="javax.swing.JButton" name="btnGenerarDocumento1">
+            <Component class="javax.swing.JButton" name="btnAgregarTipoAnalisis">
               <Properties>
                 <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
                   <Color blue="d2" green="78" red="19" type="rgb"/>
@@ -685,7 +686,7 @@
                 <Property name="text" type="java.lang.String" value="+"/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnGenerarDocumento1ActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnAgregarTipoAnalisisActionPerformed"/>
               </Events>
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel24">
@@ -701,10 +702,10 @@
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Arial" size="14" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="DNI / Nro Documento"/>
+                <Property name="text" type="java.lang.String" value="DESCRIPCI&#xd3;N"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JTextField" name="textNumeroDocumentoTitular1">
+            <Component class="javax.swing.JTextField" name="textDescripcionDocumentoAnalisis">
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel27">
               <Properties>
@@ -714,10 +715,7 @@
                 <Property name="text" type="java.lang.String" value="An&#xe1;lisis"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral3">
-              <Properties>
-                <Property name="enabled" type="boolean" value="false"/>
-              </Properties>
+            <Component class="javax.swing.JComboBox" name="cboAnalisisAbogado">
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
@@ -787,12 +785,12 @@
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
                               <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="cboTipoProcedimientoRegistral4" max="32767" attributes="0"/>
+                                  <Component id="cboTieneObservacion" max="32767" attributes="0"/>
                                   <Component id="jLabel21" pref="205" max="32767" attributes="0"/>
                               </Group>
                               <EmptySpace max="32767" attributes="0"/>
                               <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="cboTipoProcedimientoRegistral5" alignment="0" max="32767" attributes="0"/>
+                                  <Component id="cboTipoObservacion" alignment="0" max="32767" attributes="0"/>
                                   <Component id="jLabel22" alignment="0" min="-2" pref="205" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
@@ -813,12 +811,12 @@
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="jLabel21" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="cboTipoProcedimientoRegistral4" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="cboTieneObservacion" min="-2" pref="40" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="jLabel22" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="cboTipoProcedimientoRegistral5" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="cboTipoObservacion" min="-2" pref="40" max="-2" attributes="0"/>
                           </Group>
                       </Group>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
@@ -831,7 +829,7 @@
             </DimensionLayout>
           </Layout>
           <SubComponents>
-            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral4">
+            <Component class="javax.swing.JComboBox" name="cboTieneObservacion">
               <Properties>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
@@ -855,7 +853,7 @@
                 <Property name="text" type="java.lang.String" value="Tipo Observaci&#xf3;n"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral5">
+            <Component class="javax.swing.JComboBox" name="cboTipoObservacion">
               <Properties>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>

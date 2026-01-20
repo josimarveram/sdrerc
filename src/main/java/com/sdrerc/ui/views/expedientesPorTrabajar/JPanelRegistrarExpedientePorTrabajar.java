@@ -32,9 +32,20 @@ import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+
+import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.Component;
+import javax.swing.DefaultCellEditor;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JTable;
+import javax.swing.table.TableCellRenderer;
+
 /**
  *
  * @author usuario
@@ -74,12 +85,28 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         cargarComboParentesco();
         //cargarComboDireccionDomiciliaria();
         cargarComboUnidadOrganica();
+        
+        cargarTipoDocumentoAnalizado();
+        cargarPlantillaDocumento();
+        cargarTieneObservacion();
+        cargarTipoObservacion();
+        cargarAnalisis();  
+        
                 
         registrarEventos();
         
         textDniRemitente.setEnabled(false);
         textApellidosNombreRemitente.setEnabled(false);
-        cboUnidadOrganica.setEnabled(false);        
+        cboUnidadOrganica.setEnabled(false);       
+        
+        configurarModelo();
+        configurarColumnaNumero();
+
+        jTableDocumentosAnalisis.getColumn("Editar").setCellRenderer(new EditarRenderer());
+        jTableDocumentosAnalisis.getColumn("Editar").setCellEditor(new EditarEditor(jTableDocumentosAnalisis));
+
+        jTableDocumentosAnalisis.getColumn("Eliminar").setCellRenderer(new EliminarRenderer());
+        jTableDocumentosAnalisis.getColumn("Eliminar").setCellEditor(new EliminarEditor(jTableDocumentosAnalisis));
     }
     
     
@@ -264,6 +291,58 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             cboGradoParentesco.addItem(catalogoitem);
         }
     }
+    
+    private void cargarPlantillaDocumento() 
+    {
+        cboPlantillaDocumento.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(10);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboPlantillaDocumento.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarTieneObservacion() 
+    {
+        cboTieneObservacion.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(12);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTieneObservacion.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarTipoObservacion() 
+    {
+        cboTipoObservacion.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(13);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTipoObservacion.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarTipoDocumentoAnalizado() 
+    {
+        cboTipoDocumentoAnalizado.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(10);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTipoDocumentoAnalizado.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarAnalisis() 
+    {
+        cboAnalisisAbogado.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(11);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboAnalisisAbogado.addItem(catalogoitem);
+        }
+    }
+    
+    
     /*
     private void cargarComboDireccionDomiciliaria() 
     {
@@ -363,7 +442,116 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         }
     }
     
+    DefaultTableModel modelo;    
+    private void configurarModelo() 
+    {
+        modelo = new DefaultTableModel
+        (
+            new Object[]{"N°", "Campo 1", "Campo 2", "Editar", "Eliminar"}, 0
+        ) 
+        {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 3 || column == 4;
+            }
+        };
+        jTableDocumentosAnalisis.setModel(modelo);
+    }
     
+    private void configurarColumnaNumero() 
+    {
+
+      jTableDocumentosAnalisis.getColumnModel().getColumn(0)
+        .setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(
+                    JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+
+                JLabel label = (JLabel) super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column);
+
+                label.setHorizontalAlignment(JLabel.CENTER);
+                label.setText(String.valueOf(row + 1));
+                return label;
+            }
+        });
+    }
+    
+    class EditarRenderer extends JButton implements TableCellRenderer 
+    {
+        public EditarRenderer() { setText("✏"); }
+        public Component getTableCellRendererComponent(
+            JTable table, Object value, boolean isSelected,
+            boolean hasFocus, int row, int column) {
+        return this;
+        }
+    }
+
+    class EliminarRenderer extends JButton implements TableCellRenderer {
+        public EliminarRenderer() { setText("🗑"); }
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
+            return this;
+        }
+    }
+
+    class EditarEditor extends DefaultCellEditor {
+
+        private JButton button;
+        private JTable table;
+
+        public EditarEditor(JTable table) 
+        {
+            super(new JCheckBox());
+            this.table = table;
+            button = new JButton("✏");
+            button.addActionListener(e -> fireEditingStopped());
+        }
+        @Override
+        public Object getCellEditorValue() 
+        {
+            int fila = table.getSelectedRow();
+            textDescripcionDocumentoAnalisis.setText(table.getValueAt(fila, 1).toString());
+            textDescripcionDocumentoAnalisis.setText(table.getValueAt(fila, 2).toString());
+            filaEditando = fila;
+            return "Editar";
+        }
+    }
+
+    class EliminarEditor extends DefaultCellEditor {
+
+        private JButton button;
+        private JTable table;
+
+        public EliminarEditor(JTable table) {
+            super(new JCheckBox());
+            this.table = table;
+
+            button = new JButton("🗑");
+            button.addActionListener(e -> fireEditingStopped());
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+
+            int fila = table.getSelectedRow();
+
+            int r = JOptionPane.showConfirmDialog(
+                table,
+                "¿Eliminar esta fila?",
+                "Confirmar",
+                JOptionPane.YES_NO_OPTION
+            );
+
+            if (r == JOptionPane.YES_OPTION) {
+                ((DefaultTableModel) table.getModel()).removeRow(fila);
+            }
+            return "Eliminar";
+        }
+    }
+   
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -409,26 +597,26 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
         btnRegresar2 = new javax.swing.JButton();
         jPanelDatosUbicacion = new javax.swing.JPanel();
-        cboTipoProcedimientoRegistral1 = new javax.swing.JComboBox();
+        cboPlantillaDocumento = new javax.swing.JComboBox();
         btnGenerarDocumento = new javax.swing.JButton();
         jLabel19 = new javax.swing.JLabel();
         jPanelDatosUbicacion1 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
-        jTable2 = new javax.swing.JTable();
-        cboTipoProcedimientoRegistral2 = new javax.swing.JComboBox();
-        btnGenerarDocumento1 = new javax.swing.JButton();
+        jTableDocumentosAnalisis = new javax.swing.JTable();
+        cboTipoDocumentoAnalizado = new javax.swing.JComboBox();
+        btnAgregarTipoAnalisis = new javax.swing.JButton();
         jLabel24 = new javax.swing.JLabel();
         jLabel25 = new javax.swing.JLabel();
-        textNumeroDocumentoTitular1 = new javax.swing.JTextField();
+        textDescripcionDocumentoAnalisis = new javax.swing.JTextField();
         jLabel27 = new javax.swing.JLabel();
-        cboTipoProcedimientoRegistral3 = new javax.swing.JComboBox();
+        cboAnalisisAbogado = new javax.swing.JComboBox();
         btnRegresar4 = new javax.swing.JButton();
         btnRegresar5 = new javax.swing.JButton();
         jPanelDatosUbicacion2 = new javax.swing.JPanel();
-        cboTipoProcedimientoRegistral4 = new javax.swing.JComboBox();
+        cboTieneObservacion = new javax.swing.JComboBox();
         jLabel21 = new javax.swing.JLabel();
         jLabel22 = new javax.swing.JLabel();
-        cboTipoProcedimientoRegistral5 = new javax.swing.JComboBox();
+        cboTipoObservacion = new javax.swing.JComboBox();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTextArea1 = new javax.swing.JTextArea();
         jLabel28 = new javax.swing.JLabel();
@@ -681,7 +869,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                 .addContainerGap()
                 .addGroup(jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabel19, javax.swing.GroupLayout.DEFAULT_SIZE, 205, Short.MAX_VALUE)
-                    .addComponent(cboTipoProcedimientoRegistral1, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(cboPlantillaDocumento, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(28, 28, 28)
                 .addComponent(btnGenerarDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -693,7 +881,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                 .addComponent(jLabel19)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelDatosUbicacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cboTipoProcedimientoRegistral1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboPlantillaDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnGenerarDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(17, Short.MAX_VALUE))
         );
@@ -703,31 +891,39 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         jPanelDatosUbicacion1.setBackground(new java.awt.Color(255, 255, 255));
         jPanelDatosUbicacion1.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos Analisis"));
 
-        jTable2.setModel(new javax.swing.table.DefaultTableModel(
+        jTableDocumentosAnalisis.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null},
-                {null, null, null},
-                {null, null, null},
-                {null, null, null}
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
             },
             new String [] {
-                "Nª", "Tipo Documento Generado", "Documento"
+                "Nª", "Tipo Documento Generado", "Descripción", "Accion"
             }
-        ));
-        jTable2.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jTable2MouseClicked(evt);
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
             }
         });
-        jScrollPane2.setViewportView(jTable2);
+        jTableDocumentosAnalisis.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTableDocumentosAnalisisMouseClicked(evt);
+            }
+        });
+        jScrollPane2.setViewportView(jTableDocumentosAnalisis);
 
-        btnGenerarDocumento1.setBackground(new java.awt.Color(25, 120, 210));
-        btnGenerarDocumento1.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        btnGenerarDocumento1.setForeground(new java.awt.Color(255, 255, 255));
-        btnGenerarDocumento1.setText("+");
-        btnGenerarDocumento1.addActionListener(new java.awt.event.ActionListener() {
+        btnAgregarTipoAnalisis.setBackground(new java.awt.Color(25, 120, 210));
+        btnAgregarTipoAnalisis.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnAgregarTipoAnalisis.setForeground(new java.awt.Color(255, 255, 255));
+        btnAgregarTipoAnalisis.setText("+");
+        btnAgregarTipoAnalisis.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnGenerarDocumento1ActionPerformed(evt);
+                btnAgregarTipoAnalisisActionPerformed(evt);
             }
         });
 
@@ -735,12 +931,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         jLabel24.setText("Tipo Documento Analizado");
 
         jLabel25.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel25.setText("DNI / Nro Documento");
+        jLabel25.setText("DESCRIPCIÓN");
 
         jLabel27.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel27.setText("Análisis");
-
-        cboTipoProcedimientoRegistral3.setEnabled(false);
 
         btnRegresar4.setBackground(new java.awt.Color(25, 120, 210));
         btnRegresar4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
@@ -773,20 +967,20 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jLabel24, javax.swing.GroupLayout.DEFAULT_SIZE, 205, Short.MAX_VALUE)
-                            .addComponent(cboTipoProcedimientoRegistral2, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(cboTipoDocumentoAnalizado, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addGap(26, 26, 26)
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                                 .addComponent(jLabel25, javax.swing.GroupLayout.PREFERRED_SIZE, 149, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(0, 0, Short.MAX_VALUE))
                             .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
-                                .addComponent(textNumeroDocumentoTitular1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(textDescripcionDocumentoAnalisis, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(btnGenerarDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                .addComponent(btnAgregarTipoAnalisis, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel27, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboTipoProcedimientoRegistral3, javax.swing.GroupLayout.PREFERRED_SIZE, 290, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 290, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(btnRegresar4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -802,12 +996,12 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                         .addComponent(jLabel25)
                         .addGap(3, 3, 3)
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(textNumeroDocumentoTitular1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(btnGenerarDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(textDescripcionDocumentoAnalisis, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(btnAgregarTipoAnalisis, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addComponent(jLabel24)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(cboTipoDocumentoAnalizado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -815,7 +1009,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addComponent(jLabel27)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral3, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(14, 14, 14))
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addComponent(btnRegresar4, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -829,7 +1023,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         jPanelDatosUbicacion2.setBackground(new java.awt.Color(255, 255, 255));
         jPanelDatosUbicacion2.setBorder(javax.swing.BorderFactory.createTitledBorder("Resultado de la verificación"));
 
-        cboTipoProcedimientoRegistral4.setEnabled(false);
+        cboTieneObservacion.setEnabled(false);
 
         jLabel21.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel21.setText("Tiene Observacion?");
@@ -837,7 +1031,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         jLabel22.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel22.setText("Tipo Observación");
 
-        cboTipoProcedimientoRegistral5.setEnabled(false);
+        cboTipoObservacion.setEnabled(false);
 
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
@@ -859,11 +1053,11 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                         .addContainerGap())
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
                         .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(cboTipoProcedimientoRegistral4, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(cboTieneObservacion, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel21, javax.swing.GroupLayout.DEFAULT_SIZE, 205, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(cboTipoProcedimientoRegistral5, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(cboTipoObservacion, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(27, 27, 27))
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
@@ -878,11 +1072,11 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
                         .addComponent(jLabel21)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral4, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(cboTieneObservacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
                         .addComponent(jLabel22)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral5, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(cboTipoObservacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jLabel28)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -960,16 +1154,34 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         // TODO add your handling code here:
     }//GEN-LAST:event_btnRegresar2ActionPerformed
 
-    private void jTable2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable2MouseClicked
+    private void jTableDocumentosAnalisisMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableDocumentosAnalisisMouseClicked
         // TODO add your handling code here:
-    }//GEN-LAST:event_jTable2MouseClicked
+    }//GEN-LAST:event_jTableDocumentosAnalisisMouseClicked
+    
+    int filaEditando = -1;
+    
+    private void btnAgregarTipoAnalisisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAgregarTipoAnalisisActionPerformed
+        
+        String v1 = cboTipoDocumentoAnalizado.getSelectedItem().toString();
+        String v2 = textDescripcionDocumentoAnalisis.getText();
 
-    private void btnGenerarDocumento1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarDocumento1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnGenerarDocumento1ActionPerformed
+        if (filaEditando == -1) 
+        {
+            modelo.addRow(new Object[]{"", v1, v2, "Editar", "Eliminar"});
+        } 
+        else 
+        {
+            modelo.setValueAt(v1, filaEditando, 1);
+            modelo.setValueAt(v2, filaEditando, 2);
+            filaEditando = -1;
+        }
+        textDescripcionDocumentoAnalisis.setText("");
+        textDescripcionDocumentoAnalisis.setText("");
+    }//GEN-LAST:event_btnAgregarTipoAnalisisActionPerformed
 
     private void btnRegresar4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar4ActionPerformed
         // TODO add your handling code here:
+        
     }//GEN-LAST:event_btnRegresar4ActionPerformed
 
     private void btnRegresar5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar5ActionPerformed
@@ -978,21 +1190,21 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnAgregarTipoAnalisis;
     private javax.swing.JButton btnGenerarDocumento;
-    private javax.swing.JButton btnGenerarDocumento1;
     private javax.swing.JButton btnRegresar2;
     private javax.swing.JButton btnRegresar4;
     private javax.swing.JButton btnRegresar5;
+    private javax.swing.JComboBox cboAnalisisAbogado;
     private javax.swing.JComboBox cboGradoParentesco;
     private javax.swing.JComboBox cboGrupoFamiliar;
+    private javax.swing.JComboBox cboPlantillaDocumento;
+    private javax.swing.JComboBox cboTieneObservacion;
     private javax.swing.JComboBox cboTipoActa;
     private javax.swing.JComboBox cboTipoDocumento;
+    private javax.swing.JComboBox cboTipoDocumentoAnalizado;
+    private javax.swing.JComboBox cboTipoObservacion;
     private javax.swing.JComboBox cboTipoProcedimientoRegistral;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral1;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral2;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral3;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral4;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral5;
     private javax.swing.JComboBox cboTipoSolicitud;
     private javax.swing.JComboBox cboUnidadOrganica;
     private javax.swing.JLabel jLabel12;
@@ -1025,17 +1237,17 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
     private javax.swing.JPanel jPanelPrincipal;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JTable jTable2;
+    private javax.swing.JTable jTableDocumentosAnalisis;
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JSpinner spFechaRecepcion;
     private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JTextField textApellidosNombreRemitente;
     private javax.swing.JTextField textApellidosNombreTitular;
+    private javax.swing.JTextField textDescripcionDocumentoAnalisis;
     private javax.swing.JTextField textDniRemitente;
     private javax.swing.JTextField textNumeroActa;
     private javax.swing.JTextField textNumeroDocumento;
     private javax.swing.JTextField textNumeroDocumentoTitular;
-    private javax.swing.JTextField textNumeroDocumentoTitular1;
     private javax.swing.JTextField textNumeroTramiteDocumento;
     // End of variables declaration//GEN-END:variables
 }

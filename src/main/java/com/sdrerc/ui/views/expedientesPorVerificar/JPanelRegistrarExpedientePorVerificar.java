@@ -75,12 +75,17 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         cargarComboParentesco();
         //cargarComboDireccionDomiciliaria();
         cargarComboUnidadOrganica();
+        
+        cargarTipoDocumentoAnalizado();
+        cargarTieneObservacion();
+        cargarTipoObservacion();
+        cargarAnalisis();  
                 
         registrarEventos();
         
-        textDniRemitente.setEnabled(false);
-        textApellidosNombreRemitente.setEnabled(false);
-        cboUnidadOrganica.setEnabled(false);        
+        //textDniRemitente.setEnabled(false);
+        //textApellidosNombreRemitente.setEnabled(false);
+        //cboUnidadOrganica.setEnabled(false);        
     }
     
     
@@ -286,6 +291,57 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         }
     }
     
+    /*
+    private void cargarPlantillaDocumento() 
+    {
+        cboPlantillaDocumento.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(10);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboPlantillaDocumento.addItem(catalogoitem);
+        }
+    }
+    */
+    
+    private void cargarTieneObservacion() 
+    {
+        cboTieneObservacion.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(12);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTieneObservacion.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarTipoObservacion() 
+    {
+        cboTipoObservacion.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(13);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTipoObservacion.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarTipoDocumentoAnalizado() 
+    {
+        cboTipoDocumentoAnalizado.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(10);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTipoDocumentoAnalizado.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarAnalisis() 
+    {
+        cboAnalisisAbogado.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(11);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboAnalisisAbogado.addItem(catalogoitem);
+        }
+    }
       
     private void limpiarCampos() 
     {
@@ -411,18 +467,18 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         jPanelDatosUbicacion1 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         jTable2 = new javax.swing.JTable();
-        cboTipoProcedimientoRegistral2 = new javax.swing.JComboBox();
+        cboTipoDocumentoAnalizado = new javax.swing.JComboBox();
         btnGenerarDocumento1 = new javax.swing.JButton();
         jLabel24 = new javax.swing.JLabel();
         jLabel25 = new javax.swing.JLabel();
         jLabel27 = new javax.swing.JLabel();
-        cboTipoProcedimientoRegistral3 = new javax.swing.JComboBox();
+        cboAnalisisAbogado = new javax.swing.JComboBox();
         textNumeroDocumentoTitular2 = new javax.swing.JTextField();
         jPanelDatosUbicacion2 = new javax.swing.JPanel();
-        cboTipoProcedimientoRegistral4 = new javax.swing.JComboBox();
+        cboTieneObservacion = new javax.swing.JComboBox();
         jLabel21 = new javax.swing.JLabel();
         jLabel22 = new javax.swing.JLabel();
-        cboTipoProcedimientoRegistral5 = new javax.swing.JComboBox();
+        cboTipoObservacion = new javax.swing.JComboBox();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTextArea1 = new javax.swing.JTextArea();
         jLabel28 = new javax.swing.JLabel();
@@ -688,7 +744,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         });
         jScrollPane2.setViewportView(jTable2);
 
-        cboTipoProcedimientoRegistral2.setEnabled(false);
+        cboTipoDocumentoAnalizado.setEnabled(false);
 
         btnGenerarDocumento1.setBackground(new java.awt.Color(25, 120, 210));
         btnGenerarDocumento1.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
@@ -710,7 +766,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         jLabel27.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel27.setText("Análisis");
 
-        cboTipoProcedimientoRegistral3.setEnabled(false);
+        cboAnalisisAbogado.setEnabled(false);
 
         textNumeroDocumentoTitular2.setEnabled(false);
 
@@ -725,7 +781,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jLabel24, javax.swing.GroupLayout.DEFAULT_SIZE, 205, Short.MAX_VALUE)
-                            .addComponent(cboTipoProcedimientoRegistral2, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(cboTipoDocumentoAnalizado, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addGap(37, 37, 37)
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
@@ -738,7 +794,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel27, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboTipoProcedimientoRegistral3, javax.swing.GroupLayout.PREFERRED_SIZE, 290, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 290, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -757,13 +813,13 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                             .addComponent(jLabel24)
                             .addComponent(jLabel25))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(cboTipoDocumentoAnalizado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jLabel27)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(cboTipoProcedimientoRegistral3, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(29, 29, 29))
         );
 
@@ -780,7 +836,6 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
 
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
-        jTextArea1.setEnabled(false);
         jScrollPane1.setViewportView(jTextArea1);
 
         jLabel28.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
@@ -821,11 +876,11 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                         .addContainerGap())
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
                         .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(cboTipoProcedimientoRegistral4, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(cboTieneObservacion, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel21, javax.swing.GroupLayout.DEFAULT_SIZE, 205, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(cboTipoProcedimientoRegistral5, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(cboTipoObservacion, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(27, 27, 27))
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
@@ -855,11 +910,11 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
                         .addComponent(jLabel21)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral4, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(cboTieneObservacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
                         .addComponent(jLabel22)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral5, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(cboTipoObservacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addComponent(jLabel28)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -894,6 +949,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
         int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
         
+        /*
         if(idTipoSolicitud == 10)
         {
           textDniRemitente.setEnabled(true);
@@ -906,6 +962,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
            textApellidosNombreRemitente.setEnabled(false);
            cboUnidadOrganica.setEnabled(true); 
         }
+        */
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
     private void jTable2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable2MouseClicked
@@ -929,15 +986,15 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
     private javax.swing.JButton btnGenerarDocumento1;
     private javax.swing.JButton btnRegresar4;
     private javax.swing.JButton btnRegresar5;
+    private javax.swing.JComboBox cboAnalisisAbogado;
     private javax.swing.JComboBox cboGradoParentesco;
     private javax.swing.JComboBox cboGrupoFamiliar;
+    private javax.swing.JComboBox cboTieneObservacion;
     private javax.swing.JComboBox cboTipoActa;
     private javax.swing.JComboBox cboTipoDocumento;
+    private javax.swing.JComboBox cboTipoDocumentoAnalizado;
+    private javax.swing.JComboBox cboTipoObservacion;
     private javax.swing.JComboBox cboTipoProcedimientoRegistral;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral2;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral3;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral4;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral5;
     private javax.swing.JComboBox cboTipoSolicitud;
     private javax.swing.JComboBox cboUnidadOrganica;
     private javax.swing.JLabel jLabel12;
