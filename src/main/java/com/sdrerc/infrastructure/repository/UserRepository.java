@@ -48,11 +48,21 @@ public class UserRepository {
     
     private static final String SQL_TIENE_ROL =
         "SELECT COUNT(1) " +
-        "FROM APP_USER_ROLE ur " +
+        "FROM APP_USER_ROLES ur " +
         "JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
         "WHERE ur.USER_ID = ? " +
         "AND r.ROLE_NAME = ? " +
         "AND r.STATUS = 'ACTIVE'";
+    
+    private static final String SQL_LISTAR_POR_ROL =
+        "SELECT DISTINCT u.USER_ID, u.USERNAME, u.FULL_NAME, u.STATUS " +
+        "FROM APP_USERS u " +
+        "JOIN APP_USER_ROLES ur ON ur.USER_ID = u.USER_ID " +
+        "JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
+        "WHERE r.ROLE_NAME = ? " +
+        "AND u.STATUS = 'ACTIVE' " +
+        "AND r.STATUS = 'ACTIVE' " +
+        "ORDER BY u.FULL_NAME";
     
     public User findByUsername(String username) {
         String sql = "SELECT * FROM APP_USERS WHERE USERNAME=? AND STATUS='ACTIVE'";
@@ -289,6 +299,33 @@ public class UserRepository {
                 return rs.next() && rs.getInt(1) > 0;
             }
         }
+    }
+    
+    
+    public List<User> listarPorRol(String roleName)
+            throws SQLException {
+
+        List<User> lista = new ArrayList<>();
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps =
+                     cn.prepareStatement(SQL_LISTAR_POR_ROL)) {
+
+            ps.setString(1, roleName);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    User u = new User();
+                    u.setUserId(rs.getLong("USER_ID"));
+                    u.setUsername(rs.getString("USERNAME"));
+                    u.setFullName(rs.getString("FULL_NAME"));
+                    u.setStatus(rs.getString("STATUS"));
+
+                    lista.add(u);
+                }
+            }
+        }
+        return lista;
     }
     
     public void deactivate(Long userId) {

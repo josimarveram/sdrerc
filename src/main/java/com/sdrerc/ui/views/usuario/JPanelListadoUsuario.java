@@ -6,9 +6,11 @@ package com.sdrerc.ui.views.usuario;
 
 import com.sdrerc.ui.views.role.*;
 import com.sdrerc.application.RoleService;
+import com.sdrerc.application.SupervisionService;
 import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.ui.table.ButtonEditor;
+import com.sdrerc.ui.table.ButtonEditorAsignar;
 import com.sdrerc.ui.table.ButtonEditorUsuario;
 import com.sdrerc.ui.table.ButtonRenderer;
 import java.awt.Dialog;
@@ -28,13 +30,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private DefaultTableModel model;
     private UserService userService; // 👈 AQUÍ
     private RoleService roleService; // 👈 AQUÍ
+    private SupervisionService supervisionService; // 👈 AQUÍ
     private User usuario;
     private Long roleIdSeleccionado;
     private String roleNameSeleccionado;
     private String roleDescriptionSeleccionado;
     private String statusSeleccionado;
     
-    private static final int COL_ID = 0;
+    public static final int COL_ID = 0;
     private static final int COL_NOMBRE = 1;
     private static final int COL_DESCRIPCION = 2;
     private static final int COL_ESTADO = 3;
@@ -42,6 +45,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private static final int COL_ACTIVAR = 5;
     private static final int COL_RESET = 6;
     private static final int COL_ASIGNAR_ROL = 7;
+    private static final int COL_ASIGNAR_ABOGADO = 8;
     /**
      * Creates new form JPanelListadoRole
      */
@@ -49,7 +53,8 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         initComponents();
         usuario = new User();
         userService = new UserService(); // 👈 SE INICIALIZA AQUÍ   
-        roleService = new RoleService(); // 👈 SE INICIALIZA AQUÍ      
+        roleService = new RoleService(); // 👈 SE INICIALIZA AQUÍ     
+        supervisionService = new SupervisionService(); // 👈 SE INICIALIZA AQUÍ     
         initTable();
         initFiltros(); 
         initEventos(); 
@@ -88,7 +93,21 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         .setCellRenderer(new ButtonRenderer("Asignar Rol"));
         tblUsuarios.getColumn("ASIGNAR_ROL")
                 .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 7));
-        
+        /*
+        tblUsuarios.getColumn("ASIGNAR_ABOGADO")
+        .setCellRenderer(new ButtonRenderer("Asignar Abogado"));
+        tblUsuarios.getColumn("ASIGNAR_ABOGADO")
+                .setCellEditor(new ButtonEditorAsignar(tblUsuarios, this, 8));
+        */
+        tblUsuarios.getColumnModel()
+        .getColumn(COL_ASIGNAR_ABOGADO)
+        .setCellEditor(
+            new ButtonEditorAsignar(
+                tblUsuarios,
+                this,
+                userService
+            )
+        );
         
         txtBuscarUsuario.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
@@ -142,6 +161,12 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                 if (col == COL_ASIGNAR_ROL) {
                     asignarRolesDesdeTabla(row);
                 }
+                
+                // Columna COL_ASIGNAR_ROL
+                if (col == COL_ASIGNAR_ABOGADO) {
+                    abrirDlgAsignarAbogados(row);
+                }
+                
                 
                 
             }
@@ -211,6 +236,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar",
                     "Resetear",
                     "Asignar Rol",
+                    "Asignar Abogado",
                 });
             }
         } catch (Exception e) {
@@ -379,24 +405,26 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 632, Short.MAX_VALUE)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 82, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(txtBuscarUsuario, javax.swing.GroupLayout.PREFERRED_SIZE, 129, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 66, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboFiltroEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(btnBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(btnNuevo1, javax.swing.GroupLayout.DEFAULT_SIZE, 80, Short.MAX_VALUE)
-                            .addComponent(btnLimpiar1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(429, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(btnNuevo1, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addGroup(layout.createSequentialGroup()
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addGroup(layout.createSequentialGroup()
+                                    .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 82, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                    .addComponent(txtBuscarUsuario)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                    .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 66, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGap(18, 18, 18)
+                                    .addComponent(cboFiltroEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(btnBusqueda, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 632, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(btnLimpiar1, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 725, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(336, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -481,12 +509,12 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     
     private void initTable() {
         model = new DefaultTableModel(
-            new Object[]{"ID", "ROL", "DESCRIPCIÓN", "ESTADO", "EDITAR", "ACTIVAR","CAMBIAR_CLAVE","ASIGNAR_ROL"}, 0
+            new Object[]{"ID", "USUARIO", "NOMBRE", "ESTADO", "EDITAR", "ACTIVAR","CAMBIAR_CLAVE","ASIGNAR_ROL","ASIGNAR_ABOGADO"}, 0
         ) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 // Solo las columnas de botones
-                return column == 4 || column == 5 || column == 6;
+                return column == 4 || column == 5 || column == 6 || column == 7 || column == 8;
             }
         };
         tblUsuarios.setModel(model);
@@ -548,6 +576,28 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(parent);
         dlg.setVisible(true);
         
+        buscarUsuarios();
+    }
+    
+    public void abrirDlgAsignarAbogados(int row) {
+
+        Long supervisorId =
+            (Long) tblUsuarios.getValueAt(row, COL_ID);
+
+        String nombreSupervisor =
+            tblUsuarios.getValueAt(row, COL_NOMBRE).toString();
+
+        DlgAsignarAbogados dlg =
+            new DlgAsignarAbogados(
+                SwingUtilities.getWindowAncestor(this),
+                supervisorId,
+                nombreSupervisor,
+                userService,
+                supervisionService
+            );
+
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
         buscarUsuarios();
     }
     

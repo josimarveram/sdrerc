@@ -62,4 +62,9 @@ public class UserService {
             throws SQLException {
         return repo.tieneRol(userId, roleName);
     }
+    
+    public List<User> listarPorRol(String roleName)
+            throws SQLException {
+        return repo.listarPorRol(roleName);
+    }
 }

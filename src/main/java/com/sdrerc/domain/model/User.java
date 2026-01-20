@@ -106,4 +106,8 @@ public class User {
     public boolean isActive() {
         return "ACTIVE".equalsIgnoreCase(status);
     }
+    
+    public String toString() {
+        return fullName;
+    }
 }

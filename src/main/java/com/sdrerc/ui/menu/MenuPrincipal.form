@@ -261,7 +261,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="ROLE"/>
+                <Property name="text" type="java.lang.String" value="ROLES"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">
@@ -379,7 +379,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="USUARIO"/>
+                <Property name="text" type="java.lang.String" value="USUARIOS"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">
