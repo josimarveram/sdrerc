@@ -40,14 +40,14 @@ public class User {
     }
 
     // 🔹 Constructor útil (opcional)
-    public User(Long userId, String username, String passwordHash,
-                String fullName, String status) {
+    public User(Long userId, String username,String fullName, String status) {
         this.userId = userId;
         this.username = username;
-        this.passwordHash = passwordHash;
         this.fullName = fullName;
         this.status = status;
     }
+    
+    
 
     // ===== GETTERS =====
 
@@ -105,5 +105,9 @@ public class User {
 
     public boolean isActive() {
         return "ACTIVE".equalsIgnoreCase(status);
+    }
+    
+    public String toString() {
+        return fullName;
     }
 }

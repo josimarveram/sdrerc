@@ -12,7 +12,7 @@ import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTra
 import com.sdrerc.ui.views.expedientesPorVerificar.JPanelListadoExpedientesPorVerificar;
 import com.sdrerc.ui.views.home.jPanelHome;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
-import com.sdrerc.ui.views.usuario.crear.JPanelListadoUsuario;
+import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
 import java.awt.BorderLayout;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -161,7 +161,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnRole.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnRole.setForeground(new java.awt.Color(255, 255, 255));
         btnRole.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnRole.setText("ROLE");
+        btnRole.setText("ROLES");
         btnRole.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnRole.setBorderPainted(false);
         btnRole.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -220,7 +220,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuUsuario1.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuUsuario1.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuUsuario1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuUsuario1.setText("USUARIO");
+        btnMenuUsuario1.setText("USUARIOS");
         btnMenuUsuario1.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuUsuario1.setBorderPainted(false);
         btnMenuUsuario1.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -400,8 +400,8 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
     private void btnRoleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRoleActionPerformed
          try {
-            lbl_TituloFormulario.setText("FORMULARIO USUARIO");
-            ShowJPanel(new JPanelListadoUsuario());
+            lbl_TituloFormulario.setText("FORMULARIO ROLE");
+            ShowJPanel(new JPanelListadoRole());
             // TODO add your handling code here:
         } catch (Exception ex) {
             Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
@@ -415,6 +415,13 @@ public class MenuPrincipal extends javax.swing.JFrame {
     }//GEN-LAST:event_btnMenuUsuario1MouseClicked
 
     private void btnMenuUsuario1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuUsuario1ActionPerformed
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO USUARIO");
+            ShowJPanel(new JPanelListadoUsuario());
+            // TODO add your handling code here:
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
         // TODO add your handling code here:
     }//GEN-LAST:event_btnMenuUsuario1ActionPerformed
 

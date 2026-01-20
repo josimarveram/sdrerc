@@ -6,6 +6,10 @@ package com.sdrerc.ui.views.role;
 
 import com.sdrerc.application.RoleService;
 import com.sdrerc.domain.model.Role;
+import java.awt.Window;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 
 /**
@@ -20,14 +24,23 @@ public class DlgEditarRol extends javax.swing.JDialog {
     
     private Role role;
     private RoleService roleService;
+    private boolean modoEdicion = false;
     
-    public DlgEditarRol(java.awt.Frame parent, boolean modal) {
-        super(parent, modal);
+    public DlgEditarRol(Window parent, ModalityType modalityType, Role role, RoleService roleService, boolean Edicion) {
+        super(parent, modalityType);
         initComponents();
+        
+        modoEdicion = Edicion;
         inicializarCombo();
         this.role = role;
         this.roleService = roleService;
         cargarDatos();
+        configurarBotones();
+    }
+    
+    private void configurarBotones() {
+        btnGuardar.setVisible(!modoEdicion);
+        btnActualizar.setVisible(modoEdicion);
     }
     
     private void inicializarCombo() {
@@ -59,6 +72,7 @@ public class DlgEditarRol extends javax.swing.JDialog {
         jLabel3 = new javax.swing.JLabel();
         btnActualizar = new javax.swing.JButton();
         btnCancelar = new javax.swing.JButton();
+        btnGuardar = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -82,6 +96,18 @@ public class DlgEditarRol extends javax.swing.JDialog {
         });
 
         btnCancelar.setText("Cancelar");
+        btnCancelar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCancelarActionPerformed(evt);
+            }
+        });
+
+        btnGuardar.setText("Guardar");
+        btnGuardar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnGuardarActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -100,9 +126,11 @@ public class DlgEditarRol extends javax.swing.JDialog {
                     .addComponent(txtRoleName))
                 .addGap(103, 103, 103))
             .addGroup(layout.createSequentialGroup()
-                .addGap(77, 77, 77)
+                .addGap(25, 25, 25)
+                .addComponent(btnGuardar)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(btnActualizar)
-                .addGap(32, 32, 32)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(btnCancelar)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -124,7 +152,8 @@ public class DlgEditarRol extends javax.swing.JDialog {
                 .addGap(39, 39, 39)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(btnActualizar)
-                    .addComponent(btnCancelar))
+                    .addComponent(btnCancelar)
+                    .addComponent(btnGuardar))
                 .addContainerGap(45, Short.MAX_VALUE))
         );
 
@@ -141,11 +170,36 @@ public class DlgEditarRol extends javax.swing.JDialog {
         role.setDescription(txtDescription.getText().trim());
         role.setStatus(cboStatus.getSelectedItem().toString());
 
-        //roleService.actualizar(role);
+        try {
+            roleService.actualizar(role);
+        } catch (SQLException ex) {
+            Logger.getLogger(DlgEditarRol.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
         JOptionPane.showMessageDialog(this, "Rol actualizado correctamente");
         dispose(); // cerrar popup
     }//GEN-LAST:event_btnActualizarActionPerformed
+
+    private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
+        role.setRoleName(txtRoleName.getText().trim());
+        role.setDescription(txtDescription.getText().trim());
+        role.setStatus(cboStatus.getSelectedItem().toString());
+
+        try {
+            roleService.registrar(role);
+        } catch (SQLException ex) {
+            Logger.getLogger(DlgEditarRol.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        JOptionPane.showMessageDialog(this, "Rol registrado correctamente");
+        dispose();
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnGuardarActionPerformed
+
+    private void btnCancelarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelarActionPerformed
+        dispose();
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnCancelarActionPerformed
 
     /**
      * @param args the command line arguments
@@ -174,24 +228,13 @@ public class DlgEditarRol extends javax.swing.JDialog {
         }
         //</editor-fold>
 
-        /* Create and display the dialog */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                DlgEditarRol dialog = new DlgEditarRol(new javax.swing.JFrame(), true);
-                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-                    @Override
-                    public void windowClosing(java.awt.event.WindowEvent e) {
-                        System.exit(0);
-                    }
-                });
-                dialog.setVisible(true);
-            }
-        });
+        
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnActualizar;
     private javax.swing.JButton btnCancelar;
+    private javax.swing.JButton btnGuardar;
     private javax.swing.JComboBox<String> cboStatus;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
