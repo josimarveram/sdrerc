@@ -45,6 +45,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 
 /**
  *
@@ -101,10 +102,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         
         configurarModelo();
         configurarColumnaNumero();
+	configurarColumnas();        
 
-        jTableDocumentosAnalisis.getColumn("Editar").setCellRenderer(new EditarRenderer());
-        jTableDocumentosAnalisis.getColumn("Editar").setCellEditor(new EditarEditor(jTableDocumentosAnalisis));
-
+        //jTableDocumentosAnalisis.getColumn("Editar").setCellRenderer(new EditarRenderer());
+        //jTableDocumentosAnalisis.getColumn("Editar").setCellEditor(new EditarEditor(jTableDocumentosAnalisis));
         jTableDocumentosAnalisis.getColumn("Eliminar").setCellRenderer(new EliminarRenderer());
         jTableDocumentosAnalisis.getColumn("Eliminar").setCellEditor(new EliminarEditor(jTableDocumentosAnalisis));
     }
@@ -447,22 +448,57 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
     {
         modelo = new DefaultTableModel
         (
-            new Object[]{"N°", "Campo 1", "Campo 2", "Editar", "Eliminar"}, 0
+            //new Object[]{"N°", "Campo 1", "Campo 2", "Editar", "Eliminar"}, 0
+              new Object[]{"N°", "Campo 1", "Campo 2", "Eliminar"}, 0
         ) 
         {
+            /*
             @Override
-            public boolean isCellEditable(int row, int column) {
+            public boolean isCellEditable(int row, int column) 
+            {
                 return column == 3 || column == 4;
+            }
+            */
+            @Override
+            public boolean isCellEditable(int row, int column) 
+            {
+                return column == 3;
             }
         };
         jTableDocumentosAnalisis.setModel(modelo);
     }
+	
     
-    private void configurarColumnaNumero() 
-    {
+	
+    
+    // private void configurarColumnaNumero() 
+    // {
 
-      jTableDocumentosAnalisis.getColumnModel().getColumn(0)
-        .setCellRenderer(new DefaultTableCellRenderer() {
+      // jTableDocumentosAnalisis.getColumnModel().getColumn(0)
+        // .setCellRenderer(new DefaultTableCellRenderer() {
+            // @Override
+            // public Component getTableCellRendererComponent(
+                    // JTable table, Object value, boolean isSelected,
+                    // boolean hasFocus, int row, int column) {
+
+                // JLabel label = (JLabel) super.getTableCellRendererComponent(
+                        // table, value, isSelected, hasFocus, row, column);
+
+                // label.setHorizontalAlignment(JLabel.CENTER);
+                // label.setText(String.valueOf(row + 1));
+                // return label;
+            // }
+        // });
+    // }
+	
+	private void configurarColumnaNumero() 
+	{
+		if(jTableDocumentosAnalisis.getColumnCount() == 0) return;
+
+		jTableDocumentosAnalisis.getColumnModel()
+        .getColumn(0)
+        .setCellRenderer(new DefaultTableCellRenderer() 
+		{
             @Override
             public Component getTableCellRendererComponent(
                     JTable table, Object value, boolean isSelected,
@@ -476,8 +512,19 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
                 return label;
             }
         });
+	}	
+	
+    private void configurarColumnas() 
+    {
+        jTableDocumentosAnalisis.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        
+        jTableDocumentosAnalisis.getColumnModel().getColumn(0).setPreferredWidth(40);
+        jTableDocumentosAnalisis.getColumnModel().getColumn(1).setPreferredWidth(250);
+        jTableDocumentosAnalisis.getColumnModel().getColumn(2).setPreferredWidth(250);
+        jTableDocumentosAnalisis.getColumnModel().getColumn(3).setPreferredWidth(80);
     }
     
+    /*
     class EditarRenderer extends JButton implements TableCellRenderer 
     {
         public EditarRenderer() { setText("✏"); }
@@ -487,6 +534,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         return this;
         }
     }
+    */
 
     class EliminarRenderer extends JButton implements TableCellRenderer {
         public EliminarRenderer() { setText("🗑"); }
@@ -497,7 +545,9 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         }
     }
 
-    class EditarEditor extends DefaultCellEditor {
+    /*
+    class EditarEditor extends DefaultCellEditor 
+    {
 
         private JButton button;
         private JTable table;
@@ -519,6 +569,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             return "Editar";
         }
     }
+    */
 
     class EliminarEditor extends DefaultCellEditor {
 
@@ -893,23 +944,18 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
 
         jTableDocumentosAnalisis.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
+                {},
+                {},
+                {},
+                {}
             },
             new String [] {
-                "Nª", "Tipo Documento Generado", "Descripción", "Accion"
-            }
-        ) {
-            boolean[] canEdit = new boolean [] {
-                false, false, false, false
-            };
 
-            public boolean isCellEditable(int rowIndex, int columnIndex) {
-                return canEdit [columnIndex];
             }
-        });
+        ));
+        jTableDocumentosAnalisis.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        jTableDocumentosAnalisis.setShowHorizontalLines(true);
+        jTableDocumentosAnalisis.setShowVerticalLines(true);
         jTableDocumentosAnalisis.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 jTableDocumentosAnalisisMouseClicked(evt);
