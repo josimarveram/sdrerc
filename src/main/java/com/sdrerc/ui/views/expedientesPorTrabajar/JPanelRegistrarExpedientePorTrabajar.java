@@ -373,20 +373,11 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
     private void limpiarCampos() 
     {
         // Limpiar JTextFields
-        textApellidosNombreRemitente.setText("");
-        textNumeroDocumentoTitular.setText("");
-        textNumeroActa.setText("");
-        textDniRemitente.setText("");
-        textApellidosNombreTitular.setText("");
-        textNumeroTramiteDocumento.setText("");
-        //spFechaSolicitud.setText("");
+        textDescripcionDocumentoAnalisis.setText("");
 
         // Resetear JComboBoxes al primer elemento
-        if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
-        if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(0);
-        if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
-        if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
-        if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
+        if(cboTipoDocumentoAnalizado.getItemCount() > 0) cboTipoDocumentoAnalizado.setSelectedIndex(0);
+        if(cboAnalisisAbogado.getItemCount() > 0)        cboAnalisisAbogado.setSelectedIndex(0);
     }    
     
     private Path generarDocxLibreOffice(String plantilla, String tipoActa, String nroActa, String nombreTitular, String dniTitular) throws Exception 
@@ -1241,10 +1232,14 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado = new ExpedienteAnalisisAbogado();
 
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteAtendido;
-            //oExpedienteAnalisisAbogado.setIdEstadoExpediente(estadoExpedienteRecibido.getId());
-            oExpedienteAnalisisAbogado.setIdExpediente(idExpedienteOculto);
-            oExpedienteAnalisisAbogado.setIdAbogado(1);
-            oExpedienteAnalisisAbogado.setIdAnalisis(1);
+            oExpedienteAnalisisAbogado.setIdEstadoExpediente(estadoExpedienteRecibido.getId());
+            
+            CatalogoItem catalogoAnalisisAbogado = (CatalogoItem) cboAnalisisAbogado.getSelectedItem();
+            int idAnalisisAbogado = catalogoAnalisisAbogado.getIdCatalogoItem();
+            oExpedienteAnalisisAbogado.setIdAnalisis(idAnalisisAbogado);                        
+            oExpedienteAnalisisAbogado.setIdExpediente(idExpedienteOculto);                        
+            
+            oExpedienteAnalisisAbogado.setIdAbogado(1);            
             oExpedienteAnalisisAbogado.setUsuarioRegistro(1);
             
             // Llamar al servicio
@@ -1254,7 +1249,8 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             expedienteAnalisisAbogadoService.agregarAnalisisAbogado(oExpedienteAnalisisAbogado);
             JOptionPane.showMessageDialog(this, "Se realizo la recepción del expediente","Éxito", JOptionPane.INFORMATION_MESSAGE);
 
-            limpiarCampos();
+            //limpiarCampos();
+            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
         }
         catch (Exception ex)
         {

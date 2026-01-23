@@ -21,11 +21,10 @@ public class ExpedienteAnalisisAbogado
     private Date fechaRegistro; 
     private int  usuarioRegistro; 
     private Date fechaModificacion; 
-    private int  usuarioModificacion;
-
-    public ExpedienteAnalisisAbogado() {}
-    
-    public ExpedienteAnalisisAbogado(int idExpedienteAnalisisAbogado, int idExpediente, int idAbogado, int idAnalisis, String descFundamento, Date fechaAtencion, Date fechaRegistro, int usuarioRegistro, Date fechaModificacion, int usuarioModificacion) {
+    private int  usuarioModificacion;    
+    private int  idEstadoExpediente;
+  
+    public ExpedienteAnalisisAbogado(int idExpedienteAnalisisAbogado, int idExpediente, int idAbogado, int idAnalisis, String descFundamento, Date fechaAtencion, Date fechaRegistro, int usuarioRegistro, Date fechaModificacion, int usuarioModificacion, int idEstadoExpediente) {
         this.idExpedienteAnalisisAbogado = idExpedienteAnalisisAbogado;
         this.idExpediente = idExpediente;
         this.idAbogado = idAbogado;
@@ -36,7 +35,10 @@ public class ExpedienteAnalisisAbogado
         this.usuarioRegistro = usuarioRegistro;
         this.fechaModificacion = fechaModificacion;
         this.usuarioModificacion = usuarioModificacion;
+        this.idEstadoExpediente = idEstadoExpediente;
     }
+
+    public ExpedienteAnalisisAbogado() {}
 
     public int getIdExpedienteAnalisisAbogado() {
         return idExpedienteAnalisisAbogado;
@@ -117,4 +119,11 @@ public class ExpedienteAnalisisAbogado
     public void setUsuarioModificacion(int usuarioModificacion) {
         this.usuarioModificacion = usuarioModificacion;
     }  	
+    public int getIdEstadoExpediente() {
+        return idEstadoExpediente;
+    }
+
+    public void setIdEstadoExpediente(int idEstadoExpediente) {
+        this.idEstadoExpediente = idEstadoExpediente;
+    }    
 }

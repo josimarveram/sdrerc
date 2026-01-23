@@ -38,7 +38,7 @@ public class ExpedienteAnalisisAbogadoRepository
             try(PreparedStatement psupdateExpediente = conn.prepareStatement(updateExpedienteSql))
             {
                 // Datos para actualizar
-                psupdateExpediente.setInt(1, 59);   // IdEstadoExpediente                
+                psupdateExpediente.setInt(1, oExpedienteAnalisisAbogado.getIdEstadoExpediente());   // IdEstadoExpediente                
                 psupdateExpediente.setInt(2, oExpedienteAnalisisAbogado.getUsuarioModificacion());    // id_usuario_modifica    
                 psupdateExpediente.setDate(3, new java.sql.Date(System.currentTimeMillis()));  // fecha_modifica                
                 psupdateExpediente.setInt(4, oExpedienteAnalisisAbogado.getIdExpediente());         // WHERE id_expediente = ?                

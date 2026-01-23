@@ -8,6 +8,7 @@ import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
+import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
@@ -74,9 +75,11 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             String campo = cmbTipoBusqueda.getSelectedItem().toString();
             String valor = txtValorBusqueda.getText();            
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
-            int idestado = estado.getIdCatalogoItem();                    
-            //String estado = cmbEstado.getSelectedItem();
-            List<Expediente> lista = expedienteService.buscar(campo, valor,idestado);
+            int idestado = estado.getIdCatalogoItem();    
+            
+            Enumerado.EstadoExpediente estadoExpediente = Enumerado.EstadoExpediente.RegistroExpediente;
+            
+            List<Expediente> lista = expedienteService.buscar(campo, valor, estadoExpediente.getId());
             cargarTablaNueva(lista);
         } 
         catch (Exception e) {

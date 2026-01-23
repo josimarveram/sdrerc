@@ -11,6 +11,7 @@ import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Departamento;
+import com.sdrerc.domain.model.Distrito;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
@@ -24,6 +25,7 @@ import java.util.List;
 import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 /**
  *
  * @author usuario
@@ -67,33 +69,35 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         
         cargarDepartamentos();
 
-        cboProvincia.setEnabled(false);
-        cboDistrito.setEnabled(false);
+        //cboProvincia.setEnabled(false);
+        //cboDistrito.setEnabled(false);
         
         registrarEventos();
         
-        textDniRemitente.setEnabled(false);
-        textApellidosNombreRemitente.setEnabled(false);
-        cboUnidadOrganica.setEnabled(false);
+        //textDniRemitente.setEnabled(false);
+        //textApellidosNombreRemitente.setEnabled(false);
+        //cboUnidadOrganica.setEnabled(false);
         
         ButtonGroup grupoCorrespondeSdrerc = new ButtonGroup();
         grupoCorrespondeSdrerc.add(jRadiButonSiCorresponde);
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
     }
     
+    private boolean modoEdicion = false;
+    
     
     private void registrarEventos() {
 
         cboDepartamento.addActionListener(e -> {
             if (cboDepartamento.getSelectedIndex() != -1) {
-                cboProvincia.setEnabled(true);
+                //cboProvincia.setEnabled(true);
                 cargarProvincias();
             }
         });
 
         cboProvincia.addActionListener(e -> {
             if (cboProvincia.getSelectedIndex() != -1) {
-                cboDistrito.setEnabled(true);
+                //cboDistrito.setEnabled(true);
                 cargarDistritos();
             }
         });
@@ -143,6 +147,16 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
                      .forEach(cboDistrito::addItem);
 
         cboDistrito.setSelectedIndex(-1);
+    }
+    
+    private void cargarUbigeo(Expediente exp) 
+    {
+            if (exp == null) return;
+            modoEdicion = true;
+            seleccionarDepartamento(exp.getDepartamento());
+            seleccionarProvincia(exp.getProvincia());
+            seleccionarDistrito(exp.getDistrito());
+            modoEdicion = false;
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
@@ -212,6 +226,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         
         //distrito
         //seleccionarEstadoEnCombo(cboDistrito, lista.getDistrito());
+        SwingUtilities.invokeLater(() -> cargarUbigeo(lista));
 
         //direccionDomiciliaria
         seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
@@ -225,7 +240,39 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         //celular
         textCelular.setText(lista.getCelular());
         
+    }   
+    
+    private void seleccionarDepartamento(int idDepartamento) {
+    for (int i = 0; i < cboDepartamento.getItemCount(); i++) {
+        Departamento d = (Departamento) cboDepartamento.getItemAt(i);
+        if (d.getIdDepartamento() == idDepartamento) {
+            cboDepartamento.setSelectedIndex(i);
+            return;
+        }
     }
+	}
+
+	private void seleccionarProvincia(int idProvincia) {
+    for (int i = 0; i < cboProvincia.getItemCount(); i++) {
+        Provincia p = (Provincia) cboProvincia.getItemAt(i);
+        if (p.getIdProvincia() == idProvincia) {
+            cboProvincia.setSelectedIndex(i);
+            return;
+        }
+    }
+}
+
+private void seleccionarDistrito(int idDistrito) {
+    for (int i = 0; i < cboDistrito.getItemCount(); i++) {
+        Distrito d = (Distrito) cboDistrito.getItemAt(i);
+        if (d.getIdDistrito() == idDistrito) {
+            cboDistrito.setSelectedIndex(i);
+            return;
+        }
+    }
+}
+    
+
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
     {
@@ -485,6 +532,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         jLabel20.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel20.setText("Unidad Organica");
 
+        cboUnidadOrganica.setEditable(true);
         cboUnidadOrganica.setEnabled(false);
 
         jLabel6.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
@@ -731,12 +779,14 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         jLabel11.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel11.setText("Provincia");
 
+        cboProvincia.setEditable(true);
         cboProvincia.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         cboProvincia.setEnabled(false);
 
         jLabel24.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel24.setText("Distrito");
 
+        cboDistrito.setEditable(true);
         cboDistrito.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         cboDistrito.setEnabled(false);
 
@@ -920,7 +970,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         
         CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
         int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
-        
+        /*
         if(idTipoSolicitud == 10)
         {
           textDniRemitente.setEnabled(true);
@@ -933,6 +983,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
            textApellidosNombreRemitente.setEnabled(false);
            cboUnidadOrganica.setEnabled(true); 
         }
+*/
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
     private void btnAceptarExpedienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAceptarExpedienteActionPerformed
@@ -953,7 +1004,8 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
             expedienteAsignacionService.actualizarRecepcionExpediente(oExpedienteAsignacion);
             JOptionPane.showMessageDialog(this, "Se realizo la recepción del expediente","Éxito", JOptionPane.INFORMATION_MESSAGE);
 
-            limpiarCampos();
+            //limpiarCampos();
+            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesAsignados());
         }
         catch (Exception ex)
         {

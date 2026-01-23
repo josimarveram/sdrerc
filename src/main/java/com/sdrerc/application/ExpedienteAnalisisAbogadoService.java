@@ -22,8 +22,8 @@ public class ExpedienteAnalisisAbogadoService
     
     public boolean  agregarAnalisisAbogado(ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado) throws Exception 
     {
-        // Validaciones mínimas
-        if (oExpedienteAnalisisAbogado == null) {
+        if (oExpedienteAnalisisAbogado == null) 
+        {
             throw new Exception("El expediente no puede ser nulo.");
         }
         // Llamar al repositorio (DAO)
