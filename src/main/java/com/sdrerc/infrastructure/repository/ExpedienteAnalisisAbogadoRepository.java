@@ -4,12 +4,17 @@
  */
 package com.sdrerc.infrastructure.repository;
 
+import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetDoc;
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogado;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.database.OracleConnection;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import oracle.jdbc.OraclePreparedStatement;
+import oracle.jdbc.OracleTypes;
 
 /**
  *
@@ -17,11 +22,16 @@ import java.sql.SQLException;
  */
 public class ExpedienteAnalisisAbogadoRepository 
 {
-    public boolean actualizarAnalisisAbogado(ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado) throws SQLException 
+    public boolean InsertarAnalisisAbogado(ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado) throws SQLException 
     {
         String insertAnalisisAbogadoSql = "INSERT INTO EXPEDIENTE_ANALISIS_ABOGADO " 
                    + "(ID_EXPEDIENTE,ID_ABOGADO,ID_ANALISIS,FECHA_ATENCION,FECHA_REGISTRO,USUARIO_REGISTRO)"
-                   + "VALUES (?, ?, ?, ?, ?, ?)";
+                   + "VALUES (?, ?, ?, ?, ?, ?) " 
+				   + "RETURNING ID_EXPEDIENTE_ANALISIS_ABOGADO INTO ?";
+        
+        String insertAnalisisAbogadoDetDocSql = "INSERT INTO EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC " 
+                   + "(ID_EXPEDIENTE_ANALISIS_ABOGADO,ID_TIPO_DOCUMENTO_ANALIZADO,DESC_DOCUMENTO,FECHA_REGISTRO,USUARIO_REGISTRO)"
+                   + "VALUES (?, ?, ?, ?, ?)";
         
         String updateExpedienteSql = "UPDATE EXPEDIENTE SET " +
                     " ESTADO = ?, " +
@@ -45,16 +55,43 @@ public class ExpedienteAnalisisAbogadoRepository
                 psupdateExpediente.executeUpdate();
             } 
             
-            try (PreparedStatement psInsert = conn.prepareStatement(insertAnalisisAbogadoSql)) 
+	    int idAnalisisAbogado;
+            
+            try (OraclePreparedStatement psInsert = (OraclePreparedStatement) conn.prepareStatement(insertAnalisisAbogadoSql)) 
             {
                 psInsert.setInt(1, oExpedienteAnalisisAbogado.getIdExpediente());
                 psInsert.setInt(2, oExpedienteAnalisisAbogado.getIdAbogado());
                 psInsert.setInt(3, oExpedienteAnalisisAbogado.getIdAnalisis());
                 psInsert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
                 psInsert.setDate(5, new java.sql.Date(System.currentTimeMillis()));
-                psInsert.setInt(6, oExpedienteAnalisisAbogado.getIdAbogado());
+                psInsert.setInt(6, oExpedienteAnalisisAbogado.getUsuarioRegistro());
+
+                psInsert.registerReturnParameter(7, OracleTypes.NUMBER);
                 psInsert.executeUpdate();
-            }
+
+                try (ResultSet rs = psInsert.getReturnResultSet()) 
+                {
+                    if (rs.next()) 
+                        idAnalisisAbogado = rs.getInt(1);
+                    else 
+                        throw new SQLException("No se pudo obtener ID generado");
+                }
+            }		
+			
+            try (PreparedStatement psDet = conn.prepareStatement(insertAnalisisAbogadoDetDocSql)) 
+            {
+                for (ExpedienteAnalisisAbogadoDetDoc det :
+                oExpedienteAnalisisAbogado.getExpedienteAnalisisAbogadoDetDoc()) 
+                {
+                    psDet.setInt(1, idAnalisisAbogado);
+                    psDet.setInt(2, det.getIdTipoDocumentoAnalizado());
+                    psDet.setString(3, det.getDescDocumento());
+                    psDet.setDate(4, new java.sql.Date(System.currentTimeMillis()));
+                    psDet.setInt(5, det.getUsuarioRegistro());
+                    psDet.addBatch();
+                }
+                psDet.executeBatch();
+            }			
             
             conn.commit(); 
             return true;   

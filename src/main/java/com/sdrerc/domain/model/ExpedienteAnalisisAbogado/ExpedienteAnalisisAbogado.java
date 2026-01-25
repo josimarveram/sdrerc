@@ -3,8 +3,10 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package com.sdrerc.domain.model.ExpedienteAnalisisAbogado;
-
+import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetDoc;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  *
@@ -12,19 +14,23 @@ import java.util.Date;
  */
 public class ExpedienteAnalisisAbogado 
 {
-    private int idExpedienteAnalisisAbogado; 
-    private int idExpediente; 
+    private int idExpedienteAnalisisAbogado;
+    private int idExpediente;
     private int idAbogado;
-    private int idAnalisis; 
-    private String descFundamento; 
-    private Date fechaAtencion; 	
-    private Date fechaRegistro; 
-    private int  usuarioRegistro; 
-    private Date fechaModificacion; 
-    private int  usuarioModificacion;    
-    private int  idEstadoExpediente;
-  
-    public ExpedienteAnalisisAbogado(int idExpedienteAnalisisAbogado, int idExpediente, int idAbogado, int idAnalisis, String descFundamento, Date fechaAtencion, Date fechaRegistro, int usuarioRegistro, Date fechaModificacion, int usuarioModificacion, int idEstadoExpediente) {
+    private int idAnalisis;
+    private String descFundamento;
+    private Date fechaAtencion;
+    private Date fechaRegistro;
+    private int usuarioRegistro;
+    private Date fechaModificacion;
+    private int usuarioModificacion;
+    private int idEstadoExpediente;
+    private List<ExpedienteAnalisisAbogadoDetDoc> expedienteAnalisisAbogadoDetDoc;
+
+    // Constructor con parámetros
+    public ExpedienteAnalisisAbogado(int idExpedienteAnalisisAbogado, int idExpediente, int idAbogado,int idAnalisis, String descFundamento, Date fechaAtencion, Date fechaRegistro,int usuarioRegistro, Date fechaModificacion, int usuarioModificacion, int idEstadoExpediente) 
+    {
+        this();
         this.idExpedienteAnalisisAbogado = idExpedienteAnalisisAbogado;
         this.idExpediente = idExpediente;
         this.idAbogado = idAbogado;
@@ -36,11 +42,25 @@ public class ExpedienteAnalisisAbogado
         this.fechaModificacion = fechaModificacion;
         this.usuarioModificacion = usuarioModificacion;
         this.idEstadoExpediente = idEstadoExpediente;
+    }    
+
+    public ExpedienteAnalisisAbogado() 
+    {
+        this.expedienteAnalisisAbogadoDetDoc = new ArrayList<>();
     }
 
-    public ExpedienteAnalisisAbogado() {}
+    public void agregarExpedienteAnalisisAbogadoDetDoc(ExpedienteAnalisisAbogadoDetDoc doc) 
+    {
+        this.expedienteAnalisisAbogadoDetDoc.add(doc);
+    }
 
-    public int getIdExpedienteAnalisisAbogado() {
+    public void removerExpedienteAnalisisAbogadoDetDoc(ExpedienteAnalisisAbogadoDetDoc doc) 
+    {
+        this.expedienteAnalisisAbogadoDetDoc.remove(doc);
+    }
+
+    public int getIdExpedienteAnalisisAbogado() 
+    {
         return idExpedienteAnalisisAbogado;
     }
 
@@ -126,4 +146,13 @@ public class ExpedienteAnalisisAbogado
     public void setIdEstadoExpediente(int idEstadoExpediente) {
         this.idEstadoExpediente = idEstadoExpediente;
     }    
+
+    public List<ExpedienteAnalisisAbogadoDetDoc> getExpedienteAnalisisAbogadoDetDoc() {
+        return expedienteAnalisisAbogadoDetDoc;
+    }
+
+    public void setExpedienteAnalisisAbogadoDetDoc(List<ExpedienteAnalisisAbogadoDetDoc> expedienteAnalisisAbogadoDetDoc) {
+        this.expedienteAnalisisAbogadoDetDoc = expedienteAnalisisAbogadoDetDoc;
+    }     
+    
 }

@@ -27,7 +27,7 @@ public class ExpedienteAnalisisAbogadoService
             throw new Exception("El expediente no puede ser nulo.");
         }
         // Llamar al repositorio (DAO)
-        boolean respuesta = expedienteAnalisisAbogadoRepository.actualizarAnalisisAbogado(oExpedienteAnalisisAbogado);
+        boolean respuesta = expedienteAnalisisAbogadoRepository.InsertarAnalisisAbogado(oExpedienteAnalisisAbogado);
         return respuesta; 
     } 
 }
