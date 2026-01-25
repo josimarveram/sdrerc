@@ -81,7 +81,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
             
             Enumerado.EstadoExpediente estadoExpediente = Enumerado.EstadoExpediente.ExpedienteAsignado;
             
-            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpediente.getId());
+            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpediente.getId(),0,0);
             cargarTablaNueva(lista);
         } 
         catch (Exception e) {

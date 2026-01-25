@@ -941,7 +941,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         jScrollPane2.setViewportView(jTableDocumentosAnalisis);
 
         jPanelDatosAnalisis.add(jScrollPane2, new org.netbeans.lib.awtextra.AbsoluteConstraints(11, 105, 498, 146));
-        jPanelDatosAnalisis.add(cboTipoDocumentoAnalizado, new org.netbeans.lib.awtextra.AbsoluteConstraints(11, 47, 205, 40));
+        jPanelDatosAnalisis.add(cboTipoDocumentoAnalizado, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 40, 205, 40));
 
         btnAgregarTipoAnalisis.setBackground(new java.awt.Color(25, 120, 210));
         btnAgregarTipoAnalisis.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
@@ -1147,6 +1147,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         det.setActive(1);
         det.setUsuarioRegistro(1);
         det.setIdTipoDocumentoAnalizado(cboTipoDocumentoAnalizado.getSelectedIndex());
+        
+        CatalogoItem catalogoTipoDocumentoAnalizado = (CatalogoItem) cboTipoDocumentoAnalizado.getSelectedItem();   
+        det.setIdTipoDocumentoAnalizado (catalogoTipoDocumentoAnalizado.getIdCatalogoItem());
+        
         oExpedienteAnalisisAbogado.agregarExpedienteAnalisisAbogadoDetDoc(det);
 
         if(filaEditando == -1) 
@@ -1179,6 +1183,12 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             oExpedienteAnalisisAbogado.setIdEstadoExpediente(estadoExpedienteRecibido.getId());            
             CatalogoItem catalogoAnalisisAbogado = (CatalogoItem) cboAnalisisAbogado.getSelectedItem();
             int idAnalisisAbogado = catalogoAnalisisAbogado.getIdCatalogoItem();
+            
+            
+            //tipoProcedimientoRegistral
+            //CatalogoItem catalogoTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistral.getSelectedItem();
+            //int idTipoProcedimientoRegistral = catalogoTipoProcedimientoRegistral.getIdCatalogoItem();
+            
             oExpedienteAnalisisAbogado.setIdAnalisis(idAnalisisAbogado);                        
             oExpedienteAnalisisAbogado.setIdExpediente(idExpedienteOculto);                                    
             oExpedienteAnalisisAbogado.setIdAbogado(1);            
