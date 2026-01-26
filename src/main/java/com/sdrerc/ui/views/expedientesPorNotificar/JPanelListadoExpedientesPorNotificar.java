@@ -10,6 +10,7 @@ import com.sdrerc.ui.views.expedientesAsignados.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
+import com.sdrerc.application.ExpedientePorNotificarService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
@@ -31,7 +32,7 @@ public class JPanelListadoExpedientesPorNotificar extends javax.swing.JPanel {
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
-    private final ExpedienteAsignacionService expedienteAsignacionService;
+    private final ExpedientePorNotificarService expedientePorNotificarService;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -41,7 +42,7 @@ public class JPanelListadoExpedientesPorNotificar extends javax.swing.JPanel {
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
-        this.expedienteAsignacionService = new ExpedienteAsignacionService();
+        this.expedientePorNotificarService = new ExpedientePorNotificarService();
         
         cargarTiposBusqueda();
         cargarComboEstados();    
@@ -81,10 +82,11 @@ public class JPanelListadoExpedientesPorNotificar extends javax.swing.JPanel {
                         
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
             
-            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpedienteRecibido.getId(),0,0);
+            List<Expediente> lista = expedientePorNotificarService.ListarExpedientesPorNotificar(0);
             cargarTablaNueva(lista);
         } 
-        catch (Exception e) {
+        catch (Exception e) 
+        {
         }
       }
       

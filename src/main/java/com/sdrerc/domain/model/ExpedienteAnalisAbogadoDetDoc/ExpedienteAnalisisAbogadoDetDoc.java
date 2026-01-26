@@ -14,7 +14,8 @@ public class ExpedienteAnalisisAbogadoDetDoc
 {
     private int idExpedienteAnalisisAbogadoDetDoc; 
     private int idExpedienteAnalisisAbogado;     
-    private int idTipoDocumentoAnalizado; 
+    private int idTipoDocumentoAnalizado;
+    private String descTipoDocumentoAnalizado;
     private String descDocumento;
     private int active; 
     private Date fechaRegistro; 
@@ -22,10 +23,11 @@ public class ExpedienteAnalisisAbogadoDetDoc
     private Date fechaModificacion; 
     private int usuarioModificacion;
 
-    public ExpedienteAnalisisAbogadoDetDoc(int idExpedienteAnalisisAbogadoDetDoc, int idExpedienteAnalisisAbogado, int idTipoDocumentoAnalizado, String descDocumento, int active, Date fechaRegistro, int usuarioRegistro, Date fechaModificacion, int usuarioModificacion) {
+    public ExpedienteAnalisisAbogadoDetDoc(int idExpedienteAnalisisAbogadoDetDoc, int idExpedienteAnalisisAbogado, int idTipoDocumentoAnalizado, String descTipoDocumentoAnalizado, String descDocumento, int active, Date fechaRegistro, int usuarioRegistro, Date fechaModificacion, int usuarioModificacion) {
         this.idExpedienteAnalisisAbogadoDetDoc = idExpedienteAnalisisAbogadoDetDoc;
         this.idExpedienteAnalisisAbogado = idExpedienteAnalisisAbogado;
         this.idTipoDocumentoAnalizado = idTipoDocumentoAnalizado;
+        this.descTipoDocumentoAnalizado = descTipoDocumentoAnalizado;
         this.descDocumento = descDocumento;
         this.active = active;
         this.fechaRegistro = fechaRegistro;
@@ -59,6 +61,14 @@ public class ExpedienteAnalisisAbogadoDetDoc
 
     public void setIdTipoDocumentoAnalizado(int idTipoDocumentoAnalizado) {
         this.idTipoDocumentoAnalizado = idTipoDocumentoAnalizado;
+    }
+    
+    public String getDescTipoDocumentoAnalizado() {
+        return descTipoDocumentoAnalizado;
+    }
+
+    public void setDescTipoDocumentoAnalizado(String descTipoDocumentoAnalizado) {
+        this.descTipoDocumentoAnalizado = descTipoDocumentoAnalizado;
     }
 
     public String getDescDocumento() {

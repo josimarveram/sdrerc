@@ -8,6 +8,7 @@ import com.sdrerc.ui.views.expedientesPorVerificar.*;
 import com.sdrerc.ui.views.expedientesPorTrabajar.*;
 import com.sdrerc.ui.views.expedientes.*;
 import com.sdrerc.application.CatalogoItemService;
+import com.sdrerc.application.ExpedienteAnalisisAbogadoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.UbigeoService;
@@ -18,9 +19,12 @@ import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetDoc;
+import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogadoResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.util.TextFieldRules;
+import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -33,7 +37,11 @@ import java.util.List;
 import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -44,6 +52,7 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel 
 {
     private final ExpedienteService expedienteService;
+    private final ExpedienteAnalisisAbogadoService expedienteAnalisisAbogadoService;
     private final CatalogoItemService catalogoItemService;
     private final ExpedienteAsignacionService expedienteAsignacionService;
     private final UbigeoService ubigeoService;
@@ -57,19 +66,125 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
         this.ubigeoService = new UbigeoService();
-        this.expedienteAsignacionService = new ExpedienteAsignacionService();      
+        this.expedienteAsignacionService = new ExpedienteAsignacionService();     
+        this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
         cargarTipoDocumentoAnalizado();
         cargarTieneObservacion();
         cargarTipoObservacion();
-        cargarAnalisis();                       
+        cargarTipoMedioNotificacion();
+        cargarAnalisis();          
+        
+        configurarModelo();
+        configurarColumnaNumero();
+	configurarColumnas();  
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
-        idExpedienteOculto = lista.getIdExpediente();
-    }
+        idExpedienteOculto = lista.getIdExpediente();        
+        //numeroTramiteDocumento 
+        textNumeroTramiteDocumento1.setText(lista.getNumeroTramiteDocumento());
         
+        //Listar
+        cargarListarExpedientesPorNotificar(idExpediente);
+    }
+    
+    public void cargarListarExpedientesPorNotificar(String idExpediente) throws Exception 
+    {        
+        ExpedienteAnalisisAbogadoResponse ObtenerExpedientePorNotificar = expedienteAnalisisAbogadoService.ObtenerExpedientesPorNotificarXidExpediente(Integer.parseInt(idExpediente));           
+        
+        //cboAnalisisAbogado
+        seleccionarEstadoEnCombo(cboAnalisisAbogado, ObtenerExpedientePorNotificar.getIdAnalisis()); 
+        
+        //Carga la tabla del analisis perrox
+        cargarTablaNueva(ObtenerExpedientePorNotificar.getExpedienteAnalisisAbogadoDetDoc());
+    }
+    
+    private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
+    {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            CatalogoItem item = combo.getItemAt(i);
+            if (item.getIdCatalogoItem() == idEstado) {
+                combo.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+    
+    DefaultTableModel modelo;    
+    private void configurarModelo() 
+    {
+        modelo = new DefaultTableModel
+        (
+              new Object[]{"N°", "Documento Analizado", "Desc Documento", "Eliminar"}, 0
+        ) 
+        {
+            @Override
+            public boolean isCellEditable(int row, int column) 
+            {
+                return column == 3;
+            }
+        };
+        jTable2.setModel(modelo);
+    }
+    private void configurarColumnaNumero() 
+    {
+        if(jTable2.getColumnCount() == 0) return;
+        
+        jTable2.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() 
+        {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) 
+            {
+
+                JLabel label = (JLabel) super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column);
+
+                label.setHorizontalAlignment(JLabel.CENTER);
+                label.setText(String.valueOf(row + 1));
+                return label;
+            }
+        });
+    }	
+    private void configurarColumnas() 
+    {
+        jTable2.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        
+        jTable2.getColumnModel().getColumn(0).setPreferredWidth(40);
+        jTable2.getColumnModel().getColumn(1).setPreferredWidth(180);
+        jTable2.getColumnModel().getColumn(2).setPreferredWidth(180);
+        jTable2.getColumnModel().getColumn(3).setPreferredWidth(70);
+    }
+    
+    private void cargarTablaNueva(List<ExpedienteAnalisisAbogadoDetDoc> lista) 
+    {     
+        modelo.setRowCount(0);
+        int corr = 0;       
+        for(ExpedienteAnalisisAbogadoDetDoc e : lista) 
+        {
+            corr++;
+            Object[] fila = {
+                    corr,
+                    e.getDescTipoDocumentoAnalizado(),
+                    e.getDescDocumento()
+            };
+            modelo.addRow(fila);
+        }
+        jTable2.setModel(modelo);
+    }
+    
+    
+    private void cargarTipoMedioNotificacion() 
+    {
+        cboTipoMedioNotificacion.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(14);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTipoMedioNotificacion.addItem(catalogoitem);
+        }
+    }    
+    
     private void cargarTieneObservacion() 
     {
         cboTieneObservacion.removeAllItems();    
@@ -192,7 +307,7 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         spFechaSolicitud2 = new javax.swing.JSpinner();
         btnGuardarNotificacion = new javax.swing.JButton();
         btnRegresar = new javax.swing.JButton();
-        cboTipoDocumentoAnalizado3 = new javax.swing.JComboBox();
+        cboTipoMedioNotificacion = new javax.swing.JComboBox();
         jPanelDatosUbicacion1 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         jTable2 = new javax.swing.JTable();
@@ -237,15 +352,15 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         jPanelDatosSolicitud.setPreferredSize(new java.awt.Dimension(1034, 329));
 
         jLabel2.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel2.setText("Fecha Solicitud ");
+        jLabel2.setText("Fecha de Elaboración ");
 
         spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel8.setText("Fecha Recepción ");
+        jLabel8.setText("Medio de Notificación:");
 
         jLabel26.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel26.setText("Fecha Solicitud ");
+        jLabel26.setText("Fecha de Notificación ");
 
         spFechaSolicitud2.setModel(new javax.swing.SpinnerDateModel());
 
@@ -280,7 +395,7 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                         .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addContainerGap()
-                        .addComponent(cboTipoDocumentoAnalizado3, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(cboTipoMedioNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 63, Short.MAX_VALUE)
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -316,7 +431,7 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                             .addGap(1, 1, 1)
                             .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                 .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(cboTipoDocumentoAnalizado3, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                                .addComponent(cboTipoMedioNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 29, Short.MAX_VALUE)
                 .addComponent(btnGuardarNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(16, 16, 16))
@@ -568,27 +683,27 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         jPanelDatosSolicitud1Layout.setHorizontalGroup(
             jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
-                        .addGap(6, 6, 6)
+                        .addGap(1, 1, 1)
                         .addComponent(jLabel19, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(9, 9, 9)
                         .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
-                        .addGap(5, 5, 5)
                         .addComponent(spFechaRecepcion1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(spFechaSolicitud1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(textNumeroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(429, Short.MAX_VALUE))
+                .addContainerGap(428, Short.MAX_VALUE))
         );
         jPanelDatosSolicitud1Layout.setVerticalGroup(
             jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
-                .addGap(12, 12, 12)
+                .addContainerGap()
                 .addGroup(jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
                         .addGap(2, 2, 2)
@@ -600,7 +715,7 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                     .addComponent(spFechaRecepcion1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(spFechaSolicitud1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(textNumeroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(234, 234, 234))
+                .addContainerGap(11, Short.MAX_VALUE))
         );
 
         jPanelPrincipal.add(jPanelDatosSolicitud1, new org.netbeans.lib.awtextra.AbsoluteConstraints(6, 6, 1034, 100));
@@ -652,7 +767,7 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
     private javax.swing.JComboBox cboAnalisisAbogado;
     private javax.swing.JComboBox cboTieneObservacion;
     private javax.swing.JComboBox cboTipoDocumentoAnalizado;
-    private javax.swing.JComboBox cboTipoDocumentoAnalizado3;
+    private javax.swing.JComboBox cboTipoMedioNotificacion;
     private javax.swing.JComboBox cboTipoObservacion;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;

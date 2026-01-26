@@ -8,6 +8,7 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.ui.views.expedientes.JPanelListadoRegistroExpediente;
 import com.sdrerc.ui.views.expedientesAsignados.JPanelListadoExpedientesAsignados;
+import com.sdrerc.ui.views.expedientesPorNotificar.JPanelListadoExpedientesPorNotificar;
 import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTrabajar;
 import com.sdrerc.ui.views.expedientesPorVerificar.JPanelListadoExpedientesPorVerificar;
 import com.sdrerc.ui.views.home.jPanelHome;
@@ -389,7 +390,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private void btnMenuExpedientesPorNotificarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorNotificarMouseClicked
         try {
             lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR NOTIFICAR");
-            ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
+            ShowJPanel(new JPanelListadoExpedientesPorNotificar());
             // TODO add your handling code here:
         } catch (Exception ex) {
             Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);

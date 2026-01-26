@@ -85,7 +85,7 @@
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="cboTipoDocumentoAnalizado3" min="-2" pref="300" max="-2" attributes="0"/>
+                              <Component id="cboTipoMedioNotificacion" min="-2" pref="300" max="-2" attributes="0"/>
                           </Group>
                       </Group>
                       <EmptySpace pref="63" max="32767" attributes="0"/>
@@ -131,7 +131,7 @@
                                   <EmptySpace min="1" pref="1" max="-2" attributes="0"/>
                                   <Group type="103" groupAlignment="3" attributes="0">
                                       <Component id="spFechaSolicitud" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
-                                      <Component id="cboTipoDocumentoAnalizado3" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                                      <Component id="cboTipoMedioNotificacion" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
                           </Group>
@@ -156,7 +156,7 @@
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Arial" size="14" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Fecha Solicitud "/>
+                <Property name="text" type="java.lang.String" value="Fecha de Elaboraci&#xf3;n "/>
               </Properties>
             </Component>
             <Component class="javax.swing.JSpinner" name="spFechaSolicitud">
@@ -171,7 +171,7 @@
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Arial" size="14" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Fecha Recepci&#xf3;n "/>
+                <Property name="text" type="java.lang.String" value="Medio de Notificaci&#xf3;n:"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel26">
@@ -179,7 +179,7 @@
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Arial" size="14" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Fecha Solicitud "/>
+                <Property name="text" type="java.lang.String" value="Fecha de Notificaci&#xf3;n "/>
               </Properties>
             </Component>
             <Component class="javax.swing.JSpinner" name="spFechaSolicitud2">
@@ -223,7 +223,7 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnRegresarActionPerformed"/>
               </Events>
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoDocumentoAnalizado3">
+            <Component class="javax.swing.JComboBox" name="cboTipoMedioNotificacion">
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
@@ -645,9 +645,10 @@
             <DimensionLayout dim="0">
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
+                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Group type="102" alignment="0" attributes="0">
-                              <EmptySpace min="6" pref="6" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="1" max="-2" attributes="0"/>
                               <Component id="jLabel19" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="9" pref="9" max="-2" attributes="0"/>
                               <Component id="jLabel10" min="-2" pref="190" max="-2" attributes="0"/>
@@ -655,7 +656,6 @@
                               <Component id="jLabel11" min="-2" pref="190" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
-                              <EmptySpace min="5" pref="5" max="-2" attributes="0"/>
                               <Component id="spFechaRecepcion1" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                               <Component id="spFechaSolicitud1" min="-2" pref="190" max="-2" attributes="0"/>
@@ -663,14 +663,14 @@
                               <Component id="textNumeroTramiteDocumento1" min="-2" pref="190" max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace pref="429" max="32767" attributes="0"/>
+                      <EmptySpace pref="428" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
             <DimensionLayout dim="1">
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace min="12" pref="12" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Group type="102" alignment="0" attributes="0">
                               <EmptySpace min="2" pref="2" max="-2" attributes="0"/>
@@ -685,7 +685,7 @@
                           <Component id="spFechaSolicitud1" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="textNumeroTramiteDocumento1" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace min="-2" pref="234" max="-2" attributes="0"/>
+                      <EmptySpace pref="11" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>

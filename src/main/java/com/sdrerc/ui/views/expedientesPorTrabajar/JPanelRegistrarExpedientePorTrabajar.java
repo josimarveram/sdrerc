@@ -1143,10 +1143,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         } 
         // Agregando a la tablaDetalle
         ExpedienteAnalisisAbogadoDetDoc det = new ExpedienteAnalisisAbogadoDetDoc();
-        det.setDescDocumento(v1);
+        //det.setIdTipoDocumentoAnalizado(cboTipoDocumentoAnalizado.getSelectedIndex());
+        det.setDescDocumento(v2);
         det.setActive(1);
-        det.setUsuarioRegistro(1);
-        det.setIdTipoDocumentoAnalizado(cboTipoDocumentoAnalizado.getSelectedIndex());
+        det.setUsuarioRegistro(1);        
         
         CatalogoItem catalogoTipoDocumentoAnalizado = (CatalogoItem) cboTipoDocumentoAnalizado.getSelectedItem();   
         det.setIdTipoDocumentoAnalizado (catalogoTipoDocumentoAnalizado.getIdCatalogoItem());

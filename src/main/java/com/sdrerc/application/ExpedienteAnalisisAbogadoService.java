@@ -5,7 +5,9 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogado;
+import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogadoResponse;
 import com.sdrerc.infrastructure.repository.ExpedienteAnalisisAbogadoRepository;
+import java.util.List;
 
 /**
  *
@@ -26,8 +28,14 @@ public class ExpedienteAnalisisAbogadoService
         {
             throw new Exception("El expediente no puede ser nulo.");
         }
-        // Llamar al repositorio (DAO)
         boolean respuesta = expedienteAnalisisAbogadoRepository.InsertarAnalisisAbogado(oExpedienteAnalisisAbogado);
         return respuesta; 
+    }
+    
+    public ExpedienteAnalisisAbogadoResponse ObtenerExpedientesPorNotificarXidExpediente(int idExpediente) throws Exception 
+    {
+        ExpedienteAnalisisAbogadoResponse expedienteResponse = expedienteAnalisisAbogadoRepository.ObtenerExpedientesPorNotificarXidExpediente(idExpediente);
+        return expedienteResponse;
     } 
+    
 }

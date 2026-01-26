@@ -6,13 +6,16 @@ package com.sdrerc.infrastructure.repository;
 
 import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetDoc;
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogado;
-import com.sdrerc.domain.model.ExpedienteAsignacion;
+import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogadoResponse;
 import com.sdrerc.infrastructure.database.OracleConnection;
-import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import oracle.jdbc.OraclePreparedStatement;
 import oracle.jdbc.OracleTypes;
 
@@ -109,5 +112,75 @@ public class ExpedienteAnalisisAbogadoRepository
             if (conn != null) conn.setAutoCommit(true); // volver a modo normal
             if (conn != null) conn.close();
         }               
+    }
+	
+    public ExpedienteAnalisisAbogadoResponse ObtenerExpedientesPorNotificarXidExpediente(int idExpediente) throws SQLException 
+    {
+        String sql =
+        " SELECT " +
+        " ea.ID_EXPEDIENTE_ANALISIS_ABOGADO, ea.ID_EXPEDIENTE, ea.ID_ABOGADO, ea.ID_ANALISIS, " +
+        " ea.DESC_FUNDAMENTO, ea.FECHA_ATENCION, ea.FECHA_REGISTRO, ea.USUARIO_REGISTRO, " +
+        " ea.FECHA_MODIFICACION, ea.USUARIO_MODIFICACION, " +
+        " d.ID_EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC, d.ID_TIPO_DOCUMENTO_ANALIZADO, " +
+        " d.DESC_DOCUMENTO, d.ACTIVE AS ACTIVE_DOC, d.FECHA_REGISTRO AS FECHA_REGISTRO_DOC, " +
+        " d.USUARIO_REGISTRO AS USUARIO_REGISTRO_DOC, d.FECHA_MODIFICACION AS FECHA_MODIFICACION_DOC, " +
+        " d.USUARIO_MODIFICACION AS USUARIO_MODIFICACION_DOC, c.descripcion AS descTipoDocumentoAnalizado " +
+        " FROM EXPEDIENTE_ANALISIS_ABOGADO ea " +
+        " LEFT JOIN EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d " + " ON ea.ID_EXPEDIENTE_ANALISIS_ABOGADO = d.ID_EXPEDIENTE_ANALISIS_ABOGADO " + " AND d.ACTIVE = 1 " +
+        " INNER JOIN CATALOGO_ITEM C ON d.ID_TIPO_DOCUMENTO_ANALIZADO = c.ID_CATALOGO_ITEM " +
+        " WHERE ea.ACTIVE = 1 " +
+        " AND ea.ID_EXPEDIENTE = ? " +
+        " ORDER BY ea.ID_EXPEDIENTE_ANALISIS_ABOGADO, d.FECHA_REGISTRO ";
+        
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) 
+        {
+            ps.setInt(1, idExpediente);
+            ResultSet rs = ps.executeQuery();            
+            
+            ExpedienteAnalisisAbogadoResponse padre = null;
+
+            while(rs.next()) 
+            {
+               if (padre == null) 
+               {
+                padre = new ExpedienteAnalisisAbogadoResponse(
+                rs.getInt("ID_EXPEDIENTE_ANALISIS_ABOGADO"),
+                rs.getInt("ID_EXPEDIENTE"),
+                rs.getInt("ID_ABOGADO"),
+                rs.getInt("ID_ANALISIS"),
+                rs.getString("DESC_FUNDAMENTO"),
+                rs.getDate("FECHA_ATENCION"),
+                rs.getDate("FECHA_REGISTRO"),
+                0, // usuarioRegistro no aplica como int
+                rs.getDate("FECHA_MODIFICACION"),
+                0, // usuarioModificacion no aplica como int
+                1 // idEstadoExpediente → no existe, valor fijo o eliminar del modelo
+                );
+                //mapa.put(idPadre, padre);
+               }
+               int idDetalle = rs.getInt("ID_EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC");
+               if (!rs.wasNull()) 
+               {
+                  ExpedienteAnalisisAbogadoDetDoc doc = new ExpedienteAnalisisAbogadoDetDoc(
+                        idDetalle,
+                        padre.getIdExpedienteAnalisisAbogado(),
+                        rs.getInt("ID_TIPO_DOCUMENTO_ANALIZADO"),
+                        rs.getString("descTipoDocumentoAnalizado"),
+                        rs.getString("DESC_DOCUMENTO"),
+                        rs.getInt("ACTIVE_DOC"),
+                        rs.getDate("FECHA_REGISTRO_DOC"),
+                        0,
+                        rs.getDate("FECHA_MODIFICACION_DOC"),
+                        0
+                    );
+                    padre.getExpedienteAnalisisAbogadoDetDoc().add(doc);
+                }
+            }
+
+            rs.close();
+            ps.close();
+            return padre;
+        }
     }
 }
