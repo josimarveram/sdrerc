@@ -8,6 +8,7 @@ import com.sdrerc.ui.views.expedientesPorTrabajar.*;
 import com.sdrerc.ui.views.expedientes.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.ExpedienteAsignacionService;
+import com.sdrerc.application.ExpedienteObservacionVerificacionService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
@@ -18,6 +19,7 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
+import com.sdrerc.domain.model.ExpedienteObservacionVerificacion.ExpedienteObservacionVerificacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.util.TextFieldRules;
 import java.io.File;
@@ -45,6 +47,8 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
     private final ExpedienteService expedienteService;
     private final CatalogoItemService catalogoItemService;
     private final ExpedienteAsignacionService expedienteAsignacionService;
+    private final ExpedienteObservacionVerificacionService expedienteObservacionVerificacionService;
+    
     private final UbigeoService ubigeoService;
     private Integer idExpedienteOculto = 0;
     
@@ -55,6 +59,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         initComponents();
         
         this.expedienteService = new ExpedienteService();
+        this.expedienteObservacionVerificacionService = new ExpedienteObservacionVerificacionService();
         this.catalogoItemService = new CatalogoItemService();
         this.ubigeoService = new UbigeoService();
         this.expedienteAsignacionService = new ExpedienteAsignacionService();
@@ -77,8 +82,8 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         cargarComboUnidadOrganica();
         
         cargarTipoDocumentoAnalizado();
-        cargarTieneObservacion();
         cargarTipoObservacion();
+        cargarTieneObservacion();
         cargarAnalisis();  
                 
         registrarEventos();
@@ -305,22 +310,38 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
     
     private void cargarTieneObservacion() 
     {
-        cboTieneObservacion.removeAllItems();    
+        cboTieneObservacion.removeAllItems();   
+        
+        // 👉 Item por defecto
+        CatalogoItem itemSeleccione = new CatalogoItem();
+        itemSeleccione.setId(0); // o 0 si tu lógica lo prefiere
+        itemSeleccione.setDescripcion("--Seleccione--");
+
+        cboTieneObservacion.addItem(itemSeleccione);
+        
         List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(12);
         for (CatalogoItem catalogoitem : lista) 
         {
             cboTieneObservacion.addItem(catalogoitem);
         }
+        cboTieneObservacion.setSelectedIndex(0);
     }
     
     private void cargarTipoObservacion() 
     {
-        cboTipoObservacion.removeAllItems();    
+        cboTipoObservacion.removeAllItems();  
+        
+        CatalogoItem itemSeleccione = new CatalogoItem();
+        itemSeleccione.setId(0); // o 0 si tu lógica lo prefiere
+        itemSeleccione.setDescripcion("--Seleccione--");
+        cboTipoObservacion.addItem(itemSeleccione);
+        
         List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(13);
         for (CatalogoItem catalogoitem : lista) 
         {
             cboTipoObservacion.addItem(catalogoitem);
         }
+        cboTipoObservacion.setSelectedIndex(0);
     }
     
     private void cargarTipoDocumentoAnalizado() 
@@ -480,12 +501,12 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         jLabel22 = new javax.swing.JLabel();
         cboTipoObservacion = new javax.swing.JComboBox();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTextArea1 = new javax.swing.JTextArea();
+        jTextDescripcionObservacion = new javax.swing.JTextArea();
         jLabel28 = new javax.swing.JLabel();
-        btnRegresar4 = new javax.swing.JButton();
+        btnGuardarAnalisis = new javax.swing.JButton();
         btnRegresar5 = new javax.swing.JButton();
         jLabel23 = new javax.swing.JLabel();
-        textNumeroDocumentoTitular1 = new javax.swing.JTextField();
+        textHojaEnvio = new javax.swing.JTextField();
 
         setBackground(new java.awt.Color(255, 255, 255));
         setPreferredSize(new java.awt.Dimension(1060, 728));
@@ -828,26 +849,32 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         jPanelDatosUbicacion2.setBackground(new java.awt.Color(255, 255, 255));
         jPanelDatosUbicacion2.setBorder(javax.swing.BorderFactory.createTitledBorder("Resultado de la verificación"));
 
+        cboTieneObservacion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cboTieneObservacionActionPerformed(evt);
+            }
+        });
+
         jLabel21.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel21.setText("Tiene Observacion?");
 
         jLabel22.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel22.setText("Tipo Observación");
 
-        jTextArea1.setColumns(20);
-        jTextArea1.setRows(5);
-        jScrollPane1.setViewportView(jTextArea1);
+        jTextDescripcionObservacion.setColumns(20);
+        jTextDescripcionObservacion.setRows(5);
+        jScrollPane1.setViewportView(jTextDescripcionObservacion);
 
         jLabel28.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel28.setText("Descripción de la observación");
 
-        btnRegresar4.setBackground(new java.awt.Color(25, 120, 210));
-        btnRegresar4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        btnRegresar4.setForeground(new java.awt.Color(255, 255, 255));
-        btnRegresar4.setText("GUARDAR ANALISIS");
-        btnRegresar4.addActionListener(new java.awt.event.ActionListener() {
+        btnGuardarAnalisis.setBackground(new java.awt.Color(25, 120, 210));
+        btnGuardarAnalisis.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnGuardarAnalisis.setForeground(new java.awt.Color(255, 255, 255));
+        btnGuardarAnalisis.setText("GUARDAR ANALISIS");
+        btnGuardarAnalisis.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnRegresar4ActionPerformed(evt);
+                btnGuardarAnalisisActionPerformed(evt);
             }
         });
 
@@ -889,13 +916,13 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                             .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
                                 .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 101, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(textNumeroDocumentoTitular1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addComponent(textHojaEnvio, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelDatosUbicacion2Layout.createSequentialGroup()
                 .addGap(74, 74, 74)
                 .addComponent(btnRegresar5, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 77, Short.MAX_VALUE)
-                .addComponent(btnRegresar4, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(btnGuardarAnalisis, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(47, 47, 47))
         );
         jPanelDatosUbicacion2Layout.setVerticalGroup(
@@ -904,7 +931,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                 .addGap(3, 3, 3)
                 .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel23)
-                    .addComponent(textNumeroDocumentoTitular1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(textHojaEnvio, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 27, Short.MAX_VALUE)
                 .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDatosUbicacion2Layout.createSequentialGroup()
@@ -922,7 +949,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
                 .addGap(18, 18, 18)
                 .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(btnRegresar5, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnRegresar4, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(btnGuardarAnalisis, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
 
@@ -947,22 +974,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
     private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
         
         CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
-        int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
-        
-        /*
-        if(idTipoSolicitud == 10)
-        {
-          textDniRemitente.setEnabled(true);
-          textApellidosNombreRemitente.setEnabled(true);
-          cboUnidadOrganica.setEnabled(false);
-        }
-        else
-        {
-           textDniRemitente.setEnabled(false);
-           textApellidosNombreRemitente.setEnabled(false);
-           cboUnidadOrganica.setEnabled(true); 
-        }
-        */
+        int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem();         
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
     private void jTable2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable2MouseClicked
@@ -973,18 +985,91 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         // TODO add your handling code here:
     }//GEN-LAST:event_btnGenerarDocumento1ActionPerformed
 
-    private void btnRegresar4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar4ActionPerformed
+    private void btnGuardarAnalisisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarAnalisisActionPerformed
+        
+        try 
+        {            
+            CatalogoItem seleccionado = (CatalogoItem) cboTieneObservacion.getSelectedItem();
+
+            if (seleccionado == null || seleccionado.getIdCatalogoItem() == 0) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Debe seleccionar una opción válida del Tiene Observación",
+                    "Validación",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                cboTieneObservacion.requestFocus();
+                return;
+            }
+            
+            ExpedienteObservacionVerificacion expedienteObservacion = new ExpedienteObservacionVerificacion();
+            expedienteObservacion.setHojaEnvio(textHojaEnvio.getText());
+            //Valor SI tiene Observacion
+            String valorCombo = cboTieneObservacion.getSelectedItem().toString();
+            boolean tieneObservacion = valorCombo.equalsIgnoreCase("SI");
+            expedienteObservacion.setTieneObservacion(tieneObservacion);
+            //tipoObservacion
+            CatalogoItem catalogoTipoObservacion = (CatalogoItem) cboTipoObservacion.getSelectedItem();
+            int idTipoObservacion = catalogoTipoObservacion.getIdCatalogoItem();            
+            expedienteObservacion.setTipoObservacion(idTipoObservacion);
+            expedienteObservacion.setDescripcionObservacion(jTextDescripcionObservacion.getText());
+            
+                   
+            expedienteObservacion.setIdExpediente(idExpedienteOculto); 
+            expedienteObservacion.setUsuarioRegistro(1); 
+            expedienteObservacion.setUsuarioModificacion(1);
+            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
+            Enumerado.EstadoExpediente estadoExpedienteVerificado = Enumerado.EstadoExpediente.ExpedienteVerificado;
+            expedienteObservacion.setIdEstadoExpediente(tieneObservacion    ?   estadoExpedienteRecibido.getId()
+                                                                            :   estadoExpedienteVerificado.getId());    
+            expedienteObservacionVerificacionService.registrarObservacion(expedienteObservacion);
+
+            JOptionPane.showMessageDialog(this, "Expediente observación registrada correctamente");
+
+            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorVerificar());
+        } 
+        catch (Exception ex) 
+        {
+            JOptionPane.showMessageDialog(this,
+                    "Error al guardar: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } 
+
         // TODO add your handling code here:
-    }//GEN-LAST:event_btnRegresar4ActionPerformed
+    }//GEN-LAST:event_btnGuardarAnalisisActionPerformed
 
     private void btnRegresar5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar5ActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_btnRegresar5ActionPerformed
 
+    private void cboTieneObservacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTieneObservacionActionPerformed
+        CatalogoItem seleccionado = (CatalogoItem) cboTieneObservacion.getSelectedItem();
+        
+        if (seleccionado == null || seleccionado.getIdCatalogoItem() == 0) {
+            // --Seleccione--
+            cboTipoObservacion.setEnabled(false);
+            cboTipoObservacion.setSelectedIndex(0);
+            return;
+        }
+        
+        boolean esSi =
+            "SI".equalsIgnoreCase(seleccionado.getDescripcion());
+        
+        cboTipoObservacion.setEnabled(esSi);
+        
+        if (!esSi) {
+            // NO → limpiar tipo
+            cboTipoObservacion.setSelectedIndex(0);
+        }
+        
+        // TODO add your handling code here:
+    }//GEN-LAST:event_cboTieneObservacionActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnGenerarDocumento1;
-    private javax.swing.JButton btnRegresar4;
+    private javax.swing.JButton btnGuardarAnalisis;
     private javax.swing.JButton btnRegresar5;
     private javax.swing.JComboBox cboAnalisisAbogado;
     private javax.swing.JComboBox cboGradoParentesco;
@@ -1027,16 +1112,16 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTable jTable2;
-    private javax.swing.JTextArea jTextArea1;
+    private javax.swing.JTextArea jTextDescripcionObservacion;
     private javax.swing.JSpinner spFechaRecepcion;
     private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JTextField textApellidosNombreRemitente;
     private javax.swing.JTextField textApellidosNombreTitular;
     private javax.swing.JTextField textDniRemitente;
+    private javax.swing.JTextField textHojaEnvio;
     private javax.swing.JTextField textNumeroActa;
     private javax.swing.JTextField textNumeroDocumento;
     private javax.swing.JTextField textNumeroDocumentoTitular;
-    private javax.swing.JTextField textNumeroDocumentoTitular1;
     private javax.swing.JTextField textNumeroDocumentoTitular2;
     private javax.swing.JTextField textNumeroTramiteDocumento;
     // End of variables declaration//GEN-END:variables

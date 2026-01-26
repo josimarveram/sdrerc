@@ -700,7 +700,7 @@
                                   <Group type="102" attributes="0">
                                       <Component id="jLabel23" min="-2" pref="101" max="-2" attributes="0"/>
                                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                      <Component id="textNumeroDocumentoTitular1" min="-2" pref="190" max="-2" attributes="0"/>
+                                      <Component id="textHojaEnvio" min="-2" pref="190" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
                               <EmptySpace max="32767" attributes="0"/>
@@ -711,7 +711,7 @@
                       <EmptySpace min="-2" pref="74" max="-2" attributes="0"/>
                       <Component id="btnRegresar5" min="-2" pref="146" max="-2" attributes="0"/>
                       <EmptySpace pref="77" max="32767" attributes="0"/>
-                      <Component id="btnRegresar4" min="-2" pref="146" max="-2" attributes="0"/>
+                      <Component id="btnGuardarAnalisis" min="-2" pref="146" max="-2" attributes="0"/>
                       <EmptySpace min="-2" pref="47" max="-2" attributes="0"/>
                   </Group>
               </Group>
@@ -722,7 +722,7 @@
                       <EmptySpace min="-2" pref="3" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="jLabel23" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="textNumeroDocumentoTitular1" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="textHojaEnvio" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace pref="27" max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
@@ -744,7 +744,7 @@
                       <EmptySpace type="separate" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="btnRegresar5" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
-                          <Component id="btnRegresar4" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="btnGuardarAnalisis" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace max="-2" attributes="0"/>
                   </Group>
@@ -753,6 +753,9 @@
           </Layout>
           <SubComponents>
             <Component class="javax.swing.JComboBox" name="cboTieneObservacion">
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cboTieneObservacionActionPerformed"/>
+              </Events>
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
@@ -785,7 +788,7 @@
 
               <Layout class="org.netbeans.modules.form.compat2.layouts.support.JScrollPaneSupportLayout"/>
               <SubComponents>
-                <Component class="javax.swing.JTextArea" name="jTextArea1">
+                <Component class="javax.swing.JTextArea" name="jTextDescripcionObservacion">
                   <Properties>
                     <Property name="columns" type="int" value="20"/>
                     <Property name="rows" type="int" value="5"/>
@@ -801,7 +804,7 @@
                 <Property name="text" type="java.lang.String" value="Descripci&#xf3;n de la observaci&#xf3;n"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JButton" name="btnRegresar4">
+            <Component class="javax.swing.JButton" name="btnGuardarAnalisis">
               <Properties>
                 <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
                   <Color blue="d2" green="78" red="19" type="rgb"/>
@@ -815,7 +818,7 @@
                 <Property name="text" type="java.lang.String" value="GUARDAR ANALISIS"/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnRegresar4ActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnGuardarAnalisisActionPerformed"/>
               </Events>
             </Component>
             <Component class="javax.swing.JButton" name="btnRegresar5">
@@ -843,7 +846,7 @@
                 <Property name="text" type="java.lang.String" value="Hoja de Envio"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JTextField" name="textNumeroDocumentoTitular1">
+            <Component class="javax.swing.JTextField" name="textHojaEnvio">
             </Component>
           </SubComponents>
         </Container>

@@ -14,7 +14,9 @@ public class CatalogoItem {
     private String descripcion;
     private int activo;
     
-    
+    public CatalogoItem(){ 
+        
+    }
     public CatalogoItem(int idCatalogoItem,int idCatalogo, String descripcion, int activo) {
         this.idCatalogoItem = idCatalogoItem;
         this.idCatalogo = idCatalogo;
@@ -23,7 +25,13 @@ public class CatalogoItem {
     }
 
     
+    public void setId(int idCatalogoItem) {
+        this.idCatalogoItem = idCatalogoItem;
+    }
     
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
     
     public int getIdCatalogoItem() { return idCatalogoItem; }
     public int getIdCatalogo() { return idCatalogo; }

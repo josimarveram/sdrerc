@@ -24,7 +24,8 @@ public class Enumerado
         RegistroExpediente(56),
         ExpedienteAsignado(57),
         ExpedienteRecibido(58),
-        ExpedienteAtendido(59);
+        ExpedienteAtendido(59),
+        ExpedienteVerificado(60);
 
         private final int id;
 
