@@ -53,257 +53,23 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
      * Creates new form JPanelRegistrarExpediente
      */
     public JPanelRegistrarExpedientePorNotificar() {
-        initComponents();
-        
+        initComponents();        
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
         this.ubigeoService = new UbigeoService();
-        this.expedienteAsignacionService = new ExpedienteAsignacionService();
-        
-        TextFieldRules.apply(textDniRemitente).onlyNumbers().max(8);
-        TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
-        
-        TextFieldRules.apply(textNumeroDocumentoTitular).onlyNumbers().max(8);
-        TextFieldRules.apply(textApellidosNombreTitular).onlyLetters().max(300);
-        
-        
-                
-        cargarComboTipoSolicitud(); 
-        cargarComboTipoDocumento();
-        cargarComboTipoProcedimientoRegistral(); 
-        cargarComboTipoActa();
-        cargarComboGrupoFamiliar();
-        cargarComboParentesco();
-        //cargarComboDireccionDomiciliaria();
-        cargarComboUnidadOrganica();
-        
+        this.expedienteAsignacionService = new ExpedienteAsignacionService();      
         cargarTipoDocumentoAnalizado();
         cargarTieneObservacion();
         cargarTipoObservacion();
-        cargarAnalisis();  
-                
-        registrarEventos();
-        
-        //textDniRemitente.setEnabled(false);
-        //textApellidosNombreRemitente.setEnabled(false);
-        //cboUnidadOrganica.setEnabled(false);        
-    }
-    
-    
-    private void registrarEventos() 
-    {
-        /*
-
-        cboDepartamento.addActionListener(e -> {
-            if (cboDepartamento.getSelectedIndex() != -1) {
-                cboProvincia.setEnabled(true);
-                cargarProvincias();
-            }
-        });
-
-        cboProvincia.addActionListener(e -> {
-            if (cboProvincia.getSelectedIndex() != -1) {
-                cboDistrito.setEnabled(true);
-                cargarDistritos();
-            }
-        });
-        +/
-      
-        /*
-        cboTipoSolicitud.addActionListener(e -> {
-            if (cboTipoSolicitud.getSelectedIndex() == 1) {
-                textDniRemitente.setEnabled(true);
-                textApellidosNombreRemitente.setEnabled(true);
-                cboUnidadOrganica.setEnabled(false);
-            }else{
-                textDniRemitente.setEnabled(false);
-                textApellidosNombreRemitente.setEnabled(false);
-                cboUnidadOrganica.setEnabled(true);
-            }            
-        });
-        */
-        
+        cargarAnalisis();                       
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
         idExpedienteOculto = lista.getIdExpediente();
+    }
         
-        //esRegistroSdrerc 
-        //jRadiButonNoCorresponde.setSelected(lista.getEsRegistroSdrerc() == 1? true : false);
-
-        //hojaEnvioExpediente
-        //textHojaEnvioExpediente.setText(lista.getHojaEnvioExpediente());                          
-
-        //numeroTramiteDocumento 
-        textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
-
-        //fechaRecepcion
-        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
-        
-        //fechaSolicitud
-        spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
-
-        //tipoDocumento
-        seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
-
-        //numeroDocumento
-        textNumeroDocumento.setText(lista.getNumeroDocumento());   
-
-        //tipoActa
-        seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
-
-        //numeroActa
-        textNumeroActa.setText(lista.getNumeroActa());
-
-        //tipoGrupoFamiliar
-        seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar()); 
-
-        //gradoParentesco
-        seleccionarEstadoEnCombo(cboGradoParentesco, lista.getGradoParentesco()); 
-        
-        //tipoProcedimientoRegistral
-        seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
-
-        //tipoSolicitud
-        seleccionarEstadoEnCombo(cboTipoSolicitud, lista.getTipoSolicitud()); 
-
-        //dniRemitente
-        textDniRemitente.setText(lista.getDniRemitente());
-
-        //apellidoNombreRemitente
-        textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
-
-        //unidadOrganica
-        seleccionarEstadoEnCombo(cboUnidadOrganica, lista.getUnidadOrganica());
-
-        //dniTitular
-        textNumeroDocumentoTitular.setText(lista.getDniTitular());
-
-        //apellidoNombreTitular
-        textApellidosNombreTitular.setText(lista.getApellidoNombreTitular());
-
-        //departamento
-        //seleccionarEstadoEnCombo(cboDepartamento, lista.getDepartamento());
-        
-        //provincia
-        //seleccionarEstadoEnCombo(cboProvincia, lista.getProvincia());
-        
-        //distrito
-        //seleccionarEstadoEnCombo(cboDistrito, lista.getDistrito());
-
-        //direccionDomiciliaria
-        //seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
-
-        //domicilio
-        //textDomicilio.setText(lista.getDomicilio());
-
-        //correoElectronico
-        //textCorreoElectronico.setText(lista.getCorreoElectronico());
-
-        //celular
-        //textCelular.setText(lista.getCelular());
-        
-    }
-    
-    private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
-    {
-        for (int i = 0; i < combo.getItemCount(); i++) {
-            CatalogoItem item = combo.getItemAt(i);
-            if (item.getIdCatalogoItem() == idEstado) {
-                combo.setSelectedIndex(i);
-                break;
-            }
-        }
-    }
-    
-    private void cargarComboTipoSolicitud() {
-        cboTipoSolicitud.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(1);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboTipoSolicitud.addItem(catalogoitem);
-        }
-    }
-    
-    private void cargarComboTipoDocumento() {
-        cboTipoDocumento.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(2);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboTipoDocumento.addItem(catalogoitem);
-        }
-    }
-    
-    private void cargarComboTipoProcedimientoRegistral() {
-        cboTipoProcedimientoRegistral.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(3);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboTipoProcedimientoRegistral.addItem(catalogoitem);
-        }
-    }
-    
-    private void cargarComboTipoActa() {
-        cboTipoActa.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(4);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboTipoActa.addItem(catalogoitem);
-        }
-    }
-    
-    private void cargarComboGrupoFamiliar() {
-        cboGrupoFamiliar.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(6);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboGrupoFamiliar.addItem(catalogoitem);
-        }
-    }
-    
-    private void cargarComboParentesco() {
-        cboGradoParentesco.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(7);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboGradoParentesco.addItem(catalogoitem);
-        }
-    }
-    /*
-    private void cargarComboDireccionDomiciliaria() 
-    {
-        cboDireccionDomiciliaria.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(8);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboDireccionDomiciliaria.addItem(catalogoitem);
-        }
-    }
-    */
-    
-    private void cargarComboUnidadOrganica() {
-        cboUnidadOrganica.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(9);
-
-        for (CatalogoItem catalogoitem : lista) {
-            cboUnidadOrganica.addItem(catalogoitem);
-        }
-    }
-    
-    /*
-    private void cargarPlantillaDocumento() 
-    {
-        cboPlantillaDocumento.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(10);
-        for (CatalogoItem catalogoitem : lista) 
-        {
-            cboPlantillaDocumento.addItem(catalogoitem);
-        }
-    }
-    */
-    
     private void cargarTieneObservacion() 
     {
         cboTieneObservacion.removeAllItems();    
@@ -346,21 +112,7 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
       
     private void limpiarCampos() 
     {
-        // Limpiar JTextFields
-        textApellidosNombreRemitente.setText("");
-        textNumeroDocumentoTitular.setText("");
-        textNumeroActa.setText("");
-        textDniRemitente.setText("");
-        textApellidosNombreTitular.setText("");
-        textNumeroTramiteDocumento.setText("");
-        //spFechaSolicitud.setText("");
-
-        // Resetear JComboBoxes al primer elemento
-        if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
-        if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(0);
-        if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
-        if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
-        if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
+        
     }    
     
     private Path generarDocxLibreOffice(String plantilla, String tipoActa, String nroActa, String nombreTitular, String dniTitular) throws Exception 
@@ -435,36 +187,12 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         jPanelDatosSolicitud = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
         spFechaSolicitud = new javax.swing.JSpinner();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        cboTipoSolicitud = new javax.swing.JComboBox();
-        jLabel5 = new javax.swing.JLabel();
-        cboTipoDocumento = new javax.swing.JComboBox();
         jLabel8 = new javax.swing.JLabel();
-        spFechaRecepcion = new javax.swing.JSpinner();
-        jLabel9 = new javax.swing.JLabel();
-        textNumeroDocumento = new javax.swing.JTextField();
-        jLabel15 = new javax.swing.JLabel();
-        cboTipoActa = new javax.swing.JComboBox();
-        jLabel16 = new javax.swing.JLabel();
-        textNumeroActa = new javax.swing.JTextField();
-        jLabel17 = new javax.swing.JLabel();
-        cboGrupoFamiliar = new javax.swing.JComboBox();
-        jLabel18 = new javax.swing.JLabel();
-        cboGradoParentesco = new javax.swing.JComboBox();
-        jLabel12 = new javax.swing.JLabel();
-        textNumeroDocumentoTitular = new javax.swing.JTextField();
-        textApellidosNombreTitular = new javax.swing.JTextField();
-        jLabel13 = new javax.swing.JLabel();
-        jLabel20 = new javax.swing.JLabel();
-        cboUnidadOrganica = new javax.swing.JComboBox();
-        jLabel6 = new javax.swing.JLabel();
-        textDniRemitente = new javax.swing.JTextField();
-        jLabel7 = new javax.swing.JLabel();
-        textApellidosNombreRemitente = new javax.swing.JTextField();
-        textNumeroTramiteDocumento = new javax.swing.JTextField();
-        jLabel14 = new javax.swing.JLabel();
-        cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
+        jLabel26 = new javax.swing.JLabel();
+        spFechaSolicitud2 = new javax.swing.JSpinner();
+        btnGuardarNotificacion = new javax.swing.JButton();
+        btnRegresar = new javax.swing.JButton();
+        cboTipoDocumentoAnalizado3 = new javax.swing.JComboBox();
         jPanelDatosUbicacion1 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         jTable2 = new javax.swing.JTable();
@@ -475,6 +203,8 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         jLabel27 = new javax.swing.JLabel();
         cboAnalisisAbogado = new javax.swing.JComboBox();
         textNumeroDocumentoTitular2 = new javax.swing.JTextField();
+        jLabel30 = new javax.swing.JLabel();
+        jLabel32 = new javax.swing.JLabel();
         jPanelDatosUbicacion2 = new javax.swing.JPanel();
         cboTieneObservacion = new javax.swing.JComboBox();
         jLabel21 = new javax.swing.JLabel();
@@ -483,10 +213,17 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         jScrollPane1 = new javax.swing.JScrollPane();
         jTextArea1 = new javax.swing.JTextArea();
         jLabel28 = new javax.swing.JLabel();
-        btnRegresar4 = new javax.swing.JButton();
-        btnRegresar5 = new javax.swing.JButton();
         jLabel23 = new javax.swing.JLabel();
         textNumeroDocumentoTitular1 = new javax.swing.JTextField();
+        jLabel29 = new javax.swing.JLabel();
+        jLabel31 = new javax.swing.JLabel();
+        jPanelDatosSolicitud1 = new javax.swing.JPanel();
+        jLabel10 = new javax.swing.JLabel();
+        spFechaSolicitud1 = new javax.swing.JSpinner();
+        jLabel11 = new javax.swing.JLabel();
+        jLabel19 = new javax.swing.JLabel();
+        spFechaRecepcion1 = new javax.swing.JSpinner();
+        textNumeroTramiteDocumento1 = new javax.swing.JTextField();
 
         setBackground(new java.awt.Color(255, 255, 255));
         setPreferredSize(new java.awt.Dimension(1060, 728));
@@ -496,96 +233,41 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         jPanelPrincipal.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         jPanelDatosSolicitud.setBackground(new java.awt.Color(255, 255, 255));
-        jPanelDatosSolicitud.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la solicitud"));
+        jPanelDatosSolicitud.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la Notificación"));
         jPanelDatosSolicitud.setPreferredSize(new java.awt.Dimension(1034, 329));
 
         jLabel2.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel2.setText("Fecha Solicitud ");
 
         spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
-        spFechaSolicitud.setEnabled(false);
-
-        jLabel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel3.setText("Nro. Tramite Web");
-
-        jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel4.setText("Tipo Solicitud");
-
-        cboTipoSolicitud.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        cboTipoSolicitud.setEnabled(false);
-        cboTipoSolicitud.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cboTipoSolicitudActionPerformed(evt);
-            }
-        });
-
-        jLabel5.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel5.setText("Tipo Documento");
-
-        cboTipoDocumento.setEnabled(false);
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel8.setText("Fecha Recepción ");
 
-        spFechaRecepcion.setModel(new javax.swing.SpinnerDateModel());
-        spFechaRecepcion.setEnabled(false);
+        jLabel26.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel26.setText("Fecha Solicitud ");
 
-        jLabel9.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel9.setText("Nro. Documento");
+        spFechaSolicitud2.setModel(new javax.swing.SpinnerDateModel());
 
-        textNumeroDocumento.setEnabled(false);
+        btnGuardarNotificacion.setBackground(new java.awt.Color(25, 120, 210));
+        btnGuardarNotificacion.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnGuardarNotificacion.setForeground(new java.awt.Color(255, 255, 255));
+        btnGuardarNotificacion.setText("GUARDAR NOTIFICACIÖN");
+        btnGuardarNotificacion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnGuardarNotificacionActionPerformed(evt);
+            }
+        });
 
-        jLabel15.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel15.setText("Tipo Acta");
-
-        cboTipoActa.setEnabled(false);
-
-        jLabel16.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel16.setText("Nro Acta");
-
-        textNumeroActa.setEnabled(false);
-
-        jLabel17.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel17.setText("Grupo Familiar");
-
-        cboGrupoFamiliar.setEnabled(false);
-
-        jLabel18.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel18.setText("Grado de Parentesco");
-
-        cboGradoParentesco.setEnabled(false);
-
-        jLabel12.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel12.setText("DNI / Nro Documento");
-
-        textNumeroDocumentoTitular.setEnabled(false);
-
-        textApellidosNombreTitular.setEnabled(false);
-
-        jLabel13.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel13.setText("Apellidos y Nombres Titular");
-
-        jLabel20.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel20.setText("Unidad Organica");
-
-        cboUnidadOrganica.setEnabled(false);
-
-        jLabel6.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel6.setText("DNI");
-
-        textDniRemitente.setEnabled(false);
-
-        jLabel7.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel7.setText("Apellidos y Nombres Remitente");
-
-        textApellidosNombreRemitente.setEnabled(false);
-
-        textNumeroTramiteDocumento.setEnabled(false);
-
-        jLabel14.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel14.setText("Tipo Procedimiento Registral");
-
-        cboTipoProcedimientoRegistral.setEnabled(false);
+        btnRegresar.setBackground(new java.awt.Color(25, 120, 210));
+        btnRegresar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnRegresar.setForeground(new java.awt.Color(255, 255, 255));
+        btnRegresar.setText("REGRESAR");
+        btnRegresar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRegresarActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanelDatosSolicitudLayout = new javax.swing.GroupLayout(jPanelDatosSolicitud);
         jPanelDatosSolicitud.setLayout(jPanelDatosSolicitudLayout);
@@ -595,134 +277,57 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addGap(6, 6, 6)
-                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(9, 9, 9)
-                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(67, 67, 67)
-                        .addComponent(jLabel9))
+                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGap(5, 5, 5)
-                        .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(cboTipoDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(20, 20, 20)
-                        .addComponent(textNumeroDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGap(5, 5, 5)
-                        .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(109, 109, 109)
-                        .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(117, 117, 117)
-                        .addComponent(jLabel17, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(jLabel18, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(30, 30, 30)
-                        .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGap(5, 5, 5)
-                        .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(10, 10, 10)
-                        .addComponent(cboGradoParentesco, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(20, 20, 20)
-                        .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGap(5, 5, 5)
-                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 108, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(52, 52, 52)
-                        .addComponent(jLabel6)
-                        .addGap(118, 118, 118)
-                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 280, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(90, 90, 90)
-                        .addComponent(jLabel20, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGap(5, 5, 5)
-                        .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                                .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 149, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(51, 51, 51)
-                                .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanelDatosSolicitudLayout.createSequentialGroup()
-                                    .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(textApellidosNombreTitular))
-                                .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                                    .addComponent(cboTipoSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGap(10, 10, 10)
-                                    .addComponent(textDniRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGap(10, 10, 10)
-                                    .addComponent(textApellidosNombreRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 360, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGap(10, 10, 10)
-                                    .addComponent(cboUnidadOrganica, javax.swing.GroupLayout.PREFERRED_SIZE, 330, javax.swing.GroupLayout.PREFERRED_SIZE))))))
-                .addContainerGap(19, Short.MAX_VALUE))
+                        .addContainerGap()
+                        .addComponent(cboTipoDocumentoAnalizado3, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 63, Short.MAX_VALUE)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(45, 45, 45)
+                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel26, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(spFechaSolicitud2, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelDatosSolicitudLayout.createSequentialGroup()
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addComponent(btnGuardarNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 184, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(283, 283, 283))
+            .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                    .addGap(353, 353, 353)
+                    .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addContainerGap(521, Short.MAX_VALUE)))
         );
         jPanelDatosSolicitudLayout.setVerticalGroup(
             jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                .addGap(12, 12, 12)
+                .addGap(14, 14, 14)
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGap(2, 2, 2)
-                        .addComponent(jLabel8))
-                    .addComponent(jLabel2)
-                    .addComponent(jLabel3)
-                    .addComponent(jLabel5)
-                    .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(1, 1, 1)
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(cboTipoDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textNumeroDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(10, 10, 10)
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel15)
-                    .addComponent(jLabel16)
-                    .addComponent(jLabel17, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel18)
-                    .addComponent(jLabel14))
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(cboGradoParentesco, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(10, 10, 10)
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel4)
-                    .addComponent(jLabel6)
-                    .addComponent(jLabel7)
-                    .addComponent(jLabel20))
-                .addGap(3, 3, 3)
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(cboTipoSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textDniRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textApellidosNombreRemitente, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(cboUnidadOrganica, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(20, 20, 20)
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel12)
-                    .addComponent(jLabel13))
-                .addGap(3, 3, 3)
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(textNumeroDocumentoTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textApellidosNombreTitular, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(jLabel8)
+                    .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                            .addComponent(jLabel26)
+                            .addGap(1, 1, 1)
+                            .addComponent(spFechaSolicitud2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                            .addComponent(jLabel2)
+                            .addGap(1, 1, 1)
+                            .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(cboTipoDocumentoAnalizado3, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 29, Short.MAX_VALUE)
+                .addComponent(btnGuardarNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(16, 16, 16))
+            .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelDatosSolicitudLayout.createSequentialGroup()
+                    .addContainerGap(101, Short.MAX_VALUE)
+                    .addComponent(btnRegresar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGap(16, 16, 16)))
         );
 
-        jPanelPrincipal.add(jPanelDatosSolicitud, new org.netbeans.lib.awtextra.AbsoluteConstraints(6, 6, 1034, 329));
+        jPanelPrincipal.add(jPanelDatosSolicitud, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 480, 1030, 180));
 
         jPanelDatosUbicacion1.setBackground(new java.awt.Color(255, 255, 255));
         jPanelDatosUbicacion1.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos Analisis"));
@@ -771,6 +376,12 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
 
         textNumeroDocumentoTitular2.setEnabled(false);
 
+        jLabel30.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel30.setText("Responsable Analisis:");
+
+        jLabel32.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel32.setText("Juan Martinez Martinez");
+
         javax.swing.GroupLayout jPanelDatosUbicacion1Layout = new javax.swing.GroupLayout(jPanelDatosUbicacion1);
         jPanelDatosUbicacion1.setLayout(jPanelDatosUbicacion1Layout);
         jPanelDatosUbicacion1Layout.setHorizontalGroup(
@@ -794,9 +405,14 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                                 .addGap(0, 0, Short.MAX_VALUE))))
                     .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
                         .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel27, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 290, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                            .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 290, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel27, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel32, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(jPanelDatosUbicacion1Layout.createSequentialGroup()
+                                .addComponent(jLabel30, javax.swing.GroupLayout.PREFERRED_SIZE, 149, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(0, 0, Short.MAX_VALUE)))))
                 .addContainerGap())
         );
         jPanelDatosUbicacion1Layout.setVerticalGroup(
@@ -818,16 +434,22 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                 .addGap(18, 18, 18)
                 .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jLabel27)
+                .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel27)
+                    .addComponent(jLabel30))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanelDatosUbicacion1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(cboAnalisisAbogado, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel32))
                 .addGap(29, 29, 29))
         );
 
-        jPanelPrincipal.add(jPanelDatosUbicacion1, new org.netbeans.lib.awtextra.AbsoluteConstraints(520, 340, 520, 360));
+        jPanelPrincipal.add(jPanelDatosUbicacion1, new org.netbeans.lib.awtextra.AbsoluteConstraints(520, 110, 520, 360));
 
         jPanelDatosUbicacion2.setBackground(new java.awt.Color(255, 255, 255));
         jPanelDatosUbicacion2.setBorder(javax.swing.BorderFactory.createTitledBorder("Resultado de la verificación"));
+
+        cboTieneObservacion.setEnabled(false);
 
         jLabel21.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel21.setText("Tiene Observacion?");
@@ -835,35 +457,26 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         jLabel22.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel22.setText("Tipo Observación");
 
+        cboTipoObservacion.setEnabled(false);
+
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
+        jTextArea1.setEnabled(false);
         jScrollPane1.setViewportView(jTextArea1);
 
         jLabel28.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel28.setText("Descripción de la observación");
 
-        btnRegresar4.setBackground(new java.awt.Color(25, 120, 210));
-        btnRegresar4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        btnRegresar4.setForeground(new java.awt.Color(255, 255, 255));
-        btnRegresar4.setText("GUARDAR ANALISIS");
-        btnRegresar4.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnRegresar4ActionPerformed(evt);
-            }
-        });
-
-        btnRegresar5.setBackground(new java.awt.Color(25, 120, 210));
-        btnRegresar5.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        btnRegresar5.setForeground(new java.awt.Color(255, 255, 255));
-        btnRegresar5.setText("REGRESAR");
-        btnRegresar5.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnRegresar5ActionPerformed(evt);
-            }
-        });
-
         jLabel23.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel23.setText("Hoja de Envio");
+
+        textNumeroDocumentoTitular1.setEnabled(false);
+
+        jLabel29.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel29.setText("Juan Perez Perez");
+
+        jLabel31.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel31.setText("Responsable verificacion:");
 
         javax.swing.GroupLayout jPanelDatosUbicacion2Layout = new javax.swing.GroupLayout(jPanelDatosUbicacion2);
         jPanelDatosUbicacion2.setLayout(jPanelDatosUbicacion2Layout);
@@ -879,7 +492,7 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                         .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(cboTieneObservacion, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel21, javax.swing.GroupLayout.DEFAULT_SIZE, 205, Short.MAX_VALUE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 47, Short.MAX_VALUE)
                         .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(cboTipoObservacion, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel22, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -893,11 +506,11 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                                 .addComponent(textNumeroDocumentoTitular1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelDatosUbicacion2Layout.createSequentialGroup()
-                .addGap(74, 74, 74)
-                .addComponent(btnRegresar5, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 77, Short.MAX_VALUE)
-                .addComponent(btnRegresar4, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(47, 47, 47))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jLabel31)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel29, javax.swing.GroupLayout.PREFERRED_SIZE, 302, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
         jPanelDatosUbicacion2Layout.setVerticalGroup(
             jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -920,14 +533,77 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
                 .addComponent(jLabel28)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 99, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(30, 30, 30)
                 .addGroup(jPanelDatosUbicacion2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnRegresar5, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnRegresar4, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                    .addComponent(jLabel29)
+                    .addComponent(jLabel31))
+                .addGap(17, 17, 17))
         );
 
-        jPanelPrincipal.add(jPanelDatosUbicacion2, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 340, 500, 360));
+        jPanelPrincipal.add(jPanelDatosUbicacion2, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 110, 500, 360));
+
+        jPanelDatosSolicitud1.setBackground(new java.awt.Color(255, 255, 255));
+        jPanelDatosSolicitud1.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la solicitud"));
+        jPanelDatosSolicitud1.setPreferredSize(new java.awt.Dimension(1034, 329));
+
+        jLabel10.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel10.setText("Fecha Solicitud ");
+
+        spFechaSolicitud1.setModel(new javax.swing.SpinnerDateModel());
+        spFechaSolicitud1.setEnabled(false);
+
+        jLabel11.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel11.setText("Nro. Tramite Web");
+
+        jLabel19.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel19.setText("Fecha Recepción ");
+
+        spFechaRecepcion1.setModel(new javax.swing.SpinnerDateModel());
+        spFechaRecepcion1.setEnabled(false);
+
+        textNumeroTramiteDocumento1.setEnabled(false);
+
+        javax.swing.GroupLayout jPanelDatosSolicitud1Layout = new javax.swing.GroupLayout(jPanelDatosSolicitud1);
+        jPanelDatosSolicitud1.setLayout(jPanelDatosSolicitud1Layout);
+        jPanelDatosSolicitud1Layout.setHorizontalGroup(
+            jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
+                .addGroup(jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
+                        .addGap(6, 6, 6)
+                        .addComponent(jLabel19, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(9, 9, 9)
+                        .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
+                        .addGap(5, 5, 5)
+                        .addComponent(spFechaRecepcion1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(spFechaSolicitud1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(textNumeroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(429, Short.MAX_VALUE))
+        );
+        jPanelDatosSolicitud1Layout.setVerticalGroup(
+            jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addGroup(jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanelDatosSolicitud1Layout.createSequentialGroup()
+                        .addGap(2, 2, 2)
+                        .addComponent(jLabel19))
+                    .addComponent(jLabel10)
+                    .addComponent(jLabel11))
+                .addGap(1, 1, 1)
+                .addGroup(jPanelDatosSolicitud1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(spFechaRecepcion1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(spFechaSolicitud1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textNumeroTramiteDocumento1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(234, 234, 234))
+        );
+
+        jPanelPrincipal.add(jPanelDatosSolicitud1, new org.netbeans.lib.awtextra.AbsoluteConstraints(6, 6, 1034, 100));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -945,27 +621,6 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
-        
-        CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
-        int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
-        
-        /*
-        if(idTipoSolicitud == 10)
-        {
-          textDniRemitente.setEnabled(true);
-          textApellidosNombreRemitente.setEnabled(true);
-          cboUnidadOrganica.setEnabled(false);
-        }
-        else
-        {
-           textDniRemitente.setEnabled(false);
-           textApellidosNombreRemitente.setEnabled(false);
-           cboUnidadOrganica.setEnabled(true); 
-        }
-        */
-    }//GEN-LAST:event_cboTipoSolicitudActionPerformed
-
     private void jTable2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable2MouseClicked
         // TODO add your handling code here:
     }//GEN-LAST:event_jTable2MouseClicked
@@ -974,54 +629,50 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
         // TODO add your handling code here:
     }//GEN-LAST:event_btnGenerarDocumento1ActionPerformed
 
-    private void btnRegresar4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar4ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnRegresar4ActionPerformed
+    private void btnGuardarNotificacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarNotificacionActionPerformed
+     try
+        {
+            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
+        }
+    catch (Exception ex)
+        {
+            JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }//GEN-LAST:event_btnGuardarNotificacionActionPerformed
 
-    private void btnRegresar5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar5ActionPerformed
+    private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_btnRegresar5ActionPerformed
+    }//GEN-LAST:event_btnRegresarActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnGenerarDocumento1;
-    private javax.swing.JButton btnRegresar4;
-    private javax.swing.JButton btnRegresar5;
+    private javax.swing.JButton btnGuardarNotificacion;
+    private javax.swing.JButton btnRegresar;
     private javax.swing.JComboBox cboAnalisisAbogado;
-    private javax.swing.JComboBox cboGradoParentesco;
-    private javax.swing.JComboBox cboGrupoFamiliar;
     private javax.swing.JComboBox cboTieneObservacion;
-    private javax.swing.JComboBox cboTipoActa;
-    private javax.swing.JComboBox cboTipoDocumento;
     private javax.swing.JComboBox cboTipoDocumentoAnalizado;
+    private javax.swing.JComboBox cboTipoDocumentoAnalizado3;
     private javax.swing.JComboBox cboTipoObservacion;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral;
-    private javax.swing.JComboBox cboTipoSolicitud;
-    private javax.swing.JComboBox cboUnidadOrganica;
-    private javax.swing.JLabel jLabel12;
-    private javax.swing.JLabel jLabel13;
-    private javax.swing.JLabel jLabel14;
-    private javax.swing.JLabel jLabel15;
-    private javax.swing.JLabel jLabel16;
-    private javax.swing.JLabel jLabel17;
-    private javax.swing.JLabel jLabel18;
+    private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel23;
     private javax.swing.JLabel jLabel24;
     private javax.swing.JLabel jLabel25;
+    private javax.swing.JLabel jLabel26;
     private javax.swing.JLabel jLabel27;
     private javax.swing.JLabel jLabel28;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel29;
+    private javax.swing.JLabel jLabel30;
+    private javax.swing.JLabel jLabel31;
+    private javax.swing.JLabel jLabel32;
     private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanelDatosSolicitud;
+    private javax.swing.JPanel jPanelDatosSolicitud1;
     private javax.swing.JPanel jPanelDatosUbicacion1;
     private javax.swing.JPanel jPanelDatosUbicacion2;
     private javax.swing.JPanel jPanelPrincipal;
@@ -1029,16 +680,12 @@ public class JPanelRegistrarExpedientePorNotificar extends javax.swing.JPanel
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTable jTable2;
     private javax.swing.JTextArea jTextArea1;
-    private javax.swing.JSpinner spFechaRecepcion;
+    private javax.swing.JSpinner spFechaRecepcion1;
     private javax.swing.JSpinner spFechaSolicitud;
-    private javax.swing.JTextField textApellidosNombreRemitente;
-    private javax.swing.JTextField textApellidosNombreTitular;
-    private javax.swing.JTextField textDniRemitente;
-    private javax.swing.JTextField textNumeroActa;
-    private javax.swing.JTextField textNumeroDocumento;
-    private javax.swing.JTextField textNumeroDocumentoTitular;
+    private javax.swing.JSpinner spFechaSolicitud1;
+    private javax.swing.JSpinner spFechaSolicitud2;
     private javax.swing.JTextField textNumeroDocumentoTitular1;
     private javax.swing.JTextField textNumeroDocumentoTitular2;
-    private javax.swing.JTextField textNumeroTramiteDocumento;
+    private javax.swing.JTextField textNumeroTramiteDocumento1;
     // End of variables declaration//GEN-END:variables
 }
