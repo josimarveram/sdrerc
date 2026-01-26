@@ -49,8 +49,8 @@ public class ExpedienteAsignacionService {
         return respuesta; 
     } 
     
-    public List<Expediente> ListarExpedientesAsignadosPorTrabajador(int idTecnico, int aceptaRecepcion,int estadoItem) throws Exception 
+    public List<Expediente> ListarExpedientesAsignadosPorTrabajador(int idTecnico, int aceptaRecepcion,int estadoItem,int esPorVerificar, int esPorNotificar) throws Exception 
     {
-        return expedienteAsignacionRepository.ListarExpedientesAsignadosPorTrabajador(idTecnico, aceptaRecepcion, estadoItem);
+        return expedienteAsignacionRepository.ListarExpedientesAsignadosPorTrabajador(idTecnico, aceptaRecepcion, estadoItem, esPorVerificar, esPorNotificar);
     }
 }

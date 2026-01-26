@@ -185,24 +185,44 @@ public class ExpedienteAsignacionRepository {
     }  
       
     
-    public List<Expediente> ListarExpedientesAsignadosPorTrabajador(int idTecnico, int aceptaRecepcion,int estadoItem) throws SQLException 
+    public List<Expediente> ListarExpedientesAsignadosPorTrabajador(int idTecnico, int aceptaRecepcion,int estadoItem,int esPorVerificar, int esPorNotificar) throws SQLException 
     {        
         List<Expediente> lista = new ArrayList<>();
         
-        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT * FROM EXPEDIENTE INNER JOIN EXPEDIENTE_ASIGNACION ON EXPEDIENTE.ID_EXPEDIENTE = EXPEDIENTE_ASIGNACION.ID_EXPEDIENTE WHERE EXPEDIENTE_ASIGNACION.id_tecnico = ?");
+        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT * FROM EXPEDIENTE "
+                + "INNER JOIN EXPEDIENTE_ASIGNACION ON EXPEDIENTE.ID_EXPEDIENTE = EXPEDIENTE_ASIGNACION.ID_EXPEDIENTE "
+                + "LEFT JOIN (\n" +
+                    "    SELECT e.ID_EXPEDIENTE AS ID_EXPEDIENTE_DOCUMENTO_VERIFICAR\n" +
+                    "    FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d\n" +
+                    "    INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO e ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = e.ID_EXPEDIENTE_ANALISIS_ABOGADO\n" +
+                    "    WHERE d.ID_TIPO_DOCUMENTO_ANALIZADO IN (71,72)\n" +
+                    "    AND d.ACTIVE = 1\n" +
+                    "    ORDER BY d.FECHA_REGISTRO DESC\n" +
+                    "    FETCH FIRST 1 ROW ONLY\n" +
+                    ") doc\n" +
+                    "ON doc.ID_EXPEDIENTE_DOCUMENTO_VERIFICAR = EXPEDIENTE.ID_EXPEDIENTE "
+                + "WHERE EXPEDIENTE_ASIGNACION.id_tecnico = ? ");
         
         // Si el estado no es "TODOS", agregamos AND
         boolean filtrarEstado = estadoItem != 0;
         boolean filtrarAceptaRecepcion = aceptaRecepcion != 0;
+        boolean filtrarVerificacion = esPorVerificar != 0;
+        boolean filtrarNotificacion = esPorNotificar != 0;
 
         if(filtrarEstado) 
         {
-            sqlListaExpediente.append("AND EXPEDIENTE.estado = ?");
+            sqlListaExpediente.append("AND EXPEDIENTE.estado = ? ");
         }
         if(filtrarAceptaRecepcion) 
         {
-            sqlListaExpediente.append("AND expediente_asignacion.acepta_recepcion = ?");
+            sqlListaExpediente.append("AND expediente_asignacion.acepta_recepcion = ? ");
         }
+        
+        if(filtrarVerificacion) 
+        {
+            sqlListaExpediente.append("AND ID_EXPEDIENTE_DOCUMENTO_VERIFICAR IS NOT NULL ");
+        }
+        
         
         Connection conn = null;
         try
