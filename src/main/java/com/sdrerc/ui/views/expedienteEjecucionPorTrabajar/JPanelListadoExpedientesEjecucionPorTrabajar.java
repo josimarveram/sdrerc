@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
-package com.sdrerc.ui.views.expedientesNotificarAsignar;
+package com.sdrerc.ui.views.expedienteEjecucionPorTrabajar;
 
 import com.sdrerc.ui.views.expedientesPorVerificar.*;
 import com.sdrerc.ui.views.expedientesPorTrabajar.*;
@@ -27,7 +27,7 @@ import com.sdrerc.ui.menu.MenuPrincipal;
  *
  * @author betom
  */
-public class JPanelListadoExpedientesNotificarAsignar extends javax.swing.JPanel {
+public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JPanel {
 
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
@@ -37,7 +37,7 @@ public class JPanelListadoExpedientesNotificarAsignar extends javax.swing.JPanel
     /**
      * Creates new form JPanelListadoExpedientesAsignados
      */
-    public JPanelListadoExpedientesNotificarAsignar() {
+    public JPanelListadoExpedientesEjecucionPorTrabajar() {
         initComponents();
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
@@ -310,7 +310,7 @@ public class JPanelListadoExpedientesNotificarAsignar extends javax.swing.JPanel
                 //Expediente expedienteSeleccionado = model.get(fila);
 
                 // Crear el panel al que quieres ir
-                JPanelRegistrarExpedientePorNotificar panel = new JPanelRegistrarExpedientePorNotificar();
+                JPanelRegistrarExpedientesEjecucionPorTrabajar panel = new JPanelRegistrarExpedientesEjecucionPorTrabajar();
                 try
                 {
                     // Si el panel necesita recibir datos:
