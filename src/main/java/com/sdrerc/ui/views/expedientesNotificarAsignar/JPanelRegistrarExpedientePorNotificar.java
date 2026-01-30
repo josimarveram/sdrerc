@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
-package com.sdrerc.ui.views.expedientesPorNotificar;
+package com.sdrerc.ui.views.expedientesNotificarAsignar;
 
 import com.sdrerc.ui.views.expedientesPorVerificar.*;
 import com.sdrerc.ui.views.expedientesPorTrabajar.*;

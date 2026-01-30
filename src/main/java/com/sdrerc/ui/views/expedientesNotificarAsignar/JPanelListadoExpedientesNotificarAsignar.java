@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
-package com.sdrerc.ui.views.expedientesPorNotificar;
+package com.sdrerc.ui.views.expedientesNotificarAsignar;
 
 import com.sdrerc.ui.views.expedientesPorVerificar.*;
 import com.sdrerc.ui.views.expedientesPorTrabajar.*;
@@ -27,7 +27,7 @@ import com.sdrerc.ui.menu.MenuPrincipal;
  *
  * @author betom
  */
-public class JPanelListadoExpedientesPorNotificar extends javax.swing.JPanel {
+public class JPanelListadoExpedientesNotificarAsignar extends javax.swing.JPanel {
 
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
@@ -37,7 +37,7 @@ public class JPanelListadoExpedientesPorNotificar extends javax.swing.JPanel {
     /**
      * Creates new form JPanelListadoExpedientesAsignados
      */
-    public JPanelListadoExpedientesPorNotificar() {
+    public JPanelListadoExpedientesNotificarAsignar() {
         initComponents();
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
