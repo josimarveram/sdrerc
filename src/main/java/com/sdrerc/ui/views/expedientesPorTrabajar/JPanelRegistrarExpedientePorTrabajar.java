@@ -18,6 +18,7 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetDoc;
+import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetResponse;
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogado;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
@@ -42,6 +43,7 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.Component;
+import java.util.ArrayList;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -64,12 +66,15 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
     private Integer idExpedienteOculto = 0;
     
     private ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado;
+    private List<ExpedienteAnalisisAbogadoDetDoc> listaDocumentos = new ArrayList<>();
+    private int filaEditando = -1;
     
     /**
      * Creates new form JPanelRegistrarExpediente
      */
     public JPanelRegistrarExpedientePorTrabajar() {
         initComponents();
+        
         oExpedienteAnalisisAbogado = new ExpedienteAnalisisAbogado();
         
         this.expedienteService = new ExpedienteService();
@@ -116,6 +121,11 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         //jTableDocumentosAnalisis.getColumn("Editar").setCellEditor(new EditarEditor(jTableDocumentosAnalisis));
         jTableDocumentosAnalisis.getColumn("Eliminar").setCellRenderer(new EliminarRenderer());
         jTableDocumentosAnalisis.getColumn("Eliminar").setCellEditor(new EliminarEditor(jTableDocumentosAnalisis));
+        
+        TableColumn col = jTableDocumentosAnalisis.getColumnModel().getColumn(1);
+        col.setMinWidth(0);
+        col.setMaxWidth(0);
+        col.setPreferredWidth(0);
     }
     
     
@@ -158,6 +168,8 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
     {        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
         idExpedienteOculto = lista.getIdExpediente();
+        
+        cargarTablaAnalisis(Integer.parseInt(idExpediente));
         
         //esRegistroSdrerc 
         //jRadiButonNoCorresponde.setSelected(lista.getEsRegistroSdrerc() == 1? true : false);
@@ -448,7 +460,12 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         modelo = new DefaultTableModel
         (
             //new Object[]{"N°", "Campo 1", "Campo 2", "Editar", "Eliminar"}, 0
-              new Object[]{"N°", "Documento Analizado", "Desc Documento", "Eliminar"}, 0
+              new Object[]{
+                  "N°", 
+                  "ID_TIPO_DOCUMENTO", // OCULTO
+                  "Documento Analizado", 
+                  "Desc Documento", 
+                  "Eliminar"}, 0
         ) 
         {
             /*
@@ -461,7 +478,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             @Override
             public boolean isCellEditable(int row, int column) 
             {
-                return column == 3;
+                return column == 4;
             }
         };
         jTableDocumentosAnalisis.setModel(modelo);
@@ -496,6 +513,56 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         jTableDocumentosAnalisis.getColumnModel().getColumn(1).setPreferredWidth(180);
         jTableDocumentosAnalisis.getColumnModel().getColumn(2).setPreferredWidth(180);
         jTableDocumentosAnalisis.getColumnModel().getColumn(3).setPreferredWidth(70);
+    }
+    
+        private void cargarTablaAnalisis(Integer idExpediente) {
+
+        try {
+            List<ExpedienteAnalisisAbogadoDetResponse> docs =
+                expedienteAnalisisAbogadoService
+                    .listarDocumentosPorExpediente(idExpediente);
+            
+            DefaultTableModel model =
+                (DefaultTableModel) jTableDocumentosAnalisis.getModel();
+            
+            // Limpiar tabla y lista
+            model.setRowCount(0);
+            oExpedienteAnalisisAbogado
+            .getExpedienteAnalisisAbogadoDetDoc()
+            .clear();
+
+            for (ExpedienteAnalisisAbogadoDetResponse d : docs) {
+                
+                // 1. Crear entidad de dominio
+                ExpedienteAnalisisAbogadoDetDoc det =
+                    new ExpedienteAnalisisAbogadoDetDoc();
+
+                det.setIdTipoDocumentoAnalizado(d.getIdTipoDocumento());
+                det.setDescTipoDocumentoAnalizado(d.getTipoDocumento());
+                det.setDescDocumento(d.getDescripcionDocumento());
+                det.setActive(1);
+
+                // 2. Agregar a la lista (FUENTE DE VERDAD)
+                oExpedienteAnalisisAbogado
+                    .getExpedienteAnalisisAbogadoDetDoc()
+                    .add(det);
+                model.addRow(new Object[]{
+                    "",
+                    d.getIdTipoDocumento(),   // 🔥 ID REAL
+                    d.getTipoDocumento(),
+                    d.getDescripcionDocumento(),
+                    "Eliminar"
+                });
+            }
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(
+                this,
+                e.getMessage(),
+                "Error",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
     
     /*
@@ -549,15 +616,61 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
 
         private JButton button;
         private JTable table;
+        private int fila;
 
         public EliminarEditor(JTable table) {
             super(new JCheckBox());
             this.table = table;
 
             button = new JButton("🗑");
-            button.addActionListener(e -> fireEditingStopped());
+            button.setFocusPainted(false);
+            button.addActionListener(e -> eliminarFila());
+        }
+        
+        private void eliminarFila() {
+
+            int r = JOptionPane.showConfirmDialog(
+                    table,
+                    "¿Eliminar este documento?",
+                    "Confirmar",
+                    JOptionPane.YES_NO_OPTION
+            );
+
+            if (r == JOptionPane.YES_OPTION) {
+
+                // Fila real del modelo (importante si hay sort/filter)
+                int filaModelo = table.convertRowIndexToModel(fila);
+
+                DefaultTableModel model = (DefaultTableModel) table.getModel();
+                model.removeRow(filaModelo);
+
+                // Elimina también del modelo lógico
+                oExpedienteAnalisisAbogado
+                    .getExpedienteAnalisisAbogadoDetDoc()
+                    .remove(filaModelo);
+            }
+
+            fireEditingStopped();
         }
 
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+
+            this.fila = row;
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Eliminar";
+        }
+        
+        /*
         @Override
         public Object getCellEditorValue() {
 
@@ -577,6 +690,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             }
             return "Eliminar";
         }
+        */
     }
    
     /**
@@ -1129,8 +1243,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
     private void jTableDocumentosAnalisisMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableDocumentosAnalisisMouseClicked
         // TODO add your handling code here:
     }//GEN-LAST:event_jTableDocumentosAnalisisMouseClicked
-    
-    int filaEditando = -1;
+
     
     private void btnAgregarTipoAnalisisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAgregarTipoAnalisisActionPerformed
         String v1 = cboTipoDocumentoAnalizado.getSelectedItem().toString();
@@ -1142,23 +1255,39 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             return;
         } 
         // Agregando a la tablaDetalle
-        ExpedienteAnalisisAbogadoDetDoc det = new ExpedienteAnalisisAbogadoDetDoc();
+        //ExpedienteAnalisisAbogadoDetDoc det = new ExpedienteAnalisisAbogadoDetDoc();
         //det.setIdTipoDocumentoAnalizado(cboTipoDocumentoAnalizado.getSelectedIndex());
-        det.setDescDocumento(v2);
-        det.setActive(1);
-        det.setUsuarioRegistro(1);        
+        //det.setDescDocumento(v2);
+        //det.setActive(1);
+        //det.setUsuarioRegistro(1);        
         
         CatalogoItem catalogoTipoDocumentoAnalizado = (CatalogoItem) cboTipoDocumentoAnalizado.getSelectedItem();   
-        det.setIdTipoDocumentoAnalizado (catalogoTipoDocumentoAnalizado.getIdCatalogoItem());
-        
-        oExpedienteAnalisisAbogado.agregarExpedienteAnalisisAbogadoDetDoc(det);
+        String v3 = catalogoTipoDocumentoAnalizado.getDescripcion();
 
+        //det.setIdTipoDocumentoAnalizado (catalogoTipoDocumentoAnalizado.getIdCatalogoItem());
+        
+        //oExpedienteAnalisisAbogado.agregarExpedienteAnalisisAbogadoDetDoc(det);
+        
+        Integer idDocumentoAnalisis = catalogoTipoDocumentoAnalizado.getIdCatalogoItem();
         if(filaEditando == -1) 
         {
-            modelo.addRow(new Object[]{"", v1, v2, "Eliminar"});
+            
+            ExpedienteAnalisisAbogadoDetDoc det = new ExpedienteAnalisisAbogadoDetDoc();
+            det.setIdTipoDocumentoAnalizado(idDocumentoAnalisis);
+            det.setDescTipoDocumentoAnalizado(v3);
+            det.setDescDocumento(v2);
+            det.setActive(1);
+            det.setUsuarioRegistro(1);
+
+            listaDocumentos.add(det);
+            modelo.addRow(new Object[]{"", idDocumentoAnalisis,v3, v2, "Eliminar"});
         } 
         else 
         {
+            ExpedienteAnalisisAbogadoDetDoc det = new ExpedienteAnalisisAbogadoDetDoc();
+            det.setIdTipoDocumentoAnalizado(catalogoTipoDocumentoAnalizado.getIdCatalogoItem());
+            det.setDescDocumento(v2);
+            
             modelo.setValueAt(v1, filaEditando, 1);
             modelo.setValueAt(v2, filaEditando, 2);
             filaEditando = -1;
@@ -1166,11 +1295,54 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         textDescripcionDocumentoAnalisis.setText("");
     }//GEN-LAST:event_btnAgregarTipoAnalisisActionPerformed
 
+    
+    private void sincronizarDetalleDesdeTabla() {
+
+        DefaultTableModel model =
+            (DefaultTableModel) jTableDocumentosAnalisis.getModel();
+        List<ExpedienteAnalisisAbogadoDetDoc> lista = new ArrayList<>();
+
+
+        for (int i = 0; i < model.getRowCount(); i++) {
+
+            ExpedienteAnalisisAbogadoDetDoc det =
+                new ExpedienteAnalisisAbogadoDetDoc();
+            
+            int idTipoDocumento =
+            Integer.parseInt(model.getValueAt(i, 1).toString()); // ID oculto
+            
+            String tipoDocumento =
+                model.getValueAt(i, 1).toString();
+
+            String descripcion =
+                model.getValueAt(i, 3).toString();
+
+
+            // ⚠️ aquí debes mapear correctamente el ID real
+            det.setIdTipoDocumentoAnalizado(idTipoDocumento);
+            det.setDescDocumento(descripcion);
+            det.setActive(1);
+            det.setUsuarioRegistro(1);
+
+            lista.add(det);
+        }
+
+        oExpedienteAnalisisAbogado
+            .getExpedienteAnalisisAbogadoDetDoc()
+            .clear();
+
+        oExpedienteAnalisisAbogado
+            .getExpedienteAnalisisAbogadoDetDoc()
+            .addAll(lista);
+    }
     private void btnGuardarAnalisisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarAnalisisActionPerformed
         // TODO add your handling code here:
         
         try
         {
+            // 🔥 PASO 1: reconstruir desde JTable
+            sincronizarDetalleDesdeTabla();
+        
             List<ExpedienteAnalisisAbogadoDetDoc> dataTo = oExpedienteAnalisisAbogado.getExpedienteAnalisisAbogadoDetDoc();
             
             if(dataTo == null || dataTo.isEmpty())
