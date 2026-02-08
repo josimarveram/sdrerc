@@ -71,11 +71,31 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
         this.expedienteAsignacionService = new ExpedienteAsignacionService();     
         this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
         cargarTipoMedioNotificacion();
+        cargarTieneObservacion();
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {
         
+    }
+    
+    private void cargarTieneObservacion() 
+    {
+        cboTieneObservacion.removeAllItems();   
+        
+        // 👉 Item por defecto
+        CatalogoItem itemSeleccione = new CatalogoItem();
+        itemSeleccione.setId(0); // o 0 si tu lógica lo prefiere
+        itemSeleccione.setDescripcion("--Seleccione--");
+
+        cboTieneObservacion.addItem(itemSeleccione);
+        
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(12);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTieneObservacion.addItem(catalogoitem);
+        }
+        cboTieneObservacion.setSelectedIndex(0);
     }
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
@@ -91,11 +111,11 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
     
     private void cargarTipoMedioNotificacion() 
     {
-        cboTipoMedioNotificacion.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(14);
+        cboTipoCulminacionLinea.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(15);
         for (CatalogoItem catalogoitem : lista) 
         {
-            cboTipoMedioNotificacion.addItem(catalogoitem);
+            cboTipoCulminacionLinea.addItem(catalogoitem);
         }
     }    
     
@@ -172,7 +192,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
         jLabel2 = new javax.swing.JLabel();
         spFechaSolicitud = new javax.swing.JSpinner();
         jLabel8 = new javax.swing.JLabel();
-        cboTipoMedioNotificacion = new javax.swing.JComboBox();
+        cboTipoCulminacionLinea = new javax.swing.JComboBox();
         jLabel21 = new javax.swing.JLabel();
         cboTieneObservacion = new javax.swing.JComboBox();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -205,10 +225,10 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
         spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel8.setText("Culminación en Línea");
+        jLabel8.setText("Estado");
 
         jLabel21.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel21.setText("Tiene Observacion?");
+        jLabel21.setText("¿Tiene observación?");
 
         cboTieneObservacion.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -233,7 +253,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboTipoMedioNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 400, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(cboTipoCulminacionLinea, javax.swing.GroupLayout.PREFERRED_SIZE, 400, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 135, Short.MAX_VALUE)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -264,7 +284,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
                         .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(cboTipoMedioNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(cboTipoCulminacionLinea, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
@@ -411,7 +431,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
     private javax.swing.JButton btnGuardarNotificacion;
     private javax.swing.JButton btnRegresar;
     private javax.swing.JComboBox cboTieneObservacion;
-    private javax.swing.JComboBox cboTipoMedioNotificacion;
+    private javax.swing.JComboBox cboTipoCulminacionLinea;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel19;

@@ -71,7 +71,8 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
         this.ubigeoService = new UbigeoService();
         this.expedienteAsignacionService = new ExpedienteAsignacionService();     
         this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
-        cargarTipoMedioNotificacion();
+        cargarComboTipoProcedimientoRegistral();
+        cargarComboTipoActa();
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
@@ -90,15 +91,23 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
         }
     }
     
-    private void cargarTipoMedioNotificacion() 
-    {
-        cboTipoMedioNotificacion.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(14);
-        for (CatalogoItem catalogoitem : lista) 
-        {
-            cboTipoMedioNotificacion.addItem(catalogoitem);
+    private void cargarComboTipoProcedimientoRegistral() {
+        cboTipoProcedimientoRegistral.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(3);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoProcedimientoRegistral.addItem(catalogoitem);
         }
-    }    
+    }
+    
+    private void cargarComboTipoActa() {
+        cboTipoActa.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(4);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoActa.addItem(catalogoitem);
+        }
+    }   
     
     private Path generarDocxLibreOffice(String plantilla, String tipoActa, String nroActa, String nombreTitular, String dniTitular) throws Exception 
     {              
@@ -174,10 +183,10 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
         spFechaSolicitud = new javax.swing.JSpinner();
         jLabel8 = new javax.swing.JLabel();
         jLabel26 = new javax.swing.JLabel();
-        spFechaSolicitud2 = new javax.swing.JSpinner();
-        cboTipoMedioNotificacion = new javax.swing.JComboBox();
         jLabel12 = new javax.swing.JLabel();
         textNumeroTramiteDocumento2 = new javax.swing.JTextField();
+        cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
+        cboTipoActa = new javax.swing.JComboBox();
         jPanelDatosSolicitud1 = new javax.swing.JPanel();
         jLabel10 = new javax.swing.JLabel();
         spFechaSolicitud1 = new javax.swing.JSpinner();
@@ -217,11 +226,6 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
         jLabel26.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel26.setText("Tipo Procedimiento");
 
-        spFechaSolicitud2.setModel(new javax.swing.SpinnerDateModel());
-        spFechaSolicitud2.setEnabled(false);
-
-        cboTipoMedioNotificacion.setEnabled(false);
-
         jLabel12.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel12.setText("Numero de Resolución");
 
@@ -235,18 +239,17 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
                 .addGap(16, 16, 16)
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboTipoMedioNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
+                        .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(cboTipoActa, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(spFechaSolicitud, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 46, Short.MAX_VALUE)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel26, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(spFechaSolicitud2, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(37, 37, 37)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -265,18 +268,16 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addComponent(jLabel26)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(spFechaSolicitud2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addComponent(jLabel12)
                         .addGap(1, 1, 1)
                         .addComponent(textNumeroTramiteDocumento2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel8)
-                    .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
-                        .addGap(18, 18, 18)
-                        .addComponent(cboTipoMedioNotificacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(14, Short.MAX_VALUE))
+                .addComponent(jLabel8)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(9, Short.MAX_VALUE))
         );
 
         jPanelPrincipal.add(jPanelDatosSolicitud, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 150, 1030, 190));
@@ -475,7 +476,8 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnGuardarNotificacion;
     private javax.swing.JButton btnRegresar;
-    private javax.swing.JComboBox cboTipoMedioNotificacion;
+    private javax.swing.JComboBox cboTipoActa;
+    private javax.swing.JComboBox cboTipoProcedimientoRegistral;
     private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
@@ -492,7 +494,6 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
     private javax.swing.JSpinner spFechaRecepcion1;
     private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JSpinner spFechaSolicitud1;
-    private javax.swing.JSpinner spFechaSolicitud2;
     private javax.swing.JSpinner spFechaSolicitud3;
     private javax.swing.JTextField textNumeroTramiteDocumento1;
     private javax.swing.JTextField textNumeroTramiteDocumento2;

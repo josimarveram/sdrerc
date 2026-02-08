@@ -79,11 +79,31 @@ public class JPanelRegistrarExpedientesNotificacionPorTrabajar extends javax.swi
         this.expedienteAsignacionService = new ExpedienteAsignacionService();     
         this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
         cargarTipoMedioNotificacion();
+        cargarTieneObservacion();
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {
         
+    }
+    
+    private void cargarTieneObservacion() 
+    {
+        cboTieneObservacion.removeAllItems();   
+        
+        // 👉 Item por defecto
+        CatalogoItem itemSeleccione = new CatalogoItem();
+        itemSeleccione.setId(0); // o 0 si tu lógica lo prefiere
+        itemSeleccione.setDescripcion("--Seleccione--");
+
+        cboTieneObservacion.addItem(itemSeleccione);
+        
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(12);
+        for (CatalogoItem catalogoitem : lista) 
+        {
+            cboTieneObservacion.addItem(catalogoitem);
+        }
+        cboTieneObservacion.setSelectedIndex(0);
     }
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
@@ -350,7 +370,7 @@ public class JPanelRegistrarExpedientesNotificacionPorTrabajar extends javax.swi
         jPanelPrincipal.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         jPanelDatosSolicitud.setBackground(new java.awt.Color(255, 255, 255));
-        jPanelDatosSolicitud.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la Ejecución"));
+        jPanelDatosSolicitud.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la Notificación"));
         jPanelDatosSolicitud.setPreferredSize(new java.awt.Dimension(1034, 329));
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
@@ -384,6 +404,7 @@ public class JPanelRegistrarExpedientesNotificacionPorTrabajar extends javax.swi
             }
         ));
         jTableDocumentosAnalisis.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        jTableDocumentosAnalisis.setEnabled(false);
         jTableDocumentosAnalisis.setShowHorizontalLines(true);
         jTableDocumentosAnalisis.setShowVerticalLines(true);
         jTableDocumentosAnalisis.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -397,7 +418,6 @@ public class JPanelRegistrarExpedientesNotificacionPorTrabajar extends javax.swi
         jLabel20.setText("Fecha notificación documento");
 
         spFechaRecepcion2.setModel(new javax.swing.SpinnerDateModel());
-        spFechaRecepcion2.setEnabled(false);
 
         javax.swing.GroupLayout jPanelDatosSolicitudLayout = new javax.swing.GroupLayout(jPanelDatosSolicitud);
         jPanelDatosSolicitud.setLayout(jPanelDatosSolicitudLayout);
@@ -547,14 +567,11 @@ public class JPanelRegistrarExpedientesNotificacionPorTrabajar extends javax.swi
         jLabel21.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel21.setText("Tiene Observacion?");
 
-        cboTieneObservacion.setEnabled(false);
-
         jLabel28.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel28.setText("Descripción de la observación");
 
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
-        jTextArea1.setEnabled(false);
         jScrollPane1.setViewportView(jTextArea1);
 
         javax.swing.GroupLayout jPanelDatosSolicitud2Layout = new javax.swing.GroupLayout(jPanelDatosSolicitud2);
