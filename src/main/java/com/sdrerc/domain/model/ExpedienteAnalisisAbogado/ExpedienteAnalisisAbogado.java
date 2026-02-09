@@ -42,6 +42,7 @@ public class ExpedienteAnalisisAbogado
         this.fechaModificacion = fechaModificacion;
         this.usuarioModificacion = usuarioModificacion;
         this.idEstadoExpediente = idEstadoExpediente;
+        this.expedienteAnalisisAbogadoDetDoc = new ArrayList<>();
     }    
 
     public ExpedienteAnalisisAbogado() 
@@ -148,6 +149,9 @@ public class ExpedienteAnalisisAbogado
     }    
 
     public List<ExpedienteAnalisisAbogadoDetDoc> getExpedienteAnalisisAbogadoDetDoc() {
+        if (expedienteAnalisisAbogadoDetDoc == null) {
+            expedienteAnalisisAbogadoDetDoc = new ArrayList<>();
+        }
         return expedienteAnalisisAbogadoDetDoc;
     }
 

@@ -4,9 +4,11 @@
  */
 package com.sdrerc.application;
 
+import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetResponse;
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogado;
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogadoResponse;
 import com.sdrerc.infrastructure.repository.ExpedienteAnalisisAbogadoRepository;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -37,5 +39,9 @@ public class ExpedienteAnalisisAbogadoService
         ExpedienteAnalisisAbogadoResponse expedienteResponse = expedienteAnalisisAbogadoRepository.ObtenerExpedientesPorNotificarXidExpediente(idExpediente);
         return expedienteResponse;
     } 
+    
+    public List<ExpedienteAnalisisAbogadoDetResponse> listarDocumentosPorExpediente(Integer idExpediente) throws Exception {
+        return expedienteAnalisisAbogadoRepository.listarDocumentosPorExpediente(idExpediente);        
+    }
     
 }
