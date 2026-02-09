@@ -10,6 +10,7 @@ import com.sdrerc.ui.views.expedientesAsignados.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
+import com.sdrerc.application.ExpedienteEjecucionAsignacionService;
 import com.sdrerc.application.ExpedientePorNotificarService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
@@ -32,7 +33,7 @@ public class JPanelListadoExpedientesEjecucionAsignar extends javax.swing.JPanel
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
-    private final ExpedientePorNotificarService expedientePorNotificarService;
+    private final ExpedienteEjecucionAsignacionService expedienteEjecucionAsignacionService;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -42,7 +43,7 @@ public class JPanelListadoExpedientesEjecucionAsignar extends javax.swing.JPanel
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
-        this.expedientePorNotificarService = new ExpedientePorNotificarService();
+        this.expedienteEjecucionAsignacionService = new ExpedienteEjecucionAsignacionService();
         
         cargarTiposBusqueda();
         cargarComboEstados();    
@@ -82,7 +83,7 @@ public class JPanelListadoExpedientesEjecucionAsignar extends javax.swing.JPanel
                         
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
             
-            List<Expediente> lista = expedientePorNotificarService.ListarExpedientesPorNotificar(0);
+            List<Expediente> lista = expedienteEjecucionAsignacionService.ListarExpedientesEjecucion(0);
             cargarTablaNueva(lista);
         } 
         catch (Exception e) 

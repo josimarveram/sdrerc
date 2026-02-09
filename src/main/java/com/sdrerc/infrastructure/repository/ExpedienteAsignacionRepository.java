@@ -124,6 +124,72 @@ public class ExpedienteAsignacionRepository {
         }
     }
     
+    
+    public boolean RegistrarAsigancionExpedienteTO(ExpedienteAsignacion oExpedienteAsignacion) throws SQLException 
+    {
+        String insertAsignacionSql = "INSERT INTO EXPEDIENTE_ASIGNACION "
+                + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION, HOJA_ENVIO_ASIGNACION, ETAPA_FLUJO, TIPO_PROCEDIMIENTO_REGISTRAL, NUMERO_RESOLUCION, TIPO_ACTA) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        String updateExpedienteSql = "UPDATE EXPEDIENTE SET " +
+                    " ESTADO = ?, " +
+                    " id_usuario_modifica = ?, " +
+                    " fecha_modifica      = ? " +
+                    " WHERE id_expediente = ?";
+
+        Connection conn = null;        
+        try 
+        {
+            conn = OracleConnection.getConnection();
+            conn.setAutoCommit(false);             
+            
+            try(PreparedStatement psupdateExpediente = conn.prepareStatement(updateExpedienteSql))
+            {
+                // Datos para actualizar
+                psupdateExpediente.setInt(1, oExpedienteAsignacion.getEtapaFlujo());   // IdEstadoExpediente                
+                psupdateExpediente.setInt(2, oExpedienteAsignacion.getIdUsuarioModifica());    // id_usuario_modifica    
+                psupdateExpediente.setDate(3, new java.sql.Date(System.currentTimeMillis()));  // fecha_modifica                
+                psupdateExpediente.setInt(4, oExpedienteAsignacion.getIdExpediente());         // WHERE id_expediente = ?                
+                psupdateExpediente.executeUpdate();
+            } 
+            
+            // 2️⃣ INSERT EXPEDIENTE_ASIGNACION
+            try (PreparedStatement psInsert = conn.prepareStatement(insertAsignacionSql)) 
+            {
+                psInsert.setInt(1, oExpedienteAsignacion.getIdExpediente());
+                psInsert.setInt(2, oExpedienteAsignacion.getIdTecnico());
+
+                java.sql.Date fechaSql = new java.sql.Date(oExpedienteAsignacion.getFechaAsignacion().getTime());
+                psInsert.setDate(3, fechaSql);
+                psInsert.setString(4, oExpedienteAsignacion.getHojaEnvioAsignacion());
+                
+                psInsert.setInt(5, oExpedienteAsignacion.getEtapaFlujo());
+                psInsert.setInt(6, oExpedienteAsignacion.getTipoProcedimientoRegistral());
+                psInsert.setString(7, oExpedienteAsignacion.getNumeroResolucion());
+                psInsert.setInt(8, oExpedienteAsignacion.getTipoActa());
+                
+                psInsert.executeUpdate();
+            }            
+            
+            conn.commit(); 
+            return true;   
+        }
+        catch (SQLException ex) 
+        {
+            if (conn != null) 
+            {
+                conn.rollback(); 
+            }
+            return false;   
+        } 
+        finally 
+        {
+            if (conn != null) conn.setAutoCommit(true); // volver a modo normal
+            if (conn != null) conn.close();
+        }               
+    }
+    
+    
     public boolean actualizarRecepcionExpediente(ExpedienteAsignacion oExpedienteAsignacion) throws SQLException 
     {
         String updateExpedienteAsignacionSql = "UPDATE EXPEDIENTE_ASIGNACION SET " +
@@ -148,7 +214,7 @@ public class ExpedienteAsignacionRepository {
             try(PreparedStatement psupdateExpediente = conn.prepareStatement(updateExpedienteSql))
             {
                 // Datos para actualizar
-                psupdateExpediente.setInt(1, oExpedienteAsignacion.getIdEstadoExpediente());   // IdEstadoExpediente                
+                psupdateExpediente.setInt(1, oExpedienteAsignacion.getEtapaFlujo());   // IdEstadoExpediente                
                 psupdateExpediente.setInt(2, oExpedienteAsignacion.getIdUsuarioModifica());    // id_usuario_modifica    
                 psupdateExpediente.setDate(3, new java.sql.Date(System.currentTimeMillis()));  // fecha_modifica                
                 psupdateExpediente.setInt(4, oExpedienteAsignacion.getIdExpediente());         // WHERE id_expediente = ?                

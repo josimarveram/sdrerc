@@ -9,7 +9,10 @@ import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -17,107 +20,91 @@ import java.sql.SQLException;
  */
 public class ExpedienteEjecucionAsignacionRepository 
 {
-    public void registrarExpedienteEjecucionAsignacion(ExpedienteAsignacion asignacion, Expediente expediente) throws SQLException 
+    public List<Expediente> ListarExpedientesEjecucion(int estadoItem) throws SQLException 
     {        
-        // Primero, actualizar la tabla EXPEDIENTE con los nuevos valores
-        String updateExpedienteSql =
-            "UPDATE EXPEDIENTE SET "
-            + "FECHA_SOLICITUD = ?, "
-            + "NUMERO_TRAMITE_DOCUMENTO = ?, "
-            + "TIPO_SOLICITUD = ?, "
-            + "TIPO_DOCUMENTO = ?, "
-            + "DNI_REMITENTE = ?, "
-            + "APELLIDO_NOMBRE_REMITENTE = ?, "
-            + "TIPO_PROCEDIMIENTO_REGISTRAL = ?, "
-            + "TIPO_ACTA = ?, "
-            + "NUMERO_ACTA = ?, "
-            + "TIPO_GRUPO_FAMILIAR = ?, "
-            + "DNI_TITULAR = ?, "
-            + "APELLIDO_NOMBRE_TITULAR = ?, "
-            + "ESTADO = ?, "
-            + "ID_USUARIO_MODIFICA = ?, "
-            + "FECHA_MODIFICA = ? ,"
-                
-                
-            + "FECHA_RECEPCION = ? ,"
-            + "CORREO_ELECTRONICO = ? ,"
-            + "CELULAR = ? ,"
-            + "DOMICILIO = ? ,"
-            + "DIRECCION_DOMICILIARIA = ? ,"
-            + "GRADO_PARENTESCO = ? ,"
-            + "UNIDAD_ORGANICA = ? "                
-                
-            + "WHERE ID_EXPEDIENTE = ?";
+        List<Expediente> lista = new ArrayList<>();
         
-        // Luego, insertar en la tabla EXPEDIENTE_ASIGNACION
-        String insertAsignacionSql = "INSERT INTO EXPEDIENTE_ASIGNACION "
-                + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION, HOJA_ENVIO_ASIGNACION) "
-                + "VALUES (?, ?, ?, ?)";
-        /*
-        String sql = "INSERT INTO EXPEDIENTE_ASIGNACION "
-                   + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION) "
-                   + "VALUES (?, ?, ?)";
-        */
-        Connection conn = null;
-        try {
-             
-            conn = OracleConnection.getConnection();
-            conn.setAutoCommit(false); 
+        StringBuilder sqlListaExpediente = new StringBuilder(			
+            " SELECT * FROM EXPEDIENTE " +
+            " INNER JOIN (SELECT e.ID_EXPEDIENTE AS ID_EXPEDIENTE_DOCUMENTO_VERIFICAR FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d " +
+            "             INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO e ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = e.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
+            "             WHERE d.ID_TIPO_DOCUMENTO_ANALIZADO IN (71,72) AND d.ID_TIPO_DOCUMENTO_ANALIZADO IS NOT NULL AND d.ACTIVE = 1 " +           
+            "             ORDER BY d.FECHA_REGISTRO DESC " +
+            "             FETCH FIRST 1 ROW ONLY " +
+            "            )doc ON doc.ID_EXPEDIENTE_DOCUMENTO_VERIFICAR = EXPEDIENTE.ID_EXPEDIENTE " +
+            " INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO eaa on expediente.id_expediente = eaa.id_expediente " +
+            " WHERE 1 = 1 AND eaa.ID_ANALISIS = 73 "			
+            );
                 
-            try (PreparedStatement psUpdate = conn.prepareStatement(updateExpedienteSql)) {
-                psUpdate.setDate(1, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
-                psUpdate.setString(2, expediente.getNumeroTramiteDocumento());
-                psUpdate.setInt(3, expediente.getTipoSolicitud());
-                psUpdate.setInt(4, expediente.getTipoDocumento());
-                psUpdate.setString(5, expediente.getDniRemitente());
-                psUpdate.setString(6, expediente.getApellidoNombreRemitente());
-                psUpdate.setInt(7, expediente.getTipoProcedimientoRegistral());
-                psUpdate.setInt(8, expediente.getTipoActa());
-                psUpdate.setString(9, expediente.getNumeroActa());
-                psUpdate.setInt(10, expediente.getTipoGrupoFamiliar());
-                psUpdate.setString(11, expediente.getDniTitular());
-                psUpdate.setString(12, expediente.getApellidoNombreTitular());
-                psUpdate.setInt(13, expediente.getEstado());
-                psUpdate.setInt(14, expediente.getIdUsuarioModifica());
-                psUpdate.setDate(15, new java.sql.Date(System.currentTimeMillis()));
-                
-                psUpdate.setDate(16, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
-                psUpdate.setString(17, expediente.getCorreoElectronico());
-                psUpdate.setString(18, expediente.getCelular());
-                psUpdate.setString(19, expediente.getDomicilio());
-                psUpdate.setInt(20, expediente.getDireccionDomiciliaria());
-                psUpdate.setInt(21, expediente.getGradoParentesco());
-                psUpdate.setInt(22, expediente.getUnidadOrganica());                
-
-                psUpdate.setInt(23, expediente.getIdExpediente()); // WHERE
-
-                psUpdate.executeUpdate();
-            }
-            
-            // 2️⃣ INSERT EXPEDIENTE_ASIGNACION
-            try (PreparedStatement psInsert = conn.prepareStatement(insertAsignacionSql)) {
-
-                psInsert.setInt(1, asignacion.getIdExpediente());
-                psInsert.setInt(2, asignacion.getIdTecnico());
-
-                java.sql.Date fechaSql = new java.sql.Date(asignacion.getFechaAsignacion().getTime());
-                psInsert.setDate(3, fechaSql);
-                psInsert.setString(4, asignacion.getHojaEnvioAsignacion());
-
-                psInsert.executeUpdate();
-            }
-            
-            conn.commit(); 
-
-        } catch (SQLException ex) {
-            if (conn != null) {
-                conn.rollback(); 
-            }
-            throw ex;
-
-        } finally {
-            if (conn != null) conn.setAutoCommit(true); // volver a modo normal
-            if (conn != null) conn.close();
+        boolean filtrarEstado = estadoItem != 0;
+        if(filtrarEstado) 
+        {
+            sqlListaExpediente.append("AND EXPEDIENTE.estado = ? ");
         }
+        
+        Connection conn = null;
+        try
+        {
+            conn = OracleConnection.getConnection();
+            conn.setAutoCommit(false);             
+            try(PreparedStatement psListar = conn.prepareStatement(sqlListaExpediente.toString()))
+            {                
+                if(filtrarEstado) 
+                    psListar.setInt(2, estadoItem);
+
+                ResultSet rs = psListar.executeQuery();
+                while (rs.next()) 
+                {
+                    lista.add(mapRow(rs));
+                }
+            } 
+            return lista;                        
+        }
+        catch(SQLException ex)
+        {
+            throw ex;
+        }
+        finally 
+        {
+            if(conn != null) 
+               conn.setAutoCommit(true); // volver a modo normal
+            if(conn != null) 
+               conn.close();
+        }   
+    }
+    private Expediente mapRow(ResultSet rs) throws SQLException {
+        return new Expediente(
+                            rs.getInt("ID_EXPEDIENTE"),
+                            rs.getInt("ES_REGISTRO_SDRERC"),
+                            rs.getString("HOJA_ENVIO_EXPEDIENTE"),
+                            rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
+                            rs.getDate("FECHA_RECEPCION"),
+                            rs.getDate("FECHA_SOLICITUD"),
+                            rs.getInt("TIPO_DOCUMENTO"),
+                            rs.getString("NUMERO_DOCUMENTO"),
+                            rs.getInt("TIPO_ACTA"),
+                            rs.getString("NUMERO_ACTA"),
+                            rs.getInt("TIPO_GRUPO_FAMILIAR"),
+                            rs.getInt("GRADO_PARENTESCO"),
+                            rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
+                            rs.getInt("TIPO_SOLICITUD"),
+                            rs.getString("DNI_REMITENTE"),
+                            rs.getString("APELLIDO_NOMBRE_REMITENTE"),
+                            rs.getInt("UNIDAD_ORGANICA"),
+                            rs.getString("DNI_TITULAR"),
+                            rs.getString("APELLIDO_NOMBRE_TITULAR"),
+                            rs.getInt("DEPARTAMENTO"),
+                            rs.getInt("PROVINCIA"),
+                            rs.getInt("DISTRITO"),
+                            rs.getInt("DIRECCION_DOMICILIARIA"),
+                            rs.getString("DOMICILIO"),
+                            rs.getString("CORREO_ELECTRONICO"),
+                            rs.getString("CELULAR"),
+                            rs.getInt("ESTADO"),
+                            rs.getInt("ID_USUARIO_CREA"),
+                            rs.getDate("FECHA_REGISTRA"),
+                            rs.getInt("ID_USUARIO_MODIFICA"),
+                            rs.getDate("FECHA_MODIFICA")
+        );
     }
 }

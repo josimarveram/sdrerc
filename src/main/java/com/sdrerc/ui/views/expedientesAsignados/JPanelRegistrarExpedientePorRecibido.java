@@ -993,7 +993,7 @@ private void seleccionarDistrito(int idDistrito) {
             ExpedienteAsignacion oExpedienteAsignacion = new ExpedienteAsignacion();
 
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
-            oExpedienteAsignacion.setIdEstadoExpediente(estadoExpedienteRecibido.getId());
+            oExpedienteAsignacion.setEtapaFlujo(estadoExpedienteRecibido.getId());
             oExpedienteAsignacion.setIdExpediente(idExpedienteOculto);
             oExpedienteAsignacion.setAceptaRecepcion(1);
             oExpedienteAsignacion.setIdUsuarioModifica(1);

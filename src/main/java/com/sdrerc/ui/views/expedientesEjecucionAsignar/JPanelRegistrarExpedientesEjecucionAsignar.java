@@ -24,6 +24,7 @@ import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAboga
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.ui.views.asignacion.JDialogTecnico;
+import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.util.TextFieldRules;
 import java.awt.Component;
 import java.io.File;
@@ -70,13 +71,83 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         this.ubigeoService = new UbigeoService();
         this.expedienteAsignacionService = new ExpedienteAsignacionService();     
         this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
+        cargarComboTipoProcedimientoRegistralAsignacion(); 
+        cargarComboTipoActaAsignacion();
+        
+        cargarComboTipoSolicitud(); 
+        cargarComboTipoDocumento();
         cargarComboTipoProcedimientoRegistral(); 
         cargarComboTipoActa();
+        cargarComboGrupoFamiliar();
+        cargarComboParentesco();
+        cargarComboDireccionDomiciliaria();
+        cargarComboUnidadOrganica();
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {
+        Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
+        idExpedienteOculto = lista.getIdExpediente();
+          
+        //numeroTramiteDocumento 
+        textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
+
+        //fechaRecepcion
+        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
         
+        //fechaSolicitud
+        spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
+
+        //tipoDocumento
+        seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
+
+        //numeroDocumento
+        textNumeroDocumento.setText(lista.getNumeroDocumento());   
+
+        //tipoActa
+        seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
+
+        //numeroActa
+        textNumeroActa.setText(lista.getNumeroActa());
+
+        //tipoGrupoFamiliar
+        seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar()); 
+
+        //gradoParentesco
+        seleccionarEstadoEnCombo(cboGradoParentesco, lista.getGradoParentesco()); 
+        
+        //tipoProcedimientoRegistral
+        seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
+
+        //tipoSolicitud
+        seleccionarEstadoEnCombo(cboTipoSolicitud, lista.getTipoSolicitud()); 
+
+        //dniRemitente
+        textDniRemitente.setText(lista.getDniRemitente());
+
+        //apellidoNombreRemitente
+        textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
+
+        //unidadOrganica
+        seleccionarEstadoEnCombo(cboUnidadOrganica, lista.getUnidadOrganica());
+
+        //dniTitular
+        textNumeroDocumentoTitular.setText(lista.getDniTitular());
+
+        //apellidoNombreTitular
+        textApellidosNombreTitular.setText(lista.getApellidoNombreTitular());
+
+        //direccionDomiciliaria
+        seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
+
+        //domicilio
+        textDomicilio.setText(lista.getDomicilio());
+
+        //correoElectronico
+        textCorreoElectronico.setText(lista.getCorreoElectronico());
+
+        //celular
+        textCelular.setText(lista.getCelular());
     }
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
@@ -87,6 +158,42 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                 combo.setSelectedIndex(i);
                 break;
             }
+        }
+    }
+    
+    private void cargarComboTipoProcedimientoRegistralAsignacion() {
+        cboTipoProcedimientoRegistralAsignacion.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(3);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoProcedimientoRegistralAsignacion.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboTipoActaAsignacion() {
+        cboTipoActaAsignacion.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(4);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoActaAsignacion.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboTipoSolicitud() {
+        cboTipoSolicitud.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(1);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoSolicitud.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboTipoDocumento() {
+        cboTipoDocumento.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(2);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboTipoDocumento.addItem(catalogoitem);
         }
     }
     
@@ -105,6 +212,42 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
 
         for (CatalogoItem catalogoitem : lista) {
             cboTipoActa.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboGrupoFamiliar() {
+        cboGrupoFamiliar.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(6);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboGrupoFamiliar.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboParentesco() {
+        cboGradoParentesco.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(7);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboGradoParentesco.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboDireccionDomiciliaria() {
+        cboDireccionDomiciliaria.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(8);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboDireccionDomiciliaria.addItem(catalogoitem);
+        }
+    }
+    
+    private void cargarComboUnidadOrganica() {
+        cboUnidadOrganica.removeAllItems();    
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(9);
+
+        for (CatalogoItem catalogoitem : lista) {
+            cboUnidadOrganica.addItem(catalogoitem);
         }
     }
     
@@ -168,6 +311,36 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
     }
     
     
+    private boolean validarFormulario() 
+    {
+        if (cboTipoActaAsignacion.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar Tipo de Acta.");
+            cboTipoActaAsignacion.requestFocus();
+            return false;
+        }
+
+        if (textNumeroResolucionAsignacion.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar Número de resolucion.");
+            textNumeroResolucionAsignacion.requestFocus();
+            return false;
+        }
+
+        if (cboTipoProcedimientoRegistralAsignacion.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar tipo procedimiento registral.");
+            cboTipoProcedimientoRegistralAsignacion.requestFocus();
+            return false;
+        }
+
+        if (txtNombreTecnico.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un abogado.");
+            txtNombreTecnico.requestFocus();
+            return false;
+        }
+
+        return true; // Todo OK
+    }
+    
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -180,21 +353,21 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         jPanelPrincipal = new javax.swing.JPanel();
         jPanelDatosSolicitud = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
-        spFechaSolicitud = new javax.swing.JSpinner();
+        spFechaAsignacion = new javax.swing.JSpinner();
         jLabel8 = new javax.swing.JLabel();
         jLabel26 = new javax.swing.JLabel();
         jLabel12 = new javax.swing.JLabel();
-        textNumeroTramiteDocumento2 = new javax.swing.JTextField();
+        textNumeroResolucionAsignacion = new javax.swing.JTextField();
         jButton2 = new javax.swing.JButton();
         txtIdTecnico = new javax.swing.JTextField();
         txtNombreTecnico = new javax.swing.JTextField();
-        cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
-        cboTipoActa = new javax.swing.JComboBox();
+        cboTipoProcedimientoRegistralAsignacion = new javax.swing.JComboBox();
+        cboTipoActaAsignacion = new javax.swing.JComboBox();
         btnRegresar = new javax.swing.JButton();
         btnGuardarAsignacionEjecucion = new javax.swing.JButton();
         jPanelDatosSolicitud2 = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
-        spFechaSolicitud2 = new javax.swing.JSpinner();
+        spFechaSolicitud = new javax.swing.JSpinner();
         jLabel4 = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
         cboTipoSolicitud = new javax.swing.JComboBox();
@@ -205,7 +378,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         jLabel13 = new javax.swing.JLabel();
         textNumeroDocumento = new javax.swing.JTextField();
         jLabel15 = new javax.swing.JLabel();
-        cboTipoActa1 = new javax.swing.JComboBox();
+        cboTipoActa = new javax.swing.JComboBox();
         jLabel16 = new javax.swing.JLabel();
         textNumeroActa = new javax.swing.JTextField();
         jLabel17 = new javax.swing.JLabel();
@@ -224,7 +397,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         textApellidosNombreRemitente = new javax.swing.JTextField();
         textNumeroTramiteDocumento = new javax.swing.JTextField();
         jLabel23 = new javax.swing.JLabel();
-        cboTipoProcedimientoRegistral1 = new javax.swing.JComboBox();
+        cboTipoProcedimientoRegistral = new javax.swing.JComboBox();
         jPanelParaNotificacion = new javax.swing.JPanel();
         jLabel24 = new javax.swing.JLabel();
         textCorreoElectronico = new javax.swing.JTextField();
@@ -249,7 +422,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         jLabel2.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel2.setText("Fecha Asignación");
 
-        spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
+        spFechaAsignacion.setModel(new javax.swing.SpinnerDateModel());
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel8.setText("Tipo acta");
@@ -283,19 +456,19 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 68, Short.MAX_VALUE)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(cboTipoActaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(78, 78, 78)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel26, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(cboTipoProcedimientoRegistralAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(37, 37, 37)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(textNumeroTramiteDocumento2, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addComponent(textNumeroResolucionAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addGap(21, 21, 21))
         );
         jPanelDatosSolicitudLayout.setVerticalGroup(
@@ -306,19 +479,19 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addComponent(jLabel2)
                         .addGap(1, 1, 1)
-                        .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addComponent(jLabel26)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(cboTipoProcedimientoRegistralAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addComponent(jLabel12)
                         .addGap(1, 1, 1)
-                        .addComponent(textNumeroTramiteDocumento2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(textNumeroResolucionAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addComponent(jLabel8)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(cboTipoActaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -357,8 +530,8 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         jLabel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel3.setText("Fecha Solicitud ");
 
-        spFechaSolicitud2.setModel(new javax.swing.SpinnerDateModel());
-        spFechaSolicitud2.setEnabled(false);
+        spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
+        spFechaSolicitud.setEnabled(false);
 
         jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel4.setText("Nro. Tramite Web");
@@ -393,7 +566,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         jLabel15.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel15.setText("Tipo Acta");
 
-        cboTipoActa1.setEnabled(false);
+        cboTipoActa.setEnabled(false);
 
         jLabel16.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel16.setText("Nro Acta");
@@ -441,7 +614,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         jLabel23.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel23.setText("Tipo Procedimiento Registral");
 
-        cboTipoProcedimientoRegistral1.setEnabled(false);
+        cboTipoProcedimientoRegistral.setEnabled(false);
 
         javax.swing.GroupLayout jPanelDatosSolicitud2Layout = new javax.swing.GroupLayout(jPanelDatosSolicitud2);
         jPanelDatosSolicitud2.setLayout(jPanelDatosSolicitud2Layout);
@@ -464,7 +637,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                         .addGap(5, 5, 5)
                         .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
-                        .addComponent(spFechaSolicitud2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
@@ -484,7 +657,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                         .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitud2Layout.createSequentialGroup()
                         .addGap(5, 5, 5)
-                        .addComponent(cboTipoActa1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
@@ -492,7 +665,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                         .addGap(10, 10, 10)
                         .addComponent(cboGradoParentesco, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(20, 20, 20)
-                        .addComponent(cboTipoProcedimientoRegistral1, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelDatosSolicitud2Layout.createSequentialGroup()
                         .addGap(5, 5, 5)
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 108, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -538,7 +711,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                 .addGap(1, 1, 1)
                 .addGroup(jPanelDatosSolicitud2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(spFechaSolicitud2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(cboTipoDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(textNumeroDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -550,11 +723,11 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
                     .addComponent(jLabel18)
                     .addComponent(jLabel23))
                 .addGroup(jPanelDatosSolicitud2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(cboTipoActa1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboTipoActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(textNumeroActa, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(cboGrupoFamiliar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(cboGradoParentesco, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(cboTipoProcedimientoRegistral1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(cboTipoProcedimientoRegistral, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(10, 10, 10)
                 .addGroup(jPanelDatosSolicitud2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel5)
@@ -669,14 +842,53 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnGuardarAsignacionEjecucionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarAsignacionEjecucionActionPerformed
-     try
+     
+     if(!validarFormulario()) 
+     {
+            return; // Detiene el proceso si hay errores
+     }
+        try 
         {
-            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
-        }
-    catch (Exception ex)
+            //Expediente expediente = new Expediente();  
+            ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
+            
+            //tipoActa
+            CatalogoItem catalogoTipoActa = (CatalogoItem) cboTipoActaAsignacion.getSelectedItem();
+            int idTipoActa = catalogoTipoActa.getIdCatalogoItem();
+            asignacion.setTipoActa(idTipoActa);
+                        
+            //tipoProcedimientoRegistral
+            CatalogoItem catalogoTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistralAsignacion.getSelectedItem();
+            int idTipoProcedimientoRegistral = catalogoTipoProcedimientoRegistral.getIdCatalogoItem();
+            asignacion.setTipoProcedimientoRegistral(idTipoProcedimientoRegistral);
+            
+            //Numero Resolucion
+            asignacion.setNumeroResolucion(textNumeroResolucionAsignacion.getText());
+            
+            asignacion.setIdExpediente(idExpedienteOculto);
+                                             
+            //ExpedienteResponse response;              
+            
+            asignacion.setIdTecnico(Integer.parseInt(txtIdTecnico.getText()));            
+            
+            java.util.Date fecha = (java.util.Date) spFechaAsignacion.getValue();            
+            asignacion.setFechaAsignacion(fecha);
+            
+            Enumerado.EstadoExpediente estadoExpedienteEjecucionAsignada = Enumerado.EstadoExpediente.ExpedienteEjecucionAsignada;
+            asignacion.setEtapaFlujo(estadoExpedienteEjecucionAsignada.getId());
+                       
+            
+            expedienteAsignacionService.RegistrarAsigancionExpedienteTO(asignacion);
+            JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
+            MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
+        } 
+        catch (Exception ex) 
         {
-            JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+            JOptionPane.showMessageDialog(this,
+                    "Error al guardar: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } 
     }//GEN-LAST:event_btnGuardarAsignacionEjecucionActionPerformed
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
@@ -732,10 +944,10 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
     private javax.swing.JComboBox cboGradoParentesco;
     private javax.swing.JComboBox cboGrupoFamiliar;
     private javax.swing.JComboBox cboTipoActa;
-    private javax.swing.JComboBox cboTipoActa1;
+    private javax.swing.JComboBox cboTipoActaAsignacion;
     private javax.swing.JComboBox cboTipoDocumento;
     private javax.swing.JComboBox cboTipoProcedimientoRegistral;
-    private javax.swing.JComboBox cboTipoProcedimientoRegistral1;
+    private javax.swing.JComboBox cboTipoProcedimientoRegistralAsignacion;
     private javax.swing.JComboBox cboTipoSolicitud;
     private javax.swing.JComboBox cboUnidadOrganica;
     private javax.swing.JButton jButton2;
@@ -767,9 +979,9 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
     private javax.swing.JPanel jPanelDatosSolicitud2;
     private javax.swing.JPanel jPanelParaNotificacion;
     private javax.swing.JPanel jPanelPrincipal;
+    private javax.swing.JSpinner spFechaAsignacion;
     private javax.swing.JSpinner spFechaRecepcion;
     private javax.swing.JSpinner spFechaSolicitud;
-    private javax.swing.JSpinner spFechaSolicitud2;
     private javax.swing.JTextField textApellidosNombreRemitente;
     private javax.swing.JTextField textApellidosNombreTitular;
     private javax.swing.JTextField textCelular;
@@ -779,8 +991,8 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
     private javax.swing.JTextField textNumeroActa;
     private javax.swing.JTextField textNumeroDocumento;
     private javax.swing.JTextField textNumeroDocumentoTitular;
+    private javax.swing.JTextField textNumeroResolucionAsignacion;
     private javax.swing.JTextField textNumeroTramiteDocumento;
-    private javax.swing.JTextField textNumeroTramiteDocumento2;
     private javax.swing.JTextField txtIdTecnico;
     private javax.swing.JTextField txtNombreTecnico;
     // End of variables declaration//GEN-END:variables

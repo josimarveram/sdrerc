@@ -37,6 +37,18 @@ public class ExpedienteAsignacionService {
         // Registrar en la BD → Llama al DAO
         expedienteAsignacionRepository.registrar(asignacion,expediente);
     }
+
+    public boolean RegistrarAsigancionExpedienteTO(ExpedienteAsignacion oExpedienteAsignacion) throws Exception 
+    {
+        // Validaciones mínimas
+        if (oExpedienteAsignacion == null) 
+        {           
+            throw new Exception("El expediente no puede ser nulo.");
+        }
+        // Llamar al repositorio (DAO)
+        boolean respuesta = expedienteAsignacionRepository.RegistrarAsigancionExpedienteTO(oExpedienteAsignacion);
+        return respuesta; 
+    } 
     
     public boolean  actualizarRecepcionExpediente(ExpedienteAsignacion oExpedienteAsignacion) throws Exception 
     {

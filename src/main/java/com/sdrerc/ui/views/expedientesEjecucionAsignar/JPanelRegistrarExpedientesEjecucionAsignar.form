@@ -90,22 +90,22 @@
                           <Group type="102" attributes="0">
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel2" min="-2" pref="190" max="-2" attributes="0"/>
-                                  <Component id="spFechaSolicitud" min="-2" pref="200" max="-2" attributes="0"/>
+                                  <Component id="spFechaAsignacion" min="-2" pref="200" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace pref="68" max="32767" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel8" min="-2" pref="190" max="-2" attributes="0"/>
-                                  <Component id="cboTipoActa" alignment="0" min="-2" pref="200" max="-2" attributes="0"/>
+                                  <Component id="cboTipoActaAsignacion" alignment="0" min="-2" pref="200" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace min="-2" pref="78" max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel26" min="-2" pref="190" max="-2" attributes="0"/>
-                                  <Component id="cboTipoProcedimientoRegistral" min="-2" pref="200" max="-2" attributes="0"/>
+                                  <Component id="cboTipoProcedimientoRegistralAsignacion" min="-2" pref="200" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace min="-2" pref="37" max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel12" alignment="0" min="-2" pref="190" max="-2" attributes="0"/>
-                                  <Component id="textNumeroTramiteDocumento2" alignment="0" min="-2" pref="200" max="-2" attributes="0"/>
+                                  <Component id="textNumeroResolucionAsignacion" alignment="0" min="-2" pref="200" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                       </Group>
@@ -121,22 +121,22 @@
                           <Group type="102" alignment="1" attributes="0">
                               <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
                               <EmptySpace min="1" pref="1" max="-2" attributes="0"/>
-                              <Component id="spFechaSolicitud" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="spFechaAsignacion" min="-2" pref="40" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" alignment="1" attributes="0">
                               <Component id="jLabel26" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="cboTipoProcedimientoRegistral" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="cboTipoProcedimientoRegistralAsignacion" min="-2" pref="40" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" attributes="0">
                               <Component id="jLabel12" min="-2" max="-2" attributes="0"/>
                               <EmptySpace min="1" pref="1" max="-2" attributes="0"/>
-                              <Component id="textNumeroTramiteDocumento2" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="textNumeroResolucionAsignacion" min="-2" pref="40" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" attributes="0">
                               <Component id="jLabel8" min="-2" max="-2" attributes="0"/>
                               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                              <Component id="cboTipoActa" min="-2" pref="40" max="-2" attributes="0"/>
+                              <Component id="cboTipoActaAsignacion" min="-2" pref="40" max="-2" attributes="0"/>
                           </Group>
                       </Group>
                       <EmptySpace type="separate" max="-2" attributes="0"/>
@@ -159,7 +159,7 @@
                 <Property name="text" type="java.lang.String" value="Fecha Asignaci&#xf3;n"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JSpinner" name="spFechaSolicitud">
+            <Component class="javax.swing.JSpinner" name="spFechaAsignacion">
               <Properties>
                 <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
                   <SpinnerModel initial="now" stepSize="5" type="date"/>
@@ -190,7 +190,7 @@
                 <Property name="text" type="java.lang.String" value="Numero de Resoluci&#xf3;n"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JTextField" name="textNumeroTramiteDocumento2">
+            <Component class="javax.swing.JTextField" name="textNumeroResolucionAsignacion">
             </Component>
             <Component class="javax.swing.JButton" name="jButton2">
               <Properties>
@@ -204,12 +204,12 @@
             </Component>
             <Component class="javax.swing.JTextField" name="txtNombreTecnico">
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral">
+            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistralAsignacion">
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoActa">
+            <Component class="javax.swing.JComboBox" name="cboTipoActaAsignacion">
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>
@@ -298,7 +298,7 @@
                               <EmptySpace min="5" pref="5" max="-2" attributes="0"/>
                               <Component id="spFechaRecepcion" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
-                              <Component id="spFechaSolicitud2" min="-2" pref="190" max="-2" attributes="0"/>
+                              <Component id="spFechaSolicitud" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                               <Component id="textNumeroTramiteDocumento" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
@@ -320,7 +320,7 @@
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
                               <EmptySpace min="5" pref="5" max="-2" attributes="0"/>
-                              <Component id="cboTipoActa1" min="-2" pref="190" max="-2" attributes="0"/>
+                              <Component id="cboTipoActa" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                               <Component id="textNumeroActa" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
@@ -328,7 +328,7 @@
                               <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                               <Component id="cboGradoParentesco" min="-2" pref="190" max="-2" attributes="0"/>
                               <EmptySpace min="20" pref="20" max="-2" attributes="0"/>
-                              <Component id="cboTipoProcedimientoRegistral1" min="-2" pref="190" max="-2" attributes="0"/>
+                              <Component id="cboTipoProcedimientoRegistral" min="-2" pref="190" max="-2" attributes="0"/>
                           </Group>
                           <Group type="102" alignment="0" attributes="0">
                               <EmptySpace min="5" pref="5" max="-2" attributes="0"/>
@@ -386,7 +386,7 @@
                       <EmptySpace min="1" pref="1" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="spFechaRecepcion" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
-                          <Component id="spFechaSolicitud2" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="spFechaSolicitud" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="textNumeroTramiteDocumento" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="cboTipoDocumento" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="textNumeroDocumento" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
@@ -400,11 +400,11 @@
                           <Component id="jLabel23" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="cboTipoActa1" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="cboTipoActa" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="textNumeroActa" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="cboGrupoFamiliar" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                           <Component id="cboGradoParentesco" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
-                          <Component id="cboTipoProcedimientoRegistral1" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
+                          <Component id="cboTipoProcedimientoRegistral" alignment="0" min="-2" pref="40" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
@@ -443,7 +443,7 @@
                 <Property name="text" type="java.lang.String" value="Fecha Solicitud "/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JSpinner" name="spFechaSolicitud2">
+            <Component class="javax.swing.JSpinner" name="spFechaSolicitud">
               <Properties>
                 <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
                   <SpinnerModel initial="now" stepSize="5" type="date"/>
@@ -534,7 +534,7 @@
                 <Property name="text" type="java.lang.String" value="Tipo Acta"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoActa1">
+            <Component class="javax.swing.JComboBox" name="cboTipoActa">
               <Properties>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
@@ -669,7 +669,7 @@
                 <Property name="text" type="java.lang.String" value="Tipo Procedimiento Registral"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral1">
+            <Component class="javax.swing.JComboBox" name="cboTipoProcedimientoRegistral">
               <Properties>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
