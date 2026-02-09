@@ -10,6 +10,7 @@ import com.sdrerc.ui.views.expedientes.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.ExpedienteAnalisisAbogadoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
+import com.sdrerc.application.ExpedienteObservacionEjecucionService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.application.UbigeoService;
 import com.sdrerc.domain.model.CatalogoItem;
@@ -22,6 +23,7 @@ import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetDoc;
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogadoResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
+import com.sdrerc.domain.model.ExpedienteObservacionEjecucion.ExpedienteObservacionEjecucion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.ui.views.asignacion.JDialogTecnico;
 import com.sdrerc.util.TextFieldRules;
@@ -76,7 +78,8 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {
-        
+        Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
+        idExpedienteOculto = lista.getIdExpediente();
     }
     
     private void cargarTieneObservacion() 
@@ -111,11 +114,11 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
     
     private void cargarTipoMedioNotificacion() 
     {
-        cboTipoCulminacionLinea.removeAllItems();    
+        cboEstadoEjecucion.removeAllItems();    
         List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(15);
         for (CatalogoItem catalogoitem : lista) 
         {
-            cboTipoCulminacionLinea.addItem(catalogoitem);
+            cboEstadoEjecucion.addItem(catalogoitem);
         }
     }    
     
@@ -192,7 +195,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
         jLabel2 = new javax.swing.JLabel();
         spFechaSolicitud = new javax.swing.JSpinner();
         jLabel8 = new javax.swing.JLabel();
-        cboTipoCulminacionLinea = new javax.swing.JComboBox();
+        cboEstadoEjecucion = new javax.swing.JComboBox();
         jLabel21 = new javax.swing.JLabel();
         cboTieneObservacion = new javax.swing.JComboBox();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -253,7 +256,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboTipoCulminacionLinea, javax.swing.GroupLayout.PREFERRED_SIZE, 400, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(cboEstadoEjecucion, javax.swing.GroupLayout.PREFERRED_SIZE, 400, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 135, Short.MAX_VALUE)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -284,7 +287,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
                         .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(cboTipoCulminacionLinea, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(cboEstadoEjecucion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDatosSolicitudLayout.createSequentialGroup()
@@ -404,14 +407,60 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnGuardarNotificacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarNotificacionActionPerformed
-     try
-        {
-            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
-        }
-    catch (Exception ex)
-        {
-            JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+     
+    try {
+            ExpedienteObservacionEjecucion o = new ExpedienteObservacionEjecucion();    
+            CatalogoItem seleccionado = (CatalogoItem) cboTieneObservacion.getSelectedItem();
+
+            if (seleccionado == null || seleccionado.getIdCatalogoItem() == 0) {
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "Debe seleccionar una opción válida del Tiene Observación",
+                        "Validación",
+                        JOptionPane.WARNING_MESSAGE
+                    );
+                    cboTieneObservacion.requestFocus();
+                    return;
+            }
+            
+            CatalogoItem catalogoEstadoEjecucion = (CatalogoItem) cboEstadoEjecucion.getSelectedItem();
+            int idEstadoEjecucion = catalogoEstadoEjecucion.getIdCatalogoItem();            
+            o.setIdEstadoEjecucion(idEstadoEjecucion);
+
+            String valorCombo = cboTieneObservacion.getSelectedItem().toString();
+            boolean tieneObservacion = valorCombo.equalsIgnoreCase("SI");
+            o.setTieneObservacion(tieneObservacion);        
+            o.setIdExpediente(idExpedienteOculto);
+            o.setDescripcionObservacion(jTextDescripcionObservacion.getText());        
+            //o.setFechaEjecucion((Date) spFechaSolicitud.getValue());
+            
+            o.setUsuarioRegistro(1); 
+            o.setUsuarioModificacion(1);
+            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
+            Enumerado.EstadoExpediente estadoExpedienteEjecucionAsignada = Enumerado.EstadoExpediente.ExpedienteEjecucionAsignada;
+            o.setIdEstadoExpediente(tieneObservacion    ?   estadoExpedienteRecibido.getId()
+                                                                            :   estadoExpedienteEjecucionAsignada.getId());
+
+            ExpedienteObservacionEjecucionService service =
+                new ExpedienteObservacionEjecucionService();
+
+            service.registrarObservacion(o);
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Observación registrada correctamente",
+                "Éxito",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesEjecucionPorTrabajar());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                ex.getMessage(),
+                "Error al guardar",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }        
     }//GEN-LAST:event_btnGuardarNotificacionActionPerformed
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
@@ -430,8 +479,8 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnGuardarNotificacion;
     private javax.swing.JButton btnRegresar;
+    private javax.swing.JComboBox cboEstadoEjecucion;
     private javax.swing.JComboBox cboTieneObservacion;
-    private javax.swing.JComboBox cboTipoCulminacionLinea;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel19;

@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.sdrerc.domain.model.ExpedienteObservacionVerificacion;
+package com.sdrerc.domain.model.ExpedienteObservacionEjecucion;
 
 import java.util.Date;
 
@@ -10,62 +10,58 @@ import java.util.Date;
  *
  * @author David
  */
-public class ExpedienteObservacionVerificacion {
-    private Integer idExpedienteObservacionVerificacion;
+public class ExpedienteObservacionEjecucion {
+    
+    
+    private Integer idExpedienteObservacionEjecucion;
     private Integer idExpediente;
-    private String hojaEnvio;
+    private Integer idEstadoEjecucion;
     private Boolean tieneObservacion;
-    private Integer tipoObservacion;
     private String descripcionObservacion;
-    private Date fechaRegistro;
+    private Date fechaEjecucion;
+     private Date fechaRegistro;
     private int usuarioRegistro;
     private Date fechaModificacion;
     private int usuarioModificacion;
     private int idEstadoExpediente;
-    private String resolucion;
-
-    // 🔹 Constructor vacío (obligatorio para frameworks y mapeos)
-    public ExpedienteObservacionVerificacion() {
+    
+    public ExpedienteObservacionEjecucion() {
     }
-
-    // 🔹 Constructor completo (opcional)
-    public ExpedienteObservacionVerificacion(
-            Integer idExpedienteObservacionVerificacion,
+    
+    public ExpedienteObservacionEjecucion(
+            Integer idExpedienteObservacionEjecucion,
             Integer idExpediente,
-            String hojaEnvio,
+            Integer idEstadoEjecucion,
             Boolean tieneObservacion,
-            Integer tipoObservacion,
             String descripcionObservacion, 
+            Date fechaEjecucion,
             Date fechaRegistro,
             int usuarioRegistro, 
             Date fechaModificacion, 
             int usuarioModificacion, 
-            int idEstadoExpediente,
-            String resolucion) {
+            int idEstadoExpediente) {
 
-        this.idExpedienteObservacionVerificacion = idExpedienteObservacionVerificacion;
+        this.idExpedienteObservacionEjecucion = idExpedienteObservacionEjecucion;
         this.idExpediente = idExpediente;
-        this.hojaEnvio = hojaEnvio;
+        this.idEstadoEjecucion = idEstadoEjecucion;
         this.tieneObservacion = tieneObservacion;
-        this.tipoObservacion = tipoObservacion;
         this.descripcionObservacion = descripcionObservacion;
+        this.fechaEjecucion = fechaEjecucion;
         this.fechaRegistro = fechaRegistro;
         this.usuarioRegistro = usuarioRegistro;
         this.fechaModificacion = fechaModificacion;
         this.usuarioModificacion = usuarioModificacion;
         this.idEstadoExpediente = idEstadoExpediente;
-        this.resolucion = resolucion;
     
     }
 
-    // 🔹 GETTERS Y SETTERS
-
-    public Integer getIdExpedienteObservacionVerificacion() {
-        return idExpedienteObservacionVerificacion;
+    // getters y setters
+    public Integer getIdExpedienteObservacionEjecucion() {
+        return idExpedienteObservacionEjecucion;
     }
 
-    public void setIdExpedienteObservacionVerificacion(Integer idExpedienteObservacionVerificacion) {
-        this.idExpedienteObservacionVerificacion = idExpedienteObservacionVerificacion;
+    public void setIdExpedienteObservacionEjecucion(Integer id) {
+        this.idExpedienteObservacionEjecucion = id;
     }
 
     public Integer getIdExpediente() {
@@ -75,14 +71,15 @@ public class ExpedienteObservacionVerificacion {
     public void setIdExpediente(Integer idExpediente) {
         this.idExpediente = idExpediente;
     }
-
-    public String getHojaEnvio() {
-        return hojaEnvio;
+    
+    public Integer getIdEstadoEjecucion() {
+        return idEstadoEjecucion;
     }
 
-    public void setHojaEnvio(String hojaEnvio) {
-        this.hojaEnvio = hojaEnvio;
+    public void setIdEstadoEjecucion(Integer idEstadoEjecucion) {
+        this.idEstadoEjecucion = idEstadoEjecucion;
     }
+
 
     public Boolean getTieneObservacion() {
         return tieneObservacion;
@@ -92,20 +89,28 @@ public class ExpedienteObservacionVerificacion {
         this.tieneObservacion = tieneObservacion;
     }
 
-    public Integer getTipoObservacion() {
-        return tipoObservacion;
-    }
-
-    public void setTipoObservacion(Integer tipoObservacion) {
-        this.tipoObservacion = tipoObservacion;
-    }
-
     public String getDescripcionObservacion() {
         return descripcionObservacion;
     }
 
     public void setDescripcionObservacion(String descripcionObservacion) {
         this.descripcionObservacion = descripcionObservacion;
+    }
+
+    public Date getFechaEjecucion() {
+        return fechaEjecucion;
+    }
+
+    public void setFechaEjecucion(Date fechaEjecucion) {
+        this.fechaEjecucion = fechaEjecucion;
+    }
+    
+    public int getIdEstadoExpediente() {
+        return idEstadoExpediente;
+    }
+
+    public void setIdEstadoExpediente(int idEstadoExpediente) {
+        this.idEstadoExpediente = idEstadoExpediente;
     }
     
     public Date getFechaRegistro() {
@@ -139,19 +144,5 @@ public class ExpedienteObservacionVerificacion {
     public void setUsuarioModificacion(int usuarioModificacion) {
         this.usuarioModificacion = usuarioModificacion;
     }  	
-    public int getIdEstadoExpediente() {
-        return idEstadoExpediente;
-    }
 
-    public void setIdEstadoExpediente(int idEstadoExpediente) {
-        this.idEstadoExpediente = idEstadoExpediente;
-    }
-    
-    public String getResolucion() {
-        return resolucion;
-    }
-
-    public void setResolucion(String resolucion) {
-        this.resolucion = resolucion;
-    }
 }

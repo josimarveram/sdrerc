@@ -294,4 +294,28 @@ public class ExpedienteAnalisisAbogadoRepository
         }
         return lista;
     }
+    
+    public Integer listarIdAnalisisPorExpediente(Integer idExpediente) throws Exception {
+
+        String sql =
+        "SELECT A.ID_ANALISIS " +
+        "FROM EXPEDIENTE_ANALISIS_ABOGADO A " +
+        "JOIN EXPEDIENTE B " +
+        "  ON A.ID_EXPEDIENTE = B.ID_EXPEDIENTE  " +
+        "WHERE A.ID_EXPEDIENTE = ?";
+
+        try (Connection conn = OracleConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+           ps.setInt(1, idExpediente);
+
+           try (ResultSet rs = ps.executeQuery()) {
+               if (rs.next()) {
+                   return rs.getInt("ID_ANALISIS");
+               }
+           }
+        }
+        return null;
+    }
+
 }

@@ -83,7 +83,7 @@
                           <Group type="102" alignment="0" attributes="0">
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel8" min="-2" pref="190" max="-2" attributes="0"/>
-                                  <Component id="cboTipoCulminacionLinea" min="-2" pref="400" max="-2" attributes="0"/>
+                                  <Component id="cboEstadoEjecucion" min="-2" pref="400" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace pref="135" max="32767" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
@@ -126,7 +126,7 @@
                               <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="3" attributes="0">
-                                  <Component id="cboTipoCulminacionLinea" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
+                                  <Component id="cboEstadoEjecucion" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                                   <Component id="spFechaSolicitud" alignment="3" min="-2" pref="40" max="-2" attributes="0"/>
                               </Group>
                           </Group>
@@ -174,7 +174,7 @@
                 <Property name="text" type="java.lang.String" value="Estado"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JComboBox" name="cboTipoCulminacionLinea">
+            <Component class="javax.swing.JComboBox" name="cboEstadoEjecucion">
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value=""/>
               </AuxValues>

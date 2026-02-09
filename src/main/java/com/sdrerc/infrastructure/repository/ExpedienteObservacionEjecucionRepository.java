@@ -3,61 +3,56 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package com.sdrerc.infrastructure.repository;
-import com.sdrerc.domain.model.ExpedienteObservacionVerificacion.ExpedienteObservacionVerificacion;
+
+import com.sdrerc.domain.model.ExpedienteObservacionEjecucion.ExpedienteObservacionEjecucion;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
+
 /**
  *
  * @author David
  */
-public class ExpedienteObservacionVerificacionRepository {
-    
-    public void insertar(ExpedienteObservacionVerificacion entity) throws SQLException {
+public class ExpedienteObservacionEjecucionRepository {
+    public void insertar(ExpedienteObservacionEjecucion o) throws SQLException {
 
         String sql =
-            "INSERT INTO EXPEDIENTE_OBSERVACION_VERIFICACION " +
-            "(ID_EXPEDIENTE, HOJA_ENVIO, TIENE_OBSERVACION, TIPO_OBSERVACION, DESCRIPCION_OBSERVACION, RESOLUCION) " +
-            "VALUES (?, ?, ?, ?, ?, ?)";
-       
+            "INSERT INTO EXPEDIENTE_OBSERVACION_EJECUCION " +
+            "(ID_EXPEDIENTE,ID_ESTADO_EJECUCION, TIENE_OBSERVACION, DESCRIPCION_OBSERVACION, FECHA_EJECUCION) " +
+            "VALUES (?, ?, ?, ?, ?)";
+        
         String updateExpedienteSql = "UPDATE EXPEDIENTE SET " +
                     " ESTADO = ?, " +
                     " id_usuario_modifica = ?, " +
                     " fecha_modifica      = ? " +
                     " WHERE id_expediente = ?";
 
-        
         Connection conn = null;
         try {
             conn = OracleConnection.getConnection();
-            conn.setAutoCommit(false);   
+            conn.setAutoCommit(false);
             
             try(PreparedStatement psupdateExpediente = conn.prepareStatement(updateExpedienteSql))
             {
                 // Datos para actualizar
-                psupdateExpediente.setInt(1, entity.getIdEstadoExpediente());   // IdEstadoExpediente                
-                psupdateExpediente.setInt(2, entity.getUsuarioModificacion());    // id_usuario_modifica    
+                psupdateExpediente.setInt(1, o.getIdEstadoExpediente());   // IdEstadoExpediente                
+                psupdateExpediente.setInt(2, o.getUsuarioModificacion());    // id_usuario_modifica    
                 psupdateExpediente.setDate(3, new java.sql.Date(System.currentTimeMillis()));  // fecha_modifica                
-                psupdateExpediente.setInt(4, entity.getIdExpediente());         // WHERE id_expediente = ?                
+                psupdateExpediente.setInt(4, o.getIdExpediente());         // WHERE id_expediente = ?                
                 psupdateExpediente.executeUpdate();
             } 
             
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, entity.getIdExpediente());
-                ps.setString(2, entity.getHojaEnvio());
-                ps.setInt(3, entity.getTieneObservacion() ? 1 : 0);
-                ps.setInt(4, entity.getTipoObservacion());
-                ps.setString(5, entity.getDescripcionObservacion());
-                ps.setString(6, entity.getResolucion());
-
+                ps.setInt(1, o.getIdExpediente());
+                ps.setInt(2, o.getIdEstadoEjecucion());
+                ps.setInt(3, o.getTieneObservacion() ? 1 : 0);
+                ps.setString(4, o.getDescripcionObservacion());
+                ps.setDate(5, new java.sql.Date(System.currentTimeMillis()));
                 ps.executeUpdate();
             }            
-            conn.commit();
-        } catch (SQLException ex) {
+            conn.commit();   
+        }catch (SQLException ex) {
             if (conn != null) {
                 conn.rollback(); 
             }

@@ -44,4 +44,9 @@ public class ExpedienteAnalisisAbogadoService
         return expedienteAnalisisAbogadoRepository.listarDocumentosPorExpediente(idExpediente);        
     }
     
+    public Integer obtenerIdAnalisisPorExpediente(int idExpediente) throws Exception{
+        return expedienteAnalisisAbogadoRepository
+                   .listarIdAnalisisPorExpediente(idExpediente);
+    }
+    
 }
