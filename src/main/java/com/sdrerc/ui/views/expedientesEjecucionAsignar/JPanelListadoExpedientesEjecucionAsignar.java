@@ -81,9 +81,9 @@ public class JPanelListadoExpedientesEjecucionAsignar extends javax.swing.JPanel
             String valor = txtValorBusqueda.getText();            
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
                         
-            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
+            Enumerado.EstadoExpediente estadoExpedienteEjecucionAsignada = Enumerado.EstadoExpediente.ExpedienteEjecucionAsignada;
             
-            List<Expediente> lista = expedienteEjecucionAsignacionService.ListarExpedientesEjecucion(0);
+            List<Expediente> lista = expedienteEjecucionAsignacionService.ListarExpedientesEjecucion(estadoExpedienteEjecucionAsignada.getId());
             cargarTablaNueva(lista);
         } 
         catch (Exception e) 

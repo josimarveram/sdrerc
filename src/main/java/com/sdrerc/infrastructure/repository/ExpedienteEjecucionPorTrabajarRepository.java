@@ -18,9 +18,9 @@ import java.util.List;
  *
  * @author betom
  */
-public class ExpedienteEjecucionAsignacionRepository 
+public class ExpedienteEjecucionPorTrabajarRepository 
 {
-    public List<Expediente> ListarExpedientesEjecucion(int estadoItem) throws SQLException 
+    public List<Expediente> ListarExpedientesEjecucionPorTrabajar(int estadoItem) throws SQLException 
     {        
         List<Expediente> lista = new ArrayList<>();
         

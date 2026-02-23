@@ -516,7 +516,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         btnGuardarAsignacionEjecucion.setBackground(new java.awt.Color(25, 120, 210));
         btnGuardarAsignacionEjecucion.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnGuardarAsignacionEjecucion.setForeground(new java.awt.Color(255, 255, 255));
-        btnGuardarAsignacionEjecucion.setText("GUARDAR ASIGNACIÖN");
+        btnGuardarAsignacionEjecucion.setText("GUARDAR ASIGNACIÓN");
         btnGuardarAsignacionEjecucion.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnGuardarAsignacionEjecucionActionPerformed(evt);
@@ -874,12 +874,12 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
             java.util.Date fecha = (java.util.Date) spFechaAsignacion.getValue();            
             asignacion.setFechaAsignacion(fecha);
             
-            Enumerado.EstadoExpediente estadoExpedienteEjecucionAsignada = Enumerado.EstadoExpediente.ExpedienteEjecucionAsignada;
-            asignacion.setEtapaFlujo(estadoExpedienteEjecucionAsignada.getId());
+            Enumerado.EstadoExpediente estadoExpedienteEjecucionTrabajada = Enumerado.EstadoExpediente.ExpedienteEjecucionTrabajada;
+            asignacion.setEtapaFlujo(estadoExpedienteEjecucionTrabajada.getId());
                        
             
             expedienteAsignacionService.RegistrarAsigancionExpedienteTO(asignacion);
-            JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
+            JOptionPane.showMessageDialog(this, "Ejecución registrada correctamente");
             MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
         } 
         catch (Exception ex) 
