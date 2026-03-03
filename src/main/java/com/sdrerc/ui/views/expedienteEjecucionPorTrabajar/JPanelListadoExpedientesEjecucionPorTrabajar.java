@@ -10,7 +10,7 @@ import com.sdrerc.ui.views.expedientesAsignados.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
-import com.sdrerc.application.ExpedientePorNotificarService;
+import com.sdrerc.application.ExpedienteEjecucionPorTrabajarService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
@@ -32,7 +32,7 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
-    private final ExpedientePorNotificarService expedientePorNotificarService;
+    private final ExpedienteEjecucionPorTrabajarService expedienteEjecucionPorTrabajarService;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -42,7 +42,7 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
-        this.expedientePorNotificarService = new ExpedientePorNotificarService();
+        this.expedienteEjecucionPorTrabajarService = new ExpedienteEjecucionPorTrabajarService();
         
         cargarTiposBusqueda();
         cargarComboEstados();    
@@ -80,9 +80,11 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
             String valor = txtValorBusqueda.getText();            
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
                         
-            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
+            Enumerado.EstadoExpediente estadoExpedienteEjecucionTrabajada = Enumerado.EstadoExpediente.ExpedienteEjecucionTrabajada;
             
-            List<Expediente> lista = expedientePorNotificarService.ListarExpedientesPorNotificar(0);
+            
+            
+            List<Expediente> lista = expedienteEjecucionPorTrabajarService.ListarExpedientesEjecucionPorTrabajar(estadoExpedienteEjecucionTrabajada.getId());
             cargarTablaNueva(lista);
         } 
         catch (Exception e) 
