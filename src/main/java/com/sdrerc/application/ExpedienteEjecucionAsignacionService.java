@@ -27,3 +27,5 @@ public class ExpedienteEjecucionAsignacionService
         return expedienteEjecucionAsignacionRepository.ListarExpedientesEjecucion(estadoItem);
     } 
 }
+
+

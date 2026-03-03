@@ -83,7 +83,7 @@ public class JPanelListadoExpedientesEjecucionAsignar extends javax.swing.JPanel
                         
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
             
-            List<Expediente> lista = expedienteEjecucionAsignacionService.ListarExpedientesEjecucion(0);
+            List<Expediente> lista = expedienteEjecucionAsignacionService.ListarExpedientesEjecucion(87);
             cargarTablaNueva(lista);
         } 
         catch (Exception e) 
