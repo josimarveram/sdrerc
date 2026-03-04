@@ -23,17 +23,10 @@ public class ExpedientePorNotificarRepository
     {        
         List<Expediente> lista = new ArrayList<>();
         
-        StringBuilder sqlListaExpediente = new StringBuilder(
-            " SELECT * FROM EXPEDIENTE " +
-            " INNER JOIN EXPEDIENTE_ASIGNACION " + " ON EXPEDIENTE.ID_EXPEDIENTE = EXPEDIENTE_ASIGNACION.ID_EXPEDIENTE " +
-            " INNER JOIN ( " + " SELECT e.ID_EXPEDIENTE AS ID_EXPEDIENTE_DOCUMENTO_VERIFICAR " + " FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d " +
-                                " INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO e " + " ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = e.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
-                                " WHERE d.ID_TIPO_DOCUMENTO_ANALIZADO NOT IN (71,72) " + " AND d.ID_TIPO_DOCUMENTO_ANALIZADO IS NOT NULL " +
-                                " AND d.ACTIVE = 1 " +
-                                " ORDER BY d.FECHA_REGISTRO DESC " +
-                                " FETCH FIRST 1 ROW ONLY " +
-            " ) doc ON doc.ID_EXPEDIENTE_DOCUMENTO_VERIFICAR = EXPEDIENTE.ID_EXPEDIENTE " +
-            " WHERE 1 = 1 "
+        StringBuilder sqlListaExpediente = new StringBuilder(			
+                " SELECT * FROM EXPEDIENTE exp " +
+                " inner join EXPEDIENTE_ASIGNACION expAsi on expAsi.ID_EXPEDIENTE = exp.ID_EXPEDIENTE and expAsi.etapa_flujo = 90 " +
+                " WHERE exp.ESTADO = 90 and expasi.active = 1 "	
             );
                 
         boolean filtrarEstado = estadoItem != 0;

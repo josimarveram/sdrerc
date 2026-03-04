@@ -11,6 +11,7 @@ import com.sdrerc.ui.views.expedientesAsignados.*;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
+import com.sdrerc.application.ExpedienteNotificacionAsignacionService;
 import com.sdrerc.application.ExpedientePorNotificarService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
@@ -33,7 +34,7 @@ public class JPanelListadoExpedientesNotificacionAsignar extends javax.swing.JPa
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
-    private final ExpedientePorNotificarService expedientePorNotificarService;
+    private final ExpedienteNotificacionAsignacionService expedienteNotificacionAsignacionService;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -43,7 +44,7 @@ public class JPanelListadoExpedientesNotificacionAsignar extends javax.swing.JPa
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
-        this.expedientePorNotificarService = new ExpedientePorNotificarService();
+        this.expedienteNotificacionAsignacionService = new ExpedienteNotificacionAsignacionService();
         
         cargarTiposBusqueda();
         cargarComboEstados();    
@@ -83,7 +84,7 @@ public class JPanelListadoExpedientesNotificacionAsignar extends javax.swing.JPa
                         
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
             
-            List<Expediente> lista = expedientePorNotificarService.ListarExpedientesPorNotificar(0);
+            List<Expediente> lista = expedienteNotificacionAsignacionService.ListarExpedientesNotificacion(0);
             cargarTablaNueva(lista);
         } 
         catch (Exception e) 

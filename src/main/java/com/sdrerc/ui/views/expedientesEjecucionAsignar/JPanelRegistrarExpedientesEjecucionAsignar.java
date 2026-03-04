@@ -874,7 +874,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
             java.util.Date fecha = (java.util.Date) spFechaAsignacion.getValue();            
             asignacion.setFechaAsignacion(fecha);
             
-            Enumerado.EstadoExpediente estadoExpedienteEjecucionTrabajada = Enumerado.EstadoExpediente.ExpedienteEjecucionTrabajada;
+            Enumerado.EstadoExpediente estadoExpedienteEjecucionTrabajada = Enumerado.EstadoExpediente.ExpedienteEjecucionAsignada;
             asignacion.setEtapaFlujo(estadoExpedienteEjecucionTrabajada.getId());
                        
             

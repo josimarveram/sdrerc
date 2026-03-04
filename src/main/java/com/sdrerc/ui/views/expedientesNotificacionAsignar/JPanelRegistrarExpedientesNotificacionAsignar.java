@@ -25,6 +25,7 @@ import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAboga
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.ui.views.asignacion.JDialogTecnico;
+import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.util.TextFieldRules;
 import java.awt.Component;
 import java.io.File;
@@ -77,7 +78,8 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {
-        
+        Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
+        idExpedienteOculto = lista.getIdExpediente();
     }
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
@@ -167,6 +169,16 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
         }
     }
     
+    private boolean validarFormulario() 
+    {
+        if(txtNombreTecnico.getText().trim().isEmpty()) 
+        {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un abogado.");
+            txtNombreTecnico.requestFocus();
+            return false;
+        }
+        return true; // Todo OK
+    }
     
     /**
      * This method is called from within the constructor to initialize the form.
@@ -198,7 +210,7 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
         btnGuardarNotificacion = new javax.swing.JButton();
         jPanelDatosSolicitud2 = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
-        spFechaSolicitud3 = new javax.swing.JSpinner();
+        spFechaAsignacion = new javax.swing.JSpinner();
         jButton2 = new javax.swing.JButton();
         txtIdTecnico = new javax.swing.JTextField();
         txtNombreTecnico = new javax.swing.JTextField();
@@ -374,7 +386,7 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
         jLabel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel3.setText("Fecha Asignación");
 
-        spFechaSolicitud3.setModel(new javax.swing.SpinnerDateModel());
+        spFechaAsignacion.setModel(new javax.swing.SpinnerDateModel());
 
         jButton2.setText("Seleccionar Abogado");
         jButton2.addActionListener(new java.awt.event.ActionListener() {
@@ -399,7 +411,7 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
                     .addGroup(jPanelDatosSolicitud2Layout.createSequentialGroup()
                         .addGroup(jPanelDatosSolicitud2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(spFechaSolicitud3, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addGap(21, 21, 21))
         );
@@ -409,7 +421,7 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
                 .addGap(25, 25, 25)
                 .addComponent(jLabel3)
                 .addGap(1, 1, 1)
-                .addComponent(spFechaSolicitud3, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(spFechaAsignacion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addGroup(jPanelDatosSolicitud2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -437,14 +449,38 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnGuardarNotificacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarNotificacionActionPerformed
-     try
+        if(!validarFormulario()) 
         {
-            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
+               return; // Detiene el proceso si hay errores
         }
-    catch (Exception ex)
+        try 
         {
-            JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+            //Expediente expediente = new Expediente();  
+            ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
+                        
+            asignacion.setIdExpediente(idExpedienteOculto);
+                                             
+            //ExpedienteResponse response;              
+            
+            asignacion.setIdTecnico(Integer.parseInt(txtIdTecnico.getText()));            
+            
+            java.util.Date fecha = (java.util.Date) spFechaAsignacion.getValue();            
+            asignacion.setFechaAsignacion(fecha);
+            
+            Enumerado.EstadoExpediente estadoExpedienteNotificacionAsignada = Enumerado.EstadoExpediente.ExpedienteNotificacionAsignada;
+            asignacion.setEtapaFlujo(estadoExpedienteNotificacionAsignada.getId());
+                     
+            expedienteAsignacionService.RegistrarAsigancionExpedienteTO(asignacion);
+            JOptionPane.showMessageDialog(this, "Ejecución registrada correctamente");
+            MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
+        } 
+        catch (Exception ex) 
+        {
+            JOptionPane.showMessageDialog(this,
+                    "Error al guardar: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } 
     }//GEN-LAST:event_btnGuardarNotificacionActionPerformed
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
@@ -491,10 +527,10 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
     private javax.swing.JPanel jPanelDatosSolicitud1;
     private javax.swing.JPanel jPanelDatosSolicitud2;
     private javax.swing.JPanel jPanelPrincipal;
+    private javax.swing.JSpinner spFechaAsignacion;
     private javax.swing.JSpinner spFechaRecepcion1;
     private javax.swing.JSpinner spFechaSolicitud;
     private javax.swing.JSpinner spFechaSolicitud1;
-    private javax.swing.JSpinner spFechaSolicitud3;
     private javax.swing.JTextField textNumeroTramiteDocumento1;
     private javax.swing.JTextField textNumeroTramiteDocumento2;
     private javax.swing.JTextField txtIdTecnico;

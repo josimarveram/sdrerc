@@ -21,7 +21,7 @@ public class ExpedienteNotificacionAsignacionService
         this.expedienteNotificacionAsignacionRepository = new ExpedienteNotificacionAsignacionRepository();
     }    
     
-    public List<Expediente> ListarExpedientesEjecucion(int estadoItem) throws Exception 
+    public List<Expediente> ListarExpedientesNotificacion(int estadoItem) throws Exception 
     {
         return expedienteNotificacionAsignacionRepository.ListarExpedientesNotificacion(estadoItem);
     } 
