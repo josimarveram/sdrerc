@@ -25,21 +25,20 @@ public class ExpedienteEjecucionAsignacionRepository
         List<Expediente> lista = new ArrayList<>();
         
         StringBuilder sqlListaExpediente = new StringBuilder(			
-            " SELECT * FROM EXPEDIENTE " +
-            " INNER JOIN (SELECT e.ID_EXPEDIENTE AS ID_EXPEDIENTE_DOCUMENTO_VERIFICAR FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d " +
-            "             INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO e ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = e.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
-            "             WHERE d.ID_TIPO_DOCUMENTO_ANALIZADO IN (71,72) AND d.ID_TIPO_DOCUMENTO_ANALIZADO IS NOT NULL AND d.ACTIVE = 1 " +           
-            "             ORDER BY d.FECHA_REGISTRO DESC " +
-            "             FETCH FIRST 1 ROW ONLY " +
-            "            )doc ON doc.ID_EXPEDIENTE_DOCUMENTO_VERIFICAR = EXPEDIENTE.ID_EXPEDIENTE " +
-            " INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO eaa on expediente.id_expediente = eaa.id_expediente " +
-            " WHERE 1 = 1 AND eaa.ID_ANALISIS = 73 "			
+                " SELECT * FROM EXPEDIENTE exp " +
+                " INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO eaa ON exp.ID_EXPEDIENTE = eaa.ID_EXPEDIENTE " +
+                " WHERE eaa.ID_ANALISIS = 73 " +
+                " AND EXISTS (SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d " +
+                "             INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO e ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = e.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
+                "             WHERE e.ID_EXPEDIENTE = exp.ID_EXPEDIENTE " +
+                "             AND d.ID_TIPO_DOCUMENTO_ANALIZADO IN (71,72) " +
+                "             AND d.ACTIVE = 1) "		
             );
                 
         boolean filtrarEstado = estadoItem != 0;
         if(filtrarEstado) 
         {
-            sqlListaExpediente.append("AND EXPEDIENTE.estado = ? ");
+            sqlListaExpediente.append("AND exp.estado = ? ");
         }
         
         Connection conn = null;
