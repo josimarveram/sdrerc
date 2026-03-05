@@ -81,9 +81,9 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
             String valor = txtValorBusqueda.getText();            
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
                         
-            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
+            Enumerado.EstadoExpediente estadoExpedienteNotificacionAsignada = Enumerado.EstadoExpediente.ExpedienteNotificacionAsignada;
             
-            List<Expediente> lista = expedientePorNotificarService.ListarExpedientesPorNotificar(0);
+            List<Expediente> lista = expedientePorNotificarService.ListarExpedientesPorNotificar(estadoExpedienteNotificacionAsignada.getId());
             cargarTablaNueva(lista);
         } 
         catch (Exception e) 

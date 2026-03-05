@@ -437,9 +437,9 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
             o.setUsuarioRegistro(1); 
             o.setUsuarioModificacion(1);
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
-            Enumerado.EstadoExpediente estadoExpedienteEjecucionAsignada = Enumerado.EstadoExpediente.ExpedienteEjecucionTrabajada;
+            Enumerado.EstadoExpediente estadoExpedienteEjecucionTrabajada = Enumerado.EstadoExpediente.ExpedienteEjecucionTrabajada;
             o.setIdEstadoExpediente(tieneObservacion    ?   estadoExpedienteRecibido.getId()
-                                                                            :   estadoExpedienteEjecucionAsignada.getId());
+                                                                            :   estadoExpedienteEjecucionTrabajada.getId());
 
             ExpedienteObservacionEjecucionService service =
                 new ExpedienteObservacionEjecucionService();

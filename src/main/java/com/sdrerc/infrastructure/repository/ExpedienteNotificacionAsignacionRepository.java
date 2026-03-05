@@ -38,7 +38,7 @@ public class ExpedienteNotificacionAsignacionRepository
         boolean filtrarEstado = estadoItem != 0;
         if(filtrarEstado) 
         {
-            sqlListaExpediente.append("AND EXPEDIENTE.estado = ? ");
+            sqlListaExpediente.append("AND exp.estado = ? ");
         }
         
         Connection conn = null;

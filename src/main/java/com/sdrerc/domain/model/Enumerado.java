@@ -25,7 +25,7 @@ public class Enumerado
         ExpedienteAsignado(57),
         ExpedienteRecibido(58),
         ExpedienteAtendido(59),
-        ExpedienteVerificado(60),
+        ExpedienteVerificado(87),
         ExpedienteEjecucionAsignada(88),
         ExpedienteEjecucionTrabajada(89),
         ExpedienteNotificacionAsignada(90),
