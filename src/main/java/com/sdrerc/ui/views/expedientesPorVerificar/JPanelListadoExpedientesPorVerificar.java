@@ -78,9 +78,9 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel {
             String valor = txtValorBusqueda.getText();            
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
                         
-            Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteAtendido;
+            Enumerado.EstadoExpediente estadoExpedienteAtendido = Enumerado.EstadoExpediente.ExpedienteAtendido;
             
-            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpedienteRecibido.getId(),1,0);
+            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpedienteAtendido.getId(),1,0);
             cargarTablaNueva(lista);
         } 
         catch (Exception e) {
