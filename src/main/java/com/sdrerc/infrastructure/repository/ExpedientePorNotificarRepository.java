@@ -26,13 +26,13 @@ public class ExpedientePorNotificarRepository
         StringBuilder sqlListaExpediente = new StringBuilder(			
                 " SELECT * FROM EXPEDIENTE exp " +
                 " inner join EXPEDIENTE_ASIGNACION expAsi on expAsi.ID_EXPEDIENTE = exp.ID_EXPEDIENTE and expAsi.etapa_flujo = 90 " +
-                " WHERE exp.ESTADO = 90 and expasi.active = 1 "	
+                " WHERE expasi.active = 1 "	
             );
                 
         boolean filtrarEstado = estadoItem != 0;
         if(filtrarEstado) 
         {
-            sqlListaExpediente.append("AND EXPEDIENTE.estado = ? ");
+            sqlListaExpediente.append("AND exp.estado = ? ");
         }
         
         Connection conn = null;

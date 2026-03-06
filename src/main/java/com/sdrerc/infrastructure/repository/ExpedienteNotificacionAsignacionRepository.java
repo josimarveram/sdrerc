@@ -24,18 +24,19 @@ public class ExpedienteNotificacionAsignacionRepository
         List<Expediente> lista = new ArrayList<>();
         
         StringBuilder sqlListaExpediente = new StringBuilder(			
-            " SELECT * FROM EXPEDIENTE exp " +
-            " WHERE exp.ESTADO = 89 " +
-            "       OR EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND eaa.ID_ANALISIS = 74) " +
-            "       OR EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa " +
-            "                 JOIN EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d ON eaa.ID_EXPEDIENTE_ANALISIS_ABOGADO = d.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
-            "                 WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE " +
-            "                 AND d.ACTIVE = 1 " +
-            "                 AND d.ID_TIPO_DOCUMENTO_ANALIZADO IN (60,61,62,63,64)) " +
-            "       AND NOT EXISTS(SELECT 1 FROM EXPEDIENTE_ASIGNACION ea WHERE ea.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND ea.ETAPA_FLUJO = 90) "
+                " SELECT * FROM EXPEDIENTE exp " +
+                "     WHERE( " +
+                "             (exp.ESTADO = 87 AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND eaa.ID_ANALISIS = 74)) " +
+                "          OR (exp.ESTADO = 59 AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa " +
+                "                                         JOIN EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d ON eaa.ID_EXPEDIENTE_ANALISIS_ABOGADO = d.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
+                "                                         WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND d.ACTIVE = 1 AND d.ID_TIPO_DOCUMENTO_ANALIZADO IN (60,61,62,63,64))) " +
+                "          OR exp.ESTADO = 89 " +
+                "         ) " +
+                "     AND NOT EXISTS (SELECT 1 FROM EXPEDIENTE_ASIGNACION ea WHERE ea.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND ea.ETAPA_FLUJO = 90) "
             );
                 
-        boolean filtrarEstado = estadoItem != 0;
+        //boolean filtrarEstado = estadoItem != 0;
+        boolean filtrarEstado = false;
         if(filtrarEstado) 
         {
             sqlListaExpediente.append("AND exp.estado = ? ");
