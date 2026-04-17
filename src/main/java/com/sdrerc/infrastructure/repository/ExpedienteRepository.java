@@ -29,8 +29,8 @@ public class ExpedienteRepository
                                 "ES_REGISTRO_SDRERC           AS \"esRegistroSdrerc\", " +
                                 "HOJA_ENVIO_EXPEDIENTE        AS \"hojaEnvioExpediente\", " +
                                 "NUMERO_TRAMITE_DOCUMENTO     AS \"numeroTramiteDocumento\", " +
-                                "FECHA_RECEPCION              AS \"fechaRecepcion\", " +
                                 "FECHA_SOLICITUD              AS \"fechaSolicitud\", " +
+                                "CANAL_RECEPCION              AS \"canalRecepcion\", " +
                                 "TIPO_DOCUMENTO               AS \"tipoDocumento\", " +
                                 "NUMERO_DOCUMENTO             AS \"numeroDocumento\", " +
                                 "TIPO_ACTA                    AS \"tipoActa\", " +
@@ -69,8 +69,8 @@ public class ExpedienteRepository
                             rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
                             rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
-                            rs.getDate("FECHA_RECEPCION"),
                             rs.getDate("FECHA_SOLICITUD"),
+                            rs.getString("CANAL_RECEPCION"),
                             rs.getInt("TIPO_DOCUMENTO"),
                             rs.getString("NUMERO_DOCUMENTO"),
                             rs.getInt("TIPO_ACTA"),
@@ -108,7 +108,7 @@ public class ExpedienteRepository
 			"ES_REGISTRO_SDRERC, " +
 			"HOJA_ENVIO_EXPEDIENTE, " +
 			"NUMERO_TRAMITE_DOCUMENTO, " +
-			"FECHA_RECEPCION, " +
+			"CANAL_RECEPCION, " +
 			"FECHA_SOLICITUD, " +
 			"TIPO_DOCUMENTO, " +
 			"NUMERO_DOCUMENTO, " +
@@ -160,8 +160,8 @@ public class ExpedienteRepository
             stmt.setInt(1, expediente.getEsRegistroSdrerc());
             stmt.setString(2, expediente.getHojaEnvioExpediente());
             stmt.setString(3, expediente.getNumeroTramiteDocumento());
-            stmt.setDate(4, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(4, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
-            stmt.setDate(5, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(5, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
+            stmt.setString(4, expediente.getCanalRecepcion());
+            setNullableDate(stmt, 5, expediente.getFechaSolicitud());
             stmt.setInt(6, expediente.getTipoDocumento());
             stmt.setString(7, expediente.getNumeroDocumento());
             stmt.setInt(8, expediente.getTipoActa());
@@ -242,8 +242,8 @@ public class ExpedienteRepository
                     expediente.getEsRegistroSdrerc(),
                     expediente.getHojaEnvioExpediente(),
                     expediente.getNumeroTramiteDocumento(),
-                    expediente.getFechaRecepcion(),
                     expediente.getFechaSolicitud(),
+                    expediente.getCanalRecepcion(),
                     expediente.getTipoDocumento(),
                     expediente.getNumeroDocumento(),
                     expediente.getTipoActa(),
@@ -280,7 +280,7 @@ public class ExpedienteRepository
                     "ES_REGISTRO_SDRERC = ?, " +
                     "HOJA_ENVIO_EXPEDIENTE = ?, " +
                     "NUMERO_TRAMITE_DOCUMENTO = ?, " +
-                    "FECHA_RECEPCION = ?, " +
+                    "CANAL_RECEPCION = ?, " +
                     "FECHA_SOLICITUD = ?, " +
                     "TIPO_DOCUMENTO = ?, " +
                     "NUMERO_DOCUMENTO = ?, " +
@@ -314,8 +314,8 @@ public class ExpedienteRepository
             stmt.setInt(1, expediente.getEsRegistroSdrerc());
             stmt.setString(2, expediente.getHojaEnvioExpediente());
             stmt.setString(3, expediente.getNumeroTramiteDocumento());
-            stmt.setDate(4, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(4, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
-            stmt.setDate(5, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(5, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
+            stmt.setString(4, expediente.getCanalRecepcion());
+            setNullableDate(stmt, 5, expediente.getFechaSolicitud());
             stmt.setInt(6, expediente.getTipoDocumento());
             stmt.setString(7, expediente.getNumeroDocumento());
             stmt.setInt(8, expediente.getTipoActa());
@@ -399,8 +399,8 @@ public class ExpedienteRepository
                     expediente.getEsRegistroSdrerc(),
                     expediente.getHojaEnvioExpediente(),
                     expediente.getNumeroTramiteDocumento(),
-                    expediente.getFechaRecepcion(),
                     expediente.getFechaSolicitud(),
+                    expediente.getCanalRecepcion(),
                     expediente.getTipoDocumento(),
                     expediente.getNumeroDocumento(),
                     expediente.getTipoActa(),
@@ -523,8 +523,8 @@ public class ExpedienteRepository
                             rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
                             rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
-                            rs.getDate("FECHA_RECEPCION"),
                             rs.getDate("FECHA_SOLICITUD"),
+                            rs.getString("CANAL_RECEPCION"),
                             rs.getInt("TIPO_DOCUMENTO"),
                             rs.getString("NUMERO_DOCUMENTO"),
                             rs.getInt("TIPO_ACTA"),
@@ -551,6 +551,14 @@ public class ExpedienteRepository
                             rs.getInt("ID_USUARIO_MODIFICA"),
                             rs.getDate("FECHA_MODIFICA")
         );
+    }
+
+    private void setNullableDate(PreparedStatement stmt, int index, java.util.Date value) throws SQLException {
+        if (value != null) {
+            stmt.setDate(index, new java.sql.Date(value.getTime()));
+        } else {
+            stmt.setNull(index, java.sql.Types.DATE);
+        }
     }
     
     

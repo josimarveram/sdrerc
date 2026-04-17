@@ -271,7 +271,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
 
         //fechaRecepcion
-        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
+        spFechaRecepcion.setValue(lista.getFechaSolicitud()); 
         
         //fechaSolicitud
         spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
@@ -661,7 +661,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         cboTipoDocumento.setEnabled(false);
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel8.setText("Fecha Recepción ");
+        jLabel8.setText("Fecha Solicitud");
 
         spFechaRecepcion.setModel(new javax.swing.SpinnerDateModel());
         spFechaRecepcion.setEnabled(false);

@@ -319,7 +319,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
         jLabel11.setText("Nro. Tramite Web");
 
         jLabel19.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel19.setText("Fecha Recepción ");
+        jLabel19.setText("Fecha Solicitud");
 
         spFechaRecepcion1.setModel(new javax.swing.SpinnerDateModel());
         spFechaRecepcion1.setEnabled(false);

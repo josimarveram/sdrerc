@@ -13,12 +13,14 @@ import com.sdrerc.domain.model.Distrito;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
-import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.util.ComboBoxUtils;
+import com.sdrerc.util.DateRangePickerSupport;
 import com.sdrerc.util.TextFieldRules;
-import java.sql.Date;
+import com.toedter.calendar.JDateChooser;
+import java.util.Date;
 import java.util.List;
 import javax.swing.ButtonGroup;
 import javax.swing.JLabel;
@@ -39,6 +41,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
     private Integer idExpedienteOculto = 0;
     private static final int ID_CATALOGO_DIRECCION_DOMICILIARIA = 8;
     private static final int ID_AGREGAR_DIRECCION = -1;
+    private static final String[] CANALES_RECEPCION = {"INTERNO", "MP PRESENCIAL", "MPV", "OR PRESENCIAL"};
     private CatalogoItem ultimaDireccionDomiciliariaSeleccionada;
     
     /**
@@ -46,6 +49,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
      */
     public JPanelRegistrarExpediente() {
         initComponents();
+        initFechaSolicitudPicker();
         
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
@@ -61,6 +65,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         
                 
         cargarComboTipoSolicitud(); 
+        cargarComboCanalRecepcion();
         cargarComboTipoDocumento();
         cargarComboTipoProcedimientoRegistral(); 
         cargarComboTipoActa();
@@ -85,6 +90,19 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
 
         ComboBoxUtils.applySmartRenderer(this);
+    }
+
+    private void initFechaSolicitudPicker() {
+        DateRangePickerSupport.configurePicker(spFechaRecepcion);
+        spFechaRecepcion.setDate(new Date());
+    }
+
+    private Date getFechaSolicitudSeleccionada() {
+        return spFechaRecepcion.getDate();
+    }
+
+    private void setFechaSolicitudSeleccionada(Date fecha) {
+        spFechaRecepcion.setDate(fecha != null ? fecha : new Date());
     }
     
 	private boolean modoEdicion = false;
@@ -184,11 +202,11 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         //numeroTramiteDocumento 
         textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
 
-        //fechaRecepcion
-        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
-        
         //fechaSolicitud
-        spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
+        setFechaSolicitudSeleccionada(lista.getFechaSolicitud());
+
+        //canalRecepcion
+        seleccionarCanalRecepcion(lista.getCanalRecepcion());
 
         //tipoDocumento
         seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
@@ -302,6 +320,31 @@ private void seleccionarDistrito(int idDistrito) {
         for (CatalogoItem catalogoitem : lista) {
             cboTipoSolicitud.addItem(catalogoitem);
         }
+    }
+
+    private void cargarComboCanalRecepcion() {
+        cboCanalRecepcion.removeAllItems();
+        for (String canal : CANALES_RECEPCION) {
+            cboCanalRecepcion.addItem(canal);
+        }
+        cboCanalRecepcion.setSelectedIndex(0);
+    }
+
+    private void seleccionarCanalRecepcion(String canalRecepcion) {
+        if (canalRecepcion == null || canalRecepcion.trim().isEmpty()) {
+            cboCanalRecepcion.setSelectedIndex(0);
+            return;
+        }
+
+        for (int i = 0; i < cboCanalRecepcion.getItemCount(); i++) {
+            String item = String.valueOf(cboCanalRecepcion.getItemAt(i));
+            if (item.equalsIgnoreCase(canalRecepcion)) {
+                cboCanalRecepcion.setSelectedIndex(i);
+                return;
+            }
+        }
+
+        cboCanalRecepcion.setSelectedIndex(0);
     }
     
     private void cargarComboTipoDocumento() {
@@ -481,9 +524,10 @@ private void seleccionarDistrito(int idDistrito) {
         textApellidosNombreTitular.setText("");
         textNumeroTramiteDocumento.setText("");
         textCelular.setText("");
-        //spFechaSolicitud.setText("");
+        setFechaSolicitudSeleccionada(new Date());
 
         // Resetear JComboBoxes al primer elemento
+        if (cboCanalRecepcion.getItemCount() > 0) cboCanalRecepcion.setSelectedIndex(0);
         if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
         if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(0);
         if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
@@ -497,6 +541,12 @@ private void seleccionarDistrito(int idDistrito) {
         if (jRadiButonNoCorresponde.isSelected() && textHojaEnvioExpediente.getText().trim().isEmpty()) 
         {
             JOptionPane.showMessageDialog(this,"Debe ingresar la Hoja de Envío");textHojaEnvioExpediente.requestFocus();
+            return;
+        }
+
+        if (cboCanalRecepcion.getSelectedItem() == null)
+        {
+            JOptionPane.showMessageDialog(this,"Debe seleccionar el Canal de recepción");cboCanalRecepcion.requestFocus();
             return;
         }
     }
@@ -513,14 +563,14 @@ private void seleccionarDistrito(int idDistrito) {
         jPanelPrincipal = new javax.swing.JPanel();
         jPanelDatosSolicitud = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
-        spFechaSolicitud = new javax.swing.JSpinner();
+        cboCanalRecepcion = new javax.swing.JComboBox<>();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         cboTipoSolicitud = new javax.swing.JComboBox();
         jLabel5 = new javax.swing.JLabel();
         cboTipoDocumento = new javax.swing.JComboBox();
         jLabel8 = new javax.swing.JLabel();
-        spFechaRecepcion = new javax.swing.JSpinner();
+        spFechaRecepcion = new com.toedter.calendar.JDateChooser();
         jLabel9 = new javax.swing.JLabel();
         textNumeroDocumento = new javax.swing.JTextField();
         jLabel15 = new javax.swing.JLabel();
@@ -578,9 +628,9 @@ private void seleccionarDistrito(int idDistrito) {
         jPanelDatosSolicitud.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la solicitud"));
 
         jLabel2.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel2.setText("Fecha Solicitud ");
+        jLabel2.setText("Canal de recepción");
 
-        spFechaSolicitud.setModel(new javax.swing.SpinnerDateModel());
+        cboCanalRecepcion.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
 
         jLabel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel3.setText("Nro. Tramite Web");
@@ -599,9 +649,7 @@ private void seleccionarDistrito(int idDistrito) {
         jLabel5.setText("Tipo Documento");
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel8.setText("Fecha Recepción ");
-
-        spFechaRecepcion.setModel(new javax.swing.SpinnerDateModel());
+        jLabel8.setText("Fecha Solicitud");
 
         jLabel9.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel9.setText("Nro. Documento");
@@ -661,7 +709,7 @@ private void seleccionarDistrito(int idDistrito) {
                         .addGap(5, 5, 5)
                         .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
-                        .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(cboCanalRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
@@ -735,7 +783,7 @@ private void seleccionarDistrito(int idDistrito) {
                 .addGap(1, 1, 1)
                 .addGroup(jPanelDatosSolicitudLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(spFechaRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(spFechaSolicitud, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cboCanalRecepcion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(textNumeroTramiteDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(cboTipoDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(textNumeroDocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -1064,8 +1112,9 @@ private void seleccionarDistrito(int idDistrito) {
             //numeroTramiteDocumento 
             expediente.setNumeroTramiteDocumento(textNumeroTramiteDocumento.getText());
             
-            //fechaRecepcion
             //fechaSolicitud
+            expediente.setFechaSolicitud(getFechaSolicitudSeleccionada());
+            expediente.setCanalRecepcion(String.valueOf(cboCanalRecepcion.getSelectedItem()));
             
             //tipoDocumento
             CatalogoItem catalogoTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
@@ -1225,6 +1274,7 @@ private void seleccionarDistrito(int idDistrito) {
     private javax.swing.JButton btnLimpiar;
     private javax.swing.JButton btnRegresar;
     private javax.swing.JComboBox cboDepartamento;
+    private javax.swing.JComboBox<String> cboCanalRecepcion;
     private javax.swing.JComboBox cboDireccionDomiciliaria;
     private javax.swing.JComboBox cboDistrito;
     private javax.swing.JComboBox cboGradoParentesco;
@@ -1266,8 +1316,7 @@ private void seleccionarDistrito(int idDistrito) {
     private javax.swing.JPanel jPanelPrincipal;
     private javax.swing.JRadioButton jRadiButonNoCorresponde;
     private javax.swing.JRadioButton jRadiButonSiCorresponde;
-    private javax.swing.JSpinner spFechaRecepcion;
-    private javax.swing.JSpinner spFechaSolicitud;
+    private com.toedter.calendar.JDateChooser spFechaRecepcion;
     private javax.swing.JTextField textApellidosNombreRemitente;
     private javax.swing.JTextField textApellidosNombreTitular;
     private javax.swing.JTextField textCelular;

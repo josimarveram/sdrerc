@@ -42,7 +42,6 @@ public class ExpedienteAsignacionRepository {
             + "FECHA_MODIFICA = ? ,"
                 
                 
-            + "FECHA_RECEPCION = ? ,"
             + "CORREO_ELECTRONICO = ? ,"
             + "CELULAR = ? ,"
             + "DOMICILIO = ? ,"
@@ -84,15 +83,14 @@ public class ExpedienteAsignacionRepository {
                 psUpdate.setInt(14, expediente.getIdUsuarioModifica());
                 psUpdate.setDate(15, new java.sql.Date(System.currentTimeMillis()));
                 
-                psUpdate.setDate(16, new java.sql.Date(expediente.getFechaRecepcion().getTime()));
-                psUpdate.setString(17, expediente.getCorreoElectronico());
-                psUpdate.setString(18, expediente.getCelular());
-                psUpdate.setString(19, expediente.getDomicilio());
-                psUpdate.setInt(20, expediente.getDireccionDomiciliaria());
-                psUpdate.setInt(21, expediente.getGradoParentesco());
-                psUpdate.setInt(22, expediente.getUnidadOrganica());                
+                psUpdate.setString(16, expediente.getCorreoElectronico());
+                psUpdate.setString(17, expediente.getCelular());
+                psUpdate.setString(18, expediente.getDomicilio());
+                psUpdate.setInt(19, expediente.getDireccionDomiciliaria());
+                psUpdate.setInt(20, expediente.getGradoParentesco());
+                psUpdate.setInt(21, expediente.getUnidadOrganica());                
 
-                psUpdate.setInt(23, expediente.getIdExpediente()); // WHERE
+                psUpdate.setInt(22, expediente.getIdExpediente()); // WHERE
 
                 psUpdate.executeUpdate();
             }
@@ -330,8 +328,8 @@ public class ExpedienteAsignacionRepository {
                             rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
                             rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
-                            rs.getDate("FECHA_RECEPCION"),
                             rs.getDate("FECHA_SOLICITUD"),
+                            rs.getString("CANAL_RECEPCION"),
                             rs.getInt("TIPO_DOCUMENTO"),
                             rs.getString("NUMERO_DOCUMENTO"),
                             rs.getInt("TIPO_ACTA"),

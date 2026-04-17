@@ -11,6 +11,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import org.netbeans.lib.awtextra.AbsoluteConstraints;
 import org.netbeans.lib.awtextra.AbsoluteLayout;
@@ -137,8 +138,46 @@ public final class DateRangePickerSupport {
         return cal.getTime();
     }
 
+    public static JDateChooser replaceSpinnerDeferred(
+        final JSpinner spinner,
+        final JPanel parent,
+        final Date initialDate
+    ) {
+        final JDateChooser[] pickerHolder = new JDateChooser[1];
+        SwingUtilities.invokeLater(() -> {
+            JDateChooser picker = replaceSpinner(spinner, parent);
+            if (initialDate != null) {
+                picker.setDate(initialDate);
+            }
+            pickerHolder[0] = picker;
+        });
+        return pickerHolder[0];
+    }
+
+    public static void replaceSpinnerDeferred(
+        final JSpinner spinner,
+        final JPanel parent,
+        final Date initialDate,
+        final SingleDateConsumer consumer
+    ) {
+        SwingUtilities.invokeLater(() -> {
+            JDateChooser picker = replaceSpinner(spinner, parent);
+            if (initialDate != null) {
+                picker.setDate(initialDate);
+            }
+            if (consumer != null) {
+                consumer.accept(picker);
+            }
+        });
+    }
+
     private static JDateChooser createPicker() {
         JDateChooser picker = new JDateChooser();
+        configurePicker(picker);
+        return picker;
+    }
+
+    public static void configurePicker(JDateChooser picker) {
         picker.setDateFormatString("dd/MM/yyyy");
         picker.setOpaque(false);
         picker.putClientProperty("JComponent.roundRect", Boolean.TRUE);
@@ -151,8 +190,6 @@ public final class DateRangePickerSupport {
             picker.getCalendarButton().setToolTipText("Abrir calendario");
             picker.getCalendarButton().putClientProperty("JButton.buttonType", "borderless");
         }
-
-        return picker;
     }
 
     private static void replaceComponent(Container parent, JComponent oldComponent, JComponent newComponent, Rectangle bounds) {
@@ -197,6 +234,30 @@ public final class DateRangePickerSupport {
 
     public interface RangeConsumer {
         void accept(Range range);
+    }
+
+    public interface SingleDateConsumer {
+        void accept(JDateChooser picker);
+    }
+
+    private static JDateChooser replaceSpinner(JSpinner spinner, JPanel parent) {
+        Objects.requireNonNull(spinner);
+        Objects.requireNonNull(parent);
+
+        parent.doLayout();
+
+        Rectangle bounds = resolveBounds(spinner);
+        JDateChooser picker = createPicker();
+
+        Object value = spinner.getValue();
+        if (value instanceof Date) {
+            picker.setDate((Date) value);
+        }
+
+        replaceComponent(parent, spinner, picker, bounds);
+        parent.revalidate();
+        parent.repaint();
+        return picker;
     }
 
     private static void markInvalid(JDateChooser picker) {

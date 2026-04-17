@@ -162,7 +162,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
 
         //fechaRecepcion
-        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
+        spFechaRecepcion.setValue(lista.getFechaSolicitud()); 
         
         //fechaSolicitud
         spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
@@ -426,7 +426,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         jLabel5.setText("Tipo Documento");
 
         jLabel8.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel8.setText("Fecha Recepción ");
+        jLabel8.setText("Fecha Solicitud");
 
         spFechaRecepcion.setModel(new javax.swing.SpinnerDateModel());
 

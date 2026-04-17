@@ -16,8 +16,8 @@ public class Expediente
     private int esRegistroSdrerc;
     private String hojaEnvioExpediente;
     private String numeroTramiteDocumento;
-    private Date fechaRecepcion;
     private Date fechaSolicitud;
+    private String canalRecepcion;
     private int tipoDocumento;
     private String numeroDocumento;
     private int tipoActa;
@@ -49,13 +49,13 @@ public class Expediente
     {
     }
 
-    public Expediente(int idExpediente, int esRegistroSdrerc, String hojaEnvioExpediente, String numeroTramiteDocumento, Date fechaRecepcion, Date fechaSolicitud, int tipoDocumento, String numeroDocumento, int tipoActa, String numeroActa, int tipoGrupoFamiliar, int gradoParentesco, int tipoProcedimientoRegistral, int tipoSolicitud, String dniRemitente, String apellidoNombreRemitente, int unidadOrganica, String dniTitular, String apellidoNombreTitular, int departamento, int provincia, int distrito, int direccionDomiciliaria, String domicilio, String correoElectronico, String celular, int estado, int idUsuarioCrea, Date fechaRegistra, int idUsuarioModifica, Date fechaModifica) {
+    public Expediente(int idExpediente, int esRegistroSdrerc, String hojaEnvioExpediente, String numeroTramiteDocumento, Date fechaSolicitud, String canalRecepcion, int tipoDocumento, String numeroDocumento, int tipoActa, String numeroActa, int tipoGrupoFamiliar, int gradoParentesco, int tipoProcedimientoRegistral, int tipoSolicitud, String dniRemitente, String apellidoNombreRemitente, int unidadOrganica, String dniTitular, String apellidoNombreTitular, int departamento, int provincia, int distrito, int direccionDomiciliaria, String domicilio, String correoElectronico, String celular, int estado, int idUsuarioCrea, Date fechaRegistra, int idUsuarioModifica, Date fechaModifica) {
         this.idExpediente = idExpediente;
         this.esRegistroSdrerc = esRegistroSdrerc;
         this.hojaEnvioExpediente = hojaEnvioExpediente;
         this.numeroTramiteDocumento = numeroTramiteDocumento;
-        this.fechaRecepcion = fechaRecepcion;
         this.fechaSolicitud = fechaSolicitud;
+        this.canalRecepcion = canalRecepcion;
         this.tipoDocumento = tipoDocumento;
         this.numeroDocumento = numeroDocumento;
         this.tipoActa = tipoActa;
@@ -81,6 +81,10 @@ public class Expediente
         this.fechaRegistra = fechaRegistra;
         this.idUsuarioModifica = idUsuarioModifica;
         this.fechaModifica = fechaModifica;
+    }
+
+    public Expediente(int idExpediente, int esRegistroSdrerc, String hojaEnvioExpediente, String numeroTramiteDocumento, Date fechaRecepcion, Date fechaSolicitud, int tipoDocumento, String numeroDocumento, int tipoActa, String numeroActa, int tipoGrupoFamiliar, int gradoParentesco, int tipoProcedimientoRegistral, int tipoSolicitud, String dniRemitente, String apellidoNombreRemitente, int unidadOrganica, String dniTitular, String apellidoNombreTitular, int departamento, int provincia, int distrito, int direccionDomiciliaria, String domicilio, String correoElectronico, String celular, int estado, int idUsuarioCrea, Date fechaRegistra, int idUsuarioModifica, Date fechaModifica) {
+        this(idExpediente, esRegistroSdrerc, hojaEnvioExpediente, numeroTramiteDocumento, fechaSolicitud, (String) null, tipoDocumento, numeroDocumento, tipoActa, numeroActa, tipoGrupoFamiliar, gradoParentesco, tipoProcedimientoRegistral, tipoSolicitud, dniRemitente, apellidoNombreRemitente, unidadOrganica, dniTitular, apellidoNombreTitular, departamento, provincia, distrito, direccionDomiciliaria, domicilio, correoElectronico, celular, estado, idUsuarioCrea, fechaRegistra, idUsuarioModifica, fechaModifica);
     }
 
     public int getIdExpediente() {
@@ -116,11 +120,11 @@ public class Expediente
     }
 
     public Date getFechaRecepcion() {
-        return fechaRecepcion;
+        return fechaSolicitud;
     }
 
     public void setFechaRecepcion(Date fechaRecepcion) {
-        this.fechaRecepcion = fechaRecepcion;
+        this.fechaSolicitud = fechaRecepcion;
     }
 
     public Date getFechaSolicitud() {
@@ -129,6 +133,14 @@ public class Expediente
 
     public void setFechaSolicitud(Date fechaSolicitud) {
         this.fechaSolicitud = fechaSolicitud;
+    }
+
+    public String getCanalRecepcion() {
+        return canalRecepcion;
+    }
+
+    public void setCanalRecepcion(String canalRecepcion) {
+        this.canalRecepcion = canalRecepcion;
     }
 
     public int getTipoDocumento() {

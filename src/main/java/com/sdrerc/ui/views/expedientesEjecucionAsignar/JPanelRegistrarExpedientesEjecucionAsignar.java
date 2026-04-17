@@ -93,7 +93,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         textNumeroTramiteDocumento.setText(lista.getNumeroTramiteDocumento());
 
         //fechaRecepcion
-        spFechaRecepcion.setValue(lista.getFechaRecepcion()); 
+        spFechaRecepcion.setValue(lista.getFechaSolicitud()); 
         
         //fechaSolicitud
         spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
@@ -553,7 +553,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         cboTipoDocumento.setEnabled(false);
 
         jLabel9.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel9.setText("Fecha Recepción ");
+        jLabel9.setText("Fecha Solicitud");
 
         spFechaRecepcion.setModel(new javax.swing.SpinnerDateModel());
         spFechaRecepcion.setEnabled(false);
