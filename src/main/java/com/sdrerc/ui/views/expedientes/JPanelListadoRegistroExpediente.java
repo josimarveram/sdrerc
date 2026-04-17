@@ -257,7 +257,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         });
         jPanelPrincipal.add(btnNuevo, new org.netbeans.lib.awtextra.AbsoluteConstraints(836, 84, 110, 36));
 
-        btnLimpiar.setText("Limpiar");
+        btnLimpiar.setText("LIMPIAR");
         btnLimpiar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnLimpiarActionPerformed(evt);

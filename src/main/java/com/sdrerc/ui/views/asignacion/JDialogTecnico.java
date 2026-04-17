@@ -153,7 +153,7 @@ public class JDialogTecnico extends javax.swing.JDialog {
             }
         });
 
-        btnSeleccionar.setText("Seleccionar");
+        btnSeleccionar.setText("SELECCIONAR");
         btnSeleccionar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnSeleccionarActionPerformed(evt);

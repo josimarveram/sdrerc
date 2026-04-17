@@ -301,7 +301,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Ejec. Por Trabajar"/>
+        <Property name="text" type="java.lang.String" value="EJEC. POR TRABAJAR"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">
@@ -419,7 +419,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Exp. Por Trabajar"/>
+        <Property name="text" type="java.lang.String" value="EXP. POR TRABAJAR"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">
@@ -458,7 +458,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Exp. Por Verificar"/>
+        <Property name="text" type="java.lang.String" value="EXP. POR VERIFICAR"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">
@@ -497,7 +497,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Band. Ejecuci&#xf3;n"/>
+        <Property name="text" type="java.lang.String" value="BAND. EJECUCI&#xd3;N"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">
@@ -536,7 +536,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Band. Notificaci&#xf3;n"/>
+        <Property name="text" type="java.lang.String" value="BAND. NOTIFICACI&#xd3;N"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">
@@ -575,7 +575,7 @@
                 <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                   <Image iconType="3" name="/com/sdrerc/ui/iconos/icono_home-outline.png"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Notif. Por Trabajar"/>
+        <Property name="text" type="java.lang.String" value="NOTIF. POR TRABAJAR"/>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
                     <MatteColorBorder bottom="1" left="10" right="1" top="1">

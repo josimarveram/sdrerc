@@ -205,7 +205,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuEjecucionPorTrabajar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuEjecucionPorTrabajar.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuEjecucionPorTrabajar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuEjecucionPorTrabajar.setText("Ejec. Por Trabajar");
+        btnMenuEjecucionPorTrabajar.setText("EJEC. POR TRABAJAR");
         btnMenuEjecucionPorTrabajar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuEjecucionPorTrabajar.setBorderPainted(false);
         btnMenuEjecucionPorTrabajar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -264,7 +264,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpedientesPorTrabajar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuExpedientesPorTrabajar.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuExpedientesPorTrabajar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuExpedientesPorTrabajar.setText("Exp. Por Trabajar");
+        btnMenuExpedientesPorTrabajar.setText("EXP. POR TRABAJAR");
         btnMenuExpedientesPorTrabajar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuExpedientesPorTrabajar.setBorderPainted(false);
         btnMenuExpedientesPorTrabajar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -282,7 +282,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpedientesPorVerificar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuExpedientesPorVerificar.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuExpedientesPorVerificar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuExpedientesPorVerificar.setText("Exp. Por Verificar");
+        btnMenuExpedientesPorVerificar.setText("EXP. POR VERIFICAR");
         btnMenuExpedientesPorVerificar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuExpedientesPorVerificar.setBorderPainted(false);
         btnMenuExpedientesPorVerificar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -300,7 +300,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuBandejaEjecucion.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuBandejaEjecucion.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuBandejaEjecucion.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuBandejaEjecucion.setText("Band. Ejecución");
+        btnMenuBandejaEjecucion.setText("BAND. EJECUCIÓN");
         btnMenuBandejaEjecucion.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuBandejaEjecucion.setBorderPainted(false);
         btnMenuBandejaEjecucion.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -318,7 +318,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuBandejaNotificacion.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuBandejaNotificacion.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuBandejaNotificacion.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuBandejaNotificacion.setText("Band. Notificación");
+        btnMenuBandejaNotificacion.setText("BAND. NOTIFICACIÓN");
         btnMenuBandejaNotificacion.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuBandejaNotificacion.setBorderPainted(false);
         btnMenuBandejaNotificacion.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -336,7 +336,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuNotificacionPorTrabajar.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuNotificacionPorTrabajar.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuNotificacionPorTrabajar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuNotificacionPorTrabajar.setText("Notif. Por Trabajar");
+        btnMenuNotificacionPorTrabajar.setText("NOTIF. POR TRABAJAR");
         btnMenuNotificacionPorTrabajar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuNotificacionPorTrabajar.setBorderPainted(false);
         btnMenuNotificacionPorTrabajar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));

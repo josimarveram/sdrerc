@@ -240,7 +240,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
             }
         });
 
-        btnLimpiar.setText("Limpiar");
+        btnLimpiar.setText("LIMPIAR");
         btnLimpiar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnLimpiarActionPerformed(evt);
@@ -298,7 +298,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
             }
         });
 
-        btnLimpiar1.setText("Limpiar");
+        btnLimpiar1.setText("LIMPIAR");
         btnLimpiar1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnLimpiar1ActionPerformed(evt);
