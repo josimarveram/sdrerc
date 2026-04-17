@@ -23,6 +23,7 @@ import com.sdrerc.util.ComboBoxUtils;
 import java.awt.BorderLayout;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.UIManager;
@@ -426,8 +427,13 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
     private void btnMenuExpedienteMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedienteMouseClicked
         // TODO add your handling code here:
-         lbl_TituloFormulario.setText("FORMULARIO RECEPCION");
-         ShowJPanel(new JPanelListadoRegistroExpediente());
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO RECEPCION");
+            ShowJPanel(new JPanelListadoRegistroExpediente());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, "No se pudo abrir la pantalla de recepcion", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo abrir la pantalla de recepcion.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_btnMenuExpedienteMouseClicked
 
     private void btnMenuHomeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuHomeMouseClicked

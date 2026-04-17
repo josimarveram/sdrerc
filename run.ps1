@@ -6,6 +6,7 @@ $jars = @(
     (Join-Path $root "target\classes"),
     (Join-Path $env:USERPROFILE ".m2\repository\com\formdev\flatlaf\3.6.2\flatlaf-3.6.2.jar"),
     (Join-Path $env:USERPROFILE ".m2\repository\com\formdev\flatlaf-intellij-themes\3.6.2\flatlaf-intellij-themes-3.6.2.jar"),
+    (Join-Path $env:USERPROFILE ".m2\repository\com\toedter\jcalendar\1.4\jcalendar-1.4.jar"),
     (Join-Path $env:USERPROFILE ".m2\repository\org\netbeans\external\AbsoluteLayout\RELEASE250\AbsoluteLayout-RELEASE250.jar"),
     (Join-Path $env:USERPROFILE ".m2\repository\org\mindrot\jbcrypt\0.4\jbcrypt-0.4.jar"),
     (Join-Path $env:USERPROFILE ".m2\repository\com\oracle\database\jdbc\ojdbc11\23.2.0.0\ojdbc11-23.2.0.0.jar")

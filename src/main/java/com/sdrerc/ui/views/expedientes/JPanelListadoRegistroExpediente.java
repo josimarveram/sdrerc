@@ -12,11 +12,17 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.ui.views.asignacion.JPanelRegistroAsignacionOlds;
+import com.sdrerc.util.DateRangePickerSupport;
+import java.awt.Color;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JLabel;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -30,6 +36,9 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
     private final Map<Integer, String> estadosPorId;
+    private final SimpleDateFormat formatoFecha;
+    private DateRangePickerSupport.Range rangoFechas;
+    private JLabel lblFeedbackFechas;
 
     /**
      * Creates new form JPanelRegistroExpediente
@@ -37,10 +46,13 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     public JPanelListadoRegistroExpediente() 
     {
         initComponents();
+        initDatePickers();
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
         this.estadosPorId = new HashMap<>();
+        this.formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
+        this.formatoFecha.setLenient(false);
         cargarTiposBusqueda();
         cargarComboEstados();    
         buscarExpedientes();
@@ -76,15 +88,22 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
       private void buscarExpedientes() 
       {
         try {
+            if (rangoFechas != null && !rangoFechas.isValidRange()) {
+                return;
+            }
+
             String campo = cmbTipoBusqueda.getSelectedItem().toString();
             String valor = txtValorBusqueda.getText().trim();
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
-            int idestado = estado.getIdCatalogoItem();    
+            int idestado = estado.getIdCatalogoItem();
+            Date fechaDesde = rangoFechas == null ? null : DateRangePickerSupport.startOfDay(rangoFechas.getFromDate());
+            Date fechaHasta = rangoFechas == null ? null : DateRangePickerSupport.endOfDay(rangoFechas.getToDate());
             
             List<Expediente> lista = expedienteService.buscar(campo, valor, idestado);
-            cargarTablaNueva(lista);
+            cargarTablaNueva(filtrarPorRangoFechas(lista, fechaDesde, fechaHasta));
         } 
         catch (Exception e) {
+            Logger.getLogger(JPanelListadoRegistroExpediente.class.getName()).log(Level.WARNING, "No se pudo filtrar la lista de recepcion", e);
         }
       }
       
@@ -92,6 +111,9 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {
         // Limpiar JTextFields
         txtValorBusqueda.setText("");
+        if (rangoFechas != null) {
+            rangoFechas.clear();
+        }
         // Resetear JComboBoxes al primer elemento
         if (cmbTipoBusqueda.getItemCount() > 0) cmbTipoBusqueda.setSelectedIndex(0);
         if (cmbEstado.getItemCount() > 0) cmbEstado.setSelectedIndex(0);
@@ -103,7 +125,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {        
         String[] columnas = 
         {
-          "ID", "Fecha", "N° Trámite Web", "Remitente", "Titular", "Estado"
+          "ID", "Fecha Solicitud", "N° Trámite Web", "Remitente", "Titular", "Estado"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -119,7 +141,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         for (Expediente e : lista) {
             Object[] fila = {
                     e.getIdExpediente(),
-                    e.getFechaSolicitud(),
+                    formatearFecha(e.getFechaSolicitud()),
                     e.getNumeroTramiteDocumento(),
                     e.getApellidoNombreRemitente(),
                     e.getApellidoNombreTitular(),
@@ -133,6 +155,57 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private String obtenerDescripcionEstado(int idEstado)
     {
         return estadosPorId.getOrDefault(idEstado, String.valueOf(idEstado));
+    }
+
+    private String formatearFecha(java.util.Date fecha)
+    {
+        return fecha == null ? "" : formatoFecha.format(fecha);
+    }
+
+    private List<Expediente> filtrarPorRangoFechas(List<Expediente> lista, Date fechaDesde, Date fechaHasta)
+    {
+        if (fechaDesde == null && fechaHasta == null) {
+            return lista;
+        }
+
+        List<Expediente> filtrada = new ArrayList<>();
+        for (Expediente expediente : lista) {
+            Date fechaSolicitud = expediente.getFechaSolicitud();
+            if (fechaSolicitud == null) {
+                continue;
+            }
+            if (fechaDesde != null && fechaSolicitud.before(fechaDesde)) {
+                continue;
+            }
+            if (fechaHasta != null && fechaSolicitud.after(fechaHasta)) {
+                continue;
+            }
+            filtrada.add(expediente);
+        }
+        return filtrada;
+    }
+
+    private void initDatePickers()
+    {
+        lblFeedbackFechas = new JLabel(" ");
+        lblFeedbackFechas.setForeground(new Color(198, 40, 40));
+        jPanelPrincipal.add(lblFeedbackFechas, new org.netbeans.lib.awtextra.AbsoluteConstraints(460, 132, 340, 20));
+
+        DateRangePickerSupport.replaceTextFieldsDeferred(
+            txtFechaDesde,
+            txtFechaHasta,
+            jPanelPrincipal,
+            lblFeedbackFechas,
+            new DateRangePickerSupport.RangeConsumer() {
+                @Override
+                public void accept(DateRangePickerSupport.Range range) {
+                    rangoFechas = range;
+                    Date hoy = new Date();
+                    rangoFechas.getFromPicker().setDate(hoy);
+                    rangoFechas.getToPicker().setDate(hoy);
+                }
+            }
+        );
     }
 
     /**
@@ -156,6 +229,10 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         cmbTipoBusqueda = new javax.swing.JComboBox();
         txtValorBusqueda = new javax.swing.JTextField();
         cmbEstado = new javax.swing.JComboBox();
+        jLabel6 = new javax.swing.JLabel();
+        txtFechaDesde = new javax.swing.JTextField();
+        jLabel7 = new javax.swing.JLabel();
+        txtFechaHasta = new javax.swing.JTextField();
 
         setBackground(new java.awt.Color(255, 255, 255));
 
@@ -166,11 +243,11 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("FILTRO BUSQUEDA");
         jLabel1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jPanelPrincipal.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(94, 6, 876, -1));
+        jPanelPrincipal.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 8, 900, -1));
 
         jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel4.setText("Estado del trámite");
-        jPanelPrincipal.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(497, 40, 190, -1));
+        jPanelPrincipal.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(490, 40, 140, -1));
 
         btnNuevo.setText("NUEVO");
         btnNuevo.addActionListener(new java.awt.event.ActionListener() {
@@ -178,7 +255,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 btnNuevoActionPerformed(evt);
             }
         });
-        jPanelPrincipal.add(btnNuevo, new org.netbeans.lib.awtextra.AbsoluteConstraints(860, 121, 110, 40));
+        jPanelPrincipal.add(btnNuevo, new org.netbeans.lib.awtextra.AbsoluteConstraints(836, 84, 110, 36));
 
         btnLimpiar.setText("Limpiar");
         btnLimpiar.addActionListener(new java.awt.event.ActionListener() {
@@ -186,7 +263,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 btnLimpiarActionPerformed(evt);
             }
         });
-        jPanelPrincipal.add(btnLimpiar, new org.netbeans.lib.awtextra.AbsoluteConstraints(781, 61, 110, 40));
+        jPanelPrincipal.add(btnLimpiar, new org.netbeans.lib.awtextra.AbsoluteConstraints(836, 40, 110, 36));
 
         btnBuscar.setText("BUSCAR");
         btnBuscar.addActionListener(new java.awt.event.ActionListener() {
@@ -194,7 +271,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 btnBuscarActionPerformed(evt);
             }
         });
-        jPanelPrincipal.add(btnBuscar, new org.netbeans.lib.awtextra.AbsoluteConstraints(738, 121, 110, 40));
+        jPanelPrincipal.add(btnBuscar, new org.netbeans.lib.awtextra.AbsoluteConstraints(836, 126, 110, 36));
 
         jTable1.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -231,10 +308,10 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             jTable1.getColumnModel().getColumn(5).setMaxWidth(150);
         }
 
-        jPanelPrincipal.add(jScrollPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(94, 169, 876, 388));
+        jPanelPrincipal.add(jScrollPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 180, 900, 388));
 
         jLabel5.setText("Tipo de búsqueda");
-        jPanelPrincipal.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(122, 40, 155, -1));
+        jPanelPrincipal.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 40, 155, -1));
 
         cmbTipoBusqueda.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         cmbTipoBusqueda.addActionListener(new java.awt.event.ActionListener() {
@@ -242,14 +319,26 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 cmbTipoBusquedaActionPerformed(evt);
             }
         });
-        jPanelPrincipal.add(cmbTipoBusqueda, new org.netbeans.lib.awtextra.AbsoluteConstraints(122, 60, 190, 40));
+        jPanelPrincipal.add(cmbTipoBusqueda, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 60, 210, 36));
 
-        txtValorBusqueda.setText("jTextField1");
+        txtValorBusqueda.setText("");
         txtValorBusqueda.setEnabled(false);
-        jPanelPrincipal.add(txtValorBusqueda, new org.netbeans.lib.awtextra.AbsoluteConstraints(318, 60, 190, 40));
+        jPanelPrincipal.add(txtValorBusqueda, new org.netbeans.lib.awtextra.AbsoluteConstraints(300, 60, 170, 36));
 
         cmbEstado.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-        jPanelPrincipal.add(cmbEstado, new org.netbeans.lib.awtextra.AbsoluteConstraints(576, 60, 190, 40));
+        jPanelPrincipal.add(cmbEstado, new org.netbeans.lib.awtextra.AbsoluteConstraints(490, 60, 150, 36));
+
+        jLabel6.setText("Fecha desde");
+        jPanelPrincipal.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 108, 120, -1));
+
+        txtFechaDesde.setToolTipText("dd/MM/yyyy");
+        jPanelPrincipal.add(txtFechaDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 128, 170, 36));
+
+        jLabel7.setText("Fecha hasta");
+        jPanelPrincipal.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(270, 108, 120, -1));
+
+        txtFechaHasta.setToolTipText("dd/MM/yyyy");
+        jPanelPrincipal.add(txtFechaHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(270, 128, 170, 36));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -326,9 +415,13 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JPanel jPanelPrincipal;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable jTable1;
+    private javax.swing.JTextField txtFechaDesde;
+    private javax.swing.JTextField txtFechaHasta;
     private javax.swing.JTextField txtValorBusqueda;
     // End of variables declaration//GEN-END:variables
 }
