@@ -142,7 +142,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         btnMenuExpediente.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         btnMenuExpediente.setForeground(new java.awt.Color(255, 255, 255));
         btnMenuExpediente.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png"))); // NOI18N
-        btnMenuExpediente.setText("EXPEDIENTE");
+        btnMenuExpediente.setText("RECEPCION");
         btnMenuExpediente.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
         btnMenuExpediente.setBorderPainted(false);
         btnMenuExpediente.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -426,7 +426,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
 
     private void btnMenuExpedienteMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedienteMouseClicked
         // TODO add your handling code here:
-         lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTE");
+         lbl_TituloFormulario.setText("FORMULARIO RECEPCION");
          ShowJPanel(new JPanelListadoRegistroExpediente());
     }//GEN-LAST:event_btnMenuExpedienteMouseClicked
 
