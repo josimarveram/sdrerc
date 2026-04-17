@@ -19,6 +19,7 @@ import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.util.ComboBoxUtils;
 import com.sdrerc.util.TextFieldRules;
 import java.sql.Date;
 import java.util.List;
@@ -81,6 +82,8 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         ButtonGroup grupoCorrespondeSdrerc = new ButtonGroup();
         grupoCorrespondeSdrerc.add(jRadiButonSiCorresponde);
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
+
+        ComboBoxUtils.applySmartRenderer(this);
     }
     
     private boolean modoEdicion = false;

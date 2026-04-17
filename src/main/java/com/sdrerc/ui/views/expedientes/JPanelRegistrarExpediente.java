@@ -16,12 +16,16 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.util.ComboBoxUtils;
 import com.sdrerc.util.TextFieldRules;
 import java.sql.Date;
 import java.util.List;
 import javax.swing.ButtonGroup;
+import javax.swing.JLabel;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 /**
  *
@@ -33,6 +37,9 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
     private final CatalogoItemService catalogoItemService;
     private final UbigeoService ubigeoService;
     private Integer idExpedienteOculto = 0;
+    private static final int ID_CATALOGO_DIRECCION_DOMICILIARIA = 8;
+    private static final int ID_AGREGAR_DIRECCION = -1;
+    private CatalogoItem ultimaDireccionDomiciliariaSeleccionada;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -76,11 +83,14 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         ButtonGroup grupoCorrespondeSdrerc = new ButtonGroup();
         grupoCorrespondeSdrerc.add(jRadiButonSiCorresponde);
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
+
+        ComboBoxUtils.applySmartRenderer(this);
     }
     
 	private boolean modoEdicion = false;
     
     private void registrarEventos() {
+    cboDireccionDomiciliaria.addActionListener(e -> manejarSeleccionDireccionDomiciliaria());
 
     cboDepartamento.addActionListener(e -> {
         if (cboDepartamento.getSelectedItem() == null) return;
@@ -340,12 +350,109 @@ private void seleccionarDistrito(int idDistrito) {
     }
     
     private void cargarComboDireccionDomiciliaria() {
-        cboDireccionDomiciliaria.removeAllItems();    
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(8);
+        CatalogoItem seleccionActual = obtenerDireccionSeleccionadaValida();
+        cboDireccionDomiciliaria.removeAllItems();
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(ID_CATALOGO_DIRECCION_DOMICILIARIA);
 
         for (CatalogoItem catalogoitem : lista) {
             cboDireccionDomiciliaria.addItem(catalogoitem);
         }
+
+        cboDireccionDomiciliaria.addItem(crearOpcionAgregarDireccion());
+
+        if (seleccionActual != null) {
+            seleccionarEstadoEnCombo(cboDireccionDomiciliaria, seleccionActual.getIdCatalogoItem());
+            ultimaDireccionDomiciliariaSeleccionada = (CatalogoItem) cboDireccionDomiciliaria.getSelectedItem();
+        } else if (cboDireccionDomiciliaria.getItemCount() > 0) {
+            cboDireccionDomiciliaria.setSelectedIndex(0);
+            ultimaDireccionDomiciliariaSeleccionada = obtenerDireccionSeleccionadaValida();
+        }
+    }
+
+    private void manejarSeleccionDireccionDomiciliaria() {
+        CatalogoItem seleccionado = (CatalogoItem) cboDireccionDomiciliaria.getSelectedItem();
+        if (seleccionado == null) {
+            return;
+        }
+
+        if (seleccionado.getIdCatalogoItem() == ID_AGREGAR_DIRECCION) {
+            abrirDialogoNuevaDireccion();
+            return;
+        }
+
+        ultimaDireccionDomiciliariaSeleccionada = seleccionado;
+    }
+
+    private void abrirDialogoNuevaDireccion() {
+        JTextField txtNuevaDireccion = new JTextField(28);
+        JPanel panel = new JPanel();
+        panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
+        panel.add(new JLabel("Agrega una nueva direccion domiciliaria para este expediente."));
+        panel.add(new JLabel("Ejemplo: AVENIDA, JIRON, CALLE, PASAJE."));
+        panel.add(txtNuevaDireccion);
+
+        int opcion = JOptionPane.showConfirmDialog(
+            this,
+            panel,
+            "Nueva direccion domiciliaria",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (opcion != JOptionPane.OK_OPTION) {
+            restaurarDireccionAnterior();
+            return;
+        }
+
+        String descripcion = txtNuevaDireccion.getText().trim();
+        if (descripcion.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Ingresa una direccion valida.");
+            restaurarDireccionAnterior();
+            return;
+        }
+
+        try {
+            CatalogoItem nuevoItem = catalogoItemService.crearCatalogoItem(
+                ID_CATALOGO_DIRECCION_DOMICILIARIA,
+                descripcion.toUpperCase()
+            );
+            cargarComboDireccionDomiciliaria();
+            seleccionarEstadoEnCombo(cboDireccionDomiciliaria, nuevoItem.getIdCatalogoItem());
+            ultimaDireccionDomiciliariaSeleccionada = (CatalogoItem) cboDireccionDomiciliaria.getSelectedItem();
+            JOptionPane.showMessageDialog(this, "Direccion agregada correctamente.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
+            restaurarDireccionAnterior();
+        }
+    }
+
+    private void restaurarDireccionAnterior() {
+        if (ultimaDireccionDomiciliariaSeleccionada == null) {
+            if (cboDireccionDomiciliaria.getItemCount() > 0) {
+                cboDireccionDomiciliaria.setSelectedIndex(0);
+                ultimaDireccionDomiciliariaSeleccionada = obtenerDireccionSeleccionadaValida();
+            }
+            return;
+        }
+
+        seleccionarEstadoEnCombo(cboDireccionDomiciliaria, ultimaDireccionDomiciliariaSeleccionada.getIdCatalogoItem());
+    }
+
+    private CatalogoItem obtenerDireccionSeleccionadaValida() {
+        CatalogoItem seleccionado = (CatalogoItem) cboDireccionDomiciliaria.getSelectedItem();
+        if (seleccionado == null || seleccionado.getIdCatalogoItem() == ID_AGREGAR_DIRECCION) {
+            return null;
+        }
+        return seleccionado;
+    }
+
+    private CatalogoItem crearOpcionAgregarDireccion() {
+        return new CatalogoItem(
+            ID_AGREGAR_DIRECCION,
+            ID_CATALOGO_DIRECCION_DOMICILIARIA,
+            "+ Agregar nueva direccion...",
+            1
+        );
     }
     
     private void cargarComboUnidadOrganica() {

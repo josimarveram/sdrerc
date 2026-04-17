@@ -19,11 +19,12 @@ import com.sdrerc.ui.views.expedientesPorVerificar.JPanelListadoExpedientesPorVe
 import com.sdrerc.ui.views.home.jPanelHome;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
+import com.sdrerc.util.ComboBoxUtils;
 import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.UIManager;
 
 /**
@@ -54,18 +55,19 @@ public class MenuPrincipal extends javax.swing.JFrame {
     
     public static void ShowJPanel(JPanel p) 
     {
-        /*
-        p.setSize(2000, 750);
-        p.setLocation(0,0);        
         jPanelBody.removeAll();
-        jPanelBody.add(p, BorderLayout.CENTER);
-        jPanelBody.revalidate();
-        jPanelBody.repaint();
-        */
-        jPanelBody.removeAll();
-        p.setPreferredSize(p.getPreferredSize()); // opcional, pero claro
-        jPanelBody.setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        jPanelBody.add(p);
+        ComboBoxUtils.applySmartRenderer(p);
+
+        JScrollPane scrollPane = new JScrollPane(
+            p,
+            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+        );
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.setBorder(null);
+
+        jPanelBody.setLayout(new BorderLayout());
+        jPanelBody.add(scrollPane, BorderLayout.CENTER);
         jPanelBody.revalidate();
         jPanelBody.repaint();
     }

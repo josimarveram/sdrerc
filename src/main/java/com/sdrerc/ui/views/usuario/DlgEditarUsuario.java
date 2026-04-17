@@ -9,6 +9,7 @@ import com.sdrerc.application.RoleService;
 import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.Role;
 import com.sdrerc.domain.model.User;
+import com.sdrerc.util.ComboBoxUtils;
 import java.awt.Window;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -41,6 +42,7 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
         this.userService = userService;
         cargarDatos();
         configurarBotones();
+        ComboBoxUtils.applySmartRenderer(getContentPane());
     }
     
     private void configurarBotones() {

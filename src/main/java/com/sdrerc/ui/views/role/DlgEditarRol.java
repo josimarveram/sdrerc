@@ -6,6 +6,7 @@ package com.sdrerc.ui.views.role;
 
 import com.sdrerc.application.RoleService;
 import com.sdrerc.domain.model.Role;
+import com.sdrerc.util.ComboBoxUtils;
 import java.awt.Window;
 import java.sql.SQLException;
 import java.util.logging.Level;
@@ -36,6 +37,7 @@ public class DlgEditarRol extends javax.swing.JDialog {
         this.roleService = roleService;
         cargarDatos();
         configurarBotones();
+        ComboBoxUtils.applySmartRenderer(getContentPane());
     }
     
     private void configurarBotones() {

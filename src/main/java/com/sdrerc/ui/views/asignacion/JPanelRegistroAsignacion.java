@@ -27,6 +27,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import com.sdrerc.util.ComboBoxUtils;
 /**
  *
  * @author usuario
@@ -74,6 +75,8 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         textDniRemitente.setEnabled(false);
         textApellidosNombreRemitente.setEnabled(false);
         cboUnidadOrganica.setEnabled(false);
+
+        ComboBoxUtils.applySmartRenderer(this);
     }
     
     

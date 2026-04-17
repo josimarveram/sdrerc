@@ -21,6 +21,7 @@ import javax.swing.JOptionPane;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import org.mindrot.jbcrypt.BCrypt;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -186,7 +187,7 @@ public class DlgAsignarRolesUsuario extends javax.swing.JDialog {
                 userId,
                 seleccionados.stream()
                     .map(Role::getRoleId)
-                    .toList()
+                    .collect(Collectors.toList())
             );
             dispose();
         } catch (SQLException e) {

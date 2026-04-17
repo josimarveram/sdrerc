@@ -5,9 +5,7 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.CatalogoItem;
-import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.repository.CatalogoDetalleRepository;
-import com.sdrerc.infrastructure.repository.UserRepository;
 import java.util.List;
 
 /**
@@ -27,5 +25,9 @@ public class CatalogoItemService {
     
     public List<CatalogoItem> obtenerEstados() {        
         return repository.obtenerEstados();
+    }
+
+    public CatalogoItem crearCatalogoItem(int idCatalogo, String descripcion) {
+        return repository.crearCatalogoItem(idCatalogo, descripcion);
     }
 }
