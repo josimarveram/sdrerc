@@ -8,12 +8,13 @@ import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
-import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.ui.views.asignacion.JPanelRegistroAsignacionOlds;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.table.DefaultTableModel;
@@ -28,6 +29,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
+    private final Map<Integer, String> estadosPorId;
 
     /**
      * Creates new form JPanelRegistroExpediente
@@ -38,6 +40,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
+        this.estadosPorId = new HashMap<>();
         cargarTiposBusqueda();
         cargarComboEstados();    
         buscarExpedientes();
@@ -54,6 +57,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
 
         for (CatalogoItem estado : lista) {
+            estadosPorId.put(estado.getIdCatalogoItem(), estado.getDescripcion());
             cmbEstado.addItem(estado);
         }
     }
@@ -73,13 +77,11 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
       {
         try {
             String campo = cmbTipoBusqueda.getSelectedItem().toString();
-            String valor = txtValorBusqueda.getText();            
+            String valor = txtValorBusqueda.getText().trim();
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
             int idestado = estado.getIdCatalogoItem();    
             
-            Enumerado.EstadoExpediente estadoExpediente = Enumerado.EstadoExpediente.RegistroExpediente;
-            
-            List<Expediente> lista = expedienteService.buscar(campo, valor, estadoExpediente.getId());
+            List<Expediente> lista = expedienteService.buscar(campo, valor, idestado);
             cargarTablaNueva(lista);
         } 
         catch (Exception e) {
@@ -121,12 +123,17 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                     e.getNumeroTramiteDocumento(),
                     e.getApellidoNombreRemitente(),
                     e.getApellidoNombreTitular(),
-                    e.getEstado()
+                    obtenerDescripcionEstado(e.getEstado())
             };
             model.addRow(fila);
         }
         jTable1.setModel(model);
-    }  
+    }
+
+    private String obtenerDescripcionEstado(int idEstado)
+    {
+        return estadosPorId.getOrDefault(idEstado, String.valueOf(idEstado));
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.
