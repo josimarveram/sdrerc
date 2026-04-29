@@ -253,7 +253,7 @@ public class ExpedienteAsignacionRepository {
     {        
         List<Expediente> lista = new ArrayList<>();
         
-        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT * FROM EXPEDIENTE "
+        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT EXPEDIENTE.* FROM EXPEDIENTE "
                 + "INNER JOIN EXPEDIENTE_ASIGNACION ON EXPEDIENTE.ID_EXPEDIENTE = EXPEDIENTE_ASIGNACION.ID_EXPEDIENTE "
                 + "LEFT JOIN (\n" +
                     "    SELECT DISTINCT e.ID_EXPEDIENTE AS ID_EXPEDIENTE_DOCUMENTO_VERIFICAR\n" +
@@ -263,14 +263,19 @@ public class ExpedienteAsignacionRepository {
                     "    AND d.ACTIVE = 1\n" +
                     ") doc\n" +
                     "ON doc.ID_EXPEDIENTE_DOCUMENTO_VERIFICAR = EXPEDIENTE.ID_EXPEDIENTE "
-                + "WHERE EXPEDIENTE_ASIGNACION.id_tecnico = ? ");
+                + "WHERE 1 = 1 ");
         
         // Si el estado no es "TODOS", agregamos AND
+        boolean filtrarTecnico = idTecnico != 0;
         boolean filtrarEstado = estadoItem != 0;
         boolean filtrarAceptaRecepcion = aceptaRecepcion != 0;
         boolean filtrarVerificacion = esPorVerificar != 0;
         boolean filtrarNotificacion = esPorNotificar != 0;
 
+        if(filtrarTecnico)
+        {
+            sqlListaExpediente.append("AND EXPEDIENTE_ASIGNACION.id_tecnico = ? ");
+        }
         if(filtrarEstado) 
         {
             sqlListaExpediente.append("AND EXPEDIENTE.estado = ? ");
@@ -293,13 +298,15 @@ public class ExpedienteAsignacionRepository {
             conn.setAutoCommit(false);             
             try(PreparedStatement psListar = conn.prepareStatement(sqlListaExpediente.toString()))
             {
-                psListar.setInt(1, idTecnico);
+                int paramIndex = 1;
+                if(filtrarTecnico)
+                    psListar.setInt(paramIndex++, idTecnico);
                 
                 if(filtrarEstado) 
-                    psListar.setInt(2, estadoItem);
+                    psListar.setInt(paramIndex++, estadoItem);
                 
                 if(filtrarAceptaRecepcion) 
-                    psListar.setInt(3, aceptaRecepcion);
+                    psListar.setInt(paramIndex++, aceptaRecepcion);
 
                 ResultSet rs = psListar.executeQuery();
                 while (rs.next()) 
