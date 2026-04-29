@@ -109,6 +109,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
     
     private void registrarEventos() {
     cboDireccionDomiciliaria.addActionListener(e -> manejarSeleccionDireccionDomiciliaria());
+    cboCanalRecepcion.addActionListener(e -> actualizarEstadoNumeroTramite());
 
     cboDepartamento.addActionListener(e -> {
         if (cboDepartamento.getSelectedItem() == null) return;
@@ -328,11 +329,13 @@ private void seleccionarDistrito(int idDistrito) {
             cboCanalRecepcion.addItem(canal);
         }
         cboCanalRecepcion.setSelectedIndex(0);
+        actualizarEstadoNumeroTramite();
     }
 
     private void seleccionarCanalRecepcion(String canalRecepcion) {
         if (canalRecepcion == null || canalRecepcion.trim().isEmpty()) {
             cboCanalRecepcion.setSelectedIndex(0);
+            actualizarEstadoNumeroTramite();
             return;
         }
 
@@ -340,11 +343,27 @@ private void seleccionarDistrito(int idDistrito) {
             String item = String.valueOf(cboCanalRecepcion.getItemAt(i));
             if (item.equalsIgnoreCase(canalRecepcion)) {
                 cboCanalRecepcion.setSelectedIndex(i);
+                actualizarEstadoNumeroTramite();
                 return;
             }
         }
 
         cboCanalRecepcion.setSelectedIndex(0);
+        actualizarEstadoNumeroTramite();
+    }
+
+    private void actualizarEstadoNumeroTramite() {
+        Object canalSeleccionado = cboCanalRecepcion.getSelectedItem();
+        boolean esMpv = canalSeleccionado != null
+                && "MPV".equalsIgnoreCase(String.valueOf(canalSeleccionado).trim());
+        textNumeroTramiteDocumento.setEnabled(esMpv);
+        if (esMpv) {
+            if ("SIN TRAMITE".equalsIgnoreCase(textNumeroTramiteDocumento.getText().trim())) {
+                textNumeroTramiteDocumento.setText("");
+            }
+        } else {
+            textNumeroTramiteDocumento.setText("SIN TRAMITE");
+        }
     }
     
     private void cargarComboTipoDocumento() {
