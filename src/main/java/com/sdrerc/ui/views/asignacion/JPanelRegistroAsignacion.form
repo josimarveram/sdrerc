@@ -717,12 +717,7 @@
                 <Property name="text" type="java.lang.String" value="Fecha de Asignaci&#xf3;n:"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JSpinner" name="spFechaAsignacion">
-              <Properties>
-                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-                  <SpinnerModel initial="now" stepSize="5" type="date"/>
-                </Property>
-              </Properties>
+            <Component class="com.toedter.calendar.JDateChooser" name="spFechaAsignacion">
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel25">
               <Properties>

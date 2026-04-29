@@ -50,6 +50,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     public JPanelRegistroAsignacion() {
         initComponents();
         initFechaSolicitudPicker();
+        initFechaAsignacionPicker();
         
         this.expedienteService = new ExpedienteService();
         this.expedienteAsignacionService = new ExpedienteAsignacionService();
@@ -87,6 +88,11 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     private void initFechaSolicitudPicker() {
         DateRangePickerSupport.configurePicker(spFechaRecepcion);
         spFechaRecepcion.setDate(new Date());
+    }
+
+    private void initFechaAsignacionPicker() {
+        DateRangePickerSupport.configurePicker(spFechaAsignacion);
+        spFechaAsignacion.setDate(new Date());
     }
 
     private Date getFechaSolicitudSeleccionada() {
@@ -435,7 +441,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
         txtIdTecnico = new javax.swing.JTextField();
         txtNombreTecnico = new javax.swing.JTextField();
         jLabel10 = new javax.swing.JLabel();
-        spFechaAsignacion = new javax.swing.JSpinner();
+        spFechaAsignacion = new com.toedter.calendar.JDateChooser();
         jLabel25 = new javax.swing.JLabel();
         textHojaEnvioAsignacion = new javax.swing.JTextField();
 
@@ -748,8 +754,6 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
 
         jLabel10.setText("Fecha de Asignación:");
 
-        spFechaAsignacion.setModel(new javax.swing.SpinnerDateModel());
-
         jLabel25.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel25.setText("Hoja de Envio");
 
@@ -1060,7 +1064,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
             ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
             asignacion.setIdExpediente(idExpedienteOculto);
             asignacion.setIdTecnico(Integer.parseInt(txtIdTecnico.getText()));            
-            Date fecha = (Date) spFechaAsignacion.getValue();            
+            Date fecha = spFechaAsignacion.getDate();
             asignacion.setFechaAsignacion(fecha);
             
             asignacion.setHojaEnvioAsignacion(textHojaEnvioAsignacion.getText());
@@ -1194,7 +1198,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel
     private javax.swing.JPanel jPanelDatosUbicacion;
     private javax.swing.JPanel jPanelParaNotificacion;
     private javax.swing.JPanel jPanelPrincipal;
-    private javax.swing.JSpinner spFechaAsignacion;
+    private com.toedter.calendar.JDateChooser spFechaAsignacion;
     private com.toedter.calendar.JDateChooser spFechaRecepcion;
     private javax.swing.JTextField textApellidosNombreRemitente;
     private javax.swing.JTextField textApellidosNombreTitular;
