@@ -25,7 +25,7 @@ public class ExpedienteEjecucionPorTrabajarRepository
         List<Expediente> lista = new ArrayList<>();
         
         StringBuilder sqlListaExpediente = new StringBuilder(			
-                " SELECT * FROM EXPEDIENTE exp " +
+                " SELECT exp.* FROM EXPEDIENTE exp " +
                 " INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO eaa ON exp.ID_EXPEDIENTE = eaa.ID_EXPEDIENTE " +
                 " WHERE 1=1 "			
             );

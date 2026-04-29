@@ -24,7 +24,7 @@ public class ExpedienteNotificacionAsignacionRepository
         List<Expediente> lista = new ArrayList<>();
         
         StringBuilder sqlListaExpediente = new StringBuilder(			
-                " SELECT * FROM EXPEDIENTE exp " +
+                " SELECT exp.* FROM EXPEDIENTE exp " +
                 "     WHERE( " +
                 "             (exp.ESTADO = 87 AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND eaa.ID_ANALISIS = 74)) " +
                 "          OR (exp.ESTADO = 59 AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa " +

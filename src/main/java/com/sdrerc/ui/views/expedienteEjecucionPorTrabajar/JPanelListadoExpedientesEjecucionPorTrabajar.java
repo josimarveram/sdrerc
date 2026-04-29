@@ -15,7 +15,10 @@ import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.table.DefaultTableModel;
 
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
@@ -33,6 +36,8 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
     private final ExpedienteEjecucionPorTrabajarService expedienteEjecucionPorTrabajarService;
+    private final Map<Integer, String> estadosPorId;
+    private final SimpleDateFormat formatoFecha;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -43,6 +48,9 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
         this.expedienteEjecucionPorTrabajarService = new ExpedienteEjecucionPorTrabajarService();
+        this.estadosPorId = new HashMap<>();
+        this.formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
+        this.formatoFecha.setLenient(false);
         
         cargarTiposBusqueda();
         cargarComboEstados();    
@@ -58,6 +66,7 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
         List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
 
         for (CatalogoItem estado : lista) {
+            estadosPorId.put(estado.getIdCatalogoItem(), estado.getDescripcion());
             cmbEstado.addItem(estado);
         }
     }
@@ -121,14 +130,23 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
         for (Expediente e : lista) {
             Object[] fila = {
                     e.getIdExpediente(),
-                    e.getFechaSolicitud(),
+                    formatearFecha(e.getFechaSolicitud()),
                     e.getNumeroTramiteDocumento(),
+                    e.getApellidoNombreRemitente(),
                     e.getApellidoNombreTitular(),
-                    e.getEstado()
+                    obtenerDescripcionEstado(e.getEstado())
             };
             model.addRow(fila);
         }
         jTable1.setModel(model);
+    }
+
+    private String obtenerDescripcionEstado(int idEstado) {
+        return estadosPorId.getOrDefault(idEstado, String.valueOf(idEstado));
+    }
+
+    private String formatearFecha(java.util.Date fecha) {
+        return fecha == null ? "" : formatoFecha.format(fecha);
     }
 
     /**
