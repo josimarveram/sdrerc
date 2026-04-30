@@ -92,8 +92,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         
         cmbEstado.addItem(new CatalogoItem(0, 0, "TODOS", 1));
 
-        //List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
-        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(5);
+        List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
 
         for (CatalogoItem estado : lista) {
             estadosPorId.put(estado.getIdCatalogoItem(), estado.getDescripcion());

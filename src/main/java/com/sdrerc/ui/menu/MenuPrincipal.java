@@ -21,8 +21,10 @@ import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
 import com.sdrerc.util.ComboBoxUtils;
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -39,9 +41,35 @@ public class MenuPrincipal extends javax.swing.JFrame {
      */
     public MenuPrincipal() {
         initComponents();  
+        ajustarTextoMenu();
         initialStyles();
         InitContent();
     }    
+
+    private void ajustarTextoMenu()
+    {
+        JButton[] botonesMenu = {
+            btnMenuHome,
+            btnMenuExpediente,
+            btnMenuAsignacion1,
+            btnMenuExpedientesAsignados,
+            btnMenuExpedientesPorTrabajar,
+            btnMenuExpedientesPorVerificar,
+            btnMenuBandejaEjecucion,
+            btnMenuEjecucionPorTrabajar,
+            btnMenuBandejaNotificacion,
+            btnMenuNotificacionPorTrabajar,
+            btnMenuUsuario1,
+            btnRole
+        };
+
+        Font fuenteMenu = new Font("Segoe UI", Font.BOLD, 18);
+        for (JButton boton : botonesMenu) {
+            boton.setFont(fuenteMenu);
+            boton.setIconTextGap(8);
+            boton.setMargin(new java.awt.Insets(0, 4, 0, 4));
+        }
+    }
     
     private void initialStyles()
     {

@@ -6,6 +6,8 @@ package com.sdrerc.application;
 
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.infrastructure.repository.CatalogoDetalleRepository;
+import com.sdrerc.util.EstadoTramiteText;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,10 +26,23 @@ public class CatalogoItemService {
     }
     
     public List<CatalogoItem> obtenerEstados() {        
-        return repository.obtenerEstados();
+        return normalizarEstados(repository.obtenerEstados());
     }
 
     public CatalogoItem crearCatalogoItem(int idCatalogo, String descripcion) {
         return repository.crearCatalogoItem(idCatalogo, descripcion);
+    }
+
+    private List<CatalogoItem> normalizarEstados(List<CatalogoItem> estados) {
+        List<CatalogoItem> normalizados = new ArrayList<>();
+        for (CatalogoItem estado : estados) {
+            normalizados.add(new CatalogoItem(
+                    estado.getIdCatalogoItem(),
+                    estado.getIdCatalogo(),
+                    EstadoTramiteText.paraFiltro(estado.getDescripcion()),
+                    (int) estado.getActivo()
+            ));
+        }
+        return normalizados;
     }
 }
