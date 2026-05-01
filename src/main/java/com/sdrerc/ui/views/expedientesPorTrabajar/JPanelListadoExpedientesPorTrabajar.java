@@ -23,6 +23,7 @@ import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.sdrerc.ui.menu.MenuPrincipal;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -94,6 +95,7 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel {
             cargarTablaNueva(lista);
         } 
         catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
         }
       }
       

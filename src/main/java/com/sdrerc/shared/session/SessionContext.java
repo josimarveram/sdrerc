@@ -28,9 +28,40 @@ public final class SessionContext {
         return Math.toIntExact(userId);
     }
 
+    public static Long getUserId() {
+        return getUsuarioActual().getUserId();
+    }
+
     public static int getIdTecnicoActual() {
-        // TODO: Confirmar relacion formal APP_USERS.USER_ID -> TECNICO.ID_TECNICO en BD.
-        return getIdUsuarioActual();
+        Long idTecnico = getUsuarioActual().getIdTecnico();
+        if (idTecnico == null) {
+            throw new IllegalStateException("El usuario actual no tiene técnico/abogado asociado.");
+        }
+        return Math.toIntExact(idTecnico);
+    }
+
+    public static String getUsername() {
+        return getUsuarioActual().getUsername();
+    }
+
+    public static String getFullName() {
+        return getUsuarioActual().getFullName();
+    }
+
+    public static boolean hasRole(String roleName) {
+        return getUsuarioActual().hasRole(roleName);
+    }
+
+    public static boolean hasAnyRole(String... roles) {
+        if (roles == null) {
+            return false;
+        }
+        for (String role : roles) {
+            if (hasRole(role)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void limpiar() {

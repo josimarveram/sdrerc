@@ -55,7 +55,7 @@ public class UserRepository {
         "AND r.STATUS = 'ACTIVE'";
     
     private static final String SQL_LISTAR_POR_ROL =
-        "SELECT DISTINCT u.USER_ID, u.USERNAME, u.FULL_NAME, u.STATUS " +
+        "SELECT DISTINCT u.USER_ID, u.USERNAME, u.FULL_NAME, u.STATUS, u.ID_TECNICO " +
         "FROM APP_USERS u " +
         "JOIN APP_USER_ROLES ur ON ur.USER_ID = u.USER_ID " +
         "JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
@@ -65,17 +65,16 @@ public class UserRepository {
         "ORDER BY u.FULL_NAME";
     
     public User findByUsername(String username) {
-        String sql = "SELECT * FROM APP_USERS WHERE USERNAME=? AND STATUS='ACTIVE'";
+        String sql = "SELECT USER_ID, USERNAME, PASSWORD_HASH, FULL_NAME, STATUS, ID_TECNICO "
+                + "FROM APP_USERS WHERE USERNAME=? AND STATUS='ACTIVE'";
         try (Connection conn = OracleConnection.getConnection();
            PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                User u = new User();
-                u.setUserId(rs.getLong("USER_ID"));
-                u.setUsername(rs.getString("USERNAME"));
+                User u = mapUser(rs);
                 u.setPasswordHash(rs.getString("PASSWORD_HASH"));
-                u.setFullName(rs.getString("FULL_NAME"));
+                u.setRoles(listarRoleNamesPorUsuario(conn, u.getUserId()));
                 return u;
             }
         } catch (Exception e) { throw new RuntimeException(e); }
@@ -85,7 +84,7 @@ public class UserRepository {
     public List<User> findAll(String filter) {
         List<User> list = new ArrayList<>();
         String sql =
-          "SELECT USER_ID, USERNAME, FULL_NAME, STATUS "
+          "SELECT USER_ID, USERNAME, FULL_NAME, STATUS, ID_TECNICO "
         + "FROM APP_USERS "
         + "WHERE UPPER(USERNAME) LIKE ? "
         + "   OR UPPER(FULL_NAME) LIKE ? "
@@ -101,12 +100,7 @@ public class UserRepository {
             ResultSet rs = ps.executeQuery();
             
             while (rs.next()) {
-                User u = new User();
-                u.setUserId(rs.getLong("USER_ID"));
-                u.setUsername(rs.getString("USERNAME"));
-                u.setFullName(rs.getString("FULL_NAME"));
-                u.setStatus(rs.getString("STATUS"));
-                list.add(u);
+                list.add(mapUser(rs));
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -146,19 +140,14 @@ public class UserRepository {
     
     public List<User> findAll() throws SQLException {
         List<User> usuarios = new ArrayList<>();
-        String sql = "SELECT USER_ID, USERNAME, FULL_NAME, STATUS FROM APP_USERS ORDER BY USER_ID";
+        String sql = "SELECT USER_ID, USERNAME, FULL_NAME, STATUS, ID_TECNICO FROM APP_USERS ORDER BY USER_ID";
 
         try (Connection cn = OracleConnection.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+            ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                usuarios.add(new User(
-                        rs.getLong("USER_ID"),
-                        rs.getString("USERNAME"),
-                        rs.getString("FULL_NAME"),
-                        rs.getString("STATUS")
-                ));
+                usuarios.add(mapUser(rs));
             }
         }
         return usuarios;
@@ -169,7 +158,7 @@ public class UserRepository {
         List<User> lista = new ArrayList<>();
 
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT USER_ID, USERNAME, FULL_NAME, STATUS ");
+        sql.append("SELECT USER_ID, USERNAME, FULL_NAME, STATUS, ID_TECNICO ");
         sql.append("FROM APP_USERS ");
         sql.append("WHERE UPPER(USERNAME) LIKE ? ");
 
@@ -191,12 +180,7 @@ public class UserRepository {
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
-                lista.add(new User(
-                    rs.getLong("USER_ID"),
-                    rs.getString("USERNAME"),
-                    rs.getString("FULL_NAME"),
-                    rs.getString("STATUS")
-                ));
+                lista.add(mapUser(rs));
             }
         }
         return lista;
@@ -315,13 +299,7 @@ public class UserRepository {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    User u = new User();
-                    u.setUserId(rs.getLong("USER_ID"));
-                    u.setUsername(rs.getString("USERNAME"));
-                    u.setFullName(rs.getString("FULL_NAME"));
-                    u.setStatus(rs.getString("STATUS"));
-
-                    lista.add(u);
+                    lista.add(mapUser(rs));
                 }
             }
         }
@@ -402,5 +380,40 @@ public class UserRepository {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private User mapUser(ResultSet rs) throws SQLException {
+        User u = new User();
+        u.setUserId(rs.getLong("USER_ID"));
+        u.setUsername(rs.getString("USERNAME"));
+        u.setFullName(rs.getString("FULL_NAME"));
+        u.setStatus(rs.getString("STATUS"));
+        u.setIdTecnico(getNullableLong(rs, "ID_TECNICO"));
+        return u;
+    }
+
+    private Long getNullableLong(ResultSet rs, String columnName) throws SQLException {
+        long value = rs.getLong(columnName);
+        return rs.wasNull() ? null : value;
+    }
+
+    private List<String> listarRoleNamesPorUsuario(Connection conn, Long userId) throws SQLException {
+        List<String> roles = new ArrayList<>();
+        String sql =
+            "SELECT r.ROLE_NAME " +
+            "FROM APP_ROLES r " +
+            "JOIN APP_USER_ROLES ur ON ur.ROLE_ID = r.ROLE_ID " +
+            "WHERE ur.USER_ID = ? " +
+            "AND r.STATUS = 'ACTIVE'";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    roles.add(rs.getString("ROLE_NAME"));
+                }
+            }
+        }
+        return roles;
     }
 }

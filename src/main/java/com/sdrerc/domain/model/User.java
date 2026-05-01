@@ -4,6 +4,10 @@
  */
 package com.sdrerc.domain.model;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  *
  * @author David
@@ -34,6 +38,8 @@ public class User {
     private String passwordHash;
     private String fullName;
     private String status;
+    private Long idTecnico;
+    private List<String> roles = new ArrayList<>();
 
     // 🔹 Constructor vacío
     public User() {
@@ -75,6 +81,14 @@ public class User {
         return status;
     }
 
+    public Long getIdTecnico() {
+        return idTecnico;
+    }
+
+    public List<String> getRoles() {
+        return Collections.unmodifiableList(roles);
+    }
+
     // ===== SETTERS =====
 
     public void setUserId(Long userId) {
@@ -101,10 +115,30 @@ public class User {
         this.status = status;
     }
 
+    public void setIdTecnico(Long idTecnico) {
+        this.idTecnico = idTecnico;
+    }
+
+    public void setRoles(List<String> roles) {
+        this.roles = roles == null ? new ArrayList<>() : new ArrayList<>(roles);
+    }
+
     // ===== MÉTODOS DE APOYO (OPCIONAL) =====
 
     public boolean isActive() {
         return "ACTIVE".equalsIgnoreCase(status);
+    }
+
+    public boolean hasRole(String roleName) {
+        if (roleName == null) {
+            return false;
+        }
+        for (String role : roles) {
+            if (roleName.equalsIgnoreCase(role)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     public String toString() {
