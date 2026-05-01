@@ -29,9 +29,7 @@ public class EquipoJuridicoPlantillaService {
         "ABOGADO",
         "SUPERVISOR",
         "PERSONAL",
-        "ESTADO",
-        "USERNAME",
-        "OBSERVACION"
+        "ESTADO"
     };
 
     private static final String[] ESTADOS = {
@@ -83,9 +81,9 @@ public class EquipoJuridicoPlantillaService {
         }
 
         Object[][] ejemplos = {
-            {1, "ALVARADO CAZORLA JOSE PAUL", "SANTIAGO RAMIREZ JULIO", "PERSONAL PLANTA", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."},
-            {2, "ALVAREZ GARCIA ANA CAROLINA", "SANTIAGO RAMIREZ JULIO", "CAS ELECTORAL", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."},
-            {3, "VERA MIRANDA JOSIMAR", "LOPEZ RAMOS MARIA", "PERSONAL OR", "ACTIVO", "jveram", "Fila de ejemplo. Reemplazar antes de importar."}
+            {1, "ALVARADO CAZORLA JOSE PAUL", "SANTIAGO RAMIREZ JULIO", "PERSONAL PLANTA", "ACTIVO"},
+            {2, "ALVAREZ GARCIA ANA CAROLINA", "SANTIAGO RAMIREZ JULIO", "CAS ELECTORAL", "ACTIVO"},
+            {3, "VERA MIRANDA JOSIMAR", "LOPEZ RAMOS MARIA", "PERSONAL OR", "ACTIVO"}
         };
 
         for (int r = 0; r < ejemplos.length; r++) {
@@ -133,14 +131,15 @@ public class EquipoJuridicoPlantillaService {
             "Parser futuro: con 3 o mas palabras, la primera es apellido paterno, la segunda apellido materno y la tercera en adelante nombres.",
             "Si el nombre tiene 2 palabras, se marcara advertencia en la futura previsualizacion.",
             "Si el nombre tiene 1 palabra, se marcara error.",
-            "USERNAME es opcional; si queda vacio, el sistema lo generara automaticamente.",
+            "USERNAME no se llena en esta plantilla; el sistema lo generara automaticamente en la futura importacion.",
             "Regla futura de USERNAME: primera letra del primer nombre real + apellido paterno + inicial del apellido materno.",
             "Ejemplos de USERNAME: ALVARADO CAZORLA JOSE PAUL -> jalvaradoc; VERA MIRANDA JOSIMAR -> jveram; PEREZ SOTO JUAN CARLOS -> jperezs.",
+            "Si el USERNAME generado ya existe, el sistema agregara correlativo.",
             "SUPERVISOR es recomendado; si no existe, el sistema lo creara o lo detectara en la futura importacion.",
             "Si SUPERVISOR queda vacio, el abogado se cargara sin supervisor y quedara como advertencia en la futura previsualizacion.",
             "PERSONAL es informativo en esta fase. Valores sugeridos: PERSONAL PLANTA, PERSONAL OR, CAS ELECTORAL, OTRO.",
             "ESTADO acepta ACTIVO o INACTIVO. Si queda vacio, se asumira ACTIVO en la futura importacion.",
-            "OBSERVACION es para resultados de validacion/importacion posterior."
+            "Las observaciones, errores y advertencias se mostraran en la futura pantalla de previsualizacion/reporte."
         };
 
         for (String instruccion : instrucciones) {
@@ -198,7 +197,7 @@ public class EquipoJuridicoPlantillaService {
     }
 
     private void configurarAnchos(Sheet sheet) {
-        int[] widths = {8, 38, 38, 24, 16, 24, 56};
+        int[] widths = {8, 38, 38, 24, 16};
         for (int i = 0; i < widths.length; i++) {
             sheet.setColumnWidth(i, widths[i] * 256);
         }

@@ -15,9 +15,7 @@ public class EquipoJuridicoPlantillaSimpleService {
         "ABOGADO",
         "SUPERVISOR",
         "PERSONAL",
-        "ESTADO",
-        "USERNAME",
-        "OBSERVACION"
+        "ESTADO"
     };
 
     public void generarPlantilla(File destino) throws IOException {
@@ -102,14 +100,14 @@ public class EquipoJuridicoPlantillaSimpleService {
         StringBuilder xml = new StringBuilder();
         xml.append(sheetStart());
         xml.append("<sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>");
-        xml.append(columns(new int[]{8, 38, 38, 24, 16, 24, 56}));
+        xml.append(columns(new int[]{8, 38, 38, 24, 16}));
         xml.append("<sheetData>");
         xml.append(row(1, COLUMNAS, 1));
-        xml.append(row(2, new String[]{"1", "ALVARADO CAZORLA JOSE PAUL", "SANTIAGO RAMIREZ JULIO", "PERSONAL PLANTA", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
-        xml.append(row(3, new String[]{"2", "ALVAREZ GARCIA ANA CAROLINA", "SANTIAGO RAMIREZ JULIO", "CAS ELECTORAL", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
-        xml.append(row(4, new String[]{"3", "VERA MIRANDA JOSIMAR", "LOPEZ RAMOS MARIA", "PERSONAL OR", "ACTIVO", "jveram", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
+        xml.append(row(2, new String[]{"1", "ALVARADO CAZORLA JOSE PAUL", "SANTIAGO RAMIREZ JULIO", "PERSONAL PLANTA", "ACTIVO"}, 2));
+        xml.append(row(3, new String[]{"2", "ALVAREZ GARCIA ANA CAROLINA", "SANTIAGO RAMIREZ JULIO", "CAS ELECTORAL", "ACTIVO"}, 2));
+        xml.append(row(4, new String[]{"3", "VERA MIRANDA JOSIMAR", "LOPEZ RAMOS MARIA", "PERSONAL OR", "ACTIVO"}, 2));
         xml.append("</sheetData>");
-        xml.append("<autoFilter ref=\"A1:G1\"/>");
+        xml.append("<autoFilter ref=\"A1:E1\"/>");
         xml.append(validations());
         xml.append("</worksheet>");
         return xml.toString();
@@ -129,14 +127,15 @@ public class EquipoJuridicoPlantillaSimpleService {
             "Parser futuro: con 3 o mas palabras, la primera es apellido paterno, la segunda apellido materno y la tercera en adelante nombres.",
             "Si el nombre tiene 2 palabras, se marcara advertencia en la futura previsualizacion.",
             "Si el nombre tiene 1 palabra, se marcara error.",
-            "USERNAME es opcional; si queda vacio, el sistema lo generara automaticamente.",
+            "USERNAME no se llena en esta plantilla; el sistema lo generara automaticamente en la futura importacion.",
             "Regla futura de USERNAME: primera letra del primer nombre real + apellido paterno + inicial del apellido materno.",
             "Ejemplos de USERNAME: ALVARADO CAZORLA JOSE PAUL -> jalvaradoc; VERA MIRANDA JOSIMAR -> jveram; PEREZ SOTO JUAN CARLOS -> jperezs.",
+            "Si el USERNAME generado ya existe, el sistema agregara correlativo.",
             "SUPERVISOR es recomendado; si no existe, el sistema lo creara o lo detectara en la futura importacion.",
             "Si SUPERVISOR queda vacio, el abogado se cargara sin supervisor y quedara como advertencia en la futura previsualizacion.",
             "PERSONAL es informativo en esta fase. Valores sugeridos: PERSONAL PLANTA, PERSONAL OR, CAS ELECTORAL, OTRO.",
             "ESTADO acepta ACTIVO o INACTIVO. Si queda vacio, se asumira ACTIVO en la futura importacion.",
-            "OBSERVACION es para resultados de validacion/importacion posterior."
+            "Las observaciones, errores y advertencias se mostraran en la futura pantalla de previsualizacion/reporte."
         };
         StringBuilder xml = new StringBuilder();
         xml.append(sheetStart());
