@@ -79,6 +79,8 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
 
     private void corregirTextosVisibles() {
         btnGuardarNotificacion.setText("GUARDAR ASIGNACIÓN");
+        jLabel2.setText("Fecha Asignación Notificación");
+        jPanelDatosSolicitud.setBorder(javax.swing.BorderFactory.createTitledBorder("Datos de la Notificación"));
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
@@ -476,7 +478,7 @@ public class JPanelRegistrarExpedientesNotificacionAsignar extends javax.swing.J
             asignacion.setEtapaFlujo(estadoExpedienteNotificacionAsignada.getId());
                      
             expedienteAsignacionService.RegistrarAsigancionExpedienteTO(asignacion);
-            JOptionPane.showMessageDialog(this, "Ejecución registrada correctamente");
+            JOptionPane.showMessageDialog(this, "Notificación registrada correctamente");
             MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
         } 
         catch (Exception ex) 

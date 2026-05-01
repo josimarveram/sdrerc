@@ -72,6 +72,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
      */
     public JPanelRegistrarExpedientePorVerificar() {
         initComponents();
+        corregirTextosVisibles();
         
         oExpedienteAnalisisAbogado = new ExpedienteAnalisisAbogado();
         this.expedienteService = new ExpedienteService();
@@ -116,6 +117,10 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         //textDniRemitente.setEnabled(false);
         //textApellidosNombreRemitente.setEnabled(false);
         //cboUnidadOrganica.setEnabled(false);        
+    }
+
+    private void corregirTextosVisibles() {
+        btnGuardarAnalisis.setText("GUARDAR VERIFICACIÓN");
     }
     
     
@@ -1103,7 +1108,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
             expedienteObservacion.setResolucion(textResolucion.getText());
             expedienteObservacionVerificacionService.registrarObservacion(expedienteObservacion);
 
-            JOptionPane.showMessageDialog(this, "Expediente observación registrada correctamente");
+            JOptionPane.showMessageDialog(this, "Verificación registrada correctamente");
 
             MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorVerificar());
         } 

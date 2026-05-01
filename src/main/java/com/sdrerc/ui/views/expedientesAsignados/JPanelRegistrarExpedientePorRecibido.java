@@ -1005,7 +1005,7 @@ private void seleccionarDistrito(int idDistrito) {
             JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
 
             expedienteAsignacionService.actualizarRecepcionExpediente(oExpedienteAsignacion);
-            JOptionPane.showMessageDialog(this, "Se realizo la recepción del expediente","Éxito", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Recepción registrada correctamente","Éxito", JOptionPane.INFORMATION_MESSAGE);
 
             //limpiarCampos();
             MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesAsignados());

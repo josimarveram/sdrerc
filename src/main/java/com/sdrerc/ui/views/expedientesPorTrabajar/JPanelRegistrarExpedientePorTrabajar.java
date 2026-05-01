@@ -74,6 +74,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
      */
     public JPanelRegistrarExpedientePorTrabajar() {
         initComponents();
+        corregirTextosVisibles();
         
         oExpedienteAnalisisAbogado = new ExpedienteAnalisisAbogado();
         
@@ -126,6 +127,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         col.setMinWidth(0);
         col.setMaxWidth(0);
         col.setPreferredWidth(0);
+    }
+
+    private void corregirTextosVisibles() {
+        btnGuardarAnalisis.setText("GUARDAR ANÁLISIS");
     }
     
     
@@ -1347,7 +1352,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             
             if(dataTo == null || dataTo.isEmpty())
             {
-                JOptionPane.showMessageDialog(this,"No Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             
@@ -1371,7 +1376,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
 
             expedienteAnalisisAbogadoService.agregarAnalisisAbogado(oExpedienteAnalisisAbogado);
-            JOptionPane.showMessageDialog(this, "Se realizo la recepción del expediente","Éxito", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Análisis registrado correctamente","Éxito", JOptionPane.INFORMATION_MESSAGE);
 
             //limpiarCampos();
             MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
