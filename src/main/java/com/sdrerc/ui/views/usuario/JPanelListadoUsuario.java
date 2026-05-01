@@ -13,13 +13,27 @@ import com.sdrerc.ui.table.ButtonEditor;
 import com.sdrerc.ui.table.ButtonEditorAsignar;
 import com.sdrerc.ui.table.ButtonEditorUsuario;
 import com.sdrerc.ui.table.ButtonRenderer;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumn;
 
 /**
  *
@@ -59,9 +73,174 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         initFiltros(); 
         initEventos(); 
         configurarEventosTabla(); // 👈 AQUÍ
+        corregirTextosVisibles();
+        configurarLayoutUsuarios();
+        configurarFiltrosUsuarios();
+        configurarBotonesUsuarios();
+        configurarTablaUsuarios();
+        configurarRenderersUsuarios();
         //cargarRoles();
         buscarUsuarios();
         
+    }
+
+    private void corregirTextosVisibles() {
+        jLabel2.setText("Mantenimiento de Usuarios");
+        jLabel7.setText("Buscar usuario");
+        jLabel8.setText("Estado");
+        btnNuevo1.setText("Nuevo usuario");
+        btnBusqueda.setText("Buscar");
+        btnLimpiar1.setText("Limpiar");
+    }
+
+    private void configurarLayoutUsuarios() {
+        removeAll();
+        setLayout(new BorderLayout(0, 14));
+        setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        setBackground(new Color(245, 247, 250));
+
+        JPanel headerPanel = new JPanel(new BorderLayout(12, 4));
+        headerPanel.setOpaque(false);
+        JLabel subtitulo = new JLabel("Gestión de accesos, estado, roles y asociación de técnicos/abogados");
+        subtitulo.setFont(new Font("Arial", Font.PLAIN, 12));
+        subtitulo.setForeground(new Color(93, 105, 119));
+        jLabel2.setFont(new Font("Arial", Font.BOLD, 22));
+        jLabel2.setForeground(new Color(25, 42, 62));
+        jLabel2.setHorizontalAlignment(JLabel.LEFT);
+        headerPanel.add(jLabel2, BorderLayout.NORTH);
+        headerPanel.add(subtitulo, BorderLayout.CENTER);
+        headerPanel.add(btnNuevo1, BorderLayout.EAST);
+
+        JPanel filtrosPanel = new JPanel(new GridBagLayout());
+        filtrosPanel.setBackground(Color.WHITE);
+        filtrosPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(14, 16, 14, 16)
+        ));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 0, 0, 10);
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridx = 0;
+        filtrosPanel.add(jLabel7, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtrosPanel.add(txtBuscarUsuario, gbc);
+
+        gbc.gridx = 2;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        filtrosPanel.add(jLabel8, gbc);
+
+        gbc.gridx = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtrosPanel.add(cboFiltroEstado, gbc);
+
+        gbc.gridx = 4;
+        filtrosPanel.add(btnBusqueda, gbc);
+
+        gbc.gridx = 5;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        filtrosPanel.add(btnLimpiar1, gbc);
+
+        JPanel topPanel = new JPanel(new BorderLayout(0, 14));
+        topPanel.setOpaque(false);
+        topPanel.add(headerPanel, BorderLayout.NORTH);
+        topPanel.add(filtrosPanel, BorderLayout.CENTER);
+
+        jScrollPane2.setBorder(BorderFactory.createLineBorder(new Color(218, 224, 231)));
+        jScrollPane2.setViewportBorder(BorderFactory.createEmptyBorder());
+        jScrollPane2.setPreferredSize(new Dimension(980, 430));
+        jScrollPane2.setMinimumSize(new Dimension(760, 280));
+
+        add(topPanel, BorderLayout.NORTH);
+        add(jScrollPane2, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private void configurarFiltrosUsuarios() {
+        txtBuscarUsuario.setPreferredSize(new Dimension(360, 34));
+        txtBuscarUsuario.setMinimumSize(new Dimension(260, 34));
+        cboFiltroEstado.setPreferredSize(new Dimension(145, 34));
+        cboFiltroEstado.setMinimumSize(new Dimension(130, 34));
+        txtBuscarUsuario.setToolTipText("Buscar por nombre de usuario");
+        cboFiltroEstado.setToolTipText("Filtrar usuarios por estado");
+    }
+
+    private void configurarBotonesUsuarios() {
+        Dimension botonPrincipal = new Dimension(132, 36);
+        Dimension botonFiltro = new Dimension(96, 34);
+        btnNuevo1.setPreferredSize(botonPrincipal);
+        btnNuevo1.setMinimumSize(botonPrincipal);
+        btnBusqueda.setPreferredSize(botonFiltro);
+        btnBusqueda.setMinimumSize(botonFiltro);
+        btnLimpiar1.setPreferredSize(botonFiltro);
+        btnLimpiar1.setMinimumSize(botonFiltro);
+
+        btnNuevo1.setToolTipText("Registrar un nuevo usuario");
+        btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
+        btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
+    }
+
+    private void configurarTablaUsuarios() {
+        tblUsuarios.setRowHeight(36);
+        tblUsuarios.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblUsuarios.setShowGrid(false);
+        tblUsuarios.setIntercellSpacing(new Dimension(0, 0));
+        tblUsuarios.setFillsViewportHeight(true);
+        tblUsuarios.setSelectionBackground(new Color(219, 235, 247));
+        tblUsuarios.setSelectionForeground(new Color(25, 42, 62));
+
+        JTableHeader header = tblUsuarios.getTableHeader();
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 38));
+        header.setFont(header.getFont().deriveFont(Font.BOLD));
+        header.setReorderingAllowed(false);
+
+        renombrarEncabezado(COL_ID, "ID");
+        renombrarEncabezado(COL_NOMBRE, "Usuario");
+        renombrarEncabezado(COL_DESCRIPCION, "Nombre completo");
+        renombrarEncabezado(COL_ESTADO, "Estado");
+        renombrarEncabezado(COL_EDITAR, "Editar");
+        renombrarEncabezado(COL_ACTIVAR, "Activar/Inactivar");
+        renombrarEncabezado(COL_RESET, "Resetear clave");
+        renombrarEncabezado(COL_ASIGNAR_ROL, "Roles");
+        renombrarEncabezado(COL_ASIGNAR_ABOGADO, "Asociar abogado");
+        tblUsuarios.getTableHeader().repaint();
+
+        ajustarColumna(COL_ID, 0, 0, 0);
+        ajustarColumna(COL_NOMBRE, 120, 150, 210);
+        ajustarColumna(COL_DESCRIPCION, 220, 320, 520);
+        ajustarColumna(COL_ESTADO, 92, 110, 130);
+        ajustarColumna(COL_EDITAR, 78, 86, 100);
+        ajustarColumna(COL_ACTIVAR, 120, 138, 160);
+        ajustarColumna(COL_RESET, 110, 126, 150);
+        ajustarColumna(COL_ASIGNAR_ROL, 90, 104, 125);
+        ajustarColumna(COL_ASIGNAR_ABOGADO, 128, 150, 180);
+    }
+
+    private void configurarRenderersUsuarios() {
+        tblUsuarios.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoUsuarioRenderer());
+        tblUsuarios.getColumnModel().getColumn(COL_ASIGNAR_ABOGADO)
+                .setCellRenderer(new ButtonRenderer("Asociar abogado"));
+    }
+
+    private void ajustarColumna(int indice, int min, int preferido, int max) {
+        TableColumn columna = tblUsuarios.getColumnModel().getColumn(indice);
+        columna.setMinWidth(min);
+        columna.setPreferredWidth(preferido);
+        columna.setMaxWidth(max);
+        if (max == 0) {
+            columna.setResizable(false);
+        }
+    }
+
+    private void renombrarEncabezado(int indice, String texto) {
+        tblUsuarios.getColumnModel().getColumn(indice).setHeaderValue(texto);
     }
     
     private void initFiltros() {
@@ -599,6 +778,43 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
         buscarUsuarios();
+    }
+
+    private static class EstadoUsuarioRenderer extends DefaultTableCellRenderer {
+
+        @Override
+        public java.awt.Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+            JLabel label = (JLabel) super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column);
+
+            String estado = value == null ? "" : value.toString();
+            label.setHorizontalAlignment(JLabel.CENTER);
+            label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
+
+            if ("ACTIVE".equalsIgnoreCase(estado)) {
+                label.setText("ACTIVO");
+                if (!isSelected) {
+                    label.setForeground(new Color(24, 112, 70));
+                    label.setBackground(new Color(225, 244, 235));
+                }
+            } else if ("INACTIVE".equalsIgnoreCase(estado)) {
+                label.setText("INACTIVO");
+                if (!isSelected) {
+                    label.setForeground(new Color(143, 48, 48));
+                    label.setBackground(new Color(250, 230, 230));
+                }
+            } else {
+                label.setText(estado);
+                if (!isSelected) {
+                    label.setForeground(new Color(73, 85, 99));
+                    label.setBackground(Color.WHITE);
+                }
+            }
+            label.setOpaque(true);
+            return label;
+        }
     }
     
 
