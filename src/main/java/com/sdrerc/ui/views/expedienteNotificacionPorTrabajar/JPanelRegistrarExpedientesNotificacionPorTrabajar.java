@@ -72,6 +72,7 @@ public class JPanelRegistrarExpedientesNotificacionPorTrabajar extends javax.swi
      */
     public JPanelRegistrarExpedientesNotificacionPorTrabajar() {
         initComponents();        
+        corregirTextosVisibles();
         oExpedienteAnalisisAbogado = new ExpedienteAnalisisAbogado();
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
@@ -80,6 +81,10 @@ public class JPanelRegistrarExpedientesNotificacionPorTrabajar extends javax.swi
         this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
         cargarTipoMedioNotificacion();
         cargarTieneObservacion();
+    }
+
+    private void corregirTextosVisibles() {
+        btnGuardarNotificacion.setText("GUARDAR NOTIFICACIÓN");
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 

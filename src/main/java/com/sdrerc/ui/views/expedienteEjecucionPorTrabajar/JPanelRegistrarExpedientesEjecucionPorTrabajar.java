@@ -67,6 +67,7 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
      */
     public JPanelRegistrarExpedientesEjecucionPorTrabajar() {
         initComponents();        
+        corregirTextosVisibles();
         this.expedienteService = new ExpedienteService();
         this.catalogoItemService = new CatalogoItemService();
         this.ubigeoService = new UbigeoService();
@@ -74,6 +75,10 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
         this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
         cargarTipoMedioNotificacion();
         cargarTieneObservacion();
+    }
+
+    private void corregirTextosVisibles() {
+        btnGuardarNotificacion.setText("GUARDAR EJECUCIÓN");
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
