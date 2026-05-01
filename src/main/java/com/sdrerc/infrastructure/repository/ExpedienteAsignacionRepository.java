@@ -226,7 +226,10 @@ public class ExpedienteAsignacionRepository {
                     " fecha_recepcion = ?, " +
                     " usuario_modificacion = ?, " +
                     " fecha_modificacion = ? " +
-                    " WHERE id_expediente = ?";
+                    " WHERE id_expediente = ? " +
+                    " AND id_tecnico = ? " +
+                    " AND active = 1 " +
+                    " AND etapa_flujo IS NULL";
         
         String updateExpedienteSql = "UPDATE EXPEDIENTE SET " +
                     " ESTADO = ?, " +
@@ -258,8 +261,15 @@ public class ExpedienteAsignacionRepository {
                 psUpdate.setInt(3, oExpedienteAsignacion.getIdUsuarioModifica());    // id_usuario_modifica    
                 psUpdate.setDate(4, new java.sql.Date(System.currentTimeMillis()));  // fecha_modifica
                 
-                psUpdate.setInt(5, oExpedienteAsignacion.getIdExpediente());         // WHERE id_expediente = ?                
-                psUpdate.executeUpdate();
+                psUpdate.setInt(5, oExpedienteAsignacion.getIdExpediente());         // WHERE id_expediente = ?
+                psUpdate.setInt(6, oExpedienteAsignacion.getIdTecnico());            // AND id_tecnico = ?
+                int filasActualizadas = psUpdate.executeUpdate();
+                if (filasActualizadas == 0) {
+                    throw new SQLException("No se encontro una asignacion inicial activa para recepcionar el expediente.");
+                }
+                if (filasActualizadas > 1) {
+                    throw new SQLException("Se encontro mas de una asignacion inicial activa para el expediente. Revise el duplicado antes de recepcionar.");
+                }
             } 
             conn.commit(); 
             return true;   
@@ -270,7 +280,7 @@ public class ExpedienteAsignacionRepository {
             {
                 conn.rollback(); 
             }
-            return false;   
+            throw ex;
         } 
         finally 
         {

@@ -61,6 +61,9 @@ public class ExpedienteAsignacionService {
         }
         // Llamar al repositorio (DAO)
         boolean respuesta = expedienteAsignacionRepository.actualizarRecepcionExpediente(oExpedienteAsignacion);
+        if (!respuesta) {
+            throw new Exception("No se pudo registrar la recepción del expediente.");
+        }
         return respuesta; 
     } 
     

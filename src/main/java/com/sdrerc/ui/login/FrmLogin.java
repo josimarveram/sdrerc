@@ -7,6 +7,7 @@ package com.sdrerc.ui.login;
 import com.sdrerc.application.LoginService;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.security.PasswordEncoder;
+import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.ui.common.FrmPrincipal;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import java.awt.Color;
@@ -266,6 +267,7 @@ public class FrmLogin extends javax.swing.JFrame
 
         try {
              User u = new LoginService().login(username, password);
+             SessionContext.setUsuarioActual(u);
             
             /*
             JOptionPane.showMessageDialog(this,

@@ -12,6 +12,7 @@ import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
+import com.sdrerc.shared.session.SessionContext;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
@@ -88,7 +89,8 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel {
                         
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
             
-            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(1, 0, estadoExpedienteRecibido.getId(),0,0);
+            int idTecnicoActual = SessionContext.getIdTecnicoActual();
+            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(idTecnicoActual, 0, estadoExpedienteRecibido.getId(),0,0);
             cargarTablaNueva(lista);
         } 
         catch (Exception e) {

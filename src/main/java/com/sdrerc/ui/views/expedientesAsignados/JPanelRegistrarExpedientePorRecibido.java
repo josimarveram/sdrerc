@@ -19,6 +19,7 @@ import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.util.ComboBoxUtils;
 import com.sdrerc.util.TextFieldRules;
 import java.sql.Date;
@@ -999,7 +1000,8 @@ private void seleccionarDistrito(int idDistrito) {
             oExpedienteAsignacion.setEtapaFlujo(estadoExpedienteRecibido.getId());
             oExpedienteAsignacion.setIdExpediente(idExpedienteOculto);
             oExpedienteAsignacion.setAceptaRecepcion(1);
-            oExpedienteAsignacion.setIdUsuarioModifica(1);
+            oExpedienteAsignacion.setIdUsuarioModifica(SessionContext.getIdUsuarioActual());
+            oExpedienteAsignacion.setIdTecnico(SessionContext.getIdTecnicoActual());
             // Llamar al servicio
             if(idExpedienteOculto == 0)
             JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
