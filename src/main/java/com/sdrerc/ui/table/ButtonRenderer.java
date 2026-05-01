@@ -22,10 +22,11 @@ public class ButtonRenderer extends JButton implements TableCellRenderer {
 
     @Override
     public Component getTableCellRendererComponent(
-            JTable table, Object value, boolean isSelected,
+        JTable table, Object value, boolean isSelected,
             boolean hasFocus, int row, int column) {
 
         setText(value == null ? "" : value.toString());
+        setEnabled(!(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled());
         return this;
     }
 }

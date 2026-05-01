@@ -11,6 +11,7 @@ import com.sdrerc.application.SupervisionService;
 import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.ui.table.ButtonEditor;
+import com.sdrerc.ui.table.ButtonCellValue;
 import com.sdrerc.ui.table.ButtonEditorAsignar;
 import com.sdrerc.ui.table.ButtonEditorUsuario;
 import com.sdrerc.ui.table.ButtonRenderer;
@@ -371,7 +372,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                 
                 // Columna COL_ASIGNAR_ROL
                 if (col == COL_ASIGNAR_ABOGADO) {
-                    abrirDlgAsignarAbogados(row);
+                    if (equipoSupervisadoHabilitado(row)) {
+                        abrirDlgAsignarAbogados(row);
+                    }
                 }
                 
                 
@@ -434,6 +437,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
             String estado = cboFiltroEstado.getSelectedItem().toString();
 
             for (User r : userService.buscar(nombre, estado)) {
+                boolean esSupervisor = userService.tieneRol(r.getUserId(), "SUPERVISION");
                 model.addRow(new Object[]{
                     r.getUserId(),
                     r.getUsername(),
@@ -443,7 +447,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar",
                     "Resetear",
                     "Asignar Rol",
-                    "Equipo",
+                    new ButtonCellValue("Equipo", esSupervisor),
                 });
             }
         } catch (Exception e) {
@@ -784,6 +788,12 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setVisible(true);
         
         buscarUsuarios();
+    }
+
+    private boolean equipoSupervisadoHabilitado(int row) {
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        Object value = model.getValueAt(modelRow, COL_ASIGNAR_ABOGADO);
+        return !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
     }
 
     private void abrirRegistroEquipoJuridico() {

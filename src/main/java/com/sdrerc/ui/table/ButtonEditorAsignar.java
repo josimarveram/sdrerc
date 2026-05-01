@@ -27,6 +27,7 @@ public class ButtonEditorAsignar extends AbstractCellEditor
     private final UserService userService;
 
     private int row;
+    private boolean enabled;
 
     public ButtonEditorAsignar(JTable table,
                                JPanelListadoUsuario parent,
@@ -45,6 +46,9 @@ public class ButtonEditorAsignar extends AbstractCellEditor
             int row, int column) {
 
         this.row = row;
+        enabled = !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
+        button.setEnabled(enabled);
+        button.setText(value == null ? "Equipo" : value.toString());
         return button;
     }
 
@@ -55,7 +59,9 @@ public class ButtonEditorAsignar extends AbstractCellEditor
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        parent.abrirDlgAsignarAbogados(row);
+        if (enabled) {
+            parent.abrirDlgAsignarAbogados(row);
+        }
         fireEditingStopped();
     }
 }
