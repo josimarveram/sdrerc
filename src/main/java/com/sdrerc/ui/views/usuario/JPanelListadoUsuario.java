@@ -225,7 +225,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         renombrarEncabezado(COL_ACTIVAR, "Activar/Inactivar");
         renombrarEncabezado(COL_RESET, "Resetear clave");
         renombrarEncabezado(COL_ASIGNAR_ROL, "Roles");
-        renombrarEncabezado(COL_ASIGNAR_ABOGADO, "Asociar abogado");
+        renombrarEncabezado(COL_ASIGNAR_ABOGADO, "Equipo supervisado");
         tblUsuarios.getTableHeader().repaint();
 
         ajustarColumna(COL_ID, 0, 0, 0);
@@ -242,7 +242,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private void configurarRenderersUsuarios() {
         tblUsuarios.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoUsuarioRenderer());
         tblUsuarios.getColumnModel().getColumn(COL_ASIGNAR_ABOGADO)
-                .setCellRenderer(new ButtonRenderer("Asociar abogado"));
+                .setCellRenderer(new ButtonRenderer("Equipo"));
     }
 
     private void ajustarColumna(int indice, int min, int preferido, int max) {
@@ -290,7 +290,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                 .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 7));
         /*
         tblUsuarios.getColumn("ASIGNAR_ABOGADO")
-        .setCellRenderer(new ButtonRenderer("Asignar Abogado"));
+        .setCellRenderer(new ButtonRenderer("Equipo"));
         tblUsuarios.getColumn("ASIGNAR_ABOGADO")
                 .setCellEditor(new ButtonEditorAsignar(tblUsuarios, this, 8));
         */
@@ -433,7 +433,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar",
                     "Resetear",
                     "Asignar Rol",
-                    "Asignar Abogado",
+                    "Equipo",
                 });
             }
         } catch (Exception e) {
@@ -824,6 +824,21 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
         String nombreSupervisor =
             tblUsuarios.getValueAt(row, COL_NOMBRE).toString();
+
+        try {
+            if (!userService.tieneRol(supervisorId, "SUPERVISION")) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Esta opción solo aplica a usuarios con rol SUPERVISION.",
+                        "Acceso denegado",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
         DlgAsignarAbogados dlg =
             new DlgAsignarAbogados(

@@ -47,7 +47,7 @@ public class DlgAsignarAbogados extends javax.swing.JDialog {
             String supervisorNombre,
             UserService userService,
             SupervisionService supervisionService) {
-        super(parent, "Asignar Abogados", ModalityType.APPLICATION_MODAL);
+        super(parent, "Equipo supervisado", ModalityType.APPLICATION_MODAL);
         initComponents();
 
         this.supervisorId = supervisorId;
@@ -79,7 +79,7 @@ public class DlgAsignarAbogados extends javax.swing.JDialog {
 
         try {
             List<User> todosAbogados =
-                userService.listarPorRol("ABOGADO");
+                supervisionService.listarAbogadosDisponiblesParaSupervisor(supervisorId);
 
             List<Long> asignadosIds =
                 supervisionService.obtenerAbogados(supervisorId);
@@ -285,8 +285,9 @@ public class DlgAsignarAbogados extends javax.swing.JDialog {
 
         try {
             supervisionService.asignarAbogados(supervisorId, abogados);
+            JOptionPane.showMessageDialog(this, "Equipo supervisado actualizado correctamente.");
             dispose();
-        } catch (SQLException e) {
+        } catch (Exception e) {
             JOptionPane.showMessageDialog(this,e.getMessage());
         }
         

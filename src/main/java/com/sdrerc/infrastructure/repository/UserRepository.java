@@ -50,9 +50,11 @@ public class UserRepository {
         "SELECT COUNT(1) " +
         "FROM APP_USER_ROLES ur " +
         "JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
+        "JOIN APP_USERS u ON u.USER_ID = ur.USER_ID " +
         "WHERE ur.USER_ID = ? " +
         "AND r.ROLE_NAME = ? " +
-        "AND r.STATUS = 'ACTIVE'";
+        "AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO') " +
+        "AND UPPER(u.STATUS) IN ('ACTIVE', 'ACTIVO')";
     
     private static final String SQL_LISTAR_POR_ROL =
         "SELECT DISTINCT u.USER_ID, u.USERNAME, u.FULL_NAME, u.STATUS, u.ID_TECNICO " +
@@ -60,8 +62,8 @@ public class UserRepository {
         "JOIN APP_USER_ROLES ur ON ur.USER_ID = u.USER_ID " +
         "JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
         "WHERE r.ROLE_NAME = ? " +
-        "AND u.STATUS = 'ACTIVE' " +
-        "AND r.STATUS = 'ACTIVE' " +
+        "AND UPPER(u.STATUS) IN ('ACTIVE', 'ACTIVO') " +
+        "AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO') " +
         "ORDER BY u.FULL_NAME";
     
     public User findByUsername(String username) {
@@ -455,7 +457,7 @@ public class UserRepository {
             "FROM APP_ROLES r " +
             "JOIN APP_USER_ROLES ur ON ur.ROLE_ID = r.ROLE_ID " +
             "WHERE ur.USER_ID = ? " +
-            "AND r.STATUS = 'ACTIVE'";
+            "AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO')";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, userId);

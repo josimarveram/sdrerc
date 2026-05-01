@@ -4,9 +4,11 @@
  */
 package com.sdrerc.application;
 
+import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.repository.SupervisionRepository;
 import com.sdrerc.infrastructure.repository.UserRepository;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -14,13 +16,11 @@ import java.util.List;
  * @author David
  */
 public class SupervisionService {
-    //private final UserRepository userRepo;
-    //private final SupervisionRepository supervisionRepo;
-
+    private final UserRepository userRepo;
     private final SupervisionRepository supervisionRepo;
     
     public SupervisionService() {
-        
+        this.userRepo = new UserRepository();
         this.supervisionRepo = new SupervisionRepository();
     }
     
@@ -28,36 +28,37 @@ public class SupervisionService {
     public void asignarAbogados(Long supervisorId,
                                 List<Long> abogados)
             throws SQLException {
-        /*
-        if (!userService.tieneRol(supervisorId, "SUPERVISOR")) {
-            throw new BusinessException("El usuario no es Supervisor");
+        if (abogados == null) {
+            abogados = Collections.emptyList();
         }
-        */
-        
-        List<Long> actuales =
-        supervisionRepo.findAbogadosBySupervisor(supervisorId);
 
-        // INSERTAR NUEVOS
+        if (supervisorId == null || supervisorId <= 0) {
+            throw new IllegalArgumentException("Seleccione un supervisor válido.");
+        }
+
+        if (!userRepo.tieneRol(supervisorId, "SUPERVISION")) {
+            throw new IllegalStateException("Esta opción solo aplica a usuarios con rol SUPERVISION.");
+        }
+
         for (Long abogadoId : abogados) {
-            /*
-            if (!userService.tieneRol(abogadoId, "ABOGADO")) {
-                throw new BusinessException(
-                    "El usuario " + abogadoId + " no es Abogado"
-                );
+            if (abogadoId == null || abogadoId <= 0) {
+                throw new IllegalArgumentException("Seleccione un abogado válido.");
             }
-            */
-
-            if (!supervisionRepo.exists(supervisorId, abogadoId)) {
-                supervisionRepo.insert(supervisorId, abogadoId);
+            if (!userRepo.tieneRol(abogadoId, "ABOGADO")) {
+                throw new IllegalStateException("El usuario seleccionado no tiene rol ABOGADO.");
+            }
+            if (supervisionRepo.abogadoAsignadoAOtroSupervisor(supervisorId, abogadoId)) {
+                throw new IllegalStateException("El abogado ya está asignado a otro supervisor.");
             }
         }
-        
-        // ELIMINAR LOS QUITADOS
-        for (Long abogadoId : actuales) {
 
-            if (!abogados.contains(abogadoId)) {
-                supervisionRepo.delete(supervisorId, abogadoId);
+        try {
+            supervisionRepo.reemplazarAbogados(supervisorId, abogados);
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1) {
+                throw new IllegalStateException("El abogado ya está asignado a otro supervisor.", ex);
             }
+            throw ex;
         }
     }
 
@@ -69,5 +70,10 @@ public class SupervisionService {
     public List<Long> obtenerAbogados(Long supervisorId)
             throws SQLException {
         return supervisionRepo.findAbogadosBySupervisor(supervisorId);
+    }
+
+    public List<User> listarAbogadosDisponiblesParaSupervisor(Long supervisorId)
+            throws SQLException {
+        return supervisionRepo.findAbogadosDisponiblesParaSupervisor(supervisorId);
     }
 }
