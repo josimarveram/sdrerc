@@ -9,6 +9,7 @@ import com.sdrerc.application.EquipoJuridicoService;
 import com.sdrerc.application.RoleService;
 import com.sdrerc.application.SupervisionService;
 import com.sdrerc.application.UserService;
+import com.sdrerc.domain.model.EquipoJuridicoImportPreview;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.ui.table.ButtonEditor;
 import com.sdrerc.ui.table.ButtonCellValue;
@@ -62,6 +63,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private String statusSeleccionado;
     private final JButton btnNuevoEquipoJuridico = new JButton("Nuevo abogado/supervisor");
     private final JButton btnDescargarPlantillaEquipo = new JButton("Descargar plantilla Excel");
+    private final JButton btnPrevisualizarPlantillaEquipo = new JButton("Previsualizar Excel");
     private final JButton btnVincularTecnico = new JButton("Vincular técnico");
     
     public static final int COL_ID = 0;
@@ -127,6 +129,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         gbcAcciones.insets = new Insets(0, 0, 0, 8);
         accionesHeader.add(btnNuevoEquipoJuridico, gbcAcciones);
         accionesHeader.add(btnDescargarPlantillaEquipo, gbcAcciones);
+        accionesHeader.add(btnPrevisualizarPlantillaEquipo, gbcAcciones);
         accionesHeader.add(btnVincularTecnico, gbcAcciones);
         gbcAcciones.insets = new Insets(0, 0, 0, 0);
         accionesHeader.add(btnNuevo1, gbcAcciones);
@@ -200,6 +203,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         Dimension botonPrincipal = new Dimension(132, 36);
         Dimension botonEquipo = new Dimension(198, 36);
         Dimension botonPlantilla = new Dimension(186, 36);
+        Dimension botonPrevisualizar = new Dimension(154, 36);
         Dimension botonVincular = new Dimension(142, 36);
         Dimension botonFiltro = new Dimension(96, 34);
         btnNuevo1.setPreferredSize(botonPrincipal);
@@ -208,6 +212,8 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         btnNuevoEquipoJuridico.setMinimumSize(botonEquipo);
         btnDescargarPlantillaEquipo.setPreferredSize(botonPlantilla);
         btnDescargarPlantillaEquipo.setMinimumSize(botonPlantilla);
+        btnPrevisualizarPlantillaEquipo.setPreferredSize(botonPrevisualizar);
+        btnPrevisualizarPlantillaEquipo.setMinimumSize(botonPrevisualizar);
         btnVincularTecnico.setPreferredSize(botonVincular);
         btnVincularTecnico.setMinimumSize(botonVincular);
         btnBusqueda.setPreferredSize(botonFiltro);
@@ -218,6 +224,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         btnNuevo1.setToolTipText("Registrar un nuevo usuario");
         btnNuevoEquipoJuridico.setToolTipText("Registrar abogado o supervisor creando técnico, usuario y roles");
         btnDescargarPlantillaEquipo.setToolTipText("Descargar plantilla oficial para carga masiva de equipo jurídico");
+        btnPrevisualizarPlantillaEquipo.setToolTipText("Leer plantilla Excel y previsualizar validaciones sin grabar en base de datos");
         btnVincularTecnico.setToolTipText("Vincular usuario con técnico/abogado funcional");
         btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
         btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
@@ -336,6 +343,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         btnVincularTecnico.addActionListener(e -> vincularTecnicoDesdeSeleccion());
         btnNuevoEquipoJuridico.addActionListener(e -> abrirRegistroEquipoJuridico());
         btnDescargarPlantillaEquipo.addActionListener(e -> descargarPlantillaEquipoJuridico());
+        btnPrevisualizarPlantillaEquipo.addActionListener(e -> previsualizarPlantillaEquipoJuridico());
         
         tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -878,6 +886,47 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
             Class<?> fallbackClass = Class.forName("com.sdrerc.application.EquipoJuridicoPlantillaSimpleService");
             Object fallback = fallbackClass.getDeclaredConstructor().newInstance();
             fallbackClass.getMethod("generarPlantilla", File.class).invoke(fallback, destino);
+        }
+    }
+
+    private void previsualizarPlantillaEquipoJuridico() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Seleccionar plantilla Excel");
+        chooser.setFileFilter(new FileNameExtensionFilter("Archivos Excel (*.xlsx)", "xlsx"));
+
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        try {
+            EquipoJuridicoImportPreview preview = previsualizarEquipoJuridico(chooser.getSelectedFile());
+            Window parent = SwingUtilities.getWindowAncestor(this);
+            DlgPrevisualizarEquipoJuridicoExcel dlg = new DlgPrevisualizarEquipoJuridicoExcel(parent, preview);
+            dlg.setLocationRelativeTo(this);
+            dlg.setVisible(true);
+        } catch (Throwable ex) {
+            Throwable causa = obtenerCausaReal(ex);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se pudo previsualizar la plantilla Excel: " + causa.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    private EquipoJuridicoImportPreview previsualizarEquipoJuridico(File archivo) throws Exception {
+        try {
+            Class<?> serviceClass = Class.forName("com.sdrerc.application.EquipoJuridicoImportService");
+            Object service = serviceClass.getDeclaredConstructor().newInstance();
+            Object preview = serviceClass.getMethod("previsualizar", File.class).invoke(service, archivo);
+            return (EquipoJuridicoImportPreview) preview;
+        } catch (Throwable ex) {
+            Class<?> fallbackClass = Class.forName("com.sdrerc.application.EquipoJuridicoImportSimpleService");
+            Object fallback = fallbackClass.getDeclaredConstructor().newInstance();
+            Object preview = fallbackClass.getMethod("previsualizar", File.class).invoke(fallback, archivo);
+            return (EquipoJuridicoImportPreview) preview;
         }
     }
 
