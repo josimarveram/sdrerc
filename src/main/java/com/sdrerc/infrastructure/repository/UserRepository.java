@@ -198,6 +198,57 @@ public class UserRepository {
             ps.executeUpdate();
         }
     }
+
+    public boolean existeTecnicoVinculadoAOtroUsuario(Long userId, Integer idTecnico) throws SQLException {
+        String sql =
+            "SELECT COUNT(1) " +
+            "FROM APP_USERS " +
+            "WHERE ID_TECNICO = ? " +
+            "AND USER_ID <> ?";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(1, idTecnico);
+            ps.setLong(2, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    public void vincularTecnico(Long userId, Integer idTecnico) throws SQLException {
+        String sql =
+            "UPDATE APP_USERS " +
+            "SET ID_TECNICO = ? " +
+            "WHERE USER_ID = ?";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(1, idTecnico);
+            ps.setLong(2, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public Long obtenerIdTecnicoUsuario(Long userId) throws SQLException {
+        String sql = "SELECT ID_TECNICO FROM APP_USERS WHERE USER_ID = ?";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setLong(1, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return getNullableLong(rs, "ID_TECNICO");
+                }
+            }
+        }
+        return null;
+    }
     
     public void actualizarPassword(Long userId, String hash) throws SQLException {
 

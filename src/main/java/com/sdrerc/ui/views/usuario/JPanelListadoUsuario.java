@@ -13,11 +13,13 @@ import com.sdrerc.ui.table.ButtonEditor;
 import com.sdrerc.ui.table.ButtonEditorAsignar;
 import com.sdrerc.ui.table.ButtonEditorUsuario;
 import com.sdrerc.ui.table.ButtonRenderer;
+import com.sdrerc.ui.views.asignacion.JDialogTecnico;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -25,6 +27,7 @@ import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -50,6 +53,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private String roleNameSeleccionado;
     private String roleDescriptionSeleccionado;
     private String statusSeleccionado;
+    private final JButton btnVincularTecnico = new JButton("Vincular técnico");
     
     public static final int COL_ID = 0;
     private static final int COL_NOMBRE = 1;
@@ -107,9 +111,17 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         jLabel2.setFont(new Font("Arial", Font.BOLD, 22));
         jLabel2.setForeground(new Color(25, 42, 62));
         jLabel2.setHorizontalAlignment(JLabel.LEFT);
+        JPanel accionesHeader = new JPanel(new GridBagLayout());
+        accionesHeader.setOpaque(false);
+        GridBagConstraints gbcAcciones = new GridBagConstraints();
+        gbcAcciones.insets = new Insets(0, 0, 0, 8);
+        accionesHeader.add(btnVincularTecnico, gbcAcciones);
+        gbcAcciones.insets = new Insets(0, 0, 0, 0);
+        accionesHeader.add(btnNuevo1, gbcAcciones);
+
         headerPanel.add(jLabel2, BorderLayout.NORTH);
         headerPanel.add(subtitulo, BorderLayout.CENTER);
-        headerPanel.add(btnNuevo1, BorderLayout.EAST);
+        headerPanel.add(accionesHeader, BorderLayout.EAST);
 
         JPanel filtrosPanel = new JPanel(new GridBagLayout());
         filtrosPanel.setBackground(Color.WHITE);
@@ -174,15 +186,19 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
     private void configurarBotonesUsuarios() {
         Dimension botonPrincipal = new Dimension(132, 36);
+        Dimension botonVincular = new Dimension(142, 36);
         Dimension botonFiltro = new Dimension(96, 34);
         btnNuevo1.setPreferredSize(botonPrincipal);
         btnNuevo1.setMinimumSize(botonPrincipal);
+        btnVincularTecnico.setPreferredSize(botonVincular);
+        btnVincularTecnico.setMinimumSize(botonVincular);
         btnBusqueda.setPreferredSize(botonFiltro);
         btnBusqueda.setMinimumSize(botonFiltro);
         btnLimpiar1.setPreferredSize(botonFiltro);
         btnLimpiar1.setMinimumSize(botonFiltro);
 
         btnNuevo1.setToolTipText("Registrar un nuevo usuario");
+        btnVincularTecnico.setToolTipText("Vincular usuario con técnico/abogado funcional");
         btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
         btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
     }
@@ -296,6 +312,8 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                 }
             }
         });
+
+        btnVincularTecnico.addActionListener(e -> vincularTecnicoDesdeSeleccion());
         
         tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -756,6 +774,47 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setVisible(true);
         
         buscarUsuarios();
+    }
+
+    private void vincularTecnicoDesdeSeleccion() {
+        int row = tblUsuarios.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione un usuario.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (tblUsuarios.isEditing()) {
+            tblUsuarios.getCellEditor().stopCellEditing();
+        }
+
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        Long userId = (Long) model.getValueAt(modelRow, COL_ID);
+
+        Window parent = SwingUtilities.getWindowAncestor(this);
+        Frame frame = parent instanceof Frame ? (Frame) parent : null;
+        JDialogTecnico dialog = new JDialogTecnico(frame, true);
+        dialog.setTitle("Vincular técnico/abogado funcional");
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        String idTecnicoSeleccionado = dialog.getIdTecnicoSeleccionado();
+        if (idTecnicoSeleccionado == null || idTecnicoSeleccionado.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione un técnico válido.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            Integer idTecnico = Integer.valueOf(idTecnicoSeleccionado);
+            userService.vincularTecnico(userId, idTecnico);
+            JOptionPane.showMessageDialog(this, "Técnico vinculado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            buscarUsuarios();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Seleccione un técnico válido.", "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
     
     public void abrirDlgAsignarAbogados(int row) {

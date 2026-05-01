@@ -43,6 +43,34 @@ public class UserService {
     public void cambiarEstado(Long id, String estado) throws SQLException {
         repo.cambiarEstado(id, estado);
     }
+
+    public void vincularTecnico(Long userId, Integer idTecnico) throws SQLException {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("Seleccione un usuario.");
+        }
+        if (idTecnico == null || idTecnico <= 0) {
+            throw new IllegalArgumentException("Seleccione un técnico válido.");
+        }
+
+        Long idTecnicoActual = repo.obtenerIdTecnicoUsuario(userId);
+        if (idTecnicoActual != null && idTecnicoActual.intValue() == idTecnico.intValue()) {
+            throw new IllegalStateException("El usuario ya tiene vinculado este técnico.");
+        }
+
+        if (repo.existeTecnicoVinculadoAOtroUsuario(userId, idTecnico)) {
+            throw new IllegalStateException("Este técnico ya está vinculado a otro usuario.");
+        }
+
+        try {
+            repo.vincularTecnico(userId, idTecnico);
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1) {
+                throw new IllegalStateException("Este técnico ya está vinculado a otro usuario.", ex);
+            }
+            throw ex;
+        }
+    }
+
     public void cambiarPassword(Long userId, String hash)
             throws SQLException {
 
