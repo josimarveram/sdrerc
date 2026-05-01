@@ -26,7 +26,6 @@ import javax.swing.JTextField;
 public class DlgRegistrarEquipoJuridico extends JDialog {
 
     private final EquipoJuridicoService equipoJuridicoService;
-    private final JTextField txtIdTipoDocumento = new JTextField();
     private final JTextField txtNumeroDocumento = new JTextField();
     private final JTextField txtApellidoPaterno = new JTextField();
     private final JTextField txtApellidoMaterno = new JTextField();
@@ -58,16 +57,15 @@ public class DlgRegistrarEquipoJuridico extends JDialog {
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        agregarCampo(panel, gbc, 0, "ID tipo documento", txtIdTipoDocumento);
-        agregarCampo(panel, gbc, 1, "Número documento", txtNumeroDocumento);
-        agregarCampo(panel, gbc, 2, "Apellido paterno", txtApellidoPaterno);
-        agregarCampo(panel, gbc, 3, "Apellido materno", txtApellidoMaterno);
-        agregarCampo(panel, gbc, 4, "Nombres", txtNombres);
-        agregarCampo(panel, gbc, 5, "Username", txtUsername);
-        agregarCampo(panel, gbc, 6, "Contraseña temporal", pwdTemporal);
+        agregarCampo(panel, gbc, 0, "Número documento", txtNumeroDocumento);
+        agregarCampo(panel, gbc, 1, "Apellido paterno", txtApellidoPaterno);
+        agregarCampo(panel, gbc, 2, "Apellido materno", txtApellidoMaterno);
+        agregarCampo(panel, gbc, 3, "Nombres", txtNombres);
+        agregarCampo(panel, gbc, 4, "Username", txtUsername);
+        agregarCampo(panel, gbc, 5, "Contraseña temporal", pwdTemporal);
 
         gbc.gridx = 0;
-        gbc.gridy = 7;
+        gbc.gridy = 6;
         gbc.weightx = 0;
         panel.add(new JLabel("Rol operativo"), gbc);
 
@@ -79,7 +77,7 @@ public class DlgRegistrarEquipoJuridico extends JDialog {
         panel.add(rolesPanel, gbc);
 
         gbc.gridx = 0;
-        gbc.gridy = 8;
+        gbc.gridy = 7;
         gbc.weightx = 0;
         panel.add(new JLabel("Supervisor principal"), gbc);
 
@@ -134,7 +132,6 @@ public class DlgRegistrarEquipoJuridico extends JDialog {
     private void guardar() {
         try {
             EquipoJuridicoRegistro registro = new EquipoJuridicoRegistro();
-            registro.setIdTipoDocumento(parseInteger(txtIdTipoDocumento.getText()));
             registro.setNumeroDocumento(txtNumeroDocumento.getText());
             registro.setApellidoPaterno(txtApellidoPaterno.getText());
             registro.setApellidoMaterno(txtApellidoMaterno.getText());
@@ -155,13 +152,6 @@ public class DlgRegistrarEquipoJuridico extends JDialog {
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
         }
-    }
-
-    private Integer parseInteger(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
-        return Integer.valueOf(value.trim());
     }
 
     private static class SupervisorItem {
