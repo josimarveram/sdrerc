@@ -9,21 +9,14 @@ import java.util.zip.ZipOutputStream;
 
 public class EquipoJuridicoPlantillaSimpleService {
 
-    private static final String VERSION_PLANTILLA = "PLANTILLA_SDRERC_EQUIPO_JURIDICO_V1";
+    private static final String VERSION_PLANTILLA = "PLANTILLA_SDRERC_EQUIPO_JURIDICO_V2";
     private static final String[] COLUMNAS = {
         "ITEM",
-        "TIPO_PERSONAL",
-        "ROL_OPERATIVO",
-        "APELLIDO_PATERNO",
-        "APELLIDO_MATERNO",
-        "NOMBRES",
-        "NOMBRE_COMPLETO",
-        "TIPO_DOCUMENTO",
-        "NUMERO_DOCUMENTO",
-        "USERNAME",
-        "PASSWORD_TEMPORAL",
+        "ABOGADO",
         "SUPERVISOR",
+        "PERSONAL",
         "ESTADO",
+        "USERNAME",
         "OBSERVACION"
     };
 
@@ -109,14 +102,14 @@ public class EquipoJuridicoPlantillaSimpleService {
         StringBuilder xml = new StringBuilder();
         xml.append(sheetStart());
         xml.append("<sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>");
-        xml.append(columns(new int[]{8, 22, 26, 24, 24, 28, 38, 20, 22, 24, 26, 38, 16, 54}));
+        xml.append(columns(new int[]{8, 38, 38, 24, 16, 24, 56}));
         xml.append("<sheetData>");
         xml.append(row(1, COLUMNAS, 1));
-        xml.append(row(2, new String[]{"1", "ABOGADO", "ABOGADO", "PEREZ", "SOTO", "JUAN CARLOS", "PEREZ SOTO JUAN CARLOS", "DNI", "12345678", "jperez", "", "MARIA LOPEZ RAMOS", "ACTIVO", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
-        xml.append(row(3, new String[]{"2", "SUPERVISOR", "SUPERVISION", "LOPEZ", "RAMOS", "MARIA", "LOPEZ RAMOS MARIA", "DNI", "87654321", "mlopez", "", "", "ACTIVO", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
-        xml.append(row(4, new String[]{"3", "ABOGADO/SUPERVISOR", "ABOGADO_SUPERVISION", "GARCIA", "NUNEZ", "ANA", "GARCIA NUNEZ ANA", "", "", "", "", "", "ACTIVO", "USERNAME y PASSWORD_TEMPORAL pueden quedar vacios."}, 2));
+        xml.append(row(2, new String[]{"1", "ALVARADO CAZORLA JOSE PAUL", "SANTIAGO RAMIREZ JULIO", "PERSONAL PLANTA", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
+        xml.append(row(3, new String[]{"2", "ALVAREZ GARCIA ANA CAROLINA", "SANTIAGO RAMIREZ JULIO", "CAS ELECTORAL", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
+        xml.append(row(4, new String[]{"3", "VERA MIRANDA JOSIMAR", "LOPEZ RAMOS MARIA", "PERSONAL OR", "ACTIVO", "jveram", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
         xml.append("</sheetData>");
-        xml.append("<autoFilter ref=\"A1:N1\"/>");
+        xml.append("<autoFilter ref=\"A1:G1\"/>");
         xml.append(validations());
         xml.append("</worksheet>");
         return xml.toString();
@@ -130,11 +123,19 @@ public class EquipoJuridicoPlantillaSimpleService {
             "No agregar ni eliminar columnas.",
             "No llenar ID_TECNICO, USER_ID ni ROLE_ID.",
             "El sistema generara los identificadores internos.",
-            "ROL_OPERATIVO acepta: ABOGADO, SUPERVISION, ABOGADO_SUPERVISION.",
-            "Si USERNAME queda vacio, se sugerira automaticamente en la fase de importacion.",
-            "Si PASSWORD_TEMPORAL queda vacio, se usara una contrasena temporal definida.",
-            "SUPERVISOR debe coincidir con un supervisor existente o incluido en la plantilla.",
-            "NUMERO_DOCUMENTO no es obligatorio en esta fase.",
+            "ABOGADO debe ingresarse en formato: APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES.",
+            "SUPERVISOR debe ingresarse en formato: APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES.",
+            "Ejemplos validos: ALVARADO CAZORLA JOSE PAUL, VERA MIRANDA JOSIMAR, PEREZ SOTO JUAN CARLOS.",
+            "Parser futuro: con 3 o mas palabras, la primera es apellido paterno, la segunda apellido materno y la tercera en adelante nombres.",
+            "Si el nombre tiene 2 palabras, se marcara advertencia en la futura previsualizacion.",
+            "Si el nombre tiene 1 palabra, se marcara error.",
+            "USERNAME es opcional; si queda vacio, el sistema lo generara automaticamente.",
+            "Regla futura de USERNAME: primera letra del primer nombre real + apellido paterno + inicial del apellido materno.",
+            "Ejemplos de USERNAME: ALVARADO CAZORLA JOSE PAUL -> jalvaradoc; VERA MIRANDA JOSIMAR -> jveram; PEREZ SOTO JUAN CARLOS -> jperezs.",
+            "SUPERVISOR es recomendado; si no existe, el sistema lo creara o lo detectara en la futura importacion.",
+            "Si SUPERVISOR queda vacio, el abogado se cargara sin supervisor y quedara como advertencia en la futura previsualizacion.",
+            "PERSONAL es informativo en esta fase. Valores sugeridos: PERSONAL PLANTA, PERSONAL OR, CAS ELECTORAL, OTRO.",
+            "ESTADO acepta ACTIVO o INACTIVO. Si queda vacio, se asumira ACTIVO en la futura importacion.",
             "OBSERVACION es para resultados de validacion/importacion posterior."
         };
         StringBuilder xml = new StringBuilder();
@@ -150,15 +151,15 @@ public class EquipoJuridicoPlantillaSimpleService {
 
     private String catalogosSheet() {
         String[][] rows = {
-            {"ROL_OPERATIVO", "ESTADO", "TIPO_DOCUMENTO"},
-            {"ABOGADO", "ACTIVO", "DNI"},
-            {"SUPERVISION", "INACTIVO", "CE"},
-            {"ABOGADO_SUPERVISION", "", "PASAPORTE"},
-            {"", "", "OTRO"}
+            {"ESTADO", "PERSONAL"},
+            {"ACTIVO", "PERSONAL PLANTA"},
+            {"INACTIVO", "PERSONAL OR"},
+            {"", "CAS ELECTORAL"},
+            {"", "OTRO"}
         };
         StringBuilder xml = new StringBuilder();
         xml.append(sheetStart());
-        xml.append(columns(new int[]{28, 18, 20}));
+        xml.append(columns(new int[]{18, 24}));
         xml.append("<sheetData>");
         for (int i = 0; i < rows.length; i++) {
             xml.append(row(i + 1, rows[i], i == 0 ? 1 : 2));
@@ -200,10 +201,9 @@ public class EquipoJuridicoPlantillaSimpleService {
     }
 
     private String validations() {
-        return "<dataValidations count=\"3\">"
-            + validation("C2:C1000", "\"ABOGADO,SUPERVISION,ABOGADO_SUPERVISION\"")
-            + validation("H2:H1000", "\"DNI,CE,PASAPORTE,OTRO\"")
-            + validation("M2:M1000", "\"ACTIVO,INACTIVO\"")
+        return "<dataValidations count=\"2\">"
+            + validation("D2:D1000", "\"PERSONAL PLANTA,PERSONAL OR,CAS ELECTORAL,OTRO\"")
+            + validation("E2:E1000", "\"ACTIVO,INACTIVO\"")
             + "</dataValidations>";
     }
 

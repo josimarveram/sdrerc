@@ -23,28 +23,15 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class EquipoJuridicoPlantillaService {
 
-    private static final String VERSION_PLANTILLA = "PLANTILLA_SDRERC_EQUIPO_JURIDICO_V1";
+    private static final String VERSION_PLANTILLA = "PLANTILLA_SDRERC_EQUIPO_JURIDICO_V2";
     private static final String[] COLUMNAS = {
         "ITEM",
-        "TIPO_PERSONAL",
-        "ROL_OPERATIVO",
-        "APELLIDO_PATERNO",
-        "APELLIDO_MATERNO",
-        "NOMBRES",
-        "NOMBRE_COMPLETO",
-        "TIPO_DOCUMENTO",
-        "NUMERO_DOCUMENTO",
-        "USERNAME",
-        "PASSWORD_TEMPORAL",
-        "SUPERVISOR",
-        "ESTADO",
-        "OBSERVACION"
-    };
-
-    private static final String[] ROLES_OPERATIVOS = {
         "ABOGADO",
-        "SUPERVISION",
-        "ABOGADO_SUPERVISION"
+        "SUPERVISOR",
+        "PERSONAL",
+        "ESTADO",
+        "USERNAME",
+        "OBSERVACION"
     };
 
     private static final String[] ESTADOS = {
@@ -52,10 +39,10 @@ public class EquipoJuridicoPlantillaService {
         "INACTIVO"
     };
 
-    private static final String[] TIPOS_DOCUMENTO = {
-        "DNI",
-        "CE",
-        "PASAPORTE",
+    private static final String[] TIPOS_PERSONAL = {
+        "PERSONAL PLANTA",
+        "PERSONAL OR",
+        "CAS ELECTORAL",
         "OTRO"
     };
 
@@ -96,9 +83,9 @@ public class EquipoJuridicoPlantillaService {
         }
 
         Object[][] ejemplos = {
-            {1, "ABOGADO", "ABOGADO", "PEREZ", "SOTO", "JUAN CARLOS", "PEREZ SOTO JUAN CARLOS", "DNI", "12345678", "jperez", "", "MARIA LOPEZ RAMOS", "ACTIVO", "Fila de ejemplo. Reemplazar antes de importar."},
-            {2, "SUPERVISOR", "SUPERVISION", "LOPEZ", "RAMOS", "MARIA", "LOPEZ RAMOS MARIA", "DNI", "87654321", "mlopez", "", "", "ACTIVO", "Fila de ejemplo. Reemplazar antes de importar."},
-            {3, "ABOGADO/SUPERVISOR", "ABOGADO_SUPERVISION", "GARCIA", "NUNEZ", "ANA", "GARCIA NUNEZ ANA", "", "", "", "", "", "ACTIVO", "USERNAME y PASSWORD_TEMPORAL pueden quedar vacios."}
+            {1, "ALVARADO CAZORLA JOSE PAUL", "SANTIAGO RAMIREZ JULIO", "PERSONAL PLANTA", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."},
+            {2, "ALVAREZ GARCIA ANA CAROLINA", "SANTIAGO RAMIREZ JULIO", "CAS ELECTORAL", "ACTIVO", "", "Fila de ejemplo. Reemplazar antes de importar."},
+            {3, "VERA MIRANDA JOSIMAR", "LOPEZ RAMOS MARIA", "PERSONAL OR", "ACTIVO", "jveram", "Fila de ejemplo. Reemplazar antes de importar."}
         };
 
         for (int r = 0; r < ejemplos.length; r++) {
@@ -140,11 +127,19 @@ public class EquipoJuridicoPlantillaService {
             "No agregar ni eliminar columnas.",
             "No llenar ID_TECNICO, USER_ID ni ROLE_ID.",
             "El sistema generara los identificadores internos.",
-            "ROL_OPERATIVO acepta: ABOGADO, SUPERVISION, ABOGADO_SUPERVISION.",
-            "Si USERNAME queda vacio, se sugerira automaticamente en la fase de importacion.",
-            "Si PASSWORD_TEMPORAL queda vacio, se usara una contrasena temporal definida.",
-            "SUPERVISOR debe coincidir con un supervisor existente o incluido en la plantilla.",
-            "NUMERO_DOCUMENTO no es obligatorio en esta fase.",
+            "ABOGADO debe ingresarse en formato: APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES.",
+            "SUPERVISOR debe ingresarse en formato: APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES.",
+            "Ejemplos validos: ALVARADO CAZORLA JOSE PAUL, VERA MIRANDA JOSIMAR, PEREZ SOTO JUAN CARLOS.",
+            "Parser futuro: con 3 o mas palabras, la primera es apellido paterno, la segunda apellido materno y la tercera en adelante nombres.",
+            "Si el nombre tiene 2 palabras, se marcara advertencia en la futura previsualizacion.",
+            "Si el nombre tiene 1 palabra, se marcara error.",
+            "USERNAME es opcional; si queda vacio, el sistema lo generara automaticamente.",
+            "Regla futura de USERNAME: primera letra del primer nombre real + apellido paterno + inicial del apellido materno.",
+            "Ejemplos de USERNAME: ALVARADO CAZORLA JOSE PAUL -> jalvaradoc; VERA MIRANDA JOSIMAR -> jveram; PEREZ SOTO JUAN CARLOS -> jperezs.",
+            "SUPERVISOR es recomendado; si no existe, el sistema lo creara o lo detectara en la futura importacion.",
+            "Si SUPERVISOR queda vacio, el abogado se cargara sin supervisor y quedara como advertencia en la futura previsualizacion.",
+            "PERSONAL es informativo en esta fase. Valores sugeridos: PERSONAL PLANTA, PERSONAL OR, CAS ELECTORAL, OTRO.",
+            "ESTADO acepta ACTIVO o INACTIVO. Si queda vacio, se asumira ACTIVO en la futura importacion.",
             "OBSERVACION es para resultados de validacion/importacion posterior."
         };
 
@@ -162,7 +157,7 @@ public class EquipoJuridicoPlantillaService {
     private void crearHojaCatalogos(Workbook workbook, CellStyle headerStyle, CellStyle textStyle) {
         Sheet sheet = workbook.createSheet("CATALOGOS");
         Row header = sheet.createRow(0);
-        String[] headers = {"ROL_OPERATIVO", "ESTADO", "TIPO_DOCUMENTO"};
+        String[] headers = {"ESTADO", "PERSONAL"};
 
         for (int i = 0; i < headers.length; i++) {
             Cell cell = header.createCell(i);
@@ -170,17 +165,15 @@ public class EquipoJuridicoPlantillaService {
             cell.setCellStyle(headerStyle);
         }
 
-        int maxRows = Math.max(ROLES_OPERATIVOS.length, Math.max(ESTADOS.length, TIPOS_DOCUMENTO.length));
+        int maxRows = Math.max(ESTADOS.length, TIPOS_PERSONAL.length);
         for (int i = 0; i < maxRows; i++) {
             Row row = sheet.createRow(i + 1);
-            crearCeldaCatalogo(row, 0, i < ROLES_OPERATIVOS.length ? ROLES_OPERATIVOS[i] : "", textStyle);
-            crearCeldaCatalogo(row, 1, i < ESTADOS.length ? ESTADOS[i] : "", textStyle);
-            crearCeldaCatalogo(row, 2, i < TIPOS_DOCUMENTO.length ? TIPOS_DOCUMENTO[i] : "", textStyle);
+            crearCeldaCatalogo(row, 0, i < ESTADOS.length ? ESTADOS[i] : "", textStyle);
+            crearCeldaCatalogo(row, 1, i < TIPOS_PERSONAL.length ? TIPOS_PERSONAL[i] : "", textStyle);
         }
 
-        sheet.setColumnWidth(0, 28 * 256);
-        sheet.setColumnWidth(1, 18 * 256);
-        sheet.setColumnWidth(2, 20 * 256);
+        sheet.setColumnWidth(0, 18 * 256);
+        sheet.setColumnWidth(1, 24 * 256);
     }
 
     private void crearCeldaCatalogo(Row row, int column, String value, CellStyle style) {
@@ -191,9 +184,8 @@ public class EquipoJuridicoPlantillaService {
 
     private void agregarValidaciones(Sheet sheet) {
         DataValidationHelper helper = sheet.getDataValidationHelper();
-        agregarLista(sheet, helper, 2, ROLES_OPERATIVOS);
-        agregarLista(sheet, helper, 7, TIPOS_DOCUMENTO);
-        agregarLista(sheet, helper, 12, ESTADOS);
+        agregarLista(sheet, helper, 3, TIPOS_PERSONAL);
+        agregarLista(sheet, helper, 4, ESTADOS);
     }
 
     private void agregarLista(Sheet sheet, DataValidationHelper helper, int column, String[] values) {
@@ -206,7 +198,7 @@ public class EquipoJuridicoPlantillaService {
     }
 
     private void configurarAnchos(Sheet sheet) {
-        int[] widths = {8, 22, 26, 24, 24, 28, 38, 20, 22, 24, 26, 38, 16, 54};
+        int[] widths = {8, 38, 38, 24, 16, 24, 56};
         for (int i = 0; i < widths.length; i++) {
             sheet.setColumnWidth(i, widths[i] * 256);
         }
