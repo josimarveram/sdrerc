@@ -1,0 +1,235 @@
+package com.sdrerc.application;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public class EquipoJuridicoPlantillaSimpleService {
+
+    private static final String VERSION_PLANTILLA = "PLANTILLA_SDRERC_EQUIPO_JURIDICO_V1";
+    private static final String[] COLUMNAS = {
+        "ITEM",
+        "TIPO_PERSONAL",
+        "ROL_OPERATIVO",
+        "APELLIDO_PATERNO",
+        "APELLIDO_MATERNO",
+        "NOMBRES",
+        "NOMBRE_COMPLETO",
+        "TIPO_DOCUMENTO",
+        "NUMERO_DOCUMENTO",
+        "USERNAME",
+        "PASSWORD_TEMPORAL",
+        "SUPERVISOR",
+        "ESTADO",
+        "OBSERVACION"
+    };
+
+    public void generarPlantilla(File destino) throws IOException {
+        if (destino == null) {
+            throw new IllegalArgumentException("Seleccione una ruta de destino.");
+        }
+
+        try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(destino))) {
+            agregar(zip, "[Content_Types].xml", contentTypes());
+            agregar(zip, "_rels/.rels", rootRels());
+            agregar(zip, "xl/workbook.xml", workbook());
+            agregar(zip, "xl/_rels/workbook.xml.rels", workbookRels());
+            agregar(zip, "xl/styles.xml", styles());
+            agregar(zip, "xl/worksheets/sheet1.xml", equipoJuridicoSheet());
+            agregar(zip, "xl/worksheets/sheet2.xml", instruccionesSheet());
+            agregar(zip, "xl/worksheets/sheet3.xml", catalogosSheet());
+        }
+    }
+
+    private void agregar(ZipOutputStream zip, String path, String content) throws IOException {
+        zip.putNextEntry(new ZipEntry(path));
+        zip.write(content.getBytes(StandardCharsets.UTF_8));
+        zip.closeEntry();
+    }
+
+    private String contentTypes() {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+            + "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
+            + "<Default Extension=\"xml\" ContentType=\"application/xml\"/>"
+            + "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>"
+            + "<Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/>"
+            + "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>"
+            + "<Override PartName=\"/xl/worksheets/sheet2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>"
+            + "<Override PartName=\"/xl/worksheets/sheet3.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>"
+            + "</Types>";
+    }
+
+    private String rootRels() {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+            + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>"
+            + "</Relationships>";
+    }
+
+    private String workbook() {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            + "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" "
+            + "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">"
+            + "<sheets>"
+            + "<sheet name=\"EQUIPO_JURIDICO\" sheetId=\"1\" r:id=\"rId1\"/>"
+            + "<sheet name=\"INSTRUCCIONES\" sheetId=\"2\" r:id=\"rId2\"/>"
+            + "<sheet name=\"CATALOGOS\" sheetId=\"3\" state=\"hidden\" r:id=\"rId3\"/>"
+            + "</sheets>"
+            + "</workbook>";
+    }
+
+    private String workbookRels() {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+            + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>"
+            + "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet2.xml\"/>"
+            + "<Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet3.xml\"/>"
+            + "<Relationship Id=\"rId4\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>"
+            + "</Relationships>";
+    }
+
+    private String styles() {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            + "<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">"
+            + "<fonts count=\"2\"><font><sz val=\"11\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"11\"/><color rgb=\"FFFFFFFF\"/><name val=\"Calibri\"/></font></fonts>"
+            + "<fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF1F4E78\"/><bgColor indexed=\"64\"/></patternFill></fill></fills>"
+            + "<borders count=\"2\"><border/><border><left style=\"thin\"/><right style=\"thin\"/><top style=\"thin\"/><bottom style=\"thin\"/></border></borders>"
+            + "<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>"
+            + "<cellXfs count=\"3\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/>"
+            + "<xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf>"
+            + "<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf></cellXfs>"
+            + "</styleSheet>";
+    }
+
+    private String equipoJuridicoSheet() {
+        StringBuilder xml = new StringBuilder();
+        xml.append(sheetStart());
+        xml.append("<sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>");
+        xml.append(columns(new int[]{8, 22, 26, 24, 24, 28, 38, 20, 22, 24, 26, 38, 16, 54}));
+        xml.append("<sheetData>");
+        xml.append(row(1, COLUMNAS, 1));
+        xml.append(row(2, new String[]{"1", "ABOGADO", "ABOGADO", "PEREZ", "SOTO", "JUAN CARLOS", "PEREZ SOTO JUAN CARLOS", "DNI", "12345678", "jperez", "", "MARIA LOPEZ RAMOS", "ACTIVO", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
+        xml.append(row(3, new String[]{"2", "SUPERVISOR", "SUPERVISION", "LOPEZ", "RAMOS", "MARIA", "LOPEZ RAMOS MARIA", "DNI", "87654321", "mlopez", "", "", "ACTIVO", "Fila de ejemplo. Reemplazar antes de importar."}, 2));
+        xml.append(row(4, new String[]{"3", "ABOGADO/SUPERVISOR", "ABOGADO_SUPERVISION", "GARCIA", "NUNEZ", "ANA", "GARCIA NUNEZ ANA", "", "", "", "", "", "ACTIVO", "USERNAME y PASSWORD_TEMPORAL pueden quedar vacios."}, 2));
+        xml.append("</sheetData>");
+        xml.append("<autoFilter ref=\"A1:N1\"/>");
+        xml.append(validations());
+        xml.append("</worksheet>");
+        return xml.toString();
+    }
+
+    private String instruccionesSheet() {
+        String[] instrucciones = {
+            "Plantilla oficial SDRERC - Equipo Juridico",
+            "Version: " + VERSION_PLANTILLA,
+            "No modificar nombres de columnas.",
+            "No agregar ni eliminar columnas.",
+            "No llenar ID_TECNICO, USER_ID ni ROLE_ID.",
+            "El sistema generara los identificadores internos.",
+            "ROL_OPERATIVO acepta: ABOGADO, SUPERVISION, ABOGADO_SUPERVISION.",
+            "Si USERNAME queda vacio, se sugerira automaticamente en la fase de importacion.",
+            "Si PASSWORD_TEMPORAL queda vacio, se usara una contrasena temporal definida.",
+            "SUPERVISOR debe coincidir con un supervisor existente o incluido en la plantilla.",
+            "NUMERO_DOCUMENTO no es obligatorio en esta fase.",
+            "OBSERVACION es para resultados de validacion/importacion posterior."
+        };
+        StringBuilder xml = new StringBuilder();
+        xml.append(sheetStart());
+        xml.append(columns(new int[]{90}));
+        xml.append("<sheetData>");
+        for (int i = 0; i < instrucciones.length; i++) {
+            xml.append(row(i + 1, new String[]{instrucciones[i]}, i == 0 ? 1 : 2));
+        }
+        xml.append("</sheetData></worksheet>");
+        return xml.toString();
+    }
+
+    private String catalogosSheet() {
+        String[][] rows = {
+            {"ROL_OPERATIVO", "ESTADO", "TIPO_DOCUMENTO"},
+            {"ABOGADO", "ACTIVO", "DNI"},
+            {"SUPERVISION", "INACTIVO", "CE"},
+            {"ABOGADO_SUPERVISION", "", "PASAPORTE"},
+            {"", "", "OTRO"}
+        };
+        StringBuilder xml = new StringBuilder();
+        xml.append(sheetStart());
+        xml.append(columns(new int[]{28, 18, 20}));
+        xml.append("<sheetData>");
+        for (int i = 0; i < rows.length; i++) {
+            xml.append(row(i + 1, rows[i], i == 0 ? 1 : 2));
+        }
+        xml.append("</sheetData></worksheet>");
+        return xml.toString();
+    }
+
+    private String sheetStart() {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            + "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">";
+    }
+
+    private String columns(int[] widths) {
+        StringBuilder xml = new StringBuilder("<cols>");
+        for (int i = 0; i < widths.length; i++) {
+            int col = i + 1;
+            xml.append("<col min=\"").append(col).append("\" max=\"").append(col)
+                .append("\" width=\"").append(widths[i]).append("\" customWidth=\"1\"/>");
+        }
+        xml.append("</cols>");
+        return xml.toString();
+    }
+
+    private String row(int index, String[] values, int style) {
+        StringBuilder xml = new StringBuilder();
+        xml.append("<row r=\"").append(index).append("\">");
+        for (int i = 0; i < values.length; i++) {
+            xml.append(cell(colName(i + 1) + index, values[i], style));
+        }
+        xml.append("</row>");
+        return xml.toString();
+    }
+
+    private String cell(String ref, String value, int style) {
+        return "<c r=\"" + ref + "\" t=\"inlineStr\" s=\"" + style + "\"><is><t>"
+            + escape(value)
+            + "</t></is></c>";
+    }
+
+    private String validations() {
+        return "<dataValidations count=\"3\">"
+            + validation("C2:C1000", "\"ABOGADO,SUPERVISION,ABOGADO_SUPERVISION\"")
+            + validation("H2:H1000", "\"DNI,CE,PASAPORTE,OTRO\"")
+            + validation("M2:M1000", "\"ACTIVO,INACTIVO\"")
+            + "</dataValidations>";
+    }
+
+    private String validation(String range, String formula) {
+        return "<dataValidation type=\"list\" allowBlank=\"1\" showErrorMessage=\"1\" sqref=\"" + range + "\">"
+            + "<formula1>" + formula + "</formula1>"
+            + "</dataValidation>";
+    }
+
+    private String colName(int index) {
+        StringBuilder name = new StringBuilder();
+        while (index > 0) {
+            int rem = (index - 1) % 26;
+            name.insert(0, (char) ('A' + rem));
+            index = (index - 1) / 26;
+        }
+        return name.toString();
+    }
+
+    private String escape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+    }
+}

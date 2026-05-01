@@ -28,13 +28,17 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -57,6 +61,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private String roleDescriptionSeleccionado;
     private String statusSeleccionado;
     private final JButton btnNuevoEquipoJuridico = new JButton("Nuevo abogado/supervisor");
+    private final JButton btnDescargarPlantillaEquipo = new JButton("Descargar plantilla Excel");
     private final JButton btnVincularTecnico = new JButton("Vincular técnico");
     
     public static final int COL_ID = 0;
@@ -121,6 +126,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         GridBagConstraints gbcAcciones = new GridBagConstraints();
         gbcAcciones.insets = new Insets(0, 0, 0, 8);
         accionesHeader.add(btnNuevoEquipoJuridico, gbcAcciones);
+        accionesHeader.add(btnDescargarPlantillaEquipo, gbcAcciones);
         accionesHeader.add(btnVincularTecnico, gbcAcciones);
         gbcAcciones.insets = new Insets(0, 0, 0, 0);
         accionesHeader.add(btnNuevo1, gbcAcciones);
@@ -193,12 +199,15 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private void configurarBotonesUsuarios() {
         Dimension botonPrincipal = new Dimension(132, 36);
         Dimension botonEquipo = new Dimension(198, 36);
+        Dimension botonPlantilla = new Dimension(186, 36);
         Dimension botonVincular = new Dimension(142, 36);
         Dimension botonFiltro = new Dimension(96, 34);
         btnNuevo1.setPreferredSize(botonPrincipal);
         btnNuevo1.setMinimumSize(botonPrincipal);
         btnNuevoEquipoJuridico.setPreferredSize(botonEquipo);
         btnNuevoEquipoJuridico.setMinimumSize(botonEquipo);
+        btnDescargarPlantillaEquipo.setPreferredSize(botonPlantilla);
+        btnDescargarPlantillaEquipo.setMinimumSize(botonPlantilla);
         btnVincularTecnico.setPreferredSize(botonVincular);
         btnVincularTecnico.setMinimumSize(botonVincular);
         btnBusqueda.setPreferredSize(botonFiltro);
@@ -208,6 +217,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
         btnNuevo1.setToolTipText("Registrar un nuevo usuario");
         btnNuevoEquipoJuridico.setToolTipText("Registrar abogado o supervisor creando técnico, usuario y roles");
+        btnDescargarPlantillaEquipo.setToolTipText("Descargar plantilla oficial para carga masiva de equipo jurídico");
         btnVincularTecnico.setToolTipText("Vincular usuario con técnico/abogado funcional");
         btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
         btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
@@ -325,6 +335,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
         btnVincularTecnico.addActionListener(e -> vincularTecnicoDesdeSeleccion());
         btnNuevoEquipoJuridico.addActionListener(e -> abrirRegistroEquipoJuridico());
+        btnDescargarPlantillaEquipo.addActionListener(e -> descargarPlantillaEquipoJuridico());
         
         tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -802,6 +813,79 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
         buscarUsuarios();
+    }
+
+    private void descargarPlantillaEquipoJuridico() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Guardar plantilla Excel");
+        chooser.setFileFilter(new FileNameExtensionFilter("Archivos Excel (*.xlsx)", "xlsx"));
+        chooser.setSelectedFile(new File("plantilla_equipo_juridico_sdrerc.xlsx"));
+
+        int result = chooser.showSaveDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File destino = asegurarExtensionXlsx(chooser.getSelectedFile());
+        if (destino.exists()) {
+            int confirmar = JOptionPane.showConfirmDialog(
+                    this,
+                    "El archivo ya existe. ¿Desea reemplazarlo?",
+                    "Confirmar",
+                    JOptionPane.YES_NO_OPTION
+            );
+            if (confirmar != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            generarPlantillaEquipoJuridico(destino);
+            if (!destino.exists() || destino.length() == 0) {
+                throw new IllegalStateException("El archivo no se generó en la ruta seleccionada.");
+            }
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Plantilla Excel generada correctamente:\n" + destino.getAbsolutePath(),
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        } catch (Throwable ex) {
+            Throwable causa = obtenerCausaReal(ex);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se pudo generar la plantilla Excel: " + causa.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    private File asegurarExtensionXlsx(File file) {
+        String path = file.getAbsolutePath();
+        if (path.toLowerCase().endsWith(".xlsx")) {
+            return file;
+        }
+        return new File(path + ".xlsx");
+    }
+
+    private void generarPlantillaEquipoJuridico(File destino) throws Exception {
+        try {
+            Class<?> serviceClass = Class.forName("com.sdrerc.application.EquipoJuridicoPlantillaService");
+            Object service = serviceClass.getDeclaredConstructor().newInstance();
+            serviceClass.getMethod("generarPlantilla", File.class).invoke(service, destino);
+        } catch (Throwable ex) {
+            Class<?> fallbackClass = Class.forName("com.sdrerc.application.EquipoJuridicoPlantillaSimpleService");
+            Object fallback = fallbackClass.getDeclaredConstructor().newInstance();
+            fallbackClass.getMethod("generarPlantilla", File.class).invoke(fallback, destino);
+        }
+    }
+
+    private Throwable obtenerCausaReal(Throwable ex) {
+        if (ex instanceof InvocationTargetException && ((InvocationTargetException) ex).getTargetException() != null) {
+            return ((InvocationTargetException) ex).getTargetException();
+        }
+        return ex.getCause() != null ? ex.getCause() : ex;
     }
 
     private void vincularTecnicoDesdeSeleccion() {
