@@ -1,5 +1,9 @@
 package com.sdrerc.shared.constants;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * IDs de catalogo usados por el flujo de expedientes SDRERC.
  *
@@ -21,6 +25,18 @@ public final class FlujoExpedienteConstants {
         public static final int EJECUCION_TRABAJADA = 89;
         public static final int NOTIFICACION_ASIGNADA = 90;
         public static final int NOTIFICACION_TRABAJADA = 91;
+
+        public static final List<Integer> ESTADOS_FUNCIONALES_EXPEDIENTE = Collections.unmodifiableList(Arrays.asList(
+                REGISTRO_EXPEDIENTE,
+                EXPEDIENTE_ASIGNADO,
+                EXPEDIENTE_RECIBIDO,
+                EXPEDIENTE_ATENDIDO,
+                EXPEDIENTE_VERIFICADO,
+                EJECUCION_ASIGNADA,
+                EJECUCION_TRABAJADA,
+                NOTIFICACION_ASIGNADA,
+                NOTIFICACION_TRABAJADA
+        ));
 
         private EstadoExpediente() {
         }

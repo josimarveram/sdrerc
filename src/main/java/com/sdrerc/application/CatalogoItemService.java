@@ -6,6 +6,7 @@ package com.sdrerc.application;
 
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.infrastructure.repository.CatalogoDetalleRepository;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants;
 import com.sdrerc.util.EstadoTramiteText;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +30,31 @@ public class CatalogoItemService {
         return normalizarEstados(repository.obtenerEstados());
     }
 
+    public List<CatalogoItem> obtenerEstadosTramite() {
+        List<CatalogoItem> estados = repository.obtenerEstados();
+        List<CatalogoItem> estadosTramite = new ArrayList<>();
+
+        for (Integer idEstado : FlujoExpedienteConstants.EstadoExpediente.ESTADOS_FUNCIONALES_EXPEDIENTE) {
+            CatalogoItem estado = buscarEstadoPorId(estados, idEstado);
+            if (estado != null) {
+                estadosTramite.add(estado);
+            }
+        }
+
+        return estadosTramite;
+    }
+
     public CatalogoItem crearCatalogoItem(int idCatalogo, String descripcion) {
         return repository.crearCatalogoItem(idCatalogo, descripcion);
+    }
+
+    private CatalogoItem buscarEstadoPorId(List<CatalogoItem> estados, int idEstado) {
+        for (CatalogoItem estado : estados) {
+            if (estado.getIdCatalogoItem() == idEstado) {
+                return estado;
+            }
+        }
+        return null;
     }
 
     private List<CatalogoItem> normalizarEstados(List<CatalogoItem> estados) {

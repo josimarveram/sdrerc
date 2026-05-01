@@ -56,7 +56,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
         
         cmbEstado.addItem(new CatalogoItem(0, 0, "TODOS", 1));
 
-        List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
+        List<CatalogoItem> lista = catalogoItemService.obtenerEstadosTramite();
 
         for (CatalogoItem estado : lista) {
             cmbEstado.addItem(estado);

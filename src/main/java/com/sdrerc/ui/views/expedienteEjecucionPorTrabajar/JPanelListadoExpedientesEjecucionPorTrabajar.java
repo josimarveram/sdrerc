@@ -63,7 +63,7 @@ public class JPanelListadoExpedientesEjecucionPorTrabajar extends javax.swing.JP
         
         cmbEstado.addItem(new CatalogoItem(0, 0, "TODOS", 1));
 
-        List<CatalogoItem> lista = catalogoItemService.obtenerEstados();
+        List<CatalogoItem> lista = catalogoItemService.obtenerEstadosTramite();
 
         for (CatalogoItem estado : lista) {
             estadosPorId.put(estado.getIdCatalogoItem(), estado.getDescripcion());
