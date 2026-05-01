@@ -66,6 +66,10 @@ public class ExpedienteAsignacionRepository {
              
             conn = OracleConnection.getConnection();
             conn.setAutoCommit(false); 
+
+            if (existeAsignacionActivaPorEtapa(conn, asignacion.getIdExpediente(), null)) {
+                throw new SQLException("El expediente ya cuenta con una asignación activa para esta etapa. No es posible asignarlo nuevamente.");
+            }
                 
             try (PreparedStatement psUpdate = conn.prepareStatement(updateExpedienteSql)) {
                 psUpdate.setDate(1, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
@@ -141,6 +145,10 @@ public class ExpedienteAsignacionRepository {
         {
             conn = OracleConnection.getConnection();
             conn.setAutoCommit(false);             
+
+            if (existeAsignacionActivaPorEtapa(conn, oExpedienteAsignacion.getIdExpediente(), oExpedienteAsignacion.getEtapaFlujo())) {
+                throw new SQLException("El expediente ya cuenta con una asignación activa para esta etapa. No es posible asignarlo nuevamente.");
+            }
             
             try(PreparedStatement psupdateExpediente = conn.prepareStatement(updateExpedienteSql))
             {
@@ -179,13 +187,35 @@ public class ExpedienteAsignacionRepository {
             {
                 conn.rollback(); 
             }
-            return false;   
+            throw ex;
         } 
         finally 
         {
             if (conn != null) conn.setAutoCommit(true); // volver a modo normal
             if (conn != null) conn.close();
         }               
+    }
+
+    private boolean existeAsignacionActivaPorEtapa(Connection conn, int idExpediente, Integer etapaFlujo) throws SQLException {
+        String sql;
+        if (etapaFlujo == null) {
+            sql = "SELECT COUNT(1) FROM EXPEDIENTE_ASIGNACION "
+                    + "WHERE ID_EXPEDIENTE = ? AND ACTIVE = 1 AND ETAPA_FLUJO IS NULL";
+        } else {
+            sql = "SELECT COUNT(1) FROM EXPEDIENTE_ASIGNACION "
+                    + "WHERE ID_EXPEDIENTE = ? AND ACTIVE = 1 AND ETAPA_FLUJO = ?";
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idExpediente);
+            if (etapaFlujo != null) {
+                ps.setInt(2, etapaFlujo);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
     }
     
     

@@ -47,6 +47,9 @@ public class ExpedienteAsignacionService {
         }
         // Llamar al repositorio (DAO)
         boolean respuesta = expedienteAsignacionRepository.RegistrarAsigancionExpedienteTO(oExpedienteAsignacion);
+        if (!respuesta) {
+            throw new Exception("No se pudo registrar la asignación del expediente.");
+        }
         return respuesta; 
     } 
     
