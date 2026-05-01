@@ -8,13 +8,27 @@ import com.sdrerc.application.RoleService;
 import com.sdrerc.domain.model.Role;
 import com.sdrerc.ui.table.ButtonEditor;
 import com.sdrerc.ui.table.ButtonRenderer;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumn;
 
 /**
  *
@@ -47,9 +61,170 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         initFiltros(); 
         initEventos(); 
         configurarEventosTabla(); // 👈 AQUÍ
+        corregirTextosVisibles();
+        configurarLayoutRoles();
+        configurarFiltrosRoles();
+        configurarBotonesRoles();
+        configurarTablaRoles();
+        configurarRenderersRoles();
         //cargarRoles();
         buscarRoles();
         
+    }
+
+    private void corregirTextosVisibles() {
+        jLabel2.setText("Mantenimiento de Roles");
+        jLabel7.setText("Buscar rol");
+        jLabel8.setText("Estado");
+        btnNuevo1.setText("Nuevo rol");
+        btnBusqueda.setText("Buscar");
+        btnLimpiar1.setText("Limpiar");
+    }
+
+    private void configurarLayoutRoles() {
+        removeAll();
+        setLayout(new BorderLayout(0, 14));
+        setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        setBackground(new Color(245, 247, 250));
+
+        JPanel headerPanel = new JPanel(new BorderLayout(12, 4));
+        headerPanel.setOpaque(false);
+
+        JLabel subtitulo = new JLabel("Gestión de perfiles, permisos y accesos del sistema");
+        subtitulo.setFont(new Font("Arial", Font.PLAIN, 12));
+        subtitulo.setForeground(new Color(93, 105, 119));
+
+        jLabel2.setFont(new Font("Arial", Font.BOLD, 22));
+        jLabel2.setForeground(new Color(25, 42, 62));
+        jLabel2.setHorizontalAlignment(JLabel.LEFT);
+
+        headerPanel.add(jLabel2, BorderLayout.NORTH);
+        headerPanel.add(subtitulo, BorderLayout.CENTER);
+        headerPanel.add(btnNuevo1, BorderLayout.EAST);
+
+        JPanel filtrosPanel = new JPanel(new GridBagLayout());
+        filtrosPanel.setBackground(Color.WHITE);
+        filtrosPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(14, 16, 14, 16)
+        ));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 0, 0, 10);
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridx = 0;
+        filtrosPanel.add(jLabel7, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtrosPanel.add(txtBuscarRol, gbc);
+
+        gbc.gridx = 2;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        filtrosPanel.add(jLabel8, gbc);
+
+        gbc.gridx = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtrosPanel.add(cboFiltroEstado, gbc);
+
+        gbc.gridx = 4;
+        filtrosPanel.add(btnBusqueda, gbc);
+
+        gbc.gridx = 5;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        filtrosPanel.add(btnLimpiar1, gbc);
+
+        JPanel topPanel = new JPanel(new BorderLayout(0, 14));
+        topPanel.setOpaque(false);
+        topPanel.add(headerPanel, BorderLayout.NORTH);
+        topPanel.add(filtrosPanel, BorderLayout.CENTER);
+
+        jScrollPane2.setBorder(BorderFactory.createLineBorder(new Color(218, 224, 231)));
+        jScrollPane2.setViewportBorder(BorderFactory.createEmptyBorder());
+        jScrollPane2.setPreferredSize(new Dimension(980, 430));
+        jScrollPane2.setMinimumSize(new Dimension(760, 280));
+
+        add(topPanel, BorderLayout.NORTH);
+        add(jScrollPane2, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private void configurarFiltrosRoles() {
+        txtBuscarRol.setPreferredSize(new Dimension(380, 34));
+        txtBuscarRol.setMinimumSize(new Dimension(260, 34));
+        cboFiltroEstado.setPreferredSize(new Dimension(145, 34));
+        cboFiltroEstado.setMinimumSize(new Dimension(130, 34));
+        txtBuscarRol.setToolTipText("Buscar por nombre de rol");
+        cboFiltroEstado.setToolTipText("Filtrar roles por estado");
+    }
+
+    private void configurarBotonesRoles() {
+        Dimension botonPrincipal = new Dimension(118, 36);
+        Dimension botonFiltro = new Dimension(96, 34);
+
+        btnNuevo1.setPreferredSize(botonPrincipal);
+        btnNuevo1.setMinimumSize(botonPrincipal);
+        btnBusqueda.setPreferredSize(botonFiltro);
+        btnBusqueda.setMinimumSize(botonFiltro);
+        btnLimpiar1.setPreferredSize(botonFiltro);
+        btnLimpiar1.setMinimumSize(botonFiltro);
+
+        btnNuevo1.setToolTipText("Registrar nuevo rol");
+        btnBusqueda.setToolTipText("Buscar roles según filtros");
+        btnLimpiar1.setToolTipText("Limpiar filtros");
+    }
+
+    private void configurarTablaRoles() {
+        tblRoles.setRowHeight(36);
+        tblRoles.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblRoles.setShowGrid(false);
+        tblRoles.setIntercellSpacing(new Dimension(0, 0));
+        tblRoles.setFillsViewportHeight(true);
+        tblRoles.setSelectionBackground(new Color(219, 235, 247));
+        tblRoles.setSelectionForeground(new Color(25, 42, 62));
+
+        JTableHeader header = tblRoles.getTableHeader();
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 38));
+        header.setFont(header.getFont().deriveFont(Font.BOLD));
+        header.setReorderingAllowed(false);
+
+        renombrarEncabezado(COL_ID, "ID");
+        renombrarEncabezado(COL_NOMBRE, "Rol");
+        renombrarEncabezado(COL_DESCRIPCION, "Descripción");
+        renombrarEncabezado(COL_ESTADO, "Estado");
+        renombrarEncabezado(COL_EDITAR, "Editar");
+        renombrarEncabezado(COL_ACTIVAR, "Activar/Inactivar");
+        tblRoles.getTableHeader().repaint();
+
+        ajustarColumna(COL_ID, 0, 0, 0);
+        ajustarColumna(COL_NOMBRE, 170, 220, 320);
+        ajustarColumna(COL_DESCRIPCION, 420, 680, 1200);
+        ajustarColumna(COL_ESTADO, 95, 112, 135);
+        ajustarColumna(COL_EDITAR, 78, 90, 110);
+        ajustarColumna(COL_ACTIVAR, 130, 150, 180);
+    }
+
+    private void configurarRenderersRoles() {
+        tblRoles.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoRolRenderer());
+    }
+
+    private void ajustarColumna(int indice, int min, int preferido, int max) {
+        TableColumn columna = tblRoles.getColumnModel().getColumn(indice);
+        columna.setMinWidth(min);
+        columna.setPreferredWidth(preferido);
+        columna.setMaxWidth(max);
+        if (max == 0) {
+            columna.setResizable(false);
+        }
+    }
+
+    private void renombrarEncabezado(int indice, String texto) {
+        tblRoles.getColumnModel().getColumn(indice).setHeaderValue(texto);
     }
     
     private void initFiltros() {
@@ -512,6 +687,43 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         txtRoleName.requestFocus();
         */
         
+    }
+
+    private static class EstadoRolRenderer extends DefaultTableCellRenderer {
+
+        @Override
+        public java.awt.Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+            JLabel label = (JLabel) super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column);
+
+            String estado = value == null ? "" : value.toString();
+            label.setHorizontalAlignment(JLabel.CENTER);
+            label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
+
+            if ("ACTIVE".equalsIgnoreCase(estado) || "ACTIVO".equalsIgnoreCase(estado)) {
+                label.setText("ACTIVO");
+                if (!isSelected) {
+                    label.setForeground(new Color(24, 112, 70));
+                    label.setBackground(new Color(225, 244, 235));
+                }
+            } else if ("INACTIVE".equalsIgnoreCase(estado) || "INACTIVO".equalsIgnoreCase(estado)) {
+                label.setText("INACTIVO");
+                if (!isSelected) {
+                    label.setForeground(new Color(143, 48, 48));
+                    label.setBackground(new Color(250, 230, 230));
+                }
+            } else {
+                label.setText(estado);
+                if (!isSelected) {
+                    label.setForeground(new Color(73, 85, 99));
+                    label.setBackground(Color.WHITE);
+                }
+            }
+            label.setOpaque(true);
+            return label;
+        }
     }
     /*
     private void cargarRoles() {
