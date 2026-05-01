@@ -68,7 +68,7 @@ public class UserRepository {
     
     public User findByUsername(String username) {
         String sql = "SELECT USER_ID, USERNAME, PASSWORD_HASH, FULL_NAME, STATUS, ID_TECNICO "
-                + "FROM APP_USERS WHERE USERNAME=? AND STATUS='ACTIVE'";
+                + "FROM APP_USERS WHERE USERNAME=? AND UPPER(STATUS) IN ('ACTIVE', 'ACTIVO')";
         try (Connection conn = OracleConnection.getConnection();
            PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);

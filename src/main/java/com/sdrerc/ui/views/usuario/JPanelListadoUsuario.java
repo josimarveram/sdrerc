@@ -5,6 +5,7 @@
 package com.sdrerc.ui.views.usuario;
 
 import com.sdrerc.ui.views.role.*;
+import com.sdrerc.application.EquipoJuridicoService;
 import com.sdrerc.application.RoleService;
 import com.sdrerc.application.SupervisionService;
 import com.sdrerc.application.UserService;
@@ -48,11 +49,13 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private UserService userService; // 👈 AQUÍ
     private RoleService roleService; // 👈 AQUÍ
     private SupervisionService supervisionService; // 👈 AQUÍ
+    private EquipoJuridicoService equipoJuridicoService;
     private User usuario;
     private Long roleIdSeleccionado;
     private String roleNameSeleccionado;
     private String roleDescriptionSeleccionado;
     private String statusSeleccionado;
+    private final JButton btnNuevoEquipoJuridico = new JButton("Nuevo abogado/supervisor");
     private final JButton btnVincularTecnico = new JButton("Vincular técnico");
     
     public static final int COL_ID = 0;
@@ -73,6 +76,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         userService = new UserService(); // 👈 SE INICIALIZA AQUÍ   
         roleService = new RoleService(); // 👈 SE INICIALIZA AQUÍ     
         supervisionService = new SupervisionService(); // 👈 SE INICIALIZA AQUÍ     
+        equipoJuridicoService = new EquipoJuridicoService();
         initTable();
         initFiltros(); 
         initEventos(); 
@@ -115,6 +119,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         accionesHeader.setOpaque(false);
         GridBagConstraints gbcAcciones = new GridBagConstraints();
         gbcAcciones.insets = new Insets(0, 0, 0, 8);
+        accionesHeader.add(btnNuevoEquipoJuridico, gbcAcciones);
         accionesHeader.add(btnVincularTecnico, gbcAcciones);
         gbcAcciones.insets = new Insets(0, 0, 0, 0);
         accionesHeader.add(btnNuevo1, gbcAcciones);
@@ -186,10 +191,13 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
     private void configurarBotonesUsuarios() {
         Dimension botonPrincipal = new Dimension(132, 36);
+        Dimension botonEquipo = new Dimension(198, 36);
         Dimension botonVincular = new Dimension(142, 36);
         Dimension botonFiltro = new Dimension(96, 34);
         btnNuevo1.setPreferredSize(botonPrincipal);
         btnNuevo1.setMinimumSize(botonPrincipal);
+        btnNuevoEquipoJuridico.setPreferredSize(botonEquipo);
+        btnNuevoEquipoJuridico.setMinimumSize(botonEquipo);
         btnVincularTecnico.setPreferredSize(botonVincular);
         btnVincularTecnico.setMinimumSize(botonVincular);
         btnBusqueda.setPreferredSize(botonFiltro);
@@ -198,6 +206,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         btnLimpiar1.setMinimumSize(botonFiltro);
 
         btnNuevo1.setToolTipText("Registrar un nuevo usuario");
+        btnNuevoEquipoJuridico.setToolTipText("Registrar abogado o supervisor creando técnico, usuario y roles");
         btnVincularTecnico.setToolTipText("Vincular usuario con técnico/abogado funcional");
         btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
         btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
@@ -314,6 +323,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         });
 
         btnVincularTecnico.addActionListener(e -> vincularTecnicoDesdeSeleccion());
+        btnNuevoEquipoJuridico.addActionListener(e -> abrirRegistroEquipoJuridico());
         
         tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -773,6 +783,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(parent);
         dlg.setVisible(true);
         
+        buscarUsuarios();
+    }
+
+    private void abrirRegistroEquipoJuridico() {
+        Window parent = SwingUtilities.getWindowAncestor(this);
+        DlgRegistrarEquipoJuridico dlg = new DlgRegistrarEquipoJuridico(parent, equipoJuridicoService);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
         buscarUsuarios();
     }
 
