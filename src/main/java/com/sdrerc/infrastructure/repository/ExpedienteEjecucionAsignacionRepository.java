@@ -7,6 +7,8 @@ package com.sdrerc.infrastructure.repository;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.database.OracleConnection;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.AnalisisAbogado;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.DocumentoAnalizado;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -27,11 +29,11 @@ public class ExpedienteEjecucionAsignacionRepository
         StringBuilder sqlListaExpediente = new StringBuilder(			
                 " SELECT exp.* FROM EXPEDIENTE exp " +
                 " INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO eaa ON exp.ID_EXPEDIENTE = eaa.ID_EXPEDIENTE " +
-                " WHERE eaa.ID_ANALISIS = 73 " +
+                " WHERE eaa.ID_ANALISIS = " + AnalisisAbogado.PROCEDENTE + " " +
                 " AND EXISTS (SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d " +
                 "             INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO e ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = e.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
                 "             WHERE e.ID_EXPEDIENTE = exp.ID_EXPEDIENTE " +
-                "             AND d.ID_TIPO_DOCUMENTO_ANALIZADO IN (71,72) " +
+                "             AND d.ID_TIPO_DOCUMENTO_ANALIZADO IN (" + DocumentoAnalizado.RESOLUCIONES + "," + DocumentoAnalizado.INFORMES + ") " +
                 "             AND d.ACTIVE = 1) "		
             );
                 

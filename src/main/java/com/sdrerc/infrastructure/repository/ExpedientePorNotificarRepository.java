@@ -6,6 +6,7 @@ package com.sdrerc.infrastructure.repository;
 
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.infrastructure.database.OracleConnection;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.EtapaFlujo;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -25,7 +26,7 @@ public class ExpedientePorNotificarRepository
         
         StringBuilder sqlListaExpediente = new StringBuilder(			
                 " SELECT * FROM EXPEDIENTE exp " +
-                " inner join EXPEDIENTE_ASIGNACION expAsi on expAsi.ID_EXPEDIENTE = exp.ID_EXPEDIENTE and expAsi.etapa_flujo = 90 " +
+                " inner join EXPEDIENTE_ASIGNACION expAsi on expAsi.ID_EXPEDIENTE = exp.ID_EXPEDIENTE and expAsi.etapa_flujo = " + EtapaFlujo.NOTIFICACION_ASIGNADA + " " +
                 " WHERE expasi.active = 1 "	
             );
                 

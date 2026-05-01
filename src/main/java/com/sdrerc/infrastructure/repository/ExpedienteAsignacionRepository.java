@@ -7,6 +7,7 @@ package com.sdrerc.infrastructure.repository;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.database.OracleConnection;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.DocumentoAnalizado;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -259,7 +260,7 @@ public class ExpedienteAsignacionRepository {
                     "    SELECT DISTINCT e.ID_EXPEDIENTE AS ID_EXPEDIENTE_DOCUMENTO_VERIFICAR\n" +
                     "    FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d\n" +
                     "    INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO e ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = e.ID_EXPEDIENTE_ANALISIS_ABOGADO\n" +
-                    "    WHERE d.ID_TIPO_DOCUMENTO_ANALIZADO IN (71,72)\n" +
+                    "    WHERE d.ID_TIPO_DOCUMENTO_ANALIZADO IN (" + DocumentoAnalizado.RESOLUCIONES + "," + DocumentoAnalizado.INFORMES + ")\n" +
                     "    AND d.ACTIVE = 1\n" +
                     ") doc\n" +
                     "ON doc.ID_EXPEDIENTE_DOCUMENTO_VERIFICAR = EXPEDIENTE.ID_EXPEDIENTE "

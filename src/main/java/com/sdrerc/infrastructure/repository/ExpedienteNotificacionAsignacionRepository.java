@@ -6,6 +6,10 @@ package com.sdrerc.infrastructure.repository;
 
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.infrastructure.database.OracleConnection;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.AnalisisAbogado;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.DocumentoAnalizado;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.EstadoExpediente;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.EtapaFlujo;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -26,13 +30,18 @@ public class ExpedienteNotificacionAsignacionRepository
         StringBuilder sqlListaExpediente = new StringBuilder(			
                 " SELECT exp.* FROM EXPEDIENTE exp " +
                 "     WHERE( " +
-                "             (exp.ESTADO = 87 AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND eaa.ID_ANALISIS = 74)) " +
-                "          OR (exp.ESTADO = 59 AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa " +
+                "             (exp.ESTADO = " + EstadoExpediente.EXPEDIENTE_VERIFICADO + " AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND eaa.ID_ANALISIS = " + AnalisisAbogado.IMPROCEDENTE + ")) " +
+                "          OR (exp.ESTADO = " + EstadoExpediente.EXPEDIENTE_ATENDIDO + " AND EXISTS(SELECT 1 FROM EXPEDIENTE_ANALISIS_ABOGADO eaa " +
                 "                                         JOIN EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d ON eaa.ID_EXPEDIENTE_ANALISIS_ABOGADO = d.ID_EXPEDIENTE_ANALISIS_ABOGADO " +
-                "                                         WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND d.ACTIVE = 1 AND d.ID_TIPO_DOCUMENTO_ANALIZADO IN (60,61,62,63,64))) " +
-                "          OR exp.ESTADO = 89 " +
+                "                                         WHERE eaa.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND d.ACTIVE = 1 AND d.ID_TIPO_DOCUMENTO_ANALIZADO IN (" +
+                DocumentoAnalizado.CARTA_EDICTO + "," +
+                DocumentoAnalizado.CARTA_FALTA_SUSTENTO + "," +
+                DocumentoAnalizado.CARTA_NOTIFICACION_PENDIENTE_CONFIRMAR + "," +
+                DocumentoAnalizado.CARTA_INDAGATORIO + "," +
+                DocumentoAnalizado.CARTA_PRETENSION + "))) " +
+                "          OR exp.ESTADO = " + EstadoExpediente.EJECUCION_TRABAJADA + " " +
                 "         ) " +
-                "     AND NOT EXISTS (SELECT 1 FROM EXPEDIENTE_ASIGNACION ea WHERE ea.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND ea.ETAPA_FLUJO = 90) "
+                "     AND NOT EXISTS (SELECT 1 FROM EXPEDIENTE_ASIGNACION ea WHERE ea.ID_EXPEDIENTE = exp.ID_EXPEDIENTE AND ea.ETAPA_FLUJO = " + EtapaFlujo.NOTIFICACION_ASIGNADA + ") "
             );
                 
         //boolean filtrarEstado = estadoItem != 0;
