@@ -7,8 +7,10 @@ package com.sdrerc.ui.table;
 import com.sdrerc.application.UserService;
 import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
 import java.awt.Component;
+import java.awt.event.MouseEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.EventObject;
 import javax.swing.AbstractCellEditor;
 import javax.swing.JButton;
 import javax.swing.JTable;
@@ -28,6 +30,7 @@ public class ButtonEditorAsignar extends AbstractCellEditor
 
     private int row;
     private boolean enabled;
+    private Object currentValue;
 
     public ButtonEditorAsignar(JTable table,
                                JPanelListadoUsuario parent,
@@ -46,6 +49,7 @@ public class ButtonEditorAsignar extends AbstractCellEditor
             int row, int column) {
 
         this.row = row;
+        this.currentValue = value;
         enabled = !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
         button.setEnabled(enabled);
         button.setText(value == null ? "Equipo" : value.toString());
@@ -54,7 +58,23 @@ public class ButtonEditorAsignar extends AbstractCellEditor
 
     @Override
     public Object getCellEditorValue() {
-        return "Equipo";
+        return currentValue == null ? "Equipo" : currentValue;
+    }
+
+    @Override
+    public boolean isCellEditable(EventObject event) {
+        if (event instanceof MouseEvent) {
+            MouseEvent mouseEvent = (MouseEvent) event;
+            int clickedRow = table.rowAtPoint(mouseEvent.getPoint());
+            int clickedColumn = table.columnAtPoint(mouseEvent.getPoint());
+
+            if (clickedRow >= 0 && clickedColumn >= 0) {
+                Object value = table.getValueAt(clickedRow, clickedColumn);
+                return !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
+            }
+        }
+
+        return super.isCellEditable(event);
     }
 
     @Override
