@@ -5,6 +5,7 @@
 package com.sdrerc.ui.views.role;
 
 import com.sdrerc.application.RoleService;
+import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.Role;
 import com.sdrerc.ui.table.ButtonEditor;
 import com.sdrerc.ui.table.ButtonRenderer;
@@ -20,6 +21,8 @@ import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -43,6 +46,17 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     private String roleNameSeleccionado;
     private String roleDescriptionSeleccionado;
     private String statusSeleccionado;
+    private final JButton btnPrimeraPagina = new JButton("Primera");
+    private final JButton btnPaginaAnterior = new JButton("Anterior");
+    private final JButton btnPaginaSiguiente = new JButton("Siguiente");
+    private final JButton btnUltimaPagina = new JButton("Última");
+    private final JLabel lblPaginaRoles = new JLabel("Página 1 de 1");
+    private final JLabel lblResumenRoles = new JLabel("Mostrando 0-0 de 0 roles");
+    private final JComboBox<Integer> cboFilasPorPagina = new JComboBox<>(new Integer[]{10, 25, 50, 100});
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalRecords = 0;
+    private int totalPages = 1;
     
     private static final int COL_ID = 0;
     private static final int COL_NOMBRE = 1;
@@ -67,8 +81,9 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         configurarBotonesRoles();
         configurarTablaRoles();
         configurarRenderersRoles();
+        configurarPaginacionRoles();
         //cargarRoles();
-        buscarRoles();
+        cargarPaginaRoles();
         
     }
 
@@ -148,10 +163,45 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         jScrollPane2.setPreferredSize(new Dimension(980, 430));
         jScrollPane2.setMinimumSize(new Dimension(760, 280));
 
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 10));
+        centerPanel.setOpaque(false);
+        centerPanel.add(jScrollPane2, BorderLayout.CENTER);
+        centerPanel.add(crearPanelPaginacionRoles(), BorderLayout.SOUTH);
+
         add(topPanel, BorderLayout.NORTH);
-        add(jScrollPane2, BorderLayout.CENTER);
+        add(centerPanel, BorderLayout.CENTER);
         revalidate();
         repaint();
+    }
+
+    private JPanel crearPanelPaginacionRoles() {
+        JPanel paginationPanel = new JPanel(new BorderLayout(12, 0));
+        paginationPanel.setBackground(Color.WHITE);
+        paginationPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
+
+        lblResumenRoles.setForeground(new Color(73, 85, 99));
+        paginationPanel.add(lblResumenRoles, BorderLayout.WEST);
+
+        JPanel controlsPanel = new JPanel(new GridBagLayout());
+        controlsPanel.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 0, 0, 8);
+        gbc.gridy = 0;
+
+        controlsPanel.add(btnPrimeraPagina, gbc);
+        controlsPanel.add(btnPaginaAnterior, gbc);
+        controlsPanel.add(lblPaginaRoles, gbc);
+        controlsPanel.add(btnPaginaSiguiente, gbc);
+        controlsPanel.add(btnUltimaPagina, gbc);
+        controlsPanel.add(new JLabel("Filas por página"), gbc);
+        gbc.insets = new Insets(0, 0, 0, 0);
+        controlsPanel.add(cboFilasPorPagina, gbc);
+
+        paginationPanel.add(controlsPanel, BorderLayout.EAST);
+        return paginationPanel;
     }
 
     private void configurarFiltrosRoles() {
@@ -177,6 +227,37 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         btnNuevo1.setToolTipText("Registrar nuevo rol");
         btnBusqueda.setToolTipText("Buscar roles según filtros");
         btnLimpiar1.setToolTipText("Limpiar filtros");
+    }
+
+    private void configurarPaginacionRoles() {
+        Dimension botonPaginacion = new Dimension(86, 30);
+        btnPrimeraPagina.setPreferredSize(botonPaginacion);
+        btnPaginaAnterior.setPreferredSize(botonPaginacion);
+        btnPaginaSiguiente.setPreferredSize(botonPaginacion);
+        btnUltimaPagina.setPreferredSize(botonPaginacion);
+        cboFilasPorPagina.setPreferredSize(new Dimension(76, 30));
+        cboFilasPorPagina.setSelectedItem(pageSize);
+
+        btnPrimeraPagina.setToolTipText("Ir a la primera página");
+        btnPaginaAnterior.setToolTipText("Ir a la página anterior");
+        btnPaginaSiguiente.setToolTipText("Ir a la página siguiente");
+        btnUltimaPagina.setToolTipText("Ir a la última página");
+        cboFilasPorPagina.setToolTipText("Cantidad de roles por página");
+
+        btnPrimeraPagina.addActionListener(e -> irPrimeraPagina());
+        btnPaginaAnterior.addActionListener(e -> irPaginaAnterior());
+        btnPaginaSiguiente.addActionListener(e -> irPaginaSiguiente());
+        btnUltimaPagina.addActionListener(e -> irUltimaPagina());
+        cboFilasPorPagina.addActionListener(e -> {
+            Object selected = cboFilasPorPagina.getSelectedItem();
+            if (selected instanceof Integer) {
+                pageSize = (Integer) selected;
+                currentPage = 1;
+                cargarPaginaRoles();
+            }
+        });
+
+        actualizarControlesPaginacion();
     }
 
     private void configurarTablaRoles() {
@@ -252,7 +333,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-                    buscarRoles();
+                    resetearPaginacionAlBuscar();
                 }
             }
         });
@@ -303,8 +384,9 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     }
     
     public void cambiarEstadoDesdeTabla(int row) {
-        Long id = Long.parseLong(model.getValueAt(row, 0).toString());
-        String estadoActual = model.getValueAt(row, 3).toString();
+        int modelRow = tblRoles.convertRowIndexToModel(row);
+        Long id = Long.parseLong(model.getValueAt(modelRow, 0).toString());
+        String estadoActual = model.getValueAt(modelRow, 3).toString();
         String nuevoEstado = estadoActual.equals("ACTIVE") ? "INACTIVE" : "ACTIVE";
 
         int r = JOptionPane.showConfirmDialog(
@@ -323,15 +405,14 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                     tblRoles.getCellEditor().stopCellEditing();
                 }
                 
-                model.setValueAt(nuevoEstado, row, 3);
+                model.setValueAt(nuevoEstado, modelRow, 3);
                 model.setValueAt(
                     nuevoEstado.equals("ACTIVE") ? "Inactivar" : "Activar",
-                    row,
+                    modelRow,
                     COL_ACTIVAR
                 );
 
-                model.fireTableRowsUpdated(row, row);
-                //buscarRoles(); // refresca manteniendo filtros
+                cargarPaginaRoles();
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this, e.getMessage());
             }
@@ -339,13 +420,25 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     }
     
     private void buscarRoles() {
+        resetearPaginacionAlBuscar();
+    }
+
+    private void cargarPaginaRoles() {
         try {
             model.setRowCount(0);
 
             String nombre = txtBuscarRol.getText().trim();
             String estado = cboFiltroEstado.getSelectedItem().toString();
 
-            for (Role r : roleService.buscar(nombre, estado)) {
+            PaginatedResult<Role> result =
+                    roleService.buscarPaginado(nombre, estado, currentPage, pageSize);
+
+            currentPage = result.getPage();
+            pageSize = result.getPageSize();
+            totalRecords = result.getTotalRecords();
+            totalPages = result.getTotalPages();
+
+            for (Role r : result.getData()) {
                 model.addRow(new Object[]{
                     r.getRoleId(),
                     r.getRoleName(),
@@ -355,6 +448,14 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar"
                 });
             }
+
+            if (model.getRowCount() == 0 && totalRecords > 0 && currentPage > 1) {
+                currentPage--;
+                cargarPaginaRoles();
+                return;
+            }
+
+            actualizarControlesPaginacion();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, e.getMessage());
         }
@@ -363,7 +464,55 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     private void resetFiltros() {
         txtBuscarRol.setText("");
         cboFiltroEstado.setSelectedIndex(0);
-        buscarRoles();
+        resetearPaginacionAlBuscar();
+    }
+
+    private void resetearPaginacionAlBuscar() {
+        currentPage = 1;
+        cargarPaginaRoles();
+    }
+
+    private void irPrimeraPagina() {
+        if (currentPage != 1) {
+            currentPage = 1;
+            cargarPaginaRoles();
+        }
+    }
+
+    private void irPaginaAnterior() {
+        if (currentPage > 1) {
+            currentPage--;
+            cargarPaginaRoles();
+        }
+    }
+
+    private void irPaginaSiguiente() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            cargarPaginaRoles();
+        }
+    }
+
+    private void irUltimaPagina() {
+        if (currentPage != totalPages) {
+            currentPage = totalPages;
+            cargarPaginaRoles();
+        }
+    }
+
+    private void actualizarControlesPaginacion() {
+        int from = totalRecords == 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+        int to = totalRecords == 0 ? 0 : Math.min(currentPage * pageSize, totalRecords);
+
+        lblPaginaRoles.setText("Página " + currentPage + " de " + totalPages);
+        lblResumenRoles.setText("Mostrando " + from + "-" + to + " de " + totalRecords + " roles");
+
+        boolean hasPrevious = currentPage > 1;
+        boolean hasNext = currentPage < totalPages;
+        btnPrimeraPagina.setEnabled(hasPrevious);
+        btnPaginaAnterior.setEnabled(hasPrevious);
+        btnPaginaSiguiente.setEnabled(hasNext);
+        btnUltimaPagina.setEnabled(hasNext);
     }
     
 
@@ -612,7 +761,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
 
-        buscarRoles();
+        resetearPaginacionAlBuscar();
         
         
     }//GEN-LAST:event_btnNuevo1ActionPerformed
@@ -624,7 +773,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     }//GEN-LAST:event_btnLimpiar1ActionPerformed
 
     private void btnBusquedaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBusquedaActionPerformed
-        buscarRoles();        
+        resetearPaginacionAlBuscar();
     }//GEN-LAST:event_btnBusquedaActionPerformed
 
     private void tblRolesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblRolesMouseClicked
@@ -652,19 +801,20 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     public void editarDesdeTabla(int row) { 
         
         DefaultTableModel model = (DefaultTableModel) tblRoles.getModel();
+        int modelRow = tblRoles.convertRowIndexToModel(row);
 
         Role role = new Role();
-        role.setRoleId(Long.parseLong(model.getValueAt(row, COL_ID).toString()));
-        role.setRoleName(model.getValueAt(row, COL_NOMBRE).toString());
-        role.setDescription(model.getValueAt(row, COL_DESCRIPCION).toString());
-        role.setStatus(model.getValueAt(row, COL_ESTADO).toString());
+        role.setRoleId(Long.parseLong(model.getValueAt(modelRow, COL_ID).toString()));
+        role.setRoleName(model.getValueAt(modelRow, COL_NOMBRE).toString());
+        role.setDescription(model.getValueAt(modelRow, COL_DESCRIPCION).toString());
+        role.setStatus(model.getValueAt(modelRow, COL_ESTADO).toString());
 
         Window parent = SwingUtilities.getWindowAncestor(this);
         DlgEditarRol dlg = new DlgEditarRol(parent, Dialog.ModalityType.APPLICATION_MODAL, role, roleService,true);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
 
-        buscarRoles();
+        cargarPaginaRoles();
         
         /*
         roleIdSeleccionado = Long.parseLong(model.getValueAt(row, 0).toString());

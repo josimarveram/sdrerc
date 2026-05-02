@@ -5,6 +5,7 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.Role;
+import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.infrastructure.repository.RoleRepository;
 import java.sql.SQLException;
 import java.util.List;
@@ -34,6 +35,11 @@ public class RoleService {
     
     public List<Role> buscar(String nombre, String estado) throws SQLException {
         return repository.buscar(nombre, estado);
+    }
+
+    public PaginatedResult<Role> buscarPaginado(
+            String filtro, String estado, int page, int pageSize) throws SQLException {
+        return repository.buscarPaginado(filtro, estado, page, pageSize);
     }
     
     public void cambiarEstado(Long id, String estado) throws SQLException {
