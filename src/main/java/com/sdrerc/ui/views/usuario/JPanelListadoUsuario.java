@@ -11,7 +11,9 @@ import com.sdrerc.application.SupervisionService;
 import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.EquipoJuridicoImportResult;
 import com.sdrerc.domain.model.EquipoJuridicoImportPreview;
+import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.User;
+import com.sdrerc.domain.model.UsuarioListadoItem;
 import com.sdrerc.ui.table.ButtonEditor;
 import com.sdrerc.ui.table.ButtonCellValue;
 import com.sdrerc.ui.table.ButtonEditorAsignar;
@@ -34,6 +36,7 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -66,6 +69,17 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private final JButton btnDescargarPlantillaEquipo = new JButton("Descargar plantilla Excel");
     private final JButton btnPrevisualizarPlantillaEquipo = new JButton("Previsualizar Excel");
     private final JButton btnVincularTecnico = new JButton("Vincular técnico");
+    private final JButton btnPrimeraPagina = new JButton("Primera");
+    private final JButton btnPaginaAnterior = new JButton("Anterior");
+    private final JButton btnPaginaSiguiente = new JButton("Siguiente");
+    private final JButton btnUltimaPagina = new JButton("Última");
+    private final JLabel lblPaginaUsuarios = new JLabel("Página 1 de 1");
+    private final JLabel lblResumenUsuarios = new JLabel("Mostrando 0-0 de 0 usuarios");
+    private final JComboBox<Integer> cboFilasPorPagina = new JComboBox<>(new Integer[]{10, 25, 50, 100});
+    private int currentPage = 1;
+    private int pageSize = 25;
+    private int totalRecords = 0;
+    private int totalPages = 1;
     
     public static final int COL_ID = 0;
     private static final int COL_NOMBRE = 1;
@@ -96,8 +110,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         configurarBotonesUsuarios();
         configurarTablaUsuarios();
         configurarRenderersUsuarios();
+        configurarPaginacionUsuarios();
         //cargarRoles();
-        buscarUsuarios();
+        cargarPaginaUsuarios();
         
     }
 
@@ -185,10 +200,45 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         jScrollPane2.setPreferredSize(new Dimension(980, 430));
         jScrollPane2.setMinimumSize(new Dimension(760, 280));
 
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 10));
+        centerPanel.setOpaque(false);
+        centerPanel.add(jScrollPane2, BorderLayout.CENTER);
+        centerPanel.add(crearPanelPaginacionUsuarios(), BorderLayout.SOUTH);
+
         add(topPanel, BorderLayout.NORTH);
-        add(jScrollPane2, BorderLayout.CENTER);
+        add(centerPanel, BorderLayout.CENTER);
         revalidate();
         repaint();
+    }
+
+    private JPanel crearPanelPaginacionUsuarios() {
+        JPanel paginationPanel = new JPanel(new BorderLayout(12, 0));
+        paginationPanel.setBackground(Color.WHITE);
+        paginationPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
+
+        lblResumenUsuarios.setForeground(new Color(73, 85, 99));
+        paginationPanel.add(lblResumenUsuarios, BorderLayout.WEST);
+
+        JPanel controlsPanel = new JPanel(new GridBagLayout());
+        controlsPanel.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 0, 0, 8);
+        gbc.gridy = 0;
+
+        controlsPanel.add(btnPrimeraPagina, gbc);
+        controlsPanel.add(btnPaginaAnterior, gbc);
+        controlsPanel.add(lblPaginaUsuarios, gbc);
+        controlsPanel.add(btnPaginaSiguiente, gbc);
+        controlsPanel.add(btnUltimaPagina, gbc);
+        controlsPanel.add(new JLabel("Filas por página"), gbc);
+        gbc.insets = new Insets(0, 0, 0, 0);
+        controlsPanel.add(cboFilasPorPagina, gbc);
+
+        paginationPanel.add(controlsPanel, BorderLayout.EAST);
+        return paginationPanel;
     }
 
     private void configurarFiltrosUsuarios() {
@@ -229,6 +279,37 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         btnVincularTecnico.setToolTipText("Vincular usuario con técnico/abogado funcional");
         btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
         btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
+    }
+
+    private void configurarPaginacionUsuarios() {
+        Dimension botonPaginacion = new Dimension(86, 30);
+        btnPrimeraPagina.setPreferredSize(botonPaginacion);
+        btnPaginaAnterior.setPreferredSize(botonPaginacion);
+        btnPaginaSiguiente.setPreferredSize(botonPaginacion);
+        btnUltimaPagina.setPreferredSize(botonPaginacion);
+        cboFilasPorPagina.setPreferredSize(new Dimension(76, 30));
+        cboFilasPorPagina.setSelectedItem(pageSize);
+
+        btnPrimeraPagina.setToolTipText("Ir a la primera página");
+        btnPaginaAnterior.setToolTipText("Ir a la página anterior");
+        btnPaginaSiguiente.setToolTipText("Ir a la página siguiente");
+        btnUltimaPagina.setToolTipText("Ir a la última página");
+        cboFilasPorPagina.setToolTipText("Cantidad de usuarios por página");
+
+        btnPrimeraPagina.addActionListener(e -> irPrimeraPagina());
+        btnPaginaAnterior.addActionListener(e -> irPaginaAnterior());
+        btnPaginaSiguiente.addActionListener(e -> irPaginaSiguiente());
+        btnUltimaPagina.addActionListener(e -> irUltimaPagina());
+        cboFilasPorPagina.addActionListener(e -> {
+            Object selected = cboFilasPorPagina.getSelectedItem();
+            if (selected instanceof Integer) {
+                pageSize = (Integer) selected;
+                currentPage = 1;
+                cargarPaginaUsuarios();
+            }
+        });
+
+        actualizarControlesPaginacion();
     }
 
     private void configurarTablaUsuarios() {
@@ -336,7 +417,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-                    buscarUsuarios();
+                    resetearPaginacionAlBuscar();
                 }
             }
         });
@@ -414,8 +495,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     }
     
     public void cambiarEstadoDesdeTabla(int row) {
-        Long id = Long.parseLong(model.getValueAt(row, 0).toString());
-        String estadoActual = model.getValueAt(row, 3).toString();
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        Long id = Long.parseLong(model.getValueAt(modelRow, 0).toString());
+        String estadoActual = model.getValueAt(modelRow, 3).toString();
         String nuevoEstado = estadoActual.equals("ACTIVE") ? "INACTIVE" : "ACTIVE";
 
         int r = JOptionPane.showConfirmDialog(
@@ -434,15 +516,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
                     tblUsuarios.getCellEditor().stopCellEditing();
                 }
                 
-                model.setValueAt(nuevoEstado, row, 3);
+                model.setValueAt(nuevoEstado, modelRow, 3);
                 model.setValueAt(
                     nuevoEstado.equals("ACTIVE") ? "Inactivar" : "Activar",
-                    row,
+                    modelRow,
                     COL_ACTIVAR
                 );
 
-                model.fireTableRowsUpdated(row, row);
-                //buscarRoles(); // refresca manteniendo filtros
+                cargarPaginaUsuarios();
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this, e.getMessage());
             }
@@ -450,26 +531,45 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     }
     
     private void buscarUsuarios() {
+        resetearPaginacionAlBuscar();
+    }
+
+    private void cargarPaginaUsuarios() {
         try {
             model.setRowCount(0);
 
             String nombre = txtBuscarUsuario.getText().trim();
             String estado = cboFiltroEstado.getSelectedItem().toString();
 
-            for (User r : userService.buscar(nombre, estado)) {
-                boolean esSupervisor = userService.tieneRol(r.getUserId(), "SUPERVISION");
+            PaginatedResult<UsuarioListadoItem> result =
+                    userService.buscarPaginado(nombre, estado, currentPage, pageSize);
+
+            currentPage = result.getPage();
+            pageSize = result.getPageSize();
+            totalRecords = result.getTotalRecords();
+            totalPages = result.getTotalPages();
+
+            for (UsuarioListadoItem r : result.getData()) {
                 model.addRow(new Object[]{
                     r.getUserId(),
                     r.getUsername(),
-                    r.getFullName(),
+                    r.getNombreVisible(),
                     r.getStatus(),
                     "Editar",
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar",
                     "Resetear",
                     "Asignar Rol",
-                    new ButtonCellValue("Equipo", esSupervisor),
+                    new ButtonCellValue("Equipo", r.isEsSupervision()),
                 });
             }
+
+            if (model.getRowCount() == 0 && totalRecords > 0 && currentPage > 1) {
+                currentPage--;
+                cargarPaginaUsuarios();
+                return;
+            }
+
+            actualizarControlesPaginacion();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, e.getMessage());
         }
@@ -478,7 +578,55 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     private void resetFiltros() {
         txtBuscarUsuario.setText("");
         cboFiltroEstado.setSelectedIndex(0);
-        buscarUsuarios();
+        resetearPaginacionAlBuscar();
+    }
+
+    private void resetearPaginacionAlBuscar() {
+        currentPage = 1;
+        cargarPaginaUsuarios();
+    }
+
+    private void irPrimeraPagina() {
+        if (currentPage != 1) {
+            currentPage = 1;
+            cargarPaginaUsuarios();
+        }
+    }
+
+    private void irPaginaAnterior() {
+        if (currentPage > 1) {
+            currentPage--;
+            cargarPaginaUsuarios();
+        }
+    }
+
+    private void irPaginaSiguiente() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            cargarPaginaUsuarios();
+        }
+    }
+
+    private void irUltimaPagina() {
+        if (currentPage != totalPages) {
+            currentPage = totalPages;
+            cargarPaginaUsuarios();
+        }
+    }
+
+    private void actualizarControlesPaginacion() {
+        int from = totalRecords == 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+        int to = totalRecords == 0 ? 0 : Math.min(currentPage * pageSize, totalRecords);
+
+        lblPaginaUsuarios.setText("Página " + currentPage + " de " + totalPages);
+        lblResumenUsuarios.setText("Mostrando " + from + "-" + to + " de " + totalRecords + " usuarios");
+
+        boolean hasPrevious = currentPage > 1;
+        boolean hasNext = currentPage < totalPages;
+        btnPrimeraPagina.setEnabled(hasPrevious);
+        btnPaginaAnterior.setEnabled(hasPrevious);
+        btnPaginaSiguiente.setEnabled(hasNext);
+        btnUltimaPagina.setEnabled(hasNext);
     }
     
 
@@ -713,7 +861,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
 
-        buscarUsuarios();
+        resetearPaginacionAlBuscar();
         
         
         
@@ -726,7 +874,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     }//GEN-LAST:event_btnLimpiar1ActionPerformed
 
     private void btnBusquedaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBusquedaActionPerformed
-        buscarUsuarios();        
+        resetearPaginacionAlBuscar();
     }//GEN-LAST:event_btnBusquedaActionPerformed
 
     private void tblUsuariosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblUsuariosMouseClicked
@@ -753,25 +901,27 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     
     public void editarDesdeTabla(int row) { 
         DefaultTableModel model = (DefaultTableModel) tblUsuarios.getModel();
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
 
         User usuario = new User();
-        usuario.setUserId(Long.parseLong(model.getValueAt(row, COL_ID).toString()));
-        usuario.setUsername(model.getValueAt(row, COL_NOMBRE).toString());
-        usuario.setFullName(model.getValueAt(row, COL_DESCRIPCION).toString());
-        usuario.setStatus(model.getValueAt(row, COL_ESTADO).toString());
+        usuario.setUserId(Long.parseLong(model.getValueAt(modelRow, COL_ID).toString()));
+        usuario.setUsername(model.getValueAt(modelRow, COL_NOMBRE).toString());
+        usuario.setFullName(model.getValueAt(modelRow, COL_DESCRIPCION).toString());
+        usuario.setStatus(model.getValueAt(modelRow, COL_ESTADO).toString());
 
         Window parent = SwingUtilities.getWindowAncestor(this);
         DlgEditarUsuario dlg = new DlgEditarUsuario(parent, Dialog.ModalityType.APPLICATION_MODAL, usuario, userService,true);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
 
-        buscarUsuarios();
+        cargarPaginaUsuarios();
         
     }
     
     public void resetearClaveDesdeTabla(int row) { 
         DefaultTableModel model = (DefaultTableModel) tblUsuarios.getModel();
-        Long userId = (Long) model.getValueAt(row, COL_ID);
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        Long userId = (Long) model.getValueAt(modelRow, COL_ID);
 
         Window parent = SwingUtilities.getWindowAncestor(this);
 
@@ -785,14 +935,15 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(parent);
         dlg.setVisible(true);
         
-        buscarUsuarios();
+        cargarPaginaUsuarios();
     }
     
     public void asignarRolesDesdeTabla(int row) { 
         DefaultTableModel model = (DefaultTableModel) tblUsuarios.getModel();
-        Long userId = (Long) model.getValueAt(row, COL_ID);
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        Long userId = (Long) model.getValueAt(modelRow, COL_ID);
 
-        String username = model.getValueAt(row, 1).toString();
+        String username = model.getValueAt(modelRow, 1).toString();
         
         Window parent = SwingUtilities.getWindowAncestor(this);
 
@@ -807,7 +958,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         dlg.setLocationRelativeTo(parent);
         dlg.setVisible(true);
         
-        buscarUsuarios();
+        cargarPaginaUsuarios();
     }
 
     private boolean equipoSupervisadoHabilitado(int row) {
@@ -821,7 +972,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         DlgRegistrarEquipoJuridico dlg = new DlgRegistrarEquipoJuridico(parent, equipoJuridicoService);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
-        buscarUsuarios();
+        cargarPaginaUsuarios();
     }
 
     private void descargarPlantillaEquipoJuridico() {
@@ -1015,7 +1166,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
             Integer idTecnico = Integer.valueOf(idTecnicoSeleccionado);
             userService.vincularTecnico(userId, idTecnico);
             JOptionPane.showMessageDialog(this, "Técnico vinculado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-            buscarUsuarios();
+            cargarPaginaUsuarios();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Seleccione un técnico válido.", "Aviso", JOptionPane.WARNING_MESSAGE);
         } catch (IllegalStateException ex) {
@@ -1027,24 +1178,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
     
     public void abrirDlgAsignarAbogados(int row) {
 
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
         Long supervisorId =
-            (Long) tblUsuarios.getValueAt(row, COL_ID);
+            (Long) model.getValueAt(modelRow, COL_ID);
 
         String nombreSupervisor =
-            tblUsuarios.getValueAt(row, COL_NOMBRE).toString();
+            model.getValueAt(modelRow, COL_NOMBRE).toString();
 
-        try {
-            if (!userService.tieneRol(supervisorId, "SUPERVISION")) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Esta opción solo aplica a usuarios con rol SUPERVISION.",
-                        "Acceso denegado",
-                        JOptionPane.WARNING_MESSAGE
-                );
-                return;
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        if (!equipoSupervisadoHabilitado(row)) {
             return;
         }
 
@@ -1059,7 +1200,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
 
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
-        buscarUsuarios();
+        cargarPaginaUsuarios();
     }
 
     private static class EstadoUsuarioRenderer extends DefaultTableCellRenderer {

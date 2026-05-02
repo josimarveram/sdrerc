@@ -5,7 +5,9 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.Role;
+import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.User;
+import com.sdrerc.domain.model.UsuarioListadoItem;
 import com.sdrerc.infrastructure.repository.UserRepository;
 import java.sql.SQLException;
 import java.util.List;
@@ -40,6 +42,12 @@ public class UserService {
     public List<User> buscar(String nombre, String estado) throws SQLException{
         return repo.buscar(nombre, estado);
     }
+
+    public PaginatedResult<UsuarioListadoItem> buscarPaginado(
+            String filtro, String estado, int page, int pageSize) throws SQLException {
+        return repo.buscarPaginado(filtro, estado, page, pageSize);
+    }
+
     public void cambiarEstado(Long id, String estado) throws SQLException {
         repo.cambiarEstado(id, estado);
     }
