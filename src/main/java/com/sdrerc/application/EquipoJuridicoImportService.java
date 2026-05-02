@@ -245,14 +245,18 @@ public class EquipoJuridicoImportService {
     }
 
     private boolean existeUsernameEnBd(String username) throws Exception {
-        String sql = "SELECT COUNT(1) FROM APP_USERS WHERE UPPER(USERNAME) = UPPER(?)";
+        String sql = "SELECT COUNT(1) FROM APP_USERS WHERE UPPER(TRIM(USERNAME)) = UPPER(TRIM(?))";
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
+            ps.setString(1, normalizarUsername(username));
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() && rs.getInt(1) > 0;
             }
         }
+    }
+
+    private String normalizarUsername(String username) {
+        return username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
     }
 
     private void validarArchivo(File archivo) {

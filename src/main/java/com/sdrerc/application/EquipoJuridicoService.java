@@ -19,12 +19,13 @@ public class EquipoJuridicoService {
 
     public void registrar(EquipoJuridicoRegistro registro) throws SQLException {
         validar(registro);
+        registro.setUsername(normalizarUsername(registro.getUsername()));
 
         try (Connection conn = OracleConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
                 if (existeUsername(conn, registro.getUsername())) {
-                    throw new IllegalArgumentException("El username ya existe.");
+                    throw new IllegalArgumentException("El nombre de usuario ya existe.");
                 }
 
                 Integer idTecnico = buscarTecnicoExistente(conn, registro);
@@ -58,6 +59,9 @@ public class EquipoJuridicoService {
                 conn.commit();
             } catch (Exception ex) {
                 conn.rollback();
+                if (esErrorUniqueUsername(ex)) {
+                    throw new IllegalStateException("El nombre de usuario ya existe.", ex);
+                }
                 if (ex instanceof SQLException) {
                     throw (SQLException) ex;
                 }
@@ -199,12 +203,13 @@ public class EquipoJuridicoService {
     }
 
     private Long crearUsuario(Connection conn, EquipoJuridicoRegistro registro, Integer idTecnico) throws SQLException {
+        String username = normalizarUsername(registro.getUsername());
         String sql =
             "INSERT INTO APP_USERS (USERNAME, PASSWORD_HASH, FULL_NAME, STATUS, ID_TECNICO) " +
             "VALUES (?, ?, ?, ?, ?)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"USER_ID"})) {
-            ps.setString(1, registro.getUsername().trim());
+            ps.setString(1, username);
             ps.setString(2, PasswordEncoder.hash(registro.getPasswordTemporal()));
             ps.setString(3, construirFullName(registro));
             ps.setString(4, ESTADO_ACTIVO);
@@ -216,8 +221,13 @@ public class EquipoJuridicoService {
                     return rs.getLong(1);
                 }
             }
+        } catch (SQLException ex) {
+            if (esErrorUniqueUsername(ex)) {
+                throw new IllegalStateException("El nombre de usuario ya existe.", ex);
+            }
+            throw ex;
         }
-        Long userId = buscarUserIdPorUsername(conn, registro.getUsername());
+        Long userId = buscarUserIdPorUsername(conn, username);
         if (userId != null) {
             return userId;
         }
@@ -260,9 +270,9 @@ public class EquipoJuridicoService {
     }
 
     private boolean existeUsername(Connection conn, String username) throws SQLException {
-        String sql = "SELECT COUNT(1) FROM APP_USERS WHERE UPPER(USERNAME) = ?";
+        String sql = "SELECT COUNT(1) FROM APP_USERS WHERE UPPER(TRIM(USERNAME)) = UPPER(TRIM(?))";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username.trim().toUpperCase());
+            ps.setString(1, normalizarUsername(username));
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() && rs.getInt(1) > 0;
             }
@@ -270,9 +280,9 @@ public class EquipoJuridicoService {
     }
 
     private Long buscarUserIdPorUsername(Connection conn, String username) throws SQLException {
-        String sql = "SELECT USER_ID FROM APP_USERS WHERE UPPER(USERNAME) = ?";
+        String sql = "SELECT USER_ID FROM APP_USERS WHERE UPPER(TRIM(USERNAME)) = UPPER(TRIM(?))";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username.trim().toUpperCase());
+            ps.setString(1, normalizarUsername(username));
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getLong("USER_ID") : null;
             }
@@ -338,6 +348,25 @@ public class EquipoJuridicoService {
 
     private String normalizar(String value) {
         return value == null ? "" : value.trim().toUpperCase();
+    }
+
+    private String normalizarUsername(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
+    }
+
+    private boolean esErrorUniqueUsername(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof SQLException) {
+                SQLException sqlEx = (SQLException) current;
+                String message = sqlEx.getMessage() == null ? "" : sqlEx.getMessage().toUpperCase();
+                if (sqlEx.getErrorCode() == 1 && (message.contains("UK_APP_USERS_USERNAME") || message.contains("UNIQUE"))) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private String trimToNull(String value) {

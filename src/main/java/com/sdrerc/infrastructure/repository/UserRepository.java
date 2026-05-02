@@ -68,10 +68,10 @@ public class UserRepository {
     
     public User findByUsername(String username) {
         String sql = "SELECT USER_ID, USERNAME, PASSWORD_HASH, FULL_NAME, STATUS, ID_TECNICO "
-                + "FROM APP_USERS WHERE USERNAME=? AND UPPER(STATUS) IN ('ACTIVE', 'ACTIVO')";
+                + "FROM APP_USERS WHERE UPPER(TRIM(USERNAME)) = UPPER(TRIM(?)) AND UPPER(STATUS) IN ('ACTIVE', 'ACTIVO')";
         try (Connection conn = OracleConnection.getConnection();
            PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
+            ps.setString(1, normalizeUsername(username));
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 User u = mapUser(rs);
@@ -116,7 +116,7 @@ public class UserRepository {
         try (Connection cn = OracleConnection.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql)) {
 
-            ps.setString(1, usuario.getUsername());
+            ps.setString(1, normalizeUsername(usuario.getUsername()));
             ps.setString(2, usuario.getPasswordHash());
             ps.setString(3, usuario.getFullName());
             ps.setString(4, usuario.getStatus());
@@ -131,7 +131,7 @@ public class UserRepository {
         try (Connection cn = OracleConnection.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql)) {
 
-            ps.setString(1, usuario.getUsername());
+            ps.setString(1, normalizeUsername(usuario.getUsername()));
             ps.setString(2, usuario.getFullName());
             ps.setString(3, usuario.getStatus());
             ps.setLong(4, usuario.getUserId());
@@ -374,7 +374,7 @@ public class UserRepository {
         String sql = "INSERT INTO APP_USERS (USERNAME, PASSWORD_HASH, FULL_NAME, STATUS) VALUES (?, ?, ?, 'ACTIVE')";
         try (Connection conn = OracleConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, u.getUsername());
+            ps.setString(1, normalizeUsername(u.getUsername()));
             ps.setString(2, u.getPasswordHash());
             ps.setString(3, u.getFullName());
             ps.executeUpdate();
@@ -385,12 +385,12 @@ public class UserRepository {
     
     public boolean existsByUsername(String username) {
 
-        String sql = "SELECT 1 FROM APP_USERS WHERE USERNAME = ?";
+        String sql = "SELECT 1 FROM APP_USERS WHERE UPPER(TRIM(USERNAME)) = UPPER(TRIM(?))";
 
         try (Connection conn = OracleConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, username);
+            ps.setString(1, normalizeUsername(username));
 
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next(); // si hay fila, existe
@@ -448,6 +448,10 @@ public class UserRepository {
     private Long getNullableLong(ResultSet rs, String columnName) throws SQLException {
         long value = rs.getLong(columnName);
         return rs.wasNull() ? null : value;
+    }
+
+    private String normalizeUsername(String username) {
+        return username == null ? "" : username.trim().toLowerCase();
     }
 
     private List<String> listarRoleNamesPorUsuario(Connection conn, Long userId) throws SQLException {
