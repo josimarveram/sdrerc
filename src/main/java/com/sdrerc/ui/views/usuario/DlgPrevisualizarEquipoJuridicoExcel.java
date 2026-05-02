@@ -3,6 +3,7 @@ package com.sdrerc.ui.views.usuario;
 import com.sdrerc.domain.model.EquipoJuridicoImportItem;
 import com.sdrerc.domain.model.EquipoJuridicoImportPreview;
 import com.sdrerc.domain.model.EquipoJuridicoImportResult;
+import com.sdrerc.ui.views.equipojuridico.EquipoJuridicoImportOwner;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -22,11 +23,11 @@ import javax.swing.table.DefaultTableModel;
 public class DlgPrevisualizarEquipoJuridicoExcel extends JDialog {
 
     private final EquipoJuridicoImportPreview preview;
-    private final JPanelListadoUsuario owner;
+    private final EquipoJuridicoImportOwner owner;
     private final DefaultTableModel model = new DefaultTableModel();
     private final JTable table = new JTable(model);
 
-    public DlgPrevisualizarEquipoJuridicoExcel(Window parent, JPanelListadoUsuario owner, EquipoJuridicoImportPreview preview) {
+    public DlgPrevisualizarEquipoJuridicoExcel(Window parent, EquipoJuridicoImportOwner owner, EquipoJuridicoImportPreview preview) {
         super(parent, "Previsualización Equipo Jurídico", ModalityType.APPLICATION_MODAL);
         this.preview = preview;
         this.owner = owner;

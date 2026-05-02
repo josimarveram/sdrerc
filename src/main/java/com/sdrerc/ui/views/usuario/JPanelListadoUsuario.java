@@ -20,6 +20,7 @@ import com.sdrerc.ui.table.ButtonEditorAsignar;
 import com.sdrerc.ui.table.ButtonEditorUsuario;
 import com.sdrerc.ui.table.ButtonRenderer;
 import com.sdrerc.ui.views.asignacion.JDialogTecnico;
+import com.sdrerc.ui.views.equipojuridico.EquipoJuridicoImportOwner;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dialog;
@@ -53,7 +54,7 @@ import javax.swing.table.TableColumn;
  *
  * @author David
  */
-public class JPanelListadoUsuario extends javax.swing.JPanel {
+public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJuridicoImportOwner {
 
     private DefaultTableModel model;
     private UserService userService; // 👈 AQUÍ
@@ -143,9 +144,6 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         accionesHeader.setOpaque(false);
         GridBagConstraints gbcAcciones = new GridBagConstraints();
         gbcAcciones.insets = new Insets(0, 0, 0, 8);
-        accionesHeader.add(btnNuevoEquipoJuridico, gbcAcciones);
-        accionesHeader.add(btnDescargarPlantillaEquipo, gbcAcciones);
-        accionesHeader.add(btnPrevisualizarPlantillaEquipo, gbcAcciones);
         accionesHeader.add(btnVincularTecnico, gbcAcciones);
         gbcAcciones.insets = new Insets(0, 0, 0, 0);
         accionesHeader.add(btnNuevo1, gbcAcciones);

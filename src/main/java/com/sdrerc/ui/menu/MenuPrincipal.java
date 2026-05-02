@@ -16,6 +16,7 @@ import com.sdrerc.ui.views.expedientesEjecucionAsignar.JPanelListadoExpedientesE
 import com.sdrerc.ui.views.expedientesNotificacionAsignar.JPanelListadoExpedientesNotificacionAsignar;
 import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTrabajar;
 import com.sdrerc.ui.views.expedientesPorVerificar.JPanelListadoExpedientesPorVerificar;
+import com.sdrerc.ui.views.equipojuridico.JPanelEquipoJuridico;
 import com.sdrerc.ui.views.home.jPanelHome;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
@@ -35,6 +36,7 @@ import javax.swing.UIManager;
  * @author betom
  */
 public class MenuPrincipal extends javax.swing.JFrame {
+    private final JButton btnMenuEquipoJuridico = new JButton("EQUIPO JURÍDICO");
 
     /**
      * Creates new form MenuPrincipal
@@ -43,6 +45,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         initComponents();  
         corregirTextosVisibles();
         ajustarTextoMenu();
+        configurarMenuEquipoJuridico();
         initialStyles();
         InitContent();
     }    
@@ -66,6 +69,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
             btnMenuBandejaNotificacion,
             btnMenuNotificacionPorTrabajar,
             btnMenuUsuario1,
+            btnMenuEquipoJuridico,
             btnRole
         };
 
@@ -74,6 +78,36 @@ public class MenuPrincipal extends javax.swing.JFrame {
             boton.setFont(fuenteMenu);
             boton.setIconTextGap(8);
             boton.setMargin(new java.awt.Insets(0, 4, 0, 4));
+        }
+    }
+
+    private void configurarMenuEquipoJuridico()
+    {
+        btnMenuEquipoJuridico.setBackground(new java.awt.Color(25, 120, 210));
+        btnMenuEquipoJuridico.setForeground(new java.awt.Color(255, 255, 255));
+        btnMenuEquipoJuridico.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/sdrerc/ui/iconos/icono_home-outline.png")));
+        btnMenuEquipoJuridico.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 10, 1, 1, new java.awt.Color(255, 255, 255)));
+        btnMenuEquipoJuridico.setBorderPainted(false);
+        btnMenuEquipoJuridico.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        btnMenuEquipoJuridico.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        btnMenuEquipoJuridico.setInheritsPopupMenu(true);
+        btnMenuEquipoJuridico.addActionListener(e -> abrirEquipoJuridico());
+
+        jpanelMenu.add(btnMenuUsuario1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 610, 270, 42));
+        jpanelMenu.add(btnMenuEquipoJuridico, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 652, 270, 42));
+        jpanelMenu.add(btnRole, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 694, 270, 42));
+        jpanelMenu.revalidate();
+        jpanelMenu.repaint();
+    }
+
+    private void abrirEquipoJuridico()
+    {
+        try {
+            lbl_TituloFormulario.setText("EQUIPO JURÍDICO");
+            ShowJPanel(new JPanelEquipoJuridico());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(this, "No se pudo abrir Equipo Jurídico.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
     
