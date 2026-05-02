@@ -2,6 +2,7 @@ package com.sdrerc.ui.views.usuario;
 
 import com.sdrerc.domain.model.EquipoJuridicoImportItem;
 import com.sdrerc.domain.model.EquipoJuridicoImportPreview;
+import com.sdrerc.domain.model.EquipoJuridicoImportResult;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -12,6 +13,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -20,12 +22,14 @@ import javax.swing.table.DefaultTableModel;
 public class DlgPrevisualizarEquipoJuridicoExcel extends JDialog {
 
     private final EquipoJuridicoImportPreview preview;
+    private final JPanelListadoUsuario owner;
     private final DefaultTableModel model = new DefaultTableModel();
     private final JTable table = new JTable(model);
 
-    public DlgPrevisualizarEquipoJuridicoExcel(Window parent, EquipoJuridicoImportPreview preview) {
+    public DlgPrevisualizarEquipoJuridicoExcel(Window parent, JPanelListadoUsuario owner, EquipoJuridicoImportPreview preview) {
         super(parent, "Previsualización Equipo Jurídico", ModalityType.APPLICATION_MODAL);
         this.preview = preview;
+        this.owner = owner;
         configurar();
         cargarDatos();
     }
@@ -68,10 +72,13 @@ public class DlgPrevisualizarEquipoJuridicoExcel extends JDialog {
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(218, 224, 231)));
 
+        JButton btnConfirmar = new JButton("Confirmar importación");
+        btnConfirmar.addActionListener(e -> confirmarImportacion());
         JButton btnCerrar = new JButton("Cerrar");
         btnCerrar.addActionListener(e -> dispose());
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         footer.setOpaque(false);
+        footer.add(btnConfirmar);
         footer.add(btnCerrar);
 
         root.add(header, BorderLayout.NORTH);
@@ -109,5 +116,46 @@ public class DlgPrevisualizarEquipoJuridicoExcel extends JDialog {
                 + " | Válidas: " + preview.getTotalValidas()
                 + " | Advertencias: " + preview.getTotalAdvertencias()
                 + " | Errores: " + preview.getTotalErrores();
+    }
+
+    private void confirmarImportacion() {
+        if (preview.getTotalErrores() > 0) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Existen filas con error. Esas filas no se importarán.",
+                    "Aviso",
+                    JOptionPane.WARNING_MESSAGE
+            );
+        }
+
+        boolean incluirAdvertencias = false;
+        if (preview.getTotalAdvertencias() > 0) {
+            int confirmar = JOptionPane.showConfirmDialog(
+                    this,
+                    "Existen filas con advertencias. ¿Desea importar también esas filas?",
+                    "Confirmar importación",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+            if (confirmar == JOptionPane.CANCEL_OPTION || confirmar == JOptionPane.CLOSED_OPTION) {
+                return;
+            }
+            incluirAdvertencias = confirmar == JOptionPane.YES_OPTION;
+        }
+
+        try {
+            EquipoJuridicoImportResult result = owner.confirmarImportacionEquipoJuridico(preview, incluirAdvertencias);
+            DlgResultadoImportacionEquipoJuridico dlg = new DlgResultadoImportacionEquipoJuridico(getOwner(), result);
+            dlg.setLocationRelativeTo(this);
+            dlg.setVisible(true);
+            dispose();
+        } catch (Throwable ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se pudo confirmar la importación: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.EquipoJuridicoRegistro;
+import com.sdrerc.domain.model.EquipoJuridicoImportRowResult;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import com.sdrerc.infrastructure.security.PasswordEncoder;
@@ -8,7 +9,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
@@ -105,6 +105,58 @@ public class EquipoJuridicoService {
         return supervisores;
     }
 
+    public EquipoJuridicoImportRowResult importarFila(
+            Connection conn,
+            String item,
+            EquipoJuridicoRegistro abogado,
+            EquipoJuridicoRegistro supervisor) throws SQLException {
+
+        validar(abogado);
+        abogado.setUsername(normalizarUsername(abogado.getUsername()));
+
+        EquipoJuridicoImportRowResult result = new EquipoJuridicoImportRowResult();
+        result.setItem(item);
+        result.setAbogado(construirFullName(abogado));
+        result.setUsernameAbogado(abogado.getUsername());
+
+        PersonaOperativa abogadoOperativo = crearOReutilizarPersonaOperativa(
+                conn,
+                abogado,
+                "ABOGADO",
+                result.getAcciones(),
+                "ABOGADO"
+        );
+
+        if (supervisor != null) {
+            validar(supervisor);
+            supervisor.setUsername(normalizarUsername(supervisor.getUsername()));
+            result.setSupervisor(construirFullName(supervisor));
+            result.setUsernameSupervisor(supervisor.getUsername());
+
+            PersonaOperativa supervisorOperativo = crearOReutilizarPersonaOperativa(
+                    conn,
+                    supervisor,
+                    "SUPERVISION",
+                    result.getAcciones(),
+                    "SUPERVISOR"
+            );
+
+            if (abogadoOperativo.userId.equals(supervisorOperativo.userId)) {
+                throw new IllegalArgumentException("No se puede asignar la persona como su propio supervisor.");
+            }
+
+            asignarSupervisorSiNoExiste(conn, supervisorOperativo.userId, abogadoOperativo.userId, result.getAcciones());
+        } else {
+            result.setMensaje("Importado sin supervisor.");
+        }
+
+        result.setEstado("IMPORTADO");
+        if (isBlank(result.getMensaje())) {
+            result.setMensaje("Importación realizada correctamente.");
+        }
+        return result;
+    }
+
     private void validar(EquipoJuridicoRegistro registro) {
         if (registro == null) {
             throw new IllegalArgumentException("Ingrese los datos del equipo jurídico.");
@@ -194,11 +246,17 @@ public class EquipoJuridicoService {
     }
 
     private Integer obtenerSiguienteIdTecnico(Connection conn) throws SQLException {
-        String sql = "SELECT NVL(MAX(ID_TECNICO), 0) + 1 FROM TECNICO";
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+        String sql = "SELECT SEQ_TECNICO.NEXTVAL FROM DUAL";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             rs.next();
             return rs.getInt(1);
+        } catch (SQLException ex) {
+            String message = ex.getMessage() == null ? "" : ex.getMessage().toUpperCase();
+            if (message.contains("SEQ_TECNICO") || ex.getErrorCode() == 2289) {
+                throw new SQLException("No existe o no es accesible la secuencia SEQ_TECNICO para generar ID_TECNICO.", ex);
+            }
+            throw ex;
         }
     }
 
@@ -253,6 +311,111 @@ public class EquipoJuridicoService {
             int rows = ps.executeUpdate();
             if (rows == 0 && !tieneRol(conn, userId, roleName)) {
                 throw new SQLException("No existe el rol activo " + roleName + ".");
+            }
+        }
+    }
+
+    private PersonaOperativa crearOReutilizarPersonaOperativa(
+            Connection conn,
+            EquipoJuridicoRegistro registro,
+            String roleName,
+            List<String> acciones,
+            String prefijoAccion) throws SQLException {
+
+        Integer idTecnico = buscarTecnicoExistente(conn, registro);
+        boolean tecnicoCreado = false;
+        if (idTecnico == null) {
+            idTecnico = crearTecnico(conn, registro);
+            tecnicoCreado = true;
+            acciones.add("TECNICO_" + prefijoAccion + "_CREADO");
+        } else {
+            acciones.add("TECNICO_" + prefijoAccion + "_REUTILIZADO");
+        }
+
+        Long userId = buscarUserIdPorIdTecnico(conn, idTecnico);
+        boolean usuarioCreado = false;
+        if (userId == null) {
+            if (existeUsername(conn, registro.getUsername())) {
+                throw new IllegalStateException("El nombre de usuario ya existe.");
+            }
+            userId = crearUsuario(conn, registro, idTecnico);
+            usuarioCreado = true;
+            acciones.add("USUARIO_" + prefijoAccion + "_CREADO");
+        } else {
+            acciones.add("USUARIO_" + prefijoAccion + "_REUTILIZADO");
+            vincularTecnicoSiNecesario(conn, userId, idTecnico);
+        }
+
+        boolean teniaRol = tieneRol(conn, userId, roleName);
+        asignarRol(conn, userId, roleName);
+        if (!teniaRol) {
+            acciones.add("ROL_" + roleName + "_ASIGNADO");
+        }
+
+        return new PersonaOperativa(idTecnico, userId, tecnicoCreado, usuarioCreado);
+    }
+
+    private void vincularTecnicoSiNecesario(Connection conn, Long userId, Integer idTecnico) throws SQLException {
+        Integer actual = obtenerIdTecnicoUsuario(conn, userId);
+        if (actual == null) {
+            if (tecnicoVinculadoAOtroUsuario(conn, idTecnico, userId)) {
+                throw new IllegalStateException("El técnico ya está vinculado a otro usuario.");
+            }
+            String sql = "UPDATE APP_USERS SET ID_TECNICO = ? WHERE USER_ID = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, idTecnico);
+                ps.setLong(2, userId);
+                ps.executeUpdate();
+            }
+        } else if (!actual.equals(idTecnico)) {
+            throw new IllegalStateException("El usuario ya está vinculado a otro técnico.");
+        }
+    }
+
+    private Integer obtenerIdTecnicoUsuario(Connection conn, Long userId) throws SQLException {
+        String sql = "SELECT ID_TECNICO FROM APP_USERS WHERE USER_ID = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int idTecnico = rs.getInt("ID_TECNICO");
+                    return rs.wasNull() ? null : idTecnico;
+                }
+            }
+        }
+        return null;
+    }
+
+    private Long buscarUserIdPorIdTecnico(Connection conn, Integer idTecnico) throws SQLException {
+        String sql = "SELECT USER_ID FROM APP_USERS WHERE ID_TECNICO = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idTecnico);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong("USER_ID") : null;
+            }
+        }
+    }
+
+    private void asignarSupervisorSiNoExiste(Connection conn, Long supervisorId, Long abogadoId, List<String> acciones) throws SQLException {
+        Long supervisorActual = obtenerSupervisorActual(conn, abogadoId);
+        if (supervisorActual != null) {
+            if (supervisorActual.equals(supervisorId)) {
+                acciones.add("RELACION_SUPERVISION_EXISTENTE");
+                return;
+            }
+            throw new IllegalStateException("El abogado ya tiene otro supervisor asignado.");
+        }
+
+        asignarSupervisor(conn, supervisorId, abogadoId);
+        acciones.add("RELACION_SUPERVISION_CREADA");
+    }
+
+    private Long obtenerSupervisorActual(Connection conn, Long abogadoId) throws SQLException {
+        String sql = "SELECT SUPERVISOR_ID FROM APP_USER_SUPERVISION WHERE ABOGADO_ID = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, abogadoId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong("SUPERVISOR_ID") : null;
             }
         }
     }
@@ -375,5 +538,19 @@ public class EquipoJuridicoService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private static class PersonaOperativa {
+        private final Integer idTecnico;
+        private final Long userId;
+        private final boolean tecnicoCreado;
+        private final boolean usuarioCreado;
+
+        private PersonaOperativa(Integer idTecnico, Long userId, boolean tecnicoCreado, boolean usuarioCreado) {
+            this.idTecnico = idTecnico;
+            this.userId = userId;
+            this.tecnicoCreado = tecnicoCreado;
+            this.usuarioCreado = usuarioCreado;
+        }
     }
 }

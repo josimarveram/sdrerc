@@ -1,8 +1,11 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.EquipoJuridicoExcelRow;
+import com.sdrerc.domain.model.EquipoJuridicoImportResult;
 import com.sdrerc.domain.model.EquipoJuridicoImportItem;
 import com.sdrerc.domain.model.EquipoJuridicoImportPreview;
+import com.sdrerc.domain.model.EquipoJuridicoImportRowResult;
+import com.sdrerc.domain.model.EquipoJuridicoRegistro;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import java.io.File;
 import java.io.InputStream;
@@ -43,6 +46,9 @@ public class EquipoJuridicoImportSimpleService {
             "CAS ELECTORAL",
             "OTRO"
     ));
+    private static final String PASSWORD_TEMPORAL_IMPORTACION = "Reniec@2026";
+
+    private final EquipoJuridicoService equipoJuridicoService = new EquipoJuridicoService();
 
     public EquipoJuridicoImportPreview previsualizar(File archivo) throws Exception {
         List<EquipoJuridicoExcelRow> rows = leerExcel(archivo);
@@ -84,6 +90,82 @@ public class EquipoJuridicoImportSimpleService {
 
         preview.recalcularTotales();
         return preview;
+    }
+
+    public EquipoJuridicoImportResult confirmarImportacion(
+            EquipoJuridicoImportPreview preview,
+            boolean incluirAdvertencias) {
+
+        EquipoJuridicoImportResult result = new EquipoJuridicoImportResult();
+        Set<String> usernamesReservados = new HashSet<>();
+        Map<String, String> usernamesPorPersona = new HashMap<>();
+
+        for (EquipoJuridicoImportItem item : preview.getItems()) {
+            EquipoJuridicoImportRowResult rowResult = new EquipoJuridicoImportRowResult();
+            rowResult.setItem(item.getItem());
+            rowResult.setAbogado(item.getAbogado());
+            rowResult.setSupervisor(item.getSupervisor());
+
+            if (item.tieneErrores()) {
+                rowResult.setEstado("OMITIDO");
+                rowResult.setMensaje("Fila omitida por errores de validación.");
+                result.getResultadosPorFila().add(rowResult);
+                continue;
+            }
+            if (item.tieneAdvertencias()) {
+                result.setConAdvertencias(result.getConAdvertencias() + 1);
+            }
+            if (item.tieneAdvertencias() && !incluirAdvertencias) {
+                rowResult.setEstado("OMITIDO");
+                rowResult.setMensaje("Fila omitida por advertencias no confirmadas.");
+                result.getResultadosPorFila().add(rowResult);
+                continue;
+            }
+
+            try (Connection conn = OracleConnection.getConnection()) {
+                conn.setAutoCommit(false);
+                try {
+                    ParsedName abogado = parsearNombreInstitucional(item.getAbogado(), "ABOGADO", null);
+                    ParsedName supervisor = isBlank(item.getSupervisor())
+                            ? null
+                            : parsearNombreInstitucional(item.getSupervisor(), "SUPERVISOR", null);
+
+                    EquipoJuridicoRegistro abogadoRegistro = crearRegistro(abogado);
+                    abogadoRegistro.setUsername(generarUsernameSugerido(abogado, usernamesReservados, usernamesPorPersona));
+                    abogadoRegistro.setAbogado(true);
+
+                    EquipoJuridicoRegistro supervisorRegistro = null;
+                    if (supervisor != null) {
+                        supervisorRegistro = crearRegistro(supervisor);
+                        supervisorRegistro.setUsername(generarUsernameSugerido(supervisor, usernamesReservados, usernamesPorPersona));
+                        supervisorRegistro.setSupervision(true);
+                    }
+
+                    EquipoJuridicoImportRowResult imported = equipoJuridicoService.importarFila(
+                            conn,
+                            item.getItem(),
+                            abogadoRegistro,
+                            supervisorRegistro
+                    );
+                    conn.commit();
+                    result.getResultadosPorFila().add(imported);
+                } catch (Exception ex) {
+                    conn.rollback();
+                    rowResult.setEstado("ERROR");
+                    rowResult.setMensaje(ex.getMessage());
+                    result.getResultadosPorFila().add(rowResult);
+                } finally {
+                    conn.setAutoCommit(true);
+                }
+            } catch (Exception ex) {
+                rowResult.setEstado("ERROR");
+                rowResult.setMensaje(ex.getMessage());
+                result.getResultadosPorFila().add(rowResult);
+            }
+        }
+
+        result.recalcularTotales();
+        return result;
     }
 
     public List<EquipoJuridicoExcelRow> leerExcel(File archivo) throws Exception {
@@ -270,17 +352,17 @@ public class EquipoJuridicoImportSimpleService {
     private ParsedName parsearNombreInstitucional(String nombre, String campo, EquipoJuridicoImportItem item) {
         if (isBlank(nombre)) {
             if ("ABOGADO".equals(campo)) {
-                item.agregarError("ABOGADO es obligatorio.");
+                agregarError(item, "ABOGADO es obligatorio.");
             }
             return null;
         }
         String[] tokens = normalizarNombre(nombre).split(" ");
         if (tokens.length == 1) {
-            item.agregarError(campo + " no tiene formato valido. Debe usar APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES.");
+            agregarError(item, campo + " no tiene formato valido. Debe usar APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES.");
             return null;
         }
         if (tokens.length == 2) {
-            item.agregarAdvertencia(campo + " tiene solo 2 palabras; falta apellido materno o nombres completos.");
+            agregarAdvertencia(item, campo + " tiene solo 2 palabras; falta apellido materno o nombres completos.");
             return new ParsedName(tokens[0], "", tokens[1]);
         }
         StringBuilder nombres = new StringBuilder();
@@ -291,6 +373,28 @@ public class EquipoJuridicoImportSimpleService {
             nombres.append(tokens[i]);
         }
         return new ParsedName(tokens[0], tokens[1], nombres.toString());
+    }
+
+    private void agregarError(EquipoJuridicoImportItem item, String mensaje) {
+        if (item == null) {
+            throw new IllegalArgumentException(mensaje);
+        }
+        item.agregarError(mensaje);
+    }
+
+    private void agregarAdvertencia(EquipoJuridicoImportItem item, String mensaje) {
+        if (item != null) {
+            item.agregarAdvertencia(mensaje);
+        }
+    }
+
+    private EquipoJuridicoRegistro crearRegistro(ParsedName name) {
+        EquipoJuridicoRegistro registro = new EquipoJuridicoRegistro();
+        registro.setApellidoPaterno(name.apellidoPaterno);
+        registro.setApellidoMaterno(name.apellidoMaterno);
+        registro.setNombres(name.nombres);
+        registro.setPasswordTemporal(PASSWORD_TEMPORAL_IMPORTACION);
+        return registro;
     }
 
     public String normalizarNombre(String nombre) {

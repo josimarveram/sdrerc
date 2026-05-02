@@ -9,6 +9,7 @@ import com.sdrerc.application.EquipoJuridicoService;
 import com.sdrerc.application.RoleService;
 import com.sdrerc.application.SupervisionService;
 import com.sdrerc.application.UserService;
+import com.sdrerc.domain.model.EquipoJuridicoImportResult;
 import com.sdrerc.domain.model.EquipoJuridicoImportPreview;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.ui.table.ButtonEditor;
@@ -902,7 +903,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
         try {
             EquipoJuridicoImportPreview preview = previsualizarEquipoJuridico(chooser.getSelectedFile());
             Window parent = SwingUtilities.getWindowAncestor(this);
-            DlgPrevisualizarEquipoJuridicoExcel dlg = new DlgPrevisualizarEquipoJuridicoExcel(parent, preview);
+            DlgPrevisualizarEquipoJuridicoExcel dlg = new DlgPrevisualizarEquipoJuridicoExcel(parent, this, preview);
             dlg.setLocationRelativeTo(this);
             dlg.setVisible(true);
         } catch (Throwable ex) {
@@ -923,11 +924,57 @@ public class JPanelListadoUsuario extends javax.swing.JPanel {
             Object preview = serviceClass.getMethod("previsualizar", File.class).invoke(service, archivo);
             return (EquipoJuridicoImportPreview) preview;
         } catch (Throwable ex) {
+            if (!esErrorDependenciaPoi(ex)) {
+                throw convertirException(ex);
+            }
             Class<?> fallbackClass = Class.forName("com.sdrerc.application.EquipoJuridicoImportSimpleService");
             Object fallback = fallbackClass.getDeclaredConstructor().newInstance();
             Object preview = fallbackClass.getMethod("previsualizar", File.class).invoke(fallback, archivo);
             return (EquipoJuridicoImportPreview) preview;
         }
+    }
+
+    public EquipoJuridicoImportResult confirmarImportacionEquipoJuridico(
+            EquipoJuridicoImportPreview preview,
+            boolean incluirAdvertencias) throws Exception {
+        try {
+            Class<?> serviceClass = Class.forName("com.sdrerc.application.EquipoJuridicoImportService");
+            Object service = serviceClass.getDeclaredConstructor().newInstance();
+            Object result = serviceClass
+                    .getMethod("confirmarImportacion", EquipoJuridicoImportPreview.class, boolean.class)
+                    .invoke(service, preview, incluirAdvertencias);
+            return (EquipoJuridicoImportResult) result;
+        } catch (Throwable ex) {
+            if (!esErrorDependenciaPoi(ex)) {
+                throw convertirException(ex);
+            }
+            Class<?> fallbackClass = Class.forName("com.sdrerc.application.EquipoJuridicoImportSimpleService");
+            Object fallback = fallbackClass.getDeclaredConstructor().newInstance();
+            Object result = fallbackClass
+                    .getMethod("confirmarImportacion", EquipoJuridicoImportPreview.class, boolean.class)
+                    .invoke(fallback, preview, incluirAdvertencias);
+            return (EquipoJuridicoImportResult) result;
+        }
+    }
+
+    private boolean esErrorDependenciaPoi(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            String message = current.getMessage() == null ? "" : current.getMessage();
+            if (message.contains("org.apache.poi") || current instanceof NoClassDefFoundError) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private Exception convertirException(Throwable ex) {
+        Throwable causa = obtenerCausaReal(ex);
+        if (causa instanceof Exception) {
+            return (Exception) causa;
+        }
+        return new Exception(causa.getMessage(), causa);
     }
 
     private Throwable obtenerCausaReal(Throwable ex) {
