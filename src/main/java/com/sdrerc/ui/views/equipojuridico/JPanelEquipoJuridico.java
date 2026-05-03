@@ -2,6 +2,8 @@ package com.sdrerc.ui.views.equipojuridico;
 
 import com.sdrerc.application.EquipoJuridicoService;
 import com.sdrerc.application.EquipoJuridicoConsultaService;
+import com.sdrerc.application.SupervisionService;
+import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.EquipoJuridicoConsultaItem;
 import com.sdrerc.domain.model.EquipoJuridicoImportPreview;
 import com.sdrerc.domain.model.EquipoJuridicoImportResult;
@@ -9,6 +11,7 @@ import com.sdrerc.domain.model.EquipoJuridicoResumen;
 import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.SupervisorComboItem;
 import com.sdrerc.ui.table.ButtonRenderer;
+import com.sdrerc.ui.views.usuario.DlgAsignarAbogados;
 import com.sdrerc.ui.views.usuario.DlgPrevisualizarEquipoJuridicoExcel;
 import com.sdrerc.ui.views.usuario.DlgRegistrarEquipoJuridico;
 import java.awt.BorderLayout;
@@ -29,8 +32,10 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -51,9 +56,17 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
 
     private final EquipoJuridicoService equipoJuridicoService = new EquipoJuridicoService();
     private final EquipoJuridicoConsultaService consultaService = new EquipoJuridicoConsultaService();
+    private final UserService userService = new UserService();
+    private final SupervisionService supervisionService = new SupervisionService();
     private final JButton btnNuevoEquipoJuridico = new JButton("Nuevo abogado/supervisor");
-    private final JButton btnDescargarPlantilla = new JButton("Descargar plantilla Excel");
-    private final JButton btnPrevisualizarExcel = new JButton("Previsualizar Excel");
+    private final JButton btnPlantillaExcel = new JButton("Plantilla Excel ▼");
+    private final JPopupMenu menuPlantillaExcel = new JPopupMenu();
+    private final JMenuItem itemDescargarPlantilla = new JMenuItem("Descargar plantilla");
+    private final JMenuItem itemPrevisualizarImportar = new JMenuItem("Previsualizar / importar");
+    private final JButton btnAccionesSupervisor = new JButton("Acciones del supervisor ▼");
+    private final JPopupMenu menuAccionesSupervisor = new JPopupMenu();
+    private final JMenuItem itemGestionarEquipo = new JMenuItem("Gestionar equipo");
+    private final JMenuItem itemEditarSupervisor = new JMenuItem("Editar supervisor");
     private final JComboBox<SupervisorComboItem> cboSupervisor = new JComboBox<>();
     private final JComboBox<String> cboEstado = new JComboBox<>(new String[]{"TODOS", "ACTIVO", "INACTIVO"});
     private final JTextField txtBuscar = new JTextField();
@@ -120,8 +133,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         acciones.setOpaque(false);
         acciones.add(btnNuevoEquipoJuridico);
-        acciones.add(btnDescargarPlantilla);
-        acciones.add(btnPrevisualizarExcel);
+        acciones.add(btnPlantillaExcel);
 
         JPanel header = new JPanel(new BorderLayout(12, 0));
         header.setOpaque(false);
@@ -211,6 +223,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         txtBuscar.setPreferredSize(new Dimension(280, 34));
         cboSupervisor.setPreferredSize(new Dimension(280, 34));
         cboEstado.setPreferredSize(new Dimension(130, 34));
+        btnAccionesSupervisor.setPreferredSize(new Dimension(188, 34));
         btnBuscar.setPreferredSize(new Dimension(96, 34));
         btnLimpiar.setPreferredSize(new Dimension(96, 34));
 
@@ -224,20 +237,22 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         gbc.gridx = 1;
         panel.add(cboSupervisor, gbc);
         gbc.gridx = 2;
-        panel.add(new JLabel("Buscar abogado o usuario"), gbc);
+        panel.add(btnAccionesSupervisor, gbc);
         gbc.gridx = 3;
+        panel.add(new JLabel("Buscar abogado o usuario"), gbc);
+        gbc.gridx = 4;
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(txtBuscar, gbc);
-        gbc.gridx = 4;
+        gbc.gridx = 5;
         gbc.weightx = 0;
         gbc.fill = GridBagConstraints.NONE;
         panel.add(new JLabel("Estado"), gbc);
-        gbc.gridx = 5;
-        panel.add(cboEstado, gbc);
         gbc.gridx = 6;
-        panel.add(btnBuscar, gbc);
+        panel.add(cboEstado, gbc);
         gbc.gridx = 7;
+        panel.add(btnBuscar, gbc);
+        gbc.gridx = 8;
         gbc.insets = new Insets(0, 0, 0, 0);
         panel.add(btnLimpiar, gbc);
         return panel;
@@ -299,29 +314,36 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         gbc.insets = new Insets(0, 0, 0, 12);
         panel.add(btnNuevoEquipoJuridico, gbc);
         gbc.gridx = 1;
-        panel.add(btnDescargarPlantilla, gbc);
-        gbc.gridx = 2;
         gbc.insets = new Insets(0, 0, 0, 0);
-        panel.add(btnPrevisualizarExcel, gbc);
+        panel.add(btnPlantillaExcel, gbc);
         return panel;
     }
 
     private void configurarBotones() {
         Dimension principal = new Dimension(210, 38);
-        Dimension plantilla = new Dimension(190, 38);
-        Dimension previsualizar = new Dimension(170, 38);
+        Dimension plantilla = new Dimension(160, 38);
 
         btnNuevoEquipoJuridico.setPreferredSize(principal);
-        btnDescargarPlantilla.setPreferredSize(plantilla);
-        btnPrevisualizarExcel.setPreferredSize(previsualizar);
+        btnPlantillaExcel.setPreferredSize(plantilla);
 
         btnNuevoEquipoJuridico.setToolTipText("Registrar abogado o supervisor creando técnico, usuario y roles");
-        btnDescargarPlantilla.setToolTipText("Descargar plantilla oficial para carga masiva de equipo jurídico");
-        btnPrevisualizarExcel.setToolTipText("Leer plantilla Excel y previsualizar validaciones sin grabar en base de datos");
+        btnPlantillaExcel.setToolTipText("Opciones de plantilla Excel para equipo jurídico");
+        btnAccionesSupervisor.setToolTipText("Acciones disponibles para el supervisor seleccionado");
+        itemEditarSupervisor.setEnabled(false);
+        itemEditarSupervisor.setToolTipText("La edición de supervisor se implementará en una siguiente fase.");
 
         btnNuevoEquipoJuridico.addActionListener(e -> abrirRegistroEquipoJuridico());
-        btnDescargarPlantilla.addActionListener(e -> descargarPlantillaEquipoJuridico());
-        btnPrevisualizarExcel.addActionListener(e -> previsualizarPlantillaEquipoJuridico());
+        menuPlantillaExcel.add(itemDescargarPlantilla);
+        menuPlantillaExcel.add(itemPrevisualizarImportar);
+        itemDescargarPlantilla.addActionListener(e -> descargarPlantillaEquipoJuridico());
+        itemPrevisualizarImportar.addActionListener(e -> previsualizarPlantillaEquipoJuridico());
+        btnPlantillaExcel.addActionListener(e -> menuPlantillaExcel.show(btnPlantillaExcel, 0, btnPlantillaExcel.getHeight()));
+
+        menuAccionesSupervisor.add(itemGestionarEquipo);
+        menuAccionesSupervisor.add(itemEditarSupervisor);
+        itemGestionarEquipo.addActionListener(e -> abrirGestionEquipoSupervisor());
+        btnAccionesSupervisor.addActionListener(e -> menuAccionesSupervisor.show(btnAccionesSupervisor, 0, btnAccionesSupervisor.getHeight()));
+        actualizarAccionesSupervisor();
     }
 
     private void configurarTabla() {
@@ -355,6 +377,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         txtBuscar.addActionListener(e -> resetearPaginacionAlBuscar());
         cboSupervisor.addActionListener(e -> {
             if (!cargandoFiltros) {
+                actualizarAccionesSupervisor();
                 resetearPaginacionAlBuscar();
             }
         });
@@ -427,6 +450,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
                 cboSupervisor.addItem(item);
             }
             cboSupervisor.setSelectedIndex(0);
+            actualizarAccionesSupervisor();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo cargar supervisores: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         } finally {
@@ -483,6 +507,39 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         }
     }
 
+    private void actualizarAccionesSupervisor() {
+        SupervisorComboItem supervisor = (SupervisorComboItem) cboSupervisor.getSelectedItem();
+        boolean supervisorReal = supervisor != null && SupervisorComboItem.TIPO_SUPERVISOR.equals(supervisor.getTipo());
+        btnAccionesSupervisor.setEnabled(supervisorReal);
+        itemGestionarEquipo.setEnabled(supervisorReal);
+    }
+
+    private void abrirGestionEquipoSupervisor() {
+        SupervisorComboItem supervisor = (SupervisorComboItem) cboSupervisor.getSelectedItem();
+        if (supervisor == null || !SupervisorComboItem.TIPO_SUPERVISOR.equals(supervisor.getTipo())) {
+            JOptionPane.showMessageDialog(this, "Seleccione un supervisor para gestionar su equipo.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Window parent = SwingUtilities.getWindowAncestor(this);
+        DlgAsignarAbogados dlg = new DlgAsignarAbogados(
+                parent,
+                supervisor.getUserId(),
+                supervisor.getNombreVisible(),
+                userService,
+                supervisionService
+        );
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+
+        Long supervisorId = supervisor.getUserId();
+        cargarResumen();
+        cargarSupervisores();
+        seleccionarSupervisorPorId(supervisorId);
+        cargarPaginaAbogados();
+        actualizarAccionesSupervisor();
+    }
+
     private void abrirEdicionDesdeTabla(int row) {
         int modelRow = tblEquipo.convertRowIndexToModel(row);
         if (modelRow < 0 || modelRow >= abogadosPaginaActual.size()) {
@@ -519,6 +576,24 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
                 if (supervisorActual.getTipo().equals(item.getTipo())
                         && (supervisorActual.getUserId() == null
                         || supervisorActual.getUserId().equals(item.getUserId()))) {
+                    cboSupervisor.setSelectedIndex(i);
+                    return;
+                }
+            }
+        } finally {
+            cargandoFiltros = false;
+        }
+    }
+
+    private void seleccionarSupervisorPorId(Long supervisorId) {
+        if (supervisorId == null) {
+            return;
+        }
+        cargandoFiltros = true;
+        try {
+            for (int i = 0; i < cboSupervisor.getItemCount(); i++) {
+                SupervisorComboItem item = cboSupervisor.getItemAt(i);
+                if (item != null && supervisorId.equals(item.getUserId())) {
                     cboSupervisor.setSelectedIndex(i);
                     return;
                 }
