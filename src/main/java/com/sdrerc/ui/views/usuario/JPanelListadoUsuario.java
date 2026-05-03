@@ -332,7 +332,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         renombrarEncabezado(COL_ACTIVAR, "Activar/Inactivar");
         renombrarEncabezado(COL_RESET, "Resetear clave");
         renombrarEncabezado(COL_ASIGNAR_ROL, "Roles");
-        renombrarEncabezado(COL_ASIGNAR_ABOGADO, "Equipo supervisado");
+        renombrarEncabezado(COL_ASIGNAR_ABOGADO, "");
         tblUsuarios.getTableHeader().repaint();
 
         ajustarColumna(COL_ID, 0, 0, 0);
@@ -343,7 +343,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         ajustarColumna(COL_ACTIVAR, 120, 138, 160);
         ajustarColumna(COL_RESET, 110, 126, 150);
         ajustarColumna(COL_ASIGNAR_ROL, 90, 104, 125);
-        ajustarColumna(COL_ASIGNAR_ABOGADO, 128, 150, 180);
+        ajustarColumna(COL_ASIGNAR_ABOGADO, 0, 0, 0);
     }
 
     private void configurarRenderersUsuarios() {

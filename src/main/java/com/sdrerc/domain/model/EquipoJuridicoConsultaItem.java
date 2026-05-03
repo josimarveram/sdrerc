@@ -3,6 +3,7 @@ package com.sdrerc.domain.model;
 public class EquipoJuridicoConsultaItem {
 
     private Long abogadoId;
+    private Integer idTecnico;
     private String abogadoUsername;
     private String abogadoNombre;
     private Long supervisorId;
@@ -18,6 +19,14 @@ public class EquipoJuridicoConsultaItem {
 
     public void setAbogadoId(Long abogadoId) {
         this.abogadoId = abogadoId;
+    }
+
+    public Integer getIdTecnico() {
+        return idTecnico;
+    }
+
+    public void setIdTecnico(Integer idTecnico) {
+        this.idTecnico = idTecnico;
     }
 
     public String getAbogadoUsername() {

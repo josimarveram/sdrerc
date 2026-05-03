@@ -1,7 +1,9 @@
 package com.sdrerc.application;
 
 import com.sdrerc.domain.model.EquipoJuridicoConsultaItem;
+import com.sdrerc.domain.model.EquipoJuridicoDetalle;
 import com.sdrerc.domain.model.EquipoJuridicoResumen;
+import com.sdrerc.domain.model.EquipoJuridicoUpdateRequest;
 import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.SupervisorComboItem;
 import com.sdrerc.infrastructure.repository.EquipoJuridicoRepository;
@@ -28,5 +30,13 @@ public class EquipoJuridicoConsultaService {
 
     public EquipoJuridicoResumen obtenerResumen() throws SQLException {
         return repository.obtenerResumen();
+    }
+
+    public EquipoJuridicoDetalle obtenerDetalleAbogado(Long abogadoId) throws SQLException {
+        return repository.obtenerDetalleAbogado(abogadoId);
+    }
+
+    public void actualizarEquipoJuridico(EquipoJuridicoUpdateRequest request) throws SQLException {
+        repository.actualizarEquipoJuridico(request);
     }
 }

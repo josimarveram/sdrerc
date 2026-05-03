@@ -8,6 +8,7 @@ import com.sdrerc.domain.model.EquipoJuridicoImportResult;
 import com.sdrerc.domain.model.EquipoJuridicoResumen;
 import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.SupervisorComboItem;
+import com.sdrerc.ui.table.ButtonRenderer;
 import com.sdrerc.ui.views.usuario.DlgPrevisualizarEquipoJuridicoExcel;
 import com.sdrerc.ui.views.usuario.DlgRegistrarEquipoJuridico;
 import java.awt.BorderLayout;
@@ -21,6 +22,8 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -38,6 +41,13 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 
 public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImportOwner {
+
+    private static final int COL_ABOGADO = 0;
+    private static final int COL_USERNAME = 1;
+    private static final int COL_SUPERVISOR = 2;
+    private static final int COL_TIPO_PERSONAL = 3;
+    private static final int COL_ESTADO = 4;
+    private static final int COL_EDITAR = 5;
 
     private final EquipoJuridicoService equipoJuridicoService = new EquipoJuridicoService();
     private final EquipoJuridicoConsultaService consultaService = new EquipoJuridicoConsultaService();
@@ -61,6 +71,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         }
     };
     private final JTable tblEquipo = new JTable(model);
+    private final List<EquipoJuridicoConsultaItem> abogadosPaginaActual = new ArrayList<>();
     private final JButton btnPrimeraPagina = new JButton("Primera");
     private final JButton btnPaginaAnterior = new JButton("Anterior");
     private final JButton btnPaginaSiguiente = new JButton("Siguiente");
@@ -314,7 +325,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
     }
 
     private void configurarTabla() {
-        model.setColumnIdentifiers(new Object[]{"Abogado", "Username", "Supervisor", "Estado", "Tipo personal"});
+        model.setColumnIdentifiers(new Object[]{"Abogado", "Username", "Supervisor", "Tipo personal", "Estado", "Editar"});
         tblEquipo.setModel(model);
         tblEquipo.setRowHeight(36);
         tblEquipo.setFillsViewportHeight(true);
@@ -328,12 +339,14 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         header.setFont(header.getFont().deriveFont(Font.BOLD));
         header.setReorderingAllowed(false);
 
-        tblEquipo.getColumnModel().getColumn(0).setPreferredWidth(300);
-        tblEquipo.getColumnModel().getColumn(1).setPreferredWidth(140);
-        tblEquipo.getColumnModel().getColumn(2).setPreferredWidth(300);
-        tblEquipo.getColumnModel().getColumn(3).setPreferredWidth(110);
-        tblEquipo.getColumnModel().getColumn(4).setPreferredWidth(220);
-        tblEquipo.getColumnModel().getColumn(3).setCellRenderer(new EstadoEquipoRenderer());
+        tblEquipo.getColumnModel().getColumn(COL_ABOGADO).setPreferredWidth(300);
+        tblEquipo.getColumnModel().getColumn(COL_USERNAME).setPreferredWidth(140);
+        tblEquipo.getColumnModel().getColumn(COL_SUPERVISOR).setPreferredWidth(280);
+        tblEquipo.getColumnModel().getColumn(COL_TIPO_PERSONAL).setPreferredWidth(190);
+        tblEquipo.getColumnModel().getColumn(COL_ESTADO).setPreferredWidth(110);
+        tblEquipo.getColumnModel().getColumn(COL_EDITAR).setPreferredWidth(90);
+        tblEquipo.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoEquipoRenderer());
+        tblEquipo.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new ButtonRenderer("Editar"));
     }
 
     private void configurarEventosConsulta() {
@@ -369,6 +382,17 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
                 pageSize = (Integer) selected;
                 currentPage = 1;
                 cargarPaginaAbogados();
+            }
+        });
+
+        tblEquipo.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                int row = tblEquipo.rowAtPoint(evt.getPoint());
+                int col = tblEquipo.columnAtPoint(evt.getPoint());
+                if (row >= 0 && col == COL_EDITAR) {
+                    abrirEdicionDesdeTabla(row);
+                }
             }
         });
     }
@@ -413,6 +437,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
     private void cargarPaginaAbogados() {
         try {
             model.setRowCount(0);
+            abogadosPaginaActual.clear();
             SupervisorComboItem supervisor = (SupervisorComboItem) cboSupervisor.getSelectedItem();
             boolean soloSinSupervisor = supervisor != null && SupervisorComboItem.TIPO_SIN_SUPERVISOR.equals(supervisor.getTipo());
             Long supervisorId = supervisor != null && SupervisorComboItem.TIPO_SUPERVISOR.equals(supervisor.getTipo())
@@ -434,13 +459,15 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
             totalRecords = result.getTotalRecords();
             totalPages = result.getTotalPages();
 
+            abogadosPaginaActual.addAll(result.getData());
             for (EquipoJuridicoConsultaItem item : result.getData()) {
                 model.addRow(new Object[]{
                     item.getAbogadoNombre(),
                     item.getAbogadoUsername(),
                     item.getSupervisorNombre() == null || item.getSupervisorNombre().trim().isEmpty() ? "Sin supervisor" : item.getSupervisorNombre(),
+                    item.getTipoPersonal() == null || item.getTipoPersonal().trim().isEmpty() ? "" : item.getTipoPersonal(),
                     item.getEstado(),
-                    item.getTipoPersonal() == null || item.getTipoPersonal().trim().isEmpty() ? "" : item.getTipoPersonal()
+                    "Editar"
                 });
             }
 
@@ -453,6 +480,51 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
             actualizarControlesPaginacion();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo cargar abogados: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void abrirEdicionDesdeTabla(int row) {
+        int modelRow = tblEquipo.convertRowIndexToModel(row);
+        if (modelRow < 0 || modelRow >= abogadosPaginaActual.size()) {
+            JOptionPane.showMessageDialog(this, "Seleccione un abogado valido.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        EquipoJuridicoConsultaItem item = abogadosPaginaActual.get(modelRow);
+        Window parent = SwingUtilities.getWindowAncestor(this);
+        DlgEditarEquipoJuridico dlg = new DlgEditarEquipoJuridico(parent, consultaService, equipoJuridicoService, item.getAbogadoId());
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+
+        if (dlg.isGuardado()) {
+            SupervisorComboItem supervisorActual = (SupervisorComboItem) cboSupervisor.getSelectedItem();
+            cargarResumen();
+            cargarSupervisores();
+            seleccionarSupervisorFiltro(supervisorActual);
+            cargarPaginaAbogados();
+        }
+    }
+
+    private void seleccionarSupervisorFiltro(SupervisorComboItem supervisorActual) {
+        if (supervisorActual == null) {
+            return;
+        }
+        cargandoFiltros = true;
+        try {
+            for (int i = 0; i < cboSupervisor.getItemCount(); i++) {
+                SupervisorComboItem item = cboSupervisor.getItemAt(i);
+                if (item == null) {
+                    continue;
+                }
+                if (supervisorActual.getTipo().equals(item.getTipo())
+                        && (supervisorActual.getUserId() == null
+                        || supervisorActual.getUserId().equals(item.getUserId()))) {
+                    cboSupervisor.setSelectedIndex(i);
+                    return;
+                }
+            }
+        } finally {
+            cargandoFiltros = false;
         }
     }
 
