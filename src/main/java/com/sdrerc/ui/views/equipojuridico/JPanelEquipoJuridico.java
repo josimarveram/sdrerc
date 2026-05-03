@@ -29,6 +29,7 @@ import java.awt.Window;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
 import java.awt.RenderingHints;
 import java.awt.Point;
 import java.io.File;
@@ -55,6 +56,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 import javax.swing.table.JTableHeader;
 
 public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImportOwner {
@@ -95,7 +97,24 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
             return false;
         }
     };
-    private final JTable tblEquipo = new JTable(model);
+    private final JTable tblEquipo = new JTable(model) {
+        @Override
+        public String getToolTipText(MouseEvent event) {
+            int row = rowAtPoint(event.getPoint());
+            int column = columnAtPoint(event.getPoint());
+            if (row < 0 || column < 0) {
+                return super.getToolTipText(event);
+            }
+
+            int modelRow = convertRowIndexToModel(row);
+            int modelColumn = convertColumnIndexToModel(column);
+            if (modelColumn == COL_ABOGADO || modelColumn == COL_SUPERVISOR || modelColumn == COL_TIPO_PERSONAL) {
+                Object value = getModel().getValueAt(modelRow, modelColumn);
+                return value == null ? null : value.toString();
+            }
+            return super.getToolTipText(event);
+        }
+    };
     private final List<EquipoJuridicoConsultaItem> abogadosPaginaActual = new ArrayList<>();
     private final JButton btnPrimeraPagina = new JButton("Primera");
     private final JButton btnPaginaAnterior = new JButton("Anterior");
@@ -277,6 +296,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         JScrollPane scroll = new JScrollPane(tblEquipo);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(218, 224, 231)));
         scroll.setPreferredSize(new Dimension(980, 360));
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         panel.add(scroll, BorderLayout.CENTER);
         panel.add(crearPanelPaginacion(), BorderLayout.SOUTH);
         return panel;
@@ -359,9 +379,10 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
     }
 
     private void configurarTabla() {
-        model.setColumnIdentifiers(new Object[]{"Abogado", "Username", "Supervisor", "Tipo personal", "Estado", "Editar"});
+        model.setColumnIdentifiers(new Object[]{"Abogado", "Username", "Supervisor", "Tipo personal", "Estado", "Acción"});
         tblEquipo.setModel(model);
         tblEquipo.setRowHeight(36);
+        tblEquipo.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         tblEquipo.setFillsViewportHeight(true);
         tblEquipo.setShowGrid(false);
         tblEquipo.setIntercellSpacing(new Dimension(0, 0));
@@ -373,15 +394,22 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         header.setFont(header.getFont().deriveFont(Font.BOLD));
         header.setReorderingAllowed(false);
 
-        tblEquipo.getColumnModel().getColumn(COL_ABOGADO).setPreferredWidth(300);
-        tblEquipo.getColumnModel().getColumn(COL_USERNAME).setPreferredWidth(140);
-        tblEquipo.getColumnModel().getColumn(COL_SUPERVISOR).setPreferredWidth(280);
-        tblEquipo.getColumnModel().getColumn(COL_TIPO_PERSONAL).setPreferredWidth(190);
-        tblEquipo.getColumnModel().getColumn(COL_ESTADO).setPreferredWidth(110);
-        tblEquipo.getColumnModel().getColumn(COL_EDITAR).setPreferredWidth(90);
+        ajustarColumna(COL_ABOGADO, 120, 320, Integer.MAX_VALUE);
+        ajustarColumna(COL_USERNAME, 90, 115, 150);
+        ajustarColumna(COL_SUPERVISOR, 120, 320, Integer.MAX_VALUE);
+        ajustarColumna(COL_TIPO_PERSONAL, 130, 160, 190);
+        ajustarColumna(COL_ESTADO, 90, 100, 120);
+        ajustarColumna(COL_EDITAR, 50, 60, 70);
         tblEquipo.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoEquipoRenderer());
         tblEquipo.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new EditarEquipoRenderer());
         tblEquipo.getColumnModel().getColumn(COL_EDITAR).setCellEditor(new EditarEquipoEditor());
+    }
+
+    private void ajustarColumna(int index, int min, int preferred, int max) {
+        TableColumn column = tblEquipo.getColumnModel().getColumn(index);
+        column.setMinWidth(min);
+        column.setPreferredWidth(preferred);
+        column.setMaxWidth(max);
     }
 
     private void configurarEventosConsulta() {
@@ -436,6 +464,13 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
             public void mouseMoved(java.awt.event.MouseEvent evt) {
                 int col = tblEquipo.columnAtPoint(evt.getPoint());
                 tblEquipo.setCursor(col == COL_EDITAR ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+                tblEquipo.repaint();
+            }
+        });
+        tblEquipo.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                tblEquipo.setCursor(Cursor.getDefaultCursor());
                 tblEquipo.repaint();
             }
         });
@@ -996,6 +1031,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
 
         void setHover(boolean hover) {
             this.hover = hover;
+            setIcon(IconUtils.load(hover ? "edit-hover.svg" : "edit.svg", 16));
         }
 
         void setSelectedRow(boolean selectedRow) {
