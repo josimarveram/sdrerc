@@ -9,13 +9,28 @@ import com.sdrerc.application.RoleService;
 import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.Role;
 import com.sdrerc.domain.model.User;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.util.ComboBoxUtils;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.Window;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import org.mindrot.jbcrypt.BCrypt;
 
 /**
@@ -42,7 +57,193 @@ public class DlgEditarUsuario extends javax.swing.JDialog {
         this.userService = userService;
         cargarDatos();
         configurarBotones();
+        configurarDialogoUsuario();
         ComboBoxUtils.applySmartRenderer(getContentPane());
+    }
+
+    private void configurarDialogoUsuario() {
+        corregirTextosVisibles();
+        configurarAyudasUsuario();
+        configurarBotonesUsuario();
+        configurarDimensionesUsuario();
+        reconstruirLayoutUsuario();
+        pack();
+        ajustarTamanoInicialUsuario();
+        setLocationRelativeTo(getParent());
+    }
+
+    private void corregirTextosVisibles() {
+        setTitle(modoEdicion ? "Editar usuario" : "Nuevo usuario");
+        jLabel1.setText("Usuario");
+        jLabel2.setText("Nombre de cuenta");
+        lblStatus.setText("Estado de la cuenta");
+        lblPassword.setText("Contraseña temporal");
+        lblConfirmar.setText("Confirmar contraseña");
+        btnGuardar.setText("Guardar usuario");
+        btnActualizar.setText("Guardar cambios");
+        btnCancelar.setText("Cancelar");
+    }
+
+    private void configurarAyudasUsuario() {
+        txtUsuario.setToolTipText("Login de ingreso al sistema.");
+        txtFullName.setToolTipText("Nombre visible para usuarios administrativos o sin persona operativa.");
+        cboStatus.setToolTipText("Controla si la cuenta puede acceder al sistema.");
+        pwdPassword.setToolTipText("Contraseña temporal para el nuevo usuario.");
+        pwdConfirmar.setToolTipText("Repita la contraseña temporal.");
+    }
+
+    private void configurarBotonesUsuario() {
+        aplicarIcono(btnGuardar, "add.svg");
+        aplicarIcono(btnActualizar, "active.svg");
+        aplicarIcono(btnCancelar, "clear.svg");
+
+        Dimension buttonSize = new Dimension(180, 36);
+        btnGuardar.setPreferredSize(buttonSize);
+        btnGuardar.setMinimumSize(buttonSize);
+        btnActualizar.setPreferredSize(buttonSize);
+        btnActualizar.setMinimumSize(buttonSize);
+        btnCancelar.setPreferredSize(new Dimension(124, 36));
+        btnCancelar.setMinimumSize(new Dimension(124, 36));
+    }
+
+    private void configurarDimensionesUsuario() {
+        Dimension inputSize = new Dimension(260, 34);
+        txtUsuario.setPreferredSize(inputSize);
+        txtUsuario.setMinimumSize(inputSize);
+        txtFullName.setPreferredSize(inputSize);
+        txtFullName.setMinimumSize(inputSize);
+        cboStatus.setPreferredSize(inputSize);
+        cboStatus.setMinimumSize(inputSize);
+        pwdPassword.setPreferredSize(inputSize);
+        pwdPassword.setMinimumSize(inputSize);
+        pwdConfirmar.setPreferredSize(inputSize);
+        pwdConfirmar.setMinimumSize(inputSize);
+
+        Dimension labelSize = new Dimension(190, 28);
+        jLabel1.setPreferredSize(labelSize);
+        jLabel2.setPreferredSize(labelSize);
+        lblStatus.setPreferredSize(labelSize);
+        lblPassword.setPreferredSize(labelSize);
+        lblConfirmar.setPreferredSize(labelSize);
+
+        Font labelFont = jLabel1.getFont().deriveFont(Font.PLAIN, 13f);
+        jLabel1.setFont(labelFont);
+        jLabel2.setFont(labelFont);
+        lblStatus.setFont(labelFont);
+        lblPassword.setFont(labelFont);
+        lblConfirmar.setFont(labelFont);
+    }
+
+    private void aplicarIcono(JButton button, String iconName) {
+        Icon icon = IconUtils.load(iconName, 16);
+        if (icon != null) {
+            button.setIcon(icon);
+            button.setIconTextGap(8);
+        }
+    }
+
+    private void reconstruirLayoutUsuario() {
+        String mensaje = modoEdicion
+                ? "Los datos personales de usuarios operativos se administran desde Equipo Jurídico o desde la acción Persona en el listado."
+                : "Para abogados y supervisores use el módulo Equipo Jurídico.";
+
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        root.setBackground(new Color(245, 247, 250));
+
+        JPanel infoPanel = new JPanel(new BorderLayout(0, 5));
+        infoPanel.setBackground(Color.WHITE);
+        infoPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(12, 14, 12, 14)
+        ));
+
+        JLabel titulo = new JLabel(modoEdicion ? "Editar usuario" : "Nuevo usuario");
+        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 18f));
+        titulo.setForeground(new Color(25, 42, 62));
+
+        JLabel subtitulo = new JLabel("Administra la cuenta de acceso al sistema.");
+        subtitulo.setForeground(new Color(73, 85, 99));
+
+        JLabel contexto = new JLabel("<html><body style='width:420px'>" + mensaje + "</body></html>");
+        contexto.setForeground(new Color(93, 105, 119));
+
+        infoPanel.add(titulo, BorderLayout.NORTH);
+        infoPanel.add(subtitulo, BorderLayout.CENTER);
+        infoPanel.add(contexto, BorderLayout.SOUTH);
+
+        JPanel formPanel = crearFormularioUsuario();
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(16, 18, 16, 18)
+        ));
+        card.add(formPanel, BorderLayout.CENTER);
+
+        JPanel buttonsPanel = crearPanelBotonesUsuario();
+
+        root.add(infoPanel, BorderLayout.NORTH);
+        root.add(card, BorderLayout.CENTER);
+        root.add(buttonsPanel, BorderLayout.SOUTH);
+
+        setContentPane(root);
+        getContentPane().revalidate();
+        getContentPane().repaint();
+    }
+
+    private JPanel crearFormularioUsuario() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 0, 12, 12);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridy = 0;
+
+        agregarFilaFormulario(panel, gbc, jLabel1, txtUsuario);
+        agregarFilaFormulario(panel, gbc, jLabel2, txtFullName);
+        if (!modoEdicion) {
+            agregarFilaFormulario(panel, gbc, lblPassword, pwdPassword);
+            agregarFilaFormulario(panel, gbc, lblConfirmar, pwdConfirmar);
+        }
+        agregarFilaFormulario(panel, gbc, lblStatus, cboStatus);
+        return panel;
+    }
+
+    private JPanel crearPanelBotonesUsuario() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panel.setOpaque(false);
+        if (!modoEdicion) {
+            panel.add(btnGuardar);
+        } else {
+            panel.add(btnActualizar);
+        }
+        panel.add(btnCancelar);
+        return panel;
+    }
+
+    private void agregarFilaFormulario(JPanel panel, GridBagConstraints gbc, JLabel label, java.awt.Component field) {
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.gridwidth = 1;
+        panel.add(label, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(field, gbc);
+        gbc.gridy++;
+    }
+
+    private void ajustarTamanoInicialUsuario() {
+        Dimension min = new Dimension(720, modoEdicion ? 480 : 560);
+        setMinimumSize(min);
+        int width = Math.max(getWidth(), min.width);
+        int height = Math.max(getHeight(), min.height);
+        setSize(width, height);
+        getContentPane().revalidate();
+        getContentPane().repaint();
     }
     
     private void configurarBotones() {
