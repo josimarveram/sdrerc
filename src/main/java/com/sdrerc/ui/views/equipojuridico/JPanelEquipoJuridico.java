@@ -10,7 +10,7 @@ import com.sdrerc.domain.model.EquipoJuridicoImportResult;
 import com.sdrerc.domain.model.EquipoJuridicoResumen;
 import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.SupervisorComboItem;
-import com.sdrerc.ui.table.ButtonRenderer;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.ui.views.usuario.DlgAsignarAbogados;
 import com.sdrerc.ui.views.usuario.DlgPrevisualizarEquipoJuridicoExcel;
 import com.sdrerc.ui.views.usuario.DlgRegistrarEquipoJuridico;
@@ -23,6 +23,9 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.Component;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -40,9 +43,13 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.AbstractCellEditor;
+import javax.swing.Icon;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.JTableHeader;
 
 public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImportOwner {
@@ -58,20 +65,20 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
     private final EquipoJuridicoConsultaService consultaService = new EquipoJuridicoConsultaService();
     private final UserService userService = new UserService();
     private final SupervisionService supervisionService = new SupervisionService();
-    private final JButton btnNuevoEquipoJuridico = new JButton("Nuevo abogado/supervisor");
-    private final JButton btnPlantillaExcel = new JButton("Plantilla Excel ▼");
+    private final JButton btnNuevoEquipoJuridico = IconUtils.createPrimaryButton("Nuevo abogado/supervisor", "add.svg");
+    private final JButton btnPlantillaExcel = IconUtils.createSecondaryButton("Plantilla Excel ▼", "excel.svg");
     private final JPopupMenu menuPlantillaExcel = new JPopupMenu();
-    private final JMenuItem itemDescargarPlantilla = new JMenuItem("Descargar plantilla");
-    private final JMenuItem itemPrevisualizarImportar = new JMenuItem("Previsualizar / importar");
-    private final JButton btnAccionesSupervisor = new JButton("Acciones del supervisor ▼");
+    private final JMenuItem itemDescargarPlantilla = IconUtils.createMenuItem("Descargar plantilla", "download.svg");
+    private final JMenuItem itemPrevisualizarImportar = IconUtils.createMenuItem("Previsualizar / importar", "upload.svg");
+    private final JButton btnAccionesSupervisor = IconUtils.createSecondaryButton("Acciones del supervisor ▼", "supervisor.svg");
     private final JPopupMenu menuAccionesSupervisor = new JPopupMenu();
-    private final JMenuItem itemGestionarEquipo = new JMenuItem("Gestionar equipo");
-    private final JMenuItem itemEditarSupervisor = new JMenuItem("Editar supervisor");
+    private final JMenuItem itemGestionarEquipo = IconUtils.createMenuItem("Gestionar equipo", "users.svg");
+    private final JMenuItem itemEditarSupervisor = IconUtils.createMenuItem("Editar supervisor", "edit.svg");
     private final JComboBox<SupervisorComboItem> cboSupervisor = new JComboBox<>();
     private final JComboBox<String> cboEstado = new JComboBox<>(new String[]{"TODOS", "ACTIVO", "INACTIVO"});
     private final JTextField txtBuscar = new JTextField();
-    private final JButton btnBuscar = new JButton("Buscar");
-    private final JButton btnLimpiar = new JButton("Limpiar");
+    private final JButton btnBuscar = IconUtils.createSecondaryButton("Buscar", "search.svg");
+    private final JButton btnLimpiar = IconUtils.createSecondaryButton("Limpiar", "clear.svg");
     private final JLabel lblTotalAbogados = new JLabel("0");
     private final JLabel lblTotalSupervisores = new JLabel("0");
     private final JLabel lblSinSupervisor = new JLabel("0");
@@ -368,7 +375,8 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         tblEquipo.getColumnModel().getColumn(COL_ESTADO).setPreferredWidth(110);
         tblEquipo.getColumnModel().getColumn(COL_EDITAR).setPreferredWidth(90);
         tblEquipo.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoEquipoRenderer());
-        tblEquipo.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new ButtonRenderer("Editar"));
+        tblEquipo.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new EditarEquipoRenderer());
+        tblEquipo.getColumnModel().getColumn(COL_EDITAR).setCellEditor(new EditarEquipoEditor());
     }
 
     private void configurarEventosConsulta() {
@@ -491,7 +499,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
                     item.getSupervisorNombre() == null || item.getSupervisorNombre().trim().isEmpty() ? "Sin supervisor" : item.getSupervisorNombre(),
                     item.getTipoPersonal() == null || item.getTipoPersonal().trim().isEmpty() ? "" : item.getTipoPersonal(),
                     item.getEstado(),
-                    "Editar"
+                    ""
                 });
             }
 
@@ -892,5 +900,62 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
             label.setOpaque(true);
             return label;
         }
+    }
+
+    private class EditarEquipoRenderer implements TableCellRenderer {
+
+        private final JButton button = crearBotonEditar();
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            button.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return button;
+        }
+    }
+
+    private class EditarEquipoEditor extends AbstractCellEditor implements TableCellEditor, ActionListener {
+
+        private final JButton button = crearBotonEditar();
+        private int row = -1;
+
+        EditarEquipoEditor() {
+            button.addActionListener(this);
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table, Object value, boolean isSelected, int row, int column) {
+            this.row = row;
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "";
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            int selectedRow = row;
+            fireEditingStopped();
+            if (selectedRow >= 0) {
+                abrirEdicionDesdeTabla(selectedRow);
+            }
+        }
+    }
+
+    private JButton crearBotonEditar() {
+        JButton button = IconUtils.createIconButton("Editar abogado", "edit.svg");
+        button.setText("");
+        button.setFocusable(false);
+        button.setPreferredSize(new Dimension(32, 28));
+        button.setMinimumSize(new Dimension(32, 28));
+        button.setMaximumSize(new Dimension(32, 28));
+        Icon icon = IconUtils.load("edit.svg", 16);
+        if (icon != null) {
+            button.setIcon(icon);
+        }
+        return button;
     }
 }

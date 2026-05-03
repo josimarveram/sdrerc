@@ -32,6 +32,12 @@
             <artifactId>flatlaf-intellij-themes</artifactId>
             <version>3.6.2</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf-extras</artifactId>
+            <version>3.6.2</version>
+        </dependency>
         
         <dependency>
             <groupId>org.mindrot</groupId>
