@@ -32,6 +32,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.RenderingHints;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
@@ -59,7 +61,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.JTableHeader;
 
-public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImportOwner {
+public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImportOwner, Scrollable {
 
     private static final int COL_ABOGADO = 0;
     private static final int COL_USERNAME = 1;
@@ -137,6 +139,31 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         cargarDatosEquipoJuridico();
     }
 
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 16;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(16, visibleRect.height - 32);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
+    }
+
     private void configurarLayout() {
         setLayout(new BorderLayout(0, 16));
         setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
@@ -177,7 +204,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
                 BorderFactory.createLineBorder(new Color(218, 224, 231)),
                 BorderFactory.createEmptyBorder(18, 20, 18, 20)
         ));
-        JLabel info = new JLabel("Use este módulo para registrar abogados y supervisores, descargar la plantilla oficial e importar información del equipo jurídico.");
+        JLabel info = new JLabel("<html>Use este módulo para registrar abogados y supervisores, descargar la plantilla oficial e importar información del equipo jurídico.</html>");
         info.setForeground(new Color(73, 85, 99));
         info.setFont(new Font("Arial", Font.PLAIN, 14));
         infoPanel.add(info, BorderLayout.CENTER);
