@@ -7,37 +7,49 @@ package com.sdrerc.ui.views.role;
 import com.sdrerc.application.RoleService;
 import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.Role;
-import com.sdrerc.ui.table.ButtonEditor;
-import com.sdrerc.ui.table.ButtonRenderer;
+import com.sdrerc.ui.common.icon.IconUtils;
+import java.awt.Component;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 
 /**
  *
  * @author David
  */
-public class JPanelListadoRole extends javax.swing.JPanel {
+public class JPanelListadoRole extends javax.swing.JPanel implements Scrollable {
 
     private DefaultTableModel model;
     private Role role;
@@ -85,6 +97,31 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         //cargarRoles();
         cargarPaginaRoles();
         
+    }
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 16;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(16, visibleRect.height - 32);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
     }
 
     private void corregirTextosVisibles() {
@@ -162,6 +199,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         jScrollPane2.setViewportBorder(BorderFactory.createEmptyBorder());
         jScrollPane2.setPreferredSize(new Dimension(980, 430));
         jScrollPane2.setMinimumSize(new Dimension(760, 280));
+        jScrollPane2.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         JPanel centerPanel = new JPanel(new BorderLayout(0, 10));
         centerPanel.setOpaque(false);
@@ -224,9 +262,21 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         btnLimpiar1.setPreferredSize(botonFiltro);
         btnLimpiar1.setMinimumSize(botonFiltro);
 
+        aplicarIconoBoton(btnNuevo1, "add.svg");
+        aplicarIconoBoton(btnBusqueda, "search.svg");
+        aplicarIconoBoton(btnLimpiar1, "clear.svg");
+
         btnNuevo1.setToolTipText("Registrar nuevo rol");
         btnBusqueda.setToolTipText("Buscar roles según filtros");
         btnLimpiar1.setToolTipText("Limpiar filtros");
+    }
+
+    private void aplicarIconoBoton(JButton button, String iconName) {
+        Icon icon = IconUtils.load(iconName, 16);
+        if (icon != null) {
+            button.setIcon(icon);
+            button.setIconTextGap(8);
+        }
     }
 
     private void configurarPaginacionRoles() {
@@ -262,7 +312,7 @@ public class JPanelListadoRole extends javax.swing.JPanel {
 
     private void configurarTablaRoles() {
         tblRoles.setRowHeight(36);
-        tblRoles.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblRoles.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         tblRoles.setShowGrid(false);
         tblRoles.setIntercellSpacing(new Dimension(0, 0));
         tblRoles.setFillsViewportHeight(true);
@@ -278,20 +328,26 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         renombrarEncabezado(COL_NOMBRE, "Rol");
         renombrarEncabezado(COL_DESCRIPCION, "Descripción");
         renombrarEncabezado(COL_ESTADO, "Estado");
-        renombrarEncabezado(COL_EDITAR, "Editar");
-        renombrarEncabezado(COL_ACTIVAR, "Activar/Inactivar");
+        renombrarEncabezado(COL_EDITAR, "");
+        renombrarEncabezado(COL_ACTIVAR, "");
         tblRoles.getTableHeader().repaint();
 
         ajustarColumna(COL_ID, 0, 0, 0);
-        ajustarColumna(COL_NOMBRE, 170, 220, 320);
-        ajustarColumna(COL_DESCRIPCION, 420, 680, 1200);
-        ajustarColumna(COL_ESTADO, 95, 112, 135);
-        ajustarColumna(COL_EDITAR, 78, 90, 110);
-        ajustarColumna(COL_ACTIVAR, 130, 150, 180);
+        ajustarColumna(COL_NOMBRE, 160, 220, 280);
+        ajustarColumna(COL_DESCRIPCION, 260, 500, Integer.MAX_VALUE);
+        ajustarColumna(COL_ESTADO, 90, 100, 120);
+        ajustarColumna(COL_EDITAR, 45, 55, 65);
+        ajustarColumna(COL_ACTIVAR, 45, 55, 65);
     }
 
     private void configurarRenderersRoles() {
+        tblRoles.getColumnModel().getColumn(COL_NOMBRE).setCellRenderer(new TextoTooltipRenderer());
+        tblRoles.getColumnModel().getColumn(COL_DESCRIPCION).setCellRenderer(new TextoTooltipRenderer());
         tblRoles.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoRolRenderer());
+        tblRoles.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new RolActionRenderer(COL_EDITAR));
+        tblRoles.getColumnModel().getColumn(COL_EDITAR).setCellEditor(new RolActionEditor(COL_EDITAR));
+        tblRoles.getColumnModel().getColumn(COL_ACTIVAR).setCellRenderer(new RolActionRenderer(COL_ACTIVAR));
+        tblRoles.getColumnModel().getColumn(COL_ACTIVAR).setCellEditor(new RolActionEditor(COL_ACTIVAR));
     }
 
     private void ajustarColumna(int indice, int min, int preferido, int max) {
@@ -318,17 +374,6 @@ public class JPanelListadoRole extends javax.swing.JPanel {
     private void initEventos() {
         
         
-        tblRoles.getColumn("EDITAR")
-        .setCellRenderer(new ButtonRenderer("Editar"));
-        tblRoles.getColumn("EDITAR")
-                .setCellEditor(new ButtonEditor(tblRoles, this, 4));
-
-        tblRoles.getColumn("ACTIVAR")
-                .setCellRenderer(new ButtonRenderer("Activar / Inactivar"));
-        tblRoles.getColumn("ACTIVAR")
-                .setCellEditor(new ButtonEditor(tblRoles, this, 5));
-        
-        
         txtBuscarRol.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -341,8 +386,10 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         tblRoles.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                if (evt.getClickCount() == 2 && tblRoles.getSelectedRow() != -1) {
-                    cargarRolDesdeTabla();
+                int row = tblRoles.rowAtPoint(evt.getPoint());
+                int col = tblRoles.columnAtPoint(evt.getPoint());
+                if (evt.getClickCount() == 2 && row >= 0 && !esColumnaAccion(col)) {
+                    editarDesdeTabla(row);
                 }
             }
         });
@@ -371,6 +418,27 @@ public class JPanelListadoRole extends javax.swing.JPanel {
                 }
             }
         });
+        tblRoles.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int col = tblRoles.columnAtPoint(e.getPoint());
+                tblRoles.setCursor(esColumnaAccion(col)
+                        ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                        : Cursor.getDefaultCursor());
+                tblRoles.repaint();
+            }
+        });
+        tblRoles.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) {
+                tblRoles.setCursor(Cursor.getDefaultCursor());
+                tblRoles.repaint();
+            }
+        });
+    }
+
+    private boolean esColumnaAccion(int col) {
+        return col == COL_EDITAR || col == COL_ACTIVAR;
     }
     
     private void cargarRolDesdeTabla() {
@@ -837,6 +905,158 @@ public class JPanelListadoRole extends javax.swing.JPanel {
         txtRoleName.requestFocus();
         */
         
+    }
+
+    private class TextoTooltipRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String text = value == null ? "" : value.toString();
+            label.setToolTipText(text);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+            return label;
+        }
+    }
+
+    private class RolActionRenderer implements TableCellRenderer {
+
+        private final int actionColumn;
+        private final GhostActionButton button = crearBotonAccion();
+
+        RolActionRenderer(int actionColumn) {
+            this.actionColumn = actionColumn;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+            int modelRow = table.convertRowIndexToModel(row);
+            String estado = valorModelo(modelRow, COL_ESTADO);
+            configurarBotonAccion(button, actionColumn, estado);
+            button.setSelectedRow(isSelected);
+
+            Point mouse = table.getMousePosition();
+            boolean hover = mouse != null
+                    && table.rowAtPoint(mouse) == row
+                    && table.columnAtPoint(mouse) == column;
+            button.setHover(hover);
+            return button;
+        }
+    }
+
+    private class RolActionEditor extends AbstractCellEditor implements TableCellEditor {
+
+        private final int actionColumn;
+        private final GhostActionButton button = crearBotonAccion();
+        private Object editorValue;
+
+        RolActionEditor(int actionColumn) {
+            this.actionColumn = actionColumn;
+            button.addActionListener(e -> fireEditingStopped());
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table, Object value, boolean isSelected, int row, int column) {
+
+            editorValue = value;
+            int modelRow = table.convertRowIndexToModel(row);
+            String estado = valorModelo(modelRow, COL_ESTADO);
+            configurarBotonAccion(button, actionColumn, estado);
+            button.setSelectedRow(isSelected);
+            button.setHover(true);
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return editorValue;
+        }
+    }
+
+    private GhostActionButton crearBotonAccion() {
+        GhostActionButton button = new GhostActionButton();
+        button.setText("");
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setOpaque(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        button.setPreferredSize(new Dimension(32, 28));
+        button.setMinimumSize(new Dimension(32, 28));
+        button.setMaximumSize(new Dimension(32, 28));
+        return button;
+    }
+
+    private void configurarBotonAccion(GhostActionButton button, int actionColumn, String estado) {
+        Icon icon = IconUtils.load(iconoAccion(actionColumn, estado), 16);
+        button.setIcon(icon);
+        button.setToolTipText(tooltipAccion(actionColumn, estado));
+        button.setEnabled(true);
+    }
+
+    private String iconoAccion(int actionColumn, String estado) {
+        if (actionColumn == COL_EDITAR) {
+            return "edit.svg";
+        }
+        return esActivo(estado) ? "inactive.svg" : "active.svg";
+    }
+
+    private String tooltipAccion(int actionColumn, String estado) {
+        if (actionColumn == COL_EDITAR) {
+            return "Editar rol";
+        }
+        return esActivo(estado) ? "Inactivar rol" : "Activar rol";
+    }
+
+    private boolean esActivo(String estado) {
+        return "ACTIVE".equalsIgnoreCase(estado) || "ACTIVO".equalsIgnoreCase(estado);
+    }
+
+    private String valorModelo(int modelRow, int col) {
+        Object value = model.getValueAt(modelRow, col);
+        return value == null ? "" : value.toString();
+    }
+
+    private static class GhostActionButton extends JButton {
+
+        private boolean hover;
+        private boolean selectedRow;
+
+        GhostActionButton() {
+            setHorizontalAlignment(JButton.CENTER);
+            setVerticalAlignment(JButton.CENTER);
+        }
+
+        void setHover(boolean hover) {
+            this.hover = hover;
+        }
+
+        void setSelectedRow(boolean selectedRow) {
+            this.selectedRow = selectedRow;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (hover || getModel().isRollover() || getModel().isPressed()) {
+                    g2.setColor(new Color(226, 237, 248));
+                    g2.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 10, 10);
+                } else if (selectedRow) {
+                    g2.setColor(new Color(219, 235, 247, 120));
+                    g2.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 10, 10);
+                }
+            } finally {
+                g2.dispose();
+            }
+            super.paintComponent(g);
+        }
     }
 
     private static class EstadoRolRenderer extends DefaultTableCellRenderer {
