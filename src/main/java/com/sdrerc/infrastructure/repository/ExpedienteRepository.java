@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.sql.Date;
@@ -172,7 +173,7 @@ public class ExpedienteRepository
             stmt.setInt(13, expediente.getTipoSolicitud());
             stmt.setString(14, expediente.getDniRemitente());
             stmt.setString(15, expediente.getApellidoNombreRemitente());
-            stmt.setInt(16, expediente.getUnidadOrganica());
+            setNullableCatalogId(stmt, 16, expediente.getUnidadOrganica());
             stmt.setString(17, expediente.getDniTitular());
             stmt.setString(18, expediente.getApellidoNombreTitular());
             stmt.setInt(19, expediente.getDepartamento());
@@ -326,7 +327,7 @@ public class ExpedienteRepository
             stmt.setInt(13, expediente.getTipoSolicitud());
             stmt.setString(14, expediente.getDniRemitente());
             stmt.setString(15, expediente.getApellidoNombreRemitente());
-            stmt.setInt(16, expediente.getUnidadOrganica());
+            setNullableCatalogId(stmt, 16, expediente.getUnidadOrganica());
             stmt.setString(17, expediente.getDniTitular());
             stmt.setString(18, expediente.getApellidoNombreTitular());
             stmt.setInt(19, expediente.getDepartamento());
@@ -558,6 +559,14 @@ public class ExpedienteRepository
             stmt.setDate(index, new java.sql.Date(value.getTime()));
         } else {
             stmt.setNull(index, java.sql.Types.DATE);
+        }
+    }
+
+    private void setNullableCatalogId(PreparedStatement stmt, int index, int value) throws SQLException {
+        if (value <= 0) {
+            stmt.setNull(index, Types.NUMERIC);
+        } else {
+            stmt.setInt(index, value);
         }
     }
     

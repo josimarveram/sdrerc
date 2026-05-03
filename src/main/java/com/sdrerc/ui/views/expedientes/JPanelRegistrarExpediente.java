@@ -84,6 +84,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         textDniRemitente.setEnabled(false);
         textApellidosNombreRemitente.setEnabled(false);
         cboUnidadOrganica.setEnabled(false);
+        aplicarReglasTipoSolicitud();
         
         ButtonGroup grupoCorrespondeSdrerc = new ButtonGroup();
         grupoCorrespondeSdrerc.add(jRadiButonSiCorresponde);
@@ -269,6 +270,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
 
         //celular
         textCelular.setText(lista.getCelular());
+        aplicarReglasTipoSolicitud();
         
     }
 	
@@ -417,10 +419,11 @@ private void seleccionarDistrito(int idDistrito) {
         List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(ID_CATALOGO_DIRECCION_DOMICILIARIA);
 
         for (CatalogoItem catalogoitem : lista) {
+            if (esOpcionAgregarDireccion(catalogoitem)) {
+                continue;
+            }
             cboDireccionDomiciliaria.addItem(catalogoitem);
         }
-
-        cboDireccionDomiciliaria.addItem(crearOpcionAgregarDireccion());
 
         if (seleccionActual != null) {
             seleccionarEstadoEnCombo(cboDireccionDomiciliaria, seleccionActual.getIdCatalogoItem());
@@ -552,22 +555,96 @@ private void seleccionarDistrito(int idDistrito) {
         if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
         if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
         if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
+        aplicarReglasTipoSolicitud();
     }
     
-    private void validarGuardar()
+    private boolean validarGuardar()
     {
         //esRegistroSdrerc 
         if (jRadiButonNoCorresponde.isSelected() && textHojaEnvioExpediente.getText().trim().isEmpty()) 
         {
             JOptionPane.showMessageDialog(this,"Debe ingresar la Hoja de Envío");textHojaEnvioExpediente.requestFocus();
-            return;
+            return false;
         }
 
         if (cboCanalRecepcion.getSelectedItem() == null)
         {
             JOptionPane.showMessageDialog(this,"Debe seleccionar el Canal de recepción");cboCanalRecepcion.requestFocus();
+            return false;
+        }
+
+        aplicarReglasTipoSolicitud();
+        if (esParte()) {
+            if (textDniRemitente.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Ingrese el DNI del remitente.");
+                textDniRemitente.requestFocus();
+                return false;
+            }
+            if (textApellidosNombreRemitente.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Ingrese los apellidos y nombres del remitente.");
+                textApellidosNombreRemitente.requestFocus();
+                return false;
+            }
+        }
+
+        if (esOficio() && cboUnidadOrganica.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione la unidad orgánica para solicitudes tipo OFICIO.");
+            cboUnidadOrganica.requestFocus();
+            return false;
+        }
+
+        return true;
+    }
+
+    private void aplicarReglasTipoSolicitud() {
+        if (esParte()) {
+            textDniRemitente.setEnabled(true);
+            textApellidosNombreRemitente.setEnabled(true);
+            cboUnidadOrganica.setEnabled(false);
+            cboUnidadOrganica.setToolTipText("Para tipo de solicitud PARTE no corresponde seleccionar Unidad Orgánica.");
             return;
         }
+
+        if (esOficio()) {
+            textDniRemitente.setEnabled(false);
+            textApellidosNombreRemitente.setEnabled(false);
+            cboUnidadOrganica.setEnabled(true);
+            cboUnidadOrganica.setToolTipText(null);
+            return;
+        }
+
+        textDniRemitente.setEnabled(false);
+        textApellidosNombreRemitente.setEnabled(false);
+        cboUnidadOrganica.setEnabled(true);
+        cboUnidadOrganica.setToolTipText(null);
+    }
+
+    private boolean esParte() {
+        return "PARTE".equals(descripcionTipoSolicitudSeleccionada());
+    }
+
+    private boolean esOficio() {
+        return "OFICIO".equals(descripcionTipoSolicitudSeleccionada());
+    }
+
+    private String descripcionTipoSolicitudSeleccionada() {
+        return normalizarDescripcion(cboTipoSolicitud.getSelectedItem());
+    }
+
+    private String normalizarDescripcion(Object item) {
+        if (item == null) {
+            return "";
+        }
+        String descripcion = item instanceof CatalogoItem
+                ? ((CatalogoItem) item).getDescripcion()
+                : String.valueOf(item);
+        return descripcion == null ? "" : descripcion.trim().toUpperCase();
+    }
+
+    private boolean esOpcionAgregarDireccion(CatalogoItem item) {
+        String descripcion = normalizarDescripcion(item);
+        return descripcion.contains("AGREGAR NUEVA DIRECCION")
+                || descripcion.contains("AGREGAR NUEVA DIRECCIÓN");
     }
     
     /**
@@ -1119,7 +1196,9 @@ private void seleccionarDistrito(int idDistrito) {
      try 
         {
             Expediente expediente = new Expediente();  
-            this.validarGuardar();
+            if (!this.validarGuardar()) {
+                return;
+            }
 
             //esRegistroSdrerc 
             int noPertenece = jRadiButonNoCorresponde.isSelected()? 1 : 0;
@@ -1179,7 +1258,9 @@ private void seleccionarDistrito(int idDistrito) {
             
             //unidadOrganica
             CatalogoItem catalogoUnidadOrganica = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
-            int idUnidadOrganica = catalogoUnidadOrganica.getIdCatalogoItem();            
+            int idUnidadOrganica = esParte() || catalogoUnidadOrganica == null
+                    ? 0
+                    : catalogoUnidadOrganica.getIdCatalogoItem();
             expediente.setUnidadOrganica(idUnidadOrganica);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //dniTitular
@@ -1270,21 +1351,7 @@ private void seleccionarDistrito(int idDistrito) {
 
     private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
         
-        CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
-        int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
-        
-        if(idTipoSolicitud == 10)
-        {
-          textDniRemitente.setEnabled(true);
-          textApellidosNombreRemitente.setEnabled(true);
-          cboUnidadOrganica.setEnabled(false);
-        }
-        else
-        {
-           textDniRemitente.setEnabled(false);
-           textApellidosNombreRemitente.setEnabled(false);
-           cboUnidadOrganica.setEnabled(true); 
-        }
+        aplicarReglasTipoSolicitud();
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
 
