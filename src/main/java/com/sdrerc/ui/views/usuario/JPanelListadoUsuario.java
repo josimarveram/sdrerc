@@ -1099,6 +1099,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         DefaultTableModel model = (DefaultTableModel) tblUsuarios.getModel();
         int modelRow = tblUsuarios.convertRowIndexToModel(row);
         Long userId = (Long) model.getValueAt(modelRow, COL_ID);
+        String username = textoTabla(model.getValueAt(modelRow, COL_NOMBRE));
+        String nombreVisible = textoTabla(model.getValueAt(modelRow, COL_DESCRIPCION));
+        String estado = textoTabla(model.getValueAt(modelRow, COL_ESTADO));
 
         Window parent = SwingUtilities.getWindowAncestor(this);
 
@@ -1106,6 +1109,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                 parent,
                 Dialog.ModalityType.APPLICATION_MODAL,
                 userId,
+                username,
+                nombreVisible,
+                estado,
                 userService
         );
 
@@ -1113,6 +1119,10 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         dlg.setVisible(true);
         
         cargarPaginaUsuarios();
+    }
+
+    private String textoTabla(Object value) {
+        return value == null ? "" : value.toString();
     }
     
     public void asignarRolesDesdeTabla(int row) { 

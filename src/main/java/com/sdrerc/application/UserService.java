@@ -9,6 +9,9 @@ import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.domain.model.UsuarioListadoItem;
 import com.sdrerc.infrastructure.repository.UserRepository;
+import com.sdrerc.infrastructure.security.PasswordEncoder;
+import com.sdrerc.infrastructure.security.PasswordPolicy;
+import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -87,6 +90,26 @@ public class UserService {
             throws SQLException {
 
         repo.actualizarPassword(userId, hash);
+    }
+
+    public void resetPasswordTemporal(Long userId, String username, String temporaryPassword)
+            throws SQLException {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("Seleccione un usuario válido.");
+        }
+        PasswordPolicy.validateTemporaryPassword(username, temporaryPassword);
+        String hash = PasswordEncoder.hash(temporaryPassword);
+        repo.resetPasswordTemporal(userId, hash, obtenerUsuarioReset());
+    }
+
+    private String obtenerUsuarioReset() {
+        try {
+            String username = SessionContext.getUsername();
+            String resetBy = username == null || username.trim().isEmpty() ? "APP" : username.trim();
+            return resetBy.length() > 50 ? resetBy.substring(0, 50) : resetBy;
+        } catch (Exception ex) {
+            return "APP";
+        }
     }
     
     public List<Role> obtenerRolesUsuario(Long userId) throws SQLException {

@@ -393,6 +393,25 @@ public class UserRepository {
             ps.executeUpdate();
         }
     }
+
+    public void resetPasswordTemporal(Long userId, String passwordHash, String resetBy) throws SQLException {
+        String sql =
+            "UPDATE APP_USERS " +
+            "SET PASSWORD_HASH = ?, " +
+            "    MUST_CHANGE_PASSWORD = 1, " +
+            "    PASSWORD_RESET_AT = SYSDATE, " +
+            "    PASSWORD_RESET_BY = ? " +
+            "WHERE USER_ID = ?";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setString(1, passwordHash);
+            ps.setString(2, resetBy);
+            ps.setLong(3, userId);
+            ps.executeUpdate();
+        }
+    }
     
     
     
