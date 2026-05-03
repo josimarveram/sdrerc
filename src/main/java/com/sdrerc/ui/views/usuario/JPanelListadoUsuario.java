@@ -545,7 +545,16 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                 }
 
                 if (col == COL_PERSONA_OPERATIVA) {
-                    vincularPersonaOperativaDesdeTabla(row);
+                    if (personaOperativaAplica(row)) {
+                        vincularPersonaOperativaDesdeTabla(row);
+                    } else {
+                        JOptionPane.showMessageDialog(
+                                JPanelListadoUsuario.this,
+                                "Este usuario no requiere persona operativa. La vinculación se usa para usuarios operativos como ABOGADO o SUPERVISION.",
+                                "Persona operativa",
+                                JOptionPane.INFORMATION_MESSAGE
+                        );
+                    }
                 }
                 
                 // Columna COL_ASIGNAR_ROL
@@ -562,8 +571,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         tblUsuarios.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
+                int row = tblUsuarios.rowAtPoint(e.getPoint());
                 int col = tblUsuarios.columnAtPoint(e.getPoint());
-                tblUsuarios.setCursor(esColumnaAccion(col)
+                boolean accionHabilitada = esColumnaAccion(col)
+                        && (col != COL_PERSONA_OPERATIVA || (row >= 0 && personaOperativaAplica(row)));
+                tblUsuarios.setToolTipText(col == COL_PERSONA_OPERATIVA && row >= 0
+                        ? tooltipPersonaOperativa(row)
+                        : null);
+                tblUsuarios.setCursor(accionHabilitada
                         ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
                         : Cursor.getDefaultCursor());
                 tblUsuarios.repaint();
@@ -585,6 +600,31 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                 || col == COL_ASIGNAR_ROL
                 || col == COL_PERSONA_OPERATIVA
                 || col == COL_ASIGNAR_ABOGADO;
+    }
+
+    private boolean personaOperativaAplica(int row) {
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        return personaOperativaAplicaModelRow(modelRow);
+    }
+
+    private boolean personaOperativaAplicaModelRow(int modelRow) {
+        VinculoOperativoValue vinculo = obtenerVinculoOperativo(modelRow);
+        return vinculo == null || vinculo.getTipo() != VinculoOperativoValue.Tipo.NO_APLICA;
+    }
+
+    private String tooltipPersonaOperativa(int row) {
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        VinculoOperativoValue vinculo = obtenerVinculoOperativo(modelRow);
+        if (vinculo == null) {
+            return "Gestionar persona operativa";
+        }
+        if (vinculo.getTipo() == VinculoOperativoValue.Tipo.NO_APLICA) {
+            return "Este usuario no requiere persona operativa.";
+        }
+        if (vinculo.getTipo() == VinculoOperativoValue.Tipo.SIN_VINCULO) {
+            return "Vincular persona operativa.";
+        }
+        return "Cambiar persona operativa.";
     }
     
     private void cargarRolDesdeTabla() {
@@ -684,19 +724,29 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
     private VinculoOperativoValue crearValorVinculoOperativo(UsuarioListadoItem usuario) {
         if (usuario.getIdTecnico() != null) {
             String nombre = usuario.getNombreVisible() == null ? "" : usuario.getNombreVisible();
-            return new VinculoOperativoValue("Vinculado", "Vinculado a: " + nombre, VinculoOperativoValue.Tipo.VINCULADO);
+            return new VinculoOperativoValue(
+                    "Vinculado",
+                    "Vinculado a: " + nombre,
+                    VinculoOperativoValue.Tipo.VINCULADO,
+                    usuario.getIdTecnico(),
+                    nombre
+            );
         }
         if (usuario.isEsOperativoJuridico()) {
             return new VinculoOperativoValue(
                     "Sin vínculo",
                     "Usuario operativo sin persona operativa vinculada",
-                    VinculoOperativoValue.Tipo.SIN_VINCULO
+                    VinculoOperativoValue.Tipo.SIN_VINCULO,
+                    null,
+                    null
             );
         }
         return new VinculoOperativoValue(
                 "No aplica",
                 "No aplica para usuario administrativo/no operativo",
-                VinculoOperativoValue.Tipo.NO_APLICA
+                VinculoOperativoValue.Tipo.NO_APLICA,
+                null,
+                null
         );
     }
     
@@ -1285,14 +1335,30 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
 
         int modelRow = tblUsuarios.convertRowIndexToModel(row);
         Long userId = (Long) model.getValueAt(modelRow, COL_ID);
-        vincularPersonaOperativa(userId);
+        String username = valorModelo(modelRow, COL_NOMBRE);
+        String nombreVisible = valorModelo(modelRow, COL_DESCRIPCION);
+        VinculoOperativoValue vinculo = obtenerVinculoOperativo(modelRow);
+        vincularPersonaOperativa(userId, username, nombreVisible, vinculo);
     }
 
     private void vincularPersonaOperativa(Long userId) {
+        vincularPersonaOperativa(userId, null, null, null);
+    }
+
+    private void vincularPersonaOperativa(
+            Long userId,
+            String username,
+            String nombreVisible,
+            VinculoOperativoValue vinculoActual) {
         Window parent = SwingUtilities.getWindowAncestor(this);
         Frame frame = parent instanceof Frame ? (Frame) parent : null;
         JDialogTecnico dialog = new JDialogTecnico(frame, true);
-        dialog.setTitle("Vincular persona operativa");
+        dialog.setContextoPersonaOperativa(
+                username,
+                nombreVisible,
+                vinculoActual == null ? null : vinculoActual.getNombreTecnico(),
+                vinculoActual == null ? null : vinculoActual.getIdTecnico()
+        );
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
 
@@ -1310,10 +1376,28 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Seleccione un técnico válido.", "Aviso", JOptionPane.WARNING_MESSAGE);
         } catch (IllegalStateException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            String mensaje = ex.getMessage() == null ? "" : ex.getMessage();
+            if (mensaje.toLowerCase().contains("técnico") || mensaje.toLowerCase().contains("tecnico")) {
+                mensaje = "Esta persona operativa ya está vinculada a otra cuenta de usuario.";
+            }
+            JOptionPane.showMessageDialog(this, mensaje, "Aviso", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
+            if (ex instanceof java.sql.SQLException && ((java.sql.SQLException) ex).getErrorCode() == 1) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Esta persona operativa ya está vinculada a otra cuenta de usuario.",
+                        "Aviso",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+                return;
+            }
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private VinculoOperativoValue obtenerVinculoOperativo(int modelRow) {
+        Object value = model.getValueAt(modelRow, COL_VINCULO_OPERATIVO);
+        return value instanceof VinculoOperativoValue ? (VinculoOperativoValue) value : null;
     }
     
     public void abrirDlgAsignarAbogados(int row) {
@@ -1366,11 +1450,15 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         private final String texto;
         private final String tooltip;
         private final Tipo tipo;
+        private final Long idTecnico;
+        private final String nombreTecnico;
 
-        VinculoOperativoValue(String texto, String tooltip, Tipo tipo) {
+        VinculoOperativoValue(String texto, String tooltip, Tipo tipo, Long idTecnico, String nombreTecnico) {
             this.texto = texto;
             this.tooltip = tooltip;
             this.tipo = tipo;
+            this.idTecnico = idTecnico;
+            this.nombreTecnico = nombreTecnico;
         }
 
         String getTooltip() {
@@ -1379,6 +1467,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
 
         Tipo getTipo() {
             return tipo;
+        }
+
+        Integer getIdTecnico() {
+            return idTecnico == null ? null : idTecnico.intValue();
+        }
+
+        String getNombreTecnico() {
+            return nombreTecnico;
         }
 
         @Override
@@ -1395,7 +1491,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             VinculoOperativoValue vinculo = value instanceof VinculoOperativoValue
                     ? (VinculoOperativoValue) value
-                    : new VinculoOperativoValue(value == null ? "" : value.toString(), null, VinculoOperativoValue.Tipo.NO_APLICA);
+                    : new VinculoOperativoValue(value == null ? "" : value.toString(), null, VinculoOperativoValue.Tipo.NO_APLICA, null, null);
 
             label.setText(vinculo.toString());
             label.setToolTipText(vinculo.getTooltip());
@@ -1436,8 +1532,11 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
             int modelRow = table.convertRowIndexToModel(row);
             String estado = valorModelo(modelRow, COL_ESTADO);
             boolean enabled = !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
+            if (actionColumn == COL_PERSONA_OPERATIVA) {
+                enabled = personaOperativaAplicaModelRow(modelRow);
+            }
 
-            configurarBotonAccion(button, actionColumn, estado, enabled);
+            configurarBotonAccion(button, actionColumn, estado, enabled, modelRow);
             button.setSelectedRow(isSelected);
 
             Point mouse = table.getMousePosition();
@@ -1469,7 +1568,10 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
             int modelRow = table.convertRowIndexToModel(row);
             String estado = valorModelo(modelRow, COL_ESTADO);
             boolean enabled = !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
-            configurarBotonAccion(button, actionColumn, estado, enabled);
+            if (actionColumn == COL_PERSONA_OPERATIVA) {
+                enabled = personaOperativaAplicaModelRow(modelRow);
+            }
+            configurarBotonAccion(button, actionColumn, estado, enabled, modelRow);
             button.setSelectedRow(isSelected);
             button.setHover(true);
             return button;
@@ -1496,11 +1598,11 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         return button;
     }
 
-    private void configurarBotonAccion(GhostActionButton button, int actionColumn, String estado, boolean enabled) {
+    private void configurarBotonAccion(GhostActionButton button, int actionColumn, String estado, boolean enabled, int modelRow) {
         String iconName = iconoAccion(actionColumn, estado);
         Icon icon = IconUtils.load(iconName, 16);
         button.setIcon(icon);
-        button.setToolTipText(tooltipAccion(actionColumn, estado));
+        button.setToolTipText(tooltipAccion(actionColumn, estado, modelRow));
         button.setEnabled(enabled);
     }
 
@@ -1523,7 +1625,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         return "users.svg";
     }
 
-    private String tooltipAccion(int actionColumn, String estado) {
+    private String tooltipAccion(int actionColumn, String estado, int modelRow) {
         if (actionColumn == COL_EDITAR) {
             return "Editar usuario";
         }
@@ -1537,7 +1639,17 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
             return "Asignar roles";
         }
         if (actionColumn == COL_PERSONA_OPERATIVA) {
-            return "Gestionar persona operativa";
+            VinculoOperativoValue vinculo = obtenerVinculoOperativo(modelRow);
+            if (vinculo == null) {
+                return "Gestionar persona operativa";
+            }
+            if (vinculo.getTipo() == VinculoOperativoValue.Tipo.NO_APLICA) {
+                return "Este usuario no requiere persona operativa.";
+            }
+            if (vinculo.getTipo() == VinculoOperativoValue.Tipo.SIN_VINCULO) {
+                return "Vincular persona operativa.";
+            }
+            return "Cambiar persona operativa.";
         }
         return "Equipo supervisado";
     }
