@@ -1,7 +1,8 @@
 package com.sdrerc.application;
 
-import com.sdrerc.domain.model.EquipoJuridicoRegistro;
 import com.sdrerc.domain.model.EquipoJuridicoImportRowResult;
+import com.sdrerc.domain.model.EquipoJuridicoRegistro;
+import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import com.sdrerc.infrastructure.security.PasswordEncoder;
@@ -16,6 +17,7 @@ import java.util.List;
 public class EquipoJuridicoService {
 
     private static final String ESTADO_ACTIVO = "ACTIVE";
+    private static final String CATALOGO_TIPO_PERSONAL = "TIPO PERSONAL";
 
     public void registrar(EquipoJuridicoRegistro registro) throws SQLException {
         validar(registro);
@@ -33,6 +35,8 @@ public class EquipoJuridicoService {
                     idTecnico = crearTecnico(conn, registro);
                 } else if (tecnicoVinculadoAOtroUsuario(conn, idTecnico, null)) {
                     throw new IllegalStateException("El técnico ya está vinculado a otro usuario.");
+                } else {
+                    actualizarTipoPersonalTecnicoSiNecesario(conn, idTecnico, registro.getIdTipoPersonal());
                 }
 
                 Long userId = crearUsuario(conn, registro, idTecnico);
@@ -103,6 +107,64 @@ public class EquipoJuridicoService {
             }
         }
         return supervisores;
+    }
+
+    public List<CatalogoItem> listarTiposPersonalOficiales() throws SQLException {
+        String sql =
+            "SELECT ci.ID_CATALOGO_ITEM, ci.ID_CATALOGO, ci.DESCRIPCION, ci.ACTIVE " +
+            "FROM CATALOGO_ITEM ci " +
+            "JOIN CATALOGO c ON c.ID_CATALOGO = ci.ID_CATALOGO " +
+            "WHERE UPPER(TRIM(c.DESCRIPCION)) = ? " +
+            "AND UPPER(TRIM(ci.DESCRIPCION)) IN ('CAS ELECTORAL', 'PERSONAL OR', 'PERSONAL PLANTA') " +
+            "AND NVL(ci.ACTIVE, 1) = 1 " +
+            "ORDER BY CASE UPPER(TRIM(ci.DESCRIPCION)) " +
+            "WHEN 'CAS ELECTORAL' THEN 1 " +
+            "WHEN 'PERSONAL OR' THEN 2 " +
+            "WHEN 'PERSONAL PLANTA' THEN 3 " +
+            "ELSE 99 END";
+
+        List<CatalogoItem> tipos = new ArrayList<>();
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, CATALOGO_TIPO_PERSONAL);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    tipos.add(new CatalogoItem(
+                            rs.getInt("ID_CATALOGO_ITEM"),
+                            rs.getInt("ID_CATALOGO"),
+                            rs.getString("DESCRIPCION"),
+                            rs.getInt("ACTIVE")
+                    ));
+                }
+            }
+        }
+        return tipos;
+    }
+
+    public Integer obtenerIdTipoPersonal(Connection conn, String descripcion) throws SQLException {
+        if (isBlank(descripcion)) {
+            return null;
+        }
+
+        String sql =
+            "SELECT ci.ID_CATALOGO_ITEM " +
+            "FROM CATALOGO_ITEM ci " +
+            "JOIN CATALOGO c ON c.ID_CATALOGO = ci.ID_CATALOGO " +
+            "WHERE UPPER(TRIM(c.DESCRIPCION)) = ? " +
+            "AND UPPER(TRIM(ci.DESCRIPCION)) = UPPER(TRIM(?)) " +
+            "AND UPPER(TRIM(ci.DESCRIPCION)) IN ('CAS ELECTORAL', 'PERSONAL OR', 'PERSONAL PLANTA') " +
+            "AND NVL(ci.ACTIVE, 1) = 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, CATALOGO_TIPO_PERSONAL);
+            ps.setString(2, descripcion);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("ID_CATALOGO_ITEM");
+                }
+            }
+        }
+        throw new IllegalArgumentException("El tipo de personal no existe en el catálogo TIPO PERSONAL: " + descripcion);
     }
 
     public EquipoJuridicoImportRowResult importarFila(
@@ -222,8 +284,8 @@ public class EquipoJuridicoService {
         Integer idTecnico = obtenerSiguienteIdTecnico(conn);
         String sql =
             "INSERT INTO TECNICO " +
-            "(ID_TECNICO, ID_TIPO_DOCUMENTO, NUMERO_DOCUMENTO, APELLIDO_PATERNO, APELLIDO_MATERNO, NOMBRES, ACTIVE, FECHA_REGISTRO) " +
-            "VALUES (?, ?, ?, ?, ?, ?, 1, SYSDATE)";
+            "(ID_TECNICO, ID_TIPO_DOCUMENTO, NUMERO_DOCUMENTO, APELLIDO_PATERNO, APELLIDO_MATERNO, NOMBRES, ID_TIPO_PERSONAL, ACTIVE, FECHA_REGISTRO) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 1, SYSDATE)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idTecnico);
@@ -240,9 +302,27 @@ public class EquipoJuridicoService {
             ps.setString(4, registro.getApellidoPaterno().trim());
             ps.setString(5, trimToNull(registro.getApellidoMaterno()));
             ps.setString(6, registro.getNombres().trim());
+            if (registro.getIdTipoPersonal() == null) {
+                ps.setNull(7, Types.NUMERIC);
+            } else {
+                ps.setInt(7, registro.getIdTipoPersonal());
+            }
             ps.executeUpdate();
         }
         return idTecnico;
+    }
+
+    private void actualizarTipoPersonalTecnicoSiNecesario(Connection conn, Integer idTecnico, Integer idTipoPersonal) throws SQLException {
+        if (idTipoPersonal == null) {
+            return;
+        }
+
+        String sql = "UPDATE TECNICO SET ID_TIPO_PERSONAL = ? WHERE ID_TECNICO = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idTipoPersonal);
+            ps.setInt(2, idTecnico);
+            ps.executeUpdate();
+        }
     }
 
     private Integer obtenerSiguienteIdTecnico(Connection conn) throws SQLException {
@@ -330,6 +410,7 @@ public class EquipoJuridicoService {
             acciones.add("TECNICO_" + prefijoAccion + "_CREADO");
         } else {
             acciones.add("TECNICO_" + prefijoAccion + "_REUTILIZADO");
+            actualizarTipoPersonalTecnicoSiNecesario(conn, idTecnico, registro.getIdTipoPersonal());
         }
 
         Long userId = buscarUserIdPorIdTecnico(conn, idTecnico);

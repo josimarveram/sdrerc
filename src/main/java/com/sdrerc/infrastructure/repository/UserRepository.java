@@ -253,7 +253,7 @@ public class UserRepository {
             "FROM APP_USERS u " +
             "LEFT JOIN TECNICO t ON t.ID_TECNICO = u.ID_TECNICO " +
             where +
-            "ORDER BY u.USER_ID DESC " +
+            "ORDER BY NOMBRE_VISIBLE, u.USERNAME " +
             "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
 
         List<UsuarioListadoItem> data = new ArrayList<>();

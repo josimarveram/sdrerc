@@ -54,8 +54,8 @@ public class ExpedienteAsignacionRepository {
         
         // Luego, insertar en la tabla EXPEDIENTE_ASIGNACION
         String insertAsignacionSql = "INSERT INTO EXPEDIENTE_ASIGNACION "
-                + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION, HOJA_ENVIO_ASIGNACION) "
-                + "VALUES (?, ?, ?, ?)";
+                + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION, HOJA_ENVIO_ASIGNACION, ID_TIPO_PERSONAL_ASIGNACION, TIPO_PERSONAL_ASIGNACION) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
         /*
         String sql = "INSERT INTO EXPEDIENTE_ASIGNACION "
                    + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION) "
@@ -101,6 +101,7 @@ public class ExpedienteAsignacionRepository {
             }
             
             // 2️⃣ INSERT EXPEDIENTE_ASIGNACION
+            TipoPersonalAsignacion tipoPersonal = obtenerTipoPersonalAsignacion(conn, asignacion.getIdTecnico());
             try (PreparedStatement psInsert = conn.prepareStatement(insertAsignacionSql)) {
 
                 psInsert.setInt(1, asignacion.getIdExpediente());
@@ -109,6 +110,12 @@ public class ExpedienteAsignacionRepository {
                 java.sql.Date fechaSql = new java.sql.Date(asignacion.getFechaAsignacion().getTime());
                 psInsert.setDate(3, fechaSql);
                 psInsert.setString(4, asignacion.getHojaEnvioAsignacion());
+                if (tipoPersonal.idTipoPersonal == null) {
+                    psInsert.setNull(5, java.sql.Types.NUMERIC);
+                } else {
+                    psInsert.setInt(5, tipoPersonal.idTipoPersonal);
+                }
+                psInsert.setString(6, tipoPersonal.descripcion);
 
                 psInsert.executeUpdate();
             }
@@ -131,8 +138,8 @@ public class ExpedienteAsignacionRepository {
     public boolean RegistrarAsigancionExpedienteTO(ExpedienteAsignacion oExpedienteAsignacion) throws SQLException 
     {
         String insertAsignacionSql = "INSERT INTO EXPEDIENTE_ASIGNACION "
-                + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION, HOJA_ENVIO_ASIGNACION, ETAPA_FLUJO, TIPO_PROCEDIMIENTO_REGISTRAL, NUMERO_RESOLUCION, TIPO_ACTA) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION, HOJA_ENVIO_ASIGNACION, ETAPA_FLUJO, TIPO_PROCEDIMIENTO_REGISTRAL, NUMERO_RESOLUCION, TIPO_ACTA, ID_TIPO_PERSONAL_ASIGNACION, TIPO_PERSONAL_ASIGNACION) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         String updateExpedienteSql = "UPDATE EXPEDIENTE SET " +
                     " ESTADO = ?, " +
@@ -161,6 +168,7 @@ public class ExpedienteAsignacionRepository {
             } 
             
             // 2️⃣ INSERT EXPEDIENTE_ASIGNACION
+            TipoPersonalAsignacion tipoPersonal = obtenerTipoPersonalAsignacion(conn, oExpedienteAsignacion.getIdTecnico());
             try (PreparedStatement psInsert = conn.prepareStatement(insertAsignacionSql)) 
             {
                 psInsert.setInt(1, oExpedienteAsignacion.getIdExpediente());
@@ -174,6 +182,12 @@ public class ExpedienteAsignacionRepository {
                 psInsert.setInt(6, oExpedienteAsignacion.getTipoProcedimientoRegistral());
                 psInsert.setString(7, oExpedienteAsignacion.getNumeroResolucion());
                 psInsert.setInt(8, oExpedienteAsignacion.getTipoActa());
+                if (tipoPersonal.idTipoPersonal == null) {
+                    psInsert.setNull(9, java.sql.Types.NUMERIC);
+                } else {
+                    psInsert.setInt(9, tipoPersonal.idTipoPersonal);
+                }
+                psInsert.setString(10, tipoPersonal.descripcion);
                 
                 psInsert.executeUpdate();
             }            
@@ -215,6 +229,38 @@ public class ExpedienteAsignacionRepository {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() && rs.getInt(1) > 0;
             }
+        }
+    }
+
+    private TipoPersonalAsignacion obtenerTipoPersonalAsignacion(Connection conn, int idTecnico) throws SQLException {
+        String sql =
+            "SELECT t.ID_TIPO_PERSONAL, ci.DESCRIPCION AS TIPO_PERSONAL " +
+            "FROM TECNICO t " +
+            "LEFT JOIN CATALOGO_ITEM ci ON ci.ID_CATALOGO_ITEM = t.ID_TIPO_PERSONAL " +
+            "WHERE t.ID_TECNICO = ?";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idTecnico);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int idTipoPersonal = rs.getInt("ID_TIPO_PERSONAL");
+                    return new TipoPersonalAsignacion(
+                            rs.wasNull() ? null : idTipoPersonal,
+                            rs.getString("TIPO_PERSONAL")
+                    );
+                }
+            }
+        }
+        return new TipoPersonalAsignacion(null, null);
+    }
+
+    private static class TipoPersonalAsignacion {
+        private final Integer idTipoPersonal;
+        private final String descripcion;
+
+        private TipoPersonalAsignacion(Integer idTipoPersonal, String descripcion) {
+            this.idTipoPersonal = idTipoPersonal;
+            this.descripcion = descripcion;
         }
     }
     

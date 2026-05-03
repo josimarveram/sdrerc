@@ -314,7 +314,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
     }
 
     private void configurarTabla() {
-        model.setColumnIdentifiers(new Object[]{"Abogado", "Username", "Supervisor", "Estado", "Roles"});
+        model.setColumnIdentifiers(new Object[]{"Abogado", "Username", "Supervisor", "Estado", "Tipo personal"});
         tblEquipo.setModel(model);
         tblEquipo.setRowHeight(36);
         tblEquipo.setFillsViewportHeight(true);
@@ -440,7 +440,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
                     item.getAbogadoUsername(),
                     item.getSupervisorNombre() == null || item.getSupervisorNombre().trim().isEmpty() ? "Sin supervisor" : item.getSupervisorNombre(),
                     item.getEstado(),
-                    item.getRoles()
+                    item.getTipoPersonal() == null || item.getTipoPersonal().trim().isEmpty() ? "" : item.getTipoPersonal()
                 });
             }
 

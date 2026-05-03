@@ -133,7 +133,7 @@ public class EquipoJuridicoPlantillaSimpleService {
             "Si el USERNAME generado ya existe, el sistema agregara correlativo.",
             "SUPERVISOR es recomendado; si no existe, el sistema lo creara o lo detectara en la futura importacion.",
             "Si SUPERVISOR queda vacio, el abogado se cargara sin supervisor y quedara como advertencia en la futura previsualizacion.",
-            "PERSONAL es informativo en esta fase. Valores sugeridos: PERSONAL PLANTA, PERSONAL OR, CAS ELECTORAL, OTRO.",
+            "PERSONAL acepta solo estos valores oficiales: CAS ELECTORAL, PERSONAL OR, PERSONAL PLANTA.",
             "ESTADO acepta ACTIVO o INACTIVO. Si queda vacio, se asumira ACTIVO en la futura importacion.",
             "Las observaciones, errores y advertencias se mostraran en la futura pantalla de previsualizacion/reporte."
         };
@@ -151,10 +151,9 @@ public class EquipoJuridicoPlantillaSimpleService {
     private String catalogosSheet() {
         String[][] rows = {
             {"ESTADO", "PERSONAL"},
-            {"ACTIVO", "PERSONAL PLANTA"},
+            {"ACTIVO", "CAS ELECTORAL"},
             {"INACTIVO", "PERSONAL OR"},
-            {"", "CAS ELECTORAL"},
-            {"", "OTRO"}
+            {"", "PERSONAL PLANTA"}
         };
         StringBuilder xml = new StringBuilder();
         xml.append(sheetStart());
@@ -201,7 +200,7 @@ public class EquipoJuridicoPlantillaSimpleService {
 
     private String validations() {
         return "<dataValidations count=\"2\">"
-            + validation("D2:D1000", "\"PERSONAL PLANTA,PERSONAL OR,CAS ELECTORAL,OTRO\"")
+            + validation("D2:D1000", "\"CAS ELECTORAL,PERSONAL OR,PERSONAL PLANTA\"")
             + validation("E2:E1000", "\"ACTIVO,INACTIVO\"")
             + "</dataValidations>";
     }

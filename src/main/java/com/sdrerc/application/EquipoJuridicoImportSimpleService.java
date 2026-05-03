@@ -41,10 +41,9 @@ public class EquipoJuridicoImportSimpleService {
     );
     private static final Set<String> ESTADOS_VALIDOS = new HashSet<>(Arrays.asList("ACTIVO", "INACTIVO"));
     private static final Set<String> PERSONAL_VALIDO = new HashSet<>(Arrays.asList(
-            "PERSONAL PLANTA",
-            "PERSONAL OR",
             "CAS ELECTORAL",
-            "OTRO"
+            "PERSONAL OR",
+            "PERSONAL PLANTA"
     ));
     private static final String PASSWORD_TEMPORAL_IMPORTACION = "Reniec@2026";
 
@@ -133,6 +132,9 @@ public class EquipoJuridicoImportSimpleService {
                     EquipoJuridicoRegistro abogadoRegistro = crearRegistro(abogado);
                     abogadoRegistro.setUsername(generarUsernameSugerido(abogado, usernamesReservados, usernamesPorPersona));
                     abogadoRegistro.setAbogado(true);
+                    if (!isBlank(item.getPersonal())) {
+                        abogadoRegistro.setIdTipoPersonal(equipoJuridicoService.obtenerIdTipoPersonal(conn, item.getPersonal()));
+                    }
 
                     EquipoJuridicoRegistro supervisorRegistro = null;
                     if (supervisor != null) {
@@ -324,9 +326,9 @@ public class EquipoJuridicoImportSimpleService {
 
         String personal = normalizarNombre(row.getPersonal());
         if (isBlank(personal)) {
-            item.agregarAdvertencia("PERSONAL vacio; se tratara como dato informativo no registrado.");
+            item.agregarAdvertencia("PERSONAL vacio; si el tecnico es nuevo quedara sin tipo de personal.");
         } else if (!PERSONAL_VALIDO.contains(personal)) {
-            item.agregarAdvertencia("PERSONAL no reconocido; se mantendra solo como informacion de previsualizacion.");
+            item.agregarError("PERSONAL no reconocido. Use CAS ELECTORAL, PERSONAL OR o PERSONAL PLANTA.");
         }
 
         ParsedName abogado = parsearNombreInstitucional(row.getAbogado(), "ABOGADO", item);

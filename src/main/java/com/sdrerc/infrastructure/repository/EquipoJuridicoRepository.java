@@ -93,12 +93,7 @@ public class EquipoJuridicoRepository {
             "sup.USERNAME AS SUPERVISOR_USERNAME, " +
             SUPERVISOR_NOMBRE_EXPR + " AS SUPERVISOR_NOMBRE, " +
             "abo.STATUS AS ESTADO, " +
-            "( " +
-            "  SELECT LISTAGG(r2.ROLE_NAME, ', ') WITHIN GROUP (ORDER BY r2.ROLE_NAME) " +
-            "  FROM APP_USER_ROLES ur2 " +
-            "  JOIN APP_ROLES r2 ON r2.ROLE_ID = ur2.ROLE_ID " +
-            "  WHERE ur2.USER_ID = abo.USER_ID " +
-            ") AS ROLES " +
+            "ci_tipo.DESCRIPCION AS TIPO_PERSONAL " +
             baseFromWhere() +
             where +
             "ORDER BY ABOGADO_NOMBRE " +
@@ -142,6 +137,7 @@ public class EquipoJuridicoRepository {
             "LEFT JOIN APP_USER_SUPERVISION s ON s.ABOGADO_ID = abo.USER_ID " +
             "LEFT JOIN APP_USERS sup ON sup.USER_ID = s.SUPERVISOR_ID " +
             "LEFT JOIN TECNICO tab ON tab.ID_TECNICO = abo.ID_TECNICO " +
+            "LEFT JOIN CATALOGO_ITEM ci_tipo ON ci_tipo.ID_CATALOGO_ITEM = tab.ID_TIPO_PERSONAL " +
             "LEFT JOIN TECNICO tsup ON tsup.ID_TECNICO = sup.ID_TECNICO " +
             "WHERE UPPER(rab.ROLE_NAME) = 'ABOGADO' " +
             "AND UPPER(rab.STATUS) IN ('ACTIVE', 'ACTIVO') ";
@@ -264,7 +260,7 @@ public class EquipoJuridicoRepository {
         item.setSupervisorUsername(rs.getString("SUPERVISOR_USERNAME"));
         item.setSupervisorNombre(rs.getString("SUPERVISOR_NOMBRE"));
         item.setEstado(rs.getString("ESTADO"));
-        item.setRoles(rs.getString("ROLES"));
+        item.setTipoPersonal(rs.getString("TIPO_PERSONAL"));
         return item;
     }
 }

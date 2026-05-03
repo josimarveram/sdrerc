@@ -7,6 +7,7 @@ public class EquipoJuridicoRegistro {
     private String apellidoPaterno;
     private String apellidoMaterno;
     private String nombres;
+    private Integer idTipoPersonal;
     private String username;
     private String passwordTemporal;
     private boolean abogado;
@@ -51,6 +52,14 @@ public class EquipoJuridicoRegistro {
 
     public void setNombres(String nombres) {
         this.nombres = nombres;
+    }
+
+    public Integer getIdTipoPersonal() {
+        return idTipoPersonal;
+    }
+
+    public void setIdTipoPersonal(Integer idTipoPersonal) {
+        this.idTipoPersonal = idTipoPersonal;
     }
 
     public String getUsername() {

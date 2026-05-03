@@ -10,6 +10,7 @@ public class EquipoJuridicoConsultaItem {
     private String supervisorNombre;
     private String estado;
     private String roles;
+    private String tipoPersonal;
 
     public Long getAbogadoId() {
         return abogadoId;
@@ -73,5 +74,13 @@ public class EquipoJuridicoConsultaItem {
 
     public void setRoles(String roles) {
         this.roles = roles;
+    }
+
+    public String getTipoPersonal() {
+        return tipoPersonal;
+    }
+
+    public void setTipoPersonal(String tipoPersonal) {
+        this.tipoPersonal = tipoPersonal;
     }
 }
