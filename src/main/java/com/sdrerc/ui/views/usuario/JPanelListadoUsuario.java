@@ -19,42 +19,56 @@ import com.sdrerc.ui.table.ButtonCellValue;
 import com.sdrerc.ui.table.ButtonEditorAsignar;
 import com.sdrerc.ui.table.ButtonEditorUsuario;
 import com.sdrerc.ui.table.ButtonRenderer;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.ui.views.asignacion.JDialogTecnico;
 import com.sdrerc.ui.views.equipojuridico.EquipoJuridicoImportOwner;
+import java.awt.Component;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 
 /**
  *
  * @author David
  */
-public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJuridicoImportOwner {
+public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJuridicoImportOwner, Scrollable {
 
     private DefaultTableModel model;
     private UserService userService; // 👈 AQUÍ
@@ -115,6 +129,31 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         //cargarRoles();
         cargarPaginaUsuarios();
         
+    }
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 16;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(16, visibleRect.height - 32);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
     }
 
     private void corregirTextosVisibles() {
@@ -197,6 +236,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         jScrollPane2.setViewportBorder(BorderFactory.createEmptyBorder());
         jScrollPane2.setPreferredSize(new Dimension(980, 430));
         jScrollPane2.setMinimumSize(new Dimension(760, 280));
+        jScrollPane2.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         JPanel centerPanel = new JPanel(new BorderLayout(0, 10));
         centerPanel.setOpaque(false);
@@ -270,6 +310,11 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         btnLimpiar1.setPreferredSize(botonFiltro);
         btnLimpiar1.setMinimumSize(botonFiltro);
 
+        aplicarIconoBoton(btnNuevo1, "add.svg");
+        aplicarIconoBoton(btnVincularTecnico, "users.svg");
+        aplicarIconoBoton(btnBusqueda, "search.svg");
+        aplicarIconoBoton(btnLimpiar1, "clear.svg");
+
         btnNuevo1.setToolTipText("Registrar un nuevo usuario");
         btnNuevoEquipoJuridico.setToolTipText("Registrar abogado o supervisor creando técnico, usuario y roles");
         btnDescargarPlantillaEquipo.setToolTipText("Descargar plantilla oficial para carga masiva de equipo jurídico");
@@ -277,6 +322,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         btnVincularTecnico.setToolTipText("Vincular usuario con técnico/abogado funcional");
         btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
         btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
+    }
+
+    private void aplicarIconoBoton(JButton button, String iconName) {
+        Icon icon = IconUtils.load(iconName, 16);
+        if (icon != null) {
+            button.setIcon(icon);
+            button.setIconTextGap(8);
+        }
     }
 
     private void configurarPaginacionUsuarios() {
@@ -312,7 +365,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
 
     private void configurarTablaUsuarios() {
         tblUsuarios.setRowHeight(36);
-        tblUsuarios.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblUsuarios.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         tblUsuarios.setShowGrid(false);
         tblUsuarios.setIntercellSpacing(new Dimension(0, 0));
         tblUsuarios.setFillsViewportHeight(true);
@@ -328,28 +381,37 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         renombrarEncabezado(COL_NOMBRE, "Usuario");
         renombrarEncabezado(COL_DESCRIPCION, "Nombre completo");
         renombrarEncabezado(COL_ESTADO, "Estado");
-        renombrarEncabezado(COL_EDITAR, "Editar");
-        renombrarEncabezado(COL_ACTIVAR, "Activar/Inactivar");
-        renombrarEncabezado(COL_RESET, "Resetear clave");
+        renombrarEncabezado(COL_EDITAR, "");
+        renombrarEncabezado(COL_ACTIVAR, "");
+        renombrarEncabezado(COL_RESET, "");
         renombrarEncabezado(COL_ASIGNAR_ROL, "Roles");
         renombrarEncabezado(COL_ASIGNAR_ABOGADO, "");
         tblUsuarios.getTableHeader().repaint();
 
         ajustarColumna(COL_ID, 0, 0, 0);
-        ajustarColumna(COL_NOMBRE, 120, 150, 210);
-        ajustarColumna(COL_DESCRIPCION, 220, 320, 520);
-        ajustarColumna(COL_ESTADO, 92, 110, 130);
-        ajustarColumna(COL_EDITAR, 78, 86, 100);
-        ajustarColumna(COL_ACTIVAR, 120, 138, 160);
-        ajustarColumna(COL_RESET, 110, 126, 150);
-        ajustarColumna(COL_ASIGNAR_ROL, 90, 104, 125);
+        ajustarColumna(COL_NOMBRE, 100, 130, 180);
+        ajustarColumna(COL_DESCRIPCION, 180, 320, Integer.MAX_VALUE);
+        ajustarColumna(COL_ESTADO, 90, 100, 120);
+        ajustarColumna(COL_EDITAR, 45, 55, 65);
+        ajustarColumna(COL_ACTIVAR, 45, 55, 65);
+        ajustarColumna(COL_RESET, 45, 55, 65);
+        ajustarColumna(COL_ASIGNAR_ROL, 45, 55, 65);
         ajustarColumna(COL_ASIGNAR_ABOGADO, 0, 0, 0);
     }
 
     private void configurarRenderersUsuarios() {
+        tblUsuarios.getColumnModel().getColumn(COL_NOMBRE).setCellRenderer(new TextoTooltipRenderer());
+        tblUsuarios.getColumnModel().getColumn(COL_DESCRIPCION).setCellRenderer(new TextoTooltipRenderer());
         tblUsuarios.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoUsuarioRenderer());
-        tblUsuarios.getColumnModel().getColumn(COL_ASIGNAR_ABOGADO)
-                .setCellRenderer(new ButtonRenderer("Equipo"));
+        tblUsuarios.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new UsuarioActionRenderer(COL_EDITAR));
+        tblUsuarios.getColumnModel().getColumn(COL_EDITAR).setCellEditor(new UsuarioActionEditor(COL_EDITAR));
+        tblUsuarios.getColumnModel().getColumn(COL_ACTIVAR).setCellRenderer(new UsuarioActionRenderer(COL_ACTIVAR));
+        tblUsuarios.getColumnModel().getColumn(COL_ACTIVAR).setCellEditor(new UsuarioActionEditor(COL_ACTIVAR));
+        tblUsuarios.getColumnModel().getColumn(COL_RESET).setCellRenderer(new UsuarioActionRenderer(COL_RESET));
+        tblUsuarios.getColumnModel().getColumn(COL_RESET).setCellEditor(new UsuarioActionEditor(COL_RESET));
+        tblUsuarios.getColumnModel().getColumn(COL_ASIGNAR_ROL).setCellRenderer(new UsuarioActionRenderer(COL_ASIGNAR_ROL));
+        tblUsuarios.getColumnModel().getColumn(COL_ASIGNAR_ROL).setCellEditor(new UsuarioActionEditor(COL_ASIGNAR_ROL));
+        tblUsuarios.getColumnModel().getColumn(COL_ASIGNAR_ABOGADO).setCellRenderer(new UsuarioActionRenderer(COL_ASIGNAR_ABOGADO));
     }
 
     private void ajustarColumna(int indice, int min, int preferido, int max) {
@@ -428,8 +490,10 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                if (evt.getClickCount() == 2 && tblUsuarios.getSelectedRow() != -1) {
-                    cargarRolDesdeTabla();
+                int row = tblUsuarios.rowAtPoint(evt.getPoint());
+                int col = tblUsuarios.columnAtPoint(evt.getPoint());
+                if (evt.getClickCount() == 2 && row >= 0 && !esColumnaAccion(col)) {
+                    editarDesdeTabla(row);
                 }
             }
         });
@@ -480,6 +544,31 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                 
             }
         });
+        tblUsuarios.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int col = tblUsuarios.columnAtPoint(e.getPoint());
+                tblUsuarios.setCursor(esColumnaAccion(col)
+                        ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                        : Cursor.getDefaultCursor());
+                tblUsuarios.repaint();
+            }
+        });
+        tblUsuarios.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) {
+                tblUsuarios.setCursor(Cursor.getDefaultCursor());
+                tblUsuarios.repaint();
+            }
+        });
+    }
+
+    private boolean esColumnaAccion(int col) {
+        return col == COL_EDITAR
+                || col == COL_ACTIVAR
+                || col == COL_RESET
+                || col == COL_ASIGNAR_ROL
+                || col == COL_ASIGNAR_ABOGADO;
     }
     
     private void cargarRolDesdeTabla() {
@@ -1199,6 +1288,181 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
         cargarPaginaUsuarios();
+    }
+
+    private class TextoTooltipRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String text = value == null ? "" : value.toString();
+            label.setToolTipText(text);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+            return label;
+        }
+    }
+
+    private class UsuarioActionRenderer implements TableCellRenderer {
+
+        private final int actionColumn;
+        private final GhostActionButton button = crearBotonAccion();
+
+        UsuarioActionRenderer(int actionColumn) {
+            this.actionColumn = actionColumn;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+            int modelRow = table.convertRowIndexToModel(row);
+            String estado = valorModelo(modelRow, COL_ESTADO);
+            boolean enabled = !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
+
+            configurarBotonAccion(button, actionColumn, estado, enabled);
+            button.setSelectedRow(isSelected);
+
+            Point mouse = table.getMousePosition();
+            boolean hover = enabled
+                    && mouse != null
+                    && table.rowAtPoint(mouse) == row
+                    && table.columnAtPoint(mouse) == column;
+            button.setHover(hover);
+            return button;
+        }
+    }
+
+    private class UsuarioActionEditor extends AbstractCellEditor implements TableCellEditor {
+
+        private final int actionColumn;
+        private final GhostActionButton button = crearBotonAccion();
+        private Object editorValue;
+
+        UsuarioActionEditor(int actionColumn) {
+            this.actionColumn = actionColumn;
+            button.addActionListener(e -> fireEditingStopped());
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table, Object value, boolean isSelected, int row, int column) {
+
+            editorValue = value;
+            int modelRow = table.convertRowIndexToModel(row);
+            String estado = valorModelo(modelRow, COL_ESTADO);
+            boolean enabled = !(value instanceof ButtonCellValue) || ((ButtonCellValue) value).isEnabled();
+            configurarBotonAccion(button, actionColumn, estado, enabled);
+            button.setSelectedRow(isSelected);
+            button.setHover(true);
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return editorValue;
+        }
+    }
+
+    private GhostActionButton crearBotonAccion() {
+        GhostActionButton button = new GhostActionButton();
+        button.setText("");
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setOpaque(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        button.setPreferredSize(new Dimension(32, 28));
+        button.setMinimumSize(new Dimension(32, 28));
+        button.setMaximumSize(new Dimension(32, 28));
+        return button;
+    }
+
+    private void configurarBotonAccion(GhostActionButton button, int actionColumn, String estado, boolean enabled) {
+        String iconName = iconoAccion(actionColumn, estado);
+        Icon icon = IconUtils.load(iconName, 16);
+        button.setIcon(icon);
+        button.setToolTipText(tooltipAccion(actionColumn, estado));
+        button.setEnabled(enabled);
+    }
+
+    private String iconoAccion(int actionColumn, String estado) {
+        if (actionColumn == COL_EDITAR) {
+            return "edit.svg";
+        }
+        if (actionColumn == COL_ACTIVAR) {
+            return esActivo(estado) ? "inactive.svg" : "active.svg";
+        }
+        if (actionColumn == COL_RESET) {
+            return "key.svg";
+        }
+        if (actionColumn == COL_ASIGNAR_ROL) {
+            return "role.svg";
+        }
+        return "users.svg";
+    }
+
+    private String tooltipAccion(int actionColumn, String estado) {
+        if (actionColumn == COL_EDITAR) {
+            return "Editar usuario";
+        }
+        if (actionColumn == COL_ACTIVAR) {
+            return esActivo(estado) ? "Inactivar usuario" : "Activar usuario";
+        }
+        if (actionColumn == COL_RESET) {
+            return "Resetear clave";
+        }
+        if (actionColumn == COL_ASIGNAR_ROL) {
+            return "Asignar roles";
+        }
+        return "Equipo supervisado";
+    }
+
+    private boolean esActivo(String estado) {
+        return "ACTIVE".equalsIgnoreCase(estado) || "ACTIVO".equalsIgnoreCase(estado);
+    }
+
+    private String valorModelo(int modelRow, int col) {
+        Object value = model.getValueAt(modelRow, col);
+        return value == null ? "" : value.toString();
+    }
+
+    private static class GhostActionButton extends JButton {
+
+        private boolean hover;
+        private boolean selectedRow;
+
+        GhostActionButton() {
+            setHorizontalAlignment(JButton.CENTER);
+            setVerticalAlignment(JButton.CENTER);
+        }
+
+        void setHover(boolean hover) {
+            this.hover = hover;
+        }
+
+        void setSelectedRow(boolean selectedRow) {
+            this.selectedRow = selectedRow;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (hover || getModel().isRollover() || getModel().isPressed()) {
+                    g2.setColor(new Color(226, 237, 248));
+                    g2.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 10, 10);
+                } else if (selectedRow) {
+                    g2.setColor(new Color(219, 235, 247, 120));
+                    g2.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 10, 10);
+                }
+            } finally {
+                g2.dispose();
+            }
+            super.paintComponent(g);
+        }
     }
 
     private static class EstadoUsuarioRenderer extends DefaultTableCellRenderer {
