@@ -20,15 +20,27 @@ import com.sdrerc.ui.views.equipojuridico.JPanelEquipoJuridico;
 import com.sdrerc.ui.views.home.jPanelHome;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.util.ComboBoxUtils;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Insets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
 /**
@@ -36,7 +48,14 @@ import javax.swing.UIManager;
  * @author betom
  */
 public class MenuPrincipal extends javax.swing.JFrame {
+    private static final Color MENU_BG = new Color(25, 120, 210);
+    private static final Color MENU_GROUP_BG = new Color(18, 95, 170);
+    private static final Color MENU_ITEM_BG = new Color(25, 120, 210);
+    private static final Color MENU_ITEM_HOVER = new Color(38, 138, 225);
+    private static final Color MENU_ITEM_ACTIVE = new Color(13, 80, 150);
+    private static final Color MENU_TEXT = Color.WHITE;
     private final JButton btnMenuEquipoJuridico = new JButton("EQUIPO JURÍDICO");
+    private JButton itemMenuActivo;
 
     /**
      * Creates new form MenuPrincipal
@@ -46,6 +65,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         corregirTextosVisibles();
         ajustarTextoMenu();
         configurarMenuEquipoJuridico();
+        configurarMenuLateralModerno();
         initialStyles();
         InitContent();
     }    
@@ -110,6 +130,334 @@ public class MenuPrincipal extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(this, "No se pudo abrir Equipo Jurídico.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    private void abrirHome()
+    {
+        lbl_TituloFormulario.setText("FORMULARIO HOME");
+        ShowJPanel(crearHomeConAccesos());
+    }
+
+    private void abrirRecepcion()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO RECEPCIÓN");
+            ShowJPanel(new JPanelListadoRegistroExpediente());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, "No se pudo abrir la pantalla de recepción", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo abrir la pantalla de recepción.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void abrirAsignacion()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO ASIGNACIÓN");
+            ShowJPanel(new JPanelFiltroBusqueda());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirExpedientesAsignados()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES ASIGNADOS");
+            ShowJPanel(new JPanelListadoExpedientesAsignados());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirExpedientesPorTrabajar()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR TRABAJAR");
+            ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirExpedientesPorVerificar()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR VERIFICAR");
+            ShowJPanel(new JPanelListadoExpedientesPorVerificar());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirBandejaEjecucion()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO BANDEJA EJECUCIÓN");
+            ShowJPanel(new JPanelListadoExpedientesEjecucionAsignar());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirEjecucionPorTrabajar()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR EJECUTAR");
+            ShowJPanel(new JPanelListadoExpedientesEjecucionPorTrabajar());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirBandejaNotificacion()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO BANDEJA NOTIFICACIÓN");
+            ShowJPanel(new JPanelListadoExpedientesNotificacionAsignar());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirNotificacionPorTrabajar()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR NOTIFICAR");
+            ShowJPanel(new JPanelListadoExpedientesNotificacionPorTrabajar());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirUsuarios()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO USUARIO");
+            ShowJPanel(new JPanelListadoUsuario());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void abrirRoles()
+    {
+        try {
+            lbl_TituloFormulario.setText("FORMULARIO ROLE");
+            ShowJPanel(new JPanelListadoRole());
+        } catch (Exception ex) {
+            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void configurarMenuLateralModerno()
+    {
+        jpanelMenu.removeAll();
+        jpanelMenu.setLayout(new BorderLayout());
+        jpanelMenu.setBackground(MENU_BG);
+
+        JPanel contenido = new MenuScrollPanel();
+        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
+        contenido.setBackground(MENU_BG);
+        contenido.setBorder(BorderFactory.createEmptyBorder(14, 0, 14, 0));
+
+        JLabel titulo = new JLabel("SDRERC");
+        titulo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        titulo.setForeground(MENU_TEXT);
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        titulo.setHorizontalAlignment(SwingConstants.CENTER);
+        titulo.setMinimumSize(new Dimension(0, 44));
+        titulo.setPreferredSize(new Dimension(270, 44));
+        titulo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        contenido.add(titulo);
+        contenido.add(Box.createVerticalStrut(10));
+
+        JButton itemInicio = crearItemMenu("Inicio", "home.svg", this::abrirHome);
+        itemInicio.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        itemInicio.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 10));
+        fijarAltoMenu(itemInicio, 44);
+        contenido.add(itemInicio);
+        contenido.add(Box.createVerticalStrut(6));
+
+        JPanel grupoExpedientes = crearGrupoMenu("Gestión de Expedientes", "file.svg", true);
+        agregarItemGrupo(grupoExpedientes, crearItemMenu("Recepción", "inbox.svg", this::abrirRecepcion));
+        agregarItemGrupo(grupoExpedientes, crearItemMenu("Asignación", "assignment.svg", this::abrirAsignacion));
+        agregarItemGrupo(grupoExpedientes, crearItemMenu("Exp. Asignados", "file.svg", this::abrirExpedientesAsignados));
+        agregarItemGrupo(grupoExpedientes, crearItemMenu("Exp. Por Trabajar", "file.svg", this::abrirExpedientesPorTrabajar));
+        agregarItemGrupo(grupoExpedientes, crearItemMenu("Exp. Por Verificar", "check.svg", this::abrirExpedientesPorVerificar));
+        contenido.add(grupoExpedientes);
+
+        JPanel grupoEjecucion = crearGrupoMenu("Ejecución y Notificación", "play.svg", true);
+        agregarItemGrupo(grupoEjecucion, crearItemMenu("Band. Ejecución", "play.svg", this::abrirBandejaEjecucion));
+        agregarItemGrupo(grupoEjecucion, crearItemMenu("Ejec. Por Trabajar", "play.svg", this::abrirEjecucionPorTrabajar));
+        agregarItemGrupo(grupoEjecucion, crearItemMenu("Band. Notificación", "bell.svg", this::abrirBandejaNotificacion));
+        agregarItemGrupo(grupoEjecucion, crearItemMenu("Notif. Por Trabajar", "bell.svg", this::abrirNotificacionPorTrabajar));
+        contenido.add(grupoEjecucion);
+
+        JPanel grupoAdmin = crearGrupoMenu("Administración", "users.svg", true);
+        agregarItemGrupo(grupoAdmin, crearItemMenu("Usuarios", "users.svg", this::abrirUsuarios));
+        agregarItemGrupo(grupoAdmin, crearItemMenu("Equipo Jurídico", "supervisor.svg", this::abrirEquipoJuridico));
+        agregarItemGrupo(grupoAdmin, crearItemMenu("Roles", "role.svg", this::abrirRoles));
+        contenido.add(grupoAdmin);
+        contenido.add(Box.createVerticalGlue());
+
+        JScrollPane scrollPane = new JScrollPane(
+                contenido,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        );
+        scrollPane.setBorder(null);
+        scrollPane.getViewport().setBackground(MENU_BG);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(14);
+
+        jpanelMenu.add(scrollPane, BorderLayout.CENTER);
+        marcarItemActivo(itemInicio);
+        jpanelMenu.revalidate();
+        jpanelMenu.repaint();
+    }
+
+    private JPanel crearGrupoMenu(String titulo, String icono, boolean expandidoInicial)
+    {
+        JPanel grupo = new JPanel();
+        grupo.setLayout(new BoxLayout(grupo, BoxLayout.Y_AXIS));
+        grupo.setOpaque(false);
+        grupo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        grupo.setMaximumSize(new Dimension(Integer.MAX_VALUE, grupo.getPreferredSize().height));
+
+        JPanel panelItems = new JPanel();
+        panelItems.setLayout(new BoxLayout(panelItems, BoxLayout.Y_AXIS));
+        panelItems.setOpaque(false);
+        panelItems.setVisible(expandidoInicial);
+
+        JButton encabezado = crearEncabezadoGrupo(titulo, icono, panelItems);
+        grupo.add(encabezado);
+        grupo.add(panelItems);
+        grupo.putClientProperty("itemsPanel", panelItems);
+        grupo.add(Box.createVerticalStrut(6));
+        ajustarAltoGrupo(grupo);
+        return grupo;
+    }
+
+    private JButton crearEncabezadoGrupo(String titulo, String icono, JPanel panelItems)
+    {
+        JButton button = new JButton(titulo);
+        button.setIcon(IconUtils.load(icono, 16));
+        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        button.setForeground(MENU_TEXT);
+        button.setBackground(MENU_GROUP_BG);
+        button.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 10));
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setIconTextGap(8);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        fijarAltoMenu(button, 44);
+        button.addActionListener(e -> alternarGrupo(panelItems));
+        return button;
+    }
+
+    private JButton crearItemMenu(String texto, String icono, Runnable accion)
+    {
+        JButton button = new JButton(texto);
+        button.setIcon(IconUtils.load(icono, 16));
+        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        button.setForeground(MENU_TEXT);
+        button.setBackground(MENU_ITEM_BG);
+        button.setBorder(BorderFactory.createEmptyBorder(0, 34, 0, 8));
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setIconTextGap(8);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        fijarAltoMenu(button, 40);
+        button.setMargin(new Insets(0, 0, 0, 0));
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                if (button != itemMenuActivo) {
+                    button.setBackground(MENU_ITEM_HOVER);
+                }
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                if (button != itemMenuActivo) {
+                    button.setBackground(MENU_ITEM_BG);
+                }
+            }
+        });
+        button.addActionListener(e -> {
+            marcarItemActivo(button);
+            accion.run();
+        });
+        return button;
+    }
+
+    private void agregarItemGrupo(JPanel grupo, JButton item)
+    {
+        JPanel panelItems = (JPanel) grupo.getClientProperty("itemsPanel");
+        if (panelItems != null) {
+            panelItems.add(item);
+            ajustarAltoGrupo(grupo);
+        }
+    }
+
+    private void alternarGrupo(JPanel panelItems)
+    {
+        panelItems.setVisible(!panelItems.isVisible());
+        if (panelItems.getParent() instanceof JPanel) {
+            ajustarAltoGrupo((JPanel) panelItems.getParent());
+        }
+        jpanelMenu.revalidate();
+        jpanelMenu.repaint();
+    }
+
+    private void ajustarAltoGrupo(JPanel grupo)
+    {
+        grupo.revalidate();
+        grupo.setMaximumSize(new Dimension(Integer.MAX_VALUE, grupo.getPreferredSize().height));
+    }
+
+    private void fijarAltoMenu(JButton button, int alto)
+    {
+        button.setMinimumSize(new Dimension(0, alto));
+        button.setPreferredSize(new Dimension(270, alto));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, alto));
+    }
+
+    private static class MenuScrollPanel extends JPanel implements Scrollable {
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(48, visibleRect.height - 48);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+    }
+
+    private void marcarItemActivo(JButton item)
+    {
+        if (itemMenuActivo != null) {
+            itemMenuActivo.setBackground(MENU_ITEM_BG);
+        }
+        itemMenuActivo = item;
+        itemMenuActivo.setBackground(MENU_ITEM_ACTIVE);
+    }
     
     private void initialStyles()
     {
@@ -119,7 +467,20 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private void InitContent() 
     {
         lbl_TituloFormulario.setText("FORMULARIO HOME");
-        ShowJPanel(new jPanelHome());
+        ShowJPanel(crearHomeConAccesos());
+    }
+
+    private jPanelHome crearHomeConAccesos()
+    {
+        return new jPanelHome(
+                this::abrirRecepcion,
+                this::abrirAsignacion,
+                this::abrirExpedientesPorTrabajar,
+                this::abrirExpedientesPorVerificar,
+                this::abrirEquipoJuridico,
+                this::abrirUsuarios,
+                this::abrirRoles
+        );
     }
     
     public static void ShowJPanel(JPanel p) 
@@ -494,68 +855,31 @@ public class MenuPrincipal extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnMenuExpedienteMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedienteMouseClicked
-        // TODO add your handling code here:
-        try {
-            lbl_TituloFormulario.setText("FORMULARIO RECEPCIÓN");
-            ShowJPanel(new JPanelListadoRegistroExpediente());
-        } catch (Exception ex) {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, "No se pudo abrir la pantalla de recepción", ex);
-            JOptionPane.showMessageDialog(this, "No se pudo abrir la pantalla de recepción.", "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        abrirRecepcion();
     }//GEN-LAST:event_btnMenuExpedienteMouseClicked
 
     private void btnMenuHomeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuHomeMouseClicked
-        // TODO add your handling code here:
-        lbl_TituloFormulario.setText("FORMULARIO HOME");
-         ShowJPanel(new jPanelHome());
+        abrirHome();
     }//GEN-LAST:event_btnMenuHomeMouseClicked
 
     private void btnMenuExpedientesAsignadosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesAsignadosMouseClicked
-        try {
-            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES ASIGNADOS");
-            ShowJPanel(new JPanelListadoExpedientesAsignados());
-            // TODO add your handling code here:
-        } catch (Exception ex) {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirExpedientesAsignados();
     }//GEN-LAST:event_btnMenuExpedientesAsignadosMouseClicked
 
     private void btnRoleMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnRoleMouseClicked
-        lbl_TituloFormulario.setText("FORMULARIO ROLE");
-        ShowJPanel(new JPanelListadoRole());
+        abrirRoles();
     }//GEN-LAST:event_btnRoleMouseClicked
 
     private void btnMenuEjecucionPorTrabajarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuEjecucionPorTrabajarMouseClicked
-        try {
-            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR EJECUTAR");
-            ShowJPanel(new JPanelListadoExpedientesEjecucionPorTrabajar());
-            // TODO add your handling code here:
-        } catch (Exception ex) {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirEjecucionPorTrabajar();
     }//GEN-LAST:event_btnMenuEjecucionPorTrabajarMouseClicked
 
     private void btnMenuAsignacion1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuAsignacion1MouseClicked
-        // TODO add your handling code here:
-        try {
-            lbl_TituloFormulario.setText("FORMULARIO ASIGNACIÓN");
-            ShowJPanel(new JPanelFiltroBusqueda());
-            // TODO add your handling code here:
-        } catch (Exception ex) {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirAsignacion();
     }//GEN-LAST:event_btnMenuAsignacion1MouseClicked
 
     private void btnRoleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRoleActionPerformed
-         try {
-            lbl_TituloFormulario.setText("FORMULARIO ROLE");
-            ShowJPanel(new JPanelListadoRole());
-            // TODO add your handling code here:
-        } catch (Exception ex) {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
-        // TODO add your handling code here:
+        abrirRoles();
     }//GEN-LAST:event_btnRoleActionPerformed
 
     private void btnMenuUsuario1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuUsuario1MouseClicked
@@ -563,84 +887,27 @@ public class MenuPrincipal extends javax.swing.JFrame {
     }//GEN-LAST:event_btnMenuUsuario1MouseClicked
 
     private void btnMenuUsuario1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMenuUsuario1ActionPerformed
-        try {
-            lbl_TituloFormulario.setText("FORMULARIO USUARIO");
-            ShowJPanel(new JPanelListadoUsuario());
-            // TODO add your handling code here:
-        } catch (Exception ex) {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        // TODO add your handling code here:
+        abrirUsuarios();
     }//GEN-LAST:event_btnMenuUsuario1ActionPerformed
 
     private void btnMenuExpedientesPorTrabajarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorTrabajarMouseClicked
-        // TODO add your handling code here:
-        try 
-        {
-            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR TRABAJAR");
-            ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
-            // TODO add your handling code here:
-        } 
-        catch (Exception ex) 
-        {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirExpedientesPorTrabajar();
     }//GEN-LAST:event_btnMenuExpedientesPorTrabajarMouseClicked
 
     private void btnMenuExpedientesPorVerificarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuExpedientesPorVerificarMouseClicked
-        // TODO add your handling code here:
-        try 
-        {
-            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR VERIFICAR");
-            ShowJPanel(new JPanelListadoExpedientesPorVerificar());
-            // TODO add your handling code here:
-        } 
-        catch (Exception ex) 
-        {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirExpedientesPorVerificar();
     }//GEN-LAST:event_btnMenuExpedientesPorVerificarMouseClicked
 
     private void btnMenuBandejaEjecucionMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuBandejaEjecucionMouseClicked
-        // TODO add your handling code here:
-        try 
-        {
-            lbl_TituloFormulario.setText("FORMULARIO BANDEJA EJECUCIÓN");
-            ShowJPanel(new JPanelListadoExpedientesEjecucionAsignar());
-            // TODO add your handling code here:
-        } 
-        catch (Exception ex) 
-        {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirBandejaEjecucion();
     }//GEN-LAST:event_btnMenuBandejaEjecucionMouseClicked
 
     private void btnMenuBandejaNotificacionMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuBandejaNotificacionMouseClicked
-        // TODO add your handling code here:
-        try 
-        {
-            lbl_TituloFormulario.setText("FORMULARIO BANDEJA NOTIFICACIÓN");
-            ShowJPanel(new JPanelListadoExpedientesNotificacionAsignar());
-            // TODO add your handling code here:
-        } 
-        catch (Exception ex) 
-        {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirBandejaNotificacion();
     }//GEN-LAST:event_btnMenuBandejaNotificacionMouseClicked
 
     private void btnMenuNotificacionPorTrabajarMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnMenuNotificacionPorTrabajarMouseClicked
-        // TODO add your handling code here:
-        try 
-        {
-            lbl_TituloFormulario.setText("FORMULARIO EXPEDIENTES POR NOTIFICAR");
-            ShowJPanel(new JPanelListadoExpedientesNotificacionPorTrabajar());
-            // TODO add your handling code here:
-        } 
-        catch (Exception ex) 
-        {
-            Logger.getLogger(MenuPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        abrirNotificacionPorTrabajar();
     }//GEN-LAST:event_btnMenuNotificacionPorTrabajarMouseClicked
 
     /**
