@@ -3,6 +3,7 @@ package com.sdrerc.infrastructure.repository;
 import com.sdrerc.domain.model.EquipoJuridicoConsultaItem;
 import com.sdrerc.domain.model.EquipoJuridicoDetalle;
 import com.sdrerc.domain.model.EquipoJuridicoResumen;
+import com.sdrerc.domain.model.EquipoJuridicoSupervisorUpdateRequest;
 import com.sdrerc.domain.model.EquipoJuridicoUpdateRequest;
 import com.sdrerc.domain.model.PaginatedResult;
 import com.sdrerc.domain.model.SupervisorComboItem;
@@ -206,6 +207,98 @@ public class EquipoJuridicoRepository {
         }
     }
 
+    public EquipoJuridicoDetalle obtenerDetalleSupervisor(Long supervisorUserId) throws SQLException {
+        if (supervisorUserId == null || supervisorUserId <= 0) {
+            throw new IllegalArgumentException("Seleccione un supervisor valido.");
+        }
+
+        String sql =
+            "SELECT DISTINCT " +
+            "u.USER_ID AS ABOGADO_ID, " +
+            "u.USERNAME, " +
+            "u.STATUS, " +
+            "u.ID_TECNICO, " +
+            "t.NUMERO_DOCUMENTO, " +
+            "t.APELLIDO_PATERNO, " +
+            "t.APELLIDO_MATERNO, " +
+            "t.NOMBRES, " +
+            "t.ID_TIPO_PERSONAL, " +
+            "ci.DESCRIPCION AS TIPO_PERSONAL, " +
+            "t.ACTIVE AS TECNICO_ACTIVE, " +
+            "CAST(NULL AS NUMBER) AS SUPERVISOR_ID " +
+            "FROM APP_USERS u " +
+            "JOIN APP_USER_ROLES ur ON ur.USER_ID = u.USER_ID " +
+            "JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
+            "LEFT JOIN TECNICO t ON t.ID_TECNICO = u.ID_TECNICO " +
+            "LEFT JOIN CATALOGO_ITEM ci ON ci.ID_CATALOGO_ITEM = t.ID_TIPO_PERSONAL " +
+            "WHERE u.USER_ID = ? " +
+            "AND UPPER(r.ROLE_NAME) = 'SUPERVISION' " +
+            "AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO')";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setLong(1, supervisorUserId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapDetalle(rs);
+                }
+            }
+        }
+        throw new IllegalArgumentException("No se encontro el supervisor seleccionado.");
+    }
+
+    public void actualizarSupervisorEquipoJuridico(EquipoJuridicoSupervisorUpdateRequest request) throws SQLException {
+        validarSupervisorUpdateRequest(request);
+
+        try (Connection cn = OracleConnection.getConnection()) {
+            cn.setAutoCommit(false);
+            try {
+                if (!tieneRol(cn, request.getSupervisorId(), "SUPERVISION")) {
+                    throw new IllegalArgumentException("El usuario seleccionado no tiene rol SUPERVISION.");
+                }
+                if (!existeTecnico(cn, request.getIdTecnico())) {
+                    throw new IllegalArgumentException("El tecnico asociado no existe.");
+                }
+                if (!esEstadoActivo(request.getEstado()) && contarAbogadosAsignados(cn, request.getSupervisorId()) > 0) {
+                    throw new IllegalStateException("No puede inactivar este supervisor porque tiene abogados asignados. Primero retire o cambie su equipo supervisado.");
+                }
+
+                EquipoJuridicoUpdateRequest update = new EquipoJuridicoUpdateRequest();
+                update.setAbogadoId(request.getSupervisorId());
+                update.setIdTecnico(request.getIdTecnico());
+                update.setApellidoPaterno(request.getApellidoPaterno());
+                update.setApellidoMaterno(request.getApellidoMaterno());
+                update.setNombres(request.getNombres());
+                update.setNumeroDocumento(request.getNumeroDocumento());
+                update.setIdTipoPersonal(request.getIdTipoPersonal());
+                update.setEstado(request.getEstado());
+                update.setUsuarioModificacion(request.getUsuarioModificacion());
+
+                actualizarTecnico(cn, update);
+                actualizarUsuario(cn, update);
+
+                cn.commit();
+            } catch (Exception ex) {
+                cn.rollback();
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
+                throw new IllegalStateException(ex.getMessage(), ex);
+            } finally {
+                cn.setAutoCommit(true);
+            }
+        }
+    }
+
+    public int contarAbogadosAsignados(Long supervisorUserId) throws SQLException {
+        try (Connection cn = OracleConnection.getConnection()) {
+            return contarAbogadosAsignados(cn, supervisorUserId);
+        }
+    }
+
     public EquipoJuridicoResumen obtenerResumen() throws SQLException {
         EquipoJuridicoResumen resumen = new EquipoJuridicoResumen();
         resumen.setTotalAbogados(contarPorRol("ABOGADO"));
@@ -395,6 +488,27 @@ public class EquipoJuridicoRepository {
         }
     }
 
+    private void validarSupervisorUpdateRequest(EquipoJuridicoSupervisorUpdateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Ingrese los datos del supervisor.");
+        }
+        if (request.getSupervisorId() == null || request.getSupervisorId() <= 0) {
+            throw new IllegalArgumentException("Seleccione un supervisor valido.");
+        }
+        if (request.getIdTecnico() == null || request.getIdTecnico() <= 0) {
+            throw new IllegalArgumentException("El supervisor no tiene tecnico asociado.");
+        }
+        if (isBlank(request.getApellidoPaterno())) {
+            throw new IllegalArgumentException("Ingrese apellido paterno.");
+        }
+        if (isBlank(request.getNombres())) {
+            throw new IllegalArgumentException("Ingrese nombres.");
+        }
+        if (isBlank(request.getEstado())) {
+            throw new IllegalArgumentException("Seleccione estado.");
+        }
+    }
+
     private void actualizarTecnico(Connection cn, EquipoJuridicoUpdateRequest request) throws SQLException {
         String sql =
             "UPDATE TECNICO " +
@@ -485,6 +599,16 @@ public class EquipoJuridicoRepository {
             ps.setString(2, roleName);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    private int contarAbogadosAsignados(Connection cn, Long supervisorUserId) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM APP_USER_SUPERVISION WHERE SUPERVISOR_ID = ?";
+        try (PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setLong(1, supervisorUserId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
             }
         }
     }

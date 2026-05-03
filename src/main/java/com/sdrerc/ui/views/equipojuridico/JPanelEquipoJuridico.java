@@ -329,8 +329,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         btnNuevoEquipoJuridico.setToolTipText("Registrar abogado o supervisor creando técnico, usuario y roles");
         btnPlantillaExcel.setToolTipText("Opciones de plantilla Excel para equipo jurídico");
         btnAccionesSupervisor.setToolTipText("Acciones disponibles para el supervisor seleccionado");
-        itemEditarSupervisor.setEnabled(false);
-        itemEditarSupervisor.setToolTipText("La edición de supervisor se implementará en una siguiente fase.");
+        itemEditarSupervisor.setToolTipText("Editar datos operativos del supervisor seleccionado");
 
         btnNuevoEquipoJuridico.addActionListener(e -> abrirRegistroEquipoJuridico());
         menuPlantillaExcel.add(itemDescargarPlantilla);
@@ -342,6 +341,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         menuAccionesSupervisor.add(itemGestionarEquipo);
         menuAccionesSupervisor.add(itemEditarSupervisor);
         itemGestionarEquipo.addActionListener(e -> abrirGestionEquipoSupervisor());
+        itemEditarSupervisor.addActionListener(e -> abrirEdicionSupervisor());
         btnAccionesSupervisor.addActionListener(e -> menuAccionesSupervisor.show(btnAccionesSupervisor, 0, btnAccionesSupervisor.getHeight()));
         actualizarAccionesSupervisor();
     }
@@ -512,6 +512,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         boolean supervisorReal = supervisor != null && SupervisorComboItem.TIPO_SUPERVISOR.equals(supervisor.getTipo());
         btnAccionesSupervisor.setEnabled(supervisorReal);
         itemGestionarEquipo.setEnabled(supervisorReal);
+        itemEditarSupervisor.setEnabled(supervisorReal);
     }
 
     private void abrirGestionEquipoSupervisor() {
@@ -538,6 +539,33 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         seleccionarSupervisorPorId(supervisorId);
         cargarPaginaAbogados();
         actualizarAccionesSupervisor();
+    }
+
+    private void abrirEdicionSupervisor() {
+        SupervisorComboItem supervisor = (SupervisorComboItem) cboSupervisor.getSelectedItem();
+        if (supervisor == null || !SupervisorComboItem.TIPO_SUPERVISOR.equals(supervisor.getTipo())) {
+            JOptionPane.showMessageDialog(this, "Seleccione un supervisor para editar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Window parent = SwingUtilities.getWindowAncestor(this);
+        DlgEditarSupervisorEquipoJuridico dlg = new DlgEditarSupervisorEquipoJuridico(
+                parent,
+                consultaService,
+                equipoJuridicoService,
+                supervisor.getUserId()
+        );
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+
+        if (dlg.isGuardado()) {
+            Long supervisorId = supervisor.getUserId();
+            cargarResumen();
+            cargarSupervisores();
+            seleccionarSupervisorPorId(supervisorId);
+            cargarPaginaAbogados();
+            actualizarAccionesSupervisor();
+        }
     }
 
     private void abrirEdicionDesdeTabla(int row) {
