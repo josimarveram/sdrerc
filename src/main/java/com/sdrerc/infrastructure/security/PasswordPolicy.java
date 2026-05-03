@@ -23,22 +23,22 @@ public final class PasswordPolicy {
 
     public static void validateTemporaryPassword(String username, String password) {
         if (password == null || password.isEmpty()) {
-            throw new IllegalArgumentException("La contraseña temporal no puede estar vacía.");
+            throw new IllegalArgumentException("La contraseña no puede estar vacía.");
         }
         if (password.length() < 8) {
-            throw new IllegalArgumentException("La contraseña temporal debe tener al menos 8 caracteres.");
+            throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres.");
         }
         if (!containsUppercase(password)) {
-            throw new IllegalArgumentException("La contraseña temporal debe incluir al menos una mayúscula.");
+            throw new IllegalArgumentException("La contraseña debe incluir al menos una mayúscula.");
         }
         if (!containsLowercase(password)) {
-            throw new IllegalArgumentException("La contraseña temporal debe incluir al menos una minúscula.");
+            throw new IllegalArgumentException("La contraseña debe incluir al menos una minúscula.");
         }
         if (!containsDigit(password)) {
-            throw new IllegalArgumentException("La contraseña temporal debe incluir al menos un número.");
+            throw new IllegalArgumentException("La contraseña debe incluir al menos un número.");
         }
         if (!containsSpecial(password)) {
-            throw new IllegalArgumentException("La contraseña temporal debe incluir al menos un carácter especial.");
+            throw new IllegalArgumentException("La contraseña debe incluir al menos un carácter especial.");
         }
 
         String normalizedPassword = normalize(password);
@@ -51,7 +51,7 @@ public final class PasswordPolicy {
             throw new IllegalArgumentException("La contraseña no puede contener el usuario.");
         }
         if (WEAK_PASSWORDS.contains(normalizedPassword)) {
-            throw new IllegalArgumentException("La contraseña temporal no cumple la política de seguridad.");
+            throw new IllegalArgumentException("La contraseña no cumple la política de seguridad.");
         }
     }
 

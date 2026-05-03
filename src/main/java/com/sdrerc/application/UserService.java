@@ -102,6 +102,47 @@ public class UserService {
         repo.resetPasswordTemporal(userId, hash, obtenerUsuarioReset());
     }
 
+    public void cambiarPasswordObligatorio(Long userId,
+            String username,
+            String currentPassword,
+            String newPassword,
+            String confirmPassword) throws SQLException {
+
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("Seleccione un usuario válido.");
+        }
+        if (currentPassword == null || currentPassword.isEmpty()) {
+            throw new IllegalArgumentException("Ingrese la contraseña actual.");
+        }
+        if (newPassword == null || newPassword.isEmpty()) {
+            throw new IllegalArgumentException("Ingrese la nueva contraseña.");
+        }
+        if (confirmPassword == null || !newPassword.equals(confirmPassword)) {
+            throw new IllegalArgumentException("Las contraseñas no coinciden.");
+        }
+
+        String hashActual = repo.obtenerPasswordHash(userId);
+        if (hashActual == null || hashActual.trim().isEmpty()
+                || !passwordMatches(currentPassword, hashActual)) {
+            throw new IllegalArgumentException("La contraseña actual no es correcta.");
+        }
+        if (passwordMatches(newPassword, hashActual)) {
+            throw new IllegalArgumentException("La nueva contraseña no puede ser igual a la contraseña actual.");
+        }
+
+        PasswordPolicy.validateTemporaryPassword(username, newPassword);
+        String nuevoHash = PasswordEncoder.hash(newPassword);
+        repo.actualizarPasswordObligatorio(userId, nuevoHash);
+    }
+
+    private boolean passwordMatches(String password, String hash) {
+        try {
+            return PasswordEncoder.matches(password, hash);
+        } catch (RuntimeException ex) {
+            return false;
+        }
+    }
+
     private String obtenerUsuarioReset() {
         try {
             String username = SessionContext.getUsername();

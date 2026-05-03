@@ -39,6 +39,7 @@ public class User {
     private String fullName;
     private String status;
     private Long idTecnico;
+    private boolean mustChangePassword;
     private List<String> roles = new ArrayList<>();
 
     // 🔹 Constructor vacío
@@ -85,6 +86,10 @@ public class User {
         return idTecnico;
     }
 
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
     public List<String> getRoles() {
         return Collections.unmodifiableList(roles);
     }
@@ -117,6 +122,10 @@ public class User {
 
     public void setIdTecnico(Long idTecnico) {
         this.idTecnico = idTecnico;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 
     public void setRoles(List<String> roles) {

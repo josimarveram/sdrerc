@@ -5,6 +5,7 @@
 package com.sdrerc.ui.login;
 
 import com.sdrerc.application.LoginService;
+import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.security.PasswordEncoder;
 import com.sdrerc.shared.session.SessionContext;
@@ -267,6 +268,28 @@ public class FrmLogin extends javax.swing.JFrame
 
         try {
              User u = new LoginService().login(username, password);
+
+            if (u.isMustChangePassword()) {
+                DlgCambiarPasswordObligatorio dlg = new DlgCambiarPasswordObligatorio(
+                        this,
+                        u,
+                        new UserService()
+                );
+                dlg.setVisible(true);
+                if (!dlg.isPasswordChanged()) {
+                    SessionContext.limpiar();
+                    txt_contraseña.setText("");
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Debe cambiar su contraseña para ingresar al sistema.",
+                            "Cambio de contraseña requerido",
+                            JOptionPane.WARNING_MESSAGE
+                    );
+                    return;
+                }
+                u.setMustChangePassword(false);
+            }
+
              SessionContext.setUsuarioActual(u);
             
             /*
@@ -274,7 +297,6 @@ public class FrmLogin extends javax.swing.JFrame
                 "Bienvenido " + u.getFullname() + "\nRol: " + u.getRole());
             */
             
-            // ✅ Abrir Menú Principal
             MenuPrincipal menu = new MenuPrincipal();
             menu.setLocationRelativeTo(null); // <-- Centra el JFrame en la pantalla
             menu.setVisible(true);

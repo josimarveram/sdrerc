@@ -69,7 +69,8 @@ public class UserRepository {
         "ORDER BY u.FULL_NAME";
     
     public User findByUsername(String username) {
-        String sql = "SELECT USER_ID, USERNAME, PASSWORD_HASH, FULL_NAME, STATUS, ID_TECNICO "
+        String sql = "SELECT USER_ID, USERNAME, PASSWORD_HASH, FULL_NAME, STATUS, ID_TECNICO, "
+                + "NVL(MUST_CHANGE_PASSWORD, 0) AS MUST_CHANGE_PASSWORD "
                 + "FROM APP_USERS WHERE UPPER(TRIM(USERNAME)) = UPPER(TRIM(?)) AND UPPER(STATUS) IN ('ACTIVE', 'ACTIVO')";
         try (Connection conn = OracleConnection.getConnection();
            PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -412,6 +413,36 @@ public class UserRepository {
             ps.executeUpdate();
         }
     }
+
+    public String obtenerPasswordHash(Long userId) throws SQLException {
+        String sql = "SELECT PASSWORD_HASH FROM APP_USERS WHERE USER_ID = ?";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("PASSWORD_HASH") : null;
+            }
+        }
+    }
+
+    public void actualizarPasswordObligatorio(Long userId, String newHash) throws SQLException {
+        String sql =
+            "UPDATE APP_USERS " +
+            "SET PASSWORD_HASH = ?, " +
+            "    MUST_CHANGE_PASSWORD = 0, " +
+            "    PASSWORD_UPDATED_AT = SYSDATE " +
+            "WHERE USER_ID = ?";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setString(1, newHash);
+            ps.setLong(2, userId);
+            ps.executeUpdate();
+        }
+    }
     
     
     
@@ -624,6 +655,11 @@ public class UserRepository {
         u.setFullName(rs.getString("FULL_NAME"));
         u.setStatus(rs.getString("STATUS"));
         u.setIdTecnico(getNullableLong(rs, "ID_TECNICO"));
+        try {
+            u.setMustChangePassword(rs.getInt("MUST_CHANGE_PASSWORD") == 1);
+        } catch (SQLException ex) {
+            u.setMustChangePassword(false);
+        }
         return u;
     }
 
