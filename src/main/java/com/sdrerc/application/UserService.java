@@ -17,6 +17,10 @@ import java.util.List;
  * @author David
  */
 public class UserService {
+    private static final String MENSAJE_USUARIO_OPERATIVO_SIN_TECNICO =
+            "Los usuarios con rol ABOGADO o SUPERVISION deben registrarse desde Equipo Jurídico "
+            + "para crear automáticamente la persona operativa y su vínculo técnico.";
+
     private final UserRepository repo;
 
     
@@ -91,7 +95,36 @@ public class UserService {
     
     public void asignarRoles(Long userId, List<Long> roles)
             throws SQLException {
+        validarRolesOperativosConTecnico(userId, roles);
         repo.asignarRoles(userId, roles);
+    }
+
+    private void validarRolesOperativosConTecnico(Long userId, List<Long> roleIds)
+            throws SQLException {
+        if (userId == null || userId <= 0 || roleIds == null || roleIds.isEmpty()) {
+            return;
+        }
+
+        if (!incluyeRolOperativoJuridico(roleIds)) {
+            return;
+        }
+
+        Long idTecnico = repo.obtenerIdTecnicoUsuario(userId);
+        if (idTecnico == null) {
+            throw new IllegalStateException(MENSAJE_USUARIO_OPERATIVO_SIN_TECNICO);
+        }
+    }
+
+    private boolean incluyeRolOperativoJuridico(List<Long> roleIds)
+            throws SQLException {
+        List<String> roleNames = repo.obtenerRoleNamesPorIds(roleIds);
+        for (String roleName : roleNames) {
+            String normalized = roleName == null ? "" : roleName.trim().toUpperCase();
+            if ("ABOGADO".equals(normalized) || "SUPERVISION".equals(normalized)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     public boolean tieneRol(Long userId, String roleName)

@@ -430,6 +430,41 @@ public class UserRepository {
             cn.commit();
         }
     }
+
+    public List<String> obtenerRoleNamesPorIds(List<Long> roleIds) throws SQLException {
+        List<String> roleNames = new ArrayList<>();
+        if (roleIds == null || roleIds.isEmpty()) {
+            return roleNames;
+        }
+
+        StringBuilder placeholders = new StringBuilder();
+        for (int i = 0; i < roleIds.size(); i++) {
+            if (i > 0) {
+                placeholders.append(", ");
+            }
+            placeholders.append("?");
+        }
+
+        String sql =
+            "SELECT ROLE_NAME " +
+            "FROM APP_ROLES " +
+            "WHERE ROLE_ID IN (" + placeholders + ")";
+
+        try (Connection cn = OracleConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            for (int i = 0; i < roleIds.size(); i++) {
+                ps.setLong(i + 1, roleIds.get(i));
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    roleNames.add(rs.getString("ROLE_NAME"));
+                }
+            }
+        }
+        return roleNames;
+    }
     
     
     public boolean tieneRol(Long userId, String roleName)

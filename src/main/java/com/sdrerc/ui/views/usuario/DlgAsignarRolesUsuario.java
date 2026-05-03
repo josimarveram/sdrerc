@@ -190,6 +190,13 @@ public class DlgAsignarRolesUsuario extends javax.swing.JDialog {
                     .collect(Collectors.toList())
             );
             dispose();
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    e.getMessage(),
+                    "Asignación de roles",
+                    JOptionPane.WARNING_MESSAGE
+            );
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this,e.getMessage());
         }
