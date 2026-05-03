@@ -101,12 +101,13 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
     private static final int COL_DESCRIPCION = 2;
     private static final int COL_PERFIL = 3;
     private static final int COL_VINCULO_OPERATIVO = 4;
-    private static final int COL_ESTADO = 5;
-    private static final int COL_EDITAR = 6;
-    private static final int COL_ACTIVAR = 7;
-    private static final int COL_RESET = 8;
-    private static final int COL_ASIGNAR_ROL = 9;
-    private static final int COL_ASIGNAR_ABOGADO = 10;
+    private static final int COL_PERSONA_OPERATIVA = 5;
+    private static final int COL_ESTADO = 6;
+    private static final int COL_EDITAR = 7;
+    private static final int COL_ACTIVAR = 8;
+    private static final int COL_RESET = 9;
+    private static final int COL_ASIGNAR_ROL = 10;
+    private static final int COL_ASIGNAR_ABOGADO = 11;
     /**
      * Creates new form JPanelListadoRole
      */
@@ -185,9 +186,6 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         JPanel accionesHeader = new JPanel(new GridBagLayout());
         accionesHeader.setOpaque(false);
         GridBagConstraints gbcAcciones = new GridBagConstraints();
-        gbcAcciones.insets = new Insets(0, 0, 0, 8);
-        accionesHeader.add(btnVincularTecnico, gbcAcciones);
-        gbcAcciones.insets = new Insets(0, 0, 0, 0);
         accionesHeader.add(btnNuevo1, gbcAcciones);
 
         headerPanel.add(jLabel2, BorderLayout.NORTH);
@@ -385,6 +383,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         renombrarEncabezado(COL_DESCRIPCION, "Nombre visible");
         renombrarEncabezado(COL_PERFIL, "Perfil");
         renombrarEncabezado(COL_VINCULO_OPERATIVO, "Vínculo operativo");
+        renombrarEncabezado(COL_PERSONA_OPERATIVA, "");
         renombrarEncabezado(COL_ESTADO, "Estado");
         renombrarEncabezado(COL_EDITAR, "");
         renombrarEncabezado(COL_ACTIVAR, "");
@@ -398,6 +397,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         ajustarColumna(COL_DESCRIPCION, 220, 320, Integer.MAX_VALUE);
         ajustarColumna(COL_PERFIL, 140, 180, 240);
         ajustarColumna(COL_VINCULO_OPERATIVO, 110, 130, 150);
+        ajustarColumna(COL_PERSONA_OPERATIVA, 45, 55, 65);
         ajustarColumna(COL_ESTADO, 90, 100, 120);
         ajustarColumna(COL_EDITAR, 45, 55, 65);
         ajustarColumna(COL_ACTIVAR, 45, 55, 65);
@@ -412,6 +412,8 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         tblUsuarios.getColumnModel().getColumn(COL_PERFIL).setCellRenderer(new TextoTooltipRenderer());
         tblUsuarios.getColumnModel().getColumn(COL_VINCULO_OPERATIVO).setCellRenderer(new VinculoOperativoRenderer());
         tblUsuarios.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoUsuarioRenderer());
+        tblUsuarios.getColumnModel().getColumn(COL_PERSONA_OPERATIVA).setCellRenderer(new UsuarioActionRenderer(COL_PERSONA_OPERATIVA));
+        tblUsuarios.getColumnModel().getColumn(COL_PERSONA_OPERATIVA).setCellEditor(new UsuarioActionEditor(COL_PERSONA_OPERATIVA));
         tblUsuarios.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new UsuarioActionRenderer(COL_EDITAR));
         tblUsuarios.getColumnModel().getColumn(COL_EDITAR).setCellEditor(new UsuarioActionEditor(COL_EDITAR));
         tblUsuarios.getColumnModel().getColumn(COL_ACTIVAR).setCellRenderer(new UsuarioActionRenderer(COL_ACTIVAR));
@@ -541,6 +543,10 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                 if (col == COL_ASIGNAR_ROL) {
                     asignarRolesDesdeTabla(row);
                 }
+
+                if (col == COL_PERSONA_OPERATIVA) {
+                    vincularPersonaOperativaDesdeTabla(row);
+                }
                 
                 // Columna COL_ASIGNAR_ROL
                 if (col == COL_ASIGNAR_ABOGADO) {
@@ -577,6 +583,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                 || col == COL_ACTIVAR
                 || col == COL_RESET
                 || col == COL_ASIGNAR_ROL
+                || col == COL_PERSONA_OPERATIVA
                 || col == COL_ASIGNAR_ABOGADO;
     }
     
@@ -652,6 +659,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                     r.getNombreVisible(),
                     r.getRolesPerfil(),
                     crearValorVinculoOperativo(r),
+                    "Persona",
                     r.getStatus(),
                     "Editar",
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar",
@@ -1005,13 +1013,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
     
     private void initTable() {
         model = new DefaultTableModel(
-            new Object[]{"ID", "USUARIO", "NOMBRE", "PERFIL", "VINCULO_OPERATIVO", "ESTADO", "EDITAR", "ACTIVAR","CAMBIAR_CLAVE","ASIGNAR_ROL","ASIGNAR_ABOGADO"}, 0
+            new Object[]{"ID", "USUARIO", "NOMBRE", "PERFIL", "VINCULO_OPERATIVO", "PERSONA", "ESTADO", "EDITAR", "ACTIVAR","CAMBIAR_CLAVE","ASIGNAR_ROL","ASIGNAR_ABOGADO"}, 0
         ) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 // Solo las columnas de botones
                 return column == COL_EDITAR || column == COL_ACTIVAR || column == COL_RESET
-                        || column == COL_ASIGNAR_ROL || column == COL_ASIGNAR_ABOGADO;
+                        || column == COL_ASIGNAR_ROL || column == COL_PERSONA_OPERATIVA
+                        || column == COL_ASIGNAR_ABOGADO;
             }
         };
         tblUsuarios.setModel(model);
@@ -1266,7 +1275,20 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
 
         int modelRow = tblUsuarios.convertRowIndexToModel(row);
         Long userId = (Long) model.getValueAt(modelRow, COL_ID);
+        vincularPersonaOperativa(userId);
+    }
 
+    private void vincularPersonaOperativaDesdeTabla(int row) {
+        if (tblUsuarios.isEditing()) {
+            tblUsuarios.getCellEditor().stopCellEditing();
+        }
+
+        int modelRow = tblUsuarios.convertRowIndexToModel(row);
+        Long userId = (Long) model.getValueAt(modelRow, COL_ID);
+        vincularPersonaOperativa(userId);
+    }
+
+    private void vincularPersonaOperativa(Long userId) {
         Window parent = SwingUtilities.getWindowAncestor(this);
         Frame frame = parent instanceof Frame ? (Frame) parent : null;
         JDialogTecnico dialog = new JDialogTecnico(frame, true);
@@ -1495,6 +1517,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         if (actionColumn == COL_ASIGNAR_ROL) {
             return "role.svg";
         }
+        if (actionColumn == COL_PERSONA_OPERATIVA) {
+            return "users.svg";
+        }
         return "users.svg";
     }
 
@@ -1510,6 +1535,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         }
         if (actionColumn == COL_ASIGNAR_ROL) {
             return "Asignar roles";
+        }
+        if (actionColumn == COL_PERSONA_OPERATIVA) {
+            return "Gestionar persona operativa";
         }
         return "Equipo supervisado";
     }
