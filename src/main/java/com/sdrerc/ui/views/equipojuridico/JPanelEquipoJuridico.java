@@ -19,6 +19,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Cursor;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -26,6 +29,8 @@ import java.awt.Window;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.RenderingHints;
+import java.awt.Point;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -421,9 +426,17 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 int row = tblEquipo.rowAtPoint(evt.getPoint());
                 int col = tblEquipo.columnAtPoint(evt.getPoint());
-                if (row >= 0 && col == COL_EDITAR) {
+                if (row >= 0 && evt.getClickCount() == 2 && col != COL_EDITAR) {
                     abrirEdicionDesdeTabla(row);
                 }
+            }
+        });
+        tblEquipo.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent evt) {
+                int col = tblEquipo.columnAtPoint(evt.getPoint());
+                tblEquipo.setCursor(col == COL_EDITAR ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+                tblEquipo.repaint();
             }
         });
     }
@@ -904,19 +917,24 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
 
     private class EditarEquipoRenderer implements TableCellRenderer {
 
-        private final JButton button = crearBotonEditar();
+        private final GhostIconButton button = crearBotonEditar();
 
         @Override
         public Component getTableCellRendererComponent(
                 JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            button.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            Point mouse = table.getMousePosition();
+            boolean hover = mouse != null
+                    && table.rowAtPoint(mouse) == row
+                    && table.columnAtPoint(mouse) == column;
+            button.setHover(hover);
+            button.setSelectedRow(isSelected);
             return button;
         }
     }
 
     private class EditarEquipoEditor extends AbstractCellEditor implements TableCellEditor, ActionListener {
 
-        private final JButton button = crearBotonEditar();
+        private final GhostIconButton button = crearBotonEditar();
         private int row = -1;
 
         EditarEquipoEditor() {
@@ -945,10 +963,17 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
         }
     }
 
-    private JButton crearBotonEditar() {
-        JButton button = IconUtils.createIconButton("Editar abogado", "edit.svg");
+    private GhostIconButton crearBotonEditar() {
+        GhostIconButton button = new GhostIconButton();
+        button.setToolTipText("Editar abogado");
         button.setText("");
         button.setFocusable(false);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setOpaque(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
         button.setPreferredSize(new Dimension(32, 28));
         button.setMinimumSize(new Dimension(32, 28));
         button.setMaximumSize(new Dimension(32, 28));
@@ -957,5 +982,42 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
             button.setIcon(icon);
         }
         return button;
+    }
+
+    private static class GhostIconButton extends JButton {
+
+        private boolean hover;
+        private boolean selectedRow;
+
+        GhostIconButton() {
+            setHorizontalAlignment(JButton.CENTER);
+            setVerticalAlignment(JButton.CENTER);
+        }
+
+        void setHover(boolean hover) {
+            this.hover = hover;
+        }
+
+        void setSelectedRow(boolean selectedRow) {
+            this.selectedRow = selectedRow;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (hover || getModel().isRollover() || getModel().isPressed()) {
+                    g2.setColor(new Color(226, 237, 248));
+                    g2.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 10, 10);
+                } else if (selectedRow) {
+                    g2.setColor(new Color(219, 235, 247, 120));
+                    g2.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 10, 10);
+                }
+            } finally {
+                g2.dispose();
+            }
+            super.paintComponent(g);
+        }
     }
 }
