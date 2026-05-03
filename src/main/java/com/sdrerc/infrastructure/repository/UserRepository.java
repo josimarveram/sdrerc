@@ -237,6 +237,13 @@ public class UserRepository {
             "         NVL(t.NOMBRES, '')) " +
             "  ELSE u.FULL_NAME " +
             "END AS NOMBRE_VISIBLE, " +
+            "NVL(( " +
+            "  SELECT LISTAGG(r.ROLE_NAME, ', ') WITHIN GROUP (ORDER BY r.ROLE_NAME) " +
+            "  FROM APP_USER_ROLES ur " +
+            "  JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
+            "  WHERE ur.USER_ID = u.USER_ID " +
+            "    AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO') " +
+            "), '') AS ROLES_PERFIL, " +
             "u.STATUS, " +
             "u.ID_TECNICO, " +
             "CASE " +
@@ -249,7 +256,18 @@ public class UserRepository {
             "      AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO') " +
             "  ) THEN 1 " +
             "  ELSE 0 " +
-            "END AS ES_SUPERVISION " +
+            "END AS ES_SUPERVISION, " +
+            "CASE " +
+            "  WHEN EXISTS ( " +
+            "    SELECT 1 " +
+            "    FROM APP_USER_ROLES ur " +
+            "    JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
+            "    WHERE ur.USER_ID = u.USER_ID " +
+            "      AND UPPER(TRIM(r.ROLE_NAME)) IN ('ABOGADO', 'SUPERVISION') " +
+            "      AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO') " +
+            "  ) THEN 1 " +
+            "  ELSE 0 " +
+            "END AS ES_OPERATIVO_JURIDICO " +
             "FROM APP_USERS u " +
             "LEFT JOIN TECNICO t ON t.ID_TECNICO = u.ID_TECNICO " +
             where +
@@ -595,9 +613,11 @@ public class UserRepository {
         item.setUserId(rs.getLong("USER_ID"));
         item.setUsername(rs.getString("USERNAME"));
         item.setNombreVisible(rs.getString("NOMBRE_VISIBLE"));
+        item.setRolesPerfil(rs.getString("ROLES_PERFIL"));
         item.setStatus(rs.getString("STATUS"));
         item.setIdTecnico(getNullableLong(rs, "ID_TECNICO"));
         item.setEsSupervision(rs.getInt("ES_SUPERVISION") == 1);
+        item.setEsOperativoJuridico(rs.getInt("ES_OPERATIVO_JURIDICO") == 1);
         return item;
     }
 

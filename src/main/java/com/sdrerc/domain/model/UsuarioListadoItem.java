@@ -5,9 +5,11 @@ public class UsuarioListadoItem {
     private Long userId;
     private String username;
     private String nombreVisible;
+    private String rolesPerfil;
     private String status;
     private Long idTecnico;
     private boolean esSupervision;
+    private boolean esOperativoJuridico;
 
     public Long getUserId() {
         return userId;
@@ -33,6 +35,14 @@ public class UsuarioListadoItem {
         this.nombreVisible = nombreVisible;
     }
 
+    public String getRolesPerfil() {
+        return rolesPerfil;
+    }
+
+    public void setRolesPerfil(String rolesPerfil) {
+        this.rolesPerfil = rolesPerfil;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -55,5 +65,13 @@ public class UsuarioListadoItem {
 
     public void setEsSupervision(boolean esSupervision) {
         this.esSupervision = esSupervision;
+    }
+
+    public boolean isEsOperativoJuridico() {
+        return esOperativoJuridico;
+    }
+
+    public void setEsOperativoJuridico(boolean esOperativoJuridico) {
+        this.esOperativoJuridico = esOperativoJuridico;
     }
 }

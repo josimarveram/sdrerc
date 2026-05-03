@@ -83,7 +83,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
     private final JButton btnNuevoEquipoJuridico = new JButton("Nuevo abogado/supervisor");
     private final JButton btnDescargarPlantillaEquipo = new JButton("Descargar plantilla Excel");
     private final JButton btnPrevisualizarPlantillaEquipo = new JButton("Previsualizar Excel");
-    private final JButton btnVincularTecnico = new JButton("Vincular técnico");
+    private final JButton btnVincularTecnico = new JButton("Persona operativa");
     private final JButton btnPrimeraPagina = new JButton("Primera");
     private final JButton btnPaginaAnterior = new JButton("Anterior");
     private final JButton btnPaginaSiguiente = new JButton("Siguiente");
@@ -99,12 +99,14 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
     public static final int COL_ID = 0;
     private static final int COL_NOMBRE = 1;
     private static final int COL_DESCRIPCION = 2;
-    private static final int COL_ESTADO = 3;
-    private static final int COL_EDITAR = 4;
-    private static final int COL_ACTIVAR = 5;
-    private static final int COL_RESET = 6;
-    private static final int COL_ASIGNAR_ROL = 7;
-    private static final int COL_ASIGNAR_ABOGADO = 8;
+    private static final int COL_PERFIL = 3;
+    private static final int COL_VINCULO_OPERATIVO = 4;
+    private static final int COL_ESTADO = 5;
+    private static final int COL_EDITAR = 6;
+    private static final int COL_ACTIVAR = 7;
+    private static final int COL_RESET = 8;
+    private static final int COL_ASIGNAR_ROL = 9;
+    private static final int COL_ASIGNAR_ABOGADO = 10;
     /**
      * Creates new form JPanelListadoRole
      */
@@ -163,6 +165,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         btnNuevo1.setText("Nuevo usuario");
         btnBusqueda.setText("Buscar");
         btnLimpiar1.setText("Limpiar");
+        btnVincularTecnico.setText("Persona operativa");
     }
 
     private void configurarLayoutUsuarios() {
@@ -293,7 +296,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         Dimension botonEquipo = new Dimension(198, 36);
         Dimension botonPlantilla = new Dimension(186, 36);
         Dimension botonPrevisualizar = new Dimension(154, 36);
-        Dimension botonVincular = new Dimension(142, 36);
+        Dimension botonVincular = new Dimension(168, 36);
         Dimension botonFiltro = new Dimension(96, 34);
         btnNuevo1.setPreferredSize(botonPrincipal);
         btnNuevo1.setMinimumSize(botonPrincipal);
@@ -319,7 +322,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         btnNuevoEquipoJuridico.setToolTipText("Registrar abogado o supervisor creando técnico, usuario y roles");
         btnDescargarPlantillaEquipo.setToolTipText("Descargar plantilla oficial para carga masiva de equipo jurídico");
         btnPrevisualizarPlantillaEquipo.setToolTipText("Leer plantilla Excel y previsualizar validaciones sin grabar en base de datos");
-        btnVincularTecnico.setToolTipText("Vincular usuario con técnico/abogado funcional");
+        btnVincularTecnico.setToolTipText("Acción avanzada para vincular la cuenta con una persona operativa.");
         btnBusqueda.setToolTipText("Buscar usuarios con los filtros actuales");
         btnLimpiar1.setToolTipText("Limpiar filtros y recargar usuarios");
     }
@@ -379,7 +382,9 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
 
         renombrarEncabezado(COL_ID, "ID");
         renombrarEncabezado(COL_NOMBRE, "Usuario");
-        renombrarEncabezado(COL_DESCRIPCION, "Nombre completo");
+        renombrarEncabezado(COL_DESCRIPCION, "Nombre visible");
+        renombrarEncabezado(COL_PERFIL, "Perfil");
+        renombrarEncabezado(COL_VINCULO_OPERATIVO, "Vínculo operativo");
         renombrarEncabezado(COL_ESTADO, "Estado");
         renombrarEncabezado(COL_EDITAR, "");
         renombrarEncabezado(COL_ACTIVAR, "");
@@ -389,8 +394,10 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         tblUsuarios.getTableHeader().repaint();
 
         ajustarColumna(COL_ID, 0, 0, 0);
-        ajustarColumna(COL_NOMBRE, 100, 130, 180);
-        ajustarColumna(COL_DESCRIPCION, 180, 320, Integer.MAX_VALUE);
+        ajustarColumna(COL_NOMBRE, 100, 130, 170);
+        ajustarColumna(COL_DESCRIPCION, 220, 320, Integer.MAX_VALUE);
+        ajustarColumna(COL_PERFIL, 140, 180, 240);
+        ajustarColumna(COL_VINCULO_OPERATIVO, 110, 130, 150);
         ajustarColumna(COL_ESTADO, 90, 100, 120);
         ajustarColumna(COL_EDITAR, 45, 55, 65);
         ajustarColumna(COL_ACTIVAR, 45, 55, 65);
@@ -402,6 +409,8 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
     private void configurarRenderersUsuarios() {
         tblUsuarios.getColumnModel().getColumn(COL_NOMBRE).setCellRenderer(new TextoTooltipRenderer());
         tblUsuarios.getColumnModel().getColumn(COL_DESCRIPCION).setCellRenderer(new TextoTooltipRenderer());
+        tblUsuarios.getColumnModel().getColumn(COL_PERFIL).setCellRenderer(new TextoTooltipRenderer());
+        tblUsuarios.getColumnModel().getColumn(COL_VINCULO_OPERATIVO).setCellRenderer(new VinculoOperativoRenderer());
         tblUsuarios.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoUsuarioRenderer());
         tblUsuarios.getColumnModel().getColumn(COL_EDITAR).setCellRenderer(new UsuarioActionRenderer(COL_EDITAR));
         tblUsuarios.getColumnModel().getColumn(COL_EDITAR).setCellEditor(new UsuarioActionEditor(COL_EDITAR));
@@ -441,22 +450,22 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         tblUsuarios.getColumn("EDITAR")
         .setCellRenderer(new ButtonRenderer("Editar"));
         tblUsuarios.getColumn("EDITAR")
-                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 4));
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, COL_EDITAR));
 
         tblUsuarios.getColumn("ACTIVAR")
                 .setCellRenderer(new ButtonRenderer("Activar / Inactivar"));
         tblUsuarios.getColumn("ACTIVAR")
-                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 5));
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, COL_ACTIVAR));
         
         tblUsuarios.getColumn("CAMBIAR_CLAVE")
         .setCellRenderer(new ButtonRenderer("Resetear"));
         tblUsuarios.getColumn("CAMBIAR_CLAVE")
-                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 6));
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, COL_RESET));
         
         tblUsuarios.getColumn("ASIGNAR_ROL")
         .setCellRenderer(new ButtonRenderer("Asignar Rol"));
         tblUsuarios.getColumn("ASIGNAR_ROL")
-                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, 7));
+                .setCellEditor(new ButtonEditorUsuario(tblUsuarios, this, COL_ASIGNAR_ROL));
         /*
         tblUsuarios.getColumn("ASIGNAR_ABOGADO")
         .setCellRenderer(new ButtonRenderer("Equipo"));
@@ -578,13 +587,13 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         roleIdSeleccionado = Long.parseLong(model.getValueAt(row, 0).toString());
         roleNameSeleccionado = model.getValueAt(row, 1).toString();
         roleDescriptionSeleccionado = model.getValueAt(row, 2).toString();
-        statusSeleccionado = model.getValueAt(row, 3).toString();         
+        statusSeleccionado = model.getValueAt(row, COL_ESTADO).toString();
     }
     
     public void cambiarEstadoDesdeTabla(int row) {
         int modelRow = tblUsuarios.convertRowIndexToModel(row);
         Long id = Long.parseLong(model.getValueAt(modelRow, 0).toString());
-        String estadoActual = model.getValueAt(modelRow, 3).toString();
+        String estadoActual = model.getValueAt(modelRow, COL_ESTADO).toString();
         String nuevoEstado = estadoActual.equals("ACTIVE") ? "INACTIVE" : "ACTIVE";
 
         int r = JOptionPane.showConfirmDialog(
@@ -603,7 +612,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                     tblUsuarios.getCellEditor().stopCellEditing();
                 }
                 
-                model.setValueAt(nuevoEstado, modelRow, 3);
+                model.setValueAt(nuevoEstado, modelRow, COL_ESTADO);
                 model.setValueAt(
                     nuevoEstado.equals("ACTIVE") ? "Inactivar" : "Activar",
                     modelRow,
@@ -641,6 +650,8 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
                     r.getUserId(),
                     r.getUsername(),
                     r.getNombreVisible(),
+                    r.getRolesPerfil(),
+                    crearValorVinculoOperativo(r),
                     r.getStatus(),
                     "Editar",
                     r.getStatus().equals("ACTIVE") ? "Inactivar" : "Activar",
@@ -660,6 +671,25 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, e.getMessage());
         }
+    }
+
+    private VinculoOperativoValue crearValorVinculoOperativo(UsuarioListadoItem usuario) {
+        if (usuario.getIdTecnico() != null) {
+            String nombre = usuario.getNombreVisible() == null ? "" : usuario.getNombreVisible();
+            return new VinculoOperativoValue("Vinculado", "Vinculado a: " + nombre, VinculoOperativoValue.Tipo.VINCULADO);
+        }
+        if (usuario.isEsOperativoJuridico()) {
+            return new VinculoOperativoValue(
+                    "Sin vínculo",
+                    "Usuario operativo sin persona operativa vinculada",
+                    VinculoOperativoValue.Tipo.SIN_VINCULO
+            );
+        }
+        return new VinculoOperativoValue(
+                "No aplica",
+                "No aplica para usuario administrativo/no operativo",
+                VinculoOperativoValue.Tipo.NO_APLICA
+        );
     }
     
     private void resetFiltros() {
@@ -975,12 +1005,13 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
     
     private void initTable() {
         model = new DefaultTableModel(
-            new Object[]{"ID", "USUARIO", "NOMBRE", "ESTADO", "EDITAR", "ACTIVAR","CAMBIAR_CLAVE","ASIGNAR_ROL","ASIGNAR_ABOGADO"}, 0
+            new Object[]{"ID", "USUARIO", "NOMBRE", "PERFIL", "VINCULO_OPERATIVO", "ESTADO", "EDITAR", "ACTIVAR","CAMBIAR_CLAVE","ASIGNAR_ROL","ASIGNAR_ABOGADO"}, 0
         ) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 // Solo las columnas de botones
-                return column == 4 || column == 5 || column == 6 || column == 7 || column == 8;
+                return column == COL_EDITAR || column == COL_ACTIVAR || column == COL_RESET
+                        || column == COL_ASIGNAR_ROL || column == COL_ASIGNAR_ABOGADO;
             }
         };
         tblUsuarios.setModel(model);
@@ -1239,7 +1270,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         Window parent = SwingUtilities.getWindowAncestor(this);
         Frame frame = parent instanceof Frame ? (Frame) parent : null;
         JDialogTecnico dialog = new JDialogTecnico(frame, true);
-        dialog.setTitle("Vincular técnico/abogado funcional");
+        dialog.setTitle("Vincular persona operativa");
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
 
@@ -1252,7 +1283,7 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
         try {
             Integer idTecnico = Integer.valueOf(idTecnicoSeleccionado);
             userService.vincularTecnico(userId, idTecnico);
-            JOptionPane.showMessageDialog(this, "Técnico vinculado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Persona operativa vinculada correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             cargarPaginaUsuarios();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Seleccione un técnico válido.", "Aviso", JOptionPane.WARNING_MESSAGE);
@@ -1299,6 +1330,70 @@ public class JPanelListadoUsuario extends javax.swing.JPanel implements EquipoJu
             String text = value == null ? "" : value.toString();
             label.setToolTipText(text);
             label.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+            return label;
+        }
+    }
+
+    private static class VinculoOperativoValue {
+        enum Tipo {
+            VINCULADO,
+            SIN_VINCULO,
+            NO_APLICA
+        }
+
+        private final String texto;
+        private final String tooltip;
+        private final Tipo tipo;
+
+        VinculoOperativoValue(String texto, String tooltip, Tipo tipo) {
+            this.texto = texto;
+            this.tooltip = tooltip;
+            this.tipo = tipo;
+        }
+
+        String getTooltip() {
+            return tooltip;
+        }
+
+        Tipo getTipo() {
+            return tipo;
+        }
+
+        @Override
+        public String toString() {
+            return texto;
+        }
+    }
+
+    private static class VinculoOperativoRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            VinculoOperativoValue vinculo = value instanceof VinculoOperativoValue
+                    ? (VinculoOperativoValue) value
+                    : new VinculoOperativoValue(value == null ? "" : value.toString(), null, VinculoOperativoValue.Tipo.NO_APLICA);
+
+            label.setText(vinculo.toString());
+            label.setToolTipText(vinculo.getTooltip());
+            label.setHorizontalAlignment(JLabel.CENTER);
+            label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
+            label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+
+            if (!isSelected) {
+                label.setOpaque(true);
+                if (vinculo.getTipo() == VinculoOperativoValue.Tipo.VINCULADO) {
+                    label.setForeground(new Color(24, 112, 70));
+                    label.setBackground(new Color(225, 244, 235));
+                } else if (vinculo.getTipo() == VinculoOperativoValue.Tipo.SIN_VINCULO) {
+                    label.setForeground(new Color(153, 91, 24));
+                    label.setBackground(new Color(255, 243, 217));
+                } else {
+                    label.setForeground(new Color(107, 114, 128));
+                    label.setBackground(Color.WHITE);
+                }
+            }
             return label;
         }
     }
