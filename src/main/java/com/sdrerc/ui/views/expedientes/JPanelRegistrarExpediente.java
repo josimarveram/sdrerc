@@ -59,6 +59,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
     private CatalogoItem ultimaDireccionDomiciliariaSeleccionada;
     private JLabel lblTituloFormulario;
     private JLabel lblSubtituloFormulario;
+    private boolean modoConsulta = false;
+    private int estadoExpedienteActual = Enumerado.EstadoExpediente.RegistroExpediente.getId();
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -405,10 +407,43 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
             return;
         }
         boolean editando = idExpedienteOculto != null && idExpedienteOculto > 0;
-        lblTituloFormulario.setText(editando ? "Editar expediente" : "Registro de expediente");
-        if (lblSubtituloFormulario != null) {
-            lblSubtituloFormulario.setText("Gestione la recepción de solicitudes y datos asociados del expediente.");
+        if (modoConsulta) {
+            lblTituloFormulario.setText("Consulta de expediente");
+        } else {
+            lblTituloFormulario.setText(editando ? "Editar expediente" : "Registro de expediente");
         }
+        if (lblSubtituloFormulario != null) {
+            lblSubtituloFormulario.setText(modoConsulta
+                    ? "El expediente ya fue asignado o avanzó en el flujo. La información se muestra solo para consulta."
+                    : "Gestione la recepción de solicitudes y datos asociados del expediente.");
+        }
+    }
+
+    private void aplicarModoConsultaSiCorresponde() {
+        modoConsulta = estadoExpedienteActual != Enumerado.EstadoExpediente.RegistroExpediente.getId();
+        actualizarTituloFormulario();
+
+        if (!modoConsulta) {
+            return;
+        }
+
+        for (JComponent component : new JComponent[] {
+                spFechaRecepcion, cboCanalRecepcion, textNumeroTramiteDocumento,
+                cboTipoDocumento, textNumeroDocumento, cboTipoActa, textNumeroActa,
+                cboGrupoFamiliar, cboGradoParentesco, cboTipoProcedimientoRegistral,
+                cboTipoSolicitud, textDniRemitente, textApellidosNombreRemitente,
+                cboUnidadOrganica, textNumeroDocumentoTitular, textApellidosNombreTitular,
+                textCorreoElectronico, textCelular, cboDireccionDomiciliaria, textDomicilio,
+                cboDepartamento, cboProvincia, cboDistrito, textHojaEnvioExpediente,
+                jRadiButonSiCorresponde, jRadiButonNoCorresponde
+        }) {
+            component.setEnabled(false);
+        }
+
+        btnLimpiar.setEnabled(false);
+        btnGuardar.setEnabled(false);
+        btnGuardar.setText("Solo consulta");
+        btnGuardar.setToolTipText("Este expediente ya no puede modificarse desde Recepción.");
     }
     
 	private boolean modoEdicion = false;
@@ -499,6 +534,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
         idExpedienteOculto = lista.getIdExpediente();
+        estadoExpedienteActual = lista.getEstado();
         
         //esRegistroSdrerc 
         jRadiButonNoCorresponde.setSelected(lista.getEsRegistroSdrerc() == 1? true : false);
@@ -562,7 +598,10 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         
         //distrito
         //seleccionarEstadoEnCombo(cboDistrito, lista.getDistrito());
-	SwingUtilities.invokeLater(() -> cargarUbigeo(lista));
+	SwingUtilities.invokeLater(() -> {
+            cargarUbigeo(lista);
+            aplicarModoConsultaSiCorresponde();
+        });
 
         //direccionDomiciliaria
         seleccionarEstadoEnCombo(cboDireccionDomiciliaria, lista.getDireccionDomiciliaria());
@@ -577,6 +616,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         textCelular.setText(lista.getCelular());
         aplicarReglasTipoSolicitud();
         actualizarTituloFormulario();
+        aplicarModoConsultaSiCorresponde();
         
     }
 	
@@ -1489,6 +1529,9 @@ private void seleccionarDistrito(int idDistrito) {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnLimpiarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarActionPerformed
+        if (modoConsulta) {
+            return;
+        }
         // TODO add your handling code here:
         limpiarFormulario();
     }//GEN-LAST:event_btnLimpiarActionPerformed
@@ -1499,6 +1542,13 @@ private void seleccionarDistrito(int idDistrito) {
     }//GEN-LAST:event_btnRegresarActionPerformed
 
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
+        if (modoConsulta) {
+            JOptionPane.showMessageDialog(this,
+                    "Este expediente ya fue asignado o avanzó en el flujo. La información se muestra solo para consulta.",
+                    "Solo consulta",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
                                                 
      try 
         {
@@ -1645,18 +1695,31 @@ private void seleccionarDistrito(int idDistrito) {
     }//GEN-LAST:event_btnGuardarActionPerformed
 
     private void jRadiButonSiCorrespondeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadiButonSiCorrespondeActionPerformed
+        if (modoConsulta) {
+            return;
+        }
         // TODO add your handling code here:
         textHojaEnvioExpediente.setText("");      // limpiar
         textHojaEnvioExpediente.setEnabled(false);
     }//GEN-LAST:event_jRadiButonSiCorrespondeActionPerformed
 
     private void jRadiButonNoCorrespondeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadiButonNoCorrespondeActionPerformed
+        if (modoConsulta) {
+            return;
+        }
         // TODO add your handling code here:
         textHojaEnvioExpediente.setEnabled(true);
         textHojaEnvioExpediente.requestFocus();
     }//GEN-LAST:event_jRadiButonNoCorrespondeActionPerformed
 
     private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
+        if (modoConsulta) {
+            cboTipoSolicitud.setEnabled(false);
+            textDniRemitente.setEnabled(false);
+            textApellidosNombreRemitente.setEnabled(false);
+            cboUnidadOrganica.setEnabled(false);
+            return;
+        }
         
         aplicarReglasTipoSolicitud();
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
