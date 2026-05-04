@@ -14,26 +14,40 @@ import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.util.ComboBoxUtils;
 import com.sdrerc.util.DateRangePickerSupport;
 import com.sdrerc.util.TextFieldRules;
 import com.toedter.calendar.JDateChooser;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Rectangle;
 import java.util.Date;
 import java.util.List;
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.Scrollable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 /**
  *
  * @author usuario
  */
-public class JPanelRegistrarExpediente extends javax.swing.JPanel 
+public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scrollable
 {
     private final ExpedienteService expedienteService;
     private final CatalogoItemService catalogoItemService;
@@ -43,6 +57,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
     private static final int ID_AGREGAR_DIRECCION = -1;
     private static final String[] CANALES_RECEPCION = {"INTERNO", "MP PRESENCIAL", "MPV", "OR PRESENCIAL"};
     private CatalogoItem ultimaDireccionDomiciliariaSeleccionada;
+    private JLabel lblTituloFormulario;
+    private JLabel lblSubtituloFormulario;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -91,6 +107,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
 
         ComboBoxUtils.applySmartRenderer(this);
+        configurarFormularioPremium();
     }
 
     private void initFechaSolicitudPicker() {
@@ -104,6 +121,294 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
 
     private void setFechaSolicitudSeleccionada(Date fecha) {
         spFechaRecepcion.setDate(fecha != null ? fecha : new Date());
+    }
+
+    private void configurarFormularioPremium() {
+        setLayout(new BorderLayout());
+        setBackground(new Color(245, 247, 250));
+
+        jPanelPrincipal.removeAll();
+        jPanelPrincipal.setLayout(new BorderLayout(0, 16));
+        jPanelPrincipal.setBackground(new Color(245, 247, 250));
+        jPanelPrincipal.setBorder(BorderFactory.createEmptyBorder(14, 22, 14, 22));
+        jPanelPrincipal.setPreferredSize(null);
+
+        JPanel contenido = new JPanel(new GridBagLayout());
+        contenido.setOpaque(false);
+        int fila = 0;
+        agregarBloqueVertical(contenido, crearHeaderFormulario(), fila++, 0);
+        agregarBloqueVertical(contenido, crearSeccionValidacionInicial(), fila++, 10);
+        agregarBloqueVertical(contenido, crearSeccionDatosSolicitud(), fila++, 10);
+        agregarBloqueVertical(contenido, crearSeccionNotificacionUbicacion(), fila, 10);
+
+        jPanelPrincipal.add(contenido, BorderLayout.CENTER);
+        jPanelPrincipal.add(crearBarraAcciones(), BorderLayout.SOUTH);
+
+        removeAll();
+        add(jPanelPrincipal, BorderLayout.CENTER);
+
+        configurarEstiloComponentes();
+        actualizarTituloFormulario();
+        revalidate();
+        repaint();
+    }
+
+    private JPanel crearHeaderFormulario() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+
+        lblTituloFormulario = new JLabel();
+        lblTituloFormulario.setFont(new Font("Arial", Font.BOLD, 22));
+        lblTituloFormulario.setForeground(new Color(25, 42, 62));
+
+        lblSubtituloFormulario = new JLabel("Gestione la recepción de solicitudes y datos asociados del expediente.");
+        lblSubtituloFormulario.setFont(new Font("Arial", Font.PLAIN, 13));
+        lblSubtituloFormulario.setForeground(new Color(93, 105, 119));
+
+        JPanel textos = new JPanel(new GridBagLayout());
+        textos.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        textos.add(lblTituloFormulario, gbc);
+        gbc.gridy = 1;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        textos.add(lblSubtituloFormulario, gbc);
+
+        header.add(textos, BorderLayout.WEST);
+        return header;
+    }
+
+    private void agregarBloqueVertical(JPanel parent, JComponent component, int row, int topInset) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = new Insets(topInset, 0, 0, 0);
+        parent.add(component, gbc);
+    }
+
+    private JPanel crearSeccionValidacionInicial() {
+        JPanel card = crearCardSeccion("Validación inicial");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new GridBagLayout());
+
+        JPanel radios = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
+        radios.setOpaque(false);
+        radios.add(jRadiButonSiCorresponde);
+        radios.add(jRadiButonNoCorresponde);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 0, 24);
+        gbc.anchor = GridBagConstraints.WEST;
+        body.add(radios, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        body.add(crearCampo("Hoja de envío", textHojaEnvioExpediente), gbc);
+        return card;
+    }
+
+    private JPanel crearSeccionDatosSolicitud() {
+        JPanel card = crearCardSeccion("Datos de la solicitud");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new GridBagLayout());
+
+        int row = 0;
+        agregarCampo(body, "Fecha solicitud", spFechaRecepcion, 0, row, 1, 0.22);
+        agregarCampo(body, "Canal de recepción", cboCanalRecepcion, 1, row, 1, 0.28);
+        agregarCampo(body, "Nro. trámite web", textNumeroTramiteDocumento, 2, row, 1, 0.22);
+        agregarCampo(body, "Procedimiento registral", cboTipoProcedimientoRegistral, 3, row, 1, 0.28);
+
+        row++;
+        agregarCampo(body, "Tipo documento", cboTipoDocumento, 0, row, 1, 0.28);
+        agregarCampo(body, "Nro. documento", textNumeroDocumento, 1, row, 1, 0.22);
+        agregarCampo(body, "Tipo acta", cboTipoActa, 2, row, 1, 0.28);
+        agregarCampo(body, "Nro. acta", textNumeroActa, 3, row, 1, 0.22);
+
+        row++;
+        agregarCampo(body, "Grupo familiar", cboGrupoFamiliar, 0, row, 1, 0.28);
+        agregarCampo(body, "Grado de parentesco", cboGradoParentesco, 1, row, 1, 0.28);
+        agregarCampo(body, "Tipo solicitud", cboTipoSolicitud, 2, row, 1, 0.22);
+        agregarCampo(body, "Unidad orgánica", cboUnidadOrganica, 3, row, 1, 0.22);
+
+        row++;
+        agregarCampo(body, "DNI remitente", textDniRemitente, 0, row, 1, 0.16);
+        agregarCampo(body, "Apellidos y nombres remitente", textApellidosNombreRemitente, 1, row, 1, 0.34);
+        agregarCampo(body, "DNI / Nro. documento titular", textNumeroDocumentoTitular, 2, row, 1, 0.16);
+        agregarCampo(body, "Apellidos y nombres titular", textApellidosNombreTitular, 3, row, 1, 0.34);
+        return card;
+    }
+
+    private JPanel crearSeccionNotificacionUbicacion() {
+        JPanel card = crearCardSeccion("Notificación y ubicación");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new GridBagLayout());
+
+        int row = 0;
+        agregarCampo(body, "Correo electrónico", textCorreoElectronico, 0, row, 1, 0.40);
+        agregarCampo(body, "Celular", textCelular, 1, row, 1, 0.20);
+        agregarCampo(body, "Dirección domiciliaria", cboDireccionDomiciliaria, 2, row, 1, 0.40);
+
+        row++;
+        agregarCampo(body, "Domicilio", textDomicilio, 0, row, 3, 1.0);
+
+        row++;
+        agregarCampo(body, "Departamento", cboDepartamento, 0, row, 1, 0.33);
+        agregarCampo(body, "Provincia", cboProvincia, 1, row, 1, 0.33);
+        agregarCampo(body, "Distrito", cboDistrito, 2, row, 1, 0.33);
+        return card;
+    }
+
+    private JPanel crearBarraAcciones() {
+        JPanel barra = new JPanel(new BorderLayout());
+        barra.setOpaque(false);
+        barra.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+
+        JPanel izquierda = new JPanel(new GridBagLayout());
+        izquierda.setOpaque(false);
+        izquierda.add(btnRegresar);
+
+        JPanel derecha = new JPanel(new GridBagLayout());
+        derecha.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 0, 0, 10);
+        derecha.add(btnLimpiar, gbc);
+        gbc.insets = new Insets(0, 0, 0, 0);
+        derecha.add(btnGuardar, gbc);
+
+        barra.add(izquierda, BorderLayout.WEST);
+        barra.add(derecha, BorderLayout.EAST);
+        return barra;
+    }
+
+    private JPanel crearCardSeccion(String titulo) {
+        JPanel card = new JPanel(new BorderLayout(0, 10));
+        card.setAlignmentX(LEFT_ALIGNMENT);
+        card.setBackground(Color.WHITE);
+        card.setMinimumSize(new Dimension(0, 0));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(12, 16, 14, 16)
+        ));
+
+        JLabel labelTitulo = new JLabel(titulo);
+        labelTitulo.setFont(new Font("Arial", Font.BOLD, 15));
+        labelTitulo.setForeground(new Color(25, 42, 62));
+        JPanel body = new JPanel();
+        body.setOpaque(false);
+
+        card.add(labelTitulo, BorderLayout.NORTH);
+        card.add(body, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel obtenerBodyCard(JPanel card) {
+        return (JPanel) card.getComponent(1);
+    }
+
+    private JPanel crearCampo(String label, JComponent component) {
+        JPanel panel = new JPanel(new BorderLayout(0, 5));
+        panel.setOpaque(false);
+        panel.add(crearLabelCampo(label), BorderLayout.NORTH);
+        panel.add(component, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private void agregarCampo(JPanel parent, String label, JComponent component, int x, int y, int width, double weightx) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.gridwidth = width;
+        gbc.weightx = weightx;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(y == 0 ? 0 : 9, 0, 0, 12);
+        parent.add(crearCampo(label, component), gbc);
+    }
+
+    private JLabel crearLabelCampo(String texto) {
+        JLabel label = new JLabel(texto);
+        label.setFont(new Font("Arial", Font.PLAIN, 12));
+        label.setForeground(new Color(73, 85, 99));
+        return label;
+    }
+
+    private void configurarEstiloComponentes() {
+        Dimension normal = new Dimension(160, 34);
+        Dimension corto = new Dimension(120, 34);
+        Dimension largo = new Dimension(280, 34);
+
+        aplicarTamano(spFechaRecepcion, corto);
+        aplicarTamano(cboCanalRecepcion, normal);
+        aplicarTamano(textNumeroTramiteDocumento, normal);
+        aplicarTamano(cboTipoDocumento, normal);
+        aplicarTamano(textNumeroDocumento, corto);
+        aplicarTamano(cboTipoActa, normal);
+        aplicarTamano(textNumeroActa, corto);
+        aplicarTamano(cboGrupoFamiliar, normal);
+        aplicarTamano(cboGradoParentesco, normal);
+        aplicarTamano(cboTipoProcedimientoRegistral, largo);
+        aplicarTamano(cboTipoSolicitud, normal);
+        aplicarTamano(textDniRemitente, corto);
+        aplicarTamano(textApellidosNombreRemitente, largo);
+        aplicarTamano(cboUnidadOrganica, normal);
+        aplicarTamano(textNumeroDocumentoTitular, normal);
+        aplicarTamano(textApellidosNombreTitular, largo);
+        aplicarTamano(textCorreoElectronico, largo);
+        aplicarTamano(textCelular, corto);
+        aplicarTamano(cboDireccionDomiciliaria, largo);
+        aplicarTamano(textDomicilio, new Dimension(520, 34));
+        aplicarTamano(cboDepartamento, normal);
+        aplicarTamano(cboProvincia, normal);
+        aplicarTamano(cboDistrito, normal);
+        aplicarTamano(textHojaEnvioExpediente, normal);
+
+        btnRegresar.setText("Regresar");
+        btnLimpiar.setText("Limpiar");
+        btnGuardar.setText("Guardar");
+        IconUtils.applyIcon(btnRegresar, "clear.svg");
+        IconUtils.applyIcon(btnLimpiar, "clear.svg");
+        IconUtils.applyIcon(btnGuardar, "active.svg");
+
+        estilizarBoton(btnRegresar, new Dimension(120, 36));
+        estilizarBoton(btnLimpiar, new Dimension(120, 36));
+        estilizarBoton(btnGuardar, new Dimension(130, 36));
+
+        textHojaEnvioExpediente.setToolTipText("Se habilita cuando la solicitud no corresponde a la SDRERC.");
+        cboTipoSolicitud.setToolTipText("Define las reglas de remitente y unidad orgánica.");
+        cboUnidadOrganica.setToolTipText("Obligatorio para solicitudes tipo OFICIO.");
+        textDomicilio.setToolTipText("Ingrese el domicilio completo para notificación.");
+    }
+
+    private void aplicarTamano(JComponent component, Dimension dimension) {
+        component.setPreferredSize(dimension);
+        component.setMinimumSize(new Dimension(Math.min(dimension.width, 120), dimension.height));
+    }
+
+    private void estilizarBoton(javax.swing.JButton button, Dimension dimension) {
+        button.setPreferredSize(dimension);
+        button.setMinimumSize(dimension);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setFocusPainted(false);
+    }
+
+    private void actualizarTituloFormulario() {
+        if (lblTituloFormulario == null) {
+            return;
+        }
+        boolean editando = idExpedienteOculto != null && idExpedienteOculto > 0;
+        lblTituloFormulario.setText(editando ? "Editar expediente" : "Registro de expediente");
+        if (lblSubtituloFormulario != null) {
+            lblSubtituloFormulario.setText("Gestione la recepción de solicitudes y datos asociados del expediente.");
+        }
     }
     
 	private boolean modoEdicion = false;
@@ -271,6 +576,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel
         //celular
         textCelular.setText(lista.getCelular());
         aplicarReglasTipoSolicitud();
+        actualizarTituloFormulario();
         
     }
 	
@@ -556,6 +862,7 @@ private void seleccionarDistrito(int idDistrito) {
         if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
         if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
         aplicarReglasTipoSolicitud();
+        actualizarTituloFormulario();
     }
     
     private boolean validarGuardar()
@@ -1353,6 +1660,31 @@ private void seleccionarDistrito(int idDistrito) {
         
         aplicarReglasTipoSolicitud();
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 16;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(16, visibleRect.height - 32);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
+    }
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
