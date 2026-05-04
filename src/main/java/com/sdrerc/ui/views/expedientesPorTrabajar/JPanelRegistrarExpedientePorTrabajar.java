@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
@@ -43,8 +44,13 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFFooter;
+import org.apache.poi.xwpf.usermodel.XWPFHeader;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.Component;
@@ -981,60 +987,147 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     }    
     
     private Path generarDocxLibreOffice(String plantilla, String tipoActa, String nroActa, String nombreTitular, String dniTitular) throws Exception 
-    {              
+    {
+        Path rutaPlantilla = Paths.get(plantilla);
+        if (!Files.exists(rutaPlantilla)) {
+            throw new java.nio.file.NoSuchFileException(rutaPlantilla.toString());
+        }
+        if (!Files.isRegularFile(rutaPlantilla)) {
+            throw new IOException("La ruta de plantilla no corresponde a un archivo: " + rutaPlantilla);
+        }
+        if (!Files.isReadable(rutaPlantilla)) {
+            throw new java.nio.file.AccessDeniedException(rutaPlantilla.toString());
+        }
+
         Path tempDir = Files.createTempDirectory("docgen");
         Path copia = tempDir.resolve("documento.docx");
-        Files.copy(Paths.get(plantilla), copia, StandardCopyOption.REPLACE_EXISTING);
-        // Reemplazo simple (Apache POI)
-        try (XWPFDocument doc = new XWPFDocument(Files.newInputStream(copia))) 
-        {
+        Files.copy(rutaPlantilla, copia, StandardCopyOption.REPLACE_EXISTING);
 
-            for (XWPFParagraph p : doc.getParagraphs()) {
-                for (XWPFRun r : p.getRuns()) 
-                {
-                    String text = r.getText(0);
-                    if (text != null) {
-                        text = text.replace("#nroActa#", nroActa)
-                                   .replace("#tipoActa#", tipoActa)
-                                   .replace("#nomTitular#", nombreTitular)
-                                   .replace("#dniTitular#", dniTitular);
-                        r.setText(text, 0);
-                    }
-                }
-            }
+        try (XWPFDocument doc = new XWPFDocument(Files.newInputStream(copia))) {
+            reemplazarMarcadoresDocumento(doc, tipoActa, nroActa, nombreTitular, dniTitular);
             try (OutputStream out = Files.newOutputStream(copia)) {
                 doc.write(out);
             }
         }
-        // Abrir documento
-        //Desktop.getDesktop().open(copia.toFile());
         return copia;
     }
+
+    private void reemplazarMarcadoresDocumento(XWPFDocument doc, String tipoActa, String nroActa,
+            String nombreTitular, String dniTitular) {
+        reemplazarMarcadoresParrafos(doc.getParagraphs(), tipoActa, nroActa, nombreTitular, dniTitular);
+        reemplazarMarcadoresTablas(doc.getTables(), tipoActa, nroActa, nombreTitular, dniTitular);
+
+        for (XWPFHeader header : doc.getHeaderList()) {
+            reemplazarMarcadoresParrafos(header.getParagraphs(), tipoActa, nroActa, nombreTitular, dniTitular);
+            reemplazarMarcadoresTablas(header.getTables(), tipoActa, nroActa, nombreTitular, dniTitular);
+        }
+
+        for (XWPFFooter footer : doc.getFooterList()) {
+            reemplazarMarcadoresParrafos(footer.getParagraphs(), tipoActa, nroActa, nombreTitular, dniTitular);
+            reemplazarMarcadoresTablas(footer.getTables(), tipoActa, nroActa, nombreTitular, dniTitular);
+        }
+    }
+
+    private void reemplazarMarcadoresTablas(List<XWPFTable> tablas, String tipoActa, String nroActa,
+            String nombreTitular, String dniTitular) {
+        for (XWPFTable table : tablas) {
+            for (XWPFTableRow row : table.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    reemplazarMarcadoresParrafos(cell.getParagraphs(), tipoActa, nroActa, nombreTitular, dniTitular);
+                }
+            }
+        }
+    }
+
+    private void reemplazarMarcadoresParrafos(List<XWPFParagraph> parrafos, String tipoActa, String nroActa,
+            String nombreTitular, String dniTitular) {
+        for (XWPFParagraph p : parrafos) {
+            String original = p.getText();
+            String reemplazado = reemplazarMarcadoresTexto(original, tipoActa, nroActa, nombreTitular, dniTitular);
+            if (original == null || original.equals(reemplazado)) {
+                continue;
+            }
+
+            List<XWPFRun> runs = p.getRuns();
+            if (runs == null || runs.isEmpty()) {
+                p.createRun().setText(reemplazado);
+                continue;
+            }
+
+            runs.get(0).setText(reemplazado, 0);
+            for (int i = runs.size() - 1; i >= 1; i--) {
+                p.removeRun(i);
+            }
+        }
+    }
+
+    private String reemplazarMarcadoresTexto(String text, String tipoActa, String nroActa,
+            String nombreTitular, String dniTitular) {
+        if (text == null) {
+            return null;
+        }
+
+        String fechaSolicitud = "";
+        java.util.Date fecha = fechaSolicitudPicker != null ? fechaSolicitudPicker.getDate() : null;
+        if (fecha != null) {
+            fechaSolicitud = new SimpleDateFormat("dd/MM/yyyy").format(fecha);
+        }
+
+        return text.replace("#nroActa#", valorOTexto(nroActa, ""))
+                .replace("#tipoActa#", valorOTexto(tipoActa, ""))
+                .replace("#nomTitular#", valorOTexto(nombreTitular, ""))
+                .replace("#dniTitular#", valorOTexto(dniTitular, ""))
+                .replace("{{NRO_TRAMITE}}", valorOTexto(textNumeroTramiteDocumento.getText(), ""))
+                .replace("{{FECHA_SOLICITUD}}", fechaSolicitud)
+                .replace("{{TIPO_DOCUMENTO}}", textoCombo(cboTipoDocumento))
+                .replace("{{NRO_DOCUMENTO}}", valorOTexto(textNumeroDocumento.getText(), ""))
+                .replace("{{TIPO_ACTA}}", valorOTexto(tipoActa, ""))
+                .replace("{{NRO_ACTA}}", valorOTexto(nroActa, ""))
+                .replace("{{TIPO_SOLICITUD}}", textoCombo(cboTipoSolicitud))
+                .replace("{{TIPO_PROCEDIMIENTO}}", textoCombo(cboTipoProcedimientoRegistral))
+                .replace("{{TITULAR}}", valorOTexto(nombreTitular, ""))
+                .replace("{{DNI_TITULAR}}", valorOTexto(dniTitular, ""))
+                .replace("{{REMITENTE}}", valorOTexto(textApellidosNombreRemitente.getText(), ""))
+                .replace("{{DNI_REMITENTE}}", valorOTexto(textDniRemitente.getText(), ""))
+                .replace("{{UNIDAD_ORGANICA}}", textoCombo(cboUnidadOrganica));
+    }
+
+    private String textoCombo(JComboBox combo) {
+        Object selected = combo == null ? null : combo.getSelectedItem();
+        return selected == null ? "" : selected.toString();
+    }
     
-    private void guardarDocumento( Path archivoGenerado, String nombreSugerido) throws IOException 
+    private void guardarDocumento(Path archivoGenerado, String nombreSugerido) throws IOException
     {
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Guardar documento");
+        chooser.setDialogTitle("Descargar plantilla generada");
         chooser.setSelectedFile(new File(nombreSugerido));
 
         int result = chooser.showSaveDialog(this);
 
         if (result == JFileChooser.APPROVE_OPTION) {
-        File destino = chooser.getSelectedFile();
+            File destino = chooser.getSelectedFile();
 
-        // asegurar extensión .docx
-        if (!destino.getName().toLowerCase().endsWith(".docx")) {
-            destino = new File(destino.getAbsolutePath() + ".docx");
-        }
+            // asegurar extensión .docx
+            if (!destino.getName().toLowerCase().endsWith(".docx")) {
+                destino = new File(destino.getAbsolutePath() + ".docx");
+            }
 
-        Files.copy(
-                archivoGenerado,
-                destino.toPath(),
-                StandardCopyOption.REPLACE_EXISTING
-        );
+            Files.copy(
+                    archivoGenerado,
+                    destino.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+            );
 
-        JOptionPane.showMessageDialog(this,
-                "Documento guardado correctamente");
+            JOptionPane.showMessageDialog(this,
+                    "Plantilla descargada correctamente en:\n" + destino.getAbsolutePath(),
+                    "Descarga completada",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Descarga cancelada. No se guardó ningún documento.",
+                    "Descarga cancelada",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
     
@@ -1844,30 +1937,88 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         // TODO add your handling code here:
         //MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
 
-        String rutaBase = "C:\\file_server_reniec";
+        String rutaBase = "D:\\file_server_reniec";
         String plantilla = "Carta_Edicto.docx";
         String rutaPlantilla = rutaBase + File.separator + plantilla;
 
-        String tipoActa = "MATRIMONIO";
+        String textoBotonOriginal = btnGenerarDocumento.getText();
+        Cursor cursorOriginal = getCursor();
+        btnGenerarDocumento.setEnabled(false);
+        btnGenerarDocumento.setText("Generando...");
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+        String tipoActa = textoCombo(cboTipoActa);
         String nroActa = textNumeroActa.getText();
         String nombreTitular = textApellidosNombreTitular.getText();
         String dniTitular = textNumeroDocumentoTitular.getText();
 
         try
         {
+            System.out.println("[Generar plantilla] Plantilla seleccionada: " + cboPlantillaDocumento.getSelectedItem());
+            System.out.println("[Generar plantilla] Ruta plantilla: " + rutaPlantilla);
             Path archivoGenerado =  this.generarDocxLibreOffice(rutaPlantilla,
                 tipoActa,
                 nroActa,
                 nombreTitular,
                 dniTitular
             );
-            this.guardarDocumento(archivoGenerado,"documentoDescargado.docx");
+            this.guardarDocumento(archivoGenerado, construirNombreDocumentoGenerado(plantilla));
+        }
+        catch (java.nio.file.NoSuchFileException ex)
+        {
+            System.err.println("[Generar plantilla] No se encontró archivo: " + ex.getFile());
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "No se encontró la plantilla en la ruta:\n" + ex.getFile(),
+                    "Plantilla no encontrada",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+        catch (java.nio.file.AccessDeniedException ex)
+        {
+            System.err.println("[Generar plantilla] Acceso denegado: " + ex.getFile());
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo acceder a la plantilla. Verifique que el archivo no esté abierto en Word.",
+                    "Plantilla bloqueada",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+        catch (IOException ex)
+        {
+            System.err.println("[Generar plantilla] Error de archivo: " + ex.getMessage());
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo guardar el documento generado. Verifique permisos de la carpeta de destino.\n" + ex.getMessage(),
+                    "Error al descargar plantilla",
+                    JOptionPane.ERROR_MESSAGE);
         }
         catch(Exception ex)
         {
-            JOptionPane.showMessageDialog(this, ex.getMessage());
+            System.err.println("[Generar plantilla] Error inesperado: " + ex.getMessage());
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo generar la plantilla.\n" + ex.getMessage(),
+                    "Error al generar plantilla",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+        finally
+        {
+            btnGenerarDocumento.setText(textoBotonOriginal);
+            btnGenerarDocumento.setEnabled(true);
+            setCursor(cursorOriginal);
         }
     }//GEN-LAST:event_btnGenerarDocumentoActionPerformed
+
+    private String construirNombreDocumentoGenerado(String plantilla) {
+        String base = plantilla == null ? "documentoDescargado" : plantilla;
+        int punto = base.lastIndexOf('.');
+        if (punto > 0) {
+            base = base.substring(0, punto);
+        }
+
+        String tramite = valorOTexto(textNumeroTramiteDocumento.getText(), "sin_tramite")
+                .replaceAll("[^a-zA-Z0-9._-]+", "_");
+        return base + "_" + tramite + ".docx";
+    }
 
     private void btnRegresar2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar2ActionPerformed
         alternarEdicionDatosSolicitud();
