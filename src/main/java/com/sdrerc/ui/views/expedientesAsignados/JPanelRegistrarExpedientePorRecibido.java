@@ -20,25 +20,58 @@ import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.shared.session.SessionContext;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.util.ComboBoxUtils;
 import com.sdrerc.util.TextFieldRules;
-import java.sql.Date;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.text.SimpleDateFormat;
 import java.util.List;
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
+import javax.swing.JTextField;
 /**
  *
  * @author usuario
  */
-public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel 
+public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel implements Scrollable
 {
     private final ExpedienteService expedienteService;
     private final CatalogoItemService catalogoItemService;
     private final UbigeoService ubigeoService;
     private Integer idExpedienteOculto = 0;
     private final ExpedienteAsignacionService expedienteAsignacionService;
+    private final SimpleDateFormat formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
+    private Expediente expedienteActual;
+    private ExpedienteAsignacion asignacionActual;
+    private JLabel lblEstadoRecepcion;
+    private JLabel lblTramiteBadge;
+    private JLabel lblFechaBadge;
+    private JLabel lblResumenRecepcion;
+    private JLabel lblResumenTramite;
+    private JLabel lblResumenProcedimiento;
+    private JLabel lblResumenSolicitud;
+    private JLabel lblResumenHojaEnvio;
+    private JLabel lblResumenRemitente;
+    private JLabel lblResumenTitular;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -85,6 +118,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
 
         ComboBoxUtils.applySmartRenderer(this);
+        configurarFormularioRecepcionAsignadoPremium();
     }
     
     private boolean modoEdicion = false;
@@ -166,7 +200,9 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
     public void cargarExpediente(String idExpediente) throws Exception 
     {        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
+        expedienteActual = lista;
         idExpedienteOculto = lista.getIdExpediente();
+        asignacionActual = expedienteAsignacionService.buscarAsignacionInicialActivaPorExpediente(idExpedienteOculto);
         
         //esRegistroSdrerc 
         jRadiButonNoCorresponde.setSelected(lista.getEsRegistroSdrerc() == 1? true : false);
@@ -243,6 +279,8 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel
 
         //celular
         textCelular.setText(lista.getCelular());
+
+        actualizarContextoRecepcion();
         
     }   
     
@@ -390,6 +428,501 @@ private void seleccionarDistrito(int idDistrito) {
             JOptionPane.showMessageDialog(this,"Debe ingresar la Hoja de Envío");textHojaEnvioExpediente.requestFocus();
             return;
         }
+    }
+
+    private void configurarFormularioRecepcionAsignadoPremium() {
+        setLayout(new BorderLayout());
+        setBackground(new Color(245, 247, 250));
+        removeAll();
+
+        jPanelPrincipal.removeAll();
+        jPanelPrincipal.setLayout(new BorderLayout(0, 14));
+        jPanelPrincipal.setBackground(new Color(245, 247, 250));
+        jPanelPrincipal.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        jPanelPrincipal.setPreferredSize(null);
+        jPanelPrincipal.setMinimumSize(new Dimension(0, 0));
+
+        JPanel contenido = new JPanel(new GridBagLayout());
+        contenido.setOpaque(false);
+        agregarBloqueVertical(contenido, crearHeaderRecepcion(), 0, 0);
+        agregarBloqueVertical(contenido, crearSeccionResumen(), 1, 12);
+        agregarBloqueVertical(contenido, crearSeccionDatosSolicitud(), 2, 12);
+        agregarBloqueVertical(contenido, crearSeccionNotificacion(), 3, 12);
+        agregarBloqueVertical(contenido, crearSeccionUbicacion(), 4, 12);
+        agregarBloqueVertical(contenido, crearSeccionConfirmacion(), 5, 12);
+
+        JScrollPane scroll = new JScrollPane(contenido);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setViewportBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(new Color(245, 247, 250));
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        jPanelPrincipal.add(scroll, BorderLayout.CENTER);
+        jPanelPrincipal.add(crearBarraAcciones(), BorderLayout.SOUTH);
+        add(jPanelPrincipal, BorderLayout.CENTER);
+
+        configurarEstiloRecepcionAsignado();
+        revalidate();
+        repaint();
+    }
+
+    private JPanel crearHeaderRecepcion() {
+        JPanel header = new JPanel(new BorderLayout(16, 0));
+        header.setOpaque(false);
+
+        JPanel textos = new JPanel(new BorderLayout(0, 4));
+        textos.setOpaque(false);
+
+        JLabel titulo = new JLabel("Recepción de expediente asignado");
+        titulo.setFont(new Font("Arial", Font.BOLD, 24));
+        titulo.setForeground(new Color(25, 42, 62));
+
+        JLabel subtitulo = new JLabel("Revise los datos del expediente y confirme la recepción para iniciar la atención.");
+        subtitulo.setFont(new Font("Arial", Font.PLAIN, 13));
+        subtitulo.setForeground(new Color(93, 105, 119));
+
+        textos.add(titulo, BorderLayout.NORTH);
+        textos.add(subtitulo, BorderLayout.CENTER);
+
+        JPanel badges = new JPanel(new GridBagLayout());
+        badges.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 6, 0, 0);
+        lblEstadoRecepcion = crearBadge("Estado: Asignado", new Color(219, 234, 254), new Color(37, 99, 235));
+        lblTramiteBadge = crearBadge("N° trámite: -", new Color(241, 245, 249), new Color(71, 85, 105));
+        lblFechaBadge = crearBadge("Fecha: -", new Color(241, 245, 249), new Color(71, 85, 105));
+        badges.add(lblEstadoRecepcion, gbc);
+        badges.add(lblTramiteBadge, gbc);
+        badges.add(lblFechaBadge, gbc);
+
+        header.add(textos, BorderLayout.CENTER);
+        header.add(badges, BorderLayout.EAST);
+        return header;
+    }
+
+    private JLabel crearBadge(String texto, Color background, Color foreground) {
+        JLabel badge = new JLabel(texto);
+        badge.setFont(new Font("Arial", Font.BOLD, 12));
+        badge.setForeground(foreground);
+        badge.setOpaque(true);
+        badge.setBackground(background);
+        badge.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        return badge;
+    }
+
+    private JPanel crearSeccionResumen() {
+        JPanel card = crearCardSeccion("Resumen del expediente");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new GridBagLayout());
+
+        lblResumenTramite = crearValorResumen("-");
+        lblResumenProcedimiento = crearValorResumen("-");
+        lblResumenSolicitud = crearValorResumen("-");
+        lblResumenHojaEnvio = crearValorResumen("-");
+        lblResumenRemitente = crearValorResumen("-");
+        lblResumenTitular = crearValorResumen("-");
+
+        int row = 0;
+        agregarCampo(body, "Nro. trámite web", lblResumenTramite, 0, row, 1, 0.20);
+        agregarCampo(body, "Tipo procedimiento registral", lblResumenProcedimiento, 1, row, 1, 0.22);
+        agregarCampo(body, "Tipo solicitud", lblResumenSolicitud, 2, row, 1, 0.18);
+        agregarCampo(body, "Hoja de envío", lblResumenHojaEnvio, 3, row++, 1, 0.20);
+
+        agregarCampo(body, "Remitente", lblResumenRemitente, 0, row, 2, 0.45);
+        agregarCampo(body, "Titular", lblResumenTitular, 2, row, 2, 0.45);
+        return card;
+    }
+
+    private JPanel crearSeccionDatosSolicitud() {
+        JPanel card = crearCardSeccion("Datos de la solicitud");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new GridBagLayout());
+
+        int row = 0;
+        agregarCampo(body, "Fecha solicitud", spFechaSolicitud, 0, row, 1, 0.17);
+        agregarCampo(body, "Nro. trámite web", textNumeroTramiteDocumento, 1, row, 1, 0.22);
+        agregarCampo(body, "Tipo documento", cboTipoDocumento, 2, row, 1, 0.22);
+        agregarCampo(body, "Nro. documento", textNumeroDocumento, 3, row++, 1, 0.18);
+
+        agregarCampo(body, "Tipo acta", cboTipoActa, 0, row, 1, 0.19);
+        agregarCampo(body, "Nro. acta", textNumeroActa, 1, row, 1, 0.16);
+        agregarCampo(body, "Grupo familiar", cboGrupoFamiliar, 2, row, 1, 0.21);
+        agregarCampo(body, "Grado de parentesco", cboGradoParentesco, 3, row++, 1, 0.21);
+
+        agregarCampo(body, "Tipo solicitud", cboTipoSolicitud, 0, row, 1, 0.16);
+        agregarCampo(body, "DNI remitente", textDniRemitente, 1, row, 1, 0.14);
+        agregarCampo(body, "Apellidos y nombres remitente", textApellidosNombreRemitente, 2, row, 1, 0.35);
+        agregarCampo(body, "Unidad orgánica", cboUnidadOrganica, 3, row++, 1, 0.28);
+
+        agregarCampo(body, "DNI / nro. documento titular", textNumeroDocumentoTitular, 0, row, 1, 0.20);
+        agregarCampo(body, "Apellidos y nombres titular", textApellidosNombreTitular, 1, row, 3, 0.80);
+        return card;
+    }
+
+    private JPanel crearSeccionNotificacion() {
+        JPanel card = crearCardSeccion("Datos para notificación");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new GridBagLayout());
+
+        int row = 0;
+        agregarCampo(body, "Correo electrónico", textCorreoElectronico, 0, row, 1, 0.24);
+        agregarCampo(body, "Celular", textCelular, 1, row, 1, 0.16);
+        agregarCampo(body, "Dirección domiciliaria", cboDireccionDomiciliaria, 2, row, 1, 0.22);
+        agregarCampo(body, "Domicilio", textDomicilio, 3, row, 1, 0.38);
+        return card;
+    }
+
+    private JPanel crearSeccionUbicacion() {
+        JPanel card = crearCardSeccion("Ubicación");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new GridBagLayout());
+
+        int row = 0;
+        agregarCampo(body, "Departamento", cboDepartamento, 0, row, 1, 0.33);
+        agregarCampo(body, "Provincia", cboProvincia, 1, row, 1, 0.33);
+        agregarCampo(body, "Distrito", cboDistrito, 2, row, 1, 0.33);
+        return card;
+    }
+
+    private JPanel crearSeccionConfirmacion() {
+        JPanel card = crearCardSeccion("Confirmación de recepción");
+        JPanel body = obtenerBodyCard(card);
+        body.setLayout(new BorderLayout(0, 12));
+
+        lblResumenRecepcion = new JLabel("Al aceptar el expediente, quedará registrado que usted recibió la asignación para iniciar la atención.");
+        lblResumenRecepcion.setFont(new Font("Arial", Font.PLAIN, 13));
+        lblResumenRecepcion.setForeground(new Color(71, 85, 105));
+        body.add(lblResumenRecepcion, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearBarraAcciones() {
+        JPanel barra = new JPanel(new BorderLayout());
+        barra.setOpaque(false);
+
+        JPanel izquierda = new JPanel(new GridBagLayout());
+        izquierda.setOpaque(false);
+        izquierda.add(btnRegresar);
+
+        JPanel derecha = new JPanel(new GridBagLayout());
+        derecha.setOpaque(false);
+        derecha.add(btnAceptarExpediente);
+
+        barra.add(izquierda, BorderLayout.WEST);
+        barra.add(derecha, BorderLayout.EAST);
+        return barra;
+    }
+
+    private JPanel crearCardSeccion(String titulo) {
+        JPanel card = new JPanel(new BorderLayout(0, 12));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                BorderFactory.createEmptyBorder(14, 16, 16, 16)
+        ));
+        card.setMinimumSize(new Dimension(0, 0));
+
+        JLabel labelTitulo = new JLabel(titulo);
+        labelTitulo.setFont(new Font("Arial", Font.BOLD, 15));
+        labelTitulo.setForeground(new Color(25, 42, 62));
+
+        JPanel body = new JPanel();
+        body.setOpaque(false);
+        body.setMinimumSize(new Dimension(0, 0));
+
+        card.add(labelTitulo, BorderLayout.NORTH);
+        card.add(body, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel obtenerBodyCard(JPanel card) {
+        return (JPanel) card.getComponent(1);
+    }
+
+    private void agregarBloqueVertical(JPanel parent, Component component, int row, int topInset) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = new Insets(topInset, 0, 0, 0);
+        parent.add(component, gbc);
+    }
+
+    private JPanel crearCampo(String label, JComponent component) {
+        JPanel panel = new JPanel(new BorderLayout(0, 5));
+        panel.setOpaque(false);
+        panel.setMinimumSize(new Dimension(0, 0));
+        panel.add(crearLabelCampo(label), BorderLayout.NORTH);
+        panel.add(component, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private void agregarCampo(JPanel parent, String label, JComponent component, int x, int y, int gridwidth, double weightx) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.gridwidth = gridwidth;
+        gbc.weightx = weightx;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = new Insets(y == 0 ? 0 : 8, 0, 0, x + gridwidth >= 4 ? 0 : 12);
+        parent.add(crearCampo(label, component), gbc);
+    }
+
+    private JLabel crearLabelCampo(String texto) {
+        JLabel label = new JLabel(texto);
+        label.setFont(new Font("Arial", Font.BOLD, 12));
+        label.setForeground(new Color(55, 65, 81));
+        return label;
+    }
+
+    private JLabel crearValorResumen(String texto) {
+        JLabel label = new JLabel(texto);
+        label.setOpaque(true);
+        label.setBackground(new Color(248, 250, 252));
+        label.setForeground(new Color(30, 41, 59));
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        label.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+        label.setPreferredSize(new Dimension(120, 34));
+        return label;
+    }
+
+    private void configurarEstiloRecepcionAsignado() {
+        for (JTextField field : new JTextField[] {
+                textHojaEnvioExpediente, textNumeroTramiteDocumento, textNumeroDocumento,
+                textNumeroActa, textDniRemitente, textApellidosNombreRemitente,
+                textNumeroDocumentoTitular, textApellidosNombreTitular, textCorreoElectronico,
+                textCelular, textDomicilio
+        }) {
+            configurarCampoTexto(field);
+        }
+
+        Dimension fieldSize = new Dimension(120, 34);
+        for (JComponent component : new JComponent[] {
+                cboTipoDocumento, cboTipoActa, cboGrupoFamiliar, cboGradoParentesco,
+                cboTipoProcedimientoRegistral, cboTipoSolicitud, cboUnidadOrganica,
+                cboDireccionDomiciliaria, cboDepartamento, cboProvincia, cboDistrito,
+                spFechaSolicitud, spFechaRecepcion
+        }) {
+            component.setPreferredSize(fieldSize);
+            component.setMinimumSize(new Dimension(80, 34));
+        }
+
+        bloquearControlesConsulta();
+
+        btnAceptarExpediente.setText("Aceptar expediente");
+        btnRegresar.setText("Regresar");
+        aplicarEstiloBotonPrimario(btnAceptarExpediente);
+        aplicarEstiloBotonSecundario(btnRegresar);
+        IconUtils.applyIcon(btnAceptarExpediente, "check.svg");
+        IconUtils.applyIcon(btnRegresar, "clear.svg");
+
+        textNumeroTramiteDocumento.setToolTipText("Número de trámite web registrado.");
+        textApellidosNombreRemitente.setToolTipText("Apellidos y nombres completos del remitente.");
+        textApellidosNombreTitular.setToolTipText("Apellidos y nombres completos del titular.");
+        cboUnidadOrganica.setToolTipText("Unidad orgánica registrada en el expediente.");
+        textDomicilio.setToolTipText("Domicilio registrado para notificación.");
+    }
+
+    private void configurarCampoTexto(JTextField field) {
+        field.setPreferredSize(new Dimension(120, 34));
+        field.setMinimumSize(new Dimension(80, 34));
+        field.setDisabledTextColor(new Color(75, 85, 99));
+        field.setToolTipText(field.getText());
+    }
+
+    private void bloquearControlesConsulta() {
+        for (JComponent component : new JComponent[] {
+                spFechaSolicitud, spFechaRecepcion, textHojaEnvioExpediente,
+                textNumeroTramiteDocumento, cboTipoDocumento, textNumeroDocumento,
+                cboTipoActa, textNumeroActa, cboGrupoFamiliar, cboGradoParentesco,
+                cboTipoProcedimientoRegistral, cboTipoSolicitud, textDniRemitente,
+                textApellidosNombreRemitente, cboUnidadOrganica, textNumeroDocumentoTitular,
+                textApellidosNombreTitular, textCorreoElectronico, textCelular,
+                cboDireccionDomiciliaria, textDomicilio, cboDepartamento, cboProvincia, cboDistrito,
+                jRadiButonSiCorresponde, jRadiButonNoCorresponde
+        }) {
+            component.setEnabled(false);
+        }
+    }
+
+    private void aplicarEstiloBotonPrimario(JButton boton) {
+        boton.setBackground(new Color(25, 120, 210));
+        boton.setForeground(Color.WHITE);
+        boton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        boton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        boton.setPreferredSize(new Dimension(180, 38));
+        boton.setFocusPainted(false);
+        boton.setIconTextGap(8);
+    }
+
+    private void aplicarEstiloBotonSecundario(JButton boton) {
+        boton.setBackground(Color.WHITE);
+        boton.setForeground(new Color(25, 42, 62));
+        boton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        boton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        boton.setPreferredSize(new Dimension(140, 38));
+        boton.setFocusPainted(false);
+        boton.setIconTextGap(8);
+        boton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(203, 213, 225)),
+                BorderFactory.createEmptyBorder(6, 12, 6, 12)
+        ));
+    }
+
+    private void actualizarContextoRecepcion() {
+        if (lblEstadoRecepcion == null || expedienteActual == null) {
+            return;
+        }
+
+        String estado = descripcionEstadoActual();
+        lblEstadoRecepcion.setText("Estado: " + estado);
+        lblTramiteBadge.setText("N° trámite: " + textoSeguro(expedienteActual.getNumeroTramiteDocumento()));
+        lblFechaBadge.setText("Fecha: " + formatearFecha(expedienteActual.getFechaSolicitud()));
+        actualizarResumenVisual();
+
+        boolean recibido = asignacionActual != null && asignacionActual.getAceptaRecepcion() == 1;
+        if (recibido) {
+            lblEstadoRecepcion.setForeground(new Color(22, 101, 52));
+            lblEstadoRecepcion.setBackground(new Color(220, 252, 231));
+            lblResumenRecepcion.setText("Este expediente ya fue recibido anteriormente. Fecha de recepción: "
+                    + formatearFecha(asignacionActual.getFechaRecepcion()) + ".");
+            btnAceptarExpediente.setEnabled(false);
+            btnAceptarExpediente.setText("Expediente recibido");
+            btnAceptarExpediente.setToolTipText("Este expediente ya fue recibido anteriormente.");
+        } else {
+            lblEstadoRecepcion.setForeground(new Color(37, 99, 235));
+            lblEstadoRecepcion.setBackground(new Color(219, 234, 254));
+            lblResumenRecepcion.setText("Al aceptar el expediente, quedará registrado que usted recibió la asignación para iniciar la atención."
+                    + textoAbogadoAsignado());
+            boolean puedeAceptar = expedienteActual.getEstado() == Enumerado.EstadoExpediente.ExpedienteAsignado.getId()
+                    && esAsignacionDelUsuarioActual();
+            btnAceptarExpediente.setEnabled(puedeAceptar);
+            btnAceptarExpediente.setToolTipText(puedeAceptar
+                    ? "Registrar recepción del expediente asignado."
+                    : "Solo el abogado designado puede aceptar la recepción.");
+        }
+    }
+
+    private boolean esAsignacionDelUsuarioActual() {
+        if (asignacionActual == null) {
+            return false;
+        }
+        try {
+            return asignacionActual.getIdTecnico() == SessionContext.getIdTecnicoActual();
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private void actualizarResumenVisual() {
+        lblResumenTramite.setText(textoSeguro(expedienteActual.getNumeroTramiteDocumento()));
+        lblResumenProcedimiento.setText(textoSeleccionado(cboTipoProcedimientoRegistral));
+        lblResumenSolicitud.setText(textoSeleccionado(cboTipoSolicitud));
+        lblResumenHojaEnvio.setText(textoSeguro(expedienteActual.getHojaEnvioExpediente()));
+        lblResumenRemitente.setText(textoSeguro(expedienteActual.getApellidoNombreRemitente()));
+        lblResumenTitular.setText(textoSeguro(expedienteActual.getApellidoNombreTitular()));
+
+        for (JLabel label : new JLabel[] {
+                lblResumenTramite, lblResumenProcedimiento, lblResumenSolicitud,
+                lblResumenHojaEnvio, lblResumenRemitente, lblResumenTitular
+        }) {
+            label.setToolTipText(label.getText());
+        }
+    }
+
+    private String textoSeleccionado(JComboBox combo) {
+        Object item = combo.getSelectedItem();
+        return item == null ? "" : item.toString();
+    }
+
+    private String textoAbogadoAsignado() {
+        if (asignacionActual == null || textoSeguro(asignacionActual.getNombreTecnico()).isEmpty()) {
+            return "";
+        }
+        return " Abogado asignado: " + textoSeguro(asignacionActual.getNombreTecnico()) + ".";
+    }
+
+    private String descripcionEstadoActual() {
+        if (expedienteActual == null) {
+            return "Asignado";
+        }
+        try {
+            return Enumerado.EstadoExpediente.fromId(expedienteActual.getEstado()).name()
+                    .replaceAll("([a-z])([A-Z])", "$1 $2");
+        } catch (IllegalArgumentException ex) {
+            return String.valueOf(expedienteActual.getEstado());
+        }
+    }
+
+    private String formatearFecha(java.util.Date fecha) {
+        return fecha == null ? "-" : formatoFecha.format(fecha);
+    }
+
+    private String textoSeguro(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private boolean validarAntesDeAceptarExpediente() {
+        if (idExpedienteOculto == null || idExpedienteOculto == 0) {
+            JOptionPane.showMessageDialog(this, "No se encontró el expediente a recibir.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        if (expedienteActual != null && expedienteActual.getEstado() != Enumerado.EstadoExpediente.ExpedienteAsignado.getId()) {
+            JOptionPane.showMessageDialog(this, "El expediente no se encuentra en estado asignado.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        if (asignacionActual == null) {
+            JOptionPane.showMessageDialog(this, "No se encontró una asignación activa para recibir este expediente.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        if (!esAsignacionDelUsuarioActual()) {
+            JOptionPane.showMessageDialog(this, "Solo el abogado designado puede aceptar la recepción del expediente.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        if (asignacionActual != null && asignacionActual.getAceptaRecepcion() == 1) {
+            JOptionPane.showMessageDialog(this, "Este expediente ya fue recibido anteriormente.", "Validación", JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
+        int confirmacion = JOptionPane.showConfirmDialog(
+                this,
+                "Se registrará la recepción del expediente asignado. ¿Desea continuar?",
+                "Confirmar recepción",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+        return confirmacion == JOptionPane.YES_OPTION;
+    }
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 16;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(16, visibleRect.height - 32);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
     }
     
     /**
@@ -955,7 +1488,7 @@ private void seleccionarDistrito(int idDistrito) {
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
         // TODO add your handling code here:        
-        MenuPrincipal.ShowJPanel(new JPanelListadoRegistroExpediente());
+        MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesAsignados());
     }//GEN-LAST:event_btnRegresarActionPerformed
 
     private void jRadiButonSiCorrespondeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadiButonSiCorrespondeActionPerformed
@@ -994,6 +1527,10 @@ private void seleccionarDistrito(int idDistrito) {
 
         try
         {
+            if (!validarAntesDeAceptarExpediente()) {
+                return;
+            }
+
             ExpedienteAsignacion oExpedienteAsignacion = new ExpedienteAsignacion();
 
             Enumerado.EstadoExpediente estadoExpedienteRecibido = Enumerado.EstadoExpediente.ExpedienteRecibido;
@@ -1004,17 +1541,20 @@ private void seleccionarDistrito(int idDistrito) {
             oExpedienteAsignacion.setIdTecnico(SessionContext.getIdTecnicoActual());
             // Llamar al servicio
             if(idExpedienteOculto == 0)
-            JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
+            {
+                JOptionPane.showMessageDialog(this,"No se encontró el expediente a recibir." ,"Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
             expedienteAsignacionService.actualizarRecepcionExpediente(oExpedienteAsignacion);
-            JOptionPane.showMessageDialog(this, "Recepción registrada correctamente","Éxito", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Expediente recibido correctamente.","Éxito", JOptionPane.INFORMATION_MESSAGE);
 
             //limpiarCampos();
             MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesAsignados());
         }
         catch (Exception ex)
         {
-            JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No se pudo recibir el expediente. Verifique que siga asignado.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_btnAceptarExpedienteActionPerformed
 

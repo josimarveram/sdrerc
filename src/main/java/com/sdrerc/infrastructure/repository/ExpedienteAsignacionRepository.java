@@ -500,7 +500,7 @@ public class ExpedienteAsignacionRepository {
     {
         String sql =
                 "SELECT ea.ID_EXPEDIENTE_ASIGNACION, ea.ID_EXPEDIENTE, ea.ID_TECNICO, "
-                + "ea.FECHA_ASIGNACION, ea.HOJA_ENVIO_ASIGNACION, "
+                + "ea.FECHA_ASIGNACION, ea.HOJA_ENVIO_ASIGNACION, ea.ACEPTA_RECEPCION, ea.FECHA_RECEPCION, "
                 + "CASE WHEN t.ID_TECNICO IS NULL THEN NULL "
                 + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS NOMBRE_TECNICO "
                 + "FROM EXPEDIENTE_ASIGNACION ea "
@@ -520,6 +520,8 @@ public class ExpedienteAsignacionRepository {
                     asignacion.setIdTecnico(rs.getInt("ID_TECNICO"));
                     asignacion.setFechaAsignacion(rs.getDate("FECHA_ASIGNACION"));
                     asignacion.setHojaEnvioAsignacion(rs.getString("HOJA_ENVIO_ASIGNACION"));
+                    asignacion.setAceptaRecepcion(rs.getInt("ACEPTA_RECEPCION"));
+                    asignacion.setFechaRecepcion(rs.getDate("FECHA_RECEPCION"));
                     asignacion.setNombreTecnico(rs.getString("NOMBRE_TECNICO"));
                     return asignacion;
                 }
