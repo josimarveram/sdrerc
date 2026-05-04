@@ -9,16 +9,26 @@ import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.security.PasswordEncoder;
 import com.sdrerc.shared.session.SessionContext;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.ui.common.FrmPrincipal;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import javax.swing.JButton;
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 
 /**
  *
@@ -27,12 +37,172 @@ import javax.swing.JTextField;
 public class FrmLogin extends javax.swing.JFrame 
 {
     int xMouse, yMouse;
+    private JButton btnTogglePassword;
+    private char passwordEchoCharOriginal;
+    private boolean passwordVisible;
     
     public FrmLogin() {
         initComponents();
+        configurarLoginPremium();
+        configurarCampoPasswordConOjito();
+        configurarFocoCamposLogin();
+        setLocationRelativeTo(null);
         
-        
-        
+    }
+
+    private void configurarLoginPremium() {
+        bg.setBackground(Color.WHITE);
+        text_usuario.setToolTipText("Ingrese su usuario.");
+        txt_contraseña.setToolTipText("Ingrese su contraseña.");
+
+        javax.swing.JPanel loginCard = new javax.swing.JPanel();
+        loginCard.setOpaque(false);
+        loginCard.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+        loginCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(18, 18, 18, 18)
+        ));
+        bg.add(loginCard, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 95, 590, 390));
+        bg.setComponentZOrder(loginCard, bg.getComponentCount() - 1);
+
+        lbl_sdrerc.setFont(new Font("Roboto Black", Font.BOLD, 20));
+        lbl_inicioSesion.setFont(new Font("Roboto Black", Font.BOLD, 22));
+        lbl_inicioSesion.setText("Iniciar sesión");
+        lbl_usuario1.setText("USUARIO");
+        lbl_usuario.setText("CONTRASEÑA");
+
+        JLabel subtitulo = new JLabel("Acceso seguro al sistema SDRERC");
+        subtitulo.setFont(new Font("Roboto", Font.PLAIN, 13));
+        subtitulo.setForeground(new Color(100, 116, 139));
+        bg.add(subtitulo, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 215, 360, 24));
+
+        text_usuario.setFont(new Font("Roboto", Font.PLAIN, 15));
+        txt_contraseña.setFont(new Font("Roboto", Font.PLAIN, 15));
+        text_usuario.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        txt_contraseña.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        aplicarCursoresLogin();
+
+        setAbsoluteBounds(lbl_usuario1, 40, 248, 120, 22);
+        setAbsoluteBounds(text_usuario, 40, 276, 520, 28);
+        setAbsoluteBounds(separador_usuario, 40, 308, 520, 10);
+        setAbsoluteBounds(lbl_usuario, 40, 326, 130, 22);
+        setAbsoluteBounds(txt_contraseña, 40, 354, 485, 28);
+        setAbsoluteBounds(separador_contraseña, 40, 386, 540, 10);
+
+        lpn_btnLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lpn_btnLogin.putClientProperty("JComponent.arc", 14);
+        lbl_btnEntrar.setText("Ingresar");
+        lbl_btnEntrar.setHorizontalAlignment(SwingConstants.CENTER);
+        setAbsoluteBounds(lpn_btnLogin, 40, 420, 250, 54);
+        setAbsoluteBounds(lbl_btnEntrar, 0, 0, 250, 54);
+
+        bg.revalidate();
+        bg.repaint();
+    }
+
+    private void aplicarCursoresLogin() {
+        Cursor cursorDefault = new Cursor(Cursor.DEFAULT_CURSOR);
+        Cursor cursorTexto = new Cursor(Cursor.TEXT_CURSOR);
+        lbl_sdrerc.setCursor(cursorDefault);
+        lbl_inicioSesion.setCursor(cursorDefault);
+        lbl_usuario1.setCursor(cursorDefault);
+        lbl_usuario.setCursor(cursorDefault);
+        separador_usuario.setCursor(cursorDefault);
+        separador_contraseña.setCursor(cursorDefault);
+        text_usuario.setCursor(cursorTexto);
+        txt_contraseña.setCursor(cursorTexto);
+    }
+
+    private void configurarCampoPasswordConOjito() {
+        passwordEchoCharOriginal = txt_contraseña.getEchoChar();
+        btnTogglePassword = new JButton();
+        btnTogglePassword.setToolTipText("Mostrar contraseña");
+        btnTogglePassword.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnTogglePassword.setFocusable(false);
+        btnTogglePassword.setBorder(BorderFactory.createEmptyBorder());
+        btnTogglePassword.setContentAreaFilled(false);
+        btnTogglePassword.setOpaque(false);
+        btnTogglePassword.setMargin(new Insets(0, 0, 0, 0));
+        btnTogglePassword.setIcon(IconUtils.load("eye.svg", 18));
+        btnTogglePassword.addActionListener(e -> alternarVisibilidadPassword());
+        bg.add(btnTogglePassword, new org.netbeans.lib.awtextra.AbsoluteConstraints(535, 348, 38, 38));
+        bg.setComponentZOrder(btnTogglePassword, 0);
+        bg.revalidate();
+        bg.repaint();
+    }
+
+    private void alternarVisibilidadPassword() {
+        passwordVisible = !passwordVisible;
+        txt_contraseña.setEchoChar(passwordVisible ? (char) 0 : passwordEchoCharOriginal);
+        btnTogglePassword.setToolTipText(passwordVisible ? "Ocultar contraseña" : "Mostrar contraseña");
+        Icon icon = IconUtils.load(passwordVisible ? "eye-off.svg" : "eye.svg", 18);
+        if (icon != null) {
+            btnTogglePassword.setIcon(icon);
+        }
+    }
+
+    private void configurarFocoCamposLogin() {
+        text_usuario.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if ("Ingrese su nombre de usuario".equals(text_usuario.getText())) {
+                    text_usuario.setText("");
+                    text_usuario.setForeground(Color.BLACK);
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (text_usuario.getText().trim().isEmpty()) {
+                    text_usuario.setText("Ingrese su nombre de usuario");
+                    text_usuario.setForeground(Color.GRAY);
+                }
+            }
+        });
+
+        txt_contraseña.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (esPlaceholderPassword()) {
+                    txt_contraseña.setText("");
+                    txt_contraseña.setForeground(Color.BLACK);
+                    txt_contraseña.setCaretPosition(0);
+                } else {
+                    txt_contraseña.selectAll();
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (txt_contraseña.getPassword().length == 0) {
+                    passwordVisible = false;
+                    txt_contraseña.setEchoChar(passwordEchoCharOriginal);
+                    txt_contraseña.setText("************");
+                    txt_contraseña.setForeground(Color.GRAY);
+                    if (btnTogglePassword != null) {
+                        btnTogglePassword.setToolTipText("Mostrar contraseña");
+                        Icon icon = IconUtils.load("eye.svg", 18);
+                        if (icon != null) {
+                            btnTogglePassword.setIcon(icon);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private boolean esPlaceholderPassword() {
+        return "************".equals(new String(txt_contraseña.getPassword()));
+    }
+
+    private void setAbsoluteBounds(java.awt.Component component, int x, int y, int width, int height) {
+        java.awt.Container parent = component.getParent();
+        if (parent != null && parent.getLayout() instanceof org.netbeans.lib.awtextra.AbsoluteLayout) {
+            parent.remove(component);
+            parent.add(component, new org.netbeans.lib.awtextra.AbsoluteConstraints(x, y, width, height));
+        }
+        component.setBounds(x, y, width, height);
+        component.setPreferredSize(new Dimension(width, height));
     }
 
     /**
