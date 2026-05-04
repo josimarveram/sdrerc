@@ -4,23 +4,38 @@
  */
 package com.sdrerc.ui.views.usuario;
 
-import com.sdrerc.ui.views.role.*;
 import com.sdrerc.application.RoleService;
 import com.sdrerc.application.UserService;
 import com.sdrerc.domain.model.Role;
-import com.sdrerc.domain.model.User;
+import com.sdrerc.ui.common.icon.IconUtils;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
-import org.mindrot.jbcrypt.BCrypt;
+import javax.swing.border.Border;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +51,7 @@ public class DlgAsignarRolesUsuario extends javax.swing.JDialog {
     private final Long userId;
     private final UserService userService;
     private final RoleService roleService;
+    private final List<RoleCard> roleCards = new ArrayList<>();
     
     public DlgAsignarRolesUsuario(Window parent,
             Long userId,
@@ -53,6 +69,7 @@ public class DlgAsignarRolesUsuario extends javax.swing.JDialog {
 
         cargarRoles();
         marcarRolesAsignados();
+        configurarDialogoRoles();
 
     }
     
@@ -88,7 +105,12 @@ public class DlgAsignarRolesUsuario extends javax.swing.JDialog {
         DefaultListModel<Role> model = new DefaultListModel<>();
 
         try {
-            for (Role r : roleService.listar()) {
+            List<Role> roles = new ArrayList<>(roleService.listar());
+            roles.sort(Comparator
+                    .comparingInt(this::prioridadRol)
+                    .thenComparing(r -> textoSeguro(r.getRoleName())));
+
+            for (Role r : roles) {
                 model.addElement(r);
             }
             lstRoles.setModel(model);
@@ -98,6 +120,296 @@ public class DlgAsignarRolesUsuario extends javax.swing.JDialog {
         } catch (SQLException ex) {
             
             JOptionPane.showMessageDialog(this, ex.getMessage());
+        }
+    }
+
+    private void configurarDialogoRoles() {
+        setTitle("Asignar roles");
+
+        btnGuardar.setText("Guardar roles");
+        btnGuardar.setToolTipText("Guardar perfiles de acceso seleccionados.");
+        btnGuardar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        IconUtils.applyIcon(btnGuardar, "role.svg");
+
+        btnCancelar.setText("Cancelar");
+        btnCancelar.setToolTipText("Cerrar sin guardar cambios.");
+        btnCancelar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        IconUtils.applyIcon(btnCancelar, "clear.svg");
+
+        JPanel root = new JPanel(new BorderLayout(0, 16));
+        root.setBackground(new Color(245, 247, 250));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
+
+        root.add(crearCabeceraRoles(), BorderLayout.NORTH);
+        root.add(crearPanelRoles(), BorderLayout.CENTER);
+        root.add(crearBotoneraRoles(), BorderLayout.SOUTH);
+
+        setContentPane(root);
+        setPreferredSize(new Dimension(620, 520));
+        setMinimumSize(new Dimension(620, 520));
+        pack();
+        setLocationRelativeTo(getOwner());
+    }
+
+    private JPanel crearCabeceraRoles() {
+        JPanel wrapper = new JPanel();
+        wrapper.setOpaque(false);
+        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.Y_AXIS));
+
+        JLabel titulo = new JLabel("Asignar roles");
+        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 20f));
+        titulo.setForeground(new Color(15, 23, 42));
+
+        JLabel subtitulo = new JLabel("Seleccione los perfiles de acceso que tendra este usuario.");
+        subtitulo.setFont(subtitulo.getFont().deriveFont(Font.PLAIN, 13f));
+        subtitulo.setForeground(new Color(71, 85, 105));
+
+        JPanel contexto = new JPanel(new GridBagLayout());
+        contexto.setBackground(Color.WHITE);
+        contexto.setBorder(crearBordeCard(new Color(226, 232, 240)));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(0, 0, 4, 0);
+        contexto.add(crearTextoContexto("Usuario: ", lblUsuario.getText()), gbc);
+
+        gbc.gridy++;
+        JLabel ayuda = new JLabel("Los roles ABOGADO y SUPERVISION requieren una persona operativa vinculada.");
+        ayuda.setForeground(new Color(100, 116, 139));
+        ayuda.setFont(ayuda.getFont().deriveFont(Font.PLAIN, 12f));
+        contexto.add(ayuda, gbc);
+
+        wrapper.add(titulo);
+        wrapper.add(Box.createVerticalStrut(4));
+        wrapper.add(subtitulo);
+        wrapper.add(Box.createVerticalStrut(14));
+        wrapper.add(contexto);
+
+        return wrapper;
+    }
+
+    private JLabel crearTextoContexto(String etiqueta, String valor) {
+        JLabel label = new JLabel("<html><b>" + etiqueta + "</b>" + textoSeguro(valor) + "</html>");
+        label.setForeground(new Color(30, 41, 59));
+        label.setFont(label.getFont().deriveFont(Font.PLAIN, 13f));
+        return label;
+    }
+
+    private JScrollPane crearPanelRoles() {
+        JPanel panelRoles = new JPanel();
+        panelRoles.setLayout(new BoxLayout(panelRoles, BoxLayout.Y_AXIS));
+        panelRoles.setBackground(new Color(245, 247, 250));
+        roleCards.clear();
+
+        ListModel<Role> model = lstRoles.getModel();
+        for (int i = 0; i < model.getSize(); i++) {
+            Role role = model.getElementAt(i);
+            RoleCard card = new RoleCard(role, i, lstRoles.isSelectedIndex(i));
+            roleCards.add(card);
+            panelRoles.add(card);
+            panelRoles.add(Box.createVerticalStrut(8));
+        }
+
+        JScrollPane scroll = new JScrollPane(panelRoles);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(new Color(245, 247, 250));
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        return scroll;
+    }
+
+    private JPanel crearBotoneraRoles() {
+        JPanel botonera = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        botonera.setOpaque(false);
+        botonera.add(btnGuardar);
+        botonera.add(btnCancelar);
+        return botonera;
+    }
+
+    private void alternarRol(RoleCard card) {
+        card.setSelected(!card.isSelected());
+        sincronizarSeleccionLista();
+    }
+
+    private void sincronizarSeleccionLista() {
+        List<Integer> indices = new ArrayList<>();
+        for (RoleCard card : roleCards) {
+            if (card.isSelected()) {
+                indices.add(card.getModelIndex());
+            }
+        }
+
+        lstRoles.setSelectedIndices(
+                indices.stream().mapToInt(Integer::intValue).toArray()
+        );
+    }
+
+    private int prioridadRol(Role role) {
+        String nombre = normalizarRol(role);
+        if ("ADMIN_SISTEMA".equals(nombre)) {
+            return 0;
+        }
+        if ("SUPERVISION".equals(nombre)) {
+            return 1;
+        }
+        if ("ABOGADO".equals(nombre)) {
+            return 2;
+        }
+        if ("EJECUCION".equals(nombre)) {
+            return 3;
+        }
+        if ("NOTIFICACION".equals(nombre)) {
+            return 4;
+        }
+        return 100;
+    }
+
+    private String descripcionRol(Role role) {
+        if (role != null && role.getDescription() != null && !role.getDescription().trim().isEmpty()) {
+            return role.getDescription().trim();
+        }
+
+        String nombre = normalizarRol(role);
+        if ("ADMIN_SISTEMA".equals(nombre)) {
+            return "Acceso administrativo al sistema.";
+        }
+        if ("SUPERVISION".equals(nombre)) {
+            return "Permite gestionar equipo supervisado.";
+        }
+        if ("ABOGADO".equals(nombre)) {
+            return "Permite trabajar expedientes asignados.";
+        }
+        if ("EJECUCION".equals(nombre)) {
+            return "Acceso a actividades de ejecucion.";
+        }
+        if ("NOTIFICACION".equals(nombre)) {
+            return "Acceso a actividades de notificacion.";
+        }
+        return "Perfil de acceso configurado en el sistema.";
+    }
+
+    private String normalizarRol(Role role) {
+        return role == null || role.getRoleName() == null
+                ? ""
+                : role.getRoleName().trim().toUpperCase();
+    }
+
+    private String textoSeguro(String texto) {
+        return texto == null ? "" : texto.trim();
+    }
+
+    private Border crearBordeCard(Color color) {
+        return BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(color, 1, true),
+                BorderFactory.createEmptyBorder(12, 14, 12, 14)
+        );
+    }
+
+    private final class RoleCard extends JPanel {
+
+        private final Role role;
+        private final int modelIndex;
+        private final JCheckBox check;
+        private boolean hover;
+
+        RoleCard(Role role, int modelIndex, boolean selected) {
+            super(new GridBagLayout());
+            this.role = role;
+            this.modelIndex = modelIndex;
+            this.check = new JCheckBox();
+            this.check.setSelected(selected);
+            this.check.setOpaque(false);
+            construir();
+            actualizarEstilo();
+        }
+
+        private void construir() {
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 74));
+            setAlignmentX(LEFT_ALIGNMENT);
+
+            JLabel nombre = new JLabel(textoSeguro(role.getRoleName()));
+            nombre.setFont(nombre.getFont().deriveFont(Font.BOLD, 13f));
+            nombre.setForeground(new Color(15, 23, 42));
+
+            JLabel descripcion = new JLabel(descripcionRol(role));
+            descripcion.setFont(descripcion.getFont().deriveFont(Font.PLAIN, 12f));
+            descripcion.setForeground(new Color(100, 116, 139));
+
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.gridheight = 2;
+            gbc.anchor = GridBagConstraints.NORTH;
+            gbc.insets = new Insets(2, 0, 0, 12);
+            add(check, gbc);
+
+            gbc.gridx = 1;
+            gbc.gridy = 0;
+            gbc.gridheight = 1;
+            gbc.weightx = 1;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.insets = new Insets(0, 0, 2, 0);
+            add(nombre, gbc);
+
+            gbc.gridy = 1;
+            gbc.insets = new Insets(0, 0, 0, 0);
+            add(descripcion, gbc);
+
+            check.addActionListener(e -> {
+                actualizarEstilo();
+                sincronizarSeleccionLista();
+            });
+
+            MouseAdapter mouse = new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    alternarRol(RoleCard.this);
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    hover = true;
+                    actualizarEstilo();
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    hover = false;
+                    actualizarEstilo();
+                }
+            };
+            addMouseListener(mouse);
+            nombre.addMouseListener(mouse);
+            descripcion.addMouseListener(mouse);
+        }
+
+        int getModelIndex() {
+            return modelIndex;
+        }
+
+        boolean isSelected() {
+            return check.isSelected();
+        }
+
+        void setSelected(boolean selected) {
+            check.setSelected(selected);
+            actualizarEstilo();
+        }
+
+        private void actualizarEstilo() {
+            if (check.isSelected()) {
+                setBackground(new Color(232, 241, 252));
+                setBorder(crearBordeCard(new Color(96, 165, 250)));
+            } else if (hover) {
+                setBackground(new Color(248, 250, 252));
+                setBorder(crearBordeCard(new Color(203, 213, 225)));
+            } else {
+                setBackground(Color.WHITE);
+                setBorder(crearBordeCard(new Color(226, 232, 240)));
+            }
+            repaint();
         }
     }
     
