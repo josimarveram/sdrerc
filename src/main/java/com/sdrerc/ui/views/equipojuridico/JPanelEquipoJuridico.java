@@ -96,7 +96,7 @@ public class JPanelEquipoJuridico extends JPanel implements EquipoJuridicoImport
     private final DefaultTableModel model = new DefaultTableModel() {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return false;
+            return column == COL_EDITAR;
         }
     };
     private final JTable tblEquipo = new JTable(model) {
