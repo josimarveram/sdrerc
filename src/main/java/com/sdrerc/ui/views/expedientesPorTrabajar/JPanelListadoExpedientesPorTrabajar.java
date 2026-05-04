@@ -16,6 +16,8 @@ import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
+import com.sdrerc.util.DateRangePickerSupport;
+import com.toedter.calendar.JDateChooser;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -26,6 +28,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -58,6 +63,9 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
     private final Map<Integer, String> estadosPorId;
     private final SimpleDateFormat formatoFecha;
     private JLabel lblMensajeListado;
+    private JLabel lblFeedbackFechas;
+    private JDateChooser fechaDesdePicker;
+    private JDateChooser fechaHastaPicker;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -108,6 +116,10 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
       {
         try 
         {
+            if (!esRangoFechasValido()) {
+                return;
+            }
+
             int idTecnicoFiltro = obtenerIdTecnicoFiltroPorTrabajar();
             if (idTecnicoFiltro == -1) {
                 cargarTablaNueva(java.util.Collections.<Expediente>emptyList());
@@ -130,8 +142,9 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
             }
 
             List<Expediente> lista = expedienteAsignacionService.listarExpedientesPorTrabajar(campo, valor, idestado, idTecnicoFiltro);
-            cargarTablaNueva(lista);
-            mostrarMensajeListado(lista.isEmpty() ? "No se encontraron expedientes por trabajar con los filtros seleccionados." : " ");
+            List<Expediente> filtrada = filtrarPorRangoFechas(lista, obtenerFechaDesde(), obtenerFechaHasta());
+            cargarTablaNueva(filtrada);
+            mostrarMensajeListado(filtrada.isEmpty() ? "No se encontraron expedientes por trabajar con los filtros seleccionados." : " ");
         } 
         catch (Exception e) {
             cargarTablaNueva(java.util.Collections.<Expediente>emptyList());
@@ -143,6 +156,7 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
     {
         // Limpiar JTextFields
         txtValorBusqueda.setText("");
+        limpiarRangoFechas();
         // Resetear JComboBoxes al primer elemento
         if (cmbTipoBusqueda.getItemCount() > 0) cmbTipoBusqueda.setSelectedIndex(0);
         if (cmbEstado.getItemCount() > 0) cmbEstado.setSelectedIndex(0);
@@ -191,10 +205,34 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         return fecha == null ? "" : formatoFecha.format(fecha);
     }
 
+    private List<Expediente> filtrarPorRangoFechas(List<Expediente> lista, Date fechaDesde, Date fechaHasta)
+    {
+        if (fechaDesde == null && fechaHasta == null) {
+            return lista;
+        }
+
+        List<Expediente> filtrada = new ArrayList<>();
+        for (Expediente expediente : lista) {
+            Date fechaSolicitud = expediente.getFechaSolicitud();
+            if (fechaSolicitud == null) {
+                continue;
+            }
+            if (fechaDesde != null && fechaSolicitud.before(fechaDesde)) {
+                continue;
+            }
+            if (fechaHasta != null && fechaSolicitud.after(fechaHasta)) {
+                continue;
+            }
+            filtrada.add(expediente);
+        }
+        return filtrada;
+    }
+
     private void configurarListadoPorTrabajarPremium()
     {
         setBackground(new Color(245, 247, 250));
         setLayout(new BorderLayout());
+        inicializarRangoFechas();
 
         btnBuscar.setText("Buscar");
         btnLimpiar.setText("Limpiar");
@@ -309,7 +347,44 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         gbc.weightx = 0.20;
         gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.EAST;
+        card.add(new JLabel(" "), gbc);
+
+        gbc.gridy = 2;
+        gbc.gridx = 0;
+        gbc.weightx = 0.25;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(12, 0, 6, 12);
+        card.add(crearLabelFiltro("Fecha desde"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 0.25;
+        card.add(crearLabelFiltro("Fecha hasta"), gbc);
+
+        gbc.gridy = 3;
+        gbc.gridx = 0;
+        gbc.weightx = 0.25;
+        gbc.insets = new Insets(0, 0, 0, 12);
+        card.add(obtenerComponenteFechaDesde(), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 0.25;
+        card.add(obtenerComponenteFechaHasta(), gbc);
+
+        gbc.gridx = 2;
+        gbc.gridwidth = 2;
+        gbc.weightx = 0.50;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.EAST;
         card.add(botones, gbc);
+        gbc.gridwidth = 1;
+
+        lblFeedbackFechas.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        gbc.gridy = 4;
+        gbc.gridx = 0;
+        gbc.gridwidth = 4;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        card.add(lblFeedbackFechas, gbc);
         return card;
     }
 
@@ -361,8 +436,83 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         cmbTipoBusqueda.setPreferredSize(new Dimension(230, 36));
         cmbEstado.setPreferredSize(new Dimension(180, 36));
         txtValorBusqueda.setPreferredSize(new Dimension(300, 36));
+        fechaDesdePicker.setPreferredSize(new Dimension(170, 36));
+        fechaHastaPicker.setPreferredSize(new Dimension(170, 36));
         btnBuscar.setPreferredSize(new Dimension(116, 36));
         btnLimpiar.setPreferredSize(new Dimension(116, 36));
+    }
+
+    private void inicializarRangoFechas()
+    {
+        lblFeedbackFechas = new JLabel(" ");
+        lblFeedbackFechas.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblFeedbackFechas.setForeground(new Color(198, 40, 40));
+
+        fechaDesdePicker = new JDateChooser();
+        fechaHastaPicker = new JDateChooser();
+        DateRangePickerSupport.configurePicker(fechaDesdePicker);
+        DateRangePickerSupport.configurePicker(fechaHastaPicker);
+
+        Date hoy = new Date();
+        fechaDesdePicker.setDate(hoy);
+        fechaHastaPicker.setDate(hoy);
+
+        fechaDesdePicker.setToolTipText("Fecha inicial de solicitud.");
+        fechaHastaPicker.setToolTipText("Fecha final de solicitud.");
+        fechaDesdePicker.addPropertyChangeListener("date", evt -> esRangoFechasValido());
+        fechaHastaPicker.addPropertyChangeListener("date", evt -> esRangoFechasValido());
+    }
+
+    private JComponent obtenerComponenteFechaDesde()
+    {
+        return fechaDesdePicker;
+    }
+
+    private JComponent obtenerComponenteFechaHasta()
+    {
+        return fechaHastaPicker;
+    }
+
+    private Date obtenerFechaDesde()
+    {
+        return fechaDesdePicker == null ? null : DateRangePickerSupport.startOfDay(fechaDesdePicker.getDate());
+    }
+
+    private Date obtenerFechaHasta()
+    {
+        return fechaHastaPicker == null ? null : DateRangePickerSupport.endOfDay(fechaHastaPicker.getDate());
+    }
+
+    private boolean esRangoFechasValido()
+    {
+        if (fechaDesdePicker == null || fechaHastaPicker == null) {
+            return true;
+        }
+
+        Date desde = DateRangePickerSupport.startOfDay(fechaDesdePicker.getDate());
+        Date hasta = DateRangePickerSupport.startOfDay(fechaHastaPicker.getDate());
+        boolean invalido = desde != null && hasta != null && desde.after(hasta);
+        fechaDesdePicker.putClientProperty("JComponent.outline", invalido ? "error" : null);
+        fechaHastaPicker.putClientProperty("JComponent.outline", invalido ? "error" : null);
+        if (lblFeedbackFechas != null) {
+            lblFeedbackFechas.setText(invalido ? "Fecha Desde no puede ser mayor que Fecha Hasta." : " ");
+        }
+        return !invalido;
+    }
+
+    private void limpiarRangoFechas()
+    {
+        if (fechaDesdePicker != null) {
+            fechaDesdePicker.setDate(null);
+            fechaDesdePicker.putClientProperty("JComponent.outline", null);
+        }
+        if (fechaHastaPicker != null) {
+            fechaHastaPicker.setDate(null);
+            fechaHastaPicker.putClientProperty("JComponent.outline", null);
+        }
+        if (lblFeedbackFechas != null) {
+            lblFeedbackFechas.setText(" ");
+        }
     }
 
     private void estilizarBoton(javax.swing.JButton button, boolean primary)
