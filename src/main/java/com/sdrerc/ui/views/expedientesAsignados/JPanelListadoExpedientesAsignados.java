@@ -9,7 +9,6 @@ import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
 import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
-import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.shared.session.SessionContext;
@@ -133,9 +132,6 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
             String valor = txtValorBusqueda.getText() == null ? "" : txtValorBusqueda.getText().trim();
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
             int idestado = estado == null ? 0 : estado.getIdCatalogoItem();
-            if (idestado == 0) {
-                idestado = Enumerado.EstadoExpediente.ExpedienteAsignado.getId();
-            }
 
             List<Expediente> lista = expedienteAsignacionService.listarExpedientesAsignados(campo, valor, idestado, idTecnicoFiltro);
             List<Expediente> filtrada = filtrarPorRangoFechas(lista, obtenerFechaDesde(), obtenerFechaHasta());

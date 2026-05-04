@@ -448,8 +448,7 @@ private void seleccionarDistrito(int idDistrito) {
         agregarBloqueVertical(contenido, crearSeccionResumen(), 1, 12);
         agregarBloqueVertical(contenido, crearSeccionDatosSolicitud(), 2, 12);
         agregarBloqueVertical(contenido, crearSeccionNotificacion(), 3, 12);
-        agregarBloqueVertical(contenido, crearSeccionUbicacion(), 4, 12);
-        agregarBloqueVertical(contenido, crearSeccionConfirmacion(), 5, 12);
+        agregarBloqueVertical(contenido, crearSeccionConfirmacion(), 4, 12);
 
         JScrollPane scroll = new JScrollPane(contenido);
         scroll.setBorder(BorderFactory.createEmptyBorder());
