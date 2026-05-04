@@ -63,6 +63,9 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     private final UbigeoService ubigeoService;
     private Integer idExpedienteOculto = 0;
     private static final String[] CANALES_RECEPCION = {"INTERNO", "MP PRESENCIAL", "MPV", "OR PRESENCIAL"};
+    private boolean modoConsulta = false;
+    private int estadoExpedienteActual = Enumerado.EstadoExpediente.RegistroExpediente.getId();
+    private JLabel lblEstadoAsignacion;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -196,6 +199,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     {        
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
         idExpedienteOculto = lista.getIdExpediente();
+        estadoExpedienteActual = lista.getEstado();
         
         //esRegistroSdrerc 
         //jRadiButonNoCorresponde.setSelected(lista.getEsRegistroSdrerc() == 1? true : false);
@@ -268,8 +272,33 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
 
         //celular
         textCelular.setText(lista.getCelular());
+        cargarAsignacionActivaSiCorresponde();
+        aplicarModoConsultaSiCorresponde();
         actualizarTooltipsDatosExpediente();
         
+    }
+
+    private void cargarAsignacionActivaSiCorresponde() throws Exception {
+        if (estadoExpedienteActual == Enumerado.EstadoExpediente.RegistroExpediente.getId()) {
+            return;
+        }
+
+        ExpedienteAsignacion asignacion = expedienteAsignacionService
+                .buscarAsignacionInicialActivaPorExpediente(idExpedienteOculto);
+        if (asignacion == null) {
+            txtIdTecnico.setText("");
+            txtNombreTecnico.setText("Asignación activa no encontrada");
+            txtNombreTecnico.setToolTipText("No se encontró una asignación inicial activa para este expediente.");
+            spFechaAsignacion.setDate(null);
+            textHojaEnvioAsignacion.setText("");
+            return;
+        }
+
+        txtIdTecnico.setText(String.valueOf(asignacion.getIdTecnico()));
+        txtNombreTecnico.setText(textoSeguro(asignacion.getNombreTecnico()));
+        txtNombreTecnico.setToolTipText(textoSeguro(asignacion.getNombreTecnico()));
+        spFechaAsignacion.setDate(asignacion.getFechaAsignacion());
+        textHojaEnvioAsignacion.setText(textoSeguro(asignacion.getHojaEnvioAsignacion()));
     }
 
     private void actualizarTooltipsDatosExpediente() {
@@ -447,15 +476,15 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
         textos.add(titulo, BorderLayout.NORTH);
         textos.add(subtitulo, BorderLayout.CENTER);
 
-        JLabel estado = new JLabel("Estado: Registrado");
-        estado.setFont(new Font("Arial", Font.BOLD, 12));
-        estado.setForeground(new Color(37, 99, 235));
-        estado.setOpaque(true);
-        estado.setBackground(new Color(219, 234, 254));
-        estado.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        lblEstadoAsignacion = new JLabel("Estado: Registrado");
+        lblEstadoAsignacion.setFont(new Font("Arial", Font.BOLD, 12));
+        lblEstadoAsignacion.setForeground(new Color(37, 99, 235));
+        lblEstadoAsignacion.setOpaque(true);
+        lblEstadoAsignacion.setBackground(new Color(219, 234, 254));
+        lblEstadoAsignacion.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
 
         header.add(textos, BorderLayout.CENTER);
-        header.add(estado, BorderLayout.EAST);
+        header.add(lblEstadoAsignacion, BorderLayout.EAST);
         return header;
     }
 
@@ -666,6 +695,67 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
         IconUtils.applyIcon(btnLimpiar, "clear.svg");
         IconUtils.applyIcon(btnRegresar, "clear.svg");
         IconUtils.applyIcon(jButton2, "users.svg");
+    }
+
+    private void aplicarModoConsultaSiCorresponde() {
+        modoConsulta = estadoExpedienteActual != Enumerado.EstadoExpediente.RegistroExpediente.getId();
+        actualizarHeaderEstado();
+
+        if (!modoConsulta) {
+            return;
+        }
+
+        for (JComponent component : new JComponent[] {
+                spFechaRecepcion, cboCanalRecepcion, textNumeroTramiteDocumento,
+                cboTipoDocumento, textNumeroDocumento, cboTipoActa, textNumeroActa,
+                cboGrupoFamiliar, cboGradoParentesco, cboTipoProcedimientoRegistral,
+                cboTipoSolicitud, textDniRemitente, textApellidosNombreRemitente,
+                cboUnidadOrganica, textNumeroDocumentoTitular, textApellidosNombreTitular,
+                textCorreoElectronico, textCelular, cboDireccionDomiciliaria, textDomicilio,
+                txtNombreTecnico, spFechaAsignacion, textHojaEnvioAsignacion
+        }) {
+            component.setEnabled(false);
+        }
+
+        jButton2.setEnabled(false);
+        btnLimpiar.setEnabled(false);
+        btnGuardar.setEnabled(false);
+        btnGuardar.setText("Solo consulta");
+        btnGuardar.setToolTipText("Este expediente ya cuenta con una asignación activa.");
+        jButton2.setToolTipText("La persona asignada no puede modificarse desde este modo de consulta.");
+        textHojaEnvioAsignacion.setToolTipText("Hoja de envío registrada en la asignación.");
+    }
+
+    private void actualizarHeaderEstado() {
+        if (lblEstadoAsignacion == null) {
+            return;
+        }
+
+        String estado = descripcionEstadoActual();
+        if (modoConsulta) {
+            lblEstadoAsignacion.setText("Solo consulta: " + estado);
+            lblEstadoAsignacion.setForeground(new Color(100, 116, 139));
+            lblEstadoAsignacion.setBackground(new Color(241, 245, 249));
+            lblEstadoAsignacion.setToolTipText("El expediente ya no está pendiente de asignación.");
+        } else {
+            lblEstadoAsignacion.setText("Estado: " + estado);
+            lblEstadoAsignacion.setForeground(new Color(37, 99, 235));
+            lblEstadoAsignacion.setBackground(new Color(219, 234, 254));
+            lblEstadoAsignacion.setToolTipText("Expediente pendiente de asignación.");
+        }
+    }
+
+    private String descripcionEstadoActual() {
+        try {
+            return Enumerado.EstadoExpediente.fromId(estadoExpedienteActual).name()
+                    .replaceAll("([a-z])([A-Z])", "$1 $2");
+        } catch (IllegalArgumentException ex) {
+            return String.valueOf(estadoExpedienteActual);
+        }
+    }
+
+    private String textoSeguro(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private void configurarCampoTexto(JTextField field) {
@@ -1382,6 +1472,13 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     }
     
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
+        if (modoConsulta) {
+            JOptionPane.showMessageDialog(this,
+                    "Este expediente ya cuenta con una asignación activa. La información se muestra solo para consulta.",
+                    "Solo consulta",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         if (!validarFormulario()) {
             return; // Detiene el proceso si hay errores
         }
@@ -1537,6 +1634,13 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     }//GEN-LAST:event_btnGuardarActionPerformed
 
     private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
+        if (modoConsulta) {
+            cboTipoSolicitud.setEnabled(false);
+            textDniRemitente.setEnabled(false);
+            textApellidosNombreRemitente.setEnabled(false);
+            cboUnidadOrganica.setEnabled(false);
+            return;
+        }
         
         CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
         int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
@@ -1556,6 +1660,13 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        if (modoConsulta) {
+            JOptionPane.showMessageDialog(this,
+                    "Este expediente ya cuenta con una asignación activa. La persona asignada no puede modificarse desde este flujo.",
+                    "Solo consulta",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         // Obtener el JFrame que contiene este JPanel
         java.awt.Window parent = SwingUtilities.getWindowAncestor(this);
 

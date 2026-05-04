@@ -26,6 +26,7 @@ public class ExpedienteAsignacion
     //private int idEstadoExpediente;    
     private int idUsuarioModifica;
     private Date fechaModifica;    
+    private String nombreTecnico;
     
     public ExpedienteAsignacion() 
     {        
@@ -149,6 +150,14 @@ public class ExpedienteAsignacion
 
     public void setFechaModifica(Date fechaModifica) {
         this.fechaModifica = fechaModifica;
+    }
+
+    public String getNombreTecnico() {
+        return nombreTecnico;
+    }
+
+    public void setNombreTecnico(String nombreTecnico) {
+        this.nombreTecnico = nombreTecnico;
     }
     
     

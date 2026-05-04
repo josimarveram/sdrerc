@@ -144,10 +144,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
             Date fechaDesde = rangoFechas == null ? null : DateRangePickerSupport.startOfDay(rangoFechas.getFromDate());
             Date fechaHasta = rangoFechas == null ? null : DateRangePickerSupport.endOfDay(rangoFechas.getToDate());
             
-            Enumerado.EstadoExpediente estadoExpediente = Enumerado.EstadoExpediente.RegistroExpediente;
-            //String estado = cmbEstado.getSelectedItem();
-
-            List<Expediente> lista = expedienteService.buscar(campo, valor, estadoExpediente.getId());
+            List<Expediente> lista = expedienteService.buscar(campo, valor, idestado);
 
             cargarTablaNueva(filtrarPorRangoFechas(lista, fechaDesde, fechaHasta));
 
@@ -159,7 +156,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private void cargarTablaNueva(List<Expediente> lista) {
         
         String[] columnas = {
-                "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Estado"
+                "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Estado", "EstadoId"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0){        
@@ -180,7 +177,8 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
                     e.getNumeroTramiteDocumento(),
                     e.getApellidoNombreRemitente(),
                     e.getApellidoNombreTitular(),
-                    obtenerDescripcionEstado(e.getEstado())
+                    obtenerDescripcionEstado(e.getEstado()),
+                    e.getEstado()
             };
 
             model.addRow(fila);
@@ -481,6 +479,9 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
             ajustarColumna(4, 170, 280, Integer.MAX_VALUE);
             ajustarColumna(5, 110, 130, 150);
         }
+        if (jTable1.getColumnModel().getColumnCount() >= 7) {
+            ajustarColumna(6, 0, 0, 0);
+        }
     }
 
     private void ajustarColumna(int index, int min, int preferred, int max)
@@ -561,6 +562,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
             String texto = textoSeguro(value);
             label.setToolTipText((column == 2 || column == 3 || column == 4) ? texto : null);
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            boolean pendienteAsignacion = esFilaPendienteAsignacion(table, row);
 
             if (column == 0 || column == 1 || column == 5) {
                 label.setHorizontalAlignment(SwingConstants.CENTER);
@@ -570,14 +572,17 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
 
             if (!isSelected) {
                 label.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
-                label.setForeground(new Color(30, 41, 59));
+                label.setForeground(pendienteAsignacion ? new Color(30, 41, 59) : new Color(115, 125, 138));
             }
 
             if (column == 5) {
                 label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
                 if (!isSelected) {
-                    label.setForeground(new Color(55, 95, 140));
-                    label.setBackground(new Color(232, 241, 252));
+                    label.setForeground(pendienteAsignacion ? new Color(55, 95, 140) : new Color(100, 116, 139));
+                    label.setBackground(pendienteAsignacion ? new Color(232, 241, 252) : new Color(241, 245, 249));
+                    label.setToolTipText(pendienteAsignacion
+                            ? "Pendiente de asignación."
+                            : "Expediente solo para consulta en esta bandeja.");
                 }
             } else {
                 label.setFont(label.getFont().deriveFont(Font.PLAIN, 12f));
@@ -585,6 +590,16 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
             label.setOpaque(true);
             return label;
         }
+    }
+
+    private boolean esFilaPendienteAsignacion(JTable table, int viewRow)
+    {
+        if (table.getModel().getColumnCount() < 7) {
+            return true;
+        }
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        Object estadoId = table.getModel().getValueAt(modelRow, 6);
+        return String.valueOf(Enumerado.EstadoExpediente.RegistroExpediente.getId()).equals(String.valueOf(estadoId));
     }
 
     /**

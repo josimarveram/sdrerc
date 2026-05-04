@@ -71,4 +71,9 @@ public class ExpedienteAsignacionService {
     {
         return expedienteAsignacionRepository.ListarExpedientesAsignadosPorTrabajador(idTecnico, aceptaRecepcion, estadoItem, esPorVerificar, esPorNotificar);
     }
+
+    public ExpedienteAsignacion buscarAsignacionInicialActivaPorExpediente(int idExpediente) throws Exception
+    {
+        return expedienteAsignacionRepository.buscarAsignacionInicialActivaPorExpediente(idExpediente);
+    }
 }

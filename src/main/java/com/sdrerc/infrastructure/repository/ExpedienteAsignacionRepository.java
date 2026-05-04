@@ -415,6 +415,38 @@ public class ExpedienteAsignacionRepository {
                conn.close();
         }   
     }
+
+    public ExpedienteAsignacion buscarAsignacionInicialActivaPorExpediente(int idExpediente) throws SQLException
+    {
+        String sql =
+                "SELECT ea.ID_EXPEDIENTE_ASIGNACION, ea.ID_EXPEDIENTE, ea.ID_TECNICO, "
+                + "ea.FECHA_ASIGNACION, ea.HOJA_ENVIO_ASIGNACION, "
+                + "CASE WHEN t.ID_TECNICO IS NULL THEN NULL "
+                + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS NOMBRE_TECNICO "
+                + "FROM EXPEDIENTE_ASIGNACION ea "
+                + "LEFT JOIN TECNICO t ON t.ID_TECNICO = ea.ID_TECNICO "
+                + "WHERE ea.ID_EXPEDIENTE = ? "
+                + "AND ea.ACTIVE = 1 "
+                + "AND ea.ETAPA_FLUJO IS NULL";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    ExpedienteAsignacion asignacion = new ExpedienteAsignacion();
+                    asignacion.setIdExpedienteAsignacion(rs.getInt("ID_EXPEDIENTE_ASIGNACION"));
+                    asignacion.setIdExpediente(rs.getInt("ID_EXPEDIENTE"));
+                    asignacion.setIdTecnico(rs.getInt("ID_TECNICO"));
+                    asignacion.setFechaAsignacion(rs.getDate("FECHA_ASIGNACION"));
+                    asignacion.setHojaEnvioAsignacion(rs.getString("HOJA_ENVIO_ASIGNACION"));
+                    asignacion.setNombreTecnico(rs.getString("NOMBRE_TECNICO"));
+                    return asignacion;
+                }
+            }
+        }
+        return null;
+    }
     
     private Expediente mapRow(ResultSet rs) throws SQLException {
         return new Expediente(
