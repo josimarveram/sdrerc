@@ -77,7 +77,6 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         cargarTiposBusqueda();
         cargarComboEstados();    
         configurarComponentesAsignacion();
-        buscarExpedientes();
     }
           
     public void cargarTabla(JTable tabla) throws Exception {
@@ -240,6 +239,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
                     rangoFechas.getFromPicker().setDate(hoy);
                     rangoFechas.getToPicker().setDate(hoy);
                     configurarVistaAsignacion();
+                    buscarExpedientes();
                 }
             }
         );
