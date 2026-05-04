@@ -340,8 +340,12 @@ public class ExpedienteAsignacionRepository {
     {        
         List<Expediente> lista = new ArrayList<>();
         
-        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT EXPEDIENTE.* FROM EXPEDIENTE "
+        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT EXPEDIENTE.*, "
+                + "CASE WHEN TECNICO.ID_TECNICO IS NULL THEN NULL "
+                + "ELSE TRIM(NVL(TECNICO.APELLIDO_PATERNO, '') || ' ' || NVL(TECNICO.APELLIDO_MATERNO, '') || ', ' || NVL(TECNICO.NOMBRES, '')) END AS ABOGADO_DESIGNADO "
+                + "FROM EXPEDIENTE "
                 + "INNER JOIN EXPEDIENTE_ASIGNACION ON EXPEDIENTE.ID_EXPEDIENTE = EXPEDIENTE_ASIGNACION.ID_EXPEDIENTE "
+                + "LEFT JOIN TECNICO ON TECNICO.ID_TECNICO = EXPEDIENTE_ASIGNACION.ID_TECNICO "
                 + "LEFT JOIN (\n" +
                     "    SELECT DISTINCT e.ID_EXPEDIENTE AS ID_EXPEDIENTE_DOCUMENTO_VERIFICAR\n" +
                     "    FROM EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d\n" +
@@ -416,6 +420,82 @@ public class ExpedienteAsignacionRepository {
         }   
     }
 
+    public List<Expediente> listarExpedientesAsignados(String campo, String valor, int estadoItem, int idTecnico) throws SQLException
+    {
+        List<Expediente> lista = new ArrayList<>();
+        String filtroCampo = resolverFiltroCampoAsignado(campo);
+        boolean filtrarTexto = valor != null && !valor.trim().isEmpty() && filtroCampo != null;
+        boolean filtrarEstado = estadoItem != 0;
+        boolean filtrarTecnico = idTecnico > 0;
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT e.*, "
+                + "CASE WHEN t.ID_TECNICO IS NULL THEN NULL "
+                + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS ABOGADO_DESIGNADO "
+                + "FROM EXPEDIENTE e "
+                + "INNER JOIN EXPEDIENTE_ASIGNACION ea ON e.ID_EXPEDIENTE = ea.ID_EXPEDIENTE "
+                + "LEFT JOIN TECNICO t ON t.ID_TECNICO = ea.ID_TECNICO "
+                + "WHERE ea.ACTIVE = 1 "
+                + "AND ea.ETAPA_FLUJO IS NULL ");
+
+        if (filtrarTecnico) {
+            sql.append("AND ea.ID_TECNICO = ? ");
+        }
+        if (filtrarEstado) {
+            sql.append("AND e.ESTADO = ? ");
+        }
+        if (filtrarTexto) {
+            sql.append("AND UPPER(").append(filtroCampo).append(") LIKE ? ");
+        }
+        sql.append("ORDER BY e.FECHA_SOLICITUD DESC, e.ID_EXPEDIENTE DESC");
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int paramIndex = 1;
+            if (filtrarTecnico) {
+                ps.setInt(paramIndex++, idTecnico);
+            }
+            if (filtrarEstado) {
+                ps.setInt(paramIndex++, estadoItem);
+            }
+            if (filtrarTexto) {
+                ps.setString(paramIndex++, "%" + valor.trim().toUpperCase() + "%");
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapRow(rs));
+                }
+            }
+        }
+        return lista;
+    }
+
+    private String resolverFiltroCampoAsignado(String campo)
+    {
+        if (campo == null) {
+            return null;
+        }
+
+        String normalizado = campo.trim().toUpperCase();
+        switch (normalizado) {
+            case "NUMERO_TRAMITE_DOCUMENTO":
+                return "NVL(e.NUMERO_TRAMITE_DOCUMENTO, '')";
+            case "TIPO_SOLICITUD":
+                return "TO_CHAR(e.TIPO_SOLICITUD)";
+            case "DNI_REMITENTE":
+                return "NVL(e.DNI_REMITENTE, '')";
+            case "APELLIDO_NOMBRE_REMITENTE":
+                return "NVL(e.APELLIDO_NOMBRE_REMITENTE, '')";
+            case "TIPO_PROCEDIMIENTO_REGISTRAL":
+                return "TO_CHAR(e.TIPO_PROCEDIMIENTO_REGISTRAL)";
+            case "ABOGADO_DESIGNADO":
+                return "NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')";
+            default:
+                return null;
+        }
+    }
+
     public ExpedienteAsignacion buscarAsignacionInicialActivaPorExpediente(int idExpediente) throws SQLException
     {
         String sql =
@@ -449,7 +529,7 @@ public class ExpedienteAsignacionRepository {
     }
     
     private Expediente mapRow(ResultSet rs) throws SQLException {
-        return new Expediente(
+        Expediente expediente = new Expediente(
                             rs.getInt("ID_EXPEDIENTE"),
                             rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
@@ -482,6 +562,17 @@ public class ExpedienteAsignacionRepository {
                             rs.getInt("ID_USUARIO_MODIFICA"),
                             rs.getDate("FECHA_MODIFICA")
         );
+        expediente.setAbogadoDesignado(obtenerStringSiExiste(rs, "ABOGADO_DESIGNADO"));
+        return expediente;
+    }
+
+    private String obtenerStringSiExiste(ResultSet rs, String columnName) throws SQLException
+    {
+        try {
+            return rs.getString(columnName);
+        } catch (SQLException ex) {
+            return null;
+        }
     }
     
 }

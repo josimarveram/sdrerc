@@ -11,11 +11,35 @@ import com.sdrerc.application.ExpedienteService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
+import com.sdrerc.domain.model.User;
+import com.sdrerc.shared.session.SessionContext;
+import com.sdrerc.ui.common.icon.IconUtils;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumn;
 
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import java.util.logging.Level;
@@ -26,7 +50,7 @@ import com.sdrerc.ui.menu.MenuPrincipal;
  *
  * @author betom
  */
-public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
+public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implements Scrollable {
 
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
@@ -34,6 +58,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
     private final ExpedienteAsignacionService expedienteAsignacionService;
     private final Map<Integer, String> estadosPorId;
     private final SimpleDateFormat formatoFecha;
+    private JLabel lblMensajeListado;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -49,7 +74,8 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
         this.formatoFecha.setLenient(false);
         
         cargarTiposBusqueda();
-        cargarComboEstados();    
+        cargarComboEstados();
+        configurarExpedientesAsignadosPremium();
         buscarExpedientes();
     }
     private void cargarComboEstados() 
@@ -75,6 +101,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
         cmbTipoBusqueda.addItem("DNI_REMITENTE");
         cmbTipoBusqueda.addItem("APELLIDO_NOMBRE_REMITENTE");
         cmbTipoBusqueda.addItem("TIPO_PROCEDIMIENTO_REGISTRAL");
+        cmbTipoBusqueda.addItem("ABOGADO_DESIGNADO");
     }
     
      
@@ -82,18 +109,29 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
       {
         try 
         {
-            String campo = cmbTipoBusqueda.getSelectedItem().toString();
-            String valor = txtValorBusqueda.getText();            
+            int idTecnicoFiltro = obtenerIdTecnicoFiltro();
+            if (idTecnicoFiltro < 0) {
+                cargarTablaNueva(java.util.Collections.<Expediente>emptyList());
+                mostrarMensajeListado("No tiene permisos para consultar expedientes asignados.");
+                return;
+            }
+
+            Object tipoSeleccionado = cmbTipoBusqueda.getSelectedItem();
+            String campo = tipoSeleccionado == null ? "" : tipoSeleccionado.toString();
+            String valor = txtValorBusqueda.getText() == null ? "" : txtValorBusqueda.getText().trim();
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
-            int idestado = estado.getIdCatalogoItem();                    
-            //String estado = cmbEstado.getSelectedItem();
-            
-            Enumerado.EstadoExpediente estadoExpediente = Enumerado.EstadoExpediente.ExpedienteAsignado;
-            
-            List<Expediente> lista = expedienteAsignacionService.ListarExpedientesAsignadosPorTrabajador(0, 0, estadoExpediente.getId(),0,0);
+            int idestado = estado == null ? 0 : estado.getIdCatalogoItem();
+            if (idestado == 0) {
+                idestado = Enumerado.EstadoExpediente.ExpedienteAsignado.getId();
+            }
+
+            List<Expediente> lista = expedienteAsignacionService.listarExpedientesAsignados(campo, valor, idestado, idTecnicoFiltro);
             cargarTablaNueva(lista);
+            mostrarMensajeListado(lista.isEmpty() ? "No se encontraron expedientes asignados con los filtros seleccionados." : " ");
         } 
         catch (Exception e) {
+            cargarTablaNueva(java.util.Collections.<Expediente>emptyList());
+            mostrarMensajeListado("No se pudo cargar el listado de expedientes asignados.");
         }
       }
       
@@ -112,7 +150,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
     {        
         String[] columnas = 
         {
-          "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Estado"
+          "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Abogado designado", "Estado"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -132,11 +170,13 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
                     e.getNumeroTramiteDocumento(),
                     e.getApellidoNombreRemitente(),
                     e.getApellidoNombreTitular(),
+                    textoSeguro(e.getAbogadoDesignado()),
                     obtenerDescripcionEstado(e.getEstado())
             };
             model.addRow(fila);
         }
         jTable1.setModel(model);
+        configurarTablaExpedientesAsignados();
     }
 
     private String obtenerDescripcionEstado(int idEstado)
@@ -147,6 +187,376 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
     private String formatearFecha(java.util.Date fecha)
     {
         return fecha == null ? "" : formatoFecha.format(fecha);
+    }
+
+    private void configurarExpedientesAsignadosPremium()
+    {
+        setBackground(new Color(245, 247, 250));
+        setLayout(new BorderLayout());
+
+        btnBuscar.setText("Buscar");
+        btnLimpiar.setText("Limpiar");
+        IconUtils.applyIcon(btnBuscar, "search.svg");
+        IconUtils.applyIcon(btnLimpiar, "clear.svg");
+        estilizarBoton(btnBuscar, true);
+        estilizarBoton(btnLimpiar, false);
+
+        txtValorBusqueda.setText("");
+        txtValorBusqueda.setEnabled(true);
+        txtValorBusqueda.setToolTipText("Ingrese el valor de búsqueda.");
+        cmbTipoBusqueda.setToolTipText("Seleccione el tipo de búsqueda.");
+        cmbEstado.setToolTipText("Seleccione el estado del trámite.");
+        cmbTipoBusqueda.setRenderer(new TipoBusquedaRenderer());
+        cmbEstado.setRenderer(new ComboTooltipRenderer());
+        actualizarTooltipTipoBusqueda();
+
+        remove(jPanel1);
+        jPanel1.removeAll();
+        jPanel1.setLayout(new BorderLayout(0, 14));
+        jPanel1.setBackground(new Color(245, 247, 250));
+        jPanel1.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        jPanel1.add(crearHeader(), BorderLayout.NORTH);
+        jPanel1.add(crearContenido(), BorderLayout.CENTER);
+        add(jPanel1, BorderLayout.CENTER);
+
+        configurarTablaExpedientesAsignados();
+        revalidate();
+        repaint();
+    }
+
+    private JPanel crearHeader()
+    {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+
+        JLabel title = new JLabel("Expedientes asignados");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        title.setForeground(new Color(25, 52, 84));
+
+        JLabel subtitle = new JLabel("Consulte los expedientes asignados según criterio, estado y abogado responsable.");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        subtitle.setForeground(new Color(100, 116, 139));
+        subtitle.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+
+        JPanel texts = new JPanel(new BorderLayout());
+        texts.setOpaque(false);
+        texts.add(title, BorderLayout.NORTH);
+        texts.add(subtitle, BorderLayout.CENTER);
+        header.add(texts, BorderLayout.CENTER);
+        return header;
+    }
+
+    private JPanel crearContenido()
+    {
+        JPanel content = new JPanel(new BorderLayout(0, 14));
+        content.setOpaque(false);
+        content.add(crearCardFiltros(), BorderLayout.NORTH);
+        content.add(crearCardResultados(), BorderLayout.CENTER);
+        return content;
+    }
+
+    private JPanel crearCardFiltros()
+    {
+        JPanel card = crearCard();
+        card.setLayout(new GridBagLayout());
+        dimensionarFiltros();
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.weighty = 0;
+
+        gbc.gridx = 0;
+        gbc.weightx = 0.25;
+        gbc.insets = new Insets(0, 0, 6, 12);
+        card.add(crearLabelFiltro("Tipo de búsqueda"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 0.35;
+        card.add(crearLabelFiltro("Valor de búsqueda"), gbc);
+        gbc.gridx = 2;
+        gbc.weightx = 0.20;
+        card.add(crearLabelFiltro("Estado del trámite"), gbc);
+        gbc.gridx = 3;
+        gbc.weightx = 0.20;
+        card.add(new JLabel(" "), gbc);
+
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        gbc.weightx = 0.25;
+        gbc.insets = new Insets(0, 0, 0, 12);
+        card.add(cmbTipoBusqueda, gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 0.35;
+        card.add(txtValorBusqueda, gbc);
+        gbc.gridx = 2;
+        gbc.weightx = 0.20;
+        card.add(cmbEstado, gbc);
+
+        JPanel botones = new JPanel(new GridBagLayout());
+        botones.setOpaque(false);
+        GridBagConstraints b = new GridBagConstraints();
+        b.gridx = 0;
+        b.insets = new Insets(0, 0, 0, 8);
+        botones.add(btnBuscar, b);
+        b.gridx = 1;
+        b.insets = new Insets(0, 0, 0, 0);
+        botones.add(btnLimpiar, b);
+
+        gbc.gridx = 3;
+        gbc.weightx = 0.20;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.EAST;
+        card.add(botones, gbc);
+        return card;
+    }
+
+    private JPanel crearCardResultados()
+    {
+        JPanel card = crearCard();
+        card.setLayout(new BorderLayout(0, 10));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        JLabel title = new JLabel("Listado de expedientes asignados");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        title.setForeground(new Color(25, 52, 84));
+        lblMensajeListado = new JLabel(" ");
+        lblMensajeListado.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblMensajeListado.setForeground(new Color(100, 116, 139));
+        header.add(title, BorderLayout.WEST);
+        header.add(lblMensajeListado, BorderLayout.EAST);
+
+        jScrollPane1.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
+        jScrollPane1.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        jScrollPane1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        card.add(header, BorderLayout.NORTH);
+        card.add(jScrollPane1, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearCard()
+    {
+        JPanel card = new JPanel();
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(16, 18, 16, 18)));
+        return card;
+    }
+
+    private JLabel crearLabelFiltro(String texto)
+    {
+        JLabel label = new JLabel(texto);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        label.setForeground(new Color(71, 85, 105));
+        return label;
+    }
+
+    private void dimensionarFiltros()
+    {
+        cmbTipoBusqueda.setPreferredSize(new Dimension(230, 36));
+        cmbEstado.setPreferredSize(new Dimension(180, 36));
+        txtValorBusqueda.setPreferredSize(new Dimension(280, 36));
+        btnBuscar.setPreferredSize(new Dimension(116, 36));
+        btnLimpiar.setPreferredSize(new Dimension(116, 36));
+    }
+
+    private void estilizarBoton(javax.swing.JButton button, boolean primary)
+    {
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+        if (primary) {
+            button.setBackground(new Color(37, 99, 160));
+            button.setForeground(Color.WHITE);
+        } else {
+            button.setBackground(new Color(241, 245, 249));
+            button.setForeground(new Color(51, 65, 85));
+        }
+    }
+
+    private void configurarTablaExpedientesAsignados()
+    {
+        jTable1.setRowHeight(30);
+        jTable1.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        jTable1.setFillsViewportHeight(true);
+        jTable1.setShowGrid(false);
+        jTable1.setIntercellSpacing(new Dimension(0, 0));
+        jTable1.setSelectionBackground(new Color(219, 234, 254));
+        jTable1.setSelectionForeground(new Color(15, 23, 42));
+        jTable1.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        jTable1.setDefaultRenderer(Object.class, new ExpedienteAsignadoCellRenderer());
+
+        JTableHeader header = jTable1.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        header.setForeground(new Color(51, 65, 85));
+        header.setBackground(new Color(241, 245, 249));
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 34));
+        header.setReorderingAllowed(false);
+
+        if (jTable1.getColumnModel().getColumnCount() < 7) {
+            return;
+        }
+        ocultarColumna(0);
+        configurarAnchoColumna(1, 100, 110, 125);
+        configurarAnchoColumna(2, 125, 145, 170);
+        configurarAnchoColumna(3, 170, 260, 520);
+        configurarAnchoColumna(4, 170, 260, 520);
+        configurarAnchoColumna(5, 170, 240, 420);
+        configurarAnchoColumna(6, 95, 115, 135);
+    }
+
+    private void ocultarColumna(int index)
+    {
+        TableColumn column = jTable1.getColumnModel().getColumn(index);
+        column.setMinWidth(0);
+        column.setPreferredWidth(0);
+        column.setMaxWidth(0);
+        column.setResizable(false);
+    }
+
+    private void configurarAnchoColumna(int index, int min, int preferred, int max)
+    {
+        TableColumn column = jTable1.getColumnModel().getColumn(index);
+        column.setMinWidth(min);
+        column.setPreferredWidth(preferred);
+        column.setMaxWidth(max);
+    }
+
+    private int obtenerIdTecnicoFiltro()
+    {
+        User usuario = SessionContext.getUsuarioActual();
+        boolean esAbogado = usuario.hasRole("ABOGADO");
+        boolean esAdmin = usuario.hasRole("ADMIN_SISTEMA");
+        if (!esAbogado) {
+            return -1;
+        }
+        if (esAdmin) {
+            return 0;
+        }
+        Long idTecnico = usuario.getIdTecnico();
+        if (idTecnico == null || idTecnico <= 0) {
+            return -1;
+        }
+        return Math.toIntExact(idTecnico);
+    }
+
+    private void mostrarMensajeListado(String mensaje)
+    {
+        if (lblMensajeListado != null) {
+            lblMensajeListado.setText(mensaje == null ? " " : mensaje);
+        }
+    }
+
+    private void actualizarTooltipTipoBusqueda()
+    {
+        Object selected = cmbTipoBusqueda.getSelectedItem();
+        cmbTipoBusqueda.setToolTipText(etiquetaTipoBusqueda(selected) + " - " + textoSeguro(selected));
+    }
+
+    private String etiquetaTipoBusqueda(Object value)
+    {
+        String texto = textoSeguro(value);
+        switch (texto) {
+            case "NUMERO_TRAMITE_DOCUMENTO":
+                return "N° trámite";
+            case "TIPO_SOLICITUD":
+                return "Tipo de solicitud";
+            case "DNI_REMITENTE":
+                return "DNI remitente";
+            case "APELLIDO_NOMBRE_REMITENTE":
+                return "Solicitante";
+            case "TIPO_PROCEDIMIENTO_REGISTRAL":
+                return "Tipo procedimiento";
+            case "ABOGADO_DESIGNADO":
+                return "Abogado designado";
+            default:
+                return texto;
+        }
+    }
+
+    private String textoSeguro(Object value)
+    {
+        return value == null ? "" : value.toString().trim();
+    }
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+        return 16;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(visibleRect.height - 32, 16);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
+    }
+
+    private class TipoBusquedaRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(
+                JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            label.setText(etiquetaTipoBusqueda(value));
+            label.setToolTipText(textoSeguro(value));
+            return label;
+        }
+    }
+
+    private class ComboTooltipRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(
+                JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            label.setToolTipText(textoSeguro(value));
+            return label;
+        }
+    }
+
+    private class ExpedienteAsignadoCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String texto = textoSeguro(value);
+            label.setText(texto);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            label.setToolTipText((column == 2 || column == 3 || column == 4 || column == 5) ? texto : null);
+
+            if (!isSelected) {
+                label.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
+                label.setForeground(new Color(30, 41, 59));
+            }
+
+            if (column == 6) {
+                label.setHorizontalAlignment(SwingConstants.CENTER);
+                label.setFont(label.getFont().deriveFont(Font.BOLD));
+                if (!isSelected) {
+                    label.setForeground(new Color(55, 95, 140));
+                    label.setBackground(new Color(232, 241, 252));
+                }
+            } else {
+                label.setHorizontalAlignment(column == 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
+                label.setFont(label.getFont().deriveFont(Font.PLAIN));
+            }
+            return label;
+        }
     }
 
     /**
@@ -301,6 +711,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel {
 
     private void cmbTipoBusquedaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbTipoBusquedaActionPerformed
         if (cmbTipoBusqueda.getSelectedItem() != null) {
+            actualizarTooltipTipoBusqueda();
             txtValorBusqueda.setEnabled(true);
             txtValorBusqueda.setText("");
             txtValorBusqueda.requestFocus();
