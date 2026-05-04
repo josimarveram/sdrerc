@@ -22,7 +22,9 @@ import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.util.ComboBoxUtils;
+import com.sdrerc.util.DateRangePickerSupport;
 import com.sdrerc.util.TextFieldRules;
+import com.toedter.calendar.JDateChooser;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -72,6 +74,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel imp
     private JLabel lblResumenHojaEnvio;
     private JLabel lblResumenRemitente;
     private JLabel lblResumenTitular;
+    private JDateChooser fechaSolicitudPicker;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -118,6 +121,7 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel imp
         grupoCorrespondeSdrerc.add(jRadiButonNoCorresponde);
 
         ComboBoxUtils.applySmartRenderer(this);
+        configurarFechaSolicitudPicker();
         configurarFormularioRecepcionAsignadoPremium();
     }
     
@@ -154,6 +158,15 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel imp
         });
         */
         
+    }
+
+    private void configurarFechaSolicitudPicker() {
+        fechaSolicitudPicker = new JDateChooser();
+        DateRangePickerSupport.configurePicker(fechaSolicitudPicker);
+        fechaSolicitudPicker.setEnabled(false);
+        fechaSolicitudPicker.setPreferredSize(new Dimension(120, 34));
+        fechaSolicitudPicker.setMinimumSize(new Dimension(80, 34));
+        fechaSolicitudPicker.setToolTipText("Fecha de solicitud registrada en recepción.");
     }
     
     private void cargarDepartamentos() {
@@ -218,6 +231,9 @@ public class JPanelRegistrarExpedientePorRecibido extends javax.swing.JPanel imp
         
         //fechaSolicitud
         spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
+        if (fechaSolicitudPicker != null) {
+            fechaSolicitudPicker.setDate(lista.getFechaSolicitud());
+        }
 
         //tipoDocumento
         seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
@@ -539,7 +555,7 @@ private void seleccionarDistrito(int idDistrito) {
         body.setLayout(new GridBagLayout());
 
         int row = 0;
-        agregarCampo(body, "Fecha solicitud", spFechaSolicitud, 0, row, 1, 0.17);
+        agregarCampo(body, "Fecha solicitud", fechaSolicitudPicker, 0, row, 1, 0.17);
         agregarCampo(body, "Nro. trámite web", textNumeroTramiteDocumento, 1, row, 1, 0.22);
         agregarCampo(body, "Tipo documento", cboTipoDocumento, 2, row, 1, 0.22);
         agregarCampo(body, "Nro. documento", textNumeroDocumento, 3, row++, 1, 0.18);
@@ -707,8 +723,11 @@ private void seleccionarDistrito(int idDistrito) {
                 cboTipoDocumento, cboTipoActa, cboGrupoFamiliar, cboGradoParentesco,
                 cboTipoProcedimientoRegistral, cboTipoSolicitud, cboUnidadOrganica,
                 cboDireccionDomiciliaria, cboDepartamento, cboProvincia, cboDistrito,
-                spFechaSolicitud, spFechaRecepcion
+                spFechaSolicitud, spFechaRecepcion, fechaSolicitudPicker
         }) {
+            if (component == null) {
+                continue;
+            }
             component.setPreferredSize(fieldSize);
             component.setMinimumSize(new Dimension(80, 34));
         }
@@ -738,7 +757,7 @@ private void seleccionarDistrito(int idDistrito) {
 
     private void bloquearControlesConsulta() {
         for (JComponent component : new JComponent[] {
-                spFechaSolicitud, spFechaRecepcion, textHojaEnvioExpediente,
+                spFechaSolicitud, fechaSolicitudPicker, spFechaRecepcion, textHojaEnvioExpediente,
                 textNumeroTramiteDocumento, cboTipoDocumento, textNumeroDocumento,
                 cboTipoActa, textNumeroActa, cboGrupoFamiliar, cboGradoParentesco,
                 cboTipoProcedimientoRegistral, cboTipoSolicitud, textDniRemitente,
@@ -747,6 +766,9 @@ private void seleccionarDistrito(int idDistrito) {
                 cboDireccionDomiciliaria, textDomicilio, cboDepartamento, cboProvincia, cboDistrito,
                 jRadiButonSiCorresponde, jRadiButonNoCorresponde
         }) {
+            if (component == null) {
+                continue;
+            }
             component.setEnabled(false);
         }
     }
