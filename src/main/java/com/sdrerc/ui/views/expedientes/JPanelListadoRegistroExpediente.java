@@ -76,7 +76,6 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         cargarTiposBusqueda();
         cargarComboEstados();
         configurarComponentesRecepcion();
-        buscarExpedientes();
     }
     
     
@@ -227,6 +226,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                     rangoFechas.getFromPicker().setDate(hoy);
                     rangoFechas.getToPicker().setDate(hoy);
                     configurarVistaRecepcion();
+                    buscarExpedientes();
                 }
             }
         );
