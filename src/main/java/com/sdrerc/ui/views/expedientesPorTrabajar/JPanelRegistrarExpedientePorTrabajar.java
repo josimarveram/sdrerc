@@ -96,6 +96,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     private ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado;
     private List<ExpedienteAnalisisAbogadoDetDoc> listaDocumentos = new ArrayList<>();
     private int filaEditando = -1;
+    private boolean modoEdicionDatosSolicitud = false;
     private JLabel badgeEstadoActual;
     private JLabel badgeTramiteActual;
     private JLabel badgeTitularActual;
@@ -553,15 +554,59 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     }
 
     private void configurarCamposConsultaSolicitud() {
-        JComponent[] componentes = {
+        modoEdicionDatosSolicitud = false;
+        for (JComponent componente : obtenerComponentesDatosSolicitud()) {
+            componente.setEnabled(false);
+        }
+        btnRegresar2.setText("Editar datos de solicitud");
+        btnRegresar2.setToolTipText("Habilita la edición visual de los datos de la solicitud.");
+    }
+
+    private JComponent[] obtenerComponentesDatosSolicitud() {
+        return new JComponent[]{
             spFechaRecepcion, spFechaSolicitud, textNumeroTramiteDocumento, cboTipoDocumento,
             textNumeroDocumento, cboTipoActa, textNumeroActa, cboGrupoFamiliar,
             cboGradoParentesco, cboTipoProcedimientoRegistral, cboTipoSolicitud,
             textDniRemitente, textApellidosNombreRemitente, cboUnidadOrganica,
             textNumeroDocumentoTitular, textApellidosNombreTitular
         };
-        for (JComponent componente : componentes) {
-            componente.setEnabled(false);
+    }
+
+    private void alternarEdicionDatosSolicitud() {
+        if (modoEdicionDatosSolicitud) {
+            configurarCamposConsultaSolicitud();
+            return;
+        }
+
+        modoEdicionDatosSolicitud = true;
+        for (JComponent componente : obtenerComponentesDatosSolicitud()) {
+            componente.setEnabled(true);
+        }
+        aplicarReglasTipoSolicitudEnEdicion();
+        btnRegresar2.setText("Bloquear datos de solicitud");
+        btnRegresar2.setToolTipText("Vuelve a mostrar los datos de la solicitud en modo consulta.");
+    }
+
+    private void aplicarReglasTipoSolicitudEnEdicion() {
+        if (!modoEdicionDatosSolicitud) {
+            return;
+        }
+
+        textDniRemitente.setEnabled(true);
+        textApellidosNombreRemitente.setEnabled(true);
+        cboUnidadOrganica.setEnabled(true);
+
+        Object selected = cboTipoSolicitud.getSelectedItem();
+        String tipoSolicitud = normalizarTexto(selected == null ? "" : selected.toString());
+
+        if (tipoSolicitud.contains("PARTE")) {
+            textDniRemitente.setEnabled(true);
+            textApellidosNombreRemitente.setEnabled(true);
+            cboUnidadOrganica.setEnabled(false);
+        } else if (tipoSolicitud.contains("OFICIO")) {
+            textDniRemitente.setEnabled(false);
+            textApellidosNombreRemitente.setEnabled(false);
+            cboUnidadOrganica.setEnabled(true);
         }
     }
 
@@ -1714,7 +1759,14 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
 
     private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
         
+        if (!modoEdicionDatosSolicitud) {
+            return;
+        }
+
         CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
+        if (catalogoTipoSolicitud == null) {
+            return;
+        }
         int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
         
         if(idTipoSolicitud == 10)
@@ -1761,7 +1813,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     }//GEN-LAST:event_btnGenerarDocumentoActionPerformed
 
     private void btnRegresar2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresar2ActionPerformed
-        // TODO add your handling code here:
+        alternarEdicionDatosSolicitud();
     }//GEN-LAST:event_btnRegresar2ActionPerformed
 
     private void jTableDocumentosAnalisisMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableDocumentosAnalisisMouseClicked
