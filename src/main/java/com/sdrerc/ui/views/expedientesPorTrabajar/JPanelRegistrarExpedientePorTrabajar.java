@@ -23,7 +23,9 @@ import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAboga
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.ui.common.icon.IconUtils;
+import com.sdrerc.util.DateRangePickerSupport;
 import com.sdrerc.util.TextFieldRules;
+import com.toedter.calendar.JDateChooser;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.io.File;
@@ -77,6 +79,7 @@ import javax.swing.table.JTableHeader;
  */
 public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel implements Scrollable
 {
+    private static final String[] CANALES_RECEPCION = {"INTERNO", "MP PRESENCIAL", "MPV", "OR PRESENCIAL"};
     private static final Color COLOR_FONDO = new Color(245, 247, 250);
     private static final Color COLOR_CARD = Color.WHITE;
     private static final Color COLOR_BORDE = new Color(220, 226, 235);
@@ -97,6 +100,8 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     private List<ExpedienteAnalisisAbogadoDetDoc> listaDocumentos = new ArrayList<>();
     private int filaEditando = -1;
     private boolean modoEdicionDatosSolicitud = false;
+    private JDateChooser fechaSolicitudPicker;
+    private JComboBox<String> cboCanalAtencion;
     private JLabel badgeEstadoActual;
     private JLabel badgeTramiteActual;
     private JLabel badgeTitularActual;
@@ -160,6 +165,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         col.setMaxWidth(0);
         col.setPreferredWidth(0);
 
+        configurarControlesSolicitudModernos();
         configurarFormularioTrabajoExpedientePremium();
     }
 
@@ -169,6 +175,20 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         btnRegresar2.setText("Editar datos de solicitud");
         btnGenerarDocumento.setText("Generar plantilla");
         btnAgregarTipoAnalisis.setText("Agregar documento");
+    }
+
+    private void configurarControlesSolicitudModernos() {
+        fechaSolicitudPicker = new JDateChooser();
+        fechaSolicitudPicker.setEnabled(false);
+        fechaSolicitudPicker.setToolTipText("Fecha de solicitud registrada en recepción.");
+        DateRangePickerSupport.configurePicker(fechaSolicitudPicker);
+
+        cboCanalAtencion = new JComboBox<>();
+        for (String canal : CANALES_RECEPCION) {
+            cboCanalAtencion.addItem(canal);
+        }
+        cboCanalAtencion.setEnabled(false);
+        cboCanalAtencion.setToolTipText("Canal de atención registrado en recepción.");
     }
     
     
@@ -321,8 +341,8 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         grid.setOpaque(false);
 
         int y = 0;
-        agregarCampoTrabajo(grid, 0, y, 1, "Fecha recepción", spFechaRecepcion);
-        agregarCampoTrabajo(grid, 1, y, 1, "Fecha solicitud", spFechaSolicitud);
+        agregarCampoTrabajo(grid, 0, y, 1, "Fecha solicitud", fechaSolicitudPicker);
+        agregarCampoTrabajo(grid, 1, y, 1, "Canal de atención", cboCanalAtencion);
         agregarCampoTrabajo(grid, 2, y, 1, "N° trámite web", textNumeroTramiteDocumento);
         agregarCampoTrabajo(grid, 3, y, 1, "Tipo solicitud", cboTipoSolicitud);
 
@@ -556,7 +576,9 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     private void configurarCamposConsultaSolicitud() {
         modoEdicionDatosSolicitud = false;
         for (JComponent componente : obtenerComponentesDatosSolicitud()) {
-            componente.setEnabled(false);
+            if (componente != null) {
+                componente.setEnabled(false);
+            }
         }
         btnRegresar2.setText("Editar datos de solicitud");
         btnRegresar2.setToolTipText("Habilita la edición visual de los datos de la solicitud.");
@@ -564,7 +586,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
 
     private JComponent[] obtenerComponentesDatosSolicitud() {
         return new JComponent[]{
-            spFechaRecepcion, spFechaSolicitud, textNumeroTramiteDocumento, cboTipoDocumento,
+            fechaSolicitudPicker, cboCanalAtencion, spFechaSolicitud, textNumeroTramiteDocumento, cboTipoDocumento,
             textNumeroDocumento, cboTipoActa, textNumeroActa, cboGrupoFamiliar,
             cboGradoParentesco, cboTipoProcedimientoRegistral, cboTipoSolicitud,
             textDniRemitente, textApellidosNombreRemitente, cboUnidadOrganica,
@@ -580,7 +602,9 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
 
         modoEdicionDatosSolicitud = true;
         for (JComponent componente : obtenerComponentesDatosSolicitud()) {
-            componente.setEnabled(true);
+            if (componente != null) {
+                componente.setEnabled(true);
+            }
         }
         aplicarReglasTipoSolicitudEnEdicion();
         btnRegresar2.setText("Bloquear datos de solicitud");
@@ -611,6 +635,12 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     }
 
     private void configurarTooltipsSolicitud() {
+        if (fechaSolicitudPicker != null) {
+            fechaSolicitudPicker.setToolTipText("Fecha de solicitud registrada en recepción.");
+        }
+        if (cboCanalAtencion != null) {
+            aplicarTooltipCombo(cboCanalAtencion);
+        }
         aplicarTooltipTexto(textNumeroTramiteDocumento);
         aplicarTooltipTexto(textNumeroDocumento);
         aplicarTooltipTexto(textNumeroActa);
@@ -709,6 +739,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         
         //fechaSolicitud
         spFechaSolicitud.setValue(lista.getFechaSolicitud()); 
+        if (fechaSolicitudPicker != null) {
+            fechaSolicitudPicker.setDate(lista.getFechaSolicitud());
+        }
+        seleccionarCanalAtencion(lista.getCanalRecepcion());
 
         //tipoDocumento
         seleccionarEstadoEnCombo(cboTipoDocumento, lista.getTipoDocumento()); 
@@ -784,6 +818,29 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
                 break;
             }
         }
+    }
+
+    private void seleccionarCanalAtencion(String canalRecepcion) {
+        if (cboCanalAtencion == null) {
+            return;
+        }
+
+        String canalNormalizado = normalizarTexto(canalRecepcion);
+        if (canalNormalizado.isEmpty()) {
+            cboCanalAtencion.setSelectedIndex(-1);
+            return;
+        }
+
+        for (int i = 0; i < cboCanalAtencion.getItemCount(); i++) {
+            String canal = cboCanalAtencion.getItemAt(i);
+            if (canalNormalizado.equals(normalizarTexto(canal))) {
+                cboCanalAtencion.setSelectedIndex(i);
+                return;
+            }
+        }
+
+        cboCanalAtencion.addItem(canalRecepcion);
+        cboCanalAtencion.setSelectedItem(canalRecepcion);
     }
     
     private void cargarComboTipoSolicitud() {
