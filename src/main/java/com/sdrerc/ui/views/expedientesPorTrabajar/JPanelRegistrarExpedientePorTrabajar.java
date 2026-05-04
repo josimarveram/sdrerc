@@ -22,7 +22,10 @@ import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisA
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogado;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.util.TextFieldRules;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -43,21 +46,46 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Rectangle;
 import java.util.ArrayList;
+import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.table.JTableHeader;
 
 /**
  *
  * @author usuario
  */
-public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel 
+public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel implements Scrollable
 {
+    private static final Color COLOR_FONDO = new Color(245, 247, 250);
+    private static final Color COLOR_CARD = Color.WHITE;
+    private static final Color COLOR_BORDE = new Color(220, 226, 235);
+    private static final Color COLOR_TITULO = new Color(20, 45, 84);
+    private static final Color COLOR_TEXTO_SECUNDARIO = new Color(92, 105, 123);
+    private static final Color COLOR_ACCION = new Color(25, 120, 210);
+    private static final Color COLOR_ACCION_HOVER = new Color(18, 101, 184);
+    private static final Color COLOR_SECUNDARIO = new Color(239, 244, 250);
+
     private final ExpedienteService expedienteService;
     private final CatalogoItemService catalogoItemService;
     private final ExpedienteAsignacionService expedienteAsignacionService;
@@ -68,6 +96,9 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
     private ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado;
     private List<ExpedienteAnalisisAbogadoDetDoc> listaDocumentos = new ArrayList<>();
     private int filaEditando = -1;
+    private JLabel badgeEstadoActual;
+    private JLabel badgeTramiteActual;
+    private JLabel badgeTitularActual;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -127,10 +158,16 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         col.setMinWidth(0);
         col.setMaxWidth(0);
         col.setPreferredWidth(0);
+
+        configurarFormularioTrabajoExpedientePremium();
     }
 
     private void corregirTextosVisibles() {
-        btnGuardarAnalisis.setText("GUARDAR ANÁLISIS");
+        btnGuardarAnalisis.setText("Registrar análisis");
+        btnRegresar.setText("Regresar");
+        btnRegresar2.setText("Editar datos de solicitud");
+        btnGenerarDocumento.setText("Generar plantilla");
+        btnAgregarTipoAnalisis.setText("Agregar documento");
     }
     
     
@@ -167,6 +204,443 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         });
         */
         
+    }
+
+    private void configurarFormularioTrabajoExpedientePremium() {
+        setBackground(COLOR_FONDO);
+        setLayout(new BorderLayout());
+
+        corregirTextosVisibles();
+        configurarEstilosTrabajoExpediente();
+        configurarTablaDocumentosPremium();
+
+        JPanel contenido = new JPanel(new GridBagLayout());
+        contenido.setBackground(COLOR_FONDO);
+        contenido.setBorder(BorderFactory.createEmptyBorder(20, 22, 20, 22));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 14, 0);
+
+        contenido.add(crearCabeceraTrabajo(), gbc);
+
+        gbc.gridy++;
+        contenido.add(crearCardResumenSolicitud(), gbc);
+
+        gbc.gridy++;
+        contenido.add(crearFilaPlantillaResultado(), gbc);
+
+        gbc.gridy++;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        contenido.add(crearCardDocumentosAnalizados(), gbc);
+
+        gbc.gridy++;
+        gbc.weighty = 0.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        contenido.add(crearBarraAccionesTrabajo(), gbc);
+
+        JScrollPane scrollPane = new JScrollPane(contenido);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.getViewport().setBackground(COLOR_FONDO);
+
+        jPanelPrincipal.removeAll();
+        jPanelPrincipal.setLayout(new BorderLayout());
+        jPanelPrincipal.setBackground(COLOR_FONDO);
+        jPanelPrincipal.add(scrollPane, BorderLayout.CENTER);
+
+        removeAll();
+        add(jPanelPrincipal, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private JPanel crearCabeceraTrabajo() {
+        JPanel header = new JPanel(new BorderLayout(12, 10));
+        header.setOpaque(false);
+
+        JPanel textos = new JPanel(new GridBagLayout());
+        textos.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JLabel titulo = new JLabel("Trabajo del expediente");
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        titulo.setForeground(COLOR_TITULO);
+        textos.add(titulo, gbc);
+
+        gbc.gridy++;
+        JLabel subtitulo = new JLabel("Revise la solicitud, registre documentos analizados y defina el resultado del análisis.");
+        subtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        subtitulo.setForeground(COLOR_TEXTO_SECUNDARIO);
+        textos.add(subtitulo, gbc);
+
+        JPanel badges = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+        badges.setOpaque(false);
+        badgeEstadoActual = crearBadge("Estado actual: Recibido");
+        badgeTramiteActual = crearBadge("N° trámite: -");
+        badgeTitularActual = crearBadge("Titular: -");
+        badges.add(badgeEstadoActual);
+        badges.add(badgeTramiteActual);
+        badges.add(badgeTitularActual);
+
+        gbc.gridy++;
+        gbc.insets = new Insets(10, 0, 0, 0);
+        textos.add(badges, gbc);
+
+        header.add(textos, BorderLayout.CENTER);
+        return header;
+    }
+
+    private JLabel crearBadge(String texto) {
+        JLabel badge = new JLabel(texto);
+        badge.setOpaque(true);
+        badge.setBackground(new Color(232, 241, 252));
+        badge.setForeground(COLOR_TITULO);
+        badge.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        badge.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(204, 222, 244)),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+        return badge;
+    }
+
+    private JPanel crearCardResumenSolicitud() {
+        JPanel card = crearCardTrabajo("Resumen de la solicitud");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        int y = 0;
+        agregarCampoTrabajo(grid, 0, y, 1, "Fecha recepción", spFechaRecepcion);
+        agregarCampoTrabajo(grid, 1, y, 1, "Fecha solicitud", spFechaSolicitud);
+        agregarCampoTrabajo(grid, 2, y, 1, "N° trámite web", textNumeroTramiteDocumento);
+        agregarCampoTrabajo(grid, 3, y, 1, "Tipo solicitud", cboTipoSolicitud);
+
+        y++;
+        agregarCampoTrabajo(grid, 0, y, 1, "Tipo documento", cboTipoDocumento);
+        agregarCampoTrabajo(grid, 1, y, 1, "N° documento", textNumeroDocumento);
+        agregarCampoTrabajo(grid, 2, y, 1, "Tipo acta", cboTipoActa);
+        agregarCampoTrabajo(grid, 3, y, 1, "N° acta", textNumeroActa);
+
+        y++;
+        agregarCampoTrabajo(grid, 0, y, 1, "Grupo familiar", cboGrupoFamiliar);
+        agregarCampoTrabajo(grid, 1, y, 1, "Grado parentesco", cboGradoParentesco);
+        agregarCampoTrabajo(grid, 2, y, 2, "Tipo procedimiento registral", cboTipoProcedimientoRegistral);
+
+        y++;
+        agregarCampoTrabajo(grid, 0, y, 1, "DNI remitente", textDniRemitente);
+        agregarCampoTrabajo(grid, 1, y, 2, "Apellidos y nombres remitente", textApellidosNombreRemitente);
+        agregarCampoTrabajo(grid, 3, y, 1, "Unidad orgánica", cboUnidadOrganica);
+
+        y++;
+        agregarCampoTrabajo(grid, 0, y, 1, "DNI / N° documento titular", textNumeroDocumentoTitular);
+        agregarCampoTrabajo(grid, 1, y, 3, "Apellidos y nombres titular", textApellidosNombreTitular);
+
+        JPanel acciones = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnRegresar2);
+
+        card.add(grid, BorderLayout.CENTER);
+        card.add(acciones, BorderLayout.SOUTH);
+        return card;
+    }
+
+    private JPanel crearFilaPlantillaResultado() {
+        JPanel fila = new JPanel(new GridBagLayout());
+        fila.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(0, 0, 0, 10);
+
+        gbc.gridx = 0;
+        gbc.weightx = 0.42;
+        fila.add(crearCardPlantillas(), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.58;
+        gbc.insets = new Insets(0, 10, 0, 0);
+        fila.add(crearCardResultadoAnalisis(), gbc);
+        return fila;
+    }
+
+    private JPanel crearCardPlantillas() {
+        JPanel card = crearCardTrabajo("Plantillas de documento");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        agregarCampoTrabajo(grid, 0, 0, 2, "Plantilla documento", cboPlantillaDocumento);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 0, 0, 0);
+        grid.add(btnGenerarDocumento, gbc);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearCardResultadoAnalisis() {
+        JPanel card = crearCardTrabajo("Resultado del análisis");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        agregarCampoTrabajo(grid, 0, 0, 1, "¿Tiene observación?", cboTieneObservacion);
+        agregarCampoTrabajo(grid, 1, 0, 1, "Tipo de observación", cboTipoObservacion);
+        agregarCampoTrabajo(grid, 2, 0, 1, "Resultado", cboAnalisisAbogado);
+        agregarCampoTrabajo(grid, 0, 1, 3, "Descripción de la observación", jScrollPane1);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearCardDocumentosAnalizados() {
+        JPanel card = crearCardTrabajo("Documentos analizados");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        agregarCampoTrabajo(grid, 0, 0, 1, "Tipo de documento", cboTipoDocumentoAnalizado);
+        agregarCampoTrabajo(grid, 1, 0, 2, "Descripción", textDescripcionDocumentoAnalisis);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 3;
+        gbc.gridy = 0;
+        gbc.weightx = 0.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(18, 8, 8, 0);
+        grid.add(btnAgregarTipoAnalisis, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 4;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(8, 0, 0, 0);
+        jScrollPane2.setBorder(BorderFactory.createLineBorder(COLOR_BORDE));
+        jScrollPane2.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        jScrollPane2.setPreferredSize(new Dimension(760, 190));
+        grid.add(jScrollPane2, gbc);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearBarraAccionesTrabajo() {
+        JPanel barra = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
+        barra.setOpaque(false);
+        barra.add(btnRegresar);
+        barra.add(btnGuardarAnalisis);
+        return barra;
+    }
+
+    private JPanel crearCardTrabajo(String titulo) {
+        JPanel card = new JPanel(new BorderLayout(0, 12));
+        card.setBackground(COLOR_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDE),
+                BorderFactory.createEmptyBorder(16, 18, 16, 18)));
+
+        JLabel label = new JLabel(titulo);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        label.setForeground(COLOR_TITULO);
+        card.add(label, BorderLayout.NORTH);
+        return card;
+    }
+
+    private void agregarCampoTrabajo(JPanel parent, int x, int y, int width, String label, JComponent component) {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 5));
+        wrapper.setOpaque(false);
+
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(COLOR_TEXTO_SECUNDARIO);
+        wrapper.add(lbl, BorderLayout.NORTH);
+
+        dimensionarCampoTrabajo(component, width);
+        wrapper.add(component, BorderLayout.CENTER);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.gridwidth = width;
+        gbc.weightx = width;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 10, 10);
+        parent.add(wrapper, gbc);
+    }
+
+    private void dimensionarCampoTrabajo(JComponent component, int width) {
+        int ancho = width > 1 ? 360 : 190;
+        if (component instanceof JScrollPane) {
+            component.setPreferredSize(new Dimension(ancho, 92));
+        } else {
+            component.setPreferredSize(new Dimension(ancho, 36));
+            component.setMinimumSize(new Dimension(140, 34));
+        }
+    }
+
+    private void configurarEstilosTrabajoExpediente() {
+        estilizarBotonPrimario(btnGuardarAnalisis);
+        estilizarBotonPrimario(btnGenerarDocumento);
+        estilizarBotonSecundario(btnRegresar);
+        estilizarBotonSecundario(btnRegresar2);
+        estilizarBotonSecundario(btnAgregarTipoAnalisis);
+
+        btnGenerarDocumento.setToolTipText("Genera el documento base seleccionado para el expediente.");
+        btnAgregarTipoAnalisis.setToolTipText("Agregar documento analizado");
+        btnGuardarAnalisis.setToolTipText("Registra el análisis y actualiza el estado del expediente.");
+        btnRegresar.setToolTipText("Volver al listado de expedientes por trabajar.");
+
+        btnGuardarAnalisis.setIcon(IconUtils.load("active.svg", 16));
+        btnGenerarDocumento.setIcon(IconUtils.load("file.svg", 16));
+        btnRegresar.setIcon(IconUtils.load("clear.svg", 16));
+        btnAgregarTipoAnalisis.setIcon(IconUtils.load("add.svg", 16));
+
+        configurarCamposConsultaSolicitud();
+        configurarTooltipsSolicitud();
+        estilizarAreaTexto(jTextArea1);
+
+        if (cboTieneObservacion.isEnabled()) {
+            cboTieneObservacion.addActionListener(e -> aplicarEstadoObservacion());
+        }
+        aplicarEstadoObservacion();
+    }
+
+    private void estilizarBotonPrimario(JButton button) {
+        button.setBackground(COLOR_ACCION);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(9, 14, 9, 14));
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                if (button.isEnabled()) {
+                    button.setBackground(COLOR_ACCION_HOVER);
+                }
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                button.setBackground(COLOR_ACCION);
+            }
+        });
+    }
+
+    private void estilizarBotonSecundario(JButton button) {
+        button.setBackground(COLOR_SECUNDARIO);
+        button.setForeground(COLOR_TITULO);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDE),
+                BorderFactory.createEmptyBorder(8, 13, 8, 13)));
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void configurarCamposConsultaSolicitud() {
+        JComponent[] componentes = {
+            spFechaRecepcion, spFechaSolicitud, textNumeroTramiteDocumento, cboTipoDocumento,
+            textNumeroDocumento, cboTipoActa, textNumeroActa, cboGrupoFamiliar,
+            cboGradoParentesco, cboTipoProcedimientoRegistral, cboTipoSolicitud,
+            textDniRemitente, textApellidosNombreRemitente, cboUnidadOrganica,
+            textNumeroDocumentoTitular, textApellidosNombreTitular
+        };
+        for (JComponent componente : componentes) {
+            componente.setEnabled(false);
+        }
+    }
+
+    private void configurarTooltipsSolicitud() {
+        aplicarTooltipTexto(textNumeroTramiteDocumento);
+        aplicarTooltipTexto(textNumeroDocumento);
+        aplicarTooltipTexto(textNumeroActa);
+        aplicarTooltipTexto(textDniRemitente);
+        aplicarTooltipTexto(textApellidosNombreRemitente);
+        aplicarTooltipTexto(textNumeroDocumentoTitular);
+        aplicarTooltipTexto(textApellidosNombreTitular);
+        aplicarTooltipCombo(cboUnidadOrganica);
+        aplicarTooltipCombo(cboTipoProcedimientoRegistral);
+        aplicarTooltipCombo(cboTipoSolicitud);
+        actualizarBadgesResumen();
+    }
+
+    private void aplicarTooltipTexto(JTextField field) {
+        field.setToolTipText(field.getText());
+    }
+
+    private void aplicarTooltipCombo(JComboBox combo) {
+        Object selected = combo.getSelectedItem();
+        combo.setToolTipText(selected == null ? "" : selected.toString());
+    }
+
+    private void estilizarAreaTexto(JTextArea area) {
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        jScrollPane1.setBorder(BorderFactory.createLineBorder(COLOR_BORDE));
+    }
+
+    private void aplicarEstadoObservacion() {
+        if (!cboTieneObservacion.isEnabled()) {
+            cboTipoObservacion.setEnabled(false);
+            jTextArea1.setEnabled(false);
+            return;
+        }
+        boolean tieneObservacion = esSeleccionSi(cboTieneObservacion.getSelectedItem());
+        cboTipoObservacion.setEnabled(tieneObservacion);
+        jTextArea1.setEnabled(tieneObservacion);
+        if (!tieneObservacion) {
+            jTextArea1.setText("");
+        }
+    }
+
+    private boolean esSeleccionSi(Object item) {
+        if (item == null) {
+            return false;
+        }
+        String texto = normalizarTexto(item.toString());
+        return "SI".equals(texto) || "S".equals(texto);
+    }
+
+    private String normalizarTexto(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        return texto.trim().toUpperCase()
+                .replace("Á", "A")
+                .replace("É", "E")
+                .replace("Í", "I")
+                .replace("Ó", "O")
+                .replace("Ú", "U");
+    }
+
+    private void actualizarBadgesResumen() {
+        if (badgeTramiteActual != null) {
+            badgeTramiteActual.setText("N° trámite: " + valorOTexto(textNumeroTramiteDocumento.getText(), "-"));
+        }
+        if (badgeTitularActual != null) {
+            badgeTitularActual.setText("Titular: " + valorOTexto(textApellidosNombreTitular.getText(), "-"));
+            badgeTitularActual.setToolTipText(textApellidosNombreTitular.getText());
+        }
+    }
+
+    private String valorOTexto(String valor, String defecto) {
+        return valor == null || valor.trim().isEmpty() ? defecto : valor.trim();
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
@@ -250,6 +724,9 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
 
         //celular
         //textCelular.setText(lista.getCelular());
+
+        configurarCamposConsultaSolicitud();
+        configurarTooltipsSolicitud();
         
     }
     
@@ -512,12 +989,54 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
 	
     private void configurarColumnas() 
     {
-        jTableDocumentosAnalisis.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        
-        jTableDocumentosAnalisis.getColumnModel().getColumn(0).setPreferredWidth(40);
-        jTableDocumentosAnalisis.getColumnModel().getColumn(1).setPreferredWidth(180);
-        jTableDocumentosAnalisis.getColumnModel().getColumn(2).setPreferredWidth(180);
-        jTableDocumentosAnalisis.getColumnModel().getColumn(3).setPreferredWidth(70);
+        jTableDocumentosAnalisis.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+
+        ajustarColumnaTabla(0, 45, 55, 65);
+        ajustarColumnaTabla(1, 0, 0, 0);
+        ajustarColumnaTabla(2, 170, 240, 420);
+        ajustarColumnaTabla(3, 220, 420, 700);
+        ajustarColumnaTabla(4, 70, 80, 95);
+    }
+
+    private void ajustarColumnaTabla(int index, int min, int pref, int max) {
+        TableColumn column = jTableDocumentosAnalisis.getColumnModel().getColumn(index);
+        column.setMinWidth(min);
+        column.setPreferredWidth(pref);
+        column.setMaxWidth(max);
+    }
+
+    private void configurarTablaDocumentosPremium() {
+        jTableDocumentosAnalisis.setRowHeight(30);
+        jTableDocumentosAnalisis.setFillsViewportHeight(true);
+        jTableDocumentosAnalisis.setShowGrid(false);
+        jTableDocumentosAnalisis.setIntercellSpacing(new Dimension(0, 0));
+        jTableDocumentosAnalisis.setSelectionBackground(new Color(223, 237, 252));
+        jTableDocumentosAnalisis.setSelectionForeground(COLOR_TITULO);
+        jTableDocumentosAnalisis.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+
+        JTableHeader header = jTableDocumentosAnalisis.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        header.setBackground(new Color(236, 241, 247));
+        header.setForeground(COLOR_TITULO);
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 34));
+
+        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                setToolTipText(value == null ? "" : value.toString());
+                if (!isSelected) {
+                    component.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 253));
+                    component.setForeground(new Color(43, 52, 66));
+                }
+                return component;
+            }
+        };
+        renderer.setVerticalAlignment(SwingConstants.CENTER);
+        jTableDocumentosAnalisis.setDefaultRenderer(Object.class, renderer);
+        configurarColumnaNumero();
     }
     
         private void cargarTablaAnalisis(Integer idExpediente) {
@@ -1251,12 +1770,17 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
 
     
     private void btnAgregarTipoAnalisisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAgregarTipoAnalisisActionPerformed
+        if (cboTipoDocumentoAnalizado.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione el tipo de documento analizado.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         String v1 = cboTipoDocumentoAnalizado.getSelectedItem().toString();
         String v2 = textDescripcionDocumentoAnalisis.getText();
 
-        if(v2 == null || v2.isEmpty())
+        if(v2 == null || v2.trim().isEmpty())
         {
-            JOptionPane.showMessageDialog(this, "Debe ingresar la informacion necesaria", "WARNING", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Ingrese la descripción del documento analizado.", "Validación", JOptionPane.WARNING_MESSAGE);
             return;
         } 
         // Agregando a la tablaDetalle
@@ -1280,21 +1804,21 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             ExpedienteAnalisisAbogadoDetDoc det = new ExpedienteAnalisisAbogadoDetDoc();
             det.setIdTipoDocumentoAnalizado(idDocumentoAnalisis);
             det.setDescTipoDocumentoAnalizado(v3);
-            det.setDescDocumento(v2);
+            det.setDescDocumento(v2.trim());
             det.setActive(1);
             det.setUsuarioRegistro(1);
 
             listaDocumentos.add(det);
-            modelo.addRow(new Object[]{"", idDocumentoAnalisis,v3, v2, "Eliminar"});
+            modelo.addRow(new Object[]{"", idDocumentoAnalisis, v3, v2.trim(), "Eliminar"});
         } 
         else 
         {
             ExpedienteAnalisisAbogadoDetDoc det = new ExpedienteAnalisisAbogadoDetDoc();
             det.setIdTipoDocumentoAnalizado(catalogoTipoDocumentoAnalizado.getIdCatalogoItem());
-            det.setDescDocumento(v2);
+            det.setDescDocumento(v2.trim());
             
             modelo.setValueAt(v1, filaEditando, 1);
-            modelo.setValueAt(v2, filaEditando, 2);
+            modelo.setValueAt(v2.trim(), filaEditando, 2);
             filaEditando = -1;
         }
         textDescripcionDocumentoAnalisis.setText("");
@@ -1340,11 +1864,80 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             .getExpedienteAnalisisAbogadoDetDoc()
             .addAll(lista);
     }
+
+    private boolean validarAntesDeRegistrarAnalisis() {
+        return validarExpedienteCargado()
+                && validarResultadoAnalisis()
+                && validarDocumentosAnalizados()
+                && validarObservacionSiAplica();
+    }
+
+    private boolean validarExpedienteCargado() {
+        if (idExpedienteOculto == null || idExpedienteOculto == 0) {
+            JOptionPane.showMessageDialog(this, "No hay expediente cargado para registrar el análisis.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validarResultadoAnalisis() {
+        if (cboAnalisisAbogado.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione el resultado del análisis.", "Validación", JOptionPane.WARNING_MESSAGE);
+            cboAnalisisAbogado.requestFocusInWindow();
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validarDocumentosAnalizados() {
+        if (jTableDocumentosAnalisis.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "Agregue al menos un documento analizado.", "Validación", JOptionPane.WARNING_MESSAGE);
+            cboTipoDocumentoAnalizado.requestFocusInWindow();
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validarObservacionSiAplica() {
+        if (!cboTieneObservacion.isEnabled() || !esSeleccionSi(cboTieneObservacion.getSelectedItem())) {
+            return true;
+        }
+
+        if (cboTipoObservacion.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione el tipo de observación.", "Validación", JOptionPane.WARNING_MESSAGE);
+            cboTipoObservacion.requestFocusInWindow();
+            return false;
+        }
+
+        if (jTextArea1.getText() == null || jTextArea1.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Ingrese la descripción de la observación.", "Validación", JOptionPane.WARNING_MESSAGE);
+            jTextArea1.requestFocusInWindow();
+            return false;
+        }
+
+        return true;
+    }
+
     private void btnGuardarAnalisisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarAnalisisActionPerformed
         // TODO add your handling code here:
         
         try
         {
+            if (!validarAntesDeRegistrarAnalisis()) {
+                return;
+            }
+
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    this,
+                    "Se registrará el análisis del expediente y se actualizará su estado. ¿Desea continuar?",
+                    "Confirmar registro de análisis",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+
+            if (confirmacion != JOptionPane.YES_OPTION) {
+                return;
+            }
+
             // 🔥 PASO 1: reconstruir desde JTable
             sincronizarDetalleDesdeTabla();
         
@@ -1352,7 +1945,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             
             if(dataTo == null || dataTo.isEmpty())
             {
-                JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,"Agregue al menos un documento analizado." ,"Validación", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             
@@ -1373,7 +1966,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
             
             // Llamar al servicio
             if(idExpedienteOculto == 0)
-            JOptionPane.showMessageDialog(this,"Registro no puede ser actualizado" ,"Error", JOptionPane.ERROR_MESSAGE);
+            {
+                JOptionPane.showMessageDialog(this,"No hay expediente cargado para registrar el análisis." ,"Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
             expedienteAnalisisAbogadoService.agregarAnalisisAbogado(oExpedienteAnalisisAbogado);
             JOptionPane.showMessageDialog(this, "Análisis registrado correctamente","Éxito", JOptionPane.INFORMATION_MESSAGE);
@@ -1392,6 +1988,31 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel
         MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesPorTrabajar());
         // TODO add your handling code here:
     }//GEN-LAST:event_btnRegresarActionPerformed
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 24;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(visibleRect.height - 48, 120);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
+    }
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
