@@ -21,8 +21,16 @@ public class TecnicoRepository {
     public List<Tecnico> listarTecnicos() {
         List<Tecnico> lista = new ArrayList<>();
 
-        String sql = "SELECT ID_TECNICO, NUMERO_DOCUMENTO,APELLIDO_PATERNO, APELLIDO_MATERNO, NOMBRES,APELLIDO_PATERNO || ' ' || APELLIDO_MATERNO || ' ' || NOMBRES AS NOMBRE_COMPLETO " +
-                     "FROM TECNICO WHERE ACTIVE = 1 ORDER BY ID_TECNICO ASC";
+        String sql = "SELECT DISTINCT t.ID_TECNICO, t.NUMERO_DOCUMENTO, t.APELLIDO_PATERNO, t.APELLIDO_MATERNO, t.NOMBRES, " +
+                     "t.APELLIDO_PATERNO || ' ' || t.APELLIDO_MATERNO || ' ' || t.NOMBRES AS NOMBRE_COMPLETO " +
+                     "FROM TECNICO t " +
+                     "JOIN APP_USERS u ON u.ID_TECNICO = t.ID_TECNICO " +
+                     "JOIN APP_USER_ROLES ur ON ur.USER_ID = u.USER_ID " +
+                     "JOIN APP_ROLES r ON r.ROLE_ID = ur.ROLE_ID " +
+                     "WHERE t.ACTIVE = 1 " +
+                     "AND UPPER(r.ROLE_NAME) = 'ABOGADO' " +
+                     "AND UPPER(r.STATUS) IN ('ACTIVE', 'ACTIVO') " +
+                     "ORDER BY t.ID_TECNICO ASC";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
