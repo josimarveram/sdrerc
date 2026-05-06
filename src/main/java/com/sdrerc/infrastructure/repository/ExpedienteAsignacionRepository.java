@@ -210,6 +210,90 @@ public class ExpedienteAsignacionRepository {
         }               
     }
 
+    public void actualizarAsignacion(ExpedienteAsignacion asignacion, Expediente expediente) throws SQLException {
+        String updateExpedienteSql =
+            "UPDATE EXPEDIENTE SET "
+            + "FECHA_SOLICITUD = ?, "
+            + "NUMERO_TRAMITE_DOCUMENTO = ?, "
+            + "TIPO_SOLICITUD = ?, "
+            + "TIPO_DOCUMENTO = ?, "
+            + "DNI_REMITENTE = ?, "
+            + "APELLIDO_NOMBRE_REMITENTE = ?, "
+            + "TIPO_PROCEDIMIENTO_REGISTRAL = ?, "
+            + "TIPO_ACTA = ?, "
+            + "NUMERO_ACTA = ?, "
+            + "TIPO_GRUPO_FAMILIAR = ?, "
+            + "DNI_TITULAR = ?, "
+            + "APELLIDO_NOMBRE_TITULAR = ?, "
+            + "ESTADO = ?, "
+            + "ID_USUARIO_MODIFICA = ?, "
+            + "FECHA_MODIFICA = ? ,"
+            + "CORREO_ELECTRONICO = ? ,"
+            + "CELULAR = ? ,"
+            + "DOMICILIO = ? ,"
+            + "DIRECCION_DOMICILIARIA = ? ,"
+            + "GRADO_PARENTESCO = ? ,"
+            + "UNIDAD_ORGANICA = ? "
+            + "WHERE ID_EXPEDIENTE = ?";
+
+        String updateAsignacionSql = "UPDATE EXPEDIENTE_ASIGNACION SET "
+                + "ID_TECNICO = ?, FECHA_ASIGNACION = ?, HOJA_ENVIO_ASIGNACION = ? "
+                + "WHERE ID_EXPEDIENTE = ? AND ACTIVE = 1 AND ETAPA_FLUJO IS NULL";
+
+        Connection conn = null;
+        try {
+            conn = OracleConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement psUpdate = conn.prepareStatement(updateExpedienteSql)) {
+                psUpdate.setDate(1, new java.sql.Date(expediente.getFechaSolicitud().getTime()));
+                psUpdate.setString(2, expediente.getNumeroTramiteDocumento());
+                psUpdate.setInt(3, expediente.getTipoSolicitud());
+                psUpdate.setInt(4, expediente.getTipoDocumento());
+                psUpdate.setString(5, expediente.getDniRemitente());
+                psUpdate.setString(6, expediente.getApellidoNombreRemitente());
+                psUpdate.setInt(7, expediente.getTipoProcedimientoRegistral());
+                psUpdate.setInt(8, expediente.getTipoActa());
+                psUpdate.setString(9, expediente.getNumeroActa());
+                psUpdate.setInt(10, expediente.getTipoGrupoFamiliar());
+                psUpdate.setString(11, expediente.getDniTitular());
+                psUpdate.setString(12, expediente.getApellidoNombreTitular());
+                psUpdate.setInt(13, expediente.getEstado());
+                psUpdate.setInt(14, expediente.getIdUsuarioModifica());
+                psUpdate.setDate(15, new java.sql.Date(System.currentTimeMillis()));
+                psUpdate.setString(16, expediente.getCorreoElectronico());
+                psUpdate.setString(17, expediente.getCelular());
+                psUpdate.setString(18, expediente.getDomicilio());
+                psUpdate.setInt(19, expediente.getDireccionDomiciliaria());
+                psUpdate.setInt(20, expediente.getGradoParentesco());
+                psUpdate.setInt(21, expediente.getUnidadOrganica());
+                psUpdate.setInt(22, expediente.getIdExpediente());
+                psUpdate.executeUpdate();
+            }
+
+            try (PreparedStatement psUpdateAsig = conn.prepareStatement(updateAsignacionSql)) {
+                psUpdateAsig.setInt(1, asignacion.getIdTecnico());
+                psUpdateAsig.setDate(2, new java.sql.Date(asignacion.getFechaAsignacion().getTime()));
+                psUpdateAsig.setString(3, asignacion.getHojaEnvioAsignacion());
+                psUpdateAsig.setInt(4, asignacion.getIdExpediente());
+                int filas = psUpdateAsig.executeUpdate();
+                if (filas == 0) {
+                    throw new SQLException("No se encontró una asignación activa para actualizar.");
+                }
+            }
+
+            conn.commit();
+        } catch (SQLException ex) {
+            if (conn != null) {
+                conn.rollback();
+            }
+            throw ex;
+        } finally {
+            if (conn != null) conn.setAutoCommit(true);
+            if (conn != null) conn.close();
+        }
+    }
+
     private boolean existeAsignacionActivaPorEtapa(Connection conn, int idExpediente, Integer etapaFlujo) throws SQLException {
         String sql;
         if (etapaFlujo == null) {

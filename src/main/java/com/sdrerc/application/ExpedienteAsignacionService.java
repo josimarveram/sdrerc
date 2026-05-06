@@ -25,17 +25,24 @@ public class ExpedienteAsignacionService {
     
     public void agregarExpediente(ExpedienteAsignacion asignacion, Expediente expediente) throws Exception 
     {
-        // Validaciones mínimas
         if (asignacion == null) {
             throw new Exception("La asignación no puede ser nula.");
         }      
-
         if (asignacion.getFechaAsignacion() == null) {
             throw new Exception("Debe seleccionar una fecha de asignación.");
         }
-
-        // Registrar en la BD → Llama al DAO
         expedienteAsignacionRepository.registrar(asignacion,expediente);
+    }
+
+    public void actualizarAsignacion(ExpedienteAsignacion asignacion, Expediente expediente) throws Exception 
+    {
+        if (asignacion == null) {
+            throw new Exception("La asignación no puede ser nula.");
+        }      
+        if (asignacion.getFechaAsignacion() == null) {
+            throw new Exception("Debe seleccionar una fecha de asignación.");
+        }
+        expedienteAsignacionRepository.actualizarAsignacion(asignacion, expediente);
     }
 
     public boolean RegistrarAsigancionExpedienteTO(ExpedienteAsignacion oExpedienteAsignacion) throws Exception 

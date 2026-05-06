@@ -105,8 +105,30 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
         textApellidosNombreRemitente.setEnabled(false);
         cboUnidadOrganica.setEnabled(false);
 
+        bloquearDatosSolicitudYNotificacion();
+
         ComboBoxUtils.applySmartRenderer(this);
         configurarFormularioAsignacionPremium();
+    }
+
+    private void bloquearDatosSolicitudYNotificacion() {
+        spFechaRecepcion.setEnabled(false);
+        cboCanalRecepcion.setEnabled(false);
+        textNumeroTramiteDocumento.setEnabled(false);
+        cboTipoSolicitud.setEnabled(false);
+        cboTipoDocumento.setEnabled(false);
+        textNumeroDocumento.setEnabled(false);
+        cboTipoActa.setEnabled(false);
+        textNumeroActa.setEnabled(false);
+        cboGrupoFamiliar.setEnabled(false);
+        cboGradoParentesco.setEnabled(false);
+        textNumeroDocumentoTitular.setEnabled(false);
+        textApellidosNombreTitular.setEnabled(false);
+        cboTipoProcedimientoRegistral.setEnabled(false);
+        textCorreoElectronico.setEnabled(false);
+        textCelular.setEnabled(false);
+        textDomicilio.setEnabled(false);
+        cboDireccionDomiciliaria.setEnabled(false);
     }
 
     private void initFechaSolicitudPicker() {
@@ -699,6 +721,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
 
     private void aplicarModoConsultaSiCorresponde() {
         modoConsulta = estadoExpedienteActual != Enumerado.EstadoExpediente.RegistroExpediente.getId();
+        boolean esAsignadoPendienteRecibir = estadoExpedienteActual == Enumerado.EstadoExpediente.ExpedienteAsignado.getId();
         actualizarHeaderEstado();
 
         if (!modoConsulta) {
@@ -711,19 +734,33 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
                 cboGrupoFamiliar, cboGradoParentesco, cboTipoProcedimientoRegistral,
                 cboTipoSolicitud, textDniRemitente, textApellidosNombreRemitente,
                 cboUnidadOrganica, textNumeroDocumentoTitular, textApellidosNombreTitular,
-                textCorreoElectronico, textCelular, cboDireccionDomiciliaria, textDomicilio,
-                txtNombreTecnico, spFechaAsignacion, textHojaEnvioAsignacion
+                textCorreoElectronico, textCelular, cboDireccionDomiciliaria, textDomicilio
         }) {
             component.setEnabled(false);
         }
 
-        jButton2.setEnabled(false);
-        btnLimpiar.setEnabled(false);
-        btnGuardar.setEnabled(false);
-        btnGuardar.setText("Solo consulta");
-        btnGuardar.setToolTipText("Este expediente ya cuenta con una asignación activa.");
-        jButton2.setToolTipText("La persona asignada no puede modificarse desde este modo de consulta.");
-        textHojaEnvioAsignacion.setToolTipText("Hoja de envío registrada en la asignación.");
+        if (esAsignadoPendienteRecibir) {
+            txtNombreTecnico.setEnabled(true);
+            spFechaAsignacion.setEnabled(true);
+            textHojaEnvioAsignacion.setEnabled(true);
+            jButton2.setEnabled(true);
+            btnLimpiar.setEnabled(true);
+            btnGuardar.setEnabled(true);
+            btnGuardar.setText("Actualizar asignación");
+        } else {
+            for (JComponent component : new JComponent[] {
+                    txtNombreTecnico, spFechaAsignacion, textHojaEnvioAsignacion
+            }) {
+                component.setEnabled(false);
+            }
+            jButton2.setEnabled(false);
+            btnLimpiar.setEnabled(false);
+            btnGuardar.setEnabled(false);
+            btnGuardar.setText("Solo consulta");
+            btnGuardar.setToolTipText("Este expediente ya cuenta con una asignación activa.");
+            jButton2.setToolTipText("La persona asignada no puede modificarse desde este modo de consulta.");
+            textHojaEnvioAsignacion.setToolTipText("Hoja de envío registrada en la asignación.");
+        }
     }
 
     private void actualizarHeaderEstado() {
@@ -1472,15 +1509,22 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     }
     
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
-        if (modoConsulta) {
+        boolean esAsignadoPendienteRecibir = estadoExpedienteActual == Enumerado.EstadoExpediente.ExpedienteAsignado.getId();
+        if (modoConsulta && !esAsignadoPendienteRecibir) {
             JOptionPane.showMessageDialog(this,
                     "Este expediente ya cuenta con una asignación activa. La información se muestra solo para consulta.",
                     "Solo consulta",
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        if (!validarFormulario()) {
-            return; // Detiene el proceso si hay errores
+        if (esAsignadoPendienteRecibir) {
+            if (!validarAntesDeGenerarAsignacion()) {
+                return;
+            }
+        } else {
+            if (!validarFormulario()) {
+                return;
+            }
         }
         if (!confirmarGeneracionAsignacion()) {
             return;
@@ -1585,9 +1629,13 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
             
             asignacion.setHojaEnvioAsignacion(textHojaEnvioAsignacion.getText());
             
-            expedienteAsignacionService.agregarExpediente(asignacion,expediente);
-
-            JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
+            if (esAsignadoPendienteRecibir) {
+                expedienteAsignacionService.actualizarAsignacion(asignacion, expediente);
+                JOptionPane.showMessageDialog(this, "Asignación actualizada correctamente");
+            } else {
+                expedienteAsignacionService.agregarExpediente(asignacion, expediente);
+                JOptionPane.showMessageDialog(this, "Asignación registrada correctamente");
+            }
 
             MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
             /*
@@ -1634,33 +1682,12 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     }//GEN-LAST:event_btnGuardarActionPerformed
 
     private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
-        if (modoConsulta) {
-            cboTipoSolicitud.setEnabled(false);
-            textDniRemitente.setEnabled(false);
-            textApellidosNombreRemitente.setEnabled(false);
-            cboUnidadOrganica.setEnabled(false);
-            return;
-        }
-        
-        CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
-        int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem(); 
-        
-        if(idTipoSolicitud == 10)
-        {
-          textDniRemitente.setEnabled(true);
-          textApellidosNombreRemitente.setEnabled(true);
-          cboUnidadOrganica.setEnabled(false);
-        }
-        else
-        {
-           textDniRemitente.setEnabled(false);
-           textApellidosNombreRemitente.setEnabled(false);
-           cboUnidadOrganica.setEnabled(true); 
-        }
+        // Los controles de datos de la solicitud están siempre bloqueados
     }//GEN-LAST:event_cboTipoSolicitudActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        if (modoConsulta) {
+        boolean esAsignadoPendienteRecibir = estadoExpedienteActual == Enumerado.EstadoExpediente.ExpedienteAsignado.getId();
+        if (modoConsulta && !esAsignadoPendienteRecibir) {
             JOptionPane.showMessageDialog(this,
                     "Este expediente ya cuenta con una asignación activa. La persona asignada no puede modificarse desde este flujo.",
                     "Solo consulta",
