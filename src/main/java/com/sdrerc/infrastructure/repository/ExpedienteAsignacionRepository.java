@@ -424,7 +424,7 @@ public class ExpedienteAsignacionRepository {
     {        
         List<Expediente> lista = new ArrayList<>();
         
-        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT EXPEDIENTE.*, "
+        StringBuilder sqlListaExpediente = new StringBuilder("	SELECT EXPEDIENTE.*, EXPEDIENTE_ASIGNACION.FECHA_ASIGNACION, "
                 + "CASE WHEN TECNICO.ID_TECNICO IS NULL THEN NULL "
                 + "ELSE TRIM(NVL(TECNICO.APELLIDO_PATERNO, '') || ' ' || NVL(TECNICO.APELLIDO_MATERNO, '') || ', ' || NVL(TECNICO.NOMBRES, '')) END AS ABOGADO_DESIGNADO "
                 + "FROM EXPEDIENTE "
@@ -464,6 +464,8 @@ public class ExpedienteAsignacionRepository {
         {
             sqlListaExpediente.append("AND ID_EXPEDIENTE_DOCUMENTO_VERIFICAR IS NOT NULL ");
         }
+        
+        sqlListaExpediente.append("ORDER BY EXPEDIENTE_ASIGNACION.FECHA_ASIGNACION DESC, EXPEDIENTE.ID_EXPEDIENTE DESC");
         
         
         Connection conn = null;
@@ -513,7 +515,7 @@ public class ExpedienteAsignacionRepository {
         boolean filtrarTecnico = idTecnico > 0;
 
         StringBuilder sql = new StringBuilder(
-                "SELECT e.*, "
+                "SELECT e.*, ea.FECHA_ASIGNACION, "
                 + "CASE WHEN t.ID_TECNICO IS NULL THEN NULL "
                 + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS ABOGADO_DESIGNADO "
                 + "FROM EXPEDIENTE e "
@@ -531,7 +533,7 @@ public class ExpedienteAsignacionRepository {
         if (filtrarTexto) {
             sql.append("AND UPPER(").append(filtroCampo).append(") LIKE ? ");
         }
-        sql.append("ORDER BY e.FECHA_SOLICITUD DESC, e.ID_EXPEDIENTE DESC");
+        sql.append("ORDER BY ea.FECHA_ASIGNACION DESC, e.ID_EXPEDIENTE DESC");
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -578,6 +580,58 @@ public class ExpedienteAsignacionRepository {
             default:
                 return null;
         }
+    }
+
+    public List<Expediente> listarExpedientesPorTrabajar(String campo, String valor, int estadoItem, int idTecnico) throws SQLException
+    {
+        List<Expediente> lista = new ArrayList<>();
+        String filtroCampo = resolverFiltroCampoAsignado(campo);
+        boolean filtrarTexto = valor != null && !valor.trim().isEmpty() && filtroCampo != null;
+        boolean filtrarEstado = estadoItem != 0;
+        boolean filtrarPorTrabajar = estadoItem == 0;
+        boolean filtrarTecnico = idTecnico > 0;
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT e.*, ea.FECHA_ASIGNACION, "
+                + "CASE WHEN t.ID_TECNICO IS NULL THEN NULL "
+                + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS ABOGADO_DESIGNADO "
+                + "FROM EXPEDIENTE e "
+                + "INNER JOIN EXPEDIENTE_ASIGNACION ea ON e.ID_EXPEDIENTE = ea.ID_EXPEDIENTE "
+                + "LEFT JOIN TECNICO t ON t.ID_TECNICO = ea.ID_TECNICO "
+                + "WHERE ea.ACTIVE = 1 "
+                + "AND ea.ETAPA_FLUJO IS NULL ");
+
+        if (filtrarTecnico) {
+            sql.append("AND ea.ID_TECNICO = ? ");
+        }
+        if (filtrarEstado) {
+            sql.append("AND e.ESTADO = ? ");
+        }
+        if (filtrarPorTrabajar) {
+            sql.append("AND e.ESTADO IN (58, 59) ");
+        }
+        if (filtrarTexto) {
+            sql.append("AND UPPER(").append(filtroCampo).append(") LIKE ? ");
+        }
+        sql.append("ORDER BY ea.FECHA_ASIGNACION DESC, e.ID_EXPEDIENTE DESC");
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int paramIndex = 1;
+            if (filtrarTecnico) {
+                ps.setInt(paramIndex++, idTecnico);
+            }
+            if (filtrarTexto) {
+                ps.setString(paramIndex++, "%" + valor.trim().toUpperCase() + "%");
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapRow(rs));
+                }
+            }
+        }
+        return lista;
     }
 
     public ExpedienteAsignacion buscarAsignacionInicialActivaPorExpediente(int idExpediente) throws SQLException
@@ -649,6 +703,7 @@ public class ExpedienteAsignacionRepository {
                             rs.getDate("FECHA_MODIFICA")
         );
         expediente.setAbogadoDesignado(obtenerStringSiExiste(rs, "ABOGADO_DESIGNADO"));
+        expediente.setFechaAsignacion(rs.getDate("FECHA_ASIGNACION"));
         return expediente;
     }
 

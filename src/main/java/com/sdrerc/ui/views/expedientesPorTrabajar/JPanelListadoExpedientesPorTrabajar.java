@@ -137,9 +137,6 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
             String valor = txtValorBusqueda.getText() == null ? "" : txtValorBusqueda.getText().trim();
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
             int idestado = estado == null ? 0 : estado.getIdCatalogoItem();
-            if (idestado == 0) {
-                idestado = Enumerado.EstadoExpediente.ExpedienteRecibido.getId();
-            }
 
             List<Expediente> lista = expedienteAsignacionService.listarExpedientesPorTrabajar(campo, valor, idestado, idTecnicoFiltro);
             List<Expediente> filtrada = filtrarPorRangoFechas(lista, obtenerFechaDesde(), obtenerFechaHasta());

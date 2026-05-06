@@ -160,7 +160,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     {        
         String[] columnas = 
         {
-          "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Abogado designado", "Estado"
+          "ID", "Fecha Asignación", "N° Trámite", "Solicitante", "Titular", "Abogado designado", "Estado"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -176,7 +176,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         for (Expediente e : lista) {
             Object[] fila = {
                     e.getIdExpediente(),
-                    formatearFecha(e.getFechaSolicitud()),
+                    formatearFecha(e.getFechaAsignacion()),
                     e.getNumeroTramiteDocumento(),
                     e.getApellidoNombreRemitente(),
                     e.getApellidoNombreTitular(),
@@ -207,14 +207,14 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
 
         List<Expediente> filtrada = new ArrayList<>();
         for (Expediente expediente : lista) {
-            Date fechaSolicitud = expediente.getFechaSolicitud();
-            if (fechaSolicitud == null) {
+            Date fechaAsignacion = expediente.getFechaAsignacion();
+            if (fechaAsignacion == null) {
                 continue;
             }
-            if (fechaDesde != null && fechaSolicitud.before(fechaDesde)) {
+            if (fechaDesde != null && fechaAsignacion.before(fechaDesde)) {
                 continue;
             }
-            if (fechaHasta != null && fechaSolicitud.after(fechaHasta)) {
+            if (fechaHasta != null && fechaAsignacion.after(fechaHasta)) {
                 continue;
             }
             filtrada.add(expediente);

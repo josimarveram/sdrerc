@@ -44,6 +44,7 @@ public class Expediente
     private int idUsuarioModifica;
     private Date fechaModifica;
     private String abogadoDesignado;
+    private Date fechaAsignacion;
     
     
     public Expediente() 
@@ -350,5 +351,13 @@ public class Expediente
 
     public void setAbogadoDesignado(String abogadoDesignado) {
         this.abogadoDesignado = abogadoDesignado;
+    }
+
+    public Date getFechaAsignacion() {
+        return fechaAsignacion;
+    }
+
+    public void setFechaAsignacion(Date fechaAsignacion) {
+        this.fechaAsignacion = fechaAsignacion;
     }
 }
