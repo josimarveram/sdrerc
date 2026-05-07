@@ -44,6 +44,7 @@ public class Expediente
     private int idUsuarioModifica;
     private Date fechaModifica;
     private String abogadoDesignado;
+    private String supervisorDesignado;
     private Date fechaAsignacion;
     
     
@@ -351,6 +352,14 @@ public class Expediente
 
     public void setAbogadoDesignado(String abogadoDesignado) {
         this.abogadoDesignado = abogadoDesignado;
+    }
+
+    public String getSupervisorDesignado() {
+        return supervisorDesignado;
+    }
+
+    public void setSupervisorDesignado(String supervisorDesignado) {
+        this.supervisorDesignado = supervisorDesignado;
     }
 
     public Date getFechaAsignacion() {

@@ -634,6 +634,87 @@ public class ExpedienteAsignacionRepository {
         return lista;
     }
 
+    public List<Expediente> listarExpedientesPorVerificar(String campo, String valor, int estadoItem, Long supervisorUserId, boolean verTodo) throws SQLException
+    {
+        List<Expediente> lista = new ArrayList<>();
+        String filtroCampo = resolverFiltroCampoVerificacion(campo);
+        boolean filtrarTexto = valor != null && !valor.trim().isEmpty() && filtroCampo != null;
+        boolean filtrarEstado = estadoItem != 0;
+        boolean filtrarSupervisor = !verTodo && supervisorUserId != null && supervisorUserId > 0;
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT e.*, ea.FECHA_ASIGNACION, "
+                + "CASE WHEN t.ID_TECNICO IS NULL THEN au.FULL_NAME "
+                + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS ABOGADO_DESIGNADO, "
+                + "CASE WHEN ts.ID_TECNICO IS NULL THEN su.FULL_NAME "
+                + "ELSE TRIM(NVL(ts.APELLIDO_PATERNO, '') || ' ' || NVL(ts.APELLIDO_MATERNO, '') || ', ' || NVL(ts.NOMBRES, '')) END AS SUPERVISOR_DESIGNADO "
+                + "FROM EXPEDIENTE e "
+                + "INNER JOIN EXPEDIENTE_ASIGNACION ea ON e.ID_EXPEDIENTE = ea.ID_EXPEDIENTE "
+                + "LEFT JOIN TECNICO t ON t.ID_TECNICO = ea.ID_TECNICO "
+                + "LEFT JOIN APP_USERS au ON au.ID_TECNICO = ea.ID_TECNICO "
+                + "LEFT JOIN APP_USER_SUPERVISION aus ON aus.ABOGADO_ID = au.USER_ID "
+                + "LEFT JOIN APP_USERS su ON su.USER_ID = aus.SUPERVISOR_ID "
+                + "LEFT JOIN TECNICO ts ON ts.ID_TECNICO = su.ID_TECNICO "
+                + "INNER JOIN ( "
+                + "    SELECT DISTINCT a.ID_EXPEDIENTE "
+                + "    FROM EXPEDIENTE_ANALISIS_ABOGADO a "
+                + "    INNER JOIN EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC d ON d.ID_EXPEDIENTE_ANALISIS_ABOGADO = a.ID_EXPEDIENTE_ANALISIS_ABOGADO "
+                + "    WHERE d.ID_TIPO_DOCUMENTO_ANALIZADO IN (" + DocumentoAnalizado.RESOLUCIONES + "," + DocumentoAnalizado.INFORMES + ") "
+                + "    AND d.ACTIVE = 1 "
+                + ") doc ON doc.ID_EXPEDIENTE = e.ID_EXPEDIENTE "
+                + "WHERE ea.ACTIVE = 1 "
+                + "AND ea.ETAPA_FLUJO IS NULL ");
+
+        if (filtrarEstado) {
+            sql.append("AND e.ESTADO = ? ");
+        }
+        if (filtrarSupervisor) {
+            sql.append("AND aus.SUPERVISOR_ID = ? ");
+        }
+        if (filtrarTexto) {
+            sql.append("AND UPPER(").append(filtroCampo).append(") LIKE ? ");
+        }
+        sql.append("ORDER BY ea.FECHA_ASIGNACION DESC, e.ID_EXPEDIENTE DESC");
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int paramIndex = 1;
+            if (filtrarEstado) {
+                ps.setInt(paramIndex++, estadoItem);
+            }
+            if (filtrarSupervisor) {
+                ps.setLong(paramIndex++, supervisorUserId);
+            }
+            if (filtrarTexto) {
+                ps.setString(paramIndex++, "%" + valor.trim().toUpperCase() + "%");
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapRow(rs));
+                }
+            }
+        }
+        return lista;
+    }
+
+    private String resolverFiltroCampoVerificacion(String campo)
+    {
+        if (campo == null) {
+            return null;
+        }
+
+        String normalizado = campo.trim().toUpperCase();
+        switch (normalizado) {
+            case "ABOGADO_DESIGNADO":
+                return "NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '') || ' ' || NVL(au.FULL_NAME, '')";
+            case "SUPERVISOR_DESIGNADO":
+                return "NVL(ts.APELLIDO_PATERNO, '') || ' ' || NVL(ts.APELLIDO_MATERNO, '') || ', ' || NVL(ts.NOMBRES, '') || ' ' || NVL(su.FULL_NAME, '')";
+            default:
+                return resolverFiltroCampoAsignado(campo);
+        }
+    }
+
     public ExpedienteAsignacion buscarAsignacionInicialActivaPorExpediente(int idExpediente) throws SQLException
     {
         String sql =
@@ -703,6 +784,7 @@ public class ExpedienteAsignacionRepository {
                             rs.getDate("FECHA_MODIFICA")
         );
         expediente.setAbogadoDesignado(obtenerStringSiExiste(rs, "ABOGADO_DESIGNADO"));
+        expediente.setSupervisorDesignado(obtenerStringSiExiste(rs, "SUPERVISOR_DESIGNADO"));
         expediente.setFechaAsignacion(rs.getDate("FECHA_ASIGNACION"));
         return expediente;
     }

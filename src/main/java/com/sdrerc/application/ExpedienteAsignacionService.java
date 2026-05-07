@@ -89,6 +89,11 @@ public class ExpedienteAsignacionService {
         return expedienteAsignacionRepository.listarExpedientesPorTrabajar(campo, valor, estadoItem, idTecnico);
     }
 
+    public List<Expediente> listarExpedientesPorVerificar(String campo, String valor, int estadoItem, Long supervisorUserId, boolean verTodo) throws Exception
+    {
+        return expedienteAsignacionRepository.listarExpedientesPorVerificar(campo, valor, estadoItem, supervisorUserId, verTodo);
+    }
+
     public ExpedienteAsignacion buscarAsignacionInicialActivaPorExpediente(int idExpediente) throws Exception
     {
         return expedienteAsignacionRepository.buscarAsignacionInicialActivaPorExpediente(idExpediente);
