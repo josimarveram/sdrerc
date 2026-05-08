@@ -88,11 +88,16 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         cargarComboTipoProcedimientoRegistral(); 
         cargarComboTipoActa();
         cargarComboGrupoFamiliar();
+        cboGrupoFamiliar.setSelectedIndex(-1);
         cargarComboParentesco();
+        cboGradoParentesco.setSelectedIndex(-1);
         cargarComboDireccionDomiciliaria();
+        cboDireccionDomiciliaria.setSelectedIndex(-1);
+        ultimaDireccionDomiciliariaSeleccionada = null;
         cargarComboUnidadOrganica();
         
         cargarDepartamentos();
+        cboDepartamento.setSelectedIndex(-1);
 
         cboProvincia.setEnabled(false);
         cboDistrito.setEnabled(false);
@@ -896,7 +901,10 @@ private void seleccionarDistrito(int idDistrito) {
 
         // Resetear JComboBoxes al primer elemento
         if (cboCanalRecepcion.getItemCount() > 0) cboCanalRecepcion.setSelectedIndex(0);
-        if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(0);
+        if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(-1);
+        if (cboGradoParentesco.getItemCount() > 0) cboGradoParentesco.setSelectedIndex(-1);
+        if (cboDireccionDomiciliaria.getItemCount() > 0) cboDireccionDomiciliaria.setSelectedIndex(-1);
+        ultimaDireccionDomiciliariaSeleccionada = null;
         if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(0);
         if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
         if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
@@ -921,17 +929,38 @@ private void seleccionarDistrito(int idDistrito) {
         }
 
         aplicarReglasTipoSolicitud();
-        if (esParte()) {
-            if (textDniRemitente.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Ingrese el DNI del remitente.");
-                textDniRemitente.requestFocus();
-                return false;
-            }
-            if (textApellidosNombreRemitente.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Ingrese los apellidos y nombres del remitente.");
-                textApellidosNombreRemitente.requestFocus();
-                return false;
-            }
+
+        String dniRemitente = textDniRemitente.getText().trim();
+        if (!dniRemitente.isEmpty() && !dniRemitente.matches("\\d{8}")) {
+            JOptionPane.showMessageDialog(this, "El DNI del remitente debe tener 8 dígitos.");
+            textDniRemitente.requestFocus();
+            return false;
+        }
+
+        String correo = textCorreoElectronico.getText().trim();
+        if (!correo.isEmpty() && !correo.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            JOptionPane.showMessageDialog(this, "Ingrese un correo electrónico válido.");
+            textCorreoElectronico.requestFocus();
+            return false;
+        }
+
+        String celular = textCelular.getText().trim();
+        if (!celular.isEmpty() && !celular.matches("\\d{9}")) {
+            JOptionPane.showMessageDialog(this, "El celular debe tener 9 dígitos.");
+            textCelular.requestFocus();
+            return false;
+        }
+
+        if (cboProvincia.getSelectedItem() != null && cboDepartamento.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Si selecciona provincia, debe seleccionar departamento.");
+            cboDepartamento.requestFocus();
+            return false;
+        }
+
+        if (cboDistrito.getSelectedItem() != null && cboProvincia.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Si selecciona distrito, debe seleccionar provincia.");
+            cboProvincia.requestFocus();
+            return false;
         }
 
         if (esOficio() && cboUnidadOrganica.getSelectedItem() == null) {
@@ -972,6 +1001,34 @@ private void seleccionarDistrito(int idDistrito) {
 
     private boolean esOficio() {
         return "OFICIO".equals(descripcionTipoSolicitudSeleccionada());
+    }
+
+    private int idCatalogoOpcional(JComboBox combo)
+    {
+        Object item = combo.getSelectedItem();
+        if (item instanceof CatalogoItem) {
+            int id = ((CatalogoItem) item).getIdCatalogoItem();
+            return id > 0 ? id : 0;
+        }
+        return 0;
+    }
+
+    private int idDepartamentoOpcional()
+    {
+        Object item = cboDepartamento.getSelectedItem();
+        return item instanceof Departamento ? ((Departamento) item).getIdDepartamento() : 0;
+    }
+
+    private int idProvinciaOpcional()
+    {
+        Object item = cboProvincia.getSelectedItem();
+        return item instanceof Provincia ? ((Provincia) item).getIdProvincia() : 0;
+    }
+
+    private int idDistritoOpcional()
+    {
+        Object item = cboDistrito.getSelectedItem();
+        return item instanceof Distrito ? ((Distrito) item).getIdDistrito() : 0;
     }
 
     private String descripcionTipoSolicitudSeleccionada() {
@@ -1588,13 +1645,11 @@ private void seleccionarDistrito(int idDistrito) {
             expediente.setNumeroActa(textNumeroActa.getText());
             
             //tipoGrupoFamiliar
-            CatalogoItem catalogoGrupoFamiliar = (CatalogoItem) cboGrupoFamiliar.getSelectedItem();
-            int idGrupoFamiliar = catalogoGrupoFamiliar.getIdCatalogoItem();
+            int idGrupoFamiliar = idCatalogoOpcional(cboGrupoFamiliar);
             expediente.setTipoGrupoFamiliar(idGrupoFamiliar);
             
             //gradoParentesco
-            CatalogoItem catalogoGradoParentesco = (CatalogoItem) cboGradoParentesco.getSelectedItem();
-            int idgradoParentesco = catalogoGradoParentesco.getIdCatalogoItem();
+            int idgradoParentesco = idCatalogoOpcional(cboGradoParentesco);
             expediente.setGradoParentesco(idgradoParentesco);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //tipoProcedimientoRegistral
@@ -1627,23 +1682,19 @@ private void seleccionarDistrito(int idDistrito) {
             expediente.setApellidoNombreTitular(textApellidosNombreTitular.getText());
             
             //departamento
-            Departamento departamento = (Departamento) cboDepartamento.getSelectedItem();
-            int idDepartamento = departamento.getIdDepartamento();
+            int idDepartamento = idDepartamentoOpcional();
             expediente.setDepartamento(idDepartamento);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //provincia
-            Provincia provincia = (Provincia) cboProvincia.getSelectedItem();
-            int idProvincia = provincia.getIdProvincia();         
+            int idProvincia = idProvinciaOpcional();
             expediente.setProvincia(idProvincia);
             
             //distrito
-            Distrito distrito = (Distrito) cboDistrito.getSelectedItem();
-            int idDistrito = distrito.getIdDistrito();        
+            int idDistrito = idDistritoOpcional();
             expediente.setDistrito(idDistrito);             //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //direccionDomiciliaria
-            CatalogoItem catalogoDireccionDomiciliaria = (CatalogoItem) cboDireccionDomiciliaria.getSelectedItem();
-            int idDireccionDomiciliaria = catalogoDireccionDomiciliaria.getIdCatalogoItem();            
+            int idDireccionDomiciliaria = idCatalogoOpcional(cboDireccionDomiciliaria);
             expediente.setDireccionDomiciliaria(idDireccionDomiciliaria);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //domicilio
