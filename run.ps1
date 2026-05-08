@@ -46,7 +46,14 @@ $java = if (Test-Path $preferredJava) { $preferredJava } else { "java" }
 
 $classpath = $jars -join ";"
 
-$javaVersionOutput = & $java -version 2>&1
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+    $javaVersionOutput = & $java -version 2>&1
+}
+finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
 $javaVersionLine = ($javaVersionOutput | Select-Object -First 1).ToString()
 $javaMajorVersion = 0
 if ($javaVersionLine -match '"(?<major>\d+)(?:\.(?<minor>\d+))?') {
