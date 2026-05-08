@@ -19,6 +19,7 @@ import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.util.ComboBoxUtils;
 import com.sdrerc.util.DateRangePickerSupport;
+import com.sdrerc.util.FormValidationUI;
 import com.sdrerc.util.TextFieldRules;
 import com.toedter.calendar.JDateChooser;
 import java.awt.BorderLayout;
@@ -31,6 +32,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
@@ -115,6 +117,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
 
         ComboBoxUtils.applySmartRenderer(this);
         configurarFormularioPremium();
+        configurarValidacionVisualRecepcion();
     }
 
     private void initFechaSolicitudPicker() {
@@ -911,65 +914,240 @@ private void seleccionarDistrito(int idDistrito) {
         if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
         aplicarReglasTipoSolicitud();
         actualizarTituloFormulario();
+        FormValidationUI.clearAll(this);
     }
     
     private boolean validarGuardar()
     {
-        //esRegistroSdrerc 
-        if (jRadiButonNoCorresponde.isSelected() && textHojaEnvioExpediente.getText().trim().isEmpty()) 
-        {
-            JOptionPane.showMessageDialog(this,"Debe ingresar la Hoja de Envío");textHojaEnvioExpediente.requestFocus();
-            return false;
-        }
-
-        if (cboCanalRecepcion.getSelectedItem() == null)
-        {
-            JOptionPane.showMessageDialog(this,"Debe seleccionar el Canal de recepción");cboCanalRecepcion.requestFocus();
-            return false;
-        }
-
         aplicarReglasTipoSolicitud();
+        if (!validarCamposObligatoriosVisualmente(true)) {
+            return false;
+        }
 
         String dniRemitente = textDniRemitente.getText().trim();
         if (!dniRemitente.isEmpty() && !dniRemitente.matches("\\d{8}")) {
+            FormValidationUI.markInvalid(textDniRemitente, "El DNI del remitente debe tener 8 dígitos.");
             JOptionPane.showMessageDialog(this, "El DNI del remitente debe tener 8 dígitos.");
             textDniRemitente.requestFocus();
             return false;
+        } else {
+            FormValidationUI.clear(textDniRemitente);
         }
 
         String correo = textCorreoElectronico.getText().trim();
         if (!correo.isEmpty() && !correo.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            FormValidationUI.markInvalid(textCorreoElectronico, "Ingrese un correo electrónico válido.");
             JOptionPane.showMessageDialog(this, "Ingrese un correo electrónico válido.");
             textCorreoElectronico.requestFocus();
             return false;
+        } else {
+            FormValidationUI.clear(textCorreoElectronico);
         }
 
         String celular = textCelular.getText().trim();
         if (!celular.isEmpty() && !celular.matches("\\d{9}")) {
+            FormValidationUI.markInvalid(textCelular, "El celular debe tener 9 dígitos.");
             JOptionPane.showMessageDialog(this, "El celular debe tener 9 dígitos.");
             textCelular.requestFocus();
             return false;
+        } else {
+            FormValidationUI.clear(textCelular);
         }
 
         if (cboProvincia.getSelectedItem() != null && cboDepartamento.getSelectedItem() == null) {
+            FormValidationUI.markInvalid(cboDepartamento, "Si selecciona provincia, debe seleccionar departamento.");
             JOptionPane.showMessageDialog(this, "Si selecciona provincia, debe seleccionar departamento.");
             cboDepartamento.requestFocus();
             return false;
+        } else {
+            FormValidationUI.clear(cboDepartamento);
         }
 
         if (cboDistrito.getSelectedItem() != null && cboProvincia.getSelectedItem() == null) {
+            FormValidationUI.markInvalid(cboProvincia, "Si selecciona distrito, debe seleccionar provincia.");
             JOptionPane.showMessageDialog(this, "Si selecciona distrito, debe seleccionar provincia.");
             cboProvincia.requestFocus();
             return false;
-        }
-
-        if (esOficio() && cboUnidadOrganica.getSelectedItem() == null) {
-            JOptionPane.showMessageDialog(this, "Seleccione la unidad orgánica para solicitudes tipo OFICIO.");
-            cboUnidadOrganica.requestFocus();
-            return false;
+        } else {
+            FormValidationUI.clear(cboProvincia);
         }
 
         return true;
+    }
+
+    private void configurarValidacionVisualRecepcion()
+    {
+        FormValidationUI.onFocusLost(spFechaRecepcion, () -> validarCampoFechaSolicitud(null));
+        FormValidationUI.onFocusLost(cboCanalRecepcion, () -> {
+            validarCampoCanalRecepcion(null);
+            validarCampoNumeroTramiteWeb(null);
+        });
+        FormValidationUI.onFocusLost(textNumeroTramiteDocumento, () -> validarCampoNumeroTramiteWeb(null));
+        FormValidationUI.onFocusLost(cboTipoDocumento, () -> validarCampoTipoDocumento(null));
+        FormValidationUI.onFocusLost(cboTipoSolicitud, () -> {
+            validarCampoTipoSolicitud(null);
+            validarCampoUnidadOrganica(null);
+        });
+        FormValidationUI.onFocusLost(cboTipoActa, () -> validarCampoTipoActa(null));
+        FormValidationUI.onFocusLost(cboTipoProcedimientoRegistral, () -> validarCampoProcedimientoRegistral(null));
+        FormValidationUI.onFocusLost(cboUnidadOrganica, () -> validarCampoUnidadOrganica(null));
+        FormValidationUI.onFocusLost(textHojaEnvioExpediente, () -> validarCampoHojaEnvio(null));
+
+        cboCanalRecepcion.addActionListener(e -> {
+            if (modoConsulta) return;
+            validarCampoCanalRecepcion(null);
+            validarCampoNumeroTramiteWeb(null);
+        });
+        cboTipoDocumento.addActionListener(e -> validarCampoTipoDocumento(null));
+        cboTipoSolicitud.addActionListener(e -> {
+            if (modoConsulta) return;
+            validarCampoTipoSolicitud(null);
+            validarCampoUnidadOrganica(null);
+        });
+        cboTipoActa.addActionListener(e -> validarCampoTipoActa(null));
+        cboTipoProcedimientoRegistral.addActionListener(e -> validarCampoProcedimientoRegistral(null));
+        cboUnidadOrganica.addActionListener(e -> validarCampoUnidadOrganica(null));
+    }
+
+    private boolean validarCamposObligatoriosVisualmente(boolean mostrarMensaje)
+    {
+        List<JComponent> invalidos = new ArrayList<>();
+        validarCampoFechaSolicitud(invalidos);
+        validarCampoCanalRecepcion(invalidos);
+        validarCampoNumeroTramiteWeb(invalidos);
+        validarCampoTipoDocumento(invalidos);
+        validarCampoTipoSolicitud(invalidos);
+        validarCampoTipoActa(invalidos);
+        validarCampoProcedimientoRegistral(invalidos);
+        validarCampoUnidadOrganica(invalidos);
+        validarCampoHojaEnvio(invalidos);
+
+        if (invalidos.isEmpty()) {
+            return true;
+        }
+
+        invalidos.get(0).requestFocusInWindow();
+        if (mostrarMensaje) {
+            JOptionPane.showMessageDialog(this, "Complete los campos obligatorios resaltados.");
+        }
+        return false;
+    }
+
+    private boolean validarCampoFechaSolicitud(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(spFechaRecepcion,
+                getFechaSolicitudSeleccionada() != null,
+                "Ingrese la fecha de solicitud.",
+                invalidos);
+    }
+
+    private boolean validarCampoCanalRecepcion(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(cboCanalRecepcion,
+                comboTieneSeleccionValida(cboCanalRecepcion),
+                "Seleccione el canal de recepción.",
+                invalidos);
+    }
+
+    private boolean validarCampoNumeroTramiteWeb(List<JComponent> invalidos)
+    {
+        if (!canalRequiereNumeroTramiteWeb()) {
+            FormValidationUI.clear(textNumeroTramiteDocumento);
+            return true;
+        }
+        return validarCampoRequerido(textNumeroTramiteDocumento,
+                !textNumeroTramiteDocumento.getText().trim().isEmpty(),
+                "Ingrese el número de trámite web.",
+                invalidos);
+    }
+
+    private boolean validarCampoTipoDocumento(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(cboTipoDocumento,
+                comboTieneSeleccionValida(cboTipoDocumento),
+                "Seleccione el tipo de documento.",
+                invalidos);
+    }
+
+    private boolean validarCampoTipoSolicitud(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(cboTipoSolicitud,
+                comboTieneSeleccionValida(cboTipoSolicitud),
+                "Seleccione el tipo de solicitud.",
+                invalidos);
+    }
+
+    private boolean validarCampoTipoActa(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(cboTipoActa,
+                comboTieneSeleccionValida(cboTipoActa),
+                "Seleccione el tipo de acta.",
+                invalidos);
+    }
+
+    private boolean validarCampoProcedimientoRegistral(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(cboTipoProcedimientoRegistral,
+                comboTieneSeleccionValida(cboTipoProcedimientoRegistral),
+                "Seleccione el tipo de procedimiento registral.",
+                invalidos);
+    }
+
+    private boolean validarCampoUnidadOrganica(List<JComponent> invalidos)
+    {
+        if (!esOficio()) {
+            FormValidationUI.clear(cboUnidadOrganica);
+            return true;
+        }
+        return validarCampoRequerido(cboUnidadOrganica,
+                comboTieneSeleccionValida(cboUnidadOrganica),
+                "Seleccione la unidad orgánica para solicitudes tipo OFICIO.",
+                invalidos);
+    }
+
+    private boolean validarCampoHojaEnvio(List<JComponent> invalidos)
+    {
+        if (!jRadiButonNoCorresponde.isSelected()) {
+            FormValidationUI.clear(textHojaEnvioExpediente);
+            return true;
+        }
+        return validarCampoRequerido(textHojaEnvioExpediente,
+                !textHojaEnvioExpediente.getText().trim().isEmpty(),
+                "Ingrese la hoja de envío.",
+                invalidos);
+    }
+
+    private boolean validarCampoRequerido(JComponent component, boolean valido, String mensaje, List<JComponent> invalidos)
+    {
+        if (valido) {
+            FormValidationUI.clear(component);
+            return true;
+        }
+
+        FormValidationUI.markInvalid(component, mensaje);
+        if (invalidos != null) {
+            invalidos.add(component);
+        }
+        return false;
+    }
+
+    private boolean comboTieneSeleccionValida(JComboBox combo)
+    {
+        Object item = combo.getSelectedItem();
+        if (item == null) return false;
+
+        String texto = normalizarDescripcion(item);
+        return !texto.isEmpty()
+                && !"--SELECCIONE--".equals(texto)
+                && !"SELECCIONE".equals(texto)
+                && !"SELECCIONAR".equals(texto);
+    }
+
+    private boolean canalRequiereNumeroTramiteWeb()
+    {
+        Object canalSeleccionado = cboCanalRecepcion.getSelectedItem();
+        return canalSeleccionado != null
+                && "MPV".equalsIgnoreCase(String.valueOf(canalSeleccionado).trim());
     }
 
     private void aplicarReglasTipoSolicitud() {
@@ -1752,6 +1930,7 @@ private void seleccionarDistrito(int idDistrito) {
         // TODO add your handling code here:
         textHojaEnvioExpediente.setText("");      // limpiar
         textHojaEnvioExpediente.setEnabled(false);
+        FormValidationUI.clear(textHojaEnvioExpediente);
     }//GEN-LAST:event_jRadiButonSiCorrespondeActionPerformed
 
     private void jRadiButonNoCorrespondeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadiButonNoCorrespondeActionPerformed
