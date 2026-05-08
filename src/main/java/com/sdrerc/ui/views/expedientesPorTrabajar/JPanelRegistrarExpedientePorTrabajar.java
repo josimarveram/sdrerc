@@ -111,6 +111,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     private JLabel badgeEstadoActual;
     private JLabel badgeTramiteActual;
     private JLabel badgeTitularActual;
+    private boolean analisisBloqueado;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -812,7 +813,33 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
 
         configurarCamposConsultaSolicitud();
         configurarTooltipsSolicitud();
+        aplicarEstadoAnalisisExpediente(lista);
         
+    }
+
+    private void aplicarEstadoAnalisisExpediente(Expediente expediente)
+    {
+        int estadoActual = expediente == null ? 0 : expediente.getEstado();
+        boolean atendidoPorTrabajador = estadoActual >= Enumerado.EstadoExpediente.ExpedienteAtendido.getId();
+        analisisBloqueado = atendidoPorTrabajador;
+
+        btnGuardarAnalisis.setEnabled(!atendidoPorTrabajador);
+        btnGuardarAnalisis.setText(atendidoPorTrabajador ? "Análisis registrado" : "Registrar análisis");
+        btnGuardarAnalisis.setToolTipText(atendidoPorTrabajador
+                ? "El expediente ya fue atendido por el trabajador. Solo puede regresar al listado."
+                : "Registra el análisis y actualiza el estado del expediente.");
+
+        btnAgregarTipoAnalisis.setEnabled(!atendidoPorTrabajador);
+        btnGenerarDocumento.setEnabled(!atendidoPorTrabajador);
+        btnRegresar2.setEnabled(!atendidoPorTrabajador);
+        cboAnalisisAbogado.setEnabled(!atendidoPorTrabajador);
+        cboTipoDocumentoAnalizado.setEnabled(!atendidoPorTrabajador);
+        cboTieneObservacion.setEnabled(!atendidoPorTrabajador);
+        cboTipoObservacion.setEnabled(!atendidoPorTrabajador && esSeleccionSi(cboTieneObservacion.getSelectedItem()));
+        textDescripcionDocumentoAnalisis.setEditable(!atendidoPorTrabajador);
+        jTextArea1.setEditable(!atendidoPorTrabajador);
+        jTableDocumentosAnalisis.setEnabled(!atendidoPorTrabajador);
+        btnRegresar.setEnabled(true);
     }
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
@@ -2186,6 +2213,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
             if (!validarAntesDeRegistrarAnalisis()) {
                 return;
             }
+            if (analisisBloqueado) {
+                JOptionPane.showMessageDialog(this, "El análisis del expediente ya fue registrado.", "Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
             int confirmacion = JOptionPane.showConfirmDialog(
                     this,
@@ -2232,6 +2263,9 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
             }
 
             expedienteAnalisisAbogadoService.agregarAnalisisAbogado(oExpedienteAnalisisAbogado);
+            analisisBloqueado = true;
+            btnGuardarAnalisis.setEnabled(false);
+            btnGuardarAnalisis.setText("Análisis registrado");
             JOptionPane.showMessageDialog(this, "Análisis registrado correctamente","Éxito", JOptionPane.INFORMATION_MESSAGE);
 
             //limpiarCampos();
