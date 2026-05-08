@@ -84,11 +84,16 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         TextFieldRules.apply(textCelular).onlyNumbers().max(9);
         
                 
-        cargarComboTipoSolicitud(); 
+        cargarComboTipoSolicitud();
+        cboTipoSolicitud.setSelectedIndex(-1);
         cargarComboCanalRecepcion();
+        cboCanalRecepcion.setSelectedIndex(-1);
         cargarComboTipoDocumento();
+        cboTipoDocumento.setSelectedIndex(-1);
         cargarComboTipoProcedimientoRegistral(); 
+        cboTipoProcedimientoRegistral.setSelectedIndex(-1);
         cargarComboTipoActa();
+        cboTipoActa.setSelectedIndex(-1);
         cargarComboGrupoFamiliar();
         cboGrupoFamiliar.setSelectedIndex(-1);
         cargarComboParentesco();
@@ -710,6 +715,12 @@ private void seleccionarDistrito(int idDistrito) {
 
     private void actualizarEstadoNumeroTramite() {
         Object canalSeleccionado = cboCanalRecepcion.getSelectedItem();
+        if (canalSeleccionado == null) {
+            textNumeroTramiteDocumento.setText("");
+            textNumeroTramiteDocumento.setEnabled(false);
+            return;
+        }
+
         boolean esMpv = canalSeleccionado != null
                 && "MPV".equalsIgnoreCase(String.valueOf(canalSeleccionado).trim());
         textNumeroTramiteDocumento.setEnabled(esMpv);
@@ -903,16 +914,17 @@ private void seleccionarDistrito(int idDistrito) {
         setFechaSolicitudSeleccionada(new Date());
 
         // Resetear JComboBoxes al primer elemento
-        if (cboCanalRecepcion.getItemCount() > 0) cboCanalRecepcion.setSelectedIndex(0);
+        if (cboCanalRecepcion.getItemCount() > 0) cboCanalRecepcion.setSelectedIndex(-1);
         if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(-1);
         if (cboGradoParentesco.getItemCount() > 0) cboGradoParentesco.setSelectedIndex(-1);
         if (cboDireccionDomiciliaria.getItemCount() > 0) cboDireccionDomiciliaria.setSelectedIndex(-1);
         ultimaDireccionDomiciliariaSeleccionada = null;
-        if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(0);
-        if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(0);
-        if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(0);
-        if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(0);
+        if (cboTipoActa.getItemCount() > 0) cboTipoActa.setSelectedIndex(-1);
+        if (cboTipoDocumento.getItemCount() > 0) cboTipoDocumento.setSelectedIndex(-1);
+        if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(-1);
+        if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(-1);
         aplicarReglasTipoSolicitud();
+        actualizarEstadoNumeroTramite();
         actualizarTituloFormulario();
         FormValidationUI.clearAll(this);
     }
@@ -990,6 +1002,8 @@ private void seleccionarDistrito(int idDistrito) {
         });
         FormValidationUI.onFocusLost(cboTipoActa, () -> validarCampoTipoActa(null));
         FormValidationUI.onFocusLost(cboTipoProcedimientoRegistral, () -> validarCampoProcedimientoRegistral(null));
+        FormValidationUI.onFocusLost(textNumeroDocumentoTitular, () -> validarCampoDocumentoTitular(null));
+        FormValidationUI.onFocusLost(textApellidosNombreTitular, () -> validarCampoNombreTitular(null));
         FormValidationUI.onFocusLost(cboUnidadOrganica, () -> validarCampoUnidadOrganica(null));
         FormValidationUI.onFocusLost(textHojaEnvioExpediente, () -> validarCampoHojaEnvio(null));
 
@@ -1019,6 +1033,8 @@ private void seleccionarDistrito(int idDistrito) {
         validarCampoTipoSolicitud(invalidos);
         validarCampoTipoActa(invalidos);
         validarCampoProcedimientoRegistral(invalidos);
+        validarCampoDocumentoTitular(invalidos);
+        validarCampoNombreTitular(invalidos);
         validarCampoUnidadOrganica(invalidos);
         validarCampoHojaEnvio(invalidos);
 
@@ -1090,6 +1106,22 @@ private void seleccionarDistrito(int idDistrito) {
         return validarCampoRequerido(cboTipoProcedimientoRegistral,
                 comboTieneSeleccionValida(cboTipoProcedimientoRegistral),
                 "Seleccione el tipo de procedimiento registral.",
+                invalidos);
+    }
+
+    private boolean validarCampoDocumentoTitular(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(textNumeroDocumentoTitular,
+                !textNumeroDocumentoTitular.getText().trim().isEmpty(),
+                "Ingrese el documento del titular.",
+                invalidos);
+    }
+
+    private boolean validarCampoNombreTitular(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(textApellidosNombreTitular,
+                !textApellidosNombreTitular.getText().trim().isEmpty(),
+                "Ingrese los apellidos y nombres del titular.",
                 invalidos);
     }
 
@@ -1169,8 +1201,8 @@ private void seleccionarDistrito(int idDistrito) {
 
         textDniRemitente.setEnabled(false);
         textApellidosNombreRemitente.setEnabled(false);
-        cboUnidadOrganica.setEnabled(true);
-        cboUnidadOrganica.setToolTipText(null);
+        cboUnidadOrganica.setEnabled(false);
+        cboUnidadOrganica.setToolTipText("Seleccione primero el tipo de solicitud.");
     }
 
     private boolean esParte() {

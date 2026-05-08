@@ -91,6 +91,7 @@ public final class FormValidationUI
     private static void applyInvalidStyle(JComponent component, String message)
     {
         ORIGINAL_STATE.computeIfAbsent(component, ComponentState::new);
+        component.putClientProperty("JComponent.outline", "error");
         component.setBorder(BorderFactory.createLineBorder(ERROR_BORDER, 1, true));
         component.setBackground(ERROR_BACKGROUND);
         component.setToolTipText(message);
@@ -104,6 +105,7 @@ public final class FormValidationUI
         component.setBorder(state.border);
         component.setBackground(state.background);
         component.setToolTipText(state.toolTipText);
+        component.putClientProperty("JComponent.outline", state.outline);
     }
 
     private static final class ComponentState
@@ -111,12 +113,14 @@ public final class FormValidationUI
         private final Border border;
         private final Color background;
         private final String toolTipText;
+        private final Object outline;
 
         private ComponentState(JComponent component)
         {
             this.border = component.getBorder();
             this.background = component.getBackground();
             this.toolTipText = component.getToolTipText();
+            this.outline = component.getClientProperty("JComponent.outline");
         }
     }
 }
