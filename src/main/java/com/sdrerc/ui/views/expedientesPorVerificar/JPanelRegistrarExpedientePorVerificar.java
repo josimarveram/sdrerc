@@ -25,8 +25,17 @@ import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAboga
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.ExpedienteObservacionVerificacion.ExpedienteObservacionVerificacion;
 import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.util.TextFieldRules;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,14 +46,22 @@ import java.nio.file.StandardCopyOption;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumn;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -55,6 +72,16 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
  */
 public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel 
 {
+    private static final Color COLOR_FONDO = new Color(245, 247, 250);
+    private static final Color COLOR_CARD = Color.WHITE;
+    private static final Color COLOR_BORDE = new Color(220, 226, 235);
+    private static final Color COLOR_TITULO = new Color(20, 45, 84);
+    private static final Color COLOR_TEXTO = new Color(43, 52, 66);
+    private static final Color COLOR_TEXTO_SECUNDARIO = new Color(92, 105, 123);
+    private static final Color COLOR_ACCION = new Color(25, 120, 210);
+    private static final Color COLOR_ACCION_HOVER = new Color(18, 101, 184);
+    private static final Color COLOR_SECUNDARIO = new Color(239, 244, 250);
+
     private final ExpedienteService expedienteService;
     private final CatalogoItemService catalogoItemService;
     private final ExpedienteAsignacionService expedienteAsignacionService;
@@ -113,6 +140,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         col.setMinWidth(0);
         col.setMaxWidth(0);
         col.setPreferredWidth(0);
+        configurarFormularioVerificacionPremium();
         
         //textDniRemitente.setEnabled(false);
         //textApellidosNombreRemitente.setEnabled(false);
@@ -120,7 +148,9 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
     }
 
     private void corregirTextosVisibles() {
-        btnGuardarAnalisis.setText("GUARDAR VERIFICACIÓN");
+        btnGuardarAnalisis.setText("Guardar verificación");
+        btnRegresar5.setText("Regresar");
+        jLabel23.setText("Hoja de Envío");
     }
     
     
@@ -161,12 +191,339 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
 	
     private void configurarColumnas() 
     {
-        jTableDocumentosAnalisis.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        jTableDocumentosAnalisis.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         
         jTableDocumentosAnalisis.getColumnModel().getColumn(0).setPreferredWidth(40);
         jTableDocumentosAnalisis.getColumnModel().getColumn(1).setPreferredWidth(180);
-        jTableDocumentosAnalisis.getColumnModel().getColumn(2).setPreferredWidth(180);
-        jTableDocumentosAnalisis.getColumnModel().getColumn(3).setPreferredWidth(180);
+        jTableDocumentosAnalisis.getColumnModel().getColumn(2).setPreferredWidth(210);
+        jTableDocumentosAnalisis.getColumnModel().getColumn(3).setPreferredWidth(360);
+    }
+
+    private void configurarFormularioVerificacionPremium()
+    {
+        corregirTextosVisibles();
+        setBackground(COLOR_FONDO);
+        setLayout(new BorderLayout());
+        setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+
+        configurarComponentesConsulta();
+        configurarTablaAnalisisPremium();
+        configurarBotonesPremium();
+
+        JPanel contenido = new JPanel(new GridBagLayout());
+        contenido.setBackground(COLOR_FONDO);
+        contenido.setBorder(BorderFactory.createEmptyBorder(20, 22, 20, 22));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 14, 0);
+        contenido.add(crearCardDatosSolicitud(), gbc);
+
+        gbc.gridy++;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0.46;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(0, 0, 14, 10);
+        contenido.add(crearCardResultadoVerificacion(), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.54;
+        gbc.insets = new Insets(0, 10, 14, 0);
+        contenido.add(crearCardDatosAnalisis(), gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1.0;
+        gbc.weighty = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        contenido.add(crearBarraAcciones(), gbc);
+
+        removeAll();
+        add(contenido, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private JPanel crearCardDatosSolicitud()
+    {
+        JPanel card = crearCard("Datos de la solicitud");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        agregarCampo(grid, 0, 0, 1.0, "Fecha recepción", spFechaRecepcion);
+        agregarCampo(grid, 1, 0, 1.0, "Fecha solicitud", spFechaSolicitud);
+        agregarCampo(grid, 2, 0, 1.0, "N° trámite", textNumeroTramiteDocumento);
+        agregarCampo(grid, 3, 0, 1.0, "Tipo documento", cboTipoDocumento);
+        agregarCampo(grid, 4, 0, 1.0, "N° documento", textNumeroDocumento);
+
+        agregarCampo(grid, 0, 1, 1.0, "Tipo acta", cboTipoActa);
+        agregarCampo(grid, 1, 1, 1.0, "N° acta", textNumeroActa);
+        agregarCampo(grid, 2, 1, 1.0, "Grupo familiar", cboGrupoFamiliar);
+        agregarCampo(grid, 3, 1, 1.0, "Grado parentesco", cboGradoParentesco);
+        agregarCampo(grid, 4, 1, 1.0, "Procedimiento registral", cboTipoProcedimientoRegistral);
+
+        agregarCampo(grid, 0, 2, 0.70, "Tipo solicitud", cboTipoSolicitud);
+        agregarCampo(grid, 1, 2, 0.55, "DNI remitente", textDniRemitente);
+        agregarCampo(grid, 2, 2, 1.45, "Remitente", textApellidosNombreRemitente);
+        agregarCampo(grid, 3, 2, 1.30, "Unidad orgánica", cboUnidadOrganica);
+
+        agregarCampo(grid, 0, 3, 0.70, "DNI titular", textNumeroDocumentoTitular);
+        agregarCampo(grid, 1, 3, 2.25, "Titular", textApellidosNombreTitular);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearCardResultadoVerificacion()
+    {
+        JPanel card = crearCard("Resultado de la verificación");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        agregarCampo(grid, 0, 0, 1.0, "Hoja de Envío", textHojaEnvio);
+        agregarCampo(grid, 1, 0, 1.0, "N° Resolución", textResolucion);
+        agregarCampo(grid, 0, 1, 1.0, "Tiene Observación", cboTieneObservacion);
+        agregarCampo(grid, 1, 1, 1.0, "Tipo Observación", cboTipoObservacion);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(10, 0, 6, 0);
+        grid.add(crearLabelCampo("Descripción de la observación"), gbc);
+
+        gbc.gridy = 3;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        jTextDescripcionObservacion.setRows(6);
+        jScrollPane1.setPreferredSize(new Dimension(420, 132));
+        grid.add(jScrollPane1, gbc);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearCardDatosAnalisis()
+    {
+        JPanel card = crearCard("Datos de análisis");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        jScrollPane2.setPreferredSize(new Dimension(500, 250));
+        grid.add(jScrollPane2, gbc);
+
+        gbc.gridy = 1;
+        gbc.weighty = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        grid.add(crearLabelCampo("Análisis"), gbc);
+
+        gbc.gridy = 2;
+        gbc.insets = new Insets(6, 0, 0, 0);
+        cboAnalisisAbogado.setPreferredSize(new Dimension(320, 36));
+        grid.add(cboAnalisisAbogado, gbc);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearBarraAcciones()
+    {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setOpaque(false);
+
+        JPanel acciones = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnRegresar5);
+        acciones.add(btnGuardarAnalisis);
+        card.add(acciones, BorderLayout.EAST);
+        return card;
+    }
+
+    private JPanel crearCard(String titulo)
+    {
+        JPanel card = new JPanel(new BorderLayout(0, 12));
+        card.setBackground(COLOR_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDE),
+                BorderFactory.createEmptyBorder(16, 18, 18, 18)));
+
+        JLabel label = new JLabel(titulo);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setForeground(COLOR_TITULO);
+        card.add(label, BorderLayout.NORTH);
+        return card;
+    }
+
+    private void agregarCampo(JPanel parent, int x, int y, double weightx, String label, JComponent component)
+    {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 6));
+        wrapper.setOpaque(false);
+        wrapper.add(crearLabelCampo(label), BorderLayout.NORTH);
+        wrapper.add(component, BorderLayout.CENTER);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.weightx = weightx;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(y == 0 ? 0 : 12, x == 0 ? 0 : 10, 0, 0);
+        parent.add(wrapper, gbc);
+    }
+
+    private JLabel crearLabelCampo(String texto)
+    {
+        JLabel label = new JLabel(texto);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        label.setForeground(COLOR_TEXTO_SECUNDARIO);
+        return label;
+    }
+
+    private void configurarComponentesConsulta()
+    {
+        JComponent[] componentes = {
+            spFechaRecepcion, spFechaSolicitud, textNumeroTramiteDocumento, cboTipoDocumento,
+            textNumeroDocumento, cboTipoActa, textNumeroActa, cboGrupoFamiliar, cboGradoParentesco,
+            cboTipoProcedimientoRegistral, cboTipoSolicitud, textDniRemitente, textApellidosNombreRemitente,
+            cboUnidadOrganica, textNumeroDocumentoTitular, textApellidosNombreTitular, textHojaEnvio,
+            textResolucion, cboTieneObservacion, cboTipoObservacion, cboAnalisisAbogado
+        };
+        for (JComponent component : componentes) {
+            component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            component.setPreferredSize(new Dimension(component.getPreferredSize().width, 36));
+        }
+
+        JTextField[] textosConsulta = {
+            textNumeroTramiteDocumento, textNumeroDocumento, textNumeroActa, textDniRemitente,
+            textApellidosNombreRemitente, textNumeroDocumentoTitular, textApellidosNombreTitular
+        };
+        for (JTextField field : textosConsulta) {
+            field.setDisabledTextColor(COLOR_TEXTO);
+            field.setBackground(new Color(249, 251, 254));
+            field.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(214, 221, 230)),
+                    BorderFactory.createEmptyBorder(0, 8, 0, 8)));
+        }
+
+        estilizarAreaTexto(jTextDescripcionObservacion);
+        actualizarTooltipsVerificacion();
+    }
+
+    private void estilizarAreaTexto(JTextArea area)
+    {
+        area.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        area.setForeground(COLOR_TEXTO);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+    }
+
+    private void configurarTablaAnalisisPremium()
+    {
+        jTableDocumentosAnalisis.setRowHeight(30);
+        jTableDocumentosAnalisis.setFillsViewportHeight(true);
+        jTableDocumentosAnalisis.setShowGrid(false);
+        jTableDocumentosAnalisis.setIntercellSpacing(new Dimension(0, 0));
+        jTableDocumentosAnalisis.setSelectionBackground(new Color(223, 237, 252));
+        jTableDocumentosAnalisis.setSelectionForeground(COLOR_TITULO);
+
+        JTableHeader header = jTableDocumentosAnalisis.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        header.setBackground(new Color(236, 241, 247));
+        header.setForeground(COLOR_TITULO);
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 34));
+
+        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                setToolTipText(value == null ? "" : value.toString());
+                if (!isSelected) {
+                    component.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 253));
+                    component.setForeground(COLOR_TEXTO);
+                }
+                return component;
+            }
+        };
+        renderer.setVerticalAlignment(SwingConstants.CENTER);
+        jTableDocumentosAnalisis.setDefaultRenderer(Object.class, renderer);
+    }
+
+    private void configurarBotonesPremium()
+    {
+        estilizarBoton(btnGuardarAnalisis, true);
+        estilizarBoton(btnRegresar5, false);
+        btnGuardarAnalisis.setIcon(IconUtils.load("save.svg", 16));
+        btnRegresar5.setIcon(IconUtils.load("clear.svg", 16));
+        btnGuardarAnalisis.setPreferredSize(new Dimension(176, 38));
+        btnRegresar5.setPreferredSize(new Dimension(116, 38));
+    }
+
+    private void estilizarBoton(JButton button, boolean primary)
+    {
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBackground(primary ? COLOR_ACCION : COLOR_SECUNDARIO);
+        button.setForeground(primary ? Color.WHITE : COLOR_TITULO);
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                if (button.isEnabled()) {
+                    button.setBackground(primary ? COLOR_ACCION_HOVER : new Color(228, 236, 246));
+                }
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                button.setBackground(primary ? COLOR_ACCION : COLOR_SECUNDARIO);
+            }
+        });
+    }
+
+    private void actualizarTooltipsVerificacion()
+    {
+        aplicarTooltipTexto(textNumeroTramiteDocumento);
+        aplicarTooltipTexto(textNumeroDocumento);
+        aplicarTooltipTexto(textNumeroActa);
+        aplicarTooltipTexto(textDniRemitente);
+        aplicarTooltipTexto(textApellidosNombreRemitente);
+        aplicarTooltipTexto(textNumeroDocumentoTitular);
+        aplicarTooltipTexto(textApellidosNombreTitular);
+        aplicarTooltipTexto(textHojaEnvio);
+        aplicarTooltipTexto(textResolucion);
+        aplicarTooltipCombo(cboUnidadOrganica);
+        aplicarTooltipCombo(cboTipoProcedimientoRegistral);
+    }
+
+    private void aplicarTooltipTexto(JTextField field)
+    {
+        field.setToolTipText(field.getText() == null ? "" : field.getText());
+    }
+
+    private void aplicarTooltipCombo(JComboBox combo)
+    {
+        Object item = combo.getSelectedItem();
+        combo.setToolTipText(item == null ? "" : item.toString());
     }
     
     private void cargarTablaAnalisis(Integer idExpediente) {
@@ -340,6 +697,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
 
         //celular
         //textCelular.setText(lista.getCelular());
+        actualizarTooltipsVerificacion();
         
     }
     
