@@ -621,6 +621,9 @@ public class ExpedienteAsignacionRepository {
             if (filtrarTecnico) {
                 ps.setInt(paramIndex++, idTecnico);
             }
+            if (filtrarEstado) {
+                ps.setInt(paramIndex++, estadoItem);
+            }
             if (filtrarTexto) {
                 ps.setString(paramIndex++, "%" + valor.trim().toUpperCase() + "%");
             }

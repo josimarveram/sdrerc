@@ -450,10 +450,6 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         DateRangePickerSupport.configurePicker(fechaDesdePicker);
         DateRangePickerSupport.configurePicker(fechaHastaPicker);
 
-        Date hoy = new Date();
-        fechaDesdePicker.setDate(hoy);
-        fechaHastaPicker.setDate(hoy);
-
         fechaDesdePicker.setToolTipText("Fecha inicial de solicitud.");
         fechaHastaPicker.setToolTipText("Fecha final de solicitud.");
         fechaDesdePicker.addPropertyChangeListener("date", evt -> esRangoFechasValido());
