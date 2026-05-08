@@ -46,8 +46,23 @@ $java = if (Test-Path $preferredJava) { $preferredJava } else { "java" }
 
 $classpath = $jars -join ";"
 
+$javaVersionOutput = & $java -version 2>&1
+$javaVersionLine = ($javaVersionOutput | Select-Object -First 1).ToString()
+$javaMajorVersion = 0
+if ($javaVersionLine -match '"(?<major>\d+)(?:\.(?<minor>\d+))?') {
+    $javaMajorVersion = [int]$matches['major']
+    if ($javaMajorVersion -eq 1 -and $matches['minor']) {
+        $javaMajorVersion = [int]$matches['minor']
+    }
+}
+
+$javaArgs = @()
+if ($javaMajorVersion -ge 22) {
+    $javaArgs += "--enable-native-access=ALL-UNNAMED"
+}
+
 Write-Host "Iniciando SDRERC en modo consola..."
 Write-Host "Root: $root"
 Write-Host "Java: $java"
 
-& $java -cp $classpath com.sdrerc.ui.login.FrmLogin
+& $java @javaArgs -cp $classpath com.sdrerc.ui.login.FrmLogin
