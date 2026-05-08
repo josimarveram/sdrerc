@@ -22,4 +22,9 @@ public class ExpedienteObservacionVerificacionService {
     {
         repository.insertar(entity);
     }
+
+    public boolean existeVerificacionRegistrada(int idExpediente) throws Exception
+    {
+        return repository.existePorExpediente(idExpediente);
+    }
 }

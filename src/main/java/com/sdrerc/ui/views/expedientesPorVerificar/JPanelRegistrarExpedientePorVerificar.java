@@ -93,6 +93,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
     private ExpedienteAnalisisAbogado oExpedienteAnalisisAbogado;
     private List<ExpedienteAnalisisAbogadoDetDoc> listaDocumentos = new ArrayList<>();
     private int filaEditando = -1;
+    private boolean verificacionBloqueada;
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -515,6 +516,28 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         aplicarTooltipCombo(cboTipoProcedimientoRegistral);
     }
 
+    private void aplicarEstadoVerificacionExpediente(Expediente expediente) throws Exception
+    {
+        int estadoActual = expediente == null ? 0 : expediente.getEstado();
+        boolean verificacionRegistrada = expediente != null
+                && expedienteObservacionVerificacionService.existeVerificacionRegistrada(expediente.getIdExpediente());
+        boolean estadoVerificado = estadoActual >= Enumerado.EstadoExpediente.ExpedienteVerificado.getId();
+        verificacionBloqueada = verificacionRegistrada || estadoVerificado;
+
+        btnGuardarAnalisis.setEnabled(!verificacionBloqueada);
+        btnGuardarAnalisis.setText(verificacionBloqueada ? "Verificación registrada" : "Guardar verificación");
+        btnGuardarAnalisis.setToolTipText(verificacionBloqueada
+                ? "La verificación del expediente ya fue registrada. Solo puede regresar al listado."
+                : "Registra la verificación del expediente.");
+
+        textHojaEnvio.setEditable(!verificacionBloqueada);
+        textResolucion.setEditable(!verificacionBloqueada);
+        cboTieneObservacion.setEnabled(!verificacionBloqueada);
+        cboTipoObservacion.setEnabled(!verificacionBloqueada && cboTipoObservacion.isEnabled());
+        jTextDescripcionObservacion.setEditable(!verificacionBloqueada);
+        btnRegresar5.setEnabled(true);
+    }
+
     private void aplicarTooltipTexto(JTextField field)
     {
         field.setToolTipText(field.getText() == null ? "" : field.getText());
@@ -698,6 +721,7 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         //celular
         //textCelular.setText(lista.getCelular());
         actualizarTooltipsVerificacion();
+        aplicarEstadoVerificacionExpediente(lista);
         
     }
     
@@ -1429,6 +1453,11 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
         
         try 
         {            
+            if (verificacionBloqueada) {
+                JOptionPane.showMessageDialog(this, "La verificación del expediente ya fue registrada.", "Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             CatalogoItem seleccionado = (CatalogoItem) cboTieneObservacion.getSelectedItem();
 
             if (seleccionado == null || seleccionado.getIdCatalogoItem() == 0) {
@@ -1465,6 +1494,9 @@ public class JPanelRegistrarExpedientePorVerificar extends javax.swing.JPanel
             
             expedienteObservacion.setResolucion(textResolucion.getText());
             expedienteObservacionVerificacionService.registrarObservacion(expedienteObservacion);
+            verificacionBloqueada = true;
+            btnGuardarAnalisis.setEnabled(false);
+            btnGuardarAnalisis.setText("Verificación registrada");
 
             JOptionPane.showMessageDialog(this, "Verificación registrada correctamente");
 

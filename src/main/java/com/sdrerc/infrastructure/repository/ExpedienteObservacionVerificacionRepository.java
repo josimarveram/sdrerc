@@ -68,4 +68,15 @@ public class ExpedienteObservacionVerificacionRepository {
             if (conn != null) conn.close();
         }
     }
+
+    public boolean existePorExpediente(int idExpediente) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM EXPEDIENTE_OBSERVACION_VERIFICACION WHERE ID_EXPEDIENTE = ?";
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
 }
