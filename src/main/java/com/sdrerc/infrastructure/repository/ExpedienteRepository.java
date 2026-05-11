@@ -480,16 +480,18 @@ public class ExpedienteRepository
             return null;
         }
 
-        StringBuilder sql = new StringBuilder("SELECT * FROM EXPEDIENTE WHERE TRIM(NUMERO_ACTA) = ? ");
+        StringBuilder sql = new StringBuilder("SELECT e.*, ci.DESCRIPCION AS ESTADO_DESCRIPCION FROM EXPEDIENTE e ")
+                .append("LEFT JOIN CATALOGO_ITEM ci ON ci.ID_CATALOGO_ITEM = e.ESTADO ")
+                .append("WHERE TRIM(e.NUMERO_ACTA) = ? ");
         if (expediente.getIdExpediente() > 0) {
-            sql.append("AND ID_EXPEDIENTE <> ? ");
+            sql.append("AND e.ID_EXPEDIENTE <> ? ");
         }
-        sql.append("AND (TRIM(DNI_TITULAR) = ? ");
+        sql.append("AND (TRIM(e.DNI_TITULAR) = ? ");
         if (validarDosTitulares) {
-            sql.append("OR TRIM(DNI_TITULAR_2) = ? ");
+            sql.append("OR TRIM(e.DNI_TITULAR_2) = ? ");
         }
         if (validarDosTitulares && !dniTitular2.isEmpty()) {
-            sql.append("OR TRIM(DNI_TITULAR) = ? OR TRIM(DNI_TITULAR_2) = ? ");
+            sql.append("OR TRIM(e.DNI_TITULAR) = ? OR TRIM(e.DNI_TITULAR_2) = ? ");
         }
         sql.append(") AND ROWNUM = 1");
 
@@ -558,6 +560,9 @@ public class ExpedienteRepository
         }
         if (resultSetTieneColumna(rs, "APELLIDO_NOMBRE_TITULAR_2")) {
             expediente.setApellidoNombreTitular2(rs.getString("APELLIDO_NOMBRE_TITULAR_2"));
+        }
+        if (resultSetTieneColumna(rs, "ESTADO_DESCRIPCION")) {
+            expediente.setEstadoDescripcion(rs.getString("ESTADO_DESCRIPCION"));
         }
         return expediente;
     }

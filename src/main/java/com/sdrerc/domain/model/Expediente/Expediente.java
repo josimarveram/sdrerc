@@ -41,6 +41,7 @@ public class Expediente
     private String correoElectronico;
     private String celular;
     private int estado;
+    private String estadoDescripcion;
     private int idUsuarioCrea;
     private Date fechaRegistra;
     private int idUsuarioModifica;
@@ -330,6 +331,14 @@ public class Expediente
 
     public void setEstado(int estado) {
         this.estado = estado;
+    }
+
+    public String getEstadoDescripcion() {
+        return estadoDescripcion;
+    }
+
+    public void setEstadoDescripcion(String estadoDescripcion) {
+        this.estadoDescripcion = estadoDescripcion;
     }
 
     public int getIdUsuarioCrea() {

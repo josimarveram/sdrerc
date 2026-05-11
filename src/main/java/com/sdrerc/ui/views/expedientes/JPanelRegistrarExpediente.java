@@ -1048,9 +1048,15 @@ private void seleccionarDistrito(int idDistrito) {
         mensaje.append("\nID expediente: ").append(duplicado.getIdExpediente());
         mensaje.append("\nNúmero de acta: ").append(textoSeguro(duplicado.getNumeroActa()));
         mensaje.append("\nTitular: ").append(obtenerTitularDuplicado(duplicado));
-        mensaje.append("\nEstado: ").append(duplicado.getEstado());
+        mensaje.append("\nEstado: ").append(obtenerEstadoDuplicado(duplicado));
         mensaje.append("\nFecha solicitud: ").append(formatearFechaSolicitud(duplicado.getFechaSolicitud()));
         return mensaje.toString();
+    }
+
+    private String obtenerEstadoDuplicado(Expediente duplicado)
+    {
+        String estadoDescripcion = textoSeguro(duplicado.getEstadoDescripcion()).trim();
+        return estadoDescripcion.isEmpty() ? String.valueOf(duplicado.getEstado()) : estadoDescripcion;
     }
 
     private String obtenerTitularDuplicado(Expediente expediente)
