@@ -7,6 +7,7 @@ package com.sdrerc.ui.views.expedientes;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteService;
+import com.toedter.calendar.JDateChooser;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -44,9 +46,13 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.RowSorter;
 import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.RowFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -72,6 +78,9 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private DateRangePickerSupport.Range rangoFechas;
     private JLabel lblFeedbackFechas;
     private boolean tooltipOrdenamientoHeaderConfigurado;
+    private boolean filtrosPorColumnaConfigurados;
+    private final JDateChooser filtroFechaSolicitudColumna = new JDateChooser();
+    private final Map<Integer, JTextField> filtrosTextoPorColumna = new HashMap<>();
     private static final int COL_ID = 0;
     private static final int COL_FECHA_SOLICITUD = 1;
     private static final int COL_CANAL = 2;
@@ -182,6 +191,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         // Resetear JComboBoxes al primer elemento
         if (cmbTipoBusqueda.getItemCount() > 0) cmbTipoBusqueda.setSelectedIndex(0);
         if (cmbEstado.getItemCount() > 0) cmbEstado.setSelectedIndex(0);
+        limpiarFiltrosPorColumna();
         
         buscarExpedientes();
     }
@@ -526,9 +536,193 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         jScrollPane1.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         jScrollPane1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        card.add(titulo, BorderLayout.NORTH);
+        JPanel superior = new JPanel(new BorderLayout(0, 8));
+        superior.setOpaque(false);
+        superior.add(titulo, BorderLayout.NORTH);
+        superior.add(crearPanelFiltrosPorColumnaRecepcion(), BorderLayout.CENTER);
+
+        card.add(superior, BorderLayout.NORTH);
         card.add(jScrollPane1, BorderLayout.CENTER);
         return card;
+    }
+
+    private JPanel crearPanelFiltrosPorColumnaRecepcion()
+    {
+        configurarFiltrosPorColumnaRecepcion();
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(true);
+        panel.setBackground(new Color(248, 250, 252));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)
+        ));
+
+        agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 0, 0.70);
+        agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 1, 0.65);
+        agregarFiltroColumna(panel, "Referencia", filtrosTextoPorColumna.get(COL_REFERENCIA), 2, 1.05);
+        agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 3, 1.05);
+        agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 4, 1.25);
+        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 5, 0.95);
+        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 6, 1.75);
+        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 7, 0.90);
+
+        JButton btnLimpiarFiltros = new JButton("Limpiar");
+        btnLimpiarFiltros.setFont(new Font("Arial", Font.BOLD, 11));
+        btnLimpiarFiltros.setToolTipText("Limpiar filtros por columna");
+        btnLimpiarFiltros.setFocusPainted(false);
+        btnLimpiarFiltros.addActionListener(e -> limpiarFiltrosPorColumna());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 8;
+        gbc.gridy = 1;
+        gbc.insets = new Insets(4, 6, 0, 0);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(btnLimpiarFiltros, gbc);
+        return panel;
+    }
+
+    private void agregarFiltroColumna(JPanel panel, String etiqueta, JComponent filtro, int columna, double peso)
+    {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = columna;
+        gbc.gridy = 0;
+        gbc.weightx = peso;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 3, 6);
+        JLabel label = new JLabel(etiqueta);
+        label.setFont(new Font("Arial", Font.PLAIN, 10));
+        label.setForeground(new Color(100, 116, 139));
+        panel.add(label, gbc);
+
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 0, 6);
+        filtro.setPreferredSize(new Dimension(80, 28));
+        panel.add(filtro, gbc);
+    }
+
+    private void configurarFiltrosPorColumnaRecepcion()
+    {
+        if (filtrosPorColumnaConfigurados) {
+            return;
+        }
+        filtrosPorColumnaConfigurados = true;
+
+        filtroFechaSolicitudColumna.setDateFormatString("dd/MM/yyyy");
+        filtroFechaSolicitudColumna.setToolTipText("Filtrar por fecha de solicitud");
+        filtroFechaSolicitudColumna.getDateEditor().getUiComponent().setToolTipText("Filtrar por fecha de solicitud");
+        filtroFechaSolicitudColumna.addPropertyChangeListener("date", evt -> aplicarFiltrosPorColumna());
+
+        crearFiltroTextoColumna(COL_CANAL, "Filtrar canal");
+        crearFiltroTextoColumna(COL_REFERENCIA, "Filtrar referencia");
+        crearFiltroTextoColumna(COL_TIPO_SOLICITUD, "Filtrar tipo de solicitud");
+        crearFiltroTextoColumna(COL_PROCEDIMIENTO_REGISTRAL, "Filtrar procedimiento registral");
+        crearFiltroTextoColumna(COL_ACTA, "Filtrar acta");
+        crearFiltroTextoColumna(COL_TITULAR, "Filtrar titular");
+        crearFiltroTextoColumna(COL_ESTADO, "Filtrar estado");
+    }
+
+    private void crearFiltroTextoColumna(int columna, String tooltip)
+    {
+        JTextField field = new JTextField();
+        field.setFont(new Font("Arial", Font.PLAIN, 11));
+        field.setToolTipText(tooltip);
+        field.putClientProperty("JTextField.placeholderText", "Buscar");
+        field.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+        });
+        filtrosTextoPorColumna.put(columna, field);
+    }
+
+    private void aplicarFiltrosPorColumna()
+    {
+        if (!(jTable1.getRowSorter() instanceof TableRowSorter)) {
+            return;
+        }
+
+        List<RowFilter<Object, Object>> filtros = new ArrayList<>();
+        Date fechaFiltro = filtroFechaSolicitudColumna.getDate();
+        if (fechaFiltro != null) {
+            filtros.add(new RowFilter<Object, Object>() {
+                @Override
+                public boolean include(Entry<? extends Object, ? extends Object> entry) {
+                    return mismaFecha(fechaFiltro, parsearFechaTabla(entry.getValue(COL_FECHA_SOLICITUD)));
+                }
+            });
+        }
+
+        for (Map.Entry<Integer, JTextField> filtro : filtrosTextoPorColumna.entrySet()) {
+            String criterio = normalizarFiltro(filtro.getValue().getText());
+            if (criterio.isEmpty()) {
+                continue;
+            }
+            int columna = filtro.getKey();
+            filtros.add(new RowFilter<Object, Object>() {
+                @Override
+                public boolean include(Entry<? extends Object, ? extends Object> entry) {
+                    return normalizarFiltro(textoSeguro(entry.getValue(columna))).contains(criterio);
+                }
+            });
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        TableRowSorter sorter = (TableRowSorter) jTable1.getRowSorter();
+        sorter.setRowFilter(filtros.isEmpty() ? null : RowFilter.andFilter(filtros));
+    }
+
+    private void limpiarFiltrosPorColumna()
+    {
+        if (!filtrosPorColumnaConfigurados) {
+            return;
+        }
+        filtroFechaSolicitudColumna.setDate(null);
+        for (JTextField filtro : filtrosTextoPorColumna.values()) {
+            filtro.setText("");
+        }
+        aplicarFiltrosPorColumna();
+    }
+
+    private String normalizarFiltro(String value)
+    {
+        return textoSeguro(value).trim().toUpperCase(Locale.ROOT);
+    }
+
+    private Date parsearFechaTabla(Object value)
+    {
+        String texto = textoSeguro(value).trim();
+        if (texto.isEmpty()) {
+            return null;
+        }
+        try {
+            synchronized (formatoFecha) {
+                return formatoFecha.parse(texto);
+            }
+        } catch (ParseException ex) {
+            return null;
+        }
+    }
+
+    private boolean mismaFecha(Date left, Date right)
+    {
+        if (left == null || right == null) {
+            return false;
+        }
+        synchronized (formatoFecha) {
+            return formatoFecha.format(left).equals(formatoFecha.format(right));
+        }
     }
 
     private JPanel crearCard()
@@ -628,6 +822,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         sorter.setSortable(COL_ESTADO_ID, false);
         sorter.setSortsOnUpdates(true);
         jTable1.setRowSorter(sorter);
+        aplicarFiltrosPorColumna();
     }
 
     private Comparator<Object> compararEnteros()
