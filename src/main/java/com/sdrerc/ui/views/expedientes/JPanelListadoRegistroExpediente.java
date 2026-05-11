@@ -56,9 +56,22 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
     private final Map<Integer, String> estadosPorId;
+    private final Map<Integer, String> tiposSolicitudPorId;
+    private final Map<Integer, String> procedimientosPorId;
+    private final Map<Integer, String> tiposActaPorId;
     private final SimpleDateFormat formatoFecha;
     private DateRangePickerSupport.Range rangoFechas;
     private JLabel lblFeedbackFechas;
+    private static final int COL_ID = 0;
+    private static final int COL_FECHA_SOLICITUD = 1;
+    private static final int COL_CANAL = 2;
+    private static final int COL_REFERENCIA = 3;
+    private static final int COL_TIPO_SOLICITUD = 4;
+    private static final int COL_PROCEDIMIENTO_REGISTRAL = 5;
+    private static final int COL_ACTA = 6;
+    private static final int COL_TITULAR = 7;
+    private static final int COL_ESTADO = 8;
+    private static final int COL_ESTADO_ID = 9;
 
     /**
      * Creates new form JPanelRegistroExpediente
@@ -71,9 +84,13 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
         this.estadosPorId = new HashMap<>();
+        this.tiposSolicitudPorId = new HashMap<>();
+        this.procedimientosPorId = new HashMap<>();
+        this.tiposActaPorId = new HashMap<>();
         this.formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
         this.formatoFecha.setLenient(false);
         cargarTiposBusqueda();
+        cargarCatalogosListado();
         cargarComboEstados();
         configurarComponentesRecepcion();
     }
@@ -98,10 +115,28 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {
         cmbTipoBusqueda.removeAllItems();
         cmbTipoBusqueda.addItem("NUMERO_TRAMITE_DOCUMENTO");
+        cmbTipoBusqueda.addItem("NUMERO_DOCUMENTO");
+        cmbTipoBusqueda.addItem("NUMERO_ACTA");
         cmbTipoBusqueda.addItem("TIPO_SOLICITUD");
         cmbTipoBusqueda.addItem("DNI_REMITENTE");
         cmbTipoBusqueda.addItem("APELLIDO_NOMBRE_REMITENTE");
         cmbTipoBusqueda.addItem("TIPO_PROCEDIMIENTO_REGISTRAL");
+    }
+
+    private void cargarCatalogosListado()
+    {
+        cargarMapaCatalogo(1, tiposSolicitudPorId);
+        cargarMapaCatalogo(3, procedimientosPorId);
+        cargarMapaCatalogo(4, tiposActaPorId);
+    }
+
+    private void cargarMapaCatalogo(int idCatalogo, Map<Integer, String> destino)
+    {
+        destino.clear();
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(idCatalogo);
+        for (CatalogoItem item : lista) {
+            destino.put(item.getIdCatalogoItem(), item.getDescripcion());
+        }
     }
     
      
@@ -145,7 +180,8 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {        
         String[] columnas = 
         {
-          "ID", "Fecha Solicitud", "N° Trámite Web", "Remitente", "Titular", "Estado", "EstadoId"
+          "ID", "Fecha solicitud", "Canal", "Referencia", "Tipo solicitud",
+          "Procedimiento registral", "Acta", "Titular", "Estado", "EstadoId"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -162,8 +198,11 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             Object[] fila = {
                     e.getIdExpediente(),
                     formatearFecha(e.getFechaSolicitud()),
-                    e.getNumeroTramiteDocumento(),
-                    e.getApellidoNombreRemitente(),
+                    textoSeguro(e.getCanalRecepcion()),
+                    obtenerReferencia(e),
+                    obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
+                    obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
+                    obtenerActa(e),
                     e.getApellidoNombreTitular(),
                     obtenerDescripcionEstado(e.getEstado()),
                     e.getEstado()
@@ -182,6 +221,54 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private String formatearFecha(java.util.Date fecha)
     {
         return fecha == null ? "" : formatoFecha.format(fecha);
+    }
+
+    private String obtenerDescripcionCatalogo(Map<Integer, String> catalogo, int id)
+    {
+        if (id <= 0) {
+            return "";
+        }
+        return catalogo.getOrDefault(id, String.valueOf(id));
+    }
+
+    private String obtenerReferencia(Expediente expediente)
+    {
+        if (esMpv(expediente.getCanalRecepcion()) && !estaVacio(expediente.getNumeroTramiteDocumento())) {
+            return expediente.getNumeroTramiteDocumento().trim();
+        }
+        if (!estaVacio(expediente.getNumeroDocumento())) {
+            return expediente.getNumeroDocumento().trim();
+        }
+        if (!estaVacio(expediente.getNumeroActa())) {
+            return expediente.getNumeroActa().trim();
+        }
+        return "Sin referencia";
+    }
+
+    private String obtenerActa(Expediente expediente)
+    {
+        String tipoActa = obtenerDescripcionCatalogo(tiposActaPorId, expediente.getTipoActa());
+        String numeroActa = textoSeguro(expediente.getNumeroActa()).trim();
+        if (!tipoActa.isEmpty() && !numeroActa.isEmpty()) {
+            return tipoActa + " " + numeroActa;
+        }
+        if (!tipoActa.isEmpty()) {
+            return tipoActa;
+        }
+        if (!numeroActa.isEmpty()) {
+            return numeroActa;
+        }
+        return "";
+    }
+
+    private boolean esMpv(String canal)
+    {
+        return canal != null && canal.trim().toUpperCase().contains("MPV");
+    }
+
+    private boolean estaVacio(String value)
+    {
+        return value == null || value.trim().isEmpty();
     }
 
     private List<Expediente> filtrarPorRangoFechas(List<Expediente> lista, Date fechaDesde, Date fechaHasta)
@@ -449,7 +536,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private void configurarTablaRecepcion()
     {
         jTable1.setRowHeight(30);
-        jTable1.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        jTable1.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         jTable1.setFillsViewportHeight(true);
         jTable1.setShowGrid(false);
         jTable1.setIntercellSpacing(new Dimension(0, 0));
@@ -466,16 +553,17 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             header.setForeground(new Color(30, 41, 59));
         }
 
-        if (jTable1.getColumnModel().getColumnCount() >= 6) {
-            ajustarColumna(0, 50, 60, 80);
-            ajustarColumna(1, 110, 120, 140);
-            ajustarColumna(2, 130, 150, 180);
-            ajustarColumna(3, 160, 260, Integer.MAX_VALUE);
-            ajustarColumna(4, 160, 260, Integer.MAX_VALUE);
-            ajustarColumna(5, 110, 130, 150);
-        }
-        if (jTable1.getColumnModel().getColumnCount() >= 7) {
-            ajustarColumna(6, 0, 0, 0);
+        if (jTable1.getColumnModel().getColumnCount() >= 10) {
+            ajustarColumna(COL_ID, 0, 0, 0);
+            ajustarColumna(COL_FECHA_SOLICITUD, 90, 105, 120);
+            ajustarColumna(COL_CANAL, 65, 75, 90);
+            ajustarColumna(COL_REFERENCIA, 100, 125, 155);
+            ajustarColumna(COL_TIPO_SOLICITUD, 110, 125, 150);
+            ajustarColumna(COL_PROCEDIMIENTO_REGISTRAL, 135, 170, 220);
+            ajustarColumna(COL_ACTA, 95, 120, 155);
+            ajustarColumna(COL_TITULAR, 160, 260, Integer.MAX_VALUE);
+            ajustarColumna(COL_ESTADO, 95, 110, 130);
+            ajustarColumna(COL_ESTADO_ID, 0, 0, 0);
         }
     }
 
@@ -494,7 +582,13 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         }
         String key = value.toString().trim();
         if ("NUMERO_TRAMITE_DOCUMENTO".equalsIgnoreCase(key)) {
-            return "N° trámite / documento";
+            return "N° trámite web";
+        }
+        if ("NUMERO_DOCUMENTO".equalsIgnoreCase(key)) {
+            return "N° documento";
+        }
+        if ("NUMERO_ACTA".equalsIgnoreCase(key)) {
+            return "N° acta";
         }
         if ("TIPO_SOLICITUD".equalsIgnoreCase(key)) {
             return "Tipo de solicitud";
@@ -561,11 +655,12 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
 
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String texto = textoSeguro(value);
-            label.setToolTipText((column == 2 || column == 3 || column == 4) ? texto : null);
+            int modelColumn = table.convertColumnIndexToModel(column);
+            label.setToolTipText((modelColumn == COL_REFERENCIA || modelColumn == COL_ACTA || modelColumn == COL_TITULAR || modelColumn == COL_PROCEDIMIENTO_REGISTRAL) ? texto : null);
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             boolean editableRecepcion = esFilaEditableRecepcion(table, row);
 
-            if (column == 0 || column == 1 || column == 5) {
+            if (modelColumn == COL_FECHA_SOLICITUD || modelColumn == COL_CANAL || modelColumn == COL_ESTADO) {
                 label.setHorizontalAlignment(SwingConstants.CENTER);
             } else {
                 label.setHorizontalAlignment(SwingConstants.LEFT);
@@ -576,7 +671,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 label.setForeground(editableRecepcion ? new Color(30, 41, 59) : new Color(115, 125, 138));
             }
 
-            if (column == 5) {
+            if (modelColumn == COL_ESTADO) {
                 label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
                 if (!isSelected) {
                     label.setForeground(editableRecepcion ? new Color(55, 95, 140) : new Color(100, 116, 139));
@@ -595,11 +690,11 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
 
     private boolean esFilaEditableRecepcion(JTable table, int viewRow)
     {
-        if (table.getModel().getColumnCount() < 7) {
+        if (table.getModel().getColumnCount() <= COL_ESTADO_ID) {
             return true;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        Object estadoId = table.getModel().getValueAt(modelRow, 6);
+        Object estadoId = table.getModel().getValueAt(modelRow, COL_ESTADO_ID);
         return String.valueOf(Enumerado.EstadoExpediente.RegistroExpediente.getId()).equals(String.valueOf(estadoId));
     }
 
