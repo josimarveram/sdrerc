@@ -104,37 +104,9 @@ public class ExpedienteRepository
     }
     
     public ExpedienteResponse agregarExpediente(Expediente expediente) throws SQLException 
-    {        
-        String sql = "INSERT INTO EXPEDIENTE ( " +
-			"ES_REGISTRO_SDRERC, " +
-			"HOJA_ENVIO_EXPEDIENTE, " +
-			"NUMERO_TRAMITE_DOCUMENTO, " +
-			"CANAL_RECEPCION, " +
-			"FECHA_SOLICITUD, " +
-			"TIPO_DOCUMENTO, " +
-			"NUMERO_DOCUMENTO, " +
-			"TIPO_ACTA, " +
-			"NUMERO_ACTA, " +
-			"TIPO_GRUPO_FAMILIAR, " +
-			"GRADO_PARENTESCO, " +
-			"TIPO_PROCEDIMIENTO_REGISTRAL, " +
-			"TIPO_SOLICITUD, " +
-			"DNI_REMITENTE, " +
-			"APELLIDO_NOMBRE_REMITENTE, " +
-			"UNIDAD_ORGANICA, " +
-			"DNI_TITULAR, " +
-			"APELLIDO_NOMBRE_TITULAR, " +
-			"DEPARTAMENTO, " +
-			"PROVINCIA, " +
-			"DISTRITO, " +
-			"DIRECCION_DOMICILIARIA, " +
-			"DOMICILIO, " +
-			"CORREO_ELECTRONICO, " +
-			"CELULAR, " +
-			"ESTADO, " +
-			"ID_USUARIO_CREA, " +
-			"FECHA_REGISTRA " +
-			") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    {
+        boolean soportaSegundoTitular = soportaSegundoTitular();
+        String sql = construirSqlInsertExpediente(soportaSegundoTitular);
         
 
         try (Connection conn = OracleConnection.getConnection();
@@ -158,34 +130,39 @@ public class ExpedienteRepository
             stmt.setDate(18, new java.sql.Date(System.currentTimeMillis()));
             */
             
-            stmt.setInt(1, expediente.getEsRegistroSdrerc());
-            stmt.setString(2, expediente.getHojaEnvioExpediente());
-            stmt.setString(3, expediente.getNumeroTramiteDocumento());
-            stmt.setString(4, expediente.getCanalRecepcion());
-            setNullableDate(stmt, 5, expediente.getFechaSolicitud());
-            stmt.setInt(6, expediente.getTipoDocumento());
-            stmt.setString(7, expediente.getNumeroDocumento());
-            stmt.setInt(8, expediente.getTipoActa());
-            stmt.setString(9, expediente.getNumeroActa());
-            stmt.setInt(10, expediente.getTipoGrupoFamiliar());
-            stmt.setInt(11, expediente.getGradoParentesco());
-            stmt.setInt(12, expediente.getTipoProcedimientoRegistral());
-            stmt.setInt(13, expediente.getTipoSolicitud());
-            stmt.setString(14, expediente.getDniRemitente());
-            stmt.setString(15, expediente.getApellidoNombreRemitente());
-            setNullableCatalogId(stmt, 16, expediente.getUnidadOrganica());
-            stmt.setString(17, expediente.getDniTitular());
-            stmt.setString(18, expediente.getApellidoNombreTitular());
-            stmt.setInt(19, expediente.getDepartamento());
-            stmt.setInt(20, expediente.getProvincia());
-            stmt.setInt(21, expediente.getDistrito());
-            stmt.setInt(22, expediente.getDireccionDomiciliaria());
-            stmt.setString(23, expediente.getDomicilio());
-            stmt.setString(24, expediente.getCorreoElectronico());
-            stmt.setString(25, expediente.getCelular());
-            stmt.setInt(26, expediente.getEstado());
-            stmt.setInt(27, expediente.getIdUsuarioCrea());
-            stmt.setDate(28, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(28, new java.sql.Date(expediente.getFechaRegistra().getTime()));           
+            int index = 1;
+            stmt.setInt(index++, expediente.getEsRegistroSdrerc());
+            stmt.setString(index++, expediente.getHojaEnvioExpediente());
+            stmt.setString(index++, expediente.getNumeroTramiteDocumento());
+            stmt.setString(index++, expediente.getCanalRecepcion());
+            setNullableDate(stmt, index++, expediente.getFechaSolicitud());
+            stmt.setInt(index++, expediente.getTipoDocumento());
+            stmt.setString(index++, expediente.getNumeroDocumento());
+            stmt.setInt(index++, expediente.getTipoActa());
+            stmt.setString(index++, expediente.getNumeroActa());
+            stmt.setInt(index++, expediente.getTipoGrupoFamiliar());
+            stmt.setInt(index++, expediente.getGradoParentesco());
+            stmt.setInt(index++, expediente.getTipoProcedimientoRegistral());
+            stmt.setInt(index++, expediente.getTipoSolicitud());
+            stmt.setString(index++, expediente.getDniRemitente());
+            stmt.setString(index++, expediente.getApellidoNombreRemitente());
+            setNullableCatalogId(stmt, index++, expediente.getUnidadOrganica());
+            stmt.setString(index++, expediente.getDniTitular());
+            stmt.setString(index++, expediente.getApellidoNombreTitular());
+            if (soportaSegundoTitular) {
+                stmt.setString(index++, expediente.getDniTitular2());
+                stmt.setString(index++, expediente.getApellidoNombreTitular2());
+            }
+            stmt.setInt(index++, expediente.getDepartamento());
+            stmt.setInt(index++, expediente.getProvincia());
+            stmt.setInt(index++, expediente.getDistrito());
+            stmt.setInt(index++, expediente.getDireccionDomiciliaria());
+            stmt.setString(index++, expediente.getDomicilio());
+            stmt.setString(index++, expediente.getCorreoElectronico());
+            stmt.setString(index++, expediente.getCelular());
+            stmt.setInt(index++, expediente.getEstado());
+            stmt.setInt(index++, expediente.getIdUsuarioCrea());
+            stmt.setDate(index, new java.sql.Date(System.currentTimeMillis()));
             
             stmt.executeUpdate();
 
@@ -277,71 +254,47 @@ public class ExpedienteRepository
     
     public ExpedienteResponse actualizarExpediente(Expediente expediente) throws SQLException 
     {
-        String sql = "UPDATE EXPEDIENTE SET " +
-                    "ES_REGISTRO_SDRERC = ?, " +
-                    "HOJA_ENVIO_EXPEDIENTE = ?, " +
-                    "NUMERO_TRAMITE_DOCUMENTO = ?, " +
-                    "CANAL_RECEPCION = ?, " +
-                    "FECHA_SOLICITUD = ?, " +
-                    "TIPO_DOCUMENTO = ?, " +
-                    "NUMERO_DOCUMENTO = ?, " +
-                    "TIPO_ACTA = ?, " +
-                    "NUMERO_ACTA = ?, " +
-                    "TIPO_GRUPO_FAMILIAR = ?, " +
-                    "GRADO_PARENTESCO = ?, " +
-                    "TIPO_PROCEDIMIENTO_REGISTRAL = ?, " +
-                    "TIPO_SOLICITUD = ?, " +
-                    "DNI_REMITENTE = ?, " +
-                    "APELLIDO_NOMBRE_REMITENTE = ?, " +
-                    "UNIDAD_ORGANICA = ?, " +
-                    "DNI_TITULAR = ?, " +
-                    "APELLIDO_NOMBRE_TITULAR = ?, " +
-                    "DEPARTAMENTO = ?, " +
-                    "PROVINCIA = ?, " +
-                    "DISTRITO = ?, " +
-                    "DIRECCION_DOMICILIARIA = ?, " +
-                    "DOMICILIO = ?, " +
-                    "CORREO_ELECTRONICO = ?, " +
-                    "CELULAR = ?, " +
-                    "ESTADO = ?, " +
-                    "ID_USUARIO_MODIFICA = ?, " +
-                    "FECHA_MODIFICA = ? " +
-                    "WHERE ID_EXPEDIENTE = ?";
+        boolean soportaSegundoTitular = soportaSegundoTitular();
+        String sql = construirSqlUpdateExpediente(soportaSegundoTitular);
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) 
         {
             // Datos para actualizar
-            stmt.setInt(1, expediente.getEsRegistroSdrerc());
-            stmt.setString(2, expediente.getHojaEnvioExpediente());
-            stmt.setString(3, expediente.getNumeroTramiteDocumento());
-            stmt.setString(4, expediente.getCanalRecepcion());
-            setNullableDate(stmt, 5, expediente.getFechaSolicitud());
-            stmt.setInt(6, expediente.getTipoDocumento());
-            stmt.setString(7, expediente.getNumeroDocumento());
-            stmt.setInt(8, expediente.getTipoActa());
-            stmt.setString(9, expediente.getNumeroActa());
-            stmt.setInt(10, expediente.getTipoGrupoFamiliar());
-            stmt.setInt(11, expediente.getGradoParentesco());
-            stmt.setInt(12, expediente.getTipoProcedimientoRegistral());
-            stmt.setInt(13, expediente.getTipoSolicitud());
-            stmt.setString(14, expediente.getDniRemitente());
-            stmt.setString(15, expediente.getApellidoNombreRemitente());
-            setNullableCatalogId(stmt, 16, expediente.getUnidadOrganica());
-            stmt.setString(17, expediente.getDniTitular());
-            stmt.setString(18, expediente.getApellidoNombreTitular());
-            stmt.setInt(19, expediente.getDepartamento());
-            stmt.setInt(20, expediente.getProvincia());
-            stmt.setInt(21, expediente.getDistrito());
-            stmt.setInt(22, expediente.getDireccionDomiciliaria());
-            stmt.setString(23, expediente.getDomicilio());
-            stmt.setString(24, expediente.getCorreoElectronico());
-            stmt.setString(25, expediente.getCelular());
-            stmt.setInt(26, expediente.getEstado());
-            stmt.setInt(27, expediente.getIdUsuarioModifica());
-            stmt.setDate(28, new java.sql.Date(System.currentTimeMillis())); //stmt.setDate(28, new java.sql.Date(expediente.getFechaModifica().getTime()));
-            // WHERE
-            stmt.setInt(29, expediente.getIdExpediente());
+            int index = 1;
+            stmt.setInt(index++, expediente.getEsRegistroSdrerc());
+            stmt.setString(index++, expediente.getHojaEnvioExpediente());
+            stmt.setString(index++, expediente.getNumeroTramiteDocumento());
+            stmt.setString(index++, expediente.getCanalRecepcion());
+            setNullableDate(stmt, index++, expediente.getFechaSolicitud());
+            stmt.setInt(index++, expediente.getTipoDocumento());
+            stmt.setString(index++, expediente.getNumeroDocumento());
+            stmt.setInt(index++, expediente.getTipoActa());
+            stmt.setString(index++, expediente.getNumeroActa());
+            stmt.setInt(index++, expediente.getTipoGrupoFamiliar());
+            stmt.setInt(index++, expediente.getGradoParentesco());
+            stmt.setInt(index++, expediente.getTipoProcedimientoRegistral());
+            stmt.setInt(index++, expediente.getTipoSolicitud());
+            stmt.setString(index++, expediente.getDniRemitente());
+            stmt.setString(index++, expediente.getApellidoNombreRemitente());
+            setNullableCatalogId(stmt, index++, expediente.getUnidadOrganica());
+            stmt.setString(index++, expediente.getDniTitular());
+            stmt.setString(index++, expediente.getApellidoNombreTitular());
+            if (soportaSegundoTitular) {
+                stmt.setString(index++, expediente.getDniTitular2());
+                stmt.setString(index++, expediente.getApellidoNombreTitular2());
+            }
+            stmt.setInt(index++, expediente.getDepartamento());
+            stmt.setInt(index++, expediente.getProvincia());
+            stmt.setInt(index++, expediente.getDistrito());
+            stmt.setInt(index++, expediente.getDireccionDomiciliaria());
+            stmt.setString(index++, expediente.getDomicilio());
+            stmt.setString(index++, expediente.getCorreoElectronico());
+            stmt.setString(index++, expediente.getCelular());
+            stmt.setInt(index++, expediente.getEstado());
+            stmt.setInt(index++, expediente.getIdUsuarioModifica());
+            stmt.setDate(index++, new java.sql.Date(System.currentTimeMillis()));
+            stmt.setInt(index, expediente.getIdExpediente());
 
             int rows = stmt.executeUpdate();
 
@@ -519,7 +472,7 @@ public class ExpedienteRepository
     }
     
     private Expediente mapRow(ResultSet rs) throws SQLException {
-        return new Expediente(
+        Expediente expediente = new Expediente(
                             rs.getInt("ID_EXPEDIENTE"),
                             rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
@@ -552,6 +505,13 @@ public class ExpedienteRepository
                             rs.getInt("ID_USUARIO_MODIFICA"),
                             rs.getDate("FECHA_MODIFICA")
         );
+        if (resultSetTieneColumna(rs, "DNI_TITULAR_2")) {
+            expediente.setDniTitular2(rs.getString("DNI_TITULAR_2"));
+        }
+        if (resultSetTieneColumna(rs, "APELLIDO_NOMBRE_TITULAR_2")) {
+            expediente.setApellidoNombreTitular2(rs.getString("APELLIDO_NOMBRE_TITULAR_2"));
+        }
+        return expediente;
     }
 
     private void setNullableDate(PreparedStatement stmt, int index, java.util.Date value) throws SQLException {
@@ -568,6 +528,74 @@ public class ExpedienteRepository
         } else {
             stmt.setInt(index, value);
         }
+    }
+
+    public boolean soportaSegundoTitular() throws SQLException {
+        try (Connection conn = OracleConnection.getConnection()) {
+            return existeColumnaExpediente(conn, "DNI_TITULAR_2")
+                    && existeColumnaExpediente(conn, "APELLIDO_NOMBRE_TITULAR_2");
+        }
+    }
+
+    private boolean existeColumnaExpediente(Connection conn, String columna) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'EXPEDIENTE' AND COLUMN_NAME = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, columna);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    private boolean resultSetTieneColumna(ResultSet rs, String columna) throws SQLException {
+        int total = rs.getMetaData().getColumnCount();
+        for (int i = 1; i <= total; i++) {
+            if (columna.equalsIgnoreCase(rs.getMetaData().getColumnName(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String construirSqlInsertExpediente(boolean incluirSegundoTitular) {
+        StringBuilder columnas = new StringBuilder("INSERT INTO EXPEDIENTE (")
+                .append("ES_REGISTRO_SDRERC, HOJA_ENVIO_EXPEDIENTE, NUMERO_TRAMITE_DOCUMENTO, ")
+                .append("CANAL_RECEPCION, FECHA_SOLICITUD, TIPO_DOCUMENTO, NUMERO_DOCUMENTO, ")
+                .append("TIPO_ACTA, NUMERO_ACTA, TIPO_GRUPO_FAMILIAR, GRADO_PARENTESCO, ")
+                .append("TIPO_PROCEDIMIENTO_REGISTRAL, TIPO_SOLICITUD, DNI_REMITENTE, ")
+                .append("APELLIDO_NOMBRE_REMITENTE, UNIDAD_ORGANICA, DNI_TITULAR, ")
+                .append("APELLIDO_NOMBRE_TITULAR");
+        StringBuilder valores = new StringBuilder(") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?");
+
+        if (incluirSegundoTitular) {
+            columnas.append(", DNI_TITULAR_2, APELLIDO_NOMBRE_TITULAR_2");
+            valores.append(",?,?");
+        }
+
+        columnas.append(", DEPARTAMENTO, PROVINCIA, DISTRITO, DIRECCION_DOMICILIARIA, ")
+                .append("DOMICILIO, CORREO_ELECTRONICO, CELULAR, ESTADO, ID_USUARIO_CREA, FECHA_REGISTRA");
+        valores.append(",?,?,?,?,?,?,?,?,?,?)");
+        return columnas.append(valores).toString();
+    }
+
+    private String construirSqlUpdateExpediente(boolean incluirSegundoTitular) {
+        StringBuilder sql = new StringBuilder("UPDATE EXPEDIENTE SET ")
+                .append("ES_REGISTRO_SDRERC = ?, HOJA_ENVIO_EXPEDIENTE = ?, ")
+                .append("NUMERO_TRAMITE_DOCUMENTO = ?, CANAL_RECEPCION = ?, FECHA_SOLICITUD = ?, ")
+                .append("TIPO_DOCUMENTO = ?, NUMERO_DOCUMENTO = ?, TIPO_ACTA = ?, NUMERO_ACTA = ?, ")
+                .append("TIPO_GRUPO_FAMILIAR = ?, GRADO_PARENTESCO = ?, ")
+                .append("TIPO_PROCEDIMIENTO_REGISTRAL = ?, TIPO_SOLICITUD = ?, DNI_REMITENTE = ?, ")
+                .append("APELLIDO_NOMBRE_REMITENTE = ?, UNIDAD_ORGANICA = ?, DNI_TITULAR = ?, ")
+                .append("APELLIDO_NOMBRE_TITULAR = ?");
+
+        if (incluirSegundoTitular) {
+            sql.append(", DNI_TITULAR_2 = ?, APELLIDO_NOMBRE_TITULAR_2 = ?");
+        }
+
+        sql.append(", DEPARTAMENTO = ?, PROVINCIA = ?, DISTRITO = ?, DIRECCION_DOMICILIARIA = ?, ")
+                .append("DOMICILIO = ?, CORREO_ELECTRONICO = ?, CELULAR = ?, ESTADO = ?, ")
+                .append("ID_USUARIO_MODIFICA = ?, FECHA_MODIFICA = ? WHERE ID_EXPEDIENTE = ?");
+        return sql.toString();
     }
     
     

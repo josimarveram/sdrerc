@@ -70,5 +70,9 @@ public class ExpedienteService
     public Expediente buscarporid(int id) throws Exception {
         return expedienteRepository_.buscarPorId(id);
     }
+
+    public boolean soportaSegundoTitular() throws SQLException {
+        return expedienteRepository_.soportaSegundoTitular();
+    }
     
 }

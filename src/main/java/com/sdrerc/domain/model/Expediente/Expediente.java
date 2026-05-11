@@ -31,6 +31,8 @@ public class Expediente
     private int unidadOrganica;
     private String dniTitular;
     private String apellidoNombreTitular;
+    private String dniTitular2;
+    private String apellidoNombreTitular2;
     private int departamento;
     private int provincia;
     private int distrito;
@@ -248,6 +250,22 @@ public class Expediente
 
     public void setApellidoNombreTitular(String apellidoNombreTitular) {
         this.apellidoNombreTitular = apellidoNombreTitular;
+    }
+
+    public String getDniTitular2() {
+        return dniTitular2;
+    }
+
+    public void setDniTitular2(String dniTitular2) {
+        this.dniTitular2 = dniTitular2;
+    }
+
+    public String getApellidoNombreTitular2() {
+        return apellidoNombreTitular2;
+    }
+
+    public void setApellidoNombreTitular2(String apellidoNombreTitular2) {
+        this.apellidoNombreTitular2 = apellidoNombreTitular2;
     }
 
     public int getDepartamento() {

@@ -61,6 +61,10 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
     private CatalogoItem ultimaDireccionDomiciliariaSeleccionada;
     private JLabel lblTituloFormulario;
     private JLabel lblSubtituloFormulario;
+    private final JTextField textNumeroDocumentoTitular2 = new JTextField();
+    private final JTextField textApellidosNombreTitular2 = new JTextField();
+    private JPanel panelNumeroDocumentoTitular2;
+    private JPanel panelApellidosNombreTitular2;
     private boolean modoConsulta = false;
     private int estadoExpedienteActual = Enumerado.EstadoExpediente.RegistroExpediente.getId();
     
@@ -80,6 +84,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         
         TextFieldRules.apply(textNumeroDocumentoTitular).onlyNumbers().max(8);
         TextFieldRules.apply(textApellidosNombreTitular).onlyLetters().max(300);
+        TextFieldRules.apply(textNumeroDocumentoTitular2).onlyNumbers().max(8);
+        TextFieldRules.apply(textApellidosNombreTitular2).onlyLetters().max(300);
         
         TextFieldRules.apply(textCelular).onlyNumbers().max(9);
         
@@ -123,6 +129,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         ComboBoxUtils.applySmartRenderer(this);
         configurarFormularioPremium();
         configurarValidacionVisualRecepcion();
+        aplicarReglasTipoActa();
     }
 
     private void initFechaSolicitudPicker() {
@@ -257,8 +264,12 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         row++;
         agregarCampo(body, "DNI remitente", textDniRemitente, 0, row, 1, 0.16);
         agregarCampo(body, "Apellidos y nombres remitente", textApellidosNombreRemitente, 1, row, 1, 0.34);
-        agregarCampo(body, "DNI / Nro. documento titular", textNumeroDocumentoTitular, 2, row, 1, 0.16);
-        agregarCampo(body, "Apellidos y nombres titular", textApellidosNombreTitular, 3, row, 1, 0.34);
+        agregarCampo(body, "DNI / Nro. documento titular 1", textNumeroDocumentoTitular, 2, row, 1, 0.16);
+        agregarCampo(body, "Apellidos y nombres titular 1", textApellidosNombreTitular, 3, row, 1, 0.34);
+
+        row++;
+        panelNumeroDocumentoTitular2 = agregarCampo(body, "DNI / Nro. documento titular 2", textNumeroDocumentoTitular2, 2, row, 1, 0.16);
+        panelApellidosNombreTitular2 = agregarCampo(body, "Apellidos y nombres titular 2", textApellidosNombreTitular2, 3, row, 1, 0.34);
         return card;
     }
 
@@ -337,7 +348,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         return panel;
     }
 
-    private void agregarCampo(JPanel parent, String label, JComponent component, int x, int y, int width, double weightx) {
+    private JPanel agregarCampo(JPanel parent, String label, JComponent component, int x, int y, int width, double weightx) {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = x;
         gbc.gridy = y;
@@ -346,7 +357,9 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(y == 0 ? 0 : 9, 0, 0, 12);
-        parent.add(crearCampo(label, component), gbc);
+        JPanel campo = crearCampo(label, component);
+        parent.add(campo, gbc);
+        return campo;
     }
 
     private JLabel crearLabelCampo(String texto) {
@@ -377,6 +390,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         aplicarTamano(cboUnidadOrganica, normal);
         aplicarTamano(textNumeroDocumentoTitular, normal);
         aplicarTamano(textApellidosNombreTitular, largo);
+        aplicarTamano(textNumeroDocumentoTitular2, normal);
+        aplicarTamano(textApellidosNombreTitular2, largo);
         aplicarTamano(textCorreoElectronico, largo);
         aplicarTamano(textCelular, corto);
         aplicarTamano(cboDireccionDomiciliaria, largo);
@@ -400,6 +415,10 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         textHojaEnvioExpediente.setToolTipText("Se habilita cuando la solicitud no corresponde a la SDRERC.");
         cboTipoSolicitud.setToolTipText("Define las reglas de remitente y unidad orgánica.");
         cboUnidadOrganica.setToolTipText("Obligatorio para solicitudes tipo OFICIO.");
+        textNumeroDocumentoTitular.setToolTipText("Documento del primer titular del acta.");
+        textApellidosNombreTitular.setToolTipText("Apellidos y nombres completos del primer titular.");
+        textNumeroDocumentoTitular2.setToolTipText("Documento del segundo titular para actas de matrimonio.");
+        textApellidosNombreTitular2.setToolTipText("Apellidos y nombres completos del segundo titular para actas de matrimonio.");
         textDomicilio.setToolTipText("Ingrese el domicilio completo para notificación.");
     }
 
@@ -446,6 +465,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
                 cboGrupoFamiliar, cboGradoParentesco, cboTipoProcedimientoRegistral,
                 cboTipoSolicitud, textDniRemitente, textApellidosNombreRemitente,
                 cboUnidadOrganica, textNumeroDocumentoTitular, textApellidosNombreTitular,
+                textNumeroDocumentoTitular2, textApellidosNombreTitular2,
                 textCorreoElectronico, textCelular, cboDireccionDomiciliaria, textDomicilio,
                 cboDepartamento, cboProvincia, cboDistrito, textHojaEnvioExpediente,
                 jRadiButonSiCorresponde, jRadiButonNoCorresponde
@@ -464,6 +484,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
     private void registrarEventos() {
     cboDireccionDomiciliaria.addActionListener(e -> manejarSeleccionDireccionDomiciliaria());
     cboCanalRecepcion.addActionListener(e -> actualizarEstadoNumeroTramite());
+    cboTipoActa.addActionListener(e -> aplicarReglasTipoActa());
 
     cboDepartamento.addActionListener(e -> {
         if (cboDepartamento.getSelectedItem() == null) return;
@@ -572,6 +593,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
 
         //tipoActa
         seleccionarEstadoEnCombo(cboTipoActa, lista.getTipoActa()); 
+        aplicarReglasTipoActa();
 
         //numeroActa
         textNumeroActa.setText(lista.getNumeroActa());
@@ -602,6 +624,8 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
 
         //apellidoNombreTitular
         textApellidosNombreTitular.setText(lista.getApellidoNombreTitular());
+        textNumeroDocumentoTitular2.setText(lista.getDniTitular2());
+        textApellidosNombreTitular2.setText(lista.getApellidoNombreTitular2());
 
         //departamento
         //seleccionarEstadoEnCombo(cboDepartamento, lista.getDepartamento());
@@ -628,6 +652,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         //celular
         textCelular.setText(lista.getCelular());
         aplicarReglasTipoSolicitud();
+        aplicarReglasTipoActa();
         actualizarTituloFormulario();
         aplicarModoConsultaSiCorresponde();
         
@@ -906,6 +931,7 @@ private void seleccionarDistrito(int idDistrito) {
         // Limpiar JTextFields
         textApellidosNombreRemitente.setText("");
         textNumeroDocumentoTitular.setText("");
+        limpiarTitular2();
         textNumeroActa.setText("");
         textDniRemitente.setText("");
         textApellidosNombreTitular.setText("");
@@ -924,15 +950,25 @@ private void seleccionarDistrito(int idDistrito) {
         if (cboTipoProcedimientoRegistral.getItemCount() > 0) cboTipoProcedimientoRegistral.setSelectedIndex(-1);
         if (cboTipoSolicitud.getItemCount() > 0) cboTipoSolicitud.setSelectedIndex(-1);
         aplicarReglasTipoSolicitud();
+        aplicarReglasTipoActa();
         actualizarEstadoNumeroTramite();
         actualizarTituloFormulario();
         FormValidationUI.clearAll(this);
     }
     
-    private boolean validarGuardar()
+    private boolean validarGuardar() throws Exception
     {
         aplicarReglasTipoSolicitud();
+        aplicarReglasTipoActa();
         if (!validarCamposObligatoriosVisualmente(true)) {
+            return false;
+        }
+
+        if (esMatrimonio() && !expedienteService.soportaSegundoTitular()) {
+            JOptionPane.showMessageDialog(this,
+                    "La base de datos actual no soporta guardar un segundo titular. Solicite aprobar las columnas DNI_TITULAR_2 CHAR(8) y APELLIDO_NOMBRE_TITULAR_2 VARCHAR2(500) antes de registrar actas de matrimonio.",
+                    "Validación",
+                    JOptionPane.WARNING_MESSAGE);
             return false;
         }
 
@@ -1007,6 +1043,8 @@ private void seleccionarDistrito(int idDistrito) {
         FormValidationUI.onFocusLost(cboTipoProcedimientoRegistral, () -> validarCampoProcedimientoRegistral(null));
         FormValidationUI.onFocusLost(textNumeroDocumentoTitular, () -> validarCampoDocumentoTitular(null));
         FormValidationUI.onFocusLost(textApellidosNombreTitular, () -> validarCampoNombreTitular(null));
+        FormValidationUI.onFocusLost(textNumeroDocumentoTitular2, () -> validarCampoDocumentoTitular2(null));
+        FormValidationUI.onFocusLost(textApellidosNombreTitular2, () -> validarCampoNombreTitular2(null));
         FormValidationUI.onFocusLost(cboUnidadOrganica, () -> validarCampoUnidadOrganica(null));
         FormValidationUI.onFocusLost(textHojaEnvioExpediente, () -> validarCampoHojaEnvio(null));
         FormValidationUI.onTextChanged(textNumeroTramiteDocumento, () -> validarCampoNumeroTramiteWeb(null));
@@ -1014,6 +1052,8 @@ private void seleccionarDistrito(int idDistrito) {
         FormValidationUI.onTextChanged(textNumeroActa, () -> validarCampoNumeroActa(null));
         FormValidationUI.onTextChanged(textNumeroDocumentoTitular, () -> validarCampoDocumentoTitular(null));
         FormValidationUI.onTextChanged(textApellidosNombreTitular, () -> validarCampoNombreTitular(null));
+        FormValidationUI.onTextChanged(textNumeroDocumentoTitular2, () -> validarCampoDocumentoTitular2(null));
+        FormValidationUI.onTextChanged(textApellidosNombreTitular2, () -> validarCampoNombreTitular2(null));
         FormValidationUI.onTextChanged(textHojaEnvioExpediente, () -> validarCampoHojaEnvio(null));
 
         cboCanalRecepcion.addActionListener(e -> {
@@ -1027,7 +1067,13 @@ private void seleccionarDistrito(int idDistrito) {
             validarCampoTipoSolicitud(null);
             validarCampoUnidadOrganica(null);
         });
-        cboTipoActa.addActionListener(e -> validarCampoTipoActa(null));
+        cboTipoActa.addActionListener(e -> {
+            if (modoConsulta) return;
+            aplicarReglasTipoActa();
+            validarCampoTipoActa(null);
+            validarCampoDocumentoTitular2(null);
+            validarCampoNombreTitular2(null);
+        });
         cboTipoProcedimientoRegistral.addActionListener(e -> validarCampoProcedimientoRegistral(null));
         cboUnidadOrganica.addActionListener(e -> validarCampoUnidadOrganica(null));
     }
@@ -1046,6 +1092,8 @@ private void seleccionarDistrito(int idDistrito) {
         validarCampoProcedimientoRegistral(invalidos);
         validarCampoDocumentoTitular(invalidos);
         validarCampoNombreTitular(invalidos);
+        validarCampoDocumentoTitular2(invalidos);
+        validarCampoNombreTitular2(invalidos);
         validarCampoUnidadOrganica(invalidos);
         validarCampoHojaEnvio(invalidos);
 
@@ -1152,6 +1200,30 @@ private void seleccionarDistrito(int idDistrito) {
                 invalidos);
     }
 
+    private boolean validarCampoDocumentoTitular2(List<JComponent> invalidos)
+    {
+        if (!esMatrimonio()) {
+            FormValidationUI.clear(textNumeroDocumentoTitular2);
+            return true;
+        }
+        return validarCampoRequerido(textNumeroDocumentoTitular2,
+                !textNumeroDocumentoTitular2.getText().trim().isEmpty(),
+                "Ingrese el documento del segundo titular.",
+                invalidos);
+    }
+
+    private boolean validarCampoNombreTitular2(List<JComponent> invalidos)
+    {
+        if (!esMatrimonio()) {
+            FormValidationUI.clear(textApellidosNombreTitular2);
+            return true;
+        }
+        return validarCampoRequerido(textApellidosNombreTitular2,
+                !textApellidosNombreTitular2.getText().trim().isEmpty(),
+                "Ingrese los apellidos y nombres del segundo titular.",
+                invalidos);
+    }
+
     private boolean validarCampoUnidadOrganica(List<JComponent> invalidos)
     {
         if (!esOficio()) {
@@ -1238,6 +1310,42 @@ private void seleccionarDistrito(int idDistrito) {
 
     private boolean esOficio() {
         return "OFICIO".equals(descripcionTipoSolicitudSeleccionada());
+    }
+
+    private void aplicarReglasTipoActa()
+    {
+        boolean matrimonio = esMatrimonio();
+        boolean habilitar = matrimonio && !modoConsulta;
+
+        textNumeroDocumentoTitular2.setEnabled(habilitar);
+        textApellidosNombreTitular2.setEnabled(habilitar);
+
+        if (panelNumeroDocumentoTitular2 != null) {
+            panelNumeroDocumentoTitular2.setVisible(matrimonio);
+        }
+        if (panelApellidosNombreTitular2 != null) {
+            panelApellidosNombreTitular2.setVisible(matrimonio);
+        }
+
+        if (!matrimonio) {
+            limpiarTitular2();
+        }
+
+        revalidate();
+        repaint();
+    }
+
+    private void limpiarTitular2()
+    {
+        textNumeroDocumentoTitular2.setText("");
+        textApellidosNombreTitular2.setText("");
+        FormValidationUI.clear(textNumeroDocumentoTitular2);
+        FormValidationUI.clear(textApellidosNombreTitular2);
+    }
+
+    private boolean esMatrimonio()
+    {
+        return "MATRIMONIO".equals(normalizarDescripcion(cboTipoActa.getSelectedItem()));
     }
 
     private int idCatalogoOpcional(JComboBox combo)
@@ -1917,6 +2025,8 @@ private void seleccionarDistrito(int idDistrito) {
             
             //apellidoNombreTitular
             expediente.setApellidoNombreTitular(textApellidosNombreTitular.getText());
+            expediente.setDniTitular2(esMatrimonio() ? textNumeroDocumentoTitular2.getText() : null);
+            expediente.setApellidoNombreTitular2(esMatrimonio() ? textApellidosNombreTitular2.getText() : null);
             
             //departamento
             int idDepartamento = idDepartamentoOpcional();
