@@ -66,6 +66,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     private boolean modoConsulta = false;
     private int estadoExpedienteActual = Enumerado.EstadoExpediente.RegistroExpediente.getId();
     private JLabel lblEstadoAsignacion;
+    private static final String TEXTO_SIN_REGISTRAR = "Sin registrar";
     
     /**
      * Creates new form JPanelRegistrarExpediente
@@ -254,7 +255,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
         seleccionarEstadoEnCombo(cboGrupoFamiliar, lista.getTipoGrupoFamiliar()); 
 
         //gradoParentesco
-        seleccionarEstadoEnCombo(cboGradoParentesco, lista.getGradoParentesco()); 
+        seleccionarEstadoEnCombo(cboGradoParentesco, lista.getGradoParentesco());
         
         //tipoProcedimientoRegistral
         seleccionarEstadoEnCombo(cboTipoProcedimientoRegistral, lista.getTipoProcedimientoRegistral()); 
@@ -269,7 +270,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
         textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
 
         //unidadOrganica
-        seleccionarEstadoEnCombo(cboUnidadOrganica, lista.getUnidadOrganica());
+        seleccionarComboPorIdOpcional(cboUnidadOrganica, lista.getUnidadOrganica());
 
         //dniTitular
         textNumeroDocumentoTitular.setText(lista.getDniTitular());
@@ -339,13 +340,51 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
     {
+        if (idEstado <= 0) {
+            combo.setSelectedIndex(-1);
+            return;
+        }
         for (int i = 0; i < combo.getItemCount(); i++) {
             CatalogoItem item = combo.getItemAt(i);
             if (item.getIdCatalogoItem() == idEstado) {
                 combo.setSelectedIndex(i);
-                break;
+                return;
             }
         }
+        combo.setSelectedIndex(-1);
+    }
+
+    private void seleccionarComboPorIdOpcional(JComboBox<CatalogoItem> combo, int id)
+    {
+        if (id <= 0) {
+            seleccionarItemSinRegistrar(combo);
+            return;
+        }
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            CatalogoItem item = combo.getItemAt(i);
+            if (item.getIdCatalogoItem() == id) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+        seleccionarItemSinRegistrar(combo);
+    }
+
+    private void seleccionarItemSinRegistrar(JComboBox<CatalogoItem> combo)
+    {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            CatalogoItem item = combo.getItemAt(i);
+            if (item.getIdCatalogoItem() == 0) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+        combo.setSelectedIndex(-1);
+    }
+
+    private void agregarItemSinRegistrar(JComboBox<CatalogoItem> combo)
+    {
+        combo.addItem(new CatalogoItem(0, 0, TEXTO_SIN_REGISTRAR, 1));
     }
     
     private void cargarComboTipoSolicitud() {
@@ -438,6 +477,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
     
     private void cargarComboUnidadOrganica() {
         cboUnidadOrganica.removeAllItems();    
+        agregarItemSinRegistrar(cboUnidadOrganica);
         List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(9);
 
         for (CatalogoItem catalogoitem : lista) {
