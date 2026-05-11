@@ -989,6 +989,7 @@ private void seleccionarDistrito(int idDistrito) {
 
     private void configurarValidacionVisualRecepcion()
     {
+        FormValidationUI.onDateChanged(spFechaRecepcion, () -> validarCampoFechaSolicitud(null));
         FormValidationUI.onFocusLost(spFechaRecepcion, () -> validarCampoFechaSolicitud(null));
         FormValidationUI.onFocusLost(cboCanalRecepcion, () -> {
             validarCampoCanalRecepcion(null);
@@ -996,16 +997,24 @@ private void seleccionarDistrito(int idDistrito) {
         });
         FormValidationUI.onFocusLost(textNumeroTramiteDocumento, () -> validarCampoNumeroTramiteWeb(null));
         FormValidationUI.onFocusLost(cboTipoDocumento, () -> validarCampoTipoDocumento(null));
+        FormValidationUI.onFocusLost(textNumeroDocumento, () -> validarCampoNumeroDocumento(null));
         FormValidationUI.onFocusLost(cboTipoSolicitud, () -> {
             validarCampoTipoSolicitud(null);
             validarCampoUnidadOrganica(null);
         });
         FormValidationUI.onFocusLost(cboTipoActa, () -> validarCampoTipoActa(null));
+        FormValidationUI.onFocusLost(textNumeroActa, () -> validarCampoNumeroActa(null));
         FormValidationUI.onFocusLost(cboTipoProcedimientoRegistral, () -> validarCampoProcedimientoRegistral(null));
         FormValidationUI.onFocusLost(textNumeroDocumentoTitular, () -> validarCampoDocumentoTitular(null));
         FormValidationUI.onFocusLost(textApellidosNombreTitular, () -> validarCampoNombreTitular(null));
         FormValidationUI.onFocusLost(cboUnidadOrganica, () -> validarCampoUnidadOrganica(null));
         FormValidationUI.onFocusLost(textHojaEnvioExpediente, () -> validarCampoHojaEnvio(null));
+        FormValidationUI.onTextChanged(textNumeroTramiteDocumento, () -> validarCampoNumeroTramiteWeb(null));
+        FormValidationUI.onTextChanged(textNumeroDocumento, () -> validarCampoNumeroDocumento(null));
+        FormValidationUI.onTextChanged(textNumeroActa, () -> validarCampoNumeroActa(null));
+        FormValidationUI.onTextChanged(textNumeroDocumentoTitular, () -> validarCampoDocumentoTitular(null));
+        FormValidationUI.onTextChanged(textApellidosNombreTitular, () -> validarCampoNombreTitular(null));
+        FormValidationUI.onTextChanged(textHojaEnvioExpediente, () -> validarCampoHojaEnvio(null));
 
         cboCanalRecepcion.addActionListener(e -> {
             if (modoConsulta) return;
@@ -1030,8 +1039,10 @@ private void seleccionarDistrito(int idDistrito) {
         validarCampoCanalRecepcion(invalidos);
         validarCampoNumeroTramiteWeb(invalidos);
         validarCampoTipoDocumento(invalidos);
+        validarCampoNumeroDocumento(invalidos);
         validarCampoTipoSolicitud(invalidos);
         validarCampoTipoActa(invalidos);
+        validarCampoNumeroActa(invalidos);
         validarCampoProcedimientoRegistral(invalidos);
         validarCampoDocumentoTitular(invalidos);
         validarCampoNombreTitular(invalidos);
@@ -1085,6 +1096,14 @@ private void seleccionarDistrito(int idDistrito) {
                 invalidos);
     }
 
+    private boolean validarCampoNumeroDocumento(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(textNumeroDocumento,
+                !textNumeroDocumento.getText().trim().isEmpty(),
+                "Ingrese el número de documento.",
+                invalidos);
+    }
+
     private boolean validarCampoTipoSolicitud(List<JComponent> invalidos)
     {
         return validarCampoRequerido(cboTipoSolicitud,
@@ -1098,6 +1117,14 @@ private void seleccionarDistrito(int idDistrito) {
         return validarCampoRequerido(cboTipoActa,
                 comboTieneSeleccionValida(cboTipoActa),
                 "Seleccione el tipo de acta.",
+                invalidos);
+    }
+
+    private boolean validarCampoNumeroActa(List<JComponent> invalidos)
+    {
+        return validarCampoRequerido(textNumeroActa,
+                !textNumeroActa.getText().trim().isEmpty(),
+                "Ingrese el número de acta.",
                 invalidos);
     }
 
@@ -1152,7 +1179,7 @@ private void seleccionarDistrito(int idDistrito) {
     private boolean validarCampoRequerido(JComponent component, boolean valido, String mensaje, List<JComponent> invalidos)
     {
         if (valido) {
-            FormValidationUI.clear(component);
+            FormValidationUI.markValid(component);
             return true;
         }
 

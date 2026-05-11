@@ -9,13 +9,21 @@ import java.awt.event.FocusEvent;
 import java.util.Map;
 import java.util.WeakHashMap;
 import javax.swing.BorderFactory;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.border.Border;
+import javax.swing.text.JTextComponent;
 
 public final class FormValidationUI
 {
-    private static final Color ERROR_BACKGROUND = new Color(255, 244, 244);
-    private static final Color ERROR_BORDER = new Color(220, 88, 88);
+    private static final Color ERROR_BACKGROUND = new Color(255, 246, 246);
+    private static final Color ERROR_BORDER = new Color(211, 84, 84);
+    private static final Color SUCCESS_BACKGROUND = new Color(244, 252, 247);
+    private static final Color SUCCESS_BORDER = new Color(74, 154, 104);
     private static final Map<JComponent, ComponentState> ORIGINAL_STATE = new WeakHashMap<>();
 
     private FormValidationUI()
@@ -26,11 +34,24 @@ public final class FormValidationUI
     {
         if (component == null) return;
 
-        applyInvalidStyle(component, message);
+        applyState(component, "error", ERROR_BORDER, ERROR_BACKGROUND, message);
         if (component instanceof JDateChooser) {
             Component editor = ((JDateChooser) component).getDateEditor().getUiComponent();
             if (editor instanceof JComponent) {
-                applyInvalidStyle((JComponent) editor, message);
+                applyState((JComponent) editor, "error", ERROR_BORDER, ERROR_BACKGROUND, message);
+            }
+        }
+    }
+
+    public static void markValid(JComponent component)
+    {
+        if (component == null) return;
+
+        applyState(component, "success", SUCCESS_BORDER, SUCCESS_BACKGROUND, null);
+        if (component instanceof JDateChooser) {
+            Component editor = ((JDateChooser) component).getDateEditor().getUiComponent();
+            if (editor instanceof JComponent) {
+                applyState((JComponent) editor, "success", SUCCESS_BORDER, SUCCESS_BACKGROUND, null);
             }
         }
     }
@@ -46,6 +67,11 @@ public final class FormValidationUI
                 restore((JComponent) editor);
             }
         }
+    }
+
+    public static void clearState(JComponent component)
+    {
+        clear(component);
     }
 
     public static void clearAll(Container container)
@@ -88,12 +114,60 @@ public final class FormValidationUI
         }
     }
 
-    private static void applyInvalidStyle(JComponent component, String message)
+    public static void onTextChanged(JTextField field, Runnable validation)
+    {
+        onTextChanged((JTextComponent) field, validation);
+    }
+
+    public static void onTextChanged(JTextArea area, Runnable validation)
+    {
+        onTextChanged((JTextComponent) area, validation);
+    }
+
+    public static void onSelectionChanged(JComboBox<?> combo, Runnable validation)
+    {
+        if (combo == null || validation == null) return;
+        combo.addActionListener(e -> validation.run());
+    }
+
+    public static void onDateChanged(JDateChooser dateChooser, Runnable validation)
+    {
+        if (dateChooser == null || validation == null) return;
+        dateChooser.addPropertyChangeListener("date", e -> validation.run());
+    }
+
+    private static void onTextChanged(JTextComponent textComponent, Runnable validation)
+    {
+        if (textComponent == null || validation == null) return;
+        textComponent.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e)
+            {
+                validation.run();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e)
+            {
+                validation.run();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e)
+            {
+                validation.run();
+            }
+        });
+    }
+
+    private static void applyState(JComponent component, String outline, Color border, Color background, String message)
     {
         ORIGINAL_STATE.computeIfAbsent(component, ComponentState::new);
-        component.putClientProperty("JComponent.outline", "error");
-        component.setBorder(BorderFactory.createLineBorder(ERROR_BORDER, 1, true));
-        component.setBackground(ERROR_BACKGROUND);
+        component.putClientProperty("JComponent.outline", outline);
+        component.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(border, 1, true),
+                BorderFactory.createEmptyBorder(1, 4, 1, 4)));
+        component.setBackground(background);
         component.setToolTipText(message);
     }
 
