@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -203,7 +204,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                     obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
                     obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
                     obtenerActa(e),
-                    e.getApellidoNombreTitular(),
+                    obtenerTitularListado(e),
                     obtenerDescripcionEstado(e.getEstado()),
                     e.getEstado()
             };
@@ -259,6 +260,35 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             return numeroActa;
         }
         return "";
+    }
+
+    private TitularListadoValue obtenerTitularListado(Expediente expediente)
+    {
+        String titular1 = textoSeguro(expediente.getApellidoNombreTitular()).trim();
+        String titular2 = textoSeguro(expediente.getApellidoNombreTitular2()).trim();
+        if (esActaMatrimonio(expediente)) {
+            if (!titular2.isEmpty()) {
+                return new TitularListadoValue(
+                        unirTitulares(titular1, titular2),
+                        "<html>Titular 1: " + escaparHtml(titular1) + "<br>Titular 2: " + escaparHtml(titular2) + "</html>");
+            }
+            return new TitularListadoValue(titular1, "Acta de matrimonio sin segundo titular registrado.");
+        }
+        return new TitularListadoValue(titular1, "Titular: " + titular1);
+    }
+
+    private String unirTitulares(String titular1, String titular2)
+    {
+        if (titular1.isEmpty()) {
+            return titular2;
+        }
+        return titular1 + " / " + titular2;
+    }
+
+    private boolean esActaMatrimonio(Expediente expediente)
+    {
+        String tipoActa = obtenerDescripcionCatalogo(tiposActaPorId, expediente.getTipoActa());
+        return "MATRIMONIO".equals(tipoActa.trim().toUpperCase(Locale.ROOT));
     }
 
     private boolean esMpv(String canal)
@@ -616,6 +646,15 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         return value == null ? "" : value.toString();
     }
 
+    private String escaparHtml(String value)
+    {
+        return textoSeguro(value)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+    }
+
     private void actualizarTooltipTipoBusqueda()
     {
         Object selected = cmbTipoBusqueda.getSelectedItem();
@@ -656,7 +695,11 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String texto = textoSeguro(value);
             int modelColumn = table.convertColumnIndexToModel(column);
-            label.setToolTipText((modelColumn == COL_REFERENCIA || modelColumn == COL_ACTA || modelColumn == COL_TITULAR || modelColumn == COL_PROCEDIMIENTO_REGISTRAL) ? texto : null);
+            if (modelColumn == COL_TITULAR && value instanceof TitularListadoValue) {
+                label.setToolTipText(((TitularListadoValue) value).getTooltip());
+            } else {
+                label.setToolTipText((modelColumn == COL_REFERENCIA || modelColumn == COL_ACTA || modelColumn == COL_TITULAR || modelColumn == COL_PROCEDIMIENTO_REGISTRAL) ? texto : null);
+            }
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             boolean editableRecepcion = esFilaEditableRecepcion(table, row);
 
@@ -685,6 +728,25 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             }
             label.setOpaque(true);
             return label;
+        }
+    }
+
+    private static class TitularListadoValue {
+        private final String display;
+        private final String tooltip;
+
+        private TitularListadoValue(String display, String tooltip) {
+            this.display = display;
+            this.tooltip = tooltip;
+        }
+
+        private String getTooltip() {
+            return tooltip;
+        }
+
+        @Override
+        public String toString() {
+            return display;
         }
     }
 
