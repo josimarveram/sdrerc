@@ -25,8 +25,13 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -40,8 +45,10 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
@@ -58,6 +65,19 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableRowSorter;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CreationHelper;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
  *
@@ -76,8 +96,11 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private final CatalogoItemService catalogoItemService;
     private final Map<Integer, String> estadosPorId;
     private final Map<Integer, String> tiposSolicitudPorId;
+    private final Map<Integer, String> tiposDocumentoPorId;
     private final Map<Integer, String> procedimientosPorId;
     private final Map<Integer, String> tiposActaPorId;
+    private final Map<Integer, String> unidadesOrganicasPorId;
+    private final Map<Integer, String> direccionesDomiciliariasPorId;
     private final SimpleDateFormat formatoFecha;
     private DateRangePickerSupport.Range rangoFechas;
     private JLabel lblFeedbackFechas;
@@ -95,6 +118,33 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private static final int COL_TITULAR = 7;
     private static final int COL_ESTADO = 8;
     private static final int COL_ESTADO_ID = 9;
+    private static final int COL_TIPO_DOCUMENTO = 10;
+    private static final int COL_NUMERO_DOCUMENTO = 11;
+    private static final int COL_TIPO_ACTA = 12;
+    private static final int COL_NUMERO_ACTA = 13;
+    private static final int COL_DNI_TITULAR_1 = 14;
+    private static final int COL_TITULAR_1 = 15;
+    private static final int COL_DNI_TITULAR_2 = 16;
+    private static final int COL_TITULAR_2 = 17;
+    private static final int COL_UNIDAD_ORGANICA = 18;
+    private static final int COL_CORREO_ELECTRONICO = 19;
+    private static final int COL_CELULAR = 20;
+    private static final int COL_DIRECCION_DOMICILIARIA = 21;
+    private static final int COL_DOMICILIO = 22;
+    private static final int COL_DEPARTAMENTO = 23;
+    private static final int COL_PROVINCIA = 24;
+    private static final int COL_DISTRITO = 25;
+    private static final int COL_ABOGADO_DESIGNADO = 26;
+    private static final int COL_SUPERVISOR_RESPONSABLE = 27;
+    private static final int[] COLUMNAS_EXPORTACION_EXCEL = {
+        COL_ID, COL_FECHA_SOLICITUD, COL_CANAL, COL_REFERENCIA, COL_TIPO_SOLICITUD,
+        COL_PROCEDIMIENTO_REGISTRAL, COL_ESTADO,
+        COL_TIPO_DOCUMENTO, COL_NUMERO_DOCUMENTO, COL_TIPO_ACTA, COL_NUMERO_ACTA,
+        COL_DNI_TITULAR_1, COL_TITULAR_1, COL_DNI_TITULAR_2, COL_TITULAR_2,
+        COL_UNIDAD_ORGANICA, COL_CORREO_ELECTRONICO, COL_CELULAR,
+        COL_DIRECCION_DOMICILIARIA, COL_DOMICILIO, COL_DEPARTAMENTO, COL_PROVINCIA, COL_DISTRITO,
+        COL_ABOGADO_DESIGNADO, COL_SUPERVISOR_RESPONSABLE
+    };
     
     
     public JPanelFiltroBusqueda(){
@@ -105,8 +155,11 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         this.catalogoItemService = new CatalogoItemService();
         this.estadosPorId = new HashMap<>();
         this.tiposSolicitudPorId = new HashMap<>();
+        this.tiposDocumentoPorId = new HashMap<>();
         this.procedimientosPorId = new HashMap<>();
         this.tiposActaPorId = new HashMap<>();
+        this.unidadesOrganicasPorId = new HashMap<>();
+        this.direccionesDomiciliariasPorId = new HashMap<>();
         this.formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
         this.formatoFecha.setLenient(false);
         cargarTiposBusqueda();
@@ -117,30 +170,12 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
           
     public void cargarTabla(JTable tabla) throws Exception {
 
-        String[] columnas = {
-                "ID", "Fecha solicitud", "Canal", "Referencia", "Tipo solicitud",
-                "Procedimiento registral", "Acta", "Titular", "Estado", "EstadoId"
-        };
-
-        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+        DefaultTableModel modelo = crearModeloTablaAsignacion();
 
         List<Expediente> lista = expedienteService.listarExpedientes();
 
         for (Expediente e : lista) {
-            Object[] fila = {
-                    e.getIdExpediente(),
-                    formatearFecha(e.getFechaSolicitud()),
-                    textoSeguro(e.getCanalRecepcion()),
-                    obtenerReferencia(e),
-                    obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
-                    obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
-                    obtenerActa(e),
-                    obtenerTitularListado(e),
-                    obtenerDescripcionEstado(e.getEstado()),
-                    e.getEstado()
-            };
-
-            modelo.addRow(fila);
+            modelo.addRow(crearFilaTablaAsignacion(e));
         }
 
         tabla.setModel(modelo);
@@ -175,8 +210,11 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private void cargarCatalogosListado()
     {
         cargarMapaCatalogo(1, tiposSolicitudPorId);
+        cargarMapaCatalogo(2, tiposDocumentoPorId);
         cargarMapaCatalogo(3, procedimientosPorId);
         cargarMapaCatalogo(4, tiposActaPorId);
+        cargarMapaCatalogo(8, direccionesDomiciliariasPorId);
+        cargarMapaCatalogo(9, unidadesOrganicasPorId);
     }
 
     private void cargarMapaCatalogo(int idCatalogo, Map<Integer, String> destino)
@@ -213,41 +251,67 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     
     private void cargarTablaNueva(List<Expediente> lista) {
         
+        DefaultTableModel model = crearModeloTablaAsignacion();
+        model.setRowCount(0);
+        for (Expediente e : lista) {
+            model.addRow(crearFilaTablaAsignacion(e));
+        }
+
+        jTable1.setModel(model);
+        configurarTablaAsignacion();
+    }
+
+    private DefaultTableModel crearModeloTablaAsignacion()
+    {
         String[] columnas = {
-                "ID", "Fecha solicitud", "Canal", "Referencia", "Tipo solicitud",
-                "Procedimiento registral", "Acta", "Titular", "Estado", "EstadoId"
+                "ID expediente", "Fecha solicitud", "Canal", "Referencia", "Tipo solicitud",
+                "Procedimiento registral", "Acta", "Titular", "Estado", "EstadoId",
+                "Tipo documento", "N° documento", "Tipo acta", "N° acta",
+                "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
+                "Unidad orgánica", "Correo electrónico", "Celular", "Dirección domiciliaria",
+                "Domicilio", "Departamento", "Provincia", "Distrito",
+                "Abogado designado", "Supervisor responsable"
         };
-        
-        DefaultTableModel model = new DefaultTableModel(columnas, 0){        
+        return new DefaultTableModel(columnas, 0){
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        
-        
-        
-        //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
-        model.setRowCount(0);
-        for (Expediente e : lista) {
-            Object[] fila = {
-                    e.getIdExpediente(),
-                    formatearFecha(e.getFechaSolicitud()),
-                    textoSeguro(e.getCanalRecepcion()),
-                    obtenerReferencia(e),
-                    obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
-                    obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
-                    obtenerActa(e),
-                    obtenerTitularListado(e),
-                    obtenerDescripcionEstado(e.getEstado()),
-                    e.getEstado()
-            };
+    }
 
-            model.addRow(fila);
-        }
-
-        jTable1.setModel(model);
-        configurarTablaAsignacion();
+    private Object[] crearFilaTablaAsignacion(Expediente e)
+    {
+        return new Object[] {
+                e.getIdExpediente(),
+                formatearFecha(e.getFechaSolicitud()),
+                textoSeguro(e.getCanalRecepcion()),
+                obtenerReferencia(e),
+                obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
+                obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
+                obtenerActa(e),
+                obtenerTitularListado(e),
+                obtenerDescripcionEstado(e.getEstado()),
+                e.getEstado(),
+                obtenerDescripcionCatalogo(tiposDocumentoPorId, e.getTipoDocumento()),
+                textoSeguro(e.getNumeroDocumento()),
+                obtenerDescripcionCatalogo(tiposActaPorId, e.getTipoActa()),
+                textoSeguro(e.getNumeroActa()),
+                textoSeguro(e.getDniTitular()),
+                textoSeguro(e.getApellidoNombreTitular()),
+                textoSeguro(e.getDniTitular2()),
+                textoSeguro(e.getApellidoNombreTitular2()),
+                obtenerDescripcionCatalogo(unidadesOrganicasPorId, e.getUnidadOrganica()),
+                textoSeguro(e.getCorreoElectronico()),
+                textoSeguro(e.getCelular()),
+                obtenerDescripcionCatalogo(direccionesDomiciliariasPorId, e.getDireccionDomiciliaria()),
+                textoSeguro(e.getDomicilio()),
+                idComoTexto(e.getDepartamento()),
+                idComoTexto(e.getProvincia()),
+                idComoTexto(e.getDistrito()),
+                textoSeguro(e.getAbogadoDesignado()),
+                textoSeguro(e.getSupervisorDesignado())
+        };
     }
 
     private String obtenerDescripcionEstado(int idEstado)
@@ -266,6 +330,11 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
             return "";
         }
         return catalogo.getOrDefault(id, String.valueOf(id));
+    }
+
+    private String idComoTexto(int id)
+    {
+        return id <= 0 ? "" : String.valueOf(id);
     }
 
     private String obtenerReferencia(Expediente expediente)
@@ -495,6 +564,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         GridBagConstraints gbcAccion = new GridBagConstraints();
         gbcAccion.insets = new Insets(0, 0, 0, 8);
         acciones.add(btnBuscar, gbcAccion);
+        acciones.add(crearBotonExportarExcel(), gbcAccion);
         gbcAccion.insets = new Insets(0, 0, 0, 0);
         acciones.add(btnLimpiar, gbcAccion);
 
@@ -525,6 +595,154 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         card.add(lblFeedbackFechas, gbc);
 
         return card;
+    }
+
+    private JButton crearBotonExportarExcel()
+    {
+        JButton button = IconUtils.createSecondaryButton("Exportar", "excel.svg");
+        button.setToolTipText("Exportar listado a Excel");
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(118, 34));
+        button.addActionListener(e -> exportarListadoAsignacionExcel());
+        return button;
+    }
+
+    private void exportarListadoAsignacionExcel()
+    {
+        if (jTable1.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No hay registros para exportar.");
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Exportar listado a Excel");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Archivo Excel (*.xlsx)", "xlsx"));
+        fileChooser.setSelectedFile(new File(nombreArchivoExcelAsignacion()));
+
+        if (fileChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File archivo = asegurarExtensionXlsx(fileChooser.getSelectedFile());
+        if (archivo.exists()) {
+            int respuesta = JOptionPane.showConfirmDialog(
+                    this,
+                    "El archivo ya existe. ¿Desea reemplazarlo?",
+                    "Confirmar reemplazo",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (respuesta != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            escribirExcelAsignacion(archivo);
+            JOptionPane.showMessageDialog(this, "Archivo Excel generado correctamente.");
+        } catch (IOException ex) {
+            Logger.getLogger(JPanelFiltroBusqueda.class.getName()).log(Level.WARNING, "No se pudo exportar listado de asignacion", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo exportar el archivo Excel.");
+        }
+    }
+
+    private String nombreArchivoExcelAsignacion()
+    {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return "asignacion_solicitudes_" + timestamp + ".xlsx";
+    }
+
+    private File asegurarExtensionXlsx(File archivo)
+    {
+        if (archivo.getName().toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            return archivo;
+        }
+        return new File(archivo.getParentFile(), archivo.getName() + ".xlsx");
+    }
+
+    private void escribirExcelAsignacion(File archivo) throws IOException
+    {
+        try (Workbook workbook = new XSSFWorkbook(); FileOutputStream out = new FileOutputStream(archivo)) {
+            Sheet sheet = workbook.createSheet("Solicitudes");
+            CellStyle headerStyle = crearEstiloCabeceraExcel(workbook);
+            CellStyle dateStyle = crearEstiloFechaExcel(workbook);
+
+            Row header = sheet.createRow(0);
+            for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                int modelColumn = COLUMNAS_EXPORTACION_EXCEL[col];
+                Cell cell = header.createCell(col);
+                cell.setCellValue(jTable1.getModel().getColumnName(modelColumn));
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int viewRow = 0; viewRow < jTable1.getRowCount(); viewRow++) {
+                Row row = sheet.createRow(viewRow + 1);
+                for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                    int modelColumn = COLUMNAS_EXPORTACION_EXCEL[col];
+                    Object value = obtenerValorTablaExportacion(viewRow, modelColumn);
+                    Cell cell = row.createCell(col);
+                    escribirValorExcel(cell, value, modelColumn, dateStyle);
+                }
+            }
+
+            sheet.createFreezePane(0, 1);
+            sheet.setAutoFilter(new CellRangeAddress(0, jTable1.getRowCount(), 0, COLUMNAS_EXPORTACION_EXCEL.length - 1));
+            for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                sheet.autoSizeColumn(col);
+                int width = sheet.getColumnWidth(col);
+                sheet.setColumnWidth(col, Math.min(Math.max(width + 512, 2800), 18000));
+            }
+            workbook.write(out);
+        }
+    }
+
+    private CellStyle crearEstiloCabeceraExcel(Workbook workbook)
+    {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private CellStyle crearEstiloFechaExcel(Workbook workbook)
+    {
+        CellStyle style = workbook.createCellStyle();
+        CreationHelper helper = workbook.getCreationHelper();
+        style.setDataFormat(helper.createDataFormat().getFormat("dd/MM/yyyy"));
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private void aplicarBordesExcel(CellStyle style)
+    {
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+    }
+
+    private Object obtenerValorTablaExportacion(int viewRow, int modelColumn)
+    {
+        int modelRow = jTable1.convertRowIndexToModel(viewRow);
+        return jTable1.getModel().getValueAt(modelRow, modelColumn);
+    }
+
+    private void escribirValorExcel(Cell cell, Object value, int modelColumn, CellStyle dateStyle)
+    {
+        if (modelColumn == COL_FECHA_SOLICITUD) {
+            Date fecha = parsearFechaTabla(value);
+            if (fecha != null) {
+                cell.setCellValue(fecha);
+                cell.setCellStyle(dateStyle);
+                return;
+            }
+        }
+        cell.setCellValue(textoSeguro(value));
     }
 
     private JPanel crearCardResultados()
@@ -821,6 +1039,9 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
             ajustarColumna(COL_TITULAR, 160, 260, Integer.MAX_VALUE);
             ajustarColumna(COL_ESTADO, 95, 110, 130);
             ajustarColumna(COL_ESTADO_ID, 0, 0, 0);
+            for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getColumnModel().getColumnCount(); column++) {
+                ajustarColumna(column, 0, 0, 0);
+            }
         }
     }
 
@@ -838,6 +1059,9 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         sorter.setComparator(COL_ESTADO_ID, compararEnteros());
         sorter.setSortable(COL_ID, false);
         sorter.setSortable(COL_ESTADO_ID, false);
+        for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getModel().getColumnCount(); column++) {
+            sorter.setSortable(column, false);
+        }
         sorter.setSortsOnUpdates(true);
         jTable1.setRowSorter(sorter);
         aplicarFiltrosPorColumna();
@@ -903,7 +1127,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
 
     private boolean esColumnaVisibleOrdenable(int modelColumn)
     {
-        return modelColumn != COL_ID && modelColumn != COL_ESTADO_ID;
+        return modelColumn > COL_ID && modelColumn < COL_ESTADO_ID;
     }
 
     private void ajustarColumna(int index, int min, int preferred, int max)
