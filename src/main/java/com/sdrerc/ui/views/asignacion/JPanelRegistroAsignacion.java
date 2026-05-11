@@ -354,6 +354,16 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
         combo.setSelectedIndex(-1);
     }
 
+    private int idCatalogoOpcional(JComboBox<?> combo)
+    {
+        Object item = combo.getSelectedItem();
+        if (item instanceof CatalogoItem) {
+            int id = ((CatalogoItem) item).getIdCatalogoItem();
+            return id > 0 ? id : 0;
+        }
+        return 0;
+    }
+
     private void seleccionarComboPorIdOpcional(JComboBox<CatalogoItem> combo, int id)
     {
         if (id <= 0) {
@@ -1368,102 +1378,8 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
 
     
     private boolean validarFormulario() {
-
-        if (getFechaSolicitudSeleccionada() == null) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar la Fecha de Solicitud.");
-            spFechaRecepcion.requestFocus();
-            return false;
-        }
-
-        if (cboCanalRecepcion.getSelectedItem() == null) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar el Canal de recepción.");
-            cboCanalRecepcion.requestFocus();
-            return false;
-        }
-
-        if (textNumeroTramiteDocumento.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar el Número de Trámite.");
-            textNumeroTramiteDocumento.requestFocus();
-            return false;
-        }
-
-        if (cboTipoSolicitud.getSelectedIndex() == -1) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Solicitud.");
-            cboTipoSolicitud.requestFocus();
-            return false;
-        }
-
-        if (cboTipoDocumento.getSelectedIndex() == -1) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar un Tipo de Documento.");
-            cboTipoDocumento.requestFocus();
-            return false;
-        }
-/*
-        if (textNumeroDocumento.getText().trim().length() != 8) {
-            JOptionPane.showMessageDialog(this, "El DNI del Remitente debe tener 8 dígitos.");
-            textNumeroDocumento.requestFocus();
-            return false;
-        }
-
-        if (textApellidosNombreRemitente.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Remitente.");
-            textApellidosNombreRemitente.requestFocus();
-            return false;
-        }
-
-        if (textNumeroDocumentoSolicitante.getText().trim().length() != 8) {
-            JOptionPane.showMessageDialog(this, "El DNI del Solicitante debe tener 8 dígitos.");
-            textNumeroDocumentoSolicitante.requestFocus();
-            return false;
-        }
-
-        if (textApellidosNombresSolicitante.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar el nombre del Solicitante.");
-            textApellidosNombresSolicitante.requestFocus();
-            return false;
-        }
-        
-        */
-
-        if (cboTipoActa.getSelectedIndex() == -1) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar Tipo de Acta.");
-            cboTipoActa.requestFocus();
-            return false;
-        }
-
-        if (textNumeroActa.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Acta.");
-            textNumeroActa.requestFocus();
-            return false;
-        }
-
-        if (cboGrupoFamiliar.getSelectedIndex() == -1) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar Grupo Familiar.");
-            cboGrupoFamiliar.requestFocus();
-            return false;
-        }
-        /*
-        if (textNumeroGrupoFamiliar.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar Número de Grupo Familiar.");
-            textNumeroGrupoFamiliar.requestFocus();
-            return false;
-        }
-        */
-
-        if (textNumeroDocumentoTitular.getText().trim().length() != 8) {
-            JOptionPane.showMessageDialog(this, "El DNI del Titular debe tener 8 dígitos.");
-            textNumeroDocumentoTitular.requestFocus();
-            return false;
-        }
-/*
-        if (textApellidosNombresTitular.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar Apellidos y Nombres del Titular.");
-            textApellidosNombresTitular.requestFocus();
-            return false;
-        }
-        
-        */
-
+        // En Asignacion los datos de recepcion/notificacion son de consulta.
+        // El guardado solo debe validar los datos propios de la asignacion.
         return validarAntesDeGenerarAsignacion();
     }
 
@@ -1589,39 +1505,33 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
             
             
             //tipoDocumento
-            CatalogoItem catalogoTipoDocumento = (CatalogoItem) cboTipoDocumento.getSelectedItem();
-            int idTipoDocumento = catalogoTipoDocumento.getIdCatalogoItem();            
+            int idTipoDocumento = idCatalogoOpcional(cboTipoDocumento);
             expediente.setTipoDocumento(idTipoDocumento);
            
             //numeroDocumento
             expediente.setNumeroDocumento(textNumeroDocumento.getText());
             
             //tipoActa
-            CatalogoItem catalogoTipoActa = (CatalogoItem) cboTipoActa.getSelectedItem();
-            int idTipoActa = catalogoTipoActa.getIdCatalogoItem();
+            int idTipoActa = idCatalogoOpcional(cboTipoActa);
             expediente.setTipoActa(idTipoActa);
             
             //numeroActa
             expediente.setNumeroActa(textNumeroActa.getText());
             
             //tipoGrupoFamiliar
-            CatalogoItem catalogoGrupoFamiliar = (CatalogoItem) cboGrupoFamiliar.getSelectedItem();
-            int idGrupoFamiliar = catalogoGrupoFamiliar.getIdCatalogoItem();
+            int idGrupoFamiliar = idCatalogoOpcional(cboGrupoFamiliar);
             expediente.setTipoGrupoFamiliar(idGrupoFamiliar);
             
             //gradoParentesco
-            CatalogoItem catalogoGradoParentesco = (CatalogoItem) cboGradoParentesco.getSelectedItem();
-            int idgradoParentesco = catalogoGradoParentesco.getIdCatalogoItem();
+            int idgradoParentesco = idCatalogoOpcional(cboGradoParentesco);
             expediente.setGradoParentesco(idgradoParentesco);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //tipoProcedimientoRegistral
-            CatalogoItem catalogoTipoProcedimientoRegistral = (CatalogoItem) cboTipoProcedimientoRegistral.getSelectedItem();
-            int idTipoProcedimientoRegistral = catalogoTipoProcedimientoRegistral.getIdCatalogoItem();
+            int idTipoProcedimientoRegistral = idCatalogoOpcional(cboTipoProcedimientoRegistral);
             expediente.setTipoProcedimientoRegistral(idTipoProcedimientoRegistral);
             
             //tipoSolicitud
-            CatalogoItem catalogoTipoSolicitud = (CatalogoItem) cboTipoSolicitud.getSelectedItem();
-            int idTipoSolicitud = catalogoTipoSolicitud.getIdCatalogoItem();            
+            int idTipoSolicitud = idCatalogoOpcional(cboTipoSolicitud);
             expediente.setTipoSolicitud(idTipoSolicitud);
             
             //dniRemitente
@@ -1631,8 +1541,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
             expediente.setApellidoNombreRemitente(textApellidosNombreRemitente.getText());
             
             //unidadOrganica
-            CatalogoItem catalogoUnidadOrganica = (CatalogoItem) cboUnidadOrganica.getSelectedItem();
-            int idUnidadOrganica = catalogoUnidadOrganica.getIdCatalogoItem();            
+            int idUnidadOrganica = idCatalogoOpcional(cboUnidadOrganica);
             expediente.setUnidadOrganica(idUnidadOrganica);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //dniTitular
@@ -1642,8 +1551,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
             expediente.setApellidoNombreTitular(textApellidosNombreTitular.getText());
                         
             //direccionDomiciliaria
-            CatalogoItem catalogoDireccionDomiciliaria = (CatalogoItem) cboDireccionDomiciliaria.getSelectedItem();
-            int idDireccionDomiciliaria = catalogoDireccionDomiciliaria.getIdCatalogoItem();            
+            int idDireccionDomiciliaria = idCatalogoOpcional(cboDireccionDomiciliaria);
             expediente.setDireccionDomiciliaria(idDireccionDomiciliaria);  //// MODIFICARRRRRRRRRRRRRRRRRRR
             
             //domicilio
