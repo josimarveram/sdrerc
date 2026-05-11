@@ -389,7 +389,8 @@ public class ExpedienteRepository
     public List<Expediente> listar() throws SQLException {
         List<Expediente> lista = new ArrayList<>();
 
-        String sql = "SELECT * FROM EXPEDIENTE ORDER BY ID_EXPEDIENTE DESC";
+        String sql = construirSelectExpedienteConAsignacion()
+                + "ORDER BY e.ID_EXPEDIENTE DESC";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -405,7 +406,8 @@ public class ExpedienteRepository
     public List<Expediente> buscarPorEstado(int estado) throws SQLException {
         List<Expediente> lista = new ArrayList<>();
 
-        String sql = "SELECT * FROM EXPEDIENTE WHERE ESTADO = ?";
+        String sql = construirSelectExpedienteConAsignacion()
+                + "WHERE e.ESTADO = ?";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -425,14 +427,17 @@ public class ExpedienteRepository
 
         //String sql = "SELECT * FROM EXPEDIENTE WHERE " + campo + " LIKE ?";
         
-        StringBuilder sql = new StringBuilder("SELECT * FROM EXPEDIENTE WHERE " + campo + " LIKE ? ");
+        StringBuilder sql = new StringBuilder(construirSelectExpedienteConAsignacion())
+                .append("WHERE e.")
+                .append(campo)
+                .append(" LIKE ? ");
 
         
         // Si el estado no es "TODOS", agregamos AND
         boolean filtrarEstado = estadoItem != 0;
 
         if (filtrarEstado) {
-            sql.append("AND ESTADO = ?");
+            sql.append("AND e.ESTADO = ?");
         }
 
         
@@ -456,7 +461,8 @@ public class ExpedienteRepository
     public Expediente buscarPorId(int id) throws SQLException {
         Expediente lista = new Expediente();
 
-        String sql = "SELECT * FROM EXPEDIENTE WHERE ID_EXPEDIENTE = ?";
+        String sql = construirSelectExpedienteConAsignacion()
+                + "WHERE e.ID_EXPEDIENTE = ?";
 
         try (Connection conn = OracleConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -520,6 +526,25 @@ public class ExpedienteRepository
         }
         return null;
     }
+
+    private String construirSelectExpedienteConAsignacion()
+    {
+        return "SELECT e.*, ea.FECHA_ASIGNACION, "
+                + "CASE WHEN t.ID_TECNICO IS NULL THEN au.FULL_NAME "
+                + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS ABOGADO_DESIGNADO, "
+                + "CASE WHEN ts.ID_TECNICO IS NULL THEN su.FULL_NAME "
+                + "ELSE TRIM(NVL(ts.APELLIDO_PATERNO, '') || ' ' || NVL(ts.APELLIDO_MATERNO, '') || ', ' || NVL(ts.NOMBRES, '')) END AS SUPERVISOR_DESIGNADO "
+                + "FROM EXPEDIENTE e "
+                + "LEFT JOIN EXPEDIENTE_ASIGNACION ea ON e.ID_EXPEDIENTE = ea.ID_EXPEDIENTE "
+                + "AND ea.ACTIVE = 1 AND ea.ETAPA_FLUJO IS NULL "
+                + "LEFT JOIN TECNICO t ON t.ID_TECNICO = ea.ID_TECNICO "
+                + "LEFT JOIN (SELECT ID_TECNICO, MAX(USER_ID) AS USER_ID, MAX(FULL_NAME) AS FULL_NAME "
+                + "FROM APP_USERS WHERE ID_TECNICO IS NOT NULL GROUP BY ID_TECNICO) au ON au.ID_TECNICO = ea.ID_TECNICO "
+                + "LEFT JOIN (SELECT ABOGADO_ID, MAX(SUPERVISOR_ID) AS SUPERVISOR_ID "
+                + "FROM APP_USER_SUPERVISION GROUP BY ABOGADO_ID) aus ON aus.ABOGADO_ID = au.USER_ID "
+                + "LEFT JOIN APP_USERS su ON su.USER_ID = aus.SUPERVISOR_ID "
+                + "LEFT JOIN TECNICO ts ON ts.ID_TECNICO = su.ID_TECNICO ";
+    }
     
     private Expediente mapRow(ResultSet rs) throws SQLException {
         Expediente expediente = new Expediente(
@@ -563,6 +588,15 @@ public class ExpedienteRepository
         }
         if (resultSetTieneColumna(rs, "ESTADO_DESCRIPCION")) {
             expediente.setEstadoDescripcion(rs.getString("ESTADO_DESCRIPCION"));
+        }
+        if (resultSetTieneColumna(rs, "ABOGADO_DESIGNADO")) {
+            expediente.setAbogadoDesignado(rs.getString("ABOGADO_DESIGNADO"));
+        }
+        if (resultSetTieneColumna(rs, "SUPERVISOR_DESIGNADO")) {
+            expediente.setSupervisorDesignado(rs.getString("SUPERVISOR_DESIGNADO"));
+        }
+        if (resultSetTieneColumna(rs, "FECHA_ASIGNACION")) {
+            expediente.setFechaAsignacion(rs.getDate("FECHA_ASIGNACION"));
         }
         return expediente;
     }
