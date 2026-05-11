@@ -71,6 +71,10 @@ public class ExpedienteService
         return expedienteRepository_.buscarPorId(id);
     }
 
+    public Expediente buscarDuplicadoPorActaYTitular(Expediente expediente, boolean validarDosTitulares) throws SQLException {
+        return expedienteRepository_.buscarDuplicadoPorActaYTitular(expediente, validarDosTitulares);
+    }
+
     public boolean soportaSegundoTitular() throws SQLException {
         return expedienteRepository_.soportaSegundoTitular();
     }

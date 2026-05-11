@@ -470,6 +470,54 @@ public class ExpedienteRepository
         }
         return lista;
     }
+
+    public Expediente buscarDuplicadoPorActaYTitular(Expediente expediente, boolean validarDosTitulares) throws SQLException {
+        String numeroActa = textoSeguro(expediente.getNumeroActa()).trim();
+        String dniTitular = textoSeguro(expediente.getDniTitular()).trim();
+        String dniTitular2 = textoSeguro(expediente.getDniTitular2()).trim();
+
+        if (numeroActa.isEmpty() || dniTitular.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder sql = new StringBuilder("SELECT * FROM EXPEDIENTE WHERE TRIM(NUMERO_ACTA) = ? ");
+        if (expediente.getIdExpediente() > 0) {
+            sql.append("AND ID_EXPEDIENTE <> ? ");
+        }
+        sql.append("AND (TRIM(DNI_TITULAR) = ? ");
+        if (validarDosTitulares) {
+            sql.append("OR TRIM(DNI_TITULAR_2) = ? ");
+        }
+        if (validarDosTitulares && !dniTitular2.isEmpty()) {
+            sql.append("OR TRIM(DNI_TITULAR) = ? OR TRIM(DNI_TITULAR_2) = ? ");
+        }
+        sql.append(") AND ROWNUM = 1");
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            int index = 1;
+            ps.setString(index++, numeroActa);
+            if (expediente.getIdExpediente() > 0) {
+                ps.setInt(index++, expediente.getIdExpediente());
+            }
+            ps.setString(index++, dniTitular);
+            if (validarDosTitulares) {
+                ps.setString(index++, dniTitular);
+            }
+            if (validarDosTitulares && !dniTitular2.isEmpty()) {
+                ps.setString(index++, dniTitular2);
+                ps.setString(index, dniTitular2);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRow(rs);
+                }
+            }
+        }
+        return null;
+    }
     
     private Expediente mapRow(ResultSet rs) throws SQLException {
         Expediente expediente = new Expediente(
@@ -512,6 +560,10 @@ public class ExpedienteRepository
             expediente.setApellidoNombreTitular2(rs.getString("APELLIDO_NOMBRE_TITULAR_2"));
         }
         return expediente;
+    }
+
+    private String textoSeguro(String value) {
+        return value == null ? "" : value;
     }
 
     private void setNullableDate(PreparedStatement stmt, int index, java.util.Date value) throws SQLException {

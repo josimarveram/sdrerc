@@ -32,6 +32,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -1021,6 +1022,58 @@ private void seleccionarDistrito(int idDistrito) {
         }
 
         return true;
+    }
+
+    private boolean validarDuplicidadActaTitular(Expediente expediente) throws Exception
+    {
+        Expediente duplicado = expedienteService.buscarDuplicadoPorActaYTitular(expediente, esMatrimonio());
+        if (duplicado == null || duplicado.getIdExpediente() <= 0) {
+            return true;
+        }
+
+        JOptionPane.showMessageDialog(this,
+                mensajeDuplicadoActaTitular(duplicado),
+                "Posible expediente duplicado",
+                JOptionPane.WARNING_MESSAGE);
+        textNumeroActa.requestFocus();
+        return false;
+    }
+
+    private String mensajeDuplicadoActaTitular(Expediente duplicado)
+    {
+        StringBuilder mensaje = new StringBuilder();
+        mensaje.append("Ya existe un expediente registrado con el mismo número de acta y documento del titular. ")
+                .append("Verifique el expediente existente antes de continuar.");
+        mensaje.append("\n\nExpediente detectado:");
+        mensaje.append("\nID expediente: ").append(duplicado.getIdExpediente());
+        mensaje.append("\nNúmero de acta: ").append(textoSeguro(duplicado.getNumeroActa()));
+        mensaje.append("\nTitular: ").append(obtenerTitularDuplicado(duplicado));
+        mensaje.append("\nEstado: ").append(duplicado.getEstado());
+        mensaje.append("\nFecha solicitud: ").append(formatearFechaSolicitud(duplicado.getFechaSolicitud()));
+        return mensaje.toString();
+    }
+
+    private String obtenerTitularDuplicado(Expediente expediente)
+    {
+        String titular1 = textoSeguro(expediente.getApellidoNombreTitular()).trim();
+        String titular2 = textoSeguro(expediente.getApellidoNombreTitular2()).trim();
+        if (!titular1.isEmpty() && !titular2.isEmpty()) {
+            return titular1 + " / " + titular2;
+        }
+        if (!titular1.isEmpty()) {
+            return titular1;
+        }
+        return titular2;
+    }
+
+    private String formatearFechaSolicitud(Date fecha)
+    {
+        return fecha == null ? "" : new SimpleDateFormat("dd/MM/yyyy").format(fecha);
+    }
+
+    private String textoSeguro(String value)
+    {
+        return value == null ? "" : value;
     }
 
     private void configurarValidacionVisualRecepcion()
@@ -2055,6 +2108,13 @@ private void seleccionarDistrito(int idDistrito) {
             Enumerado.EstadoExpediente estadoCreacionExpediente = Enumerado.EstadoExpediente.RegistroExpediente;
             
             ExpedienteResponse response;                         
+
+            if (idExpedienteOculto != 0) {
+                expediente.setIdExpediente(idExpedienteOculto);
+            }
+            if (!validarDuplicidadActaTitular(expediente)) {
+                return;
+            }
              
             if(idExpedienteOculto == 0)
             {
@@ -2073,7 +2133,7 @@ private void seleccionarDistrito(int idDistrito) {
                 expediente.setEstado(estadoCreacionExpediente.getId());
                 
                 //idExpediente
-                expediente.setIdExpediente(idExpedienteOculto);                
+                expediente.setIdExpediente(idExpedienteOculto);
                 //idUsuarioModifica
                 //fechaModifica
                 
