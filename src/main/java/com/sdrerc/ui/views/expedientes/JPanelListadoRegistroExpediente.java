@@ -23,8 +23,12 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -40,11 +44,15 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.RowSorter;
+import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableRowSorter;
 
 /**
  *
@@ -63,6 +71,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private final SimpleDateFormat formatoFecha;
     private DateRangePickerSupport.Range rangoFechas;
     private JLabel lblFeedbackFechas;
+    private boolean tooltipOrdenamientoHeaderConfigurado;
     private static final int COL_ID = 0;
     private static final int COL_FECHA_SOLICITUD = 1;
     private static final int COL_CANAL = 2;
@@ -573,6 +582,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         jTable1.setSelectionBackground(new Color(219, 235, 247));
         jTable1.setSelectionForeground(new Color(25, 42, 62));
         jTable1.setDefaultRenderer(Object.class, new ExpedienteCellRenderer());
+        configurarOrdenamientoTablaRecepcion();
 
         JTableHeader header = jTable1.getTableHeader();
         if (header != null) {
@@ -581,6 +591,11 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             header.setReorderingAllowed(false);
             header.setBackground(new Color(241, 245, 249));
             header.setForeground(new Color(30, 41, 59));
+            header.setDefaultRenderer(new SortHeaderRenderer(header.getDefaultRenderer()));
+            if (jTable1.getRowSorter() != null) {
+                jTable1.getRowSorter().addRowSorterListener(e -> header.repaint());
+            }
+            configurarTooltipOrdenamientoHeader(header);
         }
 
         if (jTable1.getColumnModel().getColumnCount() >= 10) {
@@ -595,6 +610,87 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             ajustarColumna(COL_ESTADO, 95, 110, 130);
             ajustarColumna(COL_ESTADO_ID, 0, 0, 0);
         }
+    }
+
+    private void configurarOrdenamientoTablaRecepcion()
+    {
+        if (!(jTable1.getModel() instanceof DefaultTableModel)) {
+            return;
+        }
+        if (jTable1.getModel().getColumnCount() <= COL_ESTADO_ID) {
+            return;
+        }
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>((DefaultTableModel) jTable1.getModel());
+        sorter.setComparator(COL_FECHA_SOLICITUD, this::compararFechaSolicitud);
+        sorter.setComparator(COL_ID, compararEnteros());
+        sorter.setComparator(COL_ESTADO_ID, compararEnteros());
+        sorter.setSortable(COL_ID, false);
+        sorter.setSortable(COL_ESTADO_ID, false);
+        sorter.setSortsOnUpdates(true);
+        jTable1.setRowSorter(sorter);
+    }
+
+    private Comparator<Object> compararEnteros()
+    {
+        return (left, right) -> Integer.compare(parseIntSeguro(left), parseIntSeguro(right));
+    }
+
+    private int parseIntSeguro(Object value)
+    {
+        try {
+            return Integer.parseInt(textoSeguro(value).trim());
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private int compararFechaSolicitud(Object left, Object right)
+    {
+        return Long.compare(valorFechaOrden(left), valorFechaOrden(right));
+    }
+
+    private long valorFechaOrden(Object value)
+    {
+        String texto = textoSeguro(value).trim();
+        if (texto.isEmpty()) {
+            return Long.MAX_VALUE;
+        }
+        try {
+            synchronized (formatoFecha) {
+                return formatoFecha.parse(texto).getTime();
+            }
+        } catch (ParseException ex) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private void configurarTooltipOrdenamientoHeader(JTableHeader header)
+    {
+        if (tooltipOrdenamientoHeaderConfigurado) {
+            return;
+        }
+        tooltipOrdenamientoHeaderConfigurado = true;
+        header.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int viewColumn = header.columnAtPoint(e.getPoint());
+                if (viewColumn < 0) {
+                    header.setToolTipText(null);
+                    return;
+                }
+                int modelColumn = header.getTable().convertColumnIndexToModel(viewColumn);
+                if (!esColumnaVisibleOrdenable(modelColumn)) {
+                    header.setToolTipText(null);
+                    return;
+                }
+                header.setToolTipText("Ordenar por " + header.getTable().getModel().getColumnName(modelColumn));
+            }
+        });
+    }
+
+    private boolean esColumnaVisibleOrdenable(int modelColumn)
+    {
+        return modelColumn != COL_ID && modelColumn != COL_ESTADO_ID;
     }
 
     private void ajustarColumna(int index, int min, int preferred, int max)
@@ -679,6 +775,54 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             label.setToolTipText(textoSeguro(value));
             return label;
+        }
+    }
+
+    private class SortHeaderRenderer implements TableCellRenderer {
+        private final TableCellRenderer delegate;
+
+        private SortHeaderRenderer(TableCellRenderer delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+
+            JLabel label = (JLabel) delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            int modelColumn = table.convertColumnIndexToModel(column);
+            label.setText(textoSeguro(value) + indicadorOrden(modelColumn));
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
+            label.setOpaque(true);
+            label.setBackground(new Color(241, 245, 249));
+            label.setForeground(new Color(30, 41, 59));
+            label.setToolTipText(esColumnaVisibleOrdenable(modelColumn)
+                    ? "Ordenar por " + textoSeguro(value)
+                    : null);
+            return label;
+        }
+
+        private String indicadorOrden(int modelColumn)
+        {
+            if (!esColumnaVisibleOrdenable(modelColumn)) {
+                return "";
+            }
+            RowSorter<?> sorter = jTable1.getRowSorter();
+            if (sorter != null) {
+                for (RowSorter.SortKey key : sorter.getSortKeys()) {
+                    if (key.getColumn() == modelColumn) {
+                        return key.getSortOrder() == SortOrder.DESCENDING ? " \u2193" : " \u2191";
+                    }
+                }
+            }
+            return " \u2195";
         }
     }
 
