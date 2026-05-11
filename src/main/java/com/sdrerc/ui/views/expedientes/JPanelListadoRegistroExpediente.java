@@ -558,7 +558,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 BorderFactory.createEmptyBorder(8, 8, 8, 8)
         ));
 
-        agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 0, 0.70);
+        agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 0, 0.82, 96);
         agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 1, 0.65);
         agregarFiltroColumna(panel, "Referencia", filtrosTextoPorColumna.get(COL_REFERENCIA), 2, 1.05);
         agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 3, 1.05);
@@ -567,22 +567,23 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 6, 1.75);
         agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 7, 0.90);
 
-        JButton btnLimpiarFiltros = new JButton("Limpiar");
-        btnLimpiarFiltros.setFont(new Font("Arial", Font.BOLD, 11));
-        btnLimpiarFiltros.setToolTipText("Limpiar filtros por columna");
-        btnLimpiarFiltros.setFocusPainted(false);
-        btnLimpiarFiltros.addActionListener(e -> limpiarFiltrosPorColumna());
+        JButton btnLimpiarFiltros = crearBotonLimpiarFiltrosPorColumna();
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 8;
         gbc.gridy = 1;
         gbc.insets = new Insets(4, 6, 0, 0);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.fill = GridBagConstraints.NONE;
         panel.add(btnLimpiarFiltros, gbc);
         return panel;
     }
 
     private void agregarFiltroColumna(JPanel panel, String etiqueta, JComponent filtro, int columna, double peso)
+    {
+        agregarFiltroColumna(panel, etiqueta, filtro, columna, peso, 80);
+    }
+
+    private void agregarFiltroColumna(JPanel panel, String etiqueta, JComponent filtro, int columna, double peso, int anchoPreferido)
     {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = columna;
@@ -597,8 +598,22 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
 
         gbc.gridy = 1;
         gbc.insets = new Insets(0, 0, 0, 6);
-        filtro.setPreferredSize(new Dimension(80, 28));
+        filtro.setPreferredSize(new Dimension(anchoPreferido, 28));
+        filtro.setMinimumSize(new Dimension(anchoPreferido, 28));
         panel.add(filtro, gbc);
+    }
+
+    private JButton crearBotonLimpiarFiltrosPorColumna()
+    {
+        JButton button = IconUtils.createIconButton("Limpiar filtros de columna", "broom.svg");
+        button.setText("");
+        button.setPreferredSize(new Dimension(30, 28));
+        button.setMinimumSize(new Dimension(30, 28));
+        button.setMaximumSize(new Dimension(30, 28));
+        button.setFocusPainted(false);
+        button.setIconTextGap(0);
+        button.addActionListener(e -> limpiarFiltrosPorColumna());
+        return button;
     }
 
     private void configurarFiltrosPorColumnaRecepcion()
