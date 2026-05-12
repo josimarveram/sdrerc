@@ -34,8 +34,13 @@ import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -50,8 +55,10 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -69,6 +76,19 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableRowSorter;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CreationHelper;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
  *
@@ -125,6 +145,15 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
     private static final int COL_DISTRITO = 25;
     private static final int COL_ABOGADO_DESIGNADO = 26;
     private static final int COL_SUPERVISOR_RESPONSABLE = 27;
+    private static final int[] COLUMNAS_EXPORTACION_EXCEL = {
+        COL_ID, COL_FECHA_SOLICITUD, COL_CANAL, COL_REFERENCIA, COL_TIPO_SOLICITUD,
+        COL_PROCEDIMIENTO_REGISTRAL, COL_ESTADO,
+        COL_TIPO_DOCUMENTO, COL_NUMERO_DOCUMENTO, COL_TIPO_ACTA, COL_NUMERO_ACTA,
+        COL_DNI_TITULAR_1, COL_TITULAR_1, COL_DNI_TITULAR_2, COL_TITULAR_2,
+        COL_UNIDAD_ORGANICA, COL_CORREO_ELECTRONICO, COL_CELULAR,
+        COL_DIRECCION_DOMICILIARIA, COL_DOMICILIO, COL_DEPARTAMENTO, COL_PROVINCIA, COL_DISTRITO,
+        COL_ABOGADO_DESIGNADO, COL_SUPERVISOR_RESPONSABLE
+    };
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -518,7 +547,7 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         gbc.weightx = 0.25;
         card.add(crearLabelFiltro("Tipo de búsqueda"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 0.35;
+        gbc.weightx = 0.32;
         card.add(crearLabelFiltro("Valor de búsqueda"), gbc);
         gbc.gridx = 2;
         gbc.weightx = 0.20;
@@ -533,7 +562,7 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         gbc.insets = new Insets(0, 0, 0, 12);
         card.add(cmbTipoBusqueda, gbc);
         gbc.gridx = 1;
-        gbc.weightx = 0.35;
+        gbc.weightx = 0.32;
         card.add(txtValorBusqueda, gbc);
         gbc.gridx = 2;
         gbc.weightx = 0.20;
@@ -546,6 +575,9 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         b.insets = new Insets(0, 0, 0, 8);
         botones.add(btnBuscar, b);
         b.gridx = 1;
+        b.insets = new Insets(0, 0, 0, 8);
+        botones.add(crearBotonExportarExcel(), b);
+        b.gridx = 2;
         b.insets = new Insets(0, 0, 0, 0);
         botones.add(btnLimpiar, b);
 
@@ -557,22 +589,22 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
 
         gbc.gridy = 2;
         gbc.gridx = 0;
-        gbc.weightx = 0.25;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 0.22;
+        gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(12, 0, 6, 12);
         card.add(crearLabelFiltro("Fecha desde"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 0.25;
+        gbc.weightx = 0.22;
         card.add(crearLabelFiltro("Fecha hasta"), gbc);
 
         gbc.gridy = 3;
         gbc.gridx = 0;
-        gbc.weightx = 0.25;
+        gbc.weightx = 0.22;
         gbc.insets = new Insets(0, 0, 0, 12);
         card.add(obtenerComponenteFechaDesde(), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 0.25;
+        gbc.weightx = 0.22;
         card.add(obtenerComponenteFechaHasta(), gbc);
 
         gbc.gridx = 2;
@@ -592,6 +624,154 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         gbc.insets = new Insets(0, 0, 0, 0);
         card.add(lblFeedbackFechas, gbc);
         return card;
+    }
+
+    private JButton crearBotonExportarExcel()
+    {
+        JButton button = IconUtils.createSecondaryButton("Exportar", "excel.svg");
+        button.setToolTipText("Exportar listado a Excel");
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(118, 36));
+        button.addActionListener(e -> exportarListadoExpedientesPorVerificarExcel());
+        return button;
+    }
+
+    private void exportarListadoExpedientesPorVerificarExcel()
+    {
+        if (jTable1.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No hay registros para exportar.");
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Exportar listado a Excel");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Archivo Excel (*.xlsx)", "xlsx"));
+        fileChooser.setSelectedFile(new File(nombreArchivoExcelExpedientesPorVerificar()));
+
+        if (fileChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File archivo = asegurarExtensionXlsx(fileChooser.getSelectedFile());
+        if (archivo.exists()) {
+            int respuesta = JOptionPane.showConfirmDialog(
+                    this,
+                    "El archivo ya existe. ¿Desea reemplazarlo?",
+                    "Confirmar reemplazo",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (respuesta != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            escribirExcelExpedientesPorVerificar(archivo);
+            JOptionPane.showMessageDialog(this, "Archivo Excel generado correctamente.");
+        } catch (IOException ex) {
+            Logger.getLogger(JPanelListadoExpedientesPorVerificar.class.getName()).log(Level.WARNING, "No se pudo exportar listado de expedientes por verificar", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo exportar el archivo Excel.");
+        }
+    }
+
+    private String nombreArchivoExcelExpedientesPorVerificar()
+    {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return "expedientes_por_verificar_" + timestamp + ".xlsx";
+    }
+
+    private File asegurarExtensionXlsx(File archivo)
+    {
+        if (archivo.getName().toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            return archivo;
+        }
+        return new File(archivo.getParentFile(), archivo.getName() + ".xlsx");
+    }
+
+    private void escribirExcelExpedientesPorVerificar(File archivo) throws IOException
+    {
+        try (Workbook workbook = new XSSFWorkbook(); FileOutputStream out = new FileOutputStream(archivo)) {
+            Sheet sheet = workbook.createSheet("Solicitudes");
+            CellStyle headerStyle = crearEstiloCabeceraExcel(workbook);
+            CellStyle dateStyle = crearEstiloFechaExcel(workbook);
+
+            Row header = sheet.createRow(0);
+            for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                int modelColumn = COLUMNAS_EXPORTACION_EXCEL[col];
+                Cell cell = header.createCell(col);
+                cell.setCellValue(jTable1.getModel().getColumnName(modelColumn));
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int viewRow = 0; viewRow < jTable1.getRowCount(); viewRow++) {
+                Row row = sheet.createRow(viewRow + 1);
+                for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                    int modelColumn = COLUMNAS_EXPORTACION_EXCEL[col];
+                    Object value = obtenerValorTablaExportacion(viewRow, modelColumn);
+                    Cell cell = row.createCell(col);
+                    escribirValorExcel(cell, value, modelColumn, dateStyle);
+                }
+            }
+
+            sheet.createFreezePane(0, 1);
+            sheet.setAutoFilter(new CellRangeAddress(0, jTable1.getRowCount(), 0, COLUMNAS_EXPORTACION_EXCEL.length - 1));
+            for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                sheet.autoSizeColumn(col);
+                int width = sheet.getColumnWidth(col);
+                sheet.setColumnWidth(col, Math.min(Math.max(width + 512, 2800), 18000));
+            }
+            workbook.write(out);
+        }
+    }
+
+    private CellStyle crearEstiloCabeceraExcel(Workbook workbook)
+    {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private CellStyle crearEstiloFechaExcel(Workbook workbook)
+    {
+        CellStyle style = workbook.createCellStyle();
+        CreationHelper helper = workbook.getCreationHelper();
+        style.setDataFormat(helper.createDataFormat().getFormat("dd/MM/yyyy"));
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private void aplicarBordesExcel(CellStyle style)
+    {
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+    }
+
+    private Object obtenerValorTablaExportacion(int viewRow, int modelColumn)
+    {
+        int modelRow = jTable1.convertRowIndexToModel(viewRow);
+        return jTable1.getModel().getValueAt(modelRow, modelColumn);
+    }
+
+    private void escribirValorExcel(Cell cell, Object value, int modelColumn, CellStyle dateStyle)
+    {
+        if (modelColumn == COL_FECHA_SOLICITUD) {
+            Date fecha = parsearFechaTabla(value);
+            if (fecha != null) {
+                cell.setCellValue(fecha);
+                cell.setCellStyle(dateStyle);
+                return;
+            }
+        }
+        cell.setCellValue(textoSeguro(value));
     }
 
     private JPanel crearCardResultados()
@@ -839,11 +1019,24 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
     {
         cmbTipoBusqueda.setPreferredSize(new Dimension(230, 36));
         cmbEstado.setPreferredSize(new Dimension(180, 36));
-        txtValorBusqueda.setPreferredSize(new Dimension(300, 36));
-        fechaDesdePicker.setPreferredSize(new Dimension(170, 36));
-        fechaHastaPicker.setPreferredSize(new Dimension(170, 36));
+        txtValorBusqueda.setPreferredSize(new Dimension(260, 36));
+        dimensionarComponenteFecha(fechaDesdePicker);
+        dimensionarComponenteFecha(fechaHastaPicker);
         btnBuscar.setPreferredSize(new Dimension(116, 36));
         btnLimpiar.setPreferredSize(new Dimension(116, 36));
+    }
+
+    private void dimensionarComponenteFecha(JComponent component)
+    {
+        dimensionarComponenteFijo(component, 170, 36);
+    }
+
+    private void dimensionarComponenteFijo(JComponent component, int width, int height)
+    {
+        Dimension dimension = new Dimension(width, height);
+        component.setPreferredSize(dimension);
+        component.setMinimumSize(dimension);
+        component.setMaximumSize(dimension);
     }
 
     private void inicializarRangoFechas()
