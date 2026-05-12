@@ -28,6 +28,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
+import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -62,6 +63,7 @@ import javax.swing.JTextField;
 import javax.swing.RowSorter;
 import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.RowFilter;
@@ -608,6 +610,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         acciones.add(btnBuscar, gbcAccion);
         acciones.add(crearBotonExportarExcel(), gbcAccion);
         acciones.add(btnLimpiar, gbcAccion);
+        acciones.add(crearBotonCargaDiaria(), gbcAccion);
         gbcAccion.insets = new Insets(0, 0, 0, 0);
         acciones.add(btnNuevo, gbcAccion);
 
@@ -639,6 +642,46 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         button.setPreferredSize(new Dimension(118, 36));
         button.addActionListener(e -> exportarListadoRecepcionExcel());
         return button;
+    }
+
+    private JButton crearBotonCargaDiaria()
+    {
+        JButton button = IconUtils.createSecondaryButton("Carga diaria", "upload.svg");
+        button.setToolTipText("Importar solicitudes desde archivo Excel");
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(136, 36));
+        button.addActionListener(e -> seleccionarArchivoCargaDiaria());
+        return button;
+    }
+
+    private void seleccionarArchivoCargaDiaria()
+    {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Carga diaria");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Archivo Excel (*.xlsx)", "xlsx"));
+
+        if (fileChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File archivo = fileChooser.getSelectedFile();
+        try {
+            CargaDiariaExcelImportService importService = new CargaDiariaExcelImportService();
+            CargaDiariaImportResult preview = importService.previsualizar(archivo);
+            Window parent = SwingUtilities.getWindowAncestor(this);
+            DlgPrevisualizarCargaDiaria dialog = new DlgPrevisualizarCargaDiaria(
+                    parent,
+                    preview,
+                    importService,
+                    this::buscarExpedientes);
+            dialog.setLocationRelativeTo(this);
+            dialog.setVisible(true);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Carga diaria", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception ex) {
+            Logger.getLogger(JPanelListadoRegistroExpediente.class.getName()).log(Level.WARNING, "No se pudo procesar la carga diaria", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo procesar el archivo seleccionado.", "Carga diaria", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void exportarListadoRecepcionExcel()

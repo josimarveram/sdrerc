@@ -527,6 +527,48 @@ public class ExpedienteRepository
         return null;
     }
 
+    public Expediente buscarDuplicadoPorActaYNombreTitular(String numeroActa, String titular1, String titular2) throws SQLException {
+        String acta = normalizarComparacion(numeroActa);
+        String nombreTitular1 = normalizarComparacion(titular1);
+        String nombreTitular2 = normalizarComparacion(titular2);
+
+        if (acta.isEmpty() || nombreTitular1.isEmpty()) {
+            return null;
+        }
+
+        boolean validarSegundoTitular = !nombreTitular2.isEmpty();
+        String sql = "SELECT e.*, ci.DESCRIPCION AS ESTADO_DESCRIPCION "
+                + "FROM EXPEDIENTE e "
+                + "LEFT JOIN CATALOGO_ITEM ci ON ci.ID_CATALOGO_ITEM = e.ESTADO "
+                + "WHERE UPPER(TRIM(e.NUMERO_ACTA)) = ? "
+                + "AND (UPPER(TRIM(REGEXP_REPLACE(e.APELLIDO_NOMBRE_TITULAR, '\\s+', ' '))) = ? "
+                + "OR UPPER(TRIM(REGEXP_REPLACE(e.APELLIDO_NOMBRE_TITULAR_2, '\\s+', ' '))) = ? "
+                + (validarSegundoTitular
+                    ? "OR UPPER(TRIM(REGEXP_REPLACE(e.APELLIDO_NOMBRE_TITULAR, '\\s+', ' '))) = ? "
+                        + "OR UPPER(TRIM(REGEXP_REPLACE(e.APELLIDO_NOMBRE_TITULAR_2, '\\s+', ' '))) = ? "
+                    : "")
+                + ") AND ROWNUM = 1";
+
+        try (Connection conn = OracleConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int index = 1;
+            ps.setString(index++, acta);
+            ps.setString(index++, nombreTitular1);
+            ps.setString(index++, nombreTitular1);
+            if (validarSegundoTitular) {
+                ps.setString(index++, nombreTitular2);
+                ps.setString(index, nombreTitular2);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRow(rs);
+                }
+            }
+        }
+        return null;
+    }
+
     private String construirSelectExpedienteConAsignacion()
     {
         return "SELECT e.*, ea.FECHA_ASIGNACION, "
@@ -603,6 +645,10 @@ public class ExpedienteRepository
 
     private String textoSeguro(String value) {
         return value == null ? "" : value;
+    }
+
+    private String normalizarComparacion(String value) {
+        return textoSeguro(value).trim().replaceAll("\\s+", " ").toUpperCase();
     }
 
     private void setNullableDate(PreparedStatement stmt, int index, java.util.Date value) throws SQLException {
