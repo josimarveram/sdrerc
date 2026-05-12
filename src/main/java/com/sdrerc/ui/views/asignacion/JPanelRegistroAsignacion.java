@@ -33,6 +33,7 @@ import java.awt.Rectangle;
 import java.util.Date;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
+import com.sdrerc.ui.common.swing.MouseWheelScrollHelper;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -520,6 +521,7 @@ public class JPanelRegistroAsignacion extends javax.swing.JPanel implements Scro
         scroll.getViewport().setBackground(new Color(245, 247, 250));
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        MouseWheelScrollHelper.enableMouseWheelScrollInsideForm(scroll, contenido);
 
         jPanelPrincipal.add(scroll, BorderLayout.CENTER);
         jPanelPrincipal.add(crearBarraAcciones(), BorderLayout.SOUTH);

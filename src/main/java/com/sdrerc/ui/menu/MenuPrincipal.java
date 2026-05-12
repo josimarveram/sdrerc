@@ -21,6 +21,7 @@ import com.sdrerc.ui.views.home.jPanelHome;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
 import com.sdrerc.ui.common.icon.IconUtils;
+import com.sdrerc.ui.common.swing.MouseWheelScrollHelper;
 import com.sdrerc.util.ComboBoxUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -491,10 +492,11 @@ public class MenuPrincipal extends javax.swing.JFrame {
         JScrollPane scrollPane = new JScrollPane(
             p,
             JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         );
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setBorder(null);
+        MouseWheelScrollHelper.enableMouseWheelScrollInsideForm(scrollPane, p);
 
         jPanelBody.setLayout(new BorderLayout());
         jPanelBody.add(scrollPane, BorderLayout.CENTER);

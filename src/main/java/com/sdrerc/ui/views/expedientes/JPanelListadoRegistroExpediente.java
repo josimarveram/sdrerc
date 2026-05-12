@@ -475,10 +475,14 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
 
         btnBuscar.setToolTipText("Buscar expedientes con los filtros seleccionados.");
         btnLimpiar.setToolTipText("Limpiar filtros.");
-        btnNuevo.setToolTipText("Registrar nuevo expediente.");
+        btnNuevo.setToolTipText("Registrar nuevo expediente");
         txtValorBusqueda.setToolTipText("Ingrese el valor a buscar.");
         cmbTipoBusqueda.setToolTipText("Seleccione el tipo de búsqueda.");
         cmbEstado.setToolTipText("Seleccione el estado del trámite.");
+
+        estilizarBoton(btnBuscar, true);
+        estilizarBoton(btnLimpiar, false);
+        estilizarBotonNuevoExpediente();
 
         cmbTipoBusqueda.setRenderer(new TipoBusquedaRenderer());
         cmbEstado.setRenderer(new ComboTooltipRenderer());
@@ -591,8 +595,8 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         GridBagConstraints gbcAccion = new GridBagConstraints();
         gbcAccion.insets = new Insets(0, 0, 0, 8);
         acciones.add(btnBuscar, gbcAccion);
-        acciones.add(btnLimpiar, gbcAccion);
         acciones.add(crearBotonExportarExcel(), gbcAccion);
+        acciones.add(btnLimpiar, gbcAccion);
         gbcAccion.insets = new Insets(0, 0, 0, 0);
         acciones.add(btnNuevo, gbcAccion);
 
@@ -617,7 +621,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         JButton button = IconUtils.createSecondaryButton("Exportar", "excel.svg");
         button.setToolTipText("Exportar listado a Excel");
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.setPreferredSize(new Dimension(118, 34));
+        button.setPreferredSize(new Dimension(118, 36));
         button.addActionListener(e -> exportarListadoRecepcionExcel());
         return button;
     }
@@ -983,8 +987,8 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         JPanel card = new JPanel();
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(218, 224, 231)),
-                BorderFactory.createEmptyBorder(14, 16, 14, 16)
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(16, 18, 16, 18)
         ));
         return card;
     }
@@ -992,21 +996,46 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private JLabel crearLabelFiltro(String texto)
     {
         JLabel label = new JLabel(texto);
-        label.setFont(new Font("Arial", Font.PLAIN, 12));
-        label.setForeground(new Color(73, 85, 99));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        label.setForeground(new Color(71, 85, 105));
         return label;
     }
 
     private void dimensionarFiltros()
     {
-        cmbTipoBusqueda.setPreferredSize(new Dimension(230, 34));
-        cmbEstado.setPreferredSize(new Dimension(180, 34));
-        txtValorBusqueda.setPreferredSize(new Dimension(280, 34));
-        obtenerComponenteFechaDesde().setPreferredSize(new Dimension(140, 34));
-        obtenerComponenteFechaHasta().setPreferredSize(new Dimension(140, 34));
-        btnBuscar.setPreferredSize(new Dimension(112, 34));
-        btnLimpiar.setPreferredSize(new Dimension(112, 34));
-        btnNuevo.setPreferredSize(new Dimension(150, 34));
+        cmbTipoBusqueda.setPreferredSize(new Dimension(230, 36));
+        cmbEstado.setPreferredSize(new Dimension(180, 36));
+        txtValorBusqueda.setPreferredSize(new Dimension(280, 36));
+        obtenerComponenteFechaDesde().setPreferredSize(new Dimension(170, 36));
+        obtenerComponenteFechaHasta().setPreferredSize(new Dimension(170, 36));
+        btnBuscar.setPreferredSize(new Dimension(116, 36));
+        btnLimpiar.setPreferredSize(new Dimension(116, 36));
+        btnNuevo.setPreferredSize(new Dimension(158, 36));
+    }
+
+    private void estilizarBoton(javax.swing.JButton button, boolean primary)
+    {
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+        if (primary) {
+            button.setBackground(new Color(37, 99, 160));
+            button.setForeground(Color.WHITE);
+        } else {
+            button.setBackground(new Color(241, 245, 249));
+            button.setForeground(new Color(51, 65, 85));
+        }
+    }
+
+    private void estilizarBotonNuevoExpediente()
+    {
+        btnNuevo.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnNuevo.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnNuevo.setFocusPainted(false);
+        btnNuevo.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+        btnNuevo.setBackground(new Color(21, 128, 61));
+        btnNuevo.setForeground(Color.WHITE);
     }
 
     private JComponent obtenerComponenteFechaDesde()

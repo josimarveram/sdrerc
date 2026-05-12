@@ -23,6 +23,7 @@ import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAboga
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
 import com.sdrerc.ui.common.icon.IconUtils;
+import com.sdrerc.ui.common.swing.MouseWheelScrollHelper;
 import com.sdrerc.util.DateRangePickerSupport;
 import com.sdrerc.util.TextFieldRules;
 import com.toedter.calendar.JDateChooser;
@@ -277,6 +278,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.getViewport().setBackground(COLOR_FONDO);
+        MouseWheelScrollHelper.enableMouseWheelScrollInsideForm(scrollPane, contenido);
 
         jPanelPrincipal.removeAll();
         jPanelPrincipal.setLayout(new BorderLayout());
