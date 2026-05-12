@@ -550,7 +550,7 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         gbc.weightx = 0.32;
         card.add(crearLabelFiltro("Valor de búsqueda"), gbc);
         gbc.gridx = 2;
-        gbc.weightx = 0.20;
+        gbc.weightx = 0.18;
         card.add(crearLabelFiltro("Estado del trámite"), gbc);
         gbc.gridx = 3;
         gbc.weightx = 0.20;
@@ -565,7 +565,8 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         gbc.weightx = 0.32;
         card.add(txtValorBusqueda, gbc);
         gbc.gridx = 2;
-        gbc.weightx = 0.20;
+        gbc.weightx = 0.18;
+        gbc.fill = GridBagConstraints.NONE;
         card.add(cmbEstado, gbc);
 
         JPanel botones = new JPanel(new GridBagLayout());
@@ -1018,7 +1019,7 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
     private void dimensionarFiltros()
     {
         cmbTipoBusqueda.setPreferredSize(new Dimension(230, 36));
-        cmbEstado.setPreferredSize(new Dimension(180, 36));
+        dimensionarComponenteFijo(cmbEstado, 180, 36);
         txtValorBusqueda.setPreferredSize(new Dimension(260, 36));
         dimensionarComponenteFecha(fechaDesdePicker);
         dimensionarComponenteFecha(fechaHastaPicker);
