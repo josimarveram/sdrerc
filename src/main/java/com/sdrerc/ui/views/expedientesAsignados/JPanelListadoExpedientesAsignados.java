@@ -24,28 +24,61 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.RowFilter;
+import javax.swing.RowSorter;
 import javax.swing.Scrollable;
+import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
 import javax.swing.JTable;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableRowSorter;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CreationHelper;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.sdrerc.ui.menu.MenuPrincipal;
@@ -61,11 +94,58 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     private final CatalogoItemService catalogoItemService;
     private final ExpedienteAsignacionService expedienteAsignacionService;
     private final Map<Integer, String> estadosPorId;
+    private final Map<Integer, String> tiposSolicitudPorId;
+    private final Map<Integer, String> tiposDocumentoPorId;
+    private final Map<Integer, String> procedimientosPorId;
+    private final Map<Integer, String> tiposActaPorId;
+    private final Map<Integer, String> unidadesOrganicasPorId;
+    private final Map<Integer, String> direccionesDomiciliariasPorId;
     private final SimpleDateFormat formatoFecha;
     private JLabel lblMensajeListado;
     private JLabel lblFeedbackFechas;
     private JDateChooser fechaDesdePicker;
     private JDateChooser fechaHastaPicker;
+    private boolean tooltipOrdenamientoHeaderConfigurado;
+    private boolean filtrosPorColumnaConfigurados;
+    private final JDateChooser filtroFechaSolicitudColumna = new JDateChooser();
+    private final Map<Integer, JTextField> filtrosTextoPorColumna = new HashMap<>();
+    private static final int COL_ID = 0;
+    private static final int COL_FECHA_SOLICITUD = 1;
+    private static final int COL_CANAL = 2;
+    private static final int COL_REFERENCIA = 3;
+    private static final int COL_TIPO_SOLICITUD = 4;
+    private static final int COL_PROCEDIMIENTO_REGISTRAL = 5;
+    private static final int COL_ACTA = 6;
+    private static final int COL_TITULAR = 7;
+    private static final int COL_ESTADO = 8;
+    private static final int COL_ESTADO_ID = 9;
+    private static final int COL_TIPO_DOCUMENTO = 10;
+    private static final int COL_NUMERO_DOCUMENTO = 11;
+    private static final int COL_TIPO_ACTA = 12;
+    private static final int COL_NUMERO_ACTA = 13;
+    private static final int COL_DNI_TITULAR_1 = 14;
+    private static final int COL_TITULAR_1 = 15;
+    private static final int COL_DNI_TITULAR_2 = 16;
+    private static final int COL_TITULAR_2 = 17;
+    private static final int COL_UNIDAD_ORGANICA = 18;
+    private static final int COL_CORREO_ELECTRONICO = 19;
+    private static final int COL_CELULAR = 20;
+    private static final int COL_DIRECCION_DOMICILIARIA = 21;
+    private static final int COL_DOMICILIO = 22;
+    private static final int COL_DEPARTAMENTO = 23;
+    private static final int COL_PROVINCIA = 24;
+    private static final int COL_DISTRITO = 25;
+    private static final int COL_ABOGADO_DESIGNADO = 26;
+    private static final int COL_SUPERVISOR_RESPONSABLE = 27;
+    private static final int[] COLUMNAS_EXPORTACION_EXCEL = {
+        COL_ID, COL_FECHA_SOLICITUD, COL_CANAL, COL_REFERENCIA, COL_TIPO_SOLICITUD,
+        COL_PROCEDIMIENTO_REGISTRAL, COL_ESTADO,
+        COL_TIPO_DOCUMENTO, COL_NUMERO_DOCUMENTO, COL_TIPO_ACTA, COL_NUMERO_ACTA,
+        COL_DNI_TITULAR_1, COL_TITULAR_1, COL_DNI_TITULAR_2, COL_TITULAR_2,
+        COL_UNIDAD_ORGANICA, COL_CORREO_ELECTRONICO, COL_CELULAR,
+        COL_DIRECCION_DOMICILIARIA, COL_DOMICILIO, COL_DEPARTAMENTO, COL_PROVINCIA, COL_DISTRITO,
+        COL_ABOGADO_DESIGNADO, COL_SUPERVISOR_RESPONSABLE
+    };
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -77,10 +157,17 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         this.catalogoItemService = new CatalogoItemService();
         this.expedienteAsignacionService = new ExpedienteAsignacionService();
         this.estadosPorId = new HashMap<>();
+        this.tiposSolicitudPorId = new HashMap<>();
+        this.tiposDocumentoPorId = new HashMap<>();
+        this.procedimientosPorId = new HashMap<>();
+        this.tiposActaPorId = new HashMap<>();
+        this.unidadesOrganicasPorId = new HashMap<>();
+        this.direccionesDomiciliariasPorId = new HashMap<>();
         this.formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
         this.formatoFecha.setLenient(false);
         
         cargarTiposBusqueda();
+        cargarCatalogosListado();
         cargarComboEstados();
         configurarExpedientesAsignadosPremium();
         buscarExpedientes();
@@ -104,11 +191,32 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     {
         cmbTipoBusqueda.removeAllItems();
         cmbTipoBusqueda.addItem("NUMERO_TRAMITE_DOCUMENTO");
+        cmbTipoBusqueda.addItem("NUMERO_DOCUMENTO");
+        cmbTipoBusqueda.addItem("NUMERO_ACTA");
         cmbTipoBusqueda.addItem("TIPO_SOLICITUD");
         cmbTipoBusqueda.addItem("DNI_REMITENTE");
         cmbTipoBusqueda.addItem("APELLIDO_NOMBRE_REMITENTE");
         cmbTipoBusqueda.addItem("TIPO_PROCEDIMIENTO_REGISTRAL");
         cmbTipoBusqueda.addItem("ABOGADO_DESIGNADO");
+    }
+
+    private void cargarCatalogosListado()
+    {
+        cargarMapaCatalogo(1, tiposSolicitudPorId);
+        cargarMapaCatalogo(2, tiposDocumentoPorId);
+        cargarMapaCatalogo(3, procedimientosPorId);
+        cargarMapaCatalogo(4, tiposActaPorId);
+        cargarMapaCatalogo(8, direccionesDomiciliariasPorId);
+        cargarMapaCatalogo(9, unidadesOrganicasPorId);
+    }
+
+    private void cargarMapaCatalogo(int idCatalogo, Map<Integer, String> destino)
+    {
+        destino.clear();
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(idCatalogo);
+        for (CatalogoItem item : lista) {
+            destino.put(item.getIdCatalogoItem(), item.getDescripcion());
+        }
     }
     
      
@@ -152,41 +260,73 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         // Resetear JComboBoxes al primer elemento
         if (cmbTipoBusqueda.getItemCount() > 0) cmbTipoBusqueda.setSelectedIndex(0);
         if (cmbEstado.getItemCount() > 0) cmbEstado.setSelectedIndex(0);
+        limpiarFiltrosPorColumna();
         
         buscarExpedientes();
     }
       
     private void cargarTablaNueva(List<Expediente> lista) 
-    {        
-        String[] columnas = 
-        {
-          "ID", "Fecha Asignación", "N° Trámite", "Solicitante", "Titular", "Abogado designado", "Estado"
+    {
+        DefaultTableModel model = crearModeloTablaExpedientesAsignados();
+        model.setRowCount(0);
+        for (Expediente e : lista) {
+            model.addRow(crearFilaTablaExpedientesAsignados(e));
+        }
+        jTable1.setModel(model);
+        configurarTablaExpedientesAsignados();
+    }
+
+    private DefaultTableModel crearModeloTablaExpedientesAsignados()
+    {
+        String[] columnas = {
+                "ID expediente", "Fecha solicitud", "Canal", "Referencia", "Tipo solicitud",
+                "Procedimiento registral", "Acta", "Titular", "Estado", "EstadoId",
+                "Tipo documento", "N° documento", "Tipo acta", "N° acta",
+                "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
+                "Unidad orgánica", "Correo electrónico", "Celular", "Dirección domiciliaria",
+                "Domicilio", "Departamento", "Provincia", "Distrito",
+                "Abogado designado", "Supervisor responsable"
         };
-        
-        DefaultTableModel model = new DefaultTableModel(columnas, 0)
-        {        
+        return new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
-        };      
-                
-        //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
-        model.setRowCount(0);
-        for (Expediente e : lista) {
-            Object[] fila = {
-                    e.getIdExpediente(),
-                    formatearFecha(e.getFechaAsignacion()),
-                    e.getNumeroTramiteDocumento(),
-                    e.getApellidoNombreRemitente(),
-                    e.getApellidoNombreTitular(),
-                    textoSeguro(e.getAbogadoDesignado()),
-                    obtenerDescripcionEstado(e.getEstado())
-            };
-            model.addRow(fila);
-        }
-        jTable1.setModel(model);
-        configurarTablaExpedientesAsignados();
+        };
+    }
+
+    private Object[] crearFilaTablaExpedientesAsignados(Expediente e)
+    {
+        return new Object[] {
+                e.getIdExpediente(),
+                formatearFecha(e.getFechaSolicitud()),
+                textoSeguro(e.getCanalRecepcion()),
+                obtenerReferencia(e),
+                obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
+                obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
+                obtenerActa(e),
+                obtenerTitularListado(e),
+                obtenerDescripcionEstado(e.getEstado()),
+                e.getEstado(),
+                obtenerDescripcionCatalogo(tiposDocumentoPorId, e.getTipoDocumento()),
+                textoSeguro(e.getNumeroDocumento()),
+                obtenerDescripcionCatalogo(tiposActaPorId, e.getTipoActa()),
+                textoSeguro(e.getNumeroActa()),
+                textoSeguro(e.getDniTitular()),
+                textoSeguro(e.getApellidoNombreTitular()),
+                textoSeguro(e.getDniTitular2()),
+                textoSeguro(e.getApellidoNombreTitular2()),
+                obtenerDescripcionCatalogo(unidadesOrganicasPorId, e.getUnidadOrganica()),
+                textoSeguro(e.getCorreoElectronico()),
+                textoSeguro(e.getCelular()),
+                obtenerDescripcionCatalogo(direccionesDomiciliariasPorId, e.getDireccionDomiciliaria()),
+                textoSeguro(e.getDomicilio()),
+                idComoTexto(e.getDepartamento()),
+                idComoTexto(e.getProvincia()),
+                idComoTexto(e.getDistrito()),
+                textoSeguro(e.getAbogadoDesignado()),
+                textoSeguro(e.getSupervisorDesignado())
+        };
     }
 
     private String obtenerDescripcionEstado(int idEstado)
@@ -199,6 +339,83 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         return fecha == null ? "" : formatoFecha.format(fecha);
     }
 
+    private String obtenerDescripcionCatalogo(Map<Integer, String> catalogo, int id)
+    {
+        if (id <= 0) {
+            return "";
+        }
+        return catalogo.getOrDefault(id, String.valueOf(id));
+    }
+
+    private String idComoTexto(int id)
+    {
+        return id <= 0 ? "" : String.valueOf(id);
+    }
+
+    private String obtenerReferencia(Expediente expediente)
+    {
+        if (!estaVacio(expediente.getNumeroTramiteDocumento())) {
+            return expediente.getNumeroTramiteDocumento().trim();
+        }
+        if (!estaVacio(expediente.getNumeroDocumento())) {
+            return expediente.getNumeroDocumento().trim();
+        }
+        if (!estaVacio(expediente.getNumeroActa())) {
+            return expediente.getNumeroActa().trim();
+        }
+        return "Sin referencia";
+    }
+
+    private String obtenerActa(Expediente expediente)
+    {
+        String tipoActa = obtenerDescripcionCatalogo(tiposActaPorId, expediente.getTipoActa());
+        String numeroActa = textoSeguro(expediente.getNumeroActa()).trim();
+        if (!tipoActa.isEmpty() && !numeroActa.isEmpty()) {
+            return tipoActa + " " + numeroActa;
+        }
+        if (!tipoActa.isEmpty()) {
+            return tipoActa;
+        }
+        if (!numeroActa.isEmpty()) {
+            return numeroActa;
+        }
+        return "";
+    }
+
+    private TitularListadoValue obtenerTitularListado(Expediente expediente)
+    {
+        String titular1 = textoSeguro(expediente.getApellidoNombreTitular()).trim();
+        String titular2 = textoSeguro(expediente.getApellidoNombreTitular2()).trim();
+        if (esActaMatrimonio(expediente)) {
+            if (!titular2.isEmpty()) {
+                return new TitularListadoValue(
+                        unirTitulares(titular1, titular2),
+                        "<html>Titular 1: " + escaparHtml(titular1) + "<br>Titular 2: " + escaparHtml(titular2) + "</html>");
+            }
+            return new TitularListadoValue(titular1, "Acta de matrimonio sin segundo titular registrado.");
+        }
+        return new TitularListadoValue(titular1, "Titular: " + titular1);
+    }
+
+    private String unirTitulares(String titular1, String titular2)
+    {
+        if (titular1.isEmpty()) {
+            return titular2;
+        }
+        return titular1 + " / " + titular2;
+    }
+
+    private boolean esActaMatrimonio(Expediente expediente)
+    {
+        String tipoActa = obtenerDescripcionCatalogo(tiposActaPorId, expediente.getTipoActa());
+        return "MATRIMONIO".equals(tipoActa.trim().toUpperCase(Locale.ROOT));
+    }
+
+    private boolean estaVacio(String value)
+    {
+        return value == null || value.trim().isEmpty();
+    }
+
     private List<Expediente> filtrarPorRangoFechas(List<Expediente> lista, Date fechaDesde, Date fechaHasta)
     {
         if (fechaDesde == null && fechaHasta == null) {
@@ -207,14 +424,14 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
 
         List<Expediente> filtrada = new ArrayList<>();
         for (Expediente expediente : lista) {
-            Date fechaAsignacion = expediente.getFechaAsignacion();
-            if (fechaAsignacion == null) {
+            Date fechaSolicitud = expediente.getFechaSolicitud();
+            if (fechaSolicitud == null) {
                 continue;
             }
-            if (fechaDesde != null && fechaAsignacion.before(fechaDesde)) {
+            if (fechaDesde != null && fechaSolicitud.before(fechaDesde)) {
                 continue;
             }
-            if (fechaHasta != null && fechaAsignacion.after(fechaHasta)) {
+            if (fechaHasta != null && fechaSolicitud.after(fechaHasta)) {
                 continue;
             }
             filtrada.add(expediente);
@@ -334,6 +551,9 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         b.insets = new Insets(0, 0, 0, 8);
         botones.add(btnBuscar, b);
         b.gridx = 1;
+        b.insets = new Insets(0, 0, 0, 8);
+        botones.add(crearBotonExportarExcel(), b);
+        b.gridx = 2;
         b.insets = new Insets(0, 0, 0, 0);
         botones.add(btnLimpiar, b);
 
@@ -382,6 +602,154 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         return card;
     }
 
+    private JButton crearBotonExportarExcel()
+    {
+        JButton button = IconUtils.createSecondaryButton("Exportar", "excel.svg");
+        button.setToolTipText("Exportar listado a Excel");
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(118, 36));
+        button.addActionListener(e -> exportarListadoExpedientesAsignadosExcel());
+        return button;
+    }
+
+    private void exportarListadoExpedientesAsignadosExcel()
+    {
+        if (jTable1.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No hay registros para exportar.");
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Exportar listado a Excel");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Archivo Excel (*.xlsx)", "xlsx"));
+        fileChooser.setSelectedFile(new File(nombreArchivoExcelExpedientesAsignados()));
+
+        if (fileChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File archivo = asegurarExtensionXlsx(fileChooser.getSelectedFile());
+        if (archivo.exists()) {
+            int respuesta = JOptionPane.showConfirmDialog(
+                    this,
+                    "El archivo ya existe. ¿Desea reemplazarlo?",
+                    "Confirmar reemplazo",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (respuesta != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            escribirExcelExpedientesAsignados(archivo);
+            JOptionPane.showMessageDialog(this, "Archivo Excel generado correctamente.");
+        } catch (IOException ex) {
+            Logger.getLogger(JPanelListadoExpedientesAsignados.class.getName()).log(Level.WARNING, "No se pudo exportar listado de expedientes asignados", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo exportar el archivo Excel.");
+        }
+    }
+
+    private String nombreArchivoExcelExpedientesAsignados()
+    {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return "expedientes_asignados_" + timestamp + ".xlsx";
+    }
+
+    private File asegurarExtensionXlsx(File archivo)
+    {
+        if (archivo.getName().toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            return archivo;
+        }
+        return new File(archivo.getParentFile(), archivo.getName() + ".xlsx");
+    }
+
+    private void escribirExcelExpedientesAsignados(File archivo) throws IOException
+    {
+        try (Workbook workbook = new XSSFWorkbook(); FileOutputStream out = new FileOutputStream(archivo)) {
+            Sheet sheet = workbook.createSheet("Solicitudes");
+            CellStyle headerStyle = crearEstiloCabeceraExcel(workbook);
+            CellStyle dateStyle = crearEstiloFechaExcel(workbook);
+
+            Row header = sheet.createRow(0);
+            for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                int modelColumn = COLUMNAS_EXPORTACION_EXCEL[col];
+                Cell cell = header.createCell(col);
+                cell.setCellValue(jTable1.getModel().getColumnName(modelColumn));
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int viewRow = 0; viewRow < jTable1.getRowCount(); viewRow++) {
+                Row row = sheet.createRow(viewRow + 1);
+                for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                    int modelColumn = COLUMNAS_EXPORTACION_EXCEL[col];
+                    Object value = obtenerValorTablaExportacion(viewRow, modelColumn);
+                    Cell cell = row.createCell(col);
+                    escribirValorExcel(cell, value, modelColumn, dateStyle);
+                }
+            }
+
+            sheet.createFreezePane(0, 1);
+            sheet.setAutoFilter(new CellRangeAddress(0, jTable1.getRowCount(), 0, COLUMNAS_EXPORTACION_EXCEL.length - 1));
+            for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
+                sheet.autoSizeColumn(col);
+                int width = sheet.getColumnWidth(col);
+                sheet.setColumnWidth(col, Math.min(Math.max(width + 512, 2800), 18000));
+            }
+            workbook.write(out);
+        }
+    }
+
+    private CellStyle crearEstiloCabeceraExcel(Workbook workbook)
+    {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private CellStyle crearEstiloFechaExcel(Workbook workbook)
+    {
+        CellStyle style = workbook.createCellStyle();
+        CreationHelper helper = workbook.getCreationHelper();
+        style.setDataFormat(helper.createDataFormat().getFormat("dd/MM/yyyy"));
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private void aplicarBordesExcel(CellStyle style)
+    {
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+    }
+
+    private Object obtenerValorTablaExportacion(int viewRow, int modelColumn)
+    {
+        int modelRow = jTable1.convertRowIndexToModel(viewRow);
+        return jTable1.getModel().getValueAt(modelRow, modelColumn);
+    }
+
+    private void escribirValorExcel(Cell cell, Object value, int modelColumn, CellStyle dateStyle)
+    {
+        if (modelColumn == COL_FECHA_SOLICITUD) {
+            Date fecha = parsearFechaTabla(value);
+            if (fecha != null) {
+                cell.setCellValue(fecha);
+                cell.setCellStyle(dateStyle);
+                return;
+            }
+        }
+        cell.setCellValue(textoSeguro(value));
+    }
+
     private JPanel crearCardResultados()
     {
         JPanel card = crearCard();
@@ -398,13 +766,211 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         header.add(title, BorderLayout.WEST);
         header.add(lblMensajeListado, BorderLayout.EAST);
 
+        JPanel superior = new JPanel(new BorderLayout(0, 8));
+        superior.setOpaque(false);
+        superior.add(header, BorderLayout.NORTH);
+        superior.add(crearPanelFiltrosPorColumnaExpedientesAsignados(), BorderLayout.CENTER);
+
         jScrollPane1.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
         jScrollPane1.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         jScrollPane1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        card.add(header, BorderLayout.NORTH);
+        card.add(superior, BorderLayout.NORTH);
         card.add(jScrollPane1, BorderLayout.CENTER);
         return card;
+    }
+
+    private JPanel crearPanelFiltrosPorColumnaExpedientesAsignados()
+    {
+        configurarFiltrosPorColumnaExpedientesAsignados();
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(true);
+        panel.setBackground(new Color(248, 250, 252));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)
+        ));
+
+        agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 0, 0.82, 96);
+        agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 1, 0.65);
+        agregarFiltroColumna(panel, "Referencia", filtrosTextoPorColumna.get(COL_REFERENCIA), 2, 1.05);
+        agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 3, 1.05);
+        agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 4, 1.25);
+        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 5, 0.95);
+        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 6, 1.75);
+        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 7, 0.90);
+
+        JButton btnLimpiarFiltros = crearBotonLimpiarFiltrosPorColumna();
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 8;
+        gbc.gridy = 1;
+        gbc.insets = new Insets(4, 6, 0, 0);
+        gbc.fill = GridBagConstraints.NONE;
+        panel.add(btnLimpiarFiltros, gbc);
+        return panel;
+    }
+
+    private void agregarFiltroColumna(JPanel panel, String etiqueta, JComponent filtro, int columna, double peso)
+    {
+        agregarFiltroColumna(panel, etiqueta, filtro, columna, peso, 80);
+    }
+
+    private void agregarFiltroColumna(JPanel panel, String etiqueta, JComponent filtro, int columna, double peso, int anchoPreferido)
+    {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = columna;
+        gbc.gridy = 0;
+        gbc.weightx = peso;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 3, 6);
+        JLabel label = new JLabel(etiqueta);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        label.setForeground(new Color(100, 116, 139));
+        panel.add(label, gbc);
+
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 0, 6);
+        filtro.setPreferredSize(new Dimension(anchoPreferido, 28));
+        filtro.setMinimumSize(new Dimension(anchoPreferido, 28));
+        panel.add(filtro, gbc);
+    }
+
+    private JButton crearBotonLimpiarFiltrosPorColumna()
+    {
+        JButton button = IconUtils.createIconButton("Limpiar filtros de columna", "broom.svg");
+        button.setText("");
+        button.setPreferredSize(new Dimension(30, 28));
+        button.setMinimumSize(new Dimension(30, 28));
+        button.setMaximumSize(new Dimension(30, 28));
+        button.setFocusPainted(false);
+        button.setIconTextGap(0);
+        button.addActionListener(e -> limpiarFiltrosPorColumna());
+        return button;
+    }
+
+    private void configurarFiltrosPorColumnaExpedientesAsignados()
+    {
+        if (filtrosPorColumnaConfigurados) {
+            return;
+        }
+        filtrosPorColumnaConfigurados = true;
+
+        filtroFechaSolicitudColumna.setDateFormatString("dd/MM/yyyy");
+        filtroFechaSolicitudColumna.setToolTipText("Filtrar por fecha de solicitud");
+        filtroFechaSolicitudColumna.getDateEditor().getUiComponent().setToolTipText("Filtrar por fecha de solicitud");
+        filtroFechaSolicitudColumna.addPropertyChangeListener("date", evt -> aplicarFiltrosPorColumna());
+
+        crearFiltroTextoColumna(COL_CANAL, "Filtrar canal");
+        crearFiltroTextoColumna(COL_REFERENCIA, "Filtrar referencia");
+        crearFiltroTextoColumna(COL_TIPO_SOLICITUD, "Filtrar tipo de solicitud");
+        crearFiltroTextoColumna(COL_PROCEDIMIENTO_REGISTRAL, "Filtrar procedimiento registral");
+        crearFiltroTextoColumna(COL_ACTA, "Filtrar acta");
+        crearFiltroTextoColumna(COL_TITULAR, "Filtrar titular");
+        crearFiltroTextoColumna(COL_ESTADO, "Filtrar estado");
+    }
+
+    private void crearFiltroTextoColumna(int columna, String tooltip)
+    {
+        JTextField field = new JTextField();
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        field.setToolTipText(tooltip);
+        field.putClientProperty("JTextField.placeholderText", "Buscar");
+        field.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+        });
+        filtrosTextoPorColumna.put(columna, field);
+    }
+
+    private void aplicarFiltrosPorColumna()
+    {
+        if (!(jTable1.getRowSorter() instanceof TableRowSorter)) {
+            return;
+        }
+
+        List<RowFilter<Object, Object>> filtros = new ArrayList<>();
+        Date fechaFiltro = filtroFechaSolicitudColumna.getDate();
+        if (fechaFiltro != null) {
+            filtros.add(new RowFilter<Object, Object>() {
+                @Override
+                public boolean include(Entry<? extends Object, ? extends Object> entry) {
+                    return mismaFecha(fechaFiltro, parsearFechaTabla(entry.getValue(COL_FECHA_SOLICITUD)));
+                }
+            });
+        }
+
+        for (Map.Entry<Integer, JTextField> filtro : filtrosTextoPorColumna.entrySet()) {
+            String criterio = normalizarFiltro(filtro.getValue().getText());
+            if (criterio.isEmpty()) {
+                continue;
+            }
+            int columna = filtro.getKey();
+            filtros.add(new RowFilter<Object, Object>() {
+                @Override
+                public boolean include(Entry<? extends Object, ? extends Object> entry) {
+                    return normalizarFiltro(textoSeguro(entry.getValue(columna))).contains(criterio);
+                }
+            });
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        TableRowSorter sorter = (TableRowSorter) jTable1.getRowSorter();
+        sorter.setRowFilter(filtros.isEmpty() ? null : RowFilter.andFilter(filtros));
+    }
+
+    private void limpiarFiltrosPorColumna()
+    {
+        if (!filtrosPorColumnaConfigurados) {
+            return;
+        }
+        filtroFechaSolicitudColumna.setDate(null);
+        for (JTextField filtro : filtrosTextoPorColumna.values()) {
+            filtro.setText("");
+        }
+        aplicarFiltrosPorColumna();
+    }
+
+    private String normalizarFiltro(String value)
+    {
+        return textoSeguro(value).trim().toUpperCase(Locale.ROOT);
+    }
+
+    private Date parsearFechaTabla(Object value)
+    {
+        String texto = textoSeguro(value).trim();
+        if (texto.isEmpty()) {
+            return null;
+        }
+        try {
+            synchronized (formatoFecha) {
+                return formatoFecha.parse(texto);
+            }
+        } catch (ParseException ex) {
+            return null;
+        }
+    }
+
+    private boolean mismaFecha(Date left, Date right)
+    {
+        if (left == null || right == null) {
+            return false;
+        }
+        synchronized (formatoFecha) {
+            return formatoFecha.format(left).equals(formatoFecha.format(right));
+        }
     }
 
     private JPanel crearCard()
@@ -527,7 +1093,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     private void configurarTablaExpedientesAsignados()
     {
         jTable1.setRowHeight(30);
-        jTable1.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        jTable1.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         jTable1.setFillsViewportHeight(true);
         jTable1.setShowGrid(false);
         jTable1.setIntercellSpacing(new Dimension(0, 0));
@@ -535,33 +1101,59 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         jTable1.setSelectionForeground(new Color(15, 23, 42));
         jTable1.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         jTable1.setDefaultRenderer(Object.class, new ExpedienteAsignadoCellRenderer());
+        configurarOrdenamientoTablaExpedientesAsignados();
 
         JTableHeader header = jTable1.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        header.setForeground(new Color(51, 65, 85));
-        header.setBackground(new Color(241, 245, 249));
-        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 34));
-        header.setReorderingAllowed(false);
-
-        if (jTable1.getColumnModel().getColumnCount() < 7) {
-            return;
+        if (header != null) {
+            header.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            header.setForeground(new Color(51, 65, 85));
+            header.setBackground(new Color(241, 245, 249));
+            header.setPreferredSize(new Dimension(header.getPreferredSize().width, 36));
+            header.setReorderingAllowed(false);
+            header.setDefaultRenderer(new SortHeaderRenderer(header.getDefaultRenderer()));
+            if (jTable1.getRowSorter() != null) {
+                jTable1.getRowSorter().addRowSorterListener(e -> header.repaint());
+            }
+            configurarTooltipOrdenamientoHeader(header);
         }
-        ocultarColumna(0);
-        configurarAnchoColumna(1, 100, 110, 125);
-        configurarAnchoColumna(2, 125, 145, 170);
-        configurarAnchoColumna(3, 170, 260, 520);
-        configurarAnchoColumna(4, 170, 260, 520);
-        configurarAnchoColumna(5, 170, 240, 420);
-        configurarAnchoColumna(6, 95, 115, 135);
+
+        if (jTable1.getColumnModel().getColumnCount() >= 10) {
+            configurarAnchoColumna(COL_ID, 0, 0, 0);
+            configurarAnchoColumna(COL_FECHA_SOLICITUD, 90, 105, 120);
+            configurarAnchoColumna(COL_CANAL, 65, 75, 90);
+            configurarAnchoColumna(COL_REFERENCIA, 100, 125, 155);
+            configurarAnchoColumna(COL_TIPO_SOLICITUD, 110, 125, 150);
+            configurarAnchoColumna(COL_PROCEDIMIENTO_REGISTRAL, 135, 170, 220);
+            configurarAnchoColumna(COL_ACTA, 95, 120, 155);
+            configurarAnchoColumna(COL_TITULAR, 160, 260, Integer.MAX_VALUE);
+            configurarAnchoColumna(COL_ESTADO, 95, 110, 130);
+            configurarAnchoColumna(COL_ESTADO_ID, 0, 0, 0);
+            for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getColumnModel().getColumnCount(); column++) {
+                configurarAnchoColumna(column, 0, 0, 0);
+            }
+        }
     }
 
-    private void ocultarColumna(int index)
+    private void configurarOrdenamientoTablaExpedientesAsignados()
     {
-        TableColumn column = jTable1.getColumnModel().getColumn(index);
-        column.setMinWidth(0);
-        column.setPreferredWidth(0);
-        column.setMaxWidth(0);
-        column.setResizable(false);
+        if (!(jTable1.getModel() instanceof DefaultTableModel)) {
+            return;
+        }
+        if (jTable1.getModel().getColumnCount() <= COL_ESTADO_ID) {
+            return;
+        }
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>((DefaultTableModel) jTable1.getModel());
+        sorter.setComparator(COL_FECHA_SOLICITUD, this::compararFechaSolicitud);
+        sorter.setComparator(COL_ID, compararEnteros());
+        sorter.setComparator(COL_ESTADO_ID, compararEnteros());
+        sorter.setSortable(COL_ID, false);
+        sorter.setSortable(COL_ESTADO_ID, false);
+        for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getModel().getColumnCount(); column++) {
+            sorter.setSortable(column, false);
+        }
+        sorter.setSortsOnUpdates(true);
+        jTable1.setRowSorter(sorter);
+        aplicarFiltrosPorColumna();
     }
 
     private void configurarAnchoColumna(int index, int min, int preferred, int max)
@@ -570,6 +1162,69 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         column.setMinWidth(min);
         column.setPreferredWidth(preferred);
         column.setMaxWidth(max);
+    }
+
+    private Comparator<Object> compararEnteros()
+    {
+        return (left, right) -> Integer.compare(parseIntSeguro(left), parseIntSeguro(right));
+    }
+
+    private int parseIntSeguro(Object value)
+    {
+        try {
+            return Integer.parseInt(textoSeguro(value).trim());
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private int compararFechaSolicitud(Object left, Object right)
+    {
+        return Long.compare(valorFechaOrden(left), valorFechaOrden(right));
+    }
+
+    private long valorFechaOrden(Object value)
+    {
+        String texto = textoSeguro(value).trim();
+        if (texto.isEmpty()) {
+            return Long.MAX_VALUE;
+        }
+        try {
+            synchronized (formatoFecha) {
+                return formatoFecha.parse(texto).getTime();
+            }
+        } catch (ParseException ex) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private void configurarTooltipOrdenamientoHeader(JTableHeader header)
+    {
+        if (tooltipOrdenamientoHeaderConfigurado) {
+            return;
+        }
+        tooltipOrdenamientoHeaderConfigurado = true;
+        header.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int viewColumn = header.columnAtPoint(e.getPoint());
+                if (viewColumn < 0) {
+                    header.setToolTipText(null);
+                    return;
+                }
+                int modelColumn = header.getTable().convertColumnIndexToModel(viewColumn);
+                if (!esColumnaVisibleOrdenable(modelColumn)) {
+                    header.setToolTipText(null);
+                    return;
+                }
+                header.setToolTipText("Ordenar por " + header.getTable().getModel().getColumnName(modelColumn));
+            }
+        });
+    }
+
+    private boolean esColumnaVisibleOrdenable(int modelColumn)
+    {
+        return modelColumn > COL_ID && modelColumn < COL_ESTADO_ID;
     }
 
     private int obtenerIdTecnicoFiltro()
@@ -608,7 +1263,11 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         String texto = textoSeguro(value);
         switch (texto) {
             case "NUMERO_TRAMITE_DOCUMENTO":
-                return "N° trámite";
+                return "N° trámite web";
+            case "NUMERO_DOCUMENTO":
+                return "N° documento";
+            case "NUMERO_ACTA":
+                return "N° acta";
             case "TIPO_SOLICITUD":
                 return "Tipo de solicitud";
             case "DNI_REMITENTE":
@@ -626,7 +1285,16 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
 
     private String textoSeguro(Object value)
     {
-        return value == null ? "" : value.toString().trim();
+        return value == null ? "" : value.toString();
+    }
+
+    private String escaparHtml(String value)
+    {
+        return textoSeguro(value)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     @Override
@@ -675,33 +1343,109 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         }
     }
 
+    private class SortHeaderRenderer implements TableCellRenderer {
+        private final TableCellRenderer delegate;
+
+        private SortHeaderRenderer(TableCellRenderer delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+
+            JLabel label = (JLabel) delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            int modelColumn = table.convertColumnIndexToModel(column);
+            label.setText(textoSeguro(value) + indicadorOrden(modelColumn));
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
+            label.setOpaque(true);
+            label.setBackground(new Color(241, 245, 249));
+            label.setForeground(new Color(30, 41, 59));
+            label.setToolTipText(esColumnaVisibleOrdenable(modelColumn)
+                    ? "Ordenar por " + textoSeguro(value)
+                    : null);
+            return label;
+        }
+
+        private String indicadorOrden(int modelColumn)
+        {
+            if (!esColumnaVisibleOrdenable(modelColumn)) {
+                return "";
+            }
+            RowSorter<?> sorter = jTable1.getRowSorter();
+            if (sorter != null) {
+                for (RowSorter.SortKey key : sorter.getSortKeys()) {
+                    if (key.getColumn() == modelColumn) {
+                        return key.getSortOrder() == SortOrder.DESCENDING ? " \u2193" : " \u2191";
+                    }
+                }
+            }
+            return " \u2195";
+        }
+    }
+
     private class ExpedienteAsignadoCellRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
                 JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String texto = textoSeguro(value);
+            int modelColumn = table.convertColumnIndexToModel(column);
             label.setText(texto);
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-            label.setToolTipText((column == 2 || column == 3 || column == 4 || column == 5) ? texto : null);
+            if (modelColumn == COL_TITULAR && value instanceof TitularListadoValue) {
+                label.setToolTipText(((TitularListadoValue) value).getTooltip());
+            } else {
+                label.setToolTipText((modelColumn == COL_REFERENCIA || modelColumn == COL_ACTA || modelColumn == COL_TITULAR
+                        || modelColumn == COL_PROCEDIMIENTO_REGISTRAL || modelColumn == COL_ESTADO) ? texto : null);
+            }
 
             if (!isSelected) {
                 label.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
                 label.setForeground(new Color(30, 41, 59));
             }
 
-            if (column == 6) {
+            if (modelColumn == COL_ESTADO) {
                 label.setHorizontalAlignment(SwingConstants.CENTER);
-                label.setFont(label.getFont().deriveFont(Font.BOLD));
+                label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
                 if (!isSelected) {
                     label.setForeground(new Color(55, 95, 140));
                     label.setBackground(new Color(232, 241, 252));
                 }
             } else {
-                label.setHorizontalAlignment(column == 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
-                label.setFont(label.getFont().deriveFont(Font.PLAIN));
+                label.setHorizontalAlignment((modelColumn == COL_FECHA_SOLICITUD || modelColumn == COL_CANAL)
+                        ? SwingConstants.CENTER
+                        : SwingConstants.LEFT);
+                label.setFont(label.getFont().deriveFont(Font.PLAIN, 12f));
             }
+            label.setOpaque(true);
             return label;
+        }
+    }
+
+    private static class TitularListadoValue {
+        private final String display;
+        private final String tooltip;
+
+        private TitularListadoValue(String display, String tooltip) {
+            this.display = display;
+            this.tooltip = tooltip;
+        }
+
+        private String getTooltip() {
+            return tooltip;
+        }
+
+        @Override
+        public String toString() {
+            return display;
         }
     }
 
@@ -881,9 +1625,8 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
             if (fila >= 0)
             {
                 // Obtener datos de la fila
-                String idExpediente = jTable1.getValueAt(fila, 0).toString();
-                String descripcion = jTable1.getValueAt(fila, 1).toString();
-                String fecha = jTable1.getValueAt(fila, 2).toString();
+                int filaModelo = jTable1.convertRowIndexToModel(fila);
+                String idExpediente = jTable1.getModel().getValueAt(filaModelo, COL_ID).toString();
                 //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
                 //Expediente expedienteSeleccionado = model.get(fila);
 
@@ -896,7 +1639,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
                 }
                 catch (Exception ex)
                 {
-                    Logger.getLogger(JPanelFiltroBusqueda.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(JPanelListadoExpedientesAsignados.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 // Abrir formulario de edición
                 MenuPrincipal.ShowJPanel(panel);

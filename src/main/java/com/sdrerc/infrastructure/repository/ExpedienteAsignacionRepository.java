@@ -516,11 +516,17 @@ public class ExpedienteAsignacionRepository {
 
         StringBuilder sql = new StringBuilder(
                 "SELECT e.*, ea.FECHA_ASIGNACION, "
-                + "CASE WHEN t.ID_TECNICO IS NULL THEN NULL "
-                + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS ABOGADO_DESIGNADO "
+                + "CASE WHEN t.ID_TECNICO IS NULL THEN au.FULL_NAME "
+                + "ELSE TRIM(NVL(t.APELLIDO_PATERNO, '') || ' ' || NVL(t.APELLIDO_MATERNO, '') || ', ' || NVL(t.NOMBRES, '')) END AS ABOGADO_DESIGNADO, "
+                + "CASE WHEN ts.ID_TECNICO IS NULL THEN su.FULL_NAME "
+                + "ELSE TRIM(NVL(ts.APELLIDO_PATERNO, '') || ' ' || NVL(ts.APELLIDO_MATERNO, '') || ', ' || NVL(ts.NOMBRES, '')) END AS SUPERVISOR_DESIGNADO "
                 + "FROM EXPEDIENTE e "
                 + "INNER JOIN EXPEDIENTE_ASIGNACION ea ON e.ID_EXPEDIENTE = ea.ID_EXPEDIENTE "
                 + "LEFT JOIN TECNICO t ON t.ID_TECNICO = ea.ID_TECNICO "
+                + "LEFT JOIN (SELECT ID_TECNICO, MAX(USER_ID) USER_ID, MAX(FULL_NAME) FULL_NAME FROM APP_USERS WHERE ID_TECNICO IS NOT NULL GROUP BY ID_TECNICO) au ON au.ID_TECNICO = ea.ID_TECNICO "
+                + "LEFT JOIN (SELECT ABOGADO_ID, MAX(SUPERVISOR_ID) SUPERVISOR_ID FROM APP_USER_SUPERVISION GROUP BY ABOGADO_ID) aus ON aus.ABOGADO_ID = au.USER_ID "
+                + "LEFT JOIN APP_USERS su ON su.USER_ID = aus.SUPERVISOR_ID "
+                + "LEFT JOIN TECNICO ts ON ts.ID_TECNICO = su.ID_TECNICO "
                 + "WHERE ea.ACTIVE = 1 "
                 + "AND ea.ETAPA_FLUJO IS NULL ");
 
@@ -567,6 +573,10 @@ public class ExpedienteAsignacionRepository {
         switch (normalizado) {
             case "NUMERO_TRAMITE_DOCUMENTO":
                 return "NVL(e.NUMERO_TRAMITE_DOCUMENTO, '')";
+            case "NUMERO_DOCUMENTO":
+                return "NVL(e.NUMERO_DOCUMENTO, '')";
+            case "NUMERO_ACTA":
+                return "NVL(e.NUMERO_ACTA, '')";
             case "TIPO_SOLICITUD":
                 return "TO_CHAR(e.TIPO_SOLICITUD)";
             case "DNI_REMITENTE":
@@ -788,6 +798,8 @@ public class ExpedienteAsignacionRepository {
         );
         expediente.setAbogadoDesignado(obtenerStringSiExiste(rs, "ABOGADO_DESIGNADO"));
         expediente.setSupervisorDesignado(obtenerStringSiExiste(rs, "SUPERVISOR_DESIGNADO"));
+        expediente.setDniTitular2(obtenerStringSiExiste(rs, "DNI_TITULAR_2"));
+        expediente.setApellidoNombreTitular2(obtenerStringSiExiste(rs, "APELLIDO_NOMBRE_TITULAR_2"));
         expediente.setFechaAsignacion(rs.getDate("FECHA_ASIGNACION"));
         return expediente;
     }
