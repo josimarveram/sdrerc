@@ -549,23 +549,51 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
 
         gbc.gridy = 0;
         gbc.gridx = 0;
+        gbc.weightx = 0.22;
         gbc.insets = new Insets(0, 0, 6, 12);
         card.add(crearLabelFiltro("Tipo de búsqueda"), gbc);
         gbc.gridx = 1;
+        gbc.weightx = 0.32;
         card.add(crearLabelFiltro("Valor de búsqueda"), gbc);
         gbc.gridx = 2;
+        gbc.weightx = 0.18;
         card.add(crearLabelFiltro("Estado del trámite"), gbc);
+        gbc.gridx = 3;
+        gbc.weightx = 0.28;
+        card.add(new JLabel(" "), gbc);
 
         gbc.gridy = 1;
         gbc.gridx = 0;
+        gbc.weightx = 0.22;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         card.add(cmbTipoBusqueda, gbc);
         gbc.gridx = 1;
-        gbc.weightx = 1.0;
+        gbc.weightx = 0.32;
         card.add(txtValorBusqueda, gbc);
         gbc.gridx = 2;
-        gbc.weightx = 0;
+        gbc.weightx = 0.18;
+        gbc.fill = GridBagConstraints.NONE;
         card.add(cmbEstado, gbc);
+
+        gbc.gridy = 2;
+        gbc.gridx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.weightx = 0.22;
+        gbc.insets = new Insets(12, 0, 6, 12);
+        card.add(crearLabelFiltro("Fecha desde"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 0.22;
+        card.add(crearLabelFiltro("Fecha hasta"), gbc);
+
+        gbc.gridy = 3;
+        gbc.gridx = 0;
+        gbc.weightx = 0.22;
+        gbc.insets = new Insets(0, 0, 0, 12);
+        card.add(obtenerComponenteFechaDesde(), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 0.22;
+        card.add(obtenerComponenteFechaHasta(), gbc);
 
         JPanel acciones = new JPanel(new GridBagLayout());
         acciones.setOpaque(false);
@@ -576,29 +604,19 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         gbcAccion.insets = new Insets(0, 0, 0, 0);
         acciones.add(btnLimpiar, gbcAccion);
 
-        gbc.gridx = 3;
+        gbc.gridx = 2;
+        gbc.gridwidth = 2;
+        gbc.weightx = 0.56;
         gbc.anchor = GridBagConstraints.EAST;
         gbc.fill = GridBagConstraints.NONE;
         card.add(acciones, gbc);
-
-        gbc.gridy = 2;
-        gbc.gridx = 0;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(12, 0, 6, 12);
-        card.add(crearLabelFiltro("Fecha desde"), gbc);
-        gbc.gridx = 1;
-        card.add(crearLabelFiltro("Fecha hasta"), gbc);
-
-        gbc.gridy = 3;
-        gbc.gridx = 0;
-        gbc.insets = new Insets(0, 0, 0, 12);
-        card.add(obtenerComponenteFechaDesde(), gbc);
-        gbc.gridx = 1;
-        card.add(obtenerComponenteFechaHasta(), gbc);
+        gbc.gridwidth = 1;
 
         gbc.gridx = 0;
         gbc.gridy = 4;
         gbc.gridwidth = 4;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 0, 0, 0);
         card.add(lblFeedbackFechas, gbc);
 
@@ -992,12 +1010,25 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private void dimensionarFiltros()
     {
         cmbTipoBusqueda.setPreferredSize(new Dimension(230, 36));
-        cmbEstado.setPreferredSize(new Dimension(180, 36));
-        txtValorBusqueda.setPreferredSize(new Dimension(280, 36));
-        obtenerComponenteFechaDesde().setPreferredSize(new Dimension(170, 36));
-        obtenerComponenteFechaHasta().setPreferredSize(new Dimension(170, 36));
+        dimensionarComponenteFijo(cmbEstado, 180, 36);
+        txtValorBusqueda.setPreferredSize(new Dimension(260, 36));
+        dimensionarComponenteFecha(obtenerComponenteFechaDesde());
+        dimensionarComponenteFecha(obtenerComponenteFechaHasta());
         btnBuscar.setPreferredSize(new Dimension(116, 36));
         btnLimpiar.setPreferredSize(new Dimension(116, 36));
+    }
+
+    private void dimensionarComponenteFecha(JComponent component)
+    {
+        dimensionarComponenteFijo(component, 170, 36);
+    }
+
+    private void dimensionarComponenteFijo(JComponent component, int width, int height)
+    {
+        Dimension dimension = new Dimension(width, height);
+        component.setPreferredSize(dimension);
+        component.setMinimumSize(dimension);
+        component.setMaximumSize(dimension);
     }
 
     private void estilizarBoton(javax.swing.JButton button, boolean primary)
