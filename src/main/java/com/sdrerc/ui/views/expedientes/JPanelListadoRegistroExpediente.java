@@ -784,7 +784,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         JPanel card = crearCard();
         card.setLayout(new BorderLayout(0, 10));
 
-        JLabel titulo = new JLabel("Resultados");
+        JLabel titulo = new JLabel("Listado de solicitudes registradas");
         titulo.setFont(new Font("Arial", Font.BOLD, 15));
         titulo.setForeground(new Color(25, 42, 62));
 
