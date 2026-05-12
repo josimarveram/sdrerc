@@ -21,9 +21,13 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Polygon;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -43,6 +47,7 @@ import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.DefaultListCellRenderer;
+import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -1361,7 +1366,10 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
 
             JLabel label = (JLabel) delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             int modelColumn = table.convertColumnIndexToModel(column);
-            label.setText(textoSeguro(value) + indicadorOrden(modelColumn));
+            label.setText(textoSeguro(value));
+            label.setIcon(indicadorOrden(modelColumn));
+            label.setHorizontalTextPosition(SwingConstants.LEFT);
+            label.setIconTextGap(6);
             label.setHorizontalAlignment(SwingConstants.CENTER);
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
@@ -1374,20 +1382,78 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
             return label;
         }
 
-        private String indicadorOrden(int modelColumn)
+        private Icon indicadorOrden(int modelColumn)
         {
             if (!esColumnaVisibleOrdenable(modelColumn)) {
-                return "";
+                return null;
             }
             RowSorter<?> sorter = jTable1.getRowSorter();
             if (sorter != null) {
                 for (RowSorter.SortKey key : sorter.getSortKeys()) {
                     if (key.getColumn() == modelColumn) {
-                        return key.getSortOrder() == SortOrder.DESCENDING ? " \u2193" : " \u2191";
+                        return SortIndicatorIcon.sorted(key.getSortOrder() == SortOrder.DESCENDING);
                     }
                 }
             }
-            return " \u2195";
+            return SortIndicatorIcon.unsorted();
+        }
+    }
+
+    private static class SortIndicatorIcon implements Icon {
+        private static final int SIZE = 10;
+        private static final SortIndicatorIcon UNSORTED = new SortIndicatorIcon(false, false);
+        private static final SortIndicatorIcon ASC = new SortIndicatorIcon(true, false);
+        private static final SortIndicatorIcon DESC = new SortIndicatorIcon(true, true);
+        private final boolean sorted;
+        private final boolean descending;
+
+        private SortIndicatorIcon(boolean sorted, boolean descending) {
+            this.sorted = sorted;
+            this.descending = descending;
+        }
+
+        private static SortIndicatorIcon unsorted() {
+            return UNSORTED;
+        }
+
+        private static SortIndicatorIcon sorted(boolean descending) {
+            return descending ? DESC : ASC;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE + 2;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            Color active = new Color(37, 99, 160);
+            Color inactive = new Color(100, 116, 139);
+
+            if (!sorted || !descending) {
+                g2.setColor(sorted ? active : inactive);
+                Polygon up = new Polygon();
+                up.addPoint(x + 5, y + 1);
+                up.addPoint(x + 1, y + 5);
+                up.addPoint(x + 9, y + 5);
+                g2.fill(up);
+            }
+            if (!sorted || descending) {
+                g2.setColor(sorted ? active : inactive);
+                Polygon down = new Polygon();
+                down.addPoint(x + 1, y + 7);
+                down.addPoint(x + 9, y + 7);
+                down.addPoint(x + 5, y + 11);
+                g2.fill(down);
+            }
+            g2.dispose();
         }
     }
 
