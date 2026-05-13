@@ -158,7 +158,7 @@ public class CargaDiariaExcelImportService {
         String[] requeridas = {
             "TIPO DE SOLICITUD", "FECHA DE SOLICITUD", "SOLICITADO POR", "DNI SOLICITANTE",
             "N TRAMITE WEB", "TIPO DOCUMENTO", "N DOCUMENTO",
-            "TIPO DE ACTA", "N ACTA", "TITULAR"
+            "PROCEDIMIENTO REGISTRAL", "TIPO DE ACTA", "N ACTA", "TITULAR"
         };
         for (String requerida : requeridas) {
             if (!columnas.containsKey(requerida)) {
@@ -431,6 +431,10 @@ public class CargaDiariaExcelImportService {
     }
 
     private String textoProcedimientoRegistral(Row row, Map<String, Integer> columnas) {
+        String procedimientoNuevo = texto(row, columnas, "PROCEDIMIENTO REGISTRAL");
+        if (!estaVacio(procedimientoNuevo)) {
+            return procedimientoNuevo;
+        }
         String procedimiento = texto(row, columnas, "TIPO DE SOLICITUD PROCEDIMIENTO");
         if (!estaVacio(procedimiento)) {
             return procedimiento;
