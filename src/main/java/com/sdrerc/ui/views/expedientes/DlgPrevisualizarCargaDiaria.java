@@ -7,7 +7,16 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Window;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -16,9 +25,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.RowFilter;
 import javax.swing.SwingConstants;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 
 public class DlgPrevisualizarCargaDiaria extends JDialog {
 
@@ -26,6 +40,13 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
     private final CargaDiariaExcelImportService importService;
     private final Runnable onImportacionFinalizada;
     private final DefaultTableModel model = new DefaultTableModel();
+    private final List<JTextField> filtrosColumna = new ArrayList<>();
+    private TableRowSorter<DefaultTableModel> sorter;
+    private JScrollPane tableScroll;
+    private JButton btnMaximizar;
+    private boolean maximizado;
+    private Dimension tamanoNormal;
+    private Point ubicacionNormal;
     private final JTable table = new JTable(model) {
         @Override
         public String getToolTipText(java.awt.event.MouseEvent event) {
@@ -55,6 +76,8 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
     private void configurar() {
         setLayout(new BorderLayout(0, 12));
         setPreferredSize(new Dimension(1280, 650));
+        setMinimumSize(new Dimension(980, 540));
+        setResizable(true);
 
         JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
@@ -94,23 +117,33 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.getTableHeader().setReorderingAllowed(false);
         table.setDefaultRenderer(Object.class, new EstadoCargaDiariaRenderer());
+        sorter = new TableRowSorter<>(model);
+        table.setRowSorter(sorter);
         ajustarColumnas();
 
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createLineBorder(new Color(218, 224, 231)));
+        tableScroll = new JScrollPane(table);
+        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(218, 224, 231)));
+
+        JPanel tablaConFiltros = new JPanel(new BorderLayout(0, 6));
+        tablaConFiltros.setOpaque(false);
+        tablaConFiltros.add(crearPanelFiltrosColumna(), BorderLayout.NORTH);
+        tablaConFiltros.add(tableScroll, BorderLayout.CENTER);
 
         JButton btnImportar = IconUtils.createPrimaryButton("Importar válidos", "upload.svg");
         btnImportar.addActionListener(e -> importarValidos());
+        btnMaximizar = IconUtils.createSecondaryButton("Maximizar", "eye.svg");
+        btnMaximizar.addActionListener(e -> alternarMaximizado());
         JButton btnCerrar = IconUtils.createSecondaryButton("Cancelar", "clear.svg");
         btnCerrar.addActionListener(e -> dispose());
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         footer.setOpaque(false);
         footer.add(btnImportar);
+        footer.add(btnMaximizar);
         footer.add(btnCerrar);
 
         root.add(header, BorderLayout.NORTH);
-        root.add(scroll, BorderLayout.CENTER);
+        root.add(tablaConFiltros, BorderLayout.CENTER);
         root.add(footer, BorderLayout.SOUTH);
 
         setContentPane(root);
@@ -121,6 +154,131 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 250, 250, 230, 130};
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
+    }
+
+    private JPanel crearPanelFiltrosColumna() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+
+        String[] columnas = {
+            "Estado", "Observaciones", "Fecha", "Canal", "Referencia", "Tipo solicitud",
+            "Procedimiento", "Tipo doc.", "N° doc.", "Tipo acta", "N° acta",
+            "Titular", "Titular 2", "Solicitado por", "DNI"
+        };
+        int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 250, 250, 230, 130};
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.insets = new Insets(0, 0, 0, 6);
+
+        for (int i = 0; i < columnas.length; i++) {
+            JTextField filtro = new JTextField();
+            filtro.setPreferredSize(new Dimension(widths[i], 28));
+            filtro.setMinimumSize(new Dimension(widths[i], 28));
+            filtro.setToolTipText("Filtrar por " + columnas[i]);
+            final int column = i;
+            filtro.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    aplicarFiltrosColumna();
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    aplicarFiltrosColumna();
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    aplicarFiltrosColumna();
+                }
+            });
+            filtrosColumna.add(filtro);
+
+            gbc.gridx = column;
+            panel.add(filtro, gbc);
+        }
+
+        JButton limpiar = IconUtils.createIconButton("Limpiar filtros de columna", "broom.svg");
+        limpiar.setText("");
+        limpiar.setPreferredSize(new Dimension(32, 28));
+        limpiar.addActionListener(e -> limpiarFiltrosColumna());
+        gbc.gridx = columnas.length;
+        panel.add(limpiar, gbc);
+
+        JScrollPane scrollFiltros = new JScrollPane(panel);
+        scrollFiltros.setBorder(BorderFactory.createEmptyBorder());
+        scrollFiltros.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollFiltros.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        if (tableScroll != null) {
+            scrollFiltros.getHorizontalScrollBar().setModel(tableScroll.getHorizontalScrollBar().getModel());
+        }
+
+        JPanel contenedor = new JPanel(new BorderLayout());
+        contenedor.setOpaque(false);
+        contenedor.add(scrollFiltros, BorderLayout.CENTER);
+        return contenedor;
+    }
+
+    private void aplicarFiltrosColumna() {
+        if (sorter == null) {
+            return;
+        }
+
+        List<RowFilter<DefaultTableModel, Integer>> filtros = new ArrayList<>();
+        for (int i = 0; i < filtrosColumna.size(); i++) {
+            String texto = filtrosColumna.get(i).getText();
+            if (texto == null || texto.trim().isEmpty()) {
+                continue;
+            }
+            final int columna = i;
+            final String valor = normalizar(texto);
+            filtros.add(new RowFilter<DefaultTableModel, Integer>() {
+                @Override
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                    Object cellValue = entry.getValue(columna);
+                    return normalizar(cellValue == null ? "" : cellValue.toString()).contains(valor);
+                }
+            });
+        }
+        sorter.setRowFilter(filtros.isEmpty() ? null : RowFilter.andFilter(filtros));
+    }
+
+    private void limpiarFiltrosColumna() {
+        for (JTextField filtro : filtrosColumna) {
+            filtro.setText("");
+        }
+        if (sorter != null) {
+            sorter.setRowFilter(null);
+        }
+    }
+
+    private String normalizar(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private void alternarMaximizado() {
+        if (!maximizado) {
+            tamanoNormal = getSize();
+            ubicacionNormal = getLocation();
+            Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getMaximumWindowBounds();
+            setBounds(bounds);
+            maximizado = true;
+            btnMaximizar.setText("Restaurar");
+        } else {
+            if (tamanoNormal != null) {
+                setSize(tamanoNormal);
+            }
+            if (ubicacionNormal != null) {
+                setLocation(ubicacionNormal);
+            } else {
+                setLocationRelativeTo(getOwner());
+            }
+            maximizado = false;
+            btnMaximizar.setText("Maximizar");
         }
     }
 
