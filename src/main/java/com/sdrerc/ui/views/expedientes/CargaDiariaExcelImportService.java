@@ -158,7 +158,7 @@ public class CargaDiariaExcelImportService {
         String[] requeridas = {
             "TIPO DE SOLICITUD", "FECHA DE SOLICITUD", "SOLICITADO POR", "DNI SOLICITANTE",
             "N TRAMITE WEB", "TIPO DOCUMENTO", "N DOCUMENTO",
-            "TIPO DE SOLICITUD PROCEDIMIENTO", "TIPO DE ACTA", "N ACTA", "TITULAR"
+            "TIPO DE ACTA", "N ACTA", "TITULAR"
         };
         for (String requerida : requeridas) {
             if (!columnas.containsKey(requerida)) {
@@ -170,7 +170,7 @@ public class CargaDiariaExcelImportService {
     private CargaDiariaExcelRow leerFila(Row row, Map<String, Integer> columnas) {
         CargaDiariaExcelRow item = new CargaDiariaExcelRow(row.getRowNum() + 1);
 
-        item.setTipoSolicitud(texto(row, columnas, "TIPO DE SOLICITUD"));
+        item.setTipoSolicitud("");
         item.setFechaSolicitud(parseFecha(row, columnas, "FECHA DE SOLICITUD", item));
         item.setFechaSolicitudTexto(item.getFechaSolicitud() == null ? "" : formatoFecha.format(item.getFechaSolicitud()));
         item.setSolicitadoPor(texto(row, columnas, "SOLICITADO POR"));
@@ -178,7 +178,7 @@ public class CargaDiariaExcelImportService {
         aplicarTramiteYCanal(item, texto(row, columnas, "N TRAMITE WEB"));
         item.setTipoDocumento(texto(row, columnas, "TIPO DOCUMENTO"));
         aplicarNumeroDocumento(item, texto(row, columnas, "N DOCUMENTO"));
-        item.setProcedimientoRegistral(texto(row, columnas, "TIPO DE SOLICITUD PROCEDIMIENTO"));
+        item.setProcedimientoRegistral(textoProcedimientoRegistral(row, columnas));
         item.setTipoActa(texto(row, columnas, "TIPO DE ACTA"));
         item.setNumeroActa(texto(row, columnas, "N ACTA"));
         aplicarTitulares(item, texto(row, columnas, "TITULAR"));
@@ -249,12 +249,13 @@ public class CargaDiariaExcelImportService {
     }
 
     private void validarCatalogos(CargaDiariaExcelRow item) {
-        CatalogoItem tipoSolicitud = resolverCatalogo(tiposSolicitud, item.getTipoSolicitud());
+        CatalogoItem tipoSolicitud = resolverTipoSolicitudPorDefecto();
         if (tipoSolicitud == null) {
-            item.addError("No se encontró el tipo de solicitud en catálogo.");
+            item.addError("No se encontró un tipo de solicitud por defecto en catálogo.");
         } else {
             item.setIdTipoSolicitud(tipoSolicitud.getIdCatalogoItem());
             item.setTipoSolicitud(tipoSolicitud.getDescripcion());
+            item.addInfo("Tipo de solicitud asignado como " + tipoSolicitud.getDescripcion() + ".");
         }
 
         CatalogoItem tipoDocumento = resolverCatalogo(tiposDocumento, item.getTipoDocumento());
@@ -410,8 +411,31 @@ public class CargaDiariaExcelImportService {
         return null;
     }
 
+    private CatalogoItem resolverTipoSolicitudPorDefecto() {
+        CatalogoItem parte = resolverCatalogo(tiposSolicitud, "PARTE");
+        if (parte != null) {
+            return parte;
+        }
+        CatalogoItem oficio = resolverCatalogo(tiposSolicitud, "OFICIO");
+        if (oficio != null) {
+            return oficio;
+        }
+        for (CatalogoItem item : tiposSolicitud.values()) {
+            return item;
+        }
+        return null;
+    }
+
     private String texto(Row row, Map<String, Integer> columnas, String key) {
         return textoSeguro(valorTexto(celda(row, columnas, key)));
+    }
+
+    private String textoProcedimientoRegistral(Row row, Map<String, Integer> columnas) {
+        String procedimiento = texto(row, columnas, "TIPO DE SOLICITUD PROCEDIMIENTO");
+        if (!estaVacio(procedimiento)) {
+            return procedimiento;
+        }
+        return texto(row, columnas, "TIPO DE SOLICITUD");
     }
 
     private Cell celda(Row row, Map<String, Integer> columnas, String key) {
