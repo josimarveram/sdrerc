@@ -94,6 +94,9 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         header.add(titulo, BorderLayout.NORTH);
         header.add(resumen, BorderLayout.CENTER);
 
+        btnMaximizar = crearBotonMaximizarVentana();
+        header.add(btnMaximizar, BorderLayout.EAST);
+
         model.setColumnIdentifiers(new Object[]{
             "Estado validación",
             "Observaciones",
@@ -131,15 +134,12 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
 
         JButton btnImportar = IconUtils.createPrimaryButton("Importar válidos", "upload.svg");
         btnImportar.addActionListener(e -> importarValidos());
-        btnMaximizar = IconUtils.createSecondaryButton("Maximizar", "eye.svg");
-        btnMaximizar.addActionListener(e -> alternarMaximizado());
         JButton btnCerrar = IconUtils.createSecondaryButton("Cancelar", "clear.svg");
         btnCerrar.addActionListener(e -> dispose());
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         footer.setOpaque(false);
         footer.add(btnImportar);
-        footer.add(btnMaximizar);
         footer.add(btnCerrar);
 
         root.add(header, BorderLayout.NORTH);
@@ -148,6 +148,21 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
 
         setContentPane(root);
         pack();
+    }
+
+    private JButton crearBotonMaximizarVentana() {
+        JButton button = new JButton("□");
+        button.setToolTipText("Maximizar ventana");
+        button.setPreferredSize(new Dimension(36, 32));
+        button.setMinimumSize(new Dimension(36, 32));
+        button.setMaximumSize(new Dimension(36, 32));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(new Color(203, 213, 225)));
+        button.setBackground(new Color(248, 250, 252));
+        button.setForeground(new Color(51, 65, 85));
+        button.setFont(button.getFont().deriveFont(Font.BOLD, 15f));
+        button.addActionListener(e -> alternarMaximizado());
+        return button;
     }
 
     private void ajustarColumnas() {
@@ -267,7 +282,8 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
                     .getMaximumWindowBounds();
             setBounds(bounds);
             maximizado = true;
-            btnMaximizar.setText("Restaurar");
+            btnMaximizar.setText("❐");
+            btnMaximizar.setToolTipText("Restaurar ventana");
         } else {
             if (tamanoNormal != null) {
                 setSize(tamanoNormal);
@@ -278,7 +294,8 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
                 setLocationRelativeTo(getOwner());
             }
             maximizado = false;
-            btnMaximizar.setText("Maximizar");
+            btnMaximizar.setText("□");
+            btnMaximizar.setToolTipText("Maximizar ventana");
         }
     }
 
