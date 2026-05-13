@@ -221,20 +221,8 @@ public class CargaDiariaExcelImportService {
             return;
         }
 
-        String tipoDocumento = normalizarTexto(item.getTipoDocumento());
-        if ("DNI".equals(tipoDocumento)) {
-            DocumentoNormalizado normalizado = normalizarDni(numeroDocumento);
-            item.setNumeroDocumento(normalizado.visual);
-            item.setNumeroDocumentoPersistente(normalizado.persistente);
-            if (normalizado.completado) {
-                item.addAdvertencia("N° documento completado con ceros a la izquierda.");
-            } else if (!normalizado.valido && !normalizado.sinDocumento) {
-                item.addAdvertencia("N° documento DNI inválido.");
-            }
-        } else {
-            item.setNumeroDocumento(textoSeguro(numeroDocumento));
-            item.setNumeroDocumentoPersistente(textoSeguro(numeroDocumento));
-        }
+        item.setNumeroDocumento(textoSeguro(numeroDocumento));
+        item.setNumeroDocumentoPersistente(textoSeguro(numeroDocumento));
     }
 
     private void aplicarTitulares(CargaDiariaExcelRow item, String valorTitular) {
