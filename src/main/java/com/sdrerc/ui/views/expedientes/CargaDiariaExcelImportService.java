@@ -210,15 +210,40 @@ public class CargaDiariaExcelImportService {
     }
 
     private void aplicarTramiteYCanal(CargaDiariaExcelRow item, String tramiteWeb) {
-        if (!estaVacio(tramiteWeb)) {
+        if (esTramiteWebReal(tramiteWeb)) {
             item.setCanal("MPV");
             item.setReferencia(tramiteWeb.trim());
             item.addInfo("Se detectó N° trámite web; canal asignado como MPV.");
         } else {
             item.setCanal("POR DEFINIR");
-            item.setReferencia("SIN TRAMITE WEB");
-            item.addInfo("No existe N° trámite web; canal asignado como POR DEFINIR y referencia SIN TRAMITE WEB.");
+            item.setReferencia("SIN TRAMITE");
+            item.addInfo("No existe N° trámite web real; canal asignado como POR DEFINIR y referencia SIN TRAMITE.");
         }
+    }
+
+    private boolean esTramiteWebReal(String tramiteWeb) {
+        String value = textoSeguro(tramiteWeb);
+        if (value.isEmpty()) {
+            return false;
+        }
+
+        String normalizado = normalizarTexto(value);
+        if ("S/N".equals(normalizado)
+                || "S N".equals(normalizado)
+                || "SN".equals(normalizado)
+                || "N/A".equals(normalizado)
+                || "NA".equals(normalizado)
+                || "NO APLICA".equals(normalizado)
+                || "SIN TRAMITE".equals(normalizado)
+                || "SIN TRAMITE WEB".equals(normalizado)
+                || "NO MPV".equals(normalizado)
+                || "NO ES MPV".equals(normalizado)
+                || "PRESENCIAL".equals(normalizado)
+                || "POR DEFINIR".equals(normalizado)) {
+            return false;
+        }
+
+        return value.matches(".*\\d.*");
     }
 
     private void aplicarDniSolicitante(CargaDiariaExcelRow item, String dni) {
