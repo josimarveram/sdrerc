@@ -194,9 +194,9 @@ public class CargaDiariaExcelImportService {
             item.setReferencia(tramiteWeb.trim());
             item.addInfo("Se detectó N° trámite web; canal asignado como MPV.");
         } else {
-            item.setCanal("Carga diaria");
-            item.setReferencia("SIN TRAMITE");
-            item.addInfo("No existe N° trámite web; se asignó referencia SIN TRAMITE.");
+            item.setCanal("POR DEFINIR");
+            item.setReferencia("SIN TRAMITE WEB");
+            item.addInfo("No existe N° trámite web; canal asignado como POR DEFINIR y referencia SIN TRAMITE WEB.");
         }
     }
 
@@ -214,8 +214,8 @@ public class CargaDiariaExcelImportService {
     }
 
     private void aplicarNumeroDocumento(CargaDiariaExcelRow item, String numeroDocumento) {
-        if (esSinDni(numeroDocumento)) {
-            item.setNumeroDocumento("SIN DNI");
+        if (esSinNumeroDocumento(numeroDocumento)) {
+            item.setNumeroDocumento("S/N");
             item.setNumeroDocumentoPersistente(null);
             return;
         }
@@ -514,6 +514,17 @@ public class CargaDiariaExcelImportService {
                 || "NO TIENE".equals(normalizado)
                 || "NO REGISTRA".equals(normalizado)
                 || "SINDNI".equals(normalizado);
+    }
+
+    private boolean esSinNumeroDocumento(String value) {
+        String normalizado = normalizarTexto(value);
+        return normalizado.isEmpty()
+                || "S/N".equals(normalizado)
+                || "S N".equals(normalizado)
+                || "SN".equals(normalizado)
+                || "N/A".equals(normalizado)
+                || "SIN NUMERO".equals(normalizado)
+                || "SIN DOCUMENTO".equals(normalizado);
     }
 
     private String normalizarEncabezado(String value) {

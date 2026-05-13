@@ -58,7 +58,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
     private Integer idExpedienteOculto = 0;
     private static final int ID_CATALOGO_DIRECCION_DOMICILIARIA = 8;
     private static final int ID_AGREGAR_DIRECCION = -1;
-    private static final String[] CANALES_RECEPCION = {"INTERNO", "MP PRESENCIAL", "MPV", "OR PRESENCIAL"};
+    private static final String[] CANALES_RECEPCION = {"INTERNO", "MP PRESENCIAL", "MPV", "OR PRESENCIAL", "POR DEFINIR"};
     private CatalogoItem ultimaDireccionDomiciliariaSeleccionada;
     private JLabel lblTituloFormulario;
     private JLabel lblSubtituloFormulario;
@@ -751,9 +751,12 @@ private void seleccionarDistrito(int idDistrito) {
                 && "MPV".equalsIgnoreCase(String.valueOf(canalSeleccionado).trim());
         textNumeroTramiteDocumento.setEnabled(esMpv);
         if (esMpv) {
-            if ("SIN TRAMITE".equalsIgnoreCase(textNumeroTramiteDocumento.getText().trim())) {
+            if ("SIN TRAMITE".equalsIgnoreCase(textNumeroTramiteDocumento.getText().trim())
+                    || "SIN TRAMITE WEB".equalsIgnoreCase(textNumeroTramiteDocumento.getText().trim())) {
                 textNumeroTramiteDocumento.setText("");
             }
+        } else if ("POR DEFINIR".equalsIgnoreCase(String.valueOf(canalSeleccionado).trim())) {
+            textNumeroTramiteDocumento.setText("SIN TRAMITE WEB");
         } else {
             textNumeroTramiteDocumento.setText("SIN TRAMITE");
         }
