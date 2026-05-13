@@ -14,12 +14,18 @@ import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Window;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -33,6 +39,16 @@ import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class DlgPrevisualizarCargaDiaria extends JDialog {
 
@@ -133,6 +149,10 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         tablaConFiltros.add(crearPanelFiltrosColumna(), BorderLayout.NORTH);
         tablaConFiltros.add(tableScroll, BorderLayout.CENTER);
 
+        JButton btnExportar = IconUtils.createSecondaryButton("Exportar", "excel.svg");
+        btnExportar.setToolTipText("Exportar previsualización a Excel");
+        btnExportar.addActionListener(e -> exportarPrevisualizacionExcel());
+
         JButton btnImportar = IconUtils.createPrimaryButton("Importar válidos", "upload.svg");
         btnImportar.addActionListener(e -> importarValidos());
         JButton btnCerrar = IconUtils.createSecondaryButton("Cancelar", "clear.svg");
@@ -140,6 +160,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         footer.setOpaque(false);
+        footer.add(btnExportar);
         footer.add(btnImportar);
         footer.add(btnCerrar);
 
@@ -362,6 +383,109 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
                     "Carga diaria",
                     JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void exportarPrevisualizacionExcel() {
+        if (table.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No hay registros para exportar.");
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Exportar previsualización");
+        chooser.setSelectedFile(new File("carga_diaria_previsualizacion_"
+                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx"));
+
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File archivo = asegurarExtensionXlsx(chooser.getSelectedFile());
+        try {
+            escribirPrevisualizacionExcel(archivo);
+            JOptionPane.showMessageDialog(this, "Archivo Excel generado correctamente.");
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se pudo exportar el archivo Excel.",
+                    "Carga diaria",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private File asegurarExtensionXlsx(File archivo) {
+        String nombre = archivo.getName().toLowerCase(Locale.ROOT);
+        if (nombre.endsWith(".xlsx")) {
+            return archivo;
+        }
+        return new File(archivo.getParentFile(), archivo.getName() + ".xlsx");
+    }
+
+    private void escribirPrevisualizacionExcel(File archivo) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             FileOutputStream out = new FileOutputStream(archivo)) {
+            Sheet sheet = workbook.createSheet("Previsualización");
+            CellStyle headerStyle = crearEstiloCabecera(workbook);
+            CellStyle bodyStyle = crearEstiloCuerpo(workbook);
+
+            Row header = sheet.createRow(0);
+            for (int col = 0; col < table.getColumnCount(); col++) {
+                Cell cell = header.createCell(col);
+                cell.setCellValue(table.getColumnName(col));
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
+                Row row = sheet.createRow(viewRow + 1);
+                int modelRow = table.convertRowIndexToModel(viewRow);
+                for (int col = 0; col < table.getColumnCount(); col++) {
+                    Cell cell = row.createCell(col);
+                    Object value = model.getValueAt(modelRow, col);
+                    cell.setCellValue(value == null ? "" : value.toString());
+                    cell.setCellStyle(bodyStyle);
+                }
+            }
+
+            sheet.createFreezePane(0, 1);
+            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(
+                    0,
+                    Math.max(0, table.getRowCount()),
+                    0,
+                    table.getColumnCount() - 1));
+            for (int col = 0; col < table.getColumnCount(); col++) {
+                sheet.autoSizeColumn(col);
+                int anchoActual = sheet.getColumnWidth(col);
+                sheet.setColumnWidth(col, Math.min(Math.max(anchoActual + 800, 3200), 18000));
+            }
+
+            workbook.write(out);
+        }
+    }
+
+    private CellStyle crearEstiloCabecera(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        return style;
+    }
+
+    private CellStyle crearEstiloCuerpo(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setWrapText(true);
+        return style;
     }
 
     private static class EstadoCargaDiariaRenderer extends DefaultTableCellRenderer {
