@@ -370,6 +370,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
     }
 
     private void importarValidos() {
+        aplicarCambiosTablaAlPreview();
         if (preview.getImportables() == 0) {
             JOptionPane.showMessageDialog(this, "No existen registros válidos para importar.");
             return;
@@ -399,6 +400,38 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
                     "Carga diaria",
                     JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void aplicarCambiosTablaAlPreview() {
+        if (table.isEditing() && table.getCellEditor() != null) {
+            table.getCellEditor().stopCellEditing();
+        }
+
+        List<CargaDiariaExcelRow> filas = preview.getFilas();
+        for (int modelRow = 0; modelRow < model.getRowCount() && modelRow < filas.size(); modelRow++) {
+            CargaDiariaExcelRow item = filas.get(modelRow);
+            importService.aplicarCambiosPrevisualizacion(
+                    item,
+                    valorModelo(modelRow, 2),
+                    valorModelo(modelRow, 3),
+                    valorModelo(modelRow, 4),
+                    valorModelo(modelRow, 5),
+                    valorModelo(modelRow, 6),
+                    valorModelo(modelRow, 7),
+                    valorModelo(modelRow, 8),
+                    valorModelo(modelRow, 9),
+                    valorModelo(modelRow, 10),
+                    valorModelo(modelRow, 11),
+                    valorModelo(modelRow, 12),
+                    valorModelo(modelRow, 13),
+                    valorModelo(modelRow, 14),
+                    valorModelo(modelRow, 15));
+        }
+    }
+
+    private String valorModelo(int row, int column) {
+        Object value = model.getValueAt(row, column);
+        return value == null ? "" : value.toString().trim();
     }
 
     private void exportarPrevisualizacionExcel() {

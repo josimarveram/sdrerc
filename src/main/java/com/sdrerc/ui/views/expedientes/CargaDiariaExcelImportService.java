@@ -111,11 +111,100 @@ public class CargaDiariaExcelImportService {
         return preview;
     }
 
+    public void aplicarCambiosPrevisualizacion(
+            CargaDiariaExcelRow item,
+            String fechaSolicitud,
+            String canal,
+            String tramiteWeb,
+            String tipoSolicitud,
+            String procedimientoRegistral,
+            String tipoDocumento,
+            String numeroDocumento,
+            String tipoActa,
+            String numeroActa,
+            String dniTitular,
+            String titular,
+            String titular2,
+            String solicitadoPor,
+            String dniSolicitante) {
+        item.setFechaSolicitud(parseFechaTexto(fechaSolicitud));
+        item.setFechaSolicitudTexto(textoSeguro(fechaSolicitud));
+        item.setCanal(textoSeguro(canal));
+        item.setReferencia(estaVacio(tramiteWeb) ? "SIN TRAMITE" : textoSeguro(tramiteWeb));
+        item.setTipoSolicitud(textoSeguro(tipoSolicitud));
+        item.setProcedimientoRegistral(textoSeguro(procedimientoRegistral));
+        item.setTipoDocumento(textoSeguro(tipoDocumento));
+        aplicarNumeroDocumento(item, numeroDocumento);
+        item.setTipoActa(textoSeguro(tipoActa));
+        item.setNumeroActa(textoSeguro(numeroActa));
+        aplicarDniTitularEditado(item, dniTitular);
+        item.setTitular(textoSeguro(titular));
+        item.setTitular2(textoSeguro(titular2));
+        item.setSolicitadoPor(textoSeguro(solicitadoPor));
+        aplicarDniSolicitanteEditado(item, dniSolicitante);
+        resolverCatalogosEditados(item);
+    }
+
     private String mensajeError(Exception ex) {
         if (ex == null || ex.getMessage() == null || ex.getMessage().trim().isEmpty()) {
             return "Error no especificado.";
         }
         return ex.getMessage().trim();
+    }
+
+    private Date parseFechaTexto(String fechaSolicitud) {
+        String value = textoSeguro(fechaSolicitud);
+        if (value.isEmpty()) {
+            return null;
+        }
+        String[] patrones = {"dd/MM/yyyy", "d/M/yyyy", "yyyy-MM-dd"};
+        for (String patron : patrones) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(patron);
+                sdf.setLenient(false);
+                return sdf.parse(value);
+            } catch (ParseException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private void aplicarDniTitularEditado(CargaDiariaExcelRow item, String dniTitular) {
+        DocumentoNormalizado normalizado = normalizarDni(dniTitular);
+        item.setDniTitularVisual(normalizado.visual);
+        item.setDniTitularPersistente(normalizado.persistente);
+    }
+
+    private void aplicarDniSolicitanteEditado(CargaDiariaExcelRow item, String dniSolicitante) {
+        DocumentoNormalizado normalizado = normalizarDni(dniSolicitante);
+        item.setDniSolicitanteVisual(normalizado.visual);
+        item.setDniSolicitantePersistente(normalizado.persistente);
+    }
+
+    private void resolverCatalogosEditados(CargaDiariaExcelRow item) {
+        CatalogoItem tipoSolicitud = resolverCatalogo(tiposSolicitud, item.getTipoSolicitud());
+        if (tipoSolicitud != null) {
+            item.setIdTipoSolicitud(tipoSolicitud.getIdCatalogoItem());
+            item.setTipoSolicitud(tipoSolicitud.getDescripcion());
+        }
+
+        CatalogoItem tipoDocumento = resolverCatalogo(tiposDocumento, item.getTipoDocumento());
+        if (tipoDocumento != null) {
+            item.setIdTipoDocumento(tipoDocumento.getIdCatalogoItem());
+            item.setTipoDocumento(tipoDocumento.getDescripcion());
+        }
+
+        CatalogoItem procedimiento = resolverCatalogo(procedimientos, item.getProcedimientoRegistral());
+        if (procedimiento != null) {
+            item.setIdProcedimientoRegistral(procedimiento.getIdCatalogoItem());
+            item.setProcedimientoRegistral(procedimiento.getDescripcion());
+        }
+
+        CatalogoItem tipoActa = resolverCatalogo(tiposActa, item.getTipoActa());
+        if (tipoActa != null) {
+            item.setIdTipoActa(tipoActa.getIdCatalogoItem());
+            item.setTipoActa(tipoActa.getDescripcion());
+        }
     }
 
     private void cargarCatalogos() {
