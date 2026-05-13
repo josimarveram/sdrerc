@@ -118,7 +118,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
             "Observaciones",
             "Fecha solicitud",
             "Canal",
-            "Referencia",
+            "Nro. trámite web",
             "Tipo solicitud",
             "Procedimiento registral",
             "Tipo documento",
@@ -199,7 +199,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         panel.setOpaque(false);
 
         String[] columnas = {
-            "Estado", "Observaciones", "Fecha", "Canal", "Referencia", "Tipo solicitud",
+            "Estado", "Observaciones", "Fecha", "Canal", "Nro. trámite web", "Tipo solicitud",
             "Procedimiento", "Tipo doc.", "N° doc.", "Tipo acta", "N° acta",
             "DNI titular", "Titular", "Titular 2", "Solicitado por", "DNI"
         };
