@@ -199,6 +199,21 @@ public class DlgResultadoCargaDiaria extends JDialog {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.NONE;
+        gbc.insets = new Insets(0, 0, 3, 6);
+
+        for (int i = 0; i < columnas.length; i++) {
+            JLabel label = new JLabel(columnas[i]);
+            label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
+            label.setForeground(new Color(71, 85, 105));
+            label.setPreferredSize(new Dimension(widths[i], 18));
+            label.setToolTipText(columnas[i]);
+
+            gbc.gridx = i;
+            gbc.gridy = 0;
+            panel.add(label, gbc);
+        }
+
+        gbc.gridy = 1;
         gbc.insets = new Insets(0, 0, 0, 6);
 
         for (int i = 0; i < columnas.length; i++) {
@@ -226,6 +241,7 @@ public class DlgResultadoCargaDiaria extends JDialog {
             filtrosColumna.add(filtro);
 
             gbc.gridx = column;
+            gbc.gridy = 1;
             panel.add(filtro, gbc);
         }
 
@@ -234,6 +250,7 @@ public class DlgResultadoCargaDiaria extends JDialog {
         limpiar.setPreferredSize(new Dimension(32, 28));
         limpiar.addActionListener(e -> limpiarFiltrosColumna());
         gbc.gridx = columnas.length;
+        gbc.gridy = 1;
         panel.add(limpiar, gbc);
 
         JScrollPane scrollFiltros = new JScrollPane(panel);
