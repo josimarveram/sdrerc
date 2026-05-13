@@ -50,11 +50,9 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-public class DlgPrevisualizarCargaDiaria extends JDialog {
+public class DlgResultadoCargaDiaria extends JDialog {
 
-    private final CargaDiariaImportResult preview;
-    private final CargaDiariaExcelImportService importService;
-    private final Runnable onImportacionFinalizada;
+    private final CargaDiariaImportResult result;
     private final DefaultTableModel model = new DefaultTableModel();
     private final List<JTextField> filtrosColumna = new ArrayList<>();
     private TableRowSorter<DefaultTableModel> sorter;
@@ -76,46 +74,44 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         }
     };
 
-    public DlgPrevisualizarCargaDiaria(
-            Window parent,
-            CargaDiariaImportResult preview,
-            CargaDiariaExcelImportService importService,
-            Runnable onImportacionFinalizada) {
-        super(parent, "Previsualización de Carga diaria", ModalityType.APPLICATION_MODAL);
-        this.preview = preview;
-        this.importService = importService;
-        this.onImportacionFinalizada = onImportacionFinalizada;
+    public DlgResultadoCargaDiaria(Window parent, CargaDiariaImportResult result) {
+        super(parent, "Resultado de Carga diaria", ModalityType.APPLICATION_MODAL);
+        this.result = result;
         configurar();
         cargarDatos();
     }
 
     private void configurar() {
         setLayout(new BorderLayout(0, 12));
-        setPreferredSize(new Dimension(1280, 650));
-        setMinimumSize(new Dimension(980, 540));
+        setPreferredSize(new Dimension(1180, 620));
+        setMinimumSize(new Dimension(920, 500));
         setResizable(true);
 
         JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
         root.setBackground(new Color(245, 247, 250));
 
-        JLabel titulo = new JLabel("Previsualización de Carga diaria");
+        JLabel titulo = new JLabel("Resultado de Carga diaria");
         titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 20f));
         titulo.setForeground(new Color(25, 42, 62));
-        JLabel resumen = new JLabel(resumen());
+
+        JLabel resumen = new JLabel("Registrados: " + result.getRegistrados()
+                + " | Omitidos: " + result.getOmitidos()
+                + " | Total procesados: " + result.getTotal());
         resumen.setForeground(new Color(72, 84, 96));
 
         JPanel header = new JPanel(new BorderLayout(0, 4));
         header.setOpaque(false);
         header.add(titulo, BorderLayout.NORTH);
         header.add(resumen, BorderLayout.CENTER);
-
         btnMaximizar = crearBotonMaximizarVentana();
         header.add(btnMaximizar, BorderLayout.EAST);
 
         model.setColumnIdentifiers(new Object[]{
+            "Estado carga",
+            "Resultado",
             "Estado validación",
-            "Observaciones",
+            "Observaciones previas",
             "Fecha solicitud",
             "Canal",
             "Nro. trámite web",
@@ -125,18 +121,16 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
             "N° documento",
             "Tipo acta",
             "N° acta",
-            "DNI titular",
             "Titular",
             "Titular 2",
-            "Solicitado por",
-            "DNI solicitante"
+            "Solicitado por"
         });
 
         table.setRowHeight(32);
         table.setFillsViewportHeight(true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.getTableHeader().setReorderingAllowed(false);
-        table.setDefaultRenderer(Object.class, new EstadoCargaDiariaRenderer());
+        table.setDefaultRenderer(Object.class, new ResultadoCargaRenderer());
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
         ajustarColumnas();
@@ -150,18 +144,15 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         tablaConFiltros.add(tableScroll, BorderLayout.CENTER);
 
         JButton btnExportar = IconUtils.createSecondaryButton("Exportar", "excel.svg");
-        btnExportar.setToolTipText("Exportar previsualización a Excel");
-        btnExportar.addActionListener(e -> exportarPrevisualizacionExcel());
+        btnExportar.setToolTipText("Exportar resultado a Excel");
+        btnExportar.addActionListener(e -> exportarResultadoExcel());
 
-        JButton btnImportar = IconUtils.createPrimaryButton("Importar válidos", "upload.svg");
-        btnImportar.addActionListener(e -> importarValidos());
-        JButton btnCerrar = IconUtils.createSecondaryButton("Cancelar", "clear.svg");
+        JButton btnCerrar = IconUtils.createPrimaryButton("Cerrar", "clear.svg");
         btnCerrar.addActionListener(e -> dispose());
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         footer.setOpaque(false);
         footer.add(btnExportar);
-        footer.add(btnImportar);
         footer.add(btnCerrar);
 
         root.add(header, BorderLayout.NORTH);
@@ -188,7 +179,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
     }
 
     private void ajustarColumnas() {
-        int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 120, 250, 250, 230, 130};
+        int[] widths = {130, 360, 130, 460, 115, 110, 140, 150, 220, 140, 120, 140, 110, 250, 250, 230};
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
@@ -199,11 +190,11 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         panel.setOpaque(false);
 
         String[] columnas = {
-            "Estado", "Observaciones", "Fecha", "Canal", "Nro. trámite web", "Tipo solicitud",
-            "Procedimiento", "Tipo doc.", "N° doc.", "Tipo acta", "N° acta",
-            "DNI titular", "Titular", "Titular 2", "Solicitado por", "DNI"
+            "Estado carga", "Resultado", "Estado validación", "Observaciones", "Fecha",
+            "Canal", "Nro. trámite web", "Tipo solicitud", "Procedimiento", "Tipo doc.",
+            "N° doc.", "Tipo acta", "N° acta", "Titular", "Titular 2", "Solicitado por"
         };
-        int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 120, 250, 250, 230, 130};
+        int[] widths = {130, 360, 130, 460, 115, 110, 140, 150, 220, 140, 120, 140, 110, 250, 250, 230};
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridy = 0;
@@ -322,8 +313,10 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
     }
 
     private void cargarDatos() {
-        for (CargaDiariaExcelRow item : preview.getFilas()) {
+        for (CargaDiariaExcelRow item : result.getFilas()) {
             model.addRow(new Object[]{
+                item.getEstadoCarga(),
+                item.getObservacionCarga(),
                 item.getEstadoValidacion(),
                 item.getObservacionesResumen(),
                 item.getFechaSolicitudTexto(),
@@ -335,64 +328,22 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
                 item.getNumeroDocumento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
-                item.getDniTitularVisual(),
                 item.getTitular(),
                 item.getTitular2(),
-                item.getSolicitadoPor(),
-                item.getDniSolicitanteVisual()
+                item.getSolicitadoPor()
             });
         }
     }
 
-    private String resumen() {
-        return "Total filas: " + preview.getTotal()
-                + " | Válidas: " + preview.getValidas()
-                + " | Advertencias: " + preview.getAdvertencias()
-                + " | Errores: " + preview.getErrores()
-                + " | Duplicadas: " + preview.getDuplicadas();
-    }
-
-    private void importarValidos() {
-        if (preview.getImportables() == 0) {
-            JOptionPane.showMessageDialog(this, "No existen registros válidos para importar.");
-            return;
-        }
-
-        if (preview.getErrores() > 0 || preview.getDuplicadas() > 0) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Se encontraron observaciones bloqueantes. Solo se importarán registros válidos.",
-                    "Carga diaria",
-                    JOptionPane.WARNING_MESSAGE);
-        }
-
-        try {
-            CargaDiariaImportResult result = importService.importarValidos(preview);
-            DlgResultadoCargaDiaria dialog = new DlgResultadoCargaDiaria(this, result);
-            dialog.setLocationRelativeTo(this);
-            dialog.setVisible(true);
-            if (onImportacionFinalizada != null) {
-                onImportacionFinalizada.run();
-            }
-            dispose();
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "No se pudo completar la importación: " + ex.getMessage(),
-                    "Carga diaria",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void exportarPrevisualizacionExcel() {
+    private void exportarResultadoExcel() {
         if (table.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this, "No hay registros para exportar.");
             return;
         }
 
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Exportar previsualización");
-        chooser.setSelectedFile(new File("carga_diaria_previsualizacion_"
+        chooser.setDialogTitle("Exportar resultado de carga");
+        chooser.setSelectedFile(new File("carga_diaria_resultado_"
                 + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx"));
 
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
@@ -401,7 +352,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
 
         File archivo = asegurarExtensionXlsx(chooser.getSelectedFile());
         try {
-            escribirPrevisualizacionExcel(archivo);
+            escribirResultadoExcel(archivo);
             JOptionPane.showMessageDialog(this, "Archivo Excel generado correctamente.");
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(
@@ -420,10 +371,10 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         return new File(archivo.getParentFile(), archivo.getName() + ".xlsx");
     }
 
-    private void escribirPrevisualizacionExcel(File archivo) throws IOException {
+    private void escribirResultadoExcel(File archivo) throws IOException {
         try (Workbook workbook = new XSSFWorkbook();
              FileOutputStream out = new FileOutputStream(archivo)) {
-            Sheet sheet = workbook.createSheet("Previsualización");
+            Sheet sheet = workbook.createSheet("Resultado");
             CellStyle headerStyle = crearEstiloCabecera(workbook);
             CellStyle bodyStyle = crearEstiloCuerpo(workbook);
 
@@ -487,7 +438,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         return style;
     }
 
-    private static class EstadoCargaDiariaRenderer extends DefaultTableCellRenderer {
+    private static class ResultadoCargaRenderer extends DefaultTableCellRenderer {
 
         @Override
         public Component getTableCellRendererComponent(
@@ -506,14 +457,12 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
             }
             if (column == 0 && !isSelected) {
                 String estado = value == null ? "" : value.toString();
-                if ("VÁLIDO".equals(estado)) {
+                if (CargaDiariaExcelRow.CARGA_REGISTRADO.equals(estado)) {
                     component.setForeground(new Color(22, 101, 52));
-                } else if (CargaDiariaExcelRow.ESTADO_ADVERTENCIA.equals(estado)) {
+                } else if (CargaDiariaExcelRow.CARGA_OMITIDO.equals(estado)) {
                     component.setForeground(new Color(146, 64, 14));
-                } else if (CargaDiariaExcelRow.ESTADO_ERROR.equals(estado)) {
+                } else if (CargaDiariaExcelRow.CARGA_ERROR.equals(estado)) {
                     component.setForeground(new Color(185, 28, 28));
-                } else if (CargaDiariaExcelRow.ESTADO_DUPLICADO.equals(estado)) {
-                    component.setForeground(new Color(109, 40, 217));
                 }
                 setFont(getFont().deriveFont(Font.BOLD));
             } else {

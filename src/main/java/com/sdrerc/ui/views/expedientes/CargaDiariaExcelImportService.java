@@ -87,15 +87,35 @@ public class CargaDiariaExcelImportService {
         int omitidos = 0;
         for (CargaDiariaExcelRow fila : preview.getFilas()) {
             if (!fila.esImportable()) {
+                fila.setResultadoCarga(
+                        CargaDiariaExcelRow.CARGA_OMITIDO,
+                        "No importado por estado de validación " + fila.getEstadoValidacion() + ".");
                 omitidos++;
                 continue;
             }
-            expedienteService.agregarExpediente(crearExpediente(fila));
-            registrados++;
+            try {
+                expedienteService.agregarExpediente(crearExpediente(fila));
+                fila.setResultadoCarga(
+                        CargaDiariaExcelRow.CARGA_REGISTRADO,
+                        "Expediente registrado correctamente.");
+                registrados++;
+            } catch (Exception ex) {
+                fila.setResultadoCarga(
+                        CargaDiariaExcelRow.CARGA_ERROR,
+                        "No se pudo registrar: " + mensajeError(ex));
+                omitidos++;
+            }
         }
         preview.setRegistrados(registrados);
         preview.setOmitidos(omitidos);
         return preview;
+    }
+
+    private String mensajeError(Exception ex) {
+        if (ex == null || ex.getMessage() == null || ex.getMessage().trim().isEmpty()) {
+            return "Error no especificado.";
+        }
+        return ex.getMessage().trim();
     }
 
     private void cargarCatalogos() {

@@ -11,6 +11,10 @@ public class CargaDiariaExcelRow {
     public static final String ESTADO_ADVERTENCIA = "ADVERTENCIA";
     public static final String ESTADO_ERROR = "ERROR";
     public static final String ESTADO_DUPLICADO = "DUPLICADO";
+    public static final String CARGA_PENDIENTE = "PENDIENTE";
+    public static final String CARGA_REGISTRADO = "REGISTRADO";
+    public static final String CARGA_OMITIDO = "OMITIDO";
+    public static final String CARGA_ERROR = "ERROR";
 
     private final int numeroFilaExcel;
     private String estadoValidacion = ESTADO_VALIDO;
@@ -38,6 +42,8 @@ public class CargaDiariaExcelRow {
     private String dniSolicitanteVisual;
     private String dniSolicitantePersistente;
     private Expediente expedienteDuplicado;
+    private String estadoCarga = CARGA_PENDIENTE;
+    private String observacionCarga = "";
 
     public CargaDiariaExcelRow(int numeroFilaExcel) {
         this.numeroFilaExcel = numeroFilaExcel;
@@ -275,5 +281,18 @@ public class CargaDiariaExcelRow {
 
     public Expediente getExpedienteDuplicado() {
         return expedienteDuplicado;
+    }
+
+    public String getEstadoCarga() {
+        return estadoCarga;
+    }
+
+    public String getObservacionCarga() {
+        return observacionCarga;
+    }
+
+    public void setResultadoCarga(String estadoCarga, String observacionCarga) {
+        this.estadoCarga = estadoCarga;
+        this.observacionCarga = observacionCarga == null ? "" : observacionCarga.trim();
     }
 }
