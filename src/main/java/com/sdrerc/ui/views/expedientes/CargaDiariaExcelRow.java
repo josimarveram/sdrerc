@@ -31,6 +31,8 @@ public class CargaDiariaExcelRow {
     private int idTipoActa;
     private String numeroActa;
     private String titular;
+    private String dniTitularVisual;
+    private String dniTitularPersistente;
     private String titular2;
     private String solicitadoPor;
     private String dniSolicitanteVisual;
@@ -221,6 +223,22 @@ public class CargaDiariaExcelRow {
 
     public void setTitular(String titular) {
         this.titular = titular;
+    }
+
+    public String getDniTitularVisual() {
+        return dniTitularVisual;
+    }
+
+    public void setDniTitularVisual(String dniTitularVisual) {
+        this.dniTitularVisual = dniTitularVisual;
+    }
+
+    public String getDniTitularPersistente() {
+        return dniTitularPersistente;
+    }
+
+    public void setDniTitularPersistente(String dniTitularPersistente) {
+        this.dniTitularPersistente = dniTitularPersistente;
     }
 
     public String getTitular2() {

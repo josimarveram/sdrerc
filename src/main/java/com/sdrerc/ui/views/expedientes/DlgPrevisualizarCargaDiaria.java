@@ -109,6 +109,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
             "N° documento",
             "Tipo acta",
             "N° acta",
+            "DNI titular",
             "Titular",
             "Titular 2",
             "Solicitado por",
@@ -166,7 +167,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
     }
 
     private void ajustarColumnas() {
-        int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 250, 250, 230, 130};
+        int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 120, 250, 250, 230, 130};
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
@@ -179,9 +180,9 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
         String[] columnas = {
             "Estado", "Observaciones", "Fecha", "Canal", "Referencia", "Tipo solicitud",
             "Procedimiento", "Tipo doc.", "N° doc.", "Tipo acta", "N° acta",
-            "Titular", "Titular 2", "Solicitado por", "DNI"
+            "DNI titular", "Titular", "Titular 2", "Solicitado por", "DNI"
         };
-        int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 250, 250, 230, 130};
+        int[] widths = {130, 520, 115, 110, 140, 150, 230, 140, 120, 140, 110, 120, 250, 250, 230, 130};
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridy = 0;
@@ -313,6 +314,7 @@ public class DlgPrevisualizarCargaDiaria extends JDialog {
                 item.getNumeroDocumento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
+                item.getDniTitularVisual(),
                 item.getTitular(),
                 item.getTitular2(),
                 item.getSolicitadoPor(),

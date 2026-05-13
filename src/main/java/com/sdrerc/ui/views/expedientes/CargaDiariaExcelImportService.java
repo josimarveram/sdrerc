@@ -182,6 +182,7 @@ public class CargaDiariaExcelImportService {
         item.setTipoActa(texto(row, columnas, "TIPO DE ACTA"));
         item.setNumeroActa(texto(row, columnas, "N ACTA"));
         aplicarTitulares(item, texto(row, columnas, "TITULAR"));
+        aplicarDniTitularSiSolicitanteEsTitular(item);
 
         validarCatalogos(item);
         validarObligatorios(item);
@@ -246,6 +247,19 @@ public class CargaDiariaExcelImportService {
         }
         item.setTitular(titular);
         item.setTitular2(titular2);
+    }
+
+    private void aplicarDniTitularSiSolicitanteEsTitular(CargaDiariaExcelRow item) {
+        String solicitadoPor = normalizarTexto(item.getSolicitadoPor());
+        String titular = normalizarTexto(item.getTitular());
+        if (solicitadoPor.isEmpty() || titular.isEmpty() || !solicitadoPor.equals(titular)) {
+            return;
+        }
+        item.setDniTitularVisual(item.getDniSolicitanteVisual());
+        item.setDniTitularPersistente(item.getDniSolicitantePersistente());
+        if (!estaVacio(item.getDniTitularPersistente())) {
+            item.addInfo("Solicitado por coincide con titular; DNI titular asignado desde DNI solicitante.");
+        }
     }
 
     private void validarCatalogos(CargaDiariaExcelRow item) {
@@ -353,7 +367,7 @@ public class CargaDiariaExcelImportService {
         expediente.setDniRemitente(fila.getDniSolicitantePersistente());
         expediente.setApellidoNombreRemitente(fila.getSolicitadoPor());
         expediente.setUnidadOrganica(0);
-        expediente.setDniTitular(null);
+        expediente.setDniTitular(fila.getDniTitularPersistente());
         expediente.setApellidoNombreTitular(fila.getTitular());
         expediente.setDniTitular2(null);
         expediente.setApellidoNombreTitular2(fila.esMatrimonio() ? fila.getTitular2() : null);
