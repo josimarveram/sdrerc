@@ -151,6 +151,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         cargarTieneObservacion();
         cargarTipoObservacion();
         cargarAnalisis();  
+        configurarValoresInicialesObservacion();
         
                 
         registrarEventos();
@@ -543,9 +544,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         configurarTooltipsSolicitud();
         estilizarAreaTexto(jTextArea1);
 
-        if (cboTieneObservacion.isEnabled()) {
-            cboTieneObservacion.addActionListener(e -> aplicarEstadoObservacion());
-        }
+        cboTieneObservacion.addActionListener(e -> aplicarEstadoObservacion());
         aplicarEstadoObservacion();
     }
 
@@ -680,14 +679,19 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     }
 
     private void aplicarEstadoObservacion() {
+        boolean tieneObservacion = esSeleccionSi(cboTieneObservacion.getSelectedItem());
+        seleccionarComboPorDescripcion(cboAnalisisAbogado, tieneObservacion ? "IMPROCEDENTE" : "PROCEDENTE");
+
         if (!cboTieneObservacion.isEnabled()) {
             cboTipoObservacion.setEnabled(false);
             jTextArea1.setEnabled(false);
+            jTextArea1.setEditable(false);
             return;
         }
-        boolean tieneObservacion = esSeleccionSi(cboTieneObservacion.getSelectedItem());
+
         cboTipoObservacion.setEnabled(tieneObservacion);
         jTextArea1.setEnabled(tieneObservacion);
+        jTextArea1.setEditable(tieneObservacion);
         if (!tieneObservacion) {
             jTextArea1.setText("");
         }
@@ -837,11 +841,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         cboAnalisisAbogado.setEnabled(!atendidoPorTrabajador);
         cboTipoDocumentoAnalizado.setEnabled(!atendidoPorTrabajador);
         cboTieneObservacion.setEnabled(!atendidoPorTrabajador);
-        cboTipoObservacion.setEnabled(!atendidoPorTrabajador && esSeleccionSi(cboTieneObservacion.getSelectedItem()));
         textDescripcionDocumentoAnalisis.setEditable(!atendidoPorTrabajador);
-        jTextArea1.setEditable(!atendidoPorTrabajador);
         jTableDocumentosAnalisis.setEnabled(!atendidoPorTrabajador);
         btnRegresar.setEnabled(true);
+        aplicarEstadoObservacion();
     }
     
     private void seleccionarEstadoEnCombo(JComboBox<CatalogoItem> combo, int idEstado) 
@@ -851,6 +854,30 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
             if (item.getIdCatalogoItem() == idEstado) {
                 combo.setSelectedIndex(i);
                 break;
+            }
+        }
+    }
+
+    private void configurarValoresInicialesObservacion() {
+        seleccionarComboPorDescripcion(cboTieneObservacion, "NO");
+        seleccionarComboPorDescripcion(cboAnalisisAbogado, "PROCEDENTE");
+        cboTipoObservacion.setEnabled(false);
+        jTextArea1.setText("");
+        jTextArea1.setEnabled(false);
+        jTextArea1.setEditable(false);
+    }
+
+    private void seleccionarComboPorDescripcion(JComboBox combo, String descripcion) {
+        String descripcionNormalizada = normalizarTexto(descripcion);
+        if (descripcionNormalizada.isEmpty()) {
+            return;
+        }
+
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            Object item = combo.getItemAt(i);
+            if (descripcionNormalizada.equals(normalizarTexto(item == null ? "" : item.toString()))) {
+                combo.setSelectedIndex(i);
+                return;
             }
         }
     }
