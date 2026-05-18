@@ -13,7 +13,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.sql.Date;
 
@@ -171,6 +173,10 @@ public class ExpedienteRepository
             if (rs.next()) {
                 int idGenerado = rs.getInt(1);
                 expediente.setIdExpediente(idGenerado);
+            }
+
+            if (expediente.getIdExpediente() > 0) {
+                expediente.setNumExpediente(asignarNumeroExpediente(conn, expediente));
             }
             
             // convertir fechaSolicitud (puede ser null)
@@ -569,6 +575,17 @@ public class ExpedienteRepository
         return null;
     }
 
+    public Expediente buscarDuplicadoActivoPorActaYNombreTitular(String numeroActa, String titular1, String titular2) throws SQLException {
+        Expediente expediente = new Expediente();
+        expediente.setIdExpediente(0);
+        expediente.setNumeroActa(numeroActa);
+        expediente.setApellidoNombreTitular(titular1);
+        expediente.setApellidoNombreTitular2(titular2);
+        try (Connection conn = OracleConnection.getConnection()) {
+            return buscarDuplicadoActivoParaNumeroExpediente(conn, expediente);
+        }
+    }
+
     private String construirSelectExpedienteConAsignacion()
     {
         return "SELECT e.*, ea.FECHA_ASIGNACION, "
@@ -628,6 +645,9 @@ public class ExpedienteRepository
         if (resultSetTieneColumna(rs, "APELLIDO_NOMBRE_TITULAR_2")) {
             expediente.setApellidoNombreTitular2(rs.getString("APELLIDO_NOMBRE_TITULAR_2"));
         }
+        if (resultSetTieneColumna(rs, "NUM_EXPEDIENTE")) {
+            expediente.setNumExpediente(rs.getString("NUM_EXPEDIENTE"));
+        }
         if (resultSetTieneColumna(rs, "ESTADO_DESCRIPCION")) {
             expediente.setEstadoDescripcion(rs.getString("ESTADO_DESCRIPCION"));
         }
@@ -648,7 +668,108 @@ public class ExpedienteRepository
     }
 
     private String normalizarComparacion(String value) {
-        return textoSeguro(value).trim().replaceAll("\\s+", " ").toUpperCase();
+        String normalized = Normalizer.normalize(textoSeguro(value).trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return normalized.replaceAll("\\s+", " ").toUpperCase();
+    }
+
+    private String asignarNumeroExpediente(Connection conn, Expediente expediente) throws SQLException {
+        if (!existeColumnaExpediente(conn, "NUM_EXPEDIENTE")) {
+            throw new SQLException("La tabla EXPEDIENTE no tiene la columna NUM_EXPEDIENTE.");
+        }
+
+        Expediente principal = buscarDuplicadoActivoParaNumeroExpediente(conn, expediente);
+        String numeroExpediente;
+        if (principal != null && principal.getIdExpediente() > 0) {
+            numeroExpediente = textoSeguro(principal.getNumExpediente()).trim();
+            if (numeroExpediente.isEmpty()) {
+                numeroExpediente = generarNumeroExpediente(principal.getIdExpediente(), principal.getFechaSolicitud());
+                actualizarNumeroExpediente(conn, principal.getIdExpediente(), numeroExpediente);
+            }
+        } else {
+            numeroExpediente = generarNumeroExpediente(expediente.getIdExpediente(), expediente.getFechaSolicitud());
+        }
+
+        actualizarNumeroExpediente(conn, expediente.getIdExpediente(), numeroExpediente);
+        return numeroExpediente;
+    }
+
+    private Expediente buscarDuplicadoActivoParaNumeroExpediente(Connection conn, Expediente expediente) throws SQLException {
+        String acta = normalizarComparacion(expediente.getNumeroActa());
+        String titular1 = normalizarComparacion(expediente.getApellidoNombreTitular());
+        String titular2 = normalizarComparacion(expediente.getApellidoNombreTitular2());
+        if (acta.isEmpty() || titular1.isEmpty()) {
+            return null;
+        }
+
+        boolean validarSegundoTitular = !titular2.isEmpty();
+        String textoNormalizadoActa = expresionSqlNormalizada("e.NUMERO_ACTA");
+        String textoNormalizadoTitular1 = expresionSqlNormalizada("e.APELLIDO_NOMBRE_TITULAR");
+        String textoNormalizadoTitular2 = expresionSqlNormalizada("e.APELLIDO_NOMBRE_TITULAR_2");
+        String textoNormalizadoEstado = expresionSqlNormalizada("ci.DESCRIPCION");
+
+        String sql = "SELECT * FROM ("
+                + "SELECT e.*, ci.DESCRIPCION AS ESTADO_DESCRIPCION "
+                + "FROM EXPEDIENTE e "
+                + "LEFT JOIN CATALOGO_ITEM ci ON ci.ID_CATALOGO_ITEM = e.ESTADO "
+                + "WHERE e.ID_EXPEDIENTE <> ? "
+                + "AND " + textoNormalizadoActa + " = ? "
+                + "AND (ci.DESCRIPCION IS NULL OR " + textoNormalizadoEstado + " NOT IN (?, ?, ?, ?, ?)) "
+                + "AND (" + textoNormalizadoTitular1 + " = ? "
+                + (validarSegundoTitular ? "OR " + textoNormalizadoTitular1 + " = ? " : "")
+                + "OR " + textoNormalizadoTitular2 + " = ? "
+                + (validarSegundoTitular ? "OR " + textoNormalizadoTitular2 + " = ? " : "")
+                + ") "
+                + "ORDER BY e.FECHA_SOLICITUD ASC NULLS LAST, e.ID_EXPEDIENTE ASC"
+                + ") WHERE ROWNUM = 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int index = 1;
+            ps.setInt(index++, expediente.getIdExpediente());
+            ps.setString(index++, acta);
+            ps.setString(index++, "EJECUTADO");
+            ps.setString(index++, "ABANDONO");
+            ps.setString(index++, "ARCHIVADO");
+            ps.setString(index++, "NOTIFICADO AL CIUDADANO");
+            ps.setString(index++, "NOTIFICADO");
+            ps.setString(index++, titular1);
+            if (validarSegundoTitular) {
+                ps.setString(index++, titular2);
+            }
+            ps.setString(index++, titular1);
+            if (validarSegundoTitular) {
+                ps.setString(index++, titular2);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRow(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    private void actualizarNumeroExpediente(Connection conn, int idExpediente, String numeroExpediente) throws SQLException {
+        String sql = "UPDATE EXPEDIENTE SET NUM_EXPEDIENTE = ? WHERE ID_EXPEDIENTE = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, numeroExpediente);
+            ps.setInt(2, idExpediente);
+            ps.executeUpdate();
+        }
+    }
+
+    private String generarNumeroExpediente(int idExpediente, java.util.Date fechaSolicitud) {
+        Calendar calendar = Calendar.getInstance();
+        if (fechaSolicitud != null) {
+            calendar.setTime(fechaSolicitud);
+        }
+        return String.format("SDRERC_EXP_%d_%06d", calendar.get(Calendar.YEAR), idExpediente);
+    }
+
+    private String expresionSqlNormalizada(String columna) {
+        return "REGEXP_REPLACE(TRANSLATE(UPPER(TRIM(NVL(" + columna + ", ''))), "
+                + "'ÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÑ', 'AAAAEEEEIIIIOOOOUUUUN'), '\\s+', ' ')";
     }
 
     private void setNullableDate(PreparedStatement stmt, int index, java.util.Date value) throws SQLException {

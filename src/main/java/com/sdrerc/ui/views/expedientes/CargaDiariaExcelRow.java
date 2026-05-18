@@ -72,7 +72,9 @@ public class CargaDiariaExcelRow {
     }
 
     public boolean esImportable() {
-        return ESTADO_VALIDO.equals(estadoValidacion) || ESTADO_ADVERTENCIA.equals(estadoValidacion);
+        return ESTADO_VALIDO.equals(estadoValidacion)
+                || ESTADO_ADVERTENCIA.equals(estadoValidacion)
+                || ESTADO_DUPLICADO.equals(estadoValidacion);
     }
 
     public boolean esMatrimonio() {

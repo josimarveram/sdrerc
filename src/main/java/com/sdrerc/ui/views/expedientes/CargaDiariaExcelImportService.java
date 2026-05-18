@@ -94,10 +94,12 @@ public class CargaDiariaExcelImportService {
                 continue;
             }
             try {
-                expedienteService.agregarExpediente(crearExpediente(fila));
+                Expediente expediente = crearExpediente(fila);
+                expedienteService.agregarExpediente(expediente);
                 fila.setResultadoCarga(
                         CargaDiariaExcelRow.CARGA_REGISTRADO,
-                        "Expediente registrado correctamente.");
+                        "Expediente registrado correctamente. Número de expediente: "
+                                + textoSeguro(expediente.getNumExpediente()));
                 registrados++;
             } catch (Exception ex) {
                 fila.setResultadoCarga(
@@ -449,7 +451,20 @@ public class CargaDiariaExcelImportService {
             clave += "|" + normalizarTexto(item.getTitular2());
         }
         if (!clavesLeidas.add(clave)) {
-            item.marcarDuplicado("Posible duplicado: existe otra fila del archivo con el mismo número de acta y titular.", null);
+            item.marcarDuplicado(
+                    "Duplicado dentro del archivo: se importará y reutilizará el número de expediente que corresponda.",
+                    null);
+            return;
+        }
+
+        Expediente duplicadoActivo = expedienteRepository.buscarDuplicadoActivoPorActaYNombreTitular(
+                item.getNumeroActa(),
+                item.getTitular(),
+                item.esMatrimonio() ? item.getTitular2() : null);
+        if (duplicadoActivo != null && duplicadoActivo.getIdExpediente() > 0) {
+            item.marcarDuplicado(
+                    "Duplicado activo: se reutilizará el número de expediente del expediente principal.",
+                    duplicadoActivo);
             return;
         }
 
@@ -460,15 +475,7 @@ public class CargaDiariaExcelImportService {
         if (duplicado == null || duplicado.getIdExpediente() <= 0) {
             return;
         }
-        if (item.esMatrimonio()) {
-            item.marcarDuplicado(
-                    "Posible duplicado: ya existe un expediente de matrimonio con el mismo número de acta y uno de los titulares.",
-                    duplicado);
-        } else {
-            item.marcarDuplicado(
-                    "Posible duplicado: ya existe expediente con el mismo número de acta y titular.",
-                    duplicado);
-        }
+        item.addInfo("Duplicado en estado final: se generará un nuevo número de expediente.");
     }
 
     private Expediente crearExpediente(CargaDiariaExcelRow fila) {

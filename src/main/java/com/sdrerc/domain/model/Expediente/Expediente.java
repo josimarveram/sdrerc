@@ -13,6 +13,7 @@ import java.util.Date;
 public class Expediente 
 {   
     private int idExpediente;
+    private String numExpediente;
     private int esRegistroSdrerc;
     private String hojaEnvioExpediente;
     private String numeroTramiteDocumento;
@@ -99,6 +100,14 @@ public class Expediente
 
     public void setIdExpediente(int idExpediente) {
         this.idExpediente = idExpediente;
+    }
+
+    public String getNumExpediente() {
+        return numExpediente;
+    }
+
+    public void setNumExpediente(String numExpediente) {
+        this.numExpediente = numExpediente;
     }
 
     public int getEsRegistroSdrerc() {
