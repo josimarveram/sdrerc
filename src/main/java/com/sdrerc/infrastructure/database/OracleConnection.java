@@ -15,9 +15,22 @@ public class OracleConnection {
     private static final String URL = "jdbc:oracle:thin:@localhost:1521/xe";
     private static final String USER = "system";
     private static final String PASSWORD = "satrapa12345";
+    private static final String ORACLE_DRIVER = "oracle.jdbc.OracleDriver";
 
     public static Connection getConnection() throws SQLException {
+        cargarDriverOracle();
         return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+
+    private static void cargarDriverOracle() throws SQLException {
+        try {
+            Class.forName(ORACLE_DRIVER);
+        } catch (ClassNotFoundException ex) {
+            throw new SQLException(
+                    "No se encontró el driver JDBC de Oracle en el classpath. "
+                    + "Verifique que ojdbc11 esté incluido al ejecutar la aplicación.",
+                    ex);
+        }
     }
 
     public static void main(String[] args) {
