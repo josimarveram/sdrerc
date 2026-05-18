@@ -41,8 +41,25 @@ if ($missing) {
     Write-Error "Faltan dependencias o clases compiladas:`n$($missing -join "`n")"
 }
 
-$preferredJava = "C:\Program Files\JetBrains\IntelliJ IDEA 2026.1\jbr\bin\java.exe"
-$java = if (Test-Path $preferredJava) { $preferredJava } else { "java" }
+$preferredJavaCandidates = @(
+    "C:\Program Files\JetBrains\IntelliJ IDEA 2026.1.2\jbr\bin\java.exe",
+    "C:\Program Files\JetBrains\IntelliJ IDEA 2026.1\jbr\bin\java.exe"
+)
+
+$detectedJetBrainsJava = Get-ChildItem "C:\Program Files\JetBrains" -Directory -Filter "IntelliJ IDEA*" -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending |
+    ForEach-Object { Join-Path $_.FullName "jbr\bin\java.exe" } |
+    Where-Object { Test-Path $_ } |
+    Select-Object -First 1
+
+if ($detectedJetBrainsJava) {
+    $preferredJavaCandidates = @($detectedJetBrainsJava) + $preferredJavaCandidates
+}
+
+$java = $preferredJavaCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $java) {
+    $java = "java"
+}
 
 $classpath = $jars -join ";"
 
@@ -63,7 +80,11 @@ if ($javaVersionLine -match '"(?<major>\d+)(?:\.(?<minor>\d+))?') {
     }
 }
 
-$javaArgs = @()
+$javaArgs = @(
+    "-Dawt.useSystemAAFontSettings=lcd",
+    "-Dswing.aatext=true",
+    "-Dsun.java2d.dpiaware=true"
+)
 if ($javaMajorVersion -ge 22) {
     $javaArgs += "--enable-native-access=ALL-UNNAMED"
 }
