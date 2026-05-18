@@ -1093,9 +1093,8 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         DateRangePickerSupport.configurePicker(fechaDesdePicker);
         DateRangePickerSupport.configurePicker(fechaHastaPicker);
 
-        Date hoy = new Date();
-        fechaDesdePicker.setDate(hoy);
-        fechaHastaPicker.setDate(hoy);
+        fechaDesdePicker.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaHastaPicker.setDate(DateRangePickerSupport.defaultSearchToDate());
 
         fechaDesdePicker.setToolTipText("Fecha inicial de solicitud.");
         fechaHastaPicker.setToolTipText("Fecha final de solicitud.");
@@ -1143,11 +1142,11 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     private void limpiarRangoFechas()
     {
         if (fechaDesdePicker != null) {
-            fechaDesdePicker.setDate(null);
+            fechaDesdePicker.setDate(DateRangePickerSupport.defaultSearchFromDate());
             fechaDesdePicker.putClientProperty("JComponent.outline", null);
         }
         if (fechaHastaPicker != null) {
-            fechaHastaPicker.setDate(null);
+            fechaHastaPicker.setDate(DateRangePickerSupport.defaultSearchToDate());
             fechaHastaPicker.putClientProperty("JComponent.outline", null);
         }
         if (lblFeedbackFechas != null) {

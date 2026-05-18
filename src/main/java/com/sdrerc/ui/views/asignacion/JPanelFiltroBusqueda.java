@@ -453,9 +453,8 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
                 @Override
                 public void accept(DateRangePickerSupport.Range range) {
                     rangoFechas = range;
-                    Date hoy = new Date();
-                    rangoFechas.getFromPicker().setDate(hoy);
-                    rangoFechas.getToPicker().setDate(hoy);
+                    rangoFechas.getFromPicker().setDate(DateRangePickerSupport.defaultSearchFromDate());
+                    rangoFechas.getToPicker().setDate(DateRangePickerSupport.defaultSearchToDate());
                     configurarVistaAsignacion();
                     buscarExpedientes();
                 }

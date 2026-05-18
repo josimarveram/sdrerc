@@ -49,8 +49,8 @@ public final class DateRangePickerSupport {
         }
 
         public void clear() {
-            fromPicker.setDate(null);
-            toPicker.setDate(null);
+            fromPicker.setDate(defaultSearchFromDate());
+            toPicker.setDate(defaultSearchToDate());
             markValid(fromPicker);
             markValid(toPicker);
             if (feedbackLabel != null) {
@@ -136,6 +136,22 @@ public final class DateRangePickerSupport {
         cal.set(Calendar.SECOND, 59);
         cal.set(Calendar.MILLISECOND, 999);
         return cal.getTime();
+    }
+
+    public static Date defaultSearchFromDate() {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.YEAR, 2026);
+        cal.set(Calendar.MONTH, Calendar.JANUARY);
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
+    }
+
+    public static Date defaultSearchToDate() {
+        return new Date();
     }
 
     public static JDateChooser replaceSpinnerDeferred(
