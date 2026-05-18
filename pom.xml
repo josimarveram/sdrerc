@@ -12,8 +12,8 @@
         <!-- Oracle JDBC Driver -->
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc11</artifactId>
-            <version>23.2.0.0</version>
+            <artifactId>ojdbc8</artifactId>
+            <version>19.23.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.netbeans.external</groupId>

@@ -17,7 +17,7 @@ $jars = @(
 
     # Seguridad / DB
     (Join-Path $env:USERPROFILE ".m2\repository\org\mindrot\jbcrypt\0.4\jbcrypt-0.4.jar"),
-    (Join-Path $env:USERPROFILE ".m2\repository\com\oracle\database\jdbc\ojdbc11\23.2.0.0\ojdbc11-23.2.0.0.jar"),
+    (Join-Path $env:USERPROFILE ".m2\repository\com\oracle\database\jdbc\ojdbc8\19.23.0.0\ojdbc8-19.23.0.0.jar"),
 
     # Apache POI para DOCX/XWPFDocument
     (Join-Path $env:USERPROFILE ".m2\repository\org\apache\poi\poi\5.2.5\poi-5.2.5.jar"),

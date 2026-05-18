@@ -14,6 +14,7 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.ui.common.icon.IconUtils;
+import com.sdrerc.ui.common.swing.TablePaginationHelper;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.util.DateRangePickerSupport;
@@ -113,6 +114,8 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
     private JDateChooser fechaHastaPicker;
     private boolean tooltipOrdenamientoHeaderConfigurado;
     private boolean filtrosPorColumnaConfigurados;
+    private TablePaginationHelper paginationHelper;
+    private JPanel panelPaginacion;
     private final JDateChooser filtroFechaSolicitudColumna = new JDateChooser();
     private final Map<Integer, JTextField> filtrosTextoPorColumna = new HashMap<>();
     private static final int COL_ID = 0;
@@ -624,7 +627,8 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
 
     private void exportarListadoExpedientesPorTrabajarExcel()
     {
-        if (jTable1.getRowCount() == 0) {
+        List<Integer> filasExportacion = obtenerFilasExportacion();
+        if (filasExportacion.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No hay registros para exportar.");
             return;
         }
@@ -652,7 +656,7 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         }
 
         try {
-            escribirExcelExpedientesPorTrabajar(archivo);
+            escribirExcelExpedientesPorTrabajar(archivo, filasExportacion);
             JOptionPane.showMessageDialog(this, "Archivo Excel generado correctamente.");
         } catch (IOException ex) {
             Logger.getLogger(JPanelListadoExpedientesPorTrabajar.class.getName()).log(Level.WARNING, "No se pudo exportar listado de expedientes por trabajar", ex);
@@ -674,7 +678,19 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         return new File(archivo.getParentFile(), archivo.getName() + ".xlsx");
     }
 
-    private void escribirExcelExpedientesPorTrabajar(File archivo) throws IOException
+    private List<Integer> obtenerFilasExportacion()
+    {
+        if (paginationHelper != null) {
+            return paginationHelper.getFilteredModelRowsInSortOrder();
+        }
+        List<Integer> filas = new ArrayList<>();
+        for (int viewRow = 0; viewRow < jTable1.getRowCount(); viewRow++) {
+            filas.add(jTable1.convertRowIndexToModel(viewRow));
+        }
+        return filas;
+    }
+
+    private void escribirExcelExpedientesPorTrabajar(File archivo, List<Integer> filasExportacion) throws IOException
     {
         try (Workbook workbook = new XSSFWorkbook(); FileOutputStream out = new FileOutputStream(archivo)) {
             Sheet sheet = workbook.createSheet("Solicitudes");
@@ -689,18 +705,19 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
                 cell.setCellStyle(headerStyle);
             }
 
-            for (int viewRow = 0; viewRow < jTable1.getRowCount(); viewRow++) {
-                Row row = sheet.createRow(viewRow + 1);
+            for (int index = 0; index < filasExportacion.size(); index++) {
+                int modelRow = filasExportacion.get(index);
+                Row row = sheet.createRow(index + 1);
                 for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
                     int modelColumn = COLUMNAS_EXPORTACION_EXCEL[col];
-                    Object value = obtenerValorTablaExportacion(viewRow, modelColumn);
+                    Object value = obtenerValorTablaExportacion(modelRow, modelColumn);
                     Cell cell = row.createCell(col);
                     escribirValorExcel(cell, value, modelColumn, dateStyle);
                 }
             }
 
             sheet.createFreezePane(0, 1);
-            sheet.setAutoFilter(new CellRangeAddress(0, jTable1.getRowCount(), 0, COLUMNAS_EXPORTACION_EXCEL.length - 1));
+            sheet.setAutoFilter(new CellRangeAddress(0, filasExportacion.size(), 0, COLUMNAS_EXPORTACION_EXCEL.length - 1));
             for (int col = 0; col < COLUMNAS_EXPORTACION_EXCEL.length; col++) {
                 sheet.autoSizeColumn(col);
                 int width = sheet.getColumnWidth(col);
@@ -741,9 +758,8 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         style.setBorderRight(BorderStyle.THIN);
     }
 
-    private Object obtenerValorTablaExportacion(int viewRow, int modelColumn)
+    private Object obtenerValorTablaExportacion(int modelRow, int modelColumn)
     {
-        int modelRow = jTable1.convertRowIndexToModel(viewRow);
         return jTable1.getModel().getValueAt(modelRow, modelColumn);
     }
 
@@ -787,7 +803,24 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
 
         card.add(superior, BorderLayout.NORTH);
         card.add(jScrollPane1, BorderLayout.CENTER);
+        if (panelPaginacion == null) {
+            panelPaginacion = new JPanel(new BorderLayout());
+            panelPaginacion.setOpaque(false);
+        }
+        card.add(panelPaginacion, BorderLayout.SOUTH);
+        actualizarPanelPaginacion();
         return card;
+    }
+
+    private void actualizarPanelPaginacion()
+    {
+        if (panelPaginacion == null || paginationHelper == null) {
+            return;
+        }
+        panelPaginacion.removeAll();
+        panelPaginacion.add(paginationHelper.getPanel(), BorderLayout.CENTER);
+        panelPaginacion.revalidate();
+        panelPaginacion.repaint();
     }
 
     private JPanel crearPanelFiltrosPorColumnaExpedientesPorTrabajar()
@@ -911,12 +944,12 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
             return;
         }
 
-        List<RowFilter<Object, Object>> filtros = new ArrayList<>();
+        List<RowFilter<DefaultTableModel, Integer>> filtros = new ArrayList<>();
         Date fechaFiltro = filtroFechaSolicitudColumna.getDate();
         if (fechaFiltro != null) {
-            filtros.add(new RowFilter<Object, Object>() {
+            filtros.add(new RowFilter<DefaultTableModel, Integer>() {
                 @Override
-                public boolean include(Entry<? extends Object, ? extends Object> entry) {
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
                     return mismaFecha(fechaFiltro, parsearFechaTabla(entry.getValue(COL_FECHA_SOLICITUD)));
                 }
             });
@@ -928,17 +961,22 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
                 continue;
             }
             int columna = filtro.getKey();
-            filtros.add(new RowFilter<Object, Object>() {
+            filtros.add(new RowFilter<DefaultTableModel, Integer>() {
                 @Override
-                public boolean include(Entry<? extends Object, ? extends Object> entry) {
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
                     return normalizarFiltro(textoSeguro(entry.getValue(columna))).contains(criterio);
                 }
             });
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        TableRowSorter sorter = (TableRowSorter) jTable1.getRowSorter();
-        sorter.setRowFilter(filtros.isEmpty() ? null : RowFilter.andFilter(filtros));
+        RowFilter<DefaultTableModel, Integer> filtroBase = filtros.isEmpty() ? null : RowFilter.andFilter(filtros);
+        if (paginationHelper != null) {
+            paginationHelper.setBaseFilter(filtroBase);
+        } else {
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            TableRowSorter sorter = (TableRowSorter) jTable1.getRowSorter();
+            sorter.setRowFilter(filtroBase);
+        }
     }
 
     private void limpiarFiltrosPorColumna()
@@ -1176,6 +1214,8 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         }
         sorter.setSortsOnUpdates(true);
         jTable1.setRowSorter(sorter);
+        paginationHelper = new TablePaginationHelper(jTable1, sorter);
+        actualizarPanelPaginacion();
         aplicarFiltrosPorColumna();
     }
 
