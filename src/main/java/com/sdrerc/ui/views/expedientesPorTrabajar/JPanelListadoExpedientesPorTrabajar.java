@@ -1295,11 +1295,11 @@ public class JPanelListadoExpedientesPorTrabajar extends javax.swing.JPanel impl
         User usuario = SessionContext.getUsuarioActual();
         boolean esAbogado = usuario.hasRole("ABOGADO");
         boolean esAdmin = usuario.hasRole("ADMIN_SISTEMA");
-        if (!esAbogado) {
-            return -1;
-        }
         if (esAdmin) {
             return 0;
+        }
+        if (!esAbogado) {
+            return -1;
         }
         Long idTecnico = usuario.getIdTecnico();
         if (idTecnico == null || idTecnico <= 0) {
