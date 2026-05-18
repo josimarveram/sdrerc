@@ -7,11 +7,13 @@ package com.sdrerc.ui.views.asignacion;
 import com.sdrerc.application.CatalogoItemService;
 import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.application.PlazoAtencionService;
 import com.toedter.calendar.JDateChooser;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.common.icon.IconUtils;
+import com.sdrerc.ui.common.swing.PlazoAtencionCellRenderer;
 import com.sdrerc.ui.common.swing.TablePaginationHelper;
 import com.sdrerc.ui.menu.MenuPrincipal;
 import com.sdrerc.util.DateRangePickerSupport;
@@ -100,6 +102,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private final ExpedienteService expedienteService;
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
+    private final PlazoAtencionService plazoAtencionService;
     private final Map<Integer, String> estadosPorId;
     private final Map<Integer, String> tiposSolicitudPorId;
     private final Map<Integer, String> tiposDocumentoPorId;
@@ -125,25 +128,26 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private static final int COL_ACTA = 6;
     private static final int COL_TITULAR = 7;
     private static final int COL_ESTADO = 8;
-    private static final int COL_ESTADO_ID = 9;
-    private static final int COL_TIPO_DOCUMENTO = 10;
-    private static final int COL_NUMERO_DOCUMENTO = 11;
-    private static final int COL_TIPO_ACTA = 12;
-    private static final int COL_NUMERO_ACTA = 13;
-    private static final int COL_DNI_TITULAR_1 = 14;
-    private static final int COL_TITULAR_1 = 15;
-    private static final int COL_DNI_TITULAR_2 = 16;
-    private static final int COL_TITULAR_2 = 17;
-    private static final int COL_UNIDAD_ORGANICA = 18;
-    private static final int COL_CORREO_ELECTRONICO = 19;
-    private static final int COL_CELULAR = 20;
-    private static final int COL_DIRECCION_DOMICILIARIA = 21;
-    private static final int COL_DOMICILIO = 22;
-    private static final int COL_DEPARTAMENTO = 23;
-    private static final int COL_PROVINCIA = 24;
-    private static final int COL_DISTRITO = 25;
-    private static final int COL_ABOGADO_DESIGNADO = 26;
-    private static final int COL_SUPERVISOR_RESPONSABLE = 27;
+    private static final int COL_DIAS_RESTANTES = 9;
+    private static final int COL_ESTADO_ID = 10;
+    private static final int COL_TIPO_DOCUMENTO = 11;
+    private static final int COL_NUMERO_DOCUMENTO = 12;
+    private static final int COL_TIPO_ACTA = 13;
+    private static final int COL_NUMERO_ACTA = 14;
+    private static final int COL_DNI_TITULAR_1 = 15;
+    private static final int COL_TITULAR_1 = 16;
+    private static final int COL_DNI_TITULAR_2 = 17;
+    private static final int COL_TITULAR_2 = 18;
+    private static final int COL_UNIDAD_ORGANICA = 19;
+    private static final int COL_CORREO_ELECTRONICO = 20;
+    private static final int COL_CELULAR = 21;
+    private static final int COL_DIRECCION_DOMICILIARIA = 22;
+    private static final int COL_DOMICILIO = 23;
+    private static final int COL_DEPARTAMENTO = 24;
+    private static final int COL_PROVINCIA = 25;
+    private static final int COL_DISTRITO = 26;
+    private static final int COL_ABOGADO_DESIGNADO = 27;
+    private static final int COL_SUPERVISOR_RESPONSABLE = 28;
     private static final int[] COLUMNAS_EXPORTACION_EXCEL = {
         COL_ID, COL_FECHA_SOLICITUD, COL_CANAL, COL_REFERENCIA, COL_TIPO_SOLICITUD,
         COL_PROCEDIMIENTO_REGISTRAL, COL_ESTADO,
@@ -161,6 +165,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         this.expedienteService = new ExpedienteService();
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
+        this.plazoAtencionService = new PlazoAtencionService();
         this.estadosPorId = new HashMap<>();
         this.tiposSolicitudPorId = new HashMap<>();
         this.tiposDocumentoPorId = new HashMap<>();
@@ -273,7 +278,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     {
         String[] columnas = {
                 "ID expediente", "Fecha solicitud", "Canal", "Referencia", "Tipo solicitud",
-                "Procedimiento registral", "Acta", "Titular", "Estado", "EstadoId",
+                "Procedimiento registral", "Acta", "Titular", "Estado", "Días restantes", "EstadoId",
                 "Tipo documento", "N° documento", "Tipo acta", "N° acta",
                 "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
                 "Unidad orgánica", "Correo electrónico", "Celular", "Dirección domiciliaria",
@@ -300,6 +305,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
                 obtenerActa(e),
                 obtenerTitularListado(e),
                 obtenerDescripcionEstado(e.getEstado()),
+                plazoAtencionService.calcular(e.getTipoDocumento(), e.getFechaSolicitud()),
                 e.getEstado(),
                 obtenerDescripcionCatalogo(tiposDocumentoPorId, e.getTipoDocumento()),
                 textoSeguro(e.getNumeroDocumento()),
@@ -848,10 +854,11 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 5, 0.95);
         agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 6, 1.75);
         agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 7, 0.90);
+        agregarFiltroColumna(panel, "Plazo", filtrosTextoPorColumna.get(COL_DIAS_RESTANTES), 8, 0.70, 70);
 
         JButton btnLimpiarFiltros = crearBotonLimpiarFiltrosPorColumna();
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 8;
+        gbc.gridx = 9;
         gbc.gridy = 1;
         gbc.insets = new Insets(4, 6, 0, 0);
         gbc.fill = GridBagConstraints.NONE;
@@ -916,6 +923,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         crearFiltroTextoColumna(COL_ACTA, "Filtrar acta");
         crearFiltroTextoColumna(COL_TITULAR, "Filtrar titular");
         crearFiltroTextoColumna(COL_ESTADO, "Filtrar estado");
+        crearFiltroTextoColumna(COL_DIAS_RESTANTES, "Filtrar días restantes");
     }
 
     private void crearFiltroTextoColumna(int columna, String tooltip)
@@ -1104,6 +1112,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         jTable1.setSelectionBackground(new Color(219, 235, 247));
         jTable1.setSelectionForeground(new Color(25, 42, 62));
         jTable1.setDefaultRenderer(Object.class, new ExpedienteCellRenderer());
+        configurarRendererPlazoAtencion();
         configurarOrdenamientoTablaAsignacion();
 
         JTableHeader header = jTable1.getTableHeader();
@@ -1130,10 +1139,18 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
             ajustarColumna(COL_ACTA, 95, 120, 155);
             ajustarColumna(COL_TITULAR, 160, 260, Integer.MAX_VALUE);
             ajustarColumna(COL_ESTADO, 95, 110, 130);
+            ajustarColumna(COL_DIAS_RESTANTES, 85, 95, 110);
             ajustarColumna(COL_ESTADO_ID, 0, 0, 0);
             for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getColumnModel().getColumnCount(); column++) {
                 ajustarColumna(column, 0, 0, 0);
             }
+        }
+    }
+
+    private void configurarRendererPlazoAtencion()
+    {
+        if (jTable1.getColumnModel().getColumnCount() > COL_DIAS_RESTANTES) {
+            jTable1.getColumnModel().getColumn(COL_DIAS_RESTANTES).setCellRenderer(new PlazoAtencionCellRenderer());
         }
     }
 
@@ -1147,6 +1164,7 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
         }
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>((DefaultTableModel) jTable1.getModel());
         sorter.setComparator(COL_FECHA_SOLICITUD, this::compararFechaSolicitud);
+        sorter.setComparator(COL_DIAS_RESTANTES, compararDiasRestantes());
         sorter.setComparator(COL_ID, compararEnteros());
         sorter.setComparator(COL_ESTADO_ID, compararEnteros());
         sorter.setSortable(COL_ID, false);
@@ -1164,6 +1182,20 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
     private Comparator<Object> compararEnteros()
     {
         return (left, right) -> Integer.compare(parseIntSeguro(left), parseIntSeguro(right));
+    }
+
+    private Comparator<Object> compararDiasRestantes()
+    {
+        return (left, right) -> Integer.compare(valorDiasRestantes(left), valorDiasRestantes(right));
+    }
+
+    private int valorDiasRestantes(Object value)
+    {
+        if (value instanceof com.sdrerc.domain.model.PlazoAtencionResultado) {
+            Integer dias = ((com.sdrerc.domain.model.PlazoAtencionResultado) value).getDiasRestantes();
+            return dias == null ? Integer.MAX_VALUE : dias;
+        }
+        return Integer.MAX_VALUE;
     }
 
     private int parseIntSeguro(Object value)
