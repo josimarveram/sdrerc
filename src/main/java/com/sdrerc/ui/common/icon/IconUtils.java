@@ -1,9 +1,6 @@
 package com.sdrerc.ui.common.icon;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JMenuItem;
@@ -25,28 +22,16 @@ public final class IconUtils {
 
         String path = FLAT_RESOURCE_ROOT + normalized;
         java.net.URL resource = IconUtils.class.getClassLoader().getResource(path);
-        System.out.println("[IconUtils] iconName=" + iconName);
-        System.out.println("[IconUtils] path=" + path);
-        System.out.println("[IconUtils] resource=" + resource);
-        logToFile("iconName=" + iconName);
-        logToFile("path=" + path);
-        logToFile("resource=" + resource);
 
         if (resource == null) {
             System.err.println("No se pudo cargar icono: " + iconName + " - recurso no encontrado");
-            logToFile("icon=null recurso no encontrado");
             return null;
         }
 
         try {
-            Icon icon = new FlatSVGIcon(path, size, size);
-            System.out.println("[IconUtils] icon=" + icon);
-            logToFile("icon=" + icon);
-            return icon;
+            return new FlatSVGIcon(path, size, size);
         } catch (Throwable ex) {
-            System.out.println("[IconUtils] icon=null");
             System.err.println("No se pudo cargar icono: " + iconName + " - " + ex.getMessage());
-            logToFile("icon=null exception=" + ex.getClass().getName() + ": " + ex.getMessage());
             return null;
         }
     }
@@ -93,13 +78,5 @@ public final class IconUtils {
         }
         String value = iconName.trim();
         return value.toLowerCase().endsWith(".svg") ? value : value + ".svg";
-    }
-
-    private static void logToFile(String message) {
-        try (PrintWriter out = new PrintWriter(new FileWriter("icon-debug.log", true))) {
-            out.println("[IconUtils] " + message);
-        } catch (IOException ex) {
-            // Diagnostico temporal: no debe afectar la carga de pantallas.
-        }
     }
 }

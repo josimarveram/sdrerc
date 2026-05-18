@@ -18,10 +18,12 @@ import com.sdrerc.ui.views.expedientesPorTrabajar.JPanelListadoExpedientesPorTra
 import com.sdrerc.ui.views.expedientesPorVerificar.JPanelListadoExpedientesPorVerificar;
 import com.sdrerc.ui.views.equipojuridico.JPanelEquipoJuridico;
 import com.sdrerc.ui.views.home.jPanelHome;
+import com.sdrerc.ui.login.FrmLogin;
 import com.sdrerc.ui.views.role.JPanelListadoRole;
 import com.sdrerc.ui.views.usuario.JPanelListadoUsuario;
 import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.ui.common.swing.MouseWheelScrollHelper;
+import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.util.ComboBoxUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -56,6 +58,8 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private static final Color MENU_TEXT = Color.WHITE;
     private final JButton btnMenuEquipoJuridico = new JButton("EQUIPO JURÍDICO");
     private JButton itemMenuActivo;
+    private JLabel lblUsuarioSesion;
+    private JButton btnSalirSesion;
 
     /**
      * Creates new form MenuPrincipal
@@ -67,6 +71,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
         configurarMenuEquipoJuridico();
         configurarMenuLateralModerno();
         initialStyles();
+        configurarHeaderSesion();
         InitContent();
     }    
 
@@ -462,6 +467,85 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private void initialStyles()
     {
         lbl_TituloFormulario.putClientProperty( "FlatLaf.style", "font: 200% $light.font" );
+    }
+
+    private void configurarHeaderSesion()
+    {
+        jPanelHeader.removeAll();
+        jPanelHeader.setLayout(new BorderLayout(18, 0));
+        jPanelHeader.setBorder(BorderFactory.createEmptyBorder(0, 30, 0, 24));
+
+        lbl_TituloFormulario.setHorizontalAlignment(SwingConstants.LEFT);
+        jPanelHeader.add(lbl_TituloFormulario, BorderLayout.CENTER);
+
+        JPanel panelSesion = new JPanel();
+        panelSesion.setOpaque(false);
+        panelSesion.setLayout(new BoxLayout(panelSesion, BoxLayout.X_AXIS));
+        panelSesion.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+
+        JLabel iconoUsuario = new JLabel(IconUtils.load("users.svg", 18));
+        iconoUsuario.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 8));
+
+        lblUsuarioSesion = new JLabel(obtenerNombreUsuarioSesion());
+        lblUsuarioSesion.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblUsuarioSesion.setForeground(new Color(51, 65, 85));
+        lblUsuarioSesion.setToolTipText("Usuario conectado: " + lblUsuarioSesion.getText());
+        lblUsuarioSesion.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 12));
+
+        btnSalirSesion = new JButton("Salir");
+        btnSalirSesion.setToolTipText("Cerrar sesión y volver al login");
+        btnSalirSesion.setIcon(IconUtils.load("logout.svg", 16));
+        btnSalirSesion.setFocusable(false);
+        btnSalirSesion.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSalirSesion.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSalirSesion.setForeground(new Color(185, 28, 28));
+        btnSalirSesion.setBackground(new Color(254, 242, 242));
+        btnSalirSesion.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(254, 202, 202)),
+                BorderFactory.createEmptyBorder(7, 12, 7, 12)
+        ));
+        btnSalirSesion.addActionListener(e -> cerrarSesion());
+
+        panelSesion.add(iconoUsuario);
+        panelSesion.add(lblUsuarioSesion);
+        panelSesion.add(btnSalirSesion);
+        jPanelHeader.add(panelSesion, BorderLayout.EAST);
+        jPanelHeader.revalidate();
+        jPanelHeader.repaint();
+    }
+
+    private String obtenerNombreUsuarioSesion()
+    {
+        try {
+            String fullName = SessionContext.getFullName();
+            if (fullName != null && !fullName.trim().isEmpty()) {
+                return fullName.trim();
+            }
+            String username = SessionContext.getUsername();
+            return username == null || username.trim().isEmpty() ? "Usuario" : username.trim();
+        } catch (Exception ex) {
+            return "Usuario";
+        }
+    }
+
+    private void cerrarSesion()
+    {
+        int respuesta = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea cerrar sesión?",
+                "Salir",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+        if (respuesta != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        SessionContext.limpiar();
+        dispose();
+        FrmLogin login = new FrmLogin();
+        login.setLocationRelativeTo(null);
+        login.setVisible(true);
     }
     
     private void InitContent() 
