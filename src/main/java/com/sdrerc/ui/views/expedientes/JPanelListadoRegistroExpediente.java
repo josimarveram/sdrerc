@@ -897,15 +897,15 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 BorderFactory.createEmptyBorder(8, 8, 8, 8)
         ));
 
-        agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 0, 0.82, 96);
-        agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 1, 0.65);
-        agregarFiltroColumna(panel, "Referencia", filtrosTextoPorColumna.get(COL_REFERENCIA), 2, 1.05);
-        agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 3, 1.05);
-        agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 4, 1.25);
-        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 5, 0.95);
-        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 6, 1.75);
-        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 7, 0.90);
-        agregarFiltroColumna(panel, "Plazo", filtrosTextoPorColumna.get(COL_DIAS_RESTANTES), 8, 0.70, 70);
+        agregarFiltroColumna(panel, "Plazo", filtrosTextoPorColumna.get(COL_DIAS_RESTANTES), 0, 0.70, 70);
+        agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 1, 0.82, 96);
+        agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 2, 0.65);
+        agregarFiltroColumna(panel, "Referencia", filtrosTextoPorColumna.get(COL_REFERENCIA), 3, 1.05);
+        agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 4, 1.05);
+        agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 5, 1.25);
+        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 6, 0.95);
+        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 7, 1.75);
+        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 8, 0.90);
 
         JButton btnLimpiarFiltros = crearBotonLimpiarFiltrosPorColumna();
 
@@ -1207,6 +1207,16 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getColumnModel().getColumnCount(); column++) {
                 ajustarColumna(column, 0, 0, 0);
             }
+            moverColumnaDiasRestantesAntesDeFecha();
+        }
+    }
+
+    private void moverColumnaDiasRestantesAntesDeFecha()
+    {
+        int viewPlazo = jTable1.convertColumnIndexToView(COL_DIAS_RESTANTES);
+        int viewFecha = jTable1.convertColumnIndexToView(COL_FECHA_SOLICITUD);
+        if (viewPlazo >= 0 && viewFecha >= 0 && viewPlazo != viewFecha) {
+            jTable1.getColumnModel().moveColumn(viewPlazo, viewFecha);
         }
     }
 
