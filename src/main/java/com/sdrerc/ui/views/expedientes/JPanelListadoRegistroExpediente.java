@@ -271,7 +271,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {        
         String[] columnas = 
         {
-          "ID expediente", "Fecha solicitud", "Canal", "Nro. Expediente", "Tipo solicitud",
+          "ID expediente", "Fecha solicitud", "Canal", "Num. Expediente", "Tipo solicitud",
           "Procedimiento registral", "Acta", "Titular", "Estado", "Días restantes", "EstadoId",
           "Tipo documento", "N° documento", "Tipo acta", "N° acta",
           "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
@@ -893,7 +893,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         agregarFiltroColumna(panel, "Plazo", filtrosTextoPorColumna.get(COL_DIAS_RESTANTES), 0, 0.70, 70);
         agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 1, 0.82, 96);
         agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 2, 0.65);
-        agregarFiltroColumna(panel, "Nro. Expediente", filtrosTextoPorColumna.get(COL_REFERENCIA), 3, 1.05);
+        agregarFiltroColumna(panel, "Num. Expediente", filtrosTextoPorColumna.get(COL_REFERENCIA), 3, 1.05);
         agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 4, 1.05);
         agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 5, 1.25);
         agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 6, 0.95);
@@ -962,7 +962,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         filtroFechaSolicitudColumna.addPropertyChangeListener("date", evt -> aplicarFiltrosPorColumna());
 
         crearFiltroTextoColumna(COL_CANAL, "Filtrar canal");
-        crearFiltroTextoColumna(COL_REFERENCIA, "Filtrar referencia");
+        crearFiltroTextoColumna(COL_REFERENCIA, "Filtrar número de expediente");
         crearFiltroTextoColumna(COL_TIPO_SOLICITUD, "Filtrar tipo de solicitud");
         crearFiltroTextoColumna(COL_PROCEDIMIENTO_REGISTRAL, "Filtrar procedimiento registral");
         crearFiltroTextoColumna(COL_ACTA, "Filtrar acta");
