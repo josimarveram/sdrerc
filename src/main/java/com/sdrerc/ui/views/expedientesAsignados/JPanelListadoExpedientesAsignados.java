@@ -292,7 +292,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     private DefaultTableModel crearModeloTablaExpedientesAsignados()
     {
         String[] columnas = {
-                "ID expediente", "Fecha solicitud", "Canal", "Referencia", "Tipo solicitud",
+                "ID expediente", "Fecha solicitud", "Canal", "Nro. Expediente", "Tipo solicitud",
                 "Procedimiento registral", "Acta", "Titular", "Estado", "Días restantes", "EstadoId",
                 "Tipo documento", "N° documento", "Tipo acta", "N° acta",
                 "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
@@ -314,7 +314,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
                 e.getIdExpediente(),
                 formatearFecha(e.getFechaSolicitud()),
                 textoSeguro(e.getCanalRecepcion()),
-                obtenerReferencia(e),
+                obtenerNumeroExpedienteListado(e),
                 obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
                 obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
                 obtenerActa(e),
@@ -366,18 +366,12 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         return id <= 0 ? "" : String.valueOf(id);
     }
 
-    private String obtenerReferencia(Expediente expediente)
+    private String obtenerNumeroExpedienteListado(Expediente expediente)
     {
-        if (!estaVacio(expediente.getNumeroTramiteDocumento())) {
-            return expediente.getNumeroTramiteDocumento().trim();
+        if (!estaVacio(expediente.getNumExpediente())) {
+            return expediente.getNumExpediente().trim();
         }
-        if (!estaVacio(expediente.getNumeroDocumento())) {
-            return expediente.getNumeroDocumento().trim();
-        }
-        if (!estaVacio(expediente.getNumeroActa())) {
-            return expediente.getNumeroActa().trim();
-        }
-        return "Sin referencia";
+        return "Sin expediente";
     }
 
     private String obtenerActa(Expediente expediente)
@@ -840,7 +834,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         agregarFiltroColumna(panel, "Plazo", filtrosTextoPorColumna.get(COL_DIAS_RESTANTES), 0, 0.70, 70);
         agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 1, 0.82, 96);
         agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 2, 0.65);
-        agregarFiltroColumna(panel, "Referencia", filtrosTextoPorColumna.get(COL_REFERENCIA), 3, 1.05);
+        agregarFiltroColumna(panel, "Nro. Expediente", filtrosTextoPorColumna.get(COL_REFERENCIA), 3, 1.05);
         agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 4, 1.05);
         agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 5, 1.25);
         agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 6, 0.95);

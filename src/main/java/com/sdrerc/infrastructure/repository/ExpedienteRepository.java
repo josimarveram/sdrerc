@@ -111,9 +111,12 @@ public class ExpedienteRepository
         String sql = construirSqlInsertExpediente(soportaSegundoTitular);
         
 
-        try (Connection conn = OracleConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE"})) 
-        {   
+        try (Connection conn = OracleConnection.getConnection()) 
+        {
+            boolean autoCommitOriginal = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try (PreparedStatement stmt = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE"})) 
+            {   
             /*
             stmt.setDate(1, new java.sql.Date(System.currentTimeMillis()));
             stmt.setString(2, expediente.getNumeroTramiteDocumento());
@@ -200,7 +203,7 @@ public class ExpedienteRepository
                 sqlFechaModifica = new java.sql.Date(System.currentTimeMillis());
             }
 
-            return new ExpedienteResponse(
+            ExpedienteResponse response = new ExpedienteResponse(
                     /*
                     expediente.getIdExpediente(),
                     sqlFechaSolicitud,
@@ -254,6 +257,14 @@ public class ExpedienteRepository
                     expediente.getIdUsuarioModifica(),
                     sqlFechaModifica                    
             );
+            conn.commit();
+            return response;
+            } catch (SQLException | RuntimeException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(autoCommitOriginal);
+            }
         }     
     }
     
@@ -683,11 +694,11 @@ public class ExpedienteRepository
         if (principal != null && principal.getIdExpediente() > 0) {
             numeroExpediente = textoSeguro(principal.getNumExpediente()).trim();
             if (numeroExpediente.isEmpty()) {
-                numeroExpediente = generarNumeroExpediente(principal.getIdExpediente(), principal.getFechaSolicitud());
+                numeroExpediente = generarNumeroExpediente(conn);
                 actualizarNumeroExpediente(conn, principal.getIdExpediente(), numeroExpediente);
             }
         } else {
-            numeroExpediente = generarNumeroExpediente(expediente.getIdExpediente(), expediente.getFechaSolicitud());
+            numeroExpediente = generarNumeroExpediente(conn);
         }
 
         actualizarNumeroExpediente(conn, expediente.getIdExpediente(), numeroExpediente);
@@ -759,12 +770,44 @@ public class ExpedienteRepository
         }
     }
 
-    private String generarNumeroExpediente(int idExpediente, java.util.Date fechaSolicitud) {
+    private String generarNumeroExpediente(Connection conn) throws SQLException {
+        int anio = obtenerAnioRegistroExpediente();
+        int correlativo = obtenerSiguienteCorrelativoExpediente(conn, anio);
+        return String.format("SDRERC_EXP_%d_%06d", anio, correlativo);
+    }
+
+    private int obtenerAnioRegistroExpediente() {
         Calendar calendar = Calendar.getInstance();
-        if (fechaSolicitud != null) {
-            calendar.setTime(fechaSolicitud);
+        return calendar.get(Calendar.YEAR);
+    }
+
+    private int obtenerSiguienteCorrelativoExpediente(Connection conn, int anio) throws SQLException {
+        bloquearNumeracionExpediente(conn);
+        String prefijo = "SDRERC_EXP_" + anio + "_";
+        int posicionCorrelativo = prefijo.length() + 1;
+        String sql = "SELECT NVL(MAX(CASE "
+                + "WHEN REGEXP_LIKE(SUBSTR(NUM_EXPEDIENTE, ?), '^[0-9]+$') "
+                + "THEN TO_NUMBER(SUBSTR(NUM_EXPEDIENTE, ?)) "
+                + "END), 0) + 1 AS SIGUIENTE "
+                + "FROM EXPEDIENTE "
+                + "WHERE NUM_EXPEDIENTE LIKE ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, posicionCorrelativo);
+            ps.setInt(2, posicionCorrelativo);
+            ps.setString(3, prefijo + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("SIGUIENTE");
+                }
+            }
         }
-        return String.format("SDRERC_EXP_%d_%06d", calendar.get(Calendar.YEAR), idExpediente);
+        return 1;
+    }
+
+    private void bloquearNumeracionExpediente(Connection conn) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("LOCK TABLE EXPEDIENTE IN EXCLUSIVE MODE")) {
+            ps.execute();
+        }
     }
 
     private String expresionSqlNormalizada(String columna) {

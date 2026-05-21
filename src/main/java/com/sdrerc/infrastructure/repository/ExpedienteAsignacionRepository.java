@@ -800,6 +800,7 @@ public class ExpedienteAsignacionRepository {
         expediente.setSupervisorDesignado(obtenerStringSiExiste(rs, "SUPERVISOR_DESIGNADO"));
         expediente.setDniTitular2(obtenerStringSiExiste(rs, "DNI_TITULAR_2"));
         expediente.setApellidoNombreTitular2(obtenerStringSiExiste(rs, "APELLIDO_NOMBRE_TITULAR_2"));
+        expediente.setNumExpediente(obtenerStringSiExiste(rs, "NUM_EXPEDIENTE"));
         expediente.setFechaAsignacion(rs.getDate("FECHA_ASIGNACION"));
         return expediente;
     }
