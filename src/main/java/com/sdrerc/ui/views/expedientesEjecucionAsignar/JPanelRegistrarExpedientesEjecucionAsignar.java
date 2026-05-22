@@ -18,6 +18,7 @@ import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Enumerado.TipoSolicitud;
 import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.ui.menu.MenuPrincipal;
+import com.sdrerc.ui.views.expedienteEjecucionPorTrabajar.JPanelListadoExpedientesEjecucionPorTrabajar;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisAbogadoDetDoc;
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogadoResponse;
@@ -960,7 +961,7 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
             
             expedienteAsignacionService.RegistrarAsigancionExpedienteTO(asignacion);
             JOptionPane.showMessageDialog(this, "Ejecución registrada correctamente");
-            MenuPrincipal.ShowJPanel(new JPanelFiltroBusqueda());
+            MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesEjecucionPorTrabajar());
         } 
         catch (Exception ex) 
         {
