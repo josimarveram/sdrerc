@@ -25,9 +25,20 @@ import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAboga
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.ExpedienteObservacionEjecucion.ExpedienteObservacionEjecucion;
 import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.ui.common.icon.IconUtils;
+import com.sdrerc.ui.common.swing.MouseWheelScrollHelper;
 import com.sdrerc.ui.views.asignacion.JDialogTecnico;
 import com.sdrerc.util.TextFieldRules;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,11 +48,17 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Date;
 import java.util.List;
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -53,8 +70,17 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
  *
  * @author usuario
  */
-public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.JPanel 
+public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.JPanel implements Scrollable
 {
+    private static final Color COLOR_FONDO = new Color(245, 247, 250);
+    private static final Color COLOR_CARD = Color.WHITE;
+    private static final Color COLOR_BORDE = new Color(220, 226, 235);
+    private static final Color COLOR_TITULO = new Color(20, 45, 84);
+    private static final Color COLOR_TEXTO_SECUNDARIO = new Color(92, 105, 123);
+    private static final Color COLOR_ACCION = new Color(25, 120, 210);
+    private static final Color COLOR_ACCION_HOVER = new Color(18, 101, 184);
+    private static final Color COLOR_SECUNDARIO = new Color(239, 244, 250);
+
     private final ExpedienteService expedienteService;
     private final ExpedienteAnalisisAbogadoService expedienteAnalisisAbogadoService;
     private final CatalogoItemService catalogoItemService;
@@ -75,16 +101,242 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
         this.expedienteAnalisisAbogadoService = new ExpedienteAnalisisAbogadoService();
         cargarTipoMedioNotificacion();
         cargarTieneObservacion();
+        configurarFormularioEjecucionPremium();
+        aplicarReglasObservacionEjecucion();
     }
 
     private void corregirTextosVisibles() {
         btnGuardarNotificacion.setText("GUARDAR EJECUCIÓN");
+    }
+
+    private void configurarFormularioEjecucionPremium() {
+        setLayout(new BorderLayout());
+        setBackground(COLOR_FONDO);
+
+        jPanelPrincipal.removeAll();
+        jPanelPrincipal.setLayout(new BorderLayout());
+        jPanelPrincipal.setBackground(COLOR_FONDO);
+
+        JPanel contenido = new JPanel(new GridBagLayout());
+        contenido.setBackground(COLOR_FONDO);
+        contenido.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 14, 0);
+        contenido.add(crearCabeceraEjecucion(), gbc);
+
+        gbc.gridy++;
+        contenido.add(crearCardResumenSolicitudEjecucion(), gbc);
+
+        gbc.gridy++;
+        contenido.add(crearCardDatosEjecucion(), gbc);
+
+        gbc.gridy++;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        contenido.add(crearBarraAccionesEjecucion(), gbc);
+
+        gbc.gridy++;
+        gbc.weighty = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+        contenido.add(new JPanel(), gbc);
+
+        JScrollPane scrollPane = new JScrollPane(contenido);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(COLOR_FONDO);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(18);
+        MouseWheelScrollHelper.enableMouseWheelScrollInsideForm(scrollPane, contenido);
+
+        jPanelPrincipal.add(scrollPane, BorderLayout.CENTER);
+        add(jPanelPrincipal, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private JPanel crearCabeceraEjecucion() {
+        JPanel header = new JPanel(new BorderLayout(12, 6));
+        header.setOpaque(false);
+
+        JLabel titulo = new JLabel("Expediente en ejecución");
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        titulo.setForeground(COLOR_TITULO);
+
+        JLabel subtitulo = new JLabel("Registre el resultado de la ejecución manteniendo el flujo del expediente.");
+        subtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        subtitulo.setForeground(COLOR_TEXTO_SECUNDARIO);
+
+        JPanel textos = new JPanel(new GridBagLayout());
+        textos.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        textos.add(titulo, gbc);
+        gbc.gridy++;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        textos.add(subtitulo, gbc);
+
+        header.add(textos, BorderLayout.WEST);
+        return header;
+    }
+
+    private JPanel crearCardResumenSolicitudEjecucion() {
+        JPanel card = crearCardEjecucion("Datos de la solicitud");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        estilizarCampoConsulta(spFechaRecepcion1);
+        estilizarCampoConsulta(spFechaSolicitud1);
+        estilizarCampoConsulta(textNumeroTramiteDocumento1);
+        textNumeroTramiteDocumento1.setToolTipText("Número de trámite web o referencia registrada.");
+
+        agregarCampoEjecucion(grid, 0, 0, 1, "Fecha recepción", spFechaRecepcion1);
+        agregarCampoEjecucion(grid, 1, 0, 1, "Fecha solicitud", spFechaSolicitud1);
+        agregarCampoEjecucion(grid, 2, 0, 1, "Nro. trámite web", textNumeroTramiteDocumento1);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearCardDatosEjecucion() {
+        JPanel card = crearCardEjecucion("Datos de la ejecución");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+
+        estilizarCampoEdicion(cboEstadoEjecucion);
+        estilizarCampoEdicion(spFechaSolicitud);
+        estilizarCampoEdicion(cboTieneObservacion);
+        jTextDescripcionObservacion.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        jTextDescripcionObservacion.setLineWrap(true);
+        jTextDescripcionObservacion.setWrapStyleWord(true);
+        jTextDescripcionObservacion.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        jScrollPane1.setBorder(BorderFactory.createLineBorder(COLOR_BORDE));
+        jScrollPane1.setPreferredSize(new Dimension(520, 130));
+
+        agregarCampoEjecucion(grid, 0, 0, 1, "Estado", cboEstadoEjecucion);
+        agregarCampoEjecucion(grid, 1, 0, 1, "Fecha ejecución", spFechaSolicitud);
+        agregarCampoEjecucion(grid, 0, 1, 1, "¿Tiene observación?", cboTieneObservacion);
+        agregarCampoEjecucion(grid, 1, 1, 2, "Descripción de la observación", jScrollPane1);
+
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel crearBarraAccionesEjecucion() {
+        JPanel barra = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
+        barra.setOpaque(false);
+        estilizarBotonSecundario(btnRegresar);
+        estilizarBotonPrimario(btnGuardarNotificacion);
+        btnRegresar.setText("Regresar");
+        btnGuardarNotificacion.setText("Guardar ejecución");
+        btnRegresar.setToolTipText("Volver al listado de expedientes de ejecución por trabajar.");
+        btnGuardarNotificacion.setToolTipText("Guardar resultado de ejecución del expediente.");
+        btnRegresar.setIcon(IconUtils.load("back.svg", 16));
+        btnGuardarNotificacion.setIcon(IconUtils.load("active.svg", 16));
+        barra.add(btnRegresar);
+        barra.add(btnGuardarNotificacion);
+        return barra;
+    }
+
+    private JPanel crearCardEjecucion(String titulo) {
+        JPanel card = new JPanel(new BorderLayout(0, 12));
+        card.setBackground(COLOR_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDE),
+                BorderFactory.createEmptyBorder(16, 18, 18, 18)
+        ));
+        JLabel label = new JLabel(titulo);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setForeground(COLOR_TITULO);
+        card.add(label, BorderLayout.NORTH);
+        return card;
+    }
+
+    private void agregarCampoEjecucion(JPanel parent, int x, int y, int width, String label, JComponent component) {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 5));
+        wrapper.setOpaque(false);
+
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(COLOR_TEXTO_SECUNDARIO);
+        wrapper.add(lbl, BorderLayout.NORTH);
+        wrapper.add(component, BorderLayout.CENTER);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.gridwidth = width;
+        gbc.weightx = width;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 12, 12);
+        parent.add(wrapper, gbc);
+    }
+
+    private void estilizarCampoConsulta(JComponent component) {
+        estilizarCampoBase(component);
+        component.setEnabled(false);
+    }
+
+    private void estilizarCampoEdicion(JComponent component) {
+        estilizarCampoBase(component);
+        component.setEnabled(true);
+    }
+
+    private void estilizarCampoBase(JComponent component) {
+        component.setPreferredSize(new Dimension(220, 38));
+        component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        component.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDE),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
+    }
+
+    private void estilizarBotonPrimario(javax.swing.JButton button) {
+        button.setBackground(COLOR_ACCION);
+        button.setForeground(Color.WHITE);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(9, 16, 9, 16));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void estilizarBotonSecundario(javax.swing.JButton button) {
+        button.setBackground(COLOR_SECUNDARIO);
+        button.setForeground(COLOR_TITULO);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(9, 16, 9, 16));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void aplicarReglasObservacionEjecucion() {
+        Object seleccionado = cboTieneObservacion.getSelectedItem();
+        String texto = seleccionado == null ? "" : seleccionado.toString().trim();
+        boolean tieneObservacion = "SI".equalsIgnoreCase(texto) || "SÍ".equalsIgnoreCase(texto);
+        jTextDescripcionObservacion.setEnabled(tieneObservacion);
+        jTextDescripcionObservacion.setEditable(tieneObservacion);
+        if (!tieneObservacion) {
+            jTextDescripcionObservacion.setText("");
+        }
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
     {
         Expediente lista = expedienteService.buscarporid(Integer.parseInt(idExpediente));           
         idExpedienteOculto = lista.getIdExpediente();
+        if (lista.getFechaRegistra() != null) {
+            spFechaRecepcion1.setValue(lista.getFechaRegistra());
+        }
+        if (lista.getFechaSolicitud() != null) {
+            spFechaSolicitud1.setValue(lista.getFechaSolicitud());
+        }
+        textNumeroTramiteDocumento1.setText(lista.getNumExpediente() != null && !lista.getNumExpediente().trim().isEmpty()
+                ? lista.getNumExpediente()
+                : lista.getNumeroTramiteDocumento());
     }
     
     private void cargarTieneObservacion() 
@@ -469,17 +721,37 @@ public class JPanelRegistrarExpedientesEjecucionPorTrabajar extends javax.swing.
     }//GEN-LAST:event_btnGuardarNotificacionActionPerformed
 
     private void btnRegresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegresarActionPerformed
-        // TODO add your handling code here:
+        MenuPrincipal.ShowJPanel(new JPanelListadoExpedientesEjecucionPorTrabajar());
     }//GEN-LAST:event_btnRegresarActionPerformed
 
     private void cboTieneObservacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTieneObservacionActionPerformed
-        CatalogoItem seleccionado = (CatalogoItem) cboTieneObservacion.getSelectedItem();
-
-       
-
-        // TODO add your handling code here:
+        aplicarReglasObservacionEjecucion();
     }//GEN-LAST:event_cboTieneObservacionActionPerformed
 
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 18;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return Math.max(visibleRect.height - 40, 80);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnGuardarNotificacion;

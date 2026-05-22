@@ -67,38 +67,50 @@ public class ExpedienteEjecucionPorTrabajarRepository
         }   
     }
     private Expediente mapRow(ResultSet rs) throws SQLException {
-        return new Expediente(
-                            rs.getInt("ID_EXPEDIENTE"),
-                            rs.getInt("ES_REGISTRO_SDRERC"),
-                            rs.getString("HOJA_ENVIO_EXPEDIENTE"),
-                            rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
-                            rs.getDate("FECHA_SOLICITUD"),
-                            rs.getString("CANAL_RECEPCION"),
-                            rs.getInt("TIPO_DOCUMENTO"),
-                            rs.getString("NUMERO_DOCUMENTO"),
-                            rs.getInt("TIPO_ACTA"),
-                            rs.getString("NUMERO_ACTA"),
-                            rs.getInt("TIPO_GRUPO_FAMILIAR"),
-                            rs.getInt("GRADO_PARENTESCO"),
-                            rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
-                            rs.getInt("TIPO_SOLICITUD"),
-                            rs.getString("DNI_REMITENTE"),
-                            rs.getString("APELLIDO_NOMBRE_REMITENTE"),
-                            rs.getInt("UNIDAD_ORGANICA"),
-                            rs.getString("DNI_TITULAR"),
-                            rs.getString("APELLIDO_NOMBRE_TITULAR"),
-                            rs.getInt("DEPARTAMENTO"),
-                            rs.getInt("PROVINCIA"),
-                            rs.getInt("DISTRITO"),
-                            rs.getInt("DIRECCION_DOMICILIARIA"),
-                            rs.getString("DOMICILIO"),
-                            rs.getString("CORREO_ELECTRONICO"),
-                            rs.getString("CELULAR"),
-                            rs.getInt("ESTADO"),
-                            rs.getInt("ID_USUARIO_CREA"),
-                            rs.getDate("FECHA_REGISTRA"),
-                            rs.getInt("ID_USUARIO_MODIFICA"),
-                            rs.getDate("FECHA_MODIFICA")
+        Expediente expediente = new Expediente(
+                rs.getInt("ID_EXPEDIENTE"),
+                rs.getInt("ES_REGISTRO_SDRERC"),
+                rs.getString("HOJA_ENVIO_EXPEDIENTE"),
+                rs.getString("NUMERO_TRAMITE_DOCUMENTO"),
+                rs.getDate("FECHA_SOLICITUD"),
+                rs.getString("CANAL_RECEPCION"),
+                rs.getInt("TIPO_DOCUMENTO"),
+                rs.getString("NUMERO_DOCUMENTO"),
+                rs.getInt("TIPO_ACTA"),
+                rs.getString("NUMERO_ACTA"),
+                rs.getInt("TIPO_GRUPO_FAMILIAR"),
+                rs.getInt("GRADO_PARENTESCO"),
+                rs.getInt("TIPO_PROCEDIMIENTO_REGISTRAL"),
+                rs.getInt("TIPO_SOLICITUD"),
+                rs.getString("DNI_REMITENTE"),
+                rs.getString("APELLIDO_NOMBRE_REMITENTE"),
+                rs.getInt("UNIDAD_ORGANICA"),
+                rs.getString("DNI_TITULAR"),
+                rs.getString("APELLIDO_NOMBRE_TITULAR"),
+                rs.getInt("DEPARTAMENTO"),
+                rs.getInt("PROVINCIA"),
+                rs.getInt("DISTRITO"),
+                rs.getInt("DIRECCION_DOMICILIARIA"),
+                rs.getString("DOMICILIO"),
+                rs.getString("CORREO_ELECTRONICO"),
+                rs.getString("CELULAR"),
+                rs.getInt("ESTADO"),
+                rs.getInt("ID_USUARIO_CREA"),
+                rs.getDate("FECHA_REGISTRA"),
+                rs.getInt("ID_USUARIO_MODIFICA"),
+                rs.getDate("FECHA_MODIFICA")
         );
+        expediente.setNumExpediente(obtenerStringSiExiste(rs, "NUM_EXPEDIENTE"));
+        expediente.setDniTitular2(obtenerStringSiExiste(rs, "DNI_TITULAR_2"));
+        expediente.setApellidoNombreTitular2(obtenerStringSiExiste(rs, "APELLIDO_NOMBRE_TITULAR_2"));
+        return expediente;
+    }
+
+    private String obtenerStringSiExiste(ResultSet rs, String columna) throws SQLException {
+        try {
+            return rs.getString(columna);
+        } catch (SQLException ex) {
+            return "";
+        }
     }
 }
