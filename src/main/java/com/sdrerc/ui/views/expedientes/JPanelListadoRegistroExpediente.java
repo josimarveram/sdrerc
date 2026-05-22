@@ -45,9 +45,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
@@ -115,37 +118,44 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     private boolean filtrosPorColumnaConfigurados;
     private TablePaginationHelper paginationHelper;
     private JPanel panelPaginacion;
+    private final Map<String, List<Expediente>> documentosAsociadosPorNumero = new HashMap<>();
+    private final Set<Integer> expedientesExpandidos = new HashSet<>();
     private final JDateChooser filtroFechaSolicitudColumna = new JDateChooser();
     private final Map<Integer, JTextField> filtrosTextoPorColumna = new HashMap<>();
-    private static final int COL_ID = 0;
-    private static final int COL_FECHA_SOLICITUD = 1;
-    private static final int COL_CANAL = 2;
-    private static final int COL_REFERENCIA = 3;
-    private static final int COL_TIPO_SOLICITUD = 4;
-    private static final int COL_PROCEDIMIENTO_REGISTRAL = 5;
-    private static final int COL_ACTA = 6;
-    private static final int COL_TITULAR = 7;
-    private static final int COL_ESTADO = 8;
-    private static final int COL_DIAS_RESTANTES = 9;
-    private static final int COL_ESTADO_ID = 10;
-    private static final int COL_TIPO_DOCUMENTO = 11;
-    private static final int COL_NUMERO_DOCUMENTO = 12;
-    private static final int COL_TIPO_ACTA = 13;
-    private static final int COL_NUMERO_ACTA = 14;
-    private static final int COL_DNI_TITULAR_1 = 15;
-    private static final int COL_TITULAR_1 = 16;
-    private static final int COL_DNI_TITULAR_2 = 17;
-    private static final int COL_TITULAR_2 = 18;
-    private static final int COL_UNIDAD_ORGANICA = 19;
-    private static final int COL_CORREO_ELECTRONICO = 20;
-    private static final int COL_CELULAR = 21;
-    private static final int COL_DIRECCION_DOMICILIARIA = 22;
-    private static final int COL_DOMICILIO = 23;
-    private static final int COL_DEPARTAMENTO = 24;
-    private static final int COL_PROVINCIA = 25;
-    private static final int COL_DISTRITO = 26;
-    private static final int COL_ABOGADO_DESIGNADO = 27;
-    private static final int COL_SUPERVISOR_RESPONSABLE = 28;
+    private static final int COL_EXPANDIR = 0;
+    private static final int COL_ID = 1;
+    private static final int COL_FECHA_SOLICITUD = 2;
+    private static final int COL_CANAL = 3;
+    private static final int COL_REFERENCIA = 4;
+    private static final int COL_TIPO_SOLICITUD = 5;
+    private static final int COL_PROCEDIMIENTO_REGISTRAL = 6;
+    private static final int COL_ACTA = 7;
+    private static final int COL_TITULAR = 8;
+    private static final int COL_ESTADO = 9;
+    private static final int COL_DIAS_RESTANTES = 10;
+    private static final int COL_ESTADO_ID = 11;
+    private static final int COL_TIPO_DOCUMENTO = 12;
+    private static final int COL_NUMERO_DOCUMENTO = 13;
+    private static final int COL_TIPO_ACTA = 14;
+    private static final int COL_NUMERO_ACTA = 15;
+    private static final int COL_DNI_TITULAR_1 = 16;
+    private static final int COL_TITULAR_1 = 17;
+    private static final int COL_DNI_TITULAR_2 = 18;
+    private static final int COL_TITULAR_2 = 19;
+    private static final int COL_UNIDAD_ORGANICA = 20;
+    private static final int COL_CORREO_ELECTRONICO = 21;
+    private static final int COL_CELULAR = 22;
+    private static final int COL_DIRECCION_DOMICILIARIA = 23;
+    private static final int COL_DOMICILIO = 24;
+    private static final int COL_DEPARTAMENTO = 25;
+    private static final int COL_PROVINCIA = 26;
+    private static final int COL_DISTRITO = 27;
+    private static final int COL_ABOGADO_DESIGNADO = 28;
+    private static final int COL_SUPERVISOR_RESPONSABLE = 29;
+    private static final int COL_TIPO_FILA = 30;
+    private static final int COL_ID_PADRE = 31;
+    private static final String TIPO_FILA_PRINCIPAL = "PRINCIPAL";
+    private static final String TIPO_FILA_DETALLE = "DETALLE";
     private static final int[] COLUMNAS_EXPORTACION_EXCEL = {
         COL_ID, COL_FECHA_SOLICITUD, COL_CANAL, COL_REFERENCIA, COL_TIPO_SOLICITUD,
         COL_PROCEDIMIENTO_REGISTRAL, COL_ESTADO,
@@ -271,13 +281,13 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {        
         String[] columnas = 
         {
-          "ID expediente", "Fecha solicitud", "Canal", "Num. Expediente", "Tipo solicitud",
+          "", "ID expediente", "Fecha solicitud", "Canal", "Num. Expediente", "Tipo solicitud",
           "Procedimiento registral", "Acta", "Titular", "Estado", "Días restantes", "EstadoId",
           "Tipo documento", "N° documento", "Tipo acta", "N° acta",
           "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
           "Unidad orgánica", "Correo electrónico", "Celular", "Dirección domiciliaria",
           "Domicilio", "Departamento", "Provincia", "Distrito",
-          "Abogado designado", "Supervisor responsable"
+          "Abogado designado", "Supervisor responsable", "Tipo fila", "Id padre"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -290,42 +300,113 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                 
         //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
         model.setRowCount(0);
-        for (Expediente e : lista) {
-            Object[] fila = {
-                    e.getIdExpediente(),
-                    formatearFecha(e.getFechaSolicitud()),
-                    textoSeguro(e.getCanalRecepcion()),
-                    obtenerNumeroExpedienteListado(e),
-                    obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
-                    obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
-                    obtenerActa(e),
-                    obtenerTitularListado(e),
-                    obtenerDescripcionEstado(e.getEstado()),
-                    plazoAtencionService.calcular(e.getTipoDocumento(), e.getFechaSolicitud()),
-                    e.getEstado(),
-                    obtenerDescripcionCatalogo(tiposDocumentoPorId, e.getTipoDocumento()),
-                    textoSeguro(e.getNumeroDocumento()),
-                    obtenerDescripcionCatalogo(tiposActaPorId, e.getTipoActa()),
-                    textoSeguro(e.getNumeroActa()),
-                    textoSeguro(e.getDniTitular()),
-                    textoSeguro(e.getApellidoNombreTitular()),
-                    textoSeguro(e.getDniTitular2()),
-                    textoSeguro(e.getApellidoNombreTitular2()),
-                    obtenerDescripcionCatalogo(unidadesOrganicasPorId, e.getUnidadOrganica()),
-                    textoSeguro(e.getCorreoElectronico()),
-                    textoSeguro(e.getCelular()),
-                    obtenerDescripcionCatalogo(direccionesDomiciliariasPorId, e.getDireccionDomiciliaria()),
-                    textoSeguro(e.getDomicilio()),
-                    idComoTexto(e.getDepartamento()),
-                    idComoTexto(e.getProvincia()),
-                    idComoTexto(e.getDistrito()),
-                    textoSeguro(e.getAbogadoDesignado()),
-                    textoSeguro(e.getSupervisorDesignado())
-            };
-            model.addRow(fila);
+        documentosAsociadosPorNumero.clear();
+        expedientesExpandidos.clear();
+        List<Expediente> principales = agruparExpedientesPorNumero(lista);
+        for (Expediente e : principales) {
+            model.addRow(crearFilaExpediente(e, TIPO_FILA_PRINCIPAL, 0));
         }
         jTable1.setModel(model);
         configurarTablaRecepcion();
+    }
+
+    private Object[] crearFilaExpediente(Expediente e, String tipoFila, int idPadre)
+    {
+        boolean detalle = TIPO_FILA_DETALLE.equals(tipoFila);
+        return new Object[]{
+                detalle ? "└" : obtenerIndicadorExpandir(e),
+                e.getIdExpediente(),
+                formatearFecha(e.getFechaSolicitud()),
+                textoSeguro(e.getCanalRecepcion()),
+                obtenerNumeroExpedienteListado(e),
+                obtenerDescripcionCatalogo(tiposSolicitudPorId, e.getTipoSolicitud()),
+                obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
+                obtenerActa(e),
+                obtenerTitularListado(e),
+                obtenerDescripcionEstado(e.getEstado()),
+                detalle ? "" : plazoAtencionService.calcular(e.getTipoDocumento(), e.getFechaSolicitud()),
+                e.getEstado(),
+                obtenerDescripcionCatalogo(tiposDocumentoPorId, e.getTipoDocumento()),
+                textoSeguro(e.getNumeroDocumento()),
+                obtenerDescripcionCatalogo(tiposActaPorId, e.getTipoActa()),
+                textoSeguro(e.getNumeroActa()),
+                textoSeguro(e.getDniTitular()),
+                textoSeguro(e.getApellidoNombreTitular()),
+                textoSeguro(e.getDniTitular2()),
+                textoSeguro(e.getApellidoNombreTitular2()),
+                obtenerDescripcionCatalogo(unidadesOrganicasPorId, e.getUnidadOrganica()),
+                textoSeguro(e.getCorreoElectronico()),
+                textoSeguro(e.getCelular()),
+                obtenerDescripcionCatalogo(direccionesDomiciliariasPorId, e.getDireccionDomiciliaria()),
+                textoSeguro(e.getDomicilio()),
+                idComoTexto(e.getDepartamento()),
+                idComoTexto(e.getProvincia()),
+                idComoTexto(e.getDistrito()),
+                textoSeguro(e.getAbogadoDesignado()),
+                textoSeguro(e.getSupervisorDesignado()),
+                tipoFila,
+                idPadre
+        };
+    }
+
+    private List<Expediente> agruparExpedientesPorNumero(List<Expediente> lista)
+    {
+        Map<String, List<Expediente>> grupos = new LinkedHashMap<>();
+        List<Expediente> sinNumero = new ArrayList<>();
+        for (Expediente expediente : lista) {
+            String numero = textoSeguro(expediente.getNumExpediente()).trim();
+            if (numero.isEmpty()) {
+                sinNumero.add(expediente);
+            } else {
+                grupos.computeIfAbsent(numero, key -> new ArrayList<>()).add(expediente);
+            }
+        }
+
+        List<Expediente> principales = new ArrayList<>();
+        for (Map.Entry<String, List<Expediente>> entry : grupos.entrySet()) {
+            List<Expediente> grupo = entry.getValue();
+            grupo.sort(this::compararExpedientePrincipal);
+            Expediente principal = grupo.get(0);
+            principales.add(principal);
+            if (grupo.size() > 1) {
+                documentosAsociadosPorNumero.put(entry.getKey(), new ArrayList<>(grupo.subList(1, grupo.size())));
+            }
+        }
+        principales.addAll(sinNumero);
+        return principales;
+    }
+
+    private int compararExpedientePrincipal(Expediente left, Expediente right)
+    {
+        int fecha = compararFechaExpediente(left.getFechaSolicitud(), right.getFechaSolicitud());
+        if (fecha != 0) {
+            return fecha;
+        }
+        return Integer.compare(left.getIdExpediente(), right.getIdExpediente());
+    }
+
+    private int compararFechaExpediente(java.util.Date left, java.util.Date right)
+    {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        return left.compareTo(right);
+    }
+
+    private String obtenerIndicadorExpandir(Expediente expediente)
+    {
+        String numero = textoSeguro(expediente.getNumExpediente()).trim();
+        List<Expediente> asociados = documentosAsociadosPorNumero.get(numero);
+        if (asociados == null || asociados.isEmpty()) {
+            return "";
+        }
+        return expedientesExpandidos.contains(expediente.getIdExpediente()) ? "-" : "+";
     }
 
     private String obtenerDescripcionEstado(int idEstado)
@@ -741,12 +822,20 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
 
     private List<Integer> obtenerFilasExportacion()
     {
-        if (paginationHelper != null) {
-            return paginationHelper.getFilteredModelRowsInSortOrder();
-        }
         List<Integer> filas = new ArrayList<>();
+        if (paginationHelper != null) {
+            for (Integer modelRow : paginationHelper.getFilteredModelRowsInSortOrder()) {
+                if (!esFilaDetalleModel(modelRow)) {
+                    filas.add(modelRow);
+                }
+            }
+            return filas;
+        }
         for (int viewRow = 0; viewRow < jTable1.getRowCount(); viewRow++) {
-            filas.add(jTable1.convertRowIndexToModel(viewRow));
+            int modelRow = jTable1.convertRowIndexToModel(viewRow);
+            if (!esFilaDetalleModel(modelRow)) {
+                filas.add(modelRow);
+            }
         }
         return filas;
     }
@@ -878,6 +967,106 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         panelPaginacion.repaint();
     }
 
+    private void alternarDocumentosAsociados(int viewRow)
+    {
+        int modelRow = jTable1.convertRowIndexToModel(viewRow);
+        if (esFilaDetalleModel(modelRow)) {
+            return;
+        }
+        int idExpediente = parseIntSeguro(jTable1.getModel().getValueAt(modelRow, COL_ID));
+        String numeroExpediente = textoSeguro(jTable1.getModel().getValueAt(modelRow, COL_REFERENCIA)).trim();
+        List<Expediente> asociados = documentosAsociadosPorNumero.get(numeroExpediente);
+        if (idExpediente <= 0 || asociados == null || asociados.isEmpty()) {
+            return;
+        }
+
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        if (expedientesExpandidos.contains(idExpediente)) {
+            expedientesExpandidos.remove(idExpediente);
+            quitarFilasDetalle(idExpediente);
+            model.setValueAt("+", modelRow, COL_EXPANDIR);
+        } else {
+            expedientesExpandidos.add(idExpediente);
+            model.setValueAt("-", modelRow, COL_EXPANDIR);
+            int insertIndex = modelRow + 1;
+            for (Expediente asociado : asociados) {
+                model.insertRow(insertIndex++, crearFilaExpediente(asociado, TIPO_FILA_DETALLE, idExpediente));
+            }
+        }
+        if (paginationHelper != null) {
+            paginationHelper.refresh(false);
+        }
+        actualizarAlturasFilasDetalle();
+        jTable1.repaint();
+    }
+
+    private void quitarFilasDetalle(int idPadre)
+    {
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        for (int row = model.getRowCount() - 1; row >= 0; row--) {
+            if (esFilaDetalleModel(row) && parseIntSeguro(model.getValueAt(row, COL_ID_PADRE)) == idPadre) {
+                model.removeRow(row);
+            }
+        }
+    }
+
+    private void colapsarDocumentosAsociados()
+    {
+        if (!(jTable1.getModel() instanceof DefaultTableModel) || expedientesExpandidos.isEmpty()) {
+            return;
+        }
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        for (int row = model.getRowCount() - 1; row >= 0; row--) {
+            if (esFilaDetalleModel(row)) {
+                model.removeRow(row);
+            }
+        }
+        for (int row = 0; row < model.getRowCount(); row++) {
+            if (!esFilaDetalleModel(row) && "+".equals(obtenerIndicadorExpandirPorFila(row))) {
+                model.setValueAt("+", row, COL_EXPANDIR);
+            }
+        }
+        expedientesExpandidos.clear();
+        if (paginationHelper != null) {
+            paginationHelper.refresh(false);
+        }
+    }
+
+    private String obtenerIndicadorExpandirPorFila(int modelRow)
+    {
+        if (jTable1.getModel().getColumnCount() <= COL_REFERENCIA) {
+            return "";
+        }
+        String numeroExpediente = textoSeguro(jTable1.getModel().getValueAt(modelRow, COL_REFERENCIA)).trim();
+        List<Expediente> asociados = documentosAsociadosPorNumero.get(numeroExpediente);
+        return asociados == null || asociados.isEmpty() ? "" : "+";
+    }
+
+    private void actualizarAlturasFilasDetalle()
+    {
+        for (int viewRow = 0; viewRow < jTable1.getRowCount(); viewRow++) {
+            int modelRow = jTable1.convertRowIndexToModel(viewRow);
+            int height = esFilaDetalleModel(modelRow) ? 28 : 30;
+            if (jTable1.getRowHeight(viewRow) != height) {
+                jTable1.setRowHeight(viewRow, height);
+            }
+        }
+    }
+
+    private boolean esFilaDetalleModel(int modelRow)
+    {
+        return jTable1.getModel().getColumnCount() > COL_TIPO_FILA
+                && TIPO_FILA_DETALLE.equals(jTable1.getModel().getValueAt(modelRow, COL_TIPO_FILA));
+    }
+
+    private boolean esFilaDetalleView(JTable table, int viewRow)
+    {
+        if (viewRow < 0 || table.getModel().getColumnCount() <= COL_TIPO_FILA) {
+            return false;
+        }
+        return TIPO_FILA_DETALLE.equals(table.getModel().getValueAt(table.convertRowIndexToModel(viewRow), COL_TIPO_FILA));
+    }
+
     private JPanel crearPanelFiltrosPorColumnaRecepcion()
     {
         configurarFiltrosPorColumnaRecepcion();
@@ -1001,6 +1190,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         if (!(jTable1.getRowSorter() instanceof TableRowSorter)) {
             return;
         }
+        colapsarDocumentosAsociados();
 
         List<RowFilter<DefaultTableModel, Integer>> filtros = new ArrayList<>();
         Date fechaFiltro = filtroFechaSolicitudColumna.getDate();
@@ -1186,6 +1376,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         }
 
         if (jTable1.getColumnModel().getColumnCount() >= 10) {
+            ajustarColumna(COL_EXPANDIR, 30, 34, 38);
             ajustarColumna(COL_ID, 0, 0, 0);
             ajustarColumna(COL_FECHA_SOLICITUD, 90, 105, 120);
             ajustarColumna(COL_CANAL, 65, 75, 90);
@@ -1200,6 +1391,8 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getColumnModel().getColumnCount(); column++) {
                 ajustarColumna(column, 0, 0, 0);
             }
+            ajustarColumna(COL_TIPO_FILA, 0, 0, 0);
+            ajustarColumna(COL_ID_PADRE, 0, 0, 0);
             moverColumnaDiasRestantesAntesDeFecha();
         }
     }
@@ -1233,6 +1426,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         sorter.setComparator(COL_DIAS_RESTANTES, compararDiasRestantes());
         sorter.setComparator(COL_ID, compararEnteros());
         sorter.setComparator(COL_ESTADO_ID, compararEnteros());
+        sorter.setSortable(COL_EXPANDIR, false);
         sorter.setSortable(COL_ID, false);
         sorter.setSortable(COL_ESTADO_ID, false);
         for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getModel().getColumnCount(); column++) {
@@ -1313,6 +1507,12 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
                     return;
                 }
                 header.setToolTipText("Ordenar por " + header.getTable().getModel().getColumnName(modelColumn));
+            }
+        });
+        header.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                colapsarDocumentosAsociados();
             }
         });
     }
@@ -1529,36 +1729,55 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String texto = textoSeguro(value);
             int modelColumn = table.convertColumnIndexToModel(column);
+            boolean filaDetalle = esFilaDetalleView(table, row);
             if (modelColumn == COL_TITULAR && value instanceof TitularListadoValue) {
                 label.setToolTipText(((TitularListadoValue) value).getTooltip());
+            } else if (modelColumn == COL_EXPANDIR && !texto.isEmpty()) {
+                label.setToolTipText("+".equals(texto) ? "Ver documentos asociados" : "Ocultar documentos asociados");
             } else {
                 label.setToolTipText((modelColumn == COL_REFERENCIA || modelColumn == COL_ACTA || modelColumn == COL_TITULAR || modelColumn == COL_PROCEDIMIENTO_REGISTRAL) ? texto : null);
             }
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             boolean editableRecepcion = esFilaEditableRecepcion(table, row);
 
-            if (modelColumn == COL_FECHA_SOLICITUD || modelColumn == COL_CANAL || modelColumn == COL_ESTADO) {
+            if (modelColumn == COL_EXPANDIR || modelColumn == COL_FECHA_SOLICITUD || modelColumn == COL_CANAL || modelColumn == COL_ESTADO) {
                 label.setHorizontalAlignment(SwingConstants.CENTER);
             } else {
                 label.setHorizontalAlignment(SwingConstants.LEFT);
             }
 
             if (!isSelected) {
-                label.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
-                label.setForeground(editableRecepcion ? new Color(30, 41, 59) : new Color(115, 125, 138));
+                if (filaDetalle) {
+                    label.setBackground(new Color(244, 248, 252));
+                    label.setForeground(new Color(71, 85, 105));
+                } else {
+                    label.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
+                    label.setForeground(editableRecepcion ? new Color(30, 41, 59) : new Color(115, 125, 138));
+                }
             }
 
-            if (modelColumn == COL_ESTADO) {
+            if (modelColumn == COL_EXPANDIR) {
+                label.setFont(label.getFont().deriveFont(Font.BOLD, filaDetalle ? 12f : 15f));
+                if (!isSelected && !texto.isEmpty()) {
+                    label.setForeground(filaDetalle ? new Color(100, 116, 139) : new Color(37, 99, 235));
+                }
+            } else if (modelColumn == COL_ESTADO) {
                 label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
                 if (!isSelected) {
-                    label.setForeground(editableRecepcion ? new Color(55, 95, 140) : new Color(100, 116, 139));
-                    label.setBackground(editableRecepcion ? new Color(232, 241, 252) : new Color(241, 245, 249));
-                    label.setToolTipText(editableRecepcion
-                            ? "Expediente editable desde Recepción."
-                            : "Expediente solo para consulta en Recepción.");
+                    if (filaDetalle) {
+                        label.setForeground(new Color(71, 85, 105));
+                        label.setBackground(new Color(235, 241, 248));
+                        label.setToolTipText("Documento asociado.");
+                    } else {
+                        label.setForeground(editableRecepcion ? new Color(55, 95, 140) : new Color(100, 116, 139));
+                        label.setBackground(editableRecepcion ? new Color(232, 241, 252) : new Color(241, 245, 249));
+                        label.setToolTipText(editableRecepcion
+                                ? "Expediente editable desde Recepción."
+                                : "Expediente solo para consulta en Recepción.");
+                    }
                 }
             } else {
-                label.setFont(label.getFont().deriveFont(Font.PLAIN, 12f));
+                label.setFont(label.getFont().deriveFont(filaDetalle ? Font.PLAIN : Font.PLAIN, filaDetalle ? 11f : 12f));
             }
             label.setOpaque(true);
             return label;
@@ -1590,6 +1809,9 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             return true;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
+        if (esFilaDetalleModel(modelRow)) {
+            return true;
+        }
         Object estadoId = table.getModel().getValueAt(modelRow, COL_ESTADO_ID);
         return String.valueOf(Enumerado.EstadoExpediente.RegistroExpediente.getId()).equals(String.valueOf(estadoId));
     }
@@ -1763,6 +1985,15 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     }//GEN-LAST:event_btnLimpiarActionPerformed
 
     private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
+       int columna = jTable1.columnAtPoint(evt.getPoint());
+       if (evt.getClickCount() == 1 && columna >= 0 && jTable1.convertColumnIndexToModel(columna) == COL_EXPANDIR)
+       {
+            int fila = jTable1.rowAtPoint(evt.getPoint());
+            if (fila >= 0) {
+                alternarDocumentosAsociados(fila);
+            }
+            return;
+       }
        if (evt.getClickCount() == 2 && jTable1.getSelectedRow() != -1)
        {
             int fila = jTable1.getSelectedRow();
@@ -1770,7 +2001,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
             {
                 // Obtener datos de la fila
                 int modelRow = jTable1.convertRowIndexToModel(fila);
-                String idExpediente = jTable1.getModel().getValueAt(modelRow, 0).toString();
+                String idExpediente = jTable1.getModel().getValueAt(modelRow, COL_ID).toString();
                 String descripcion = jTable1.getValueAt(fila, 1).toString();
                 String fecha = jTable1.getValueAt(fila, 2).toString();
                 //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
