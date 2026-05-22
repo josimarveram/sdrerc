@@ -30,7 +30,7 @@ public class PlazoAtencionResultado {
     }
 
     public static PlazoAtencionResultado of(int diasRestantes, int diasPlazo, Nivel nivel) {
-        String texto = diasRestantes + "d";
+        String texto = String.valueOf(diasRestantes);
         String detalle;
         if (diasRestantes < 0) {
             int exceso = Math.abs(diasRestantes);

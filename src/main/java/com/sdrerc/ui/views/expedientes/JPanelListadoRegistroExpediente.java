@@ -302,8 +302,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         model.setRowCount(0);
         documentosAsociadosPorNumero.clear();
         expedientesExpandidos.clear();
-        List<Expediente> principales = agruparExpedientesPorNumero(lista);
-        for (Expediente e : principales) {
+        for (Expediente e : lista) {
             model.addRow(crearFilaExpediente(e, TIPO_FILA_PRINCIPAL, 0));
         }
         jTable1.setModel(model);
@@ -314,7 +313,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
     {
         boolean detalle = TIPO_FILA_DETALLE.equals(tipoFila);
         return new Object[]{
-                detalle ? "└" : obtenerIndicadorExpandir(e),
+                "",
                 e.getIdExpediente(),
                 formatearFecha(e.getFechaSolicitud()),
                 textoSeguro(e.getCanalRecepcion()),
@@ -1376,7 +1375,7 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
         }
 
         if (jTable1.getColumnModel().getColumnCount() >= 10) {
-            ajustarColumna(COL_EXPANDIR, 30, 34, 38);
+            ajustarColumna(COL_EXPANDIR, 0, 0, 0);
             ajustarColumna(COL_ID, 0, 0, 0);
             ajustarColumna(COL_FECHA_SOLICITUD, 90, 105, 120);
             ajustarColumna(COL_CANAL, 65, 75, 90);
@@ -1986,14 +1985,6 @@ public class JPanelListadoRegistroExpediente extends javax.swing.JPanel {
 
     private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
        int columna = jTable1.columnAtPoint(evt.getPoint());
-       if (evt.getClickCount() == 1 && columna >= 0 && jTable1.convertColumnIndexToModel(columna) == COL_EXPANDIR)
-       {
-            int fila = jTable1.rowAtPoint(evt.getPoint());
-            if (fila >= 0) {
-                alternarDocumentosAsociados(fila);
-            }
-            return;
-       }
        if (evt.getClickCount() == 2 && jTable1.getSelectedRow() != -1)
        {
             int fila = jTable1.getSelectedRow();
