@@ -47,8 +47,15 @@ public class FrmLogin extends javax.swing.JFrame
         configurarLoginPremium();
         configurarCampoPasswordConOjito();
         configurarFocoCamposLogin();
+        configurarEnterLogin();
         setLocationRelativeTo(null);
         
+    }
+
+    private void configurarEnterLogin() {
+        text_usuario.addActionListener(e -> iniciarSesion());
+        txt_contraseña.addActionListener(e -> iniciarSesion());
+        getRootPane().setDefaultButton(null);
     }
 
     private void configurarLoginPremium() {
@@ -432,8 +439,10 @@ public class FrmLogin extends javax.swing.JFrame
     }//GEN-LAST:event_txt_contraseñaMousePressed
 
     private void lpn_btnLoginMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_lpn_btnLoginMouseClicked
-        // javax.swing.JOptionPane.showMessageDialog(this,"Intento logears");
-        
+        iniciarSesion();
+    }//GEN-LAST:event_lpn_btnLoginMouseClicked
+
+    private void iniciarSesion() {
         String username = text_usuario.getText();
         String password = new String(txt_contraseña.getPassword());
 
@@ -480,8 +489,7 @@ public class FrmLogin extends javax.swing.JFrame
             JOptionPane.showMessageDialog(this,
                 ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
-        
-    }//GEN-LAST:event_lpn_btnLoginMouseClicked
+    }
 
     /**
      * @param args the command line arguments

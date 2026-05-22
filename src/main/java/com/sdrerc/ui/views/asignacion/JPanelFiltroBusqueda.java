@@ -1935,13 +1935,13 @@ public class JPanelFiltroBusqueda extends javax.swing.JPanel {
 
         if (evt.getClickCount() == 2 && jTable1.getSelectedRow() != -1) {
 
-            int fila = jTable1.getSelectedRow();
+            int fila = jTable1.rowAtPoint(evt.getPoint());
+            if (fila < 0) {
+                fila = jTable1.getSelectedRow();
+            }
             if (fila >= 0) {
                 // Obtener datos de la fila
                 int filaModelo = jTable1.convertRowIndexToModel(fila);
-                if (esFilaDetalleModel(filaModelo)) {
-                    return;
-                }
                 String idExpediente = jTable1.getModel().getValueAt(filaModelo, COL_ID).toString();
                 //DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
                 //Expediente expedienteSeleccionado = model.get(fila);
