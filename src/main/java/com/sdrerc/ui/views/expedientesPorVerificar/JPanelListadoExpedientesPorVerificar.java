@@ -279,11 +279,6 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
             CatalogoItem estado = (CatalogoItem) cmbEstado.getSelectedItem();
             int idestado = estado == null ? 0 : estado.getIdCatalogoItem();
 
-            Enumerado.EstadoExpediente estadoExpedienteAtendido = Enumerado.EstadoExpediente.ExpedienteAtendido;
-            if (idestado == 0) {
-                idestado = estadoExpedienteAtendido.getId();
-            }
-
             List<Expediente> lista = expedienteAsignacionService.listarExpedientesPorVerificar(
                     campo, valor, idestado, alcance.supervisorUserId, alcance.verTodo);
             List<Expediente> filtrada = filtrarPorRangoFechas(lista, obtenerFechaDesde(), obtenerFechaHasta());

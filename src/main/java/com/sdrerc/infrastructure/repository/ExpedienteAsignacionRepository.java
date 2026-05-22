@@ -8,6 +8,7 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.infrastructure.database.OracleConnection;
 import com.sdrerc.shared.constants.FlujoExpedienteConstants.DocumentoAnalizado;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.EstadoExpediente;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -680,6 +681,8 @@ public class ExpedienteAsignacionRepository {
 
         if (filtrarEstado) {
             sql.append("AND e.ESTADO = ? ");
+        } else {
+            sql.append("AND e.ESTADO IN (?, ?) ");
         }
         if (filtrarSupervisor) {
             sql.append("AND aus.SUPERVISOR_ID = ? ");
@@ -694,6 +697,9 @@ public class ExpedienteAsignacionRepository {
             int paramIndex = 1;
             if (filtrarEstado) {
                 ps.setInt(paramIndex++, estadoItem);
+            } else {
+                ps.setInt(paramIndex++, EstadoExpediente.EXPEDIENTE_ATENDIDO);
+                ps.setInt(paramIndex++, EstadoExpediente.EXPEDIENTE_VERIFICADO);
             }
             if (filtrarSupervisor) {
                 ps.setLong(paramIndex++, supervisorUserId);
