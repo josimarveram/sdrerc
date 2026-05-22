@@ -305,7 +305,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     private DefaultTableModel crearModeloTablaExpedientesAsignados()
     {
         String[] columnas = {
-                "", "ID expediente", "Fecha solicitud", "Canal", "Nro. Expediente", "Tipo solicitud",
+                "", "ID expediente", "Fecha solicitud", "Canal", "Num. Expediente", "Tipo solicitud",
                 "Procedimiento registral", "Acta", "Titular", "Estado", "Días restantes", "EstadoId",
                 "Tipo documento", "N° documento", "Tipo acta", "N° acta",
                 "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
@@ -1017,17 +1017,15 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
 
         agregarFiltroColumna(panel, "Plazo", filtrosTextoPorColumna.get(COL_DIAS_RESTANTES), 0, 0.70, 70);
         agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 1, 0.82, 96);
-        agregarFiltroColumna(panel, "Canal", filtrosTextoPorColumna.get(COL_CANAL), 2, 0.65);
-        agregarFiltroColumna(panel, "Nro. Expediente", filtrosTextoPorColumna.get(COL_REFERENCIA), 3, 1.05);
-        agregarFiltroColumna(panel, "Tipo solicitud", filtrosTextoPorColumna.get(COL_TIPO_SOLICITUD), 4, 1.05);
-        agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 5, 1.25);
-        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 6, 0.95);
-        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 7, 1.75);
-        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 8, 0.90);
+        agregarFiltroColumna(panel, "Num. Expediente", filtrosTextoPorColumna.get(COL_REFERENCIA), 2, 1.35, 170);
+        agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 3, 1.25);
+        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 4, 0.95);
+        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 5, 1.75);
+        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 6, 0.90);
 
         JButton btnLimpiarFiltros = crearBotonLimpiarFiltrosPorColumna();
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 9;
+        gbc.gridx = 7;
         gbc.gridy = 1;
         gbc.insets = new Insets(4, 6, 0, 0);
         gbc.fill = GridBagConstraints.NONE;
@@ -1363,9 +1361,9 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
         if (jTable1.getColumnModel().getColumnCount() >= 10) {
             configurarAnchoColumna(COL_ID, 0, 0, 0);
             configurarAnchoColumna(COL_FECHA_SOLICITUD, 90, 105, 120);
-            configurarAnchoColumna(COL_CANAL, 65, 75, 90);
-            configurarAnchoColumna(COL_REFERENCIA, 100, 125, 155);
-            configurarAnchoColumna(COL_TIPO_SOLICITUD, 110, 125, 150);
+            configurarAnchoColumna(COL_CANAL, 0, 0, 0);
+            configurarAnchoColumna(COL_REFERENCIA, 170, 205, 260);
+            configurarAnchoColumna(COL_TIPO_SOLICITUD, 0, 0, 0);
             configurarAnchoColumna(COL_PROCEDIMIENTO_REGISTRAL, 135, 170, 220);
             configurarAnchoColumna(COL_ACTA, 95, 120, 155);
             configurarAnchoColumna(COL_TITULAR, 160, 260, Integer.MAX_VALUE);
@@ -2018,4 +2016,7 @@ public class JPanelListadoExpedientesAsignados extends javax.swing.JPanel implem
     private javax.swing.JTextField txtValorBusqueda;
     // End of variables declaration//GEN-END:variables
 }
+
+
+
 

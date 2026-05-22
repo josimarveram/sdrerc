@@ -67,7 +67,7 @@ public class ExpedientePorNotificarRepository
         }   
     }
     private Expediente mapRow(ResultSet rs) throws SQLException {
-        return new Expediente(
+        Expediente expediente = new Expediente(
                             rs.getInt("ID_EXPEDIENTE"),
                             rs.getInt("ES_REGISTRO_SDRERC"),
                             rs.getString("HOJA_ENVIO_EXPEDIENTE"),
@@ -100,5 +100,17 @@ public class ExpedientePorNotificarRepository
                             rs.getInt("ID_USUARIO_MODIFICA"),
                             rs.getDate("FECHA_MODIFICA")
         );
+        expediente.setNumExpediente(obtenerStringSiExiste(rs, "NUM_EXPEDIENTE"));
+        expediente.setDniTitular2(obtenerStringSiExiste(rs, "DNI_TITULAR_2"));
+        expediente.setApellidoNombreTitular2(obtenerStringSiExiste(rs, "APELLIDO_NOMBRE_TITULAR_2"));
+        return expediente;
+    }
+
+    private String obtenerStringSiExiste(ResultSet rs, String columna) throws SQLException {
+        try {
+            return rs.getString(columna);
+        } catch (SQLException ex) {
+            return "";
+        }
     }
 }

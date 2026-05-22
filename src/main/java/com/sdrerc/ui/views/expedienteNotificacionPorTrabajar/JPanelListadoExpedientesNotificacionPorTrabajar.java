@@ -13,11 +13,17 @@ import com.sdrerc.application.CatalogoService;
 import com.sdrerc.application.ExpedienteAsignacionService;
 import com.sdrerc.application.ExpedientePorNotificarService;
 import com.sdrerc.application.ExpedienteService;
+import com.sdrerc.application.PlazoAtencionService;
 import com.sdrerc.domain.model.CatalogoItem;
 import com.sdrerc.domain.model.Enumerado;
 import com.sdrerc.domain.model.Expediente.Expediente;
+import com.sdrerc.ui.common.swing.PlazoAtencionCellRenderer;
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import java.util.logging.Level;
@@ -34,6 +40,11 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
     private final CatalogoService catalogoService;
     private final CatalogoItemService catalogoItemService;
     private final ExpedientePorNotificarService expedientePorNotificarService;
+    private final Map<Integer, String> estadosPorId;
+    private final Map<Integer, String> procedimientosPorId;
+    private final Map<Integer, String> tiposActaPorId;
+    private final SimpleDateFormat formatoFecha;
+    private final PlazoAtencionService plazoAtencionService;
     
     /**
      * Creates new form JPanelListadoExpedientesAsignados
@@ -44,8 +55,15 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
         this.catalogoService = new CatalogoService();
         this.catalogoItemService = new CatalogoItemService();
         this.expedientePorNotificarService = new ExpedientePorNotificarService();
+        this.estadosPorId = new HashMap<>();
+        this.procedimientosPorId = new HashMap<>();
+        this.tiposActaPorId = new HashMap<>();
+        this.formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
+        this.formatoFecha.setLenient(false);
+        this.plazoAtencionService = new PlazoAtencionService();
         
         cargarTiposBusqueda();
+        cargarCatalogosListado();
         cargarComboEstados();    
         buscarExpedientes();
     }
@@ -59,6 +77,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
         List<CatalogoItem> lista = catalogoItemService.obtenerEstadosTramite();
 
         for (CatalogoItem estado : lista) {
+            estadosPorId.put(estado.getIdCatalogoItem(), estado.getDescripcion());
             cmbEstado.addItem(estado);
         }
     }
@@ -67,6 +86,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
     {
         cmbTipoBusqueda.removeAllItems();
         cmbTipoBusqueda.addItem("NUMERO_TRAMITE_DOCUMENTO");
+        cmbTipoBusqueda.addItem("NUM_EXPEDIENTE");
         cmbTipoBusqueda.addItem("TIPO_SOLICITUD");
         cmbTipoBusqueda.addItem("DNI_REMITENTE");
         cmbTipoBusqueda.addItem("APELLIDO_NOMBRE_REMITENTE");
@@ -104,9 +124,9 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
       
     private void cargarTablaNueva(List<Expediente> lista) 
     {        
-        String[] columnas = 
-        {
-          "ID", "Fecha", "N° Trámite", "Solicitante", "Titular", "Estado"
+        String[] columnas = {
+          "ID expediente", "Días restantes", "Fecha solicitud", "Num. Expediente",
+          "Procedimiento registral", "Acta", "Titular", "Estado"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -122,14 +142,104 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
         for (Expediente e : lista) {
             Object[] fila = {
                     e.getIdExpediente(),
-                    e.getFechaSolicitud(),
-                    e.getNumeroTramiteDocumento(),
-                    e.getApellidoNombreTitular(),
-                    e.getEstado()
+                    plazoAtencionService.calcular(e.getTipoDocumento(), e.getFechaSolicitud()),
+                    formatearFecha(e.getFechaSolicitud()),
+                    obtenerNumeroExpedienteListado(e),
+                    obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
+                    obtenerActa(e),
+                    obtenerTitularListado(e),
+                    obtenerDescripcionEstado(e.getEstado())
             };
             model.addRow(fila);
         }
         jTable1.setModel(model);
+        configurarTablaNotificacion();
+    }
+
+    private String obtenerDescripcionEstado(int idEstado) {
+        return estadosPorId.getOrDefault(idEstado, String.valueOf(idEstado));
+    }
+
+    private String formatearFecha(java.util.Date fecha) {
+        return fecha == null ? "" : formatoFecha.format(fecha);
+    }
+
+    private void cargarCatalogosListado() {
+        cargarMapaCatalogo(3, procedimientosPorId);
+        cargarMapaCatalogo(4, tiposActaPorId);
+    }
+
+    private void cargarMapaCatalogo(int idCatalogo, Map<Integer, String> destino) {
+        destino.clear();
+        List<CatalogoItem> items = catalogoItemService.listarCatalogoItem(idCatalogo);
+        for (CatalogoItem item : items) {
+            destino.put(item.getIdCatalogoItem(), item.getDescripcion());
+        }
+    }
+
+    private String obtenerDescripcionCatalogo(Map<Integer, String> catalogo, int id) {
+        if (id <= 0) {
+            return "";
+        }
+        return catalogo.getOrDefault(id, String.valueOf(id));
+    }
+
+    private String obtenerNumeroExpedienteListado(Expediente expediente) {
+        String numExpediente = textoSeguro(expediente.getNumExpediente());
+        return numExpediente.isEmpty() ? "Sin expediente" : numExpediente;
+    }
+
+    private String obtenerActa(Expediente expediente) {
+        String tipoActa = obtenerDescripcionCatalogo(tiposActaPorId, expediente.getTipoActa());
+        String numeroActa = textoSeguro(expediente.getNumeroActa());
+        if (!tipoActa.isEmpty() && !numeroActa.isEmpty()) {
+            return tipoActa + " " + numeroActa;
+        }
+        return !tipoActa.isEmpty() ? tipoActa : numeroActa;
+    }
+
+    private String obtenerTitularListado(Expediente expediente) {
+        String titular1 = textoSeguro(expediente.getApellidoNombreTitular());
+        String titular2 = textoSeguro(expediente.getApellidoNombreTitular2());
+        if (!titular1.isEmpty() && !titular2.isEmpty()) {
+            return titular1 + " / " + titular2;
+        }
+        return !titular1.isEmpty() ? titular1 : titular2;
+    }
+
+    private String textoSeguro(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private void configurarTablaNotificacion() {
+        jTable1.setRowHeight(30);
+        jTable1.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        ocultarColumna(0);
+        ajustarColumna(1, 80, 95, 110);
+        ajustarColumna(2, 90, 105, 120);
+        ajustarColumna(3, 170, 210, 270);
+        ajustarColumna(4, 180, 230, 320);
+        ajustarColumna(5, 120, 155, 210);
+        ajustarColumna(6, 220, 300, 420);
+        ajustarColumna(7, 115, 140, 175);
+        jTable1.getColumnModel().getColumn(1).setCellRenderer(new PlazoAtencionCellRenderer());
+    }
+
+    private void ocultarColumna(int index) {
+        ajustarColumna(index, 0, 0, 0);
+    }
+
+    private void ajustarColumna(int index, int min, int preferred, int max) {
+        if (jTable1.getColumnModel().getColumnCount() <= index) {
+            return;
+        }
+        TableColumn column = jTable1.getColumnModel().getColumn(index);
+        column.setMinWidth(min);
+        column.setPreferredWidth(preferred);
+        column.setMaxWidth(max);
+        if (max == 0) {
+            column.setResizable(false);
+        }
     }
 
     /**
