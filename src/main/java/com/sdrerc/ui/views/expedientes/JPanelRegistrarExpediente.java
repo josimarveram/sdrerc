@@ -58,12 +58,17 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
     private Integer idExpedienteOculto = 0;
     private static final int ID_CATALOGO_DIRECCION_DOMICILIARIA = 8;
     private static final int ID_AGREGAR_DIRECCION = -1;
+    private static final int ID_CATALOGO_TIPO_DOCUMENTO_PERSONA = 17;
     private static final String[] CANALES_RECEPCION = {"INTERNO", "MP PRESENCIAL", "MPV", "OR PRESENCIAL", "POR DEFINIR"};
     private CatalogoItem ultimaDireccionDomiciliariaSeleccionada;
     private JLabel lblTituloFormulario;
     private JLabel lblSubtituloFormulario;
+    private final JComboBox<CatalogoItem> cboTipoDocumentoRemitente = new JComboBox<>();
+    private final JComboBox<CatalogoItem> cboTipoDocumentoTitular = new JComboBox<>();
+    private final JComboBox<CatalogoItem> cboTipoDocumentoTitular2 = new JComboBox<>();
     private final JTextField textNumeroDocumentoTitular2 = new JTextField();
     private final JTextField textApellidosNombreTitular2 = new JTextField();
+    private JPanel panelTipoDocumentoTitular2;
     private JPanel panelNumeroDocumentoTitular2;
     private JPanel panelApellidosNombreTitular2;
     private boolean modoConsulta = false;
@@ -80,12 +85,12 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         this.catalogoItemService = new CatalogoItemService();
         this.ubigeoService = new UbigeoService();
         
-        TextFieldRules.apply(textDniRemitente).onlyNumbers().max(8);
+        TextFieldRules.apply(textDniRemitente).max(20);
         TextFieldRules.apply(textApellidosNombreRemitente).onlyLetters().max(300);
         
-        TextFieldRules.apply(textNumeroDocumentoTitular).onlyNumbers().max(8);
+        TextFieldRules.apply(textNumeroDocumentoTitular).max(20);
         TextFieldRules.apply(textApellidosNombreTitular).onlyLetters().max(300);
-        TextFieldRules.apply(textNumeroDocumentoTitular2).onlyNumbers().max(8);
+        TextFieldRules.apply(textNumeroDocumentoTitular2).max(20);
         TextFieldRules.apply(textApellidosNombreTitular2).onlyLetters().max(300);
         
         TextFieldRules.apply(textCelular).onlyNumbers().max(9);
@@ -95,6 +100,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         cboTipoSolicitud.setSelectedIndex(-1);
         cargarComboCanalRecepcion();
         cboCanalRecepcion.setSelectedIndex(-1);
+        cargarCombosTipoDocumentoPersona();
         cargarComboTipoDocumento();
         cboTipoDocumento.setSelectedIndex(-1);
         cargarComboTipoProcedimientoRegistral(); 
@@ -118,6 +124,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         
         registrarEventos();
         
+        cboTipoDocumentoRemitente.setEnabled(false);
         textDniRemitente.setEnabled(false);
         textApellidosNombreRemitente.setEnabled(false);
         cboUnidadOrganica.setEnabled(false);
@@ -263,14 +270,19 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         agregarCampo(body, "Unidad orgánica", cboUnidadOrganica, 3, row, 1, 0.22);
 
         row++;
-        agregarCampo(body, "DNI remitente", textDniRemitente, 0, row, 1, 0.16);
-        agregarCampo(body, "Apellidos y nombres remitente", textApellidosNombreRemitente, 1, row, 1, 0.34);
-        agregarCampo(body, "DNI / Nro. documento titular 1", textNumeroDocumentoTitular, 2, row, 1, 0.16);
-        agregarCampo(body, "Apellidos y nombres titular 1", textApellidosNombreTitular, 3, row, 1, 0.34);
+        agregarCampo(body, "Tipo doc. remitente", cboTipoDocumentoRemitente, 0, row, 1, 0.16);
+        agregarCampo(body, "Nro. documento remitente", textDniRemitente, 1, row, 1, 0.18);
+        agregarCampo(body, "Apellidos y nombres remitente", textApellidosNombreRemitente, 2, row, 2, 0.66);
 
         row++;
-        panelNumeroDocumentoTitular2 = agregarCampo(body, "DNI / Nro. documento titular 2", textNumeroDocumentoTitular2, 2, row, 1, 0.16);
-        panelApellidosNombreTitular2 = agregarCampo(body, "Apellidos y nombres titular 2", textApellidosNombreTitular2, 3, row, 1, 0.34);
+        agregarCampo(body, "Tipo doc. titular 1", cboTipoDocumentoTitular, 0, row, 1, 0.16);
+        agregarCampo(body, "Nro. documento titular 1", textNumeroDocumentoTitular, 1, row, 1, 0.18);
+        agregarCampo(body, "Apellidos y nombres titular 1", textApellidosNombreTitular, 2, row, 2, 0.66);
+
+        row++;
+        panelTipoDocumentoTitular2 = agregarCampo(body, "Tipo doc. titular 2", cboTipoDocumentoTitular2, 0, row, 1, 0.16);
+        panelNumeroDocumentoTitular2 = agregarCampo(body, "Nro. documento titular 2", textNumeroDocumentoTitular2, 1, row, 1, 0.18);
+        panelApellidosNombreTitular2 = agregarCampo(body, "Apellidos y nombres titular 2", textApellidosNombreTitular2, 2, row, 2, 0.66);
         return card;
     }
 
@@ -386,11 +398,14 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         aplicarTamano(cboGradoParentesco, normal);
         aplicarTamano(cboTipoProcedimientoRegistral, largo);
         aplicarTamano(cboTipoSolicitud, normal);
+        aplicarTamano(cboTipoDocumentoRemitente, corto);
         aplicarTamano(textDniRemitente, corto);
         aplicarTamano(textApellidosNombreRemitente, largo);
         aplicarTamano(cboUnidadOrganica, normal);
+        aplicarTamano(cboTipoDocumentoTitular, corto);
         aplicarTamano(textNumeroDocumentoTitular, normal);
         aplicarTamano(textApellidosNombreTitular, largo);
+        aplicarTamano(cboTipoDocumentoTitular2, corto);
         aplicarTamano(textNumeroDocumentoTitular2, normal);
         aplicarTamano(textApellidosNombreTitular2, largo);
         aplicarTamano(textCorreoElectronico, largo);
@@ -416,8 +431,11 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
         textHojaEnvioExpediente.setToolTipText("Se habilita cuando la solicitud no corresponde a la SDRERC.");
         cboTipoSolicitud.setToolTipText("Define las reglas de remitente y unidad orgánica.");
         cboUnidadOrganica.setToolTipText("Obligatorio para solicitudes tipo OFICIO.");
+        cboTipoDocumentoRemitente.setToolTipText("Tipo de documento personal del remitente.");
+        cboTipoDocumentoTitular.setToolTipText("Tipo de documento personal del primer titular.");
         textNumeroDocumentoTitular.setToolTipText("Documento del primer titular del acta.");
         textApellidosNombreTitular.setToolTipText("Apellidos y nombres completos del primer titular.");
+        cboTipoDocumentoTitular2.setToolTipText("Tipo de documento personal del segundo titular para actas de matrimonio.");
         textNumeroDocumentoTitular2.setToolTipText("Documento del segundo titular para actas de matrimonio.");
         textApellidosNombreTitular2.setToolTipText("Apellidos y nombres completos del segundo titular para actas de matrimonio.");
         textDomicilio.setToolTipText("Ingrese el domicilio completo para notificación.");
@@ -464,9 +482,10 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
                 spFechaRecepcion, cboCanalRecepcion, textNumeroTramiteDocumento,
                 cboTipoDocumento, textNumeroDocumento, cboTipoActa, textNumeroActa,
                 cboGrupoFamiliar, cboGradoParentesco, cboTipoProcedimientoRegistral,
-                cboTipoSolicitud, textDniRemitente, textApellidosNombreRemitente,
-                cboUnidadOrganica, textNumeroDocumentoTitular, textApellidosNombreTitular,
-                textNumeroDocumentoTitular2, textApellidosNombreTitular2,
+                cboTipoSolicitud, cboTipoDocumentoRemitente, textDniRemitente,
+                textApellidosNombreRemitente, cboUnidadOrganica, cboTipoDocumentoTitular,
+                textNumeroDocumentoTitular, textApellidosNombreTitular,
+                cboTipoDocumentoTitular2, textNumeroDocumentoTitular2, textApellidosNombreTitular2,
                 textCorreoElectronico, textCelular, cboDireccionDomiciliaria, textDomicilio,
                 cboDepartamento, cboProvincia, cboDistrito, textHojaEnvioExpediente,
                 jRadiButonSiCorresponde, jRadiButonNoCorresponde
@@ -613,6 +632,7 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
 
         //dniRemitente
         textDniRemitente.setText(lista.getDniRemitente());
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoRemitente, inferirTipoDocumentoPersona(lista.getDniRemitente()));
 
         //apellidoNombreRemitente
         textApellidosNombreRemitente.setText(lista.getApellidoNombreRemitente());
@@ -622,10 +642,12 @@ public class JPanelRegistrarExpediente extends javax.swing.JPanel implements Scr
 
         //dniTitular
         textNumeroDocumentoTitular.setText(lista.getDniTitular());
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoTitular, inferirTipoDocumentoPersona(lista.getDniTitular()));
 
         //apellidoNombreTitular
         textApellidosNombreTitular.setText(lista.getApellidoNombreTitular());
         textNumeroDocumentoTitular2.setText(lista.getDniTitular2());
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoTitular2, inferirTipoDocumentoPersona(lista.getDniTitular2()));
         textApellidosNombreTitular2.setText(lista.getApellidoNombreTitular2());
 
         //departamento
@@ -717,6 +739,55 @@ private void seleccionarDistrito(int idDistrito) {
         }
         cboCanalRecepcion.setSelectedIndex(0);
         actualizarEstadoNumeroTramite();
+    }
+
+    private void cargarCombosTipoDocumentoPersona() {
+        cargarComboTipoDocumentoPersona(cboTipoDocumentoRemitente);
+        cargarComboTipoDocumentoPersona(cboTipoDocumentoTitular);
+        cargarComboTipoDocumentoPersona(cboTipoDocumentoTitular2);
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoRemitente, "NA");
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoTitular, "DNI");
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoTitular2, "NA");
+    }
+
+    private void cargarComboTipoDocumentoPersona(JComboBox<CatalogoItem> combo) {
+        combo.removeAllItems();
+        List<CatalogoItem> lista = catalogoItemService.listarCatalogoItem(ID_CATALOGO_TIPO_DOCUMENTO_PERSONA);
+        boolean tieneNa = false;
+        for (CatalogoItem catalogoitem : lista) {
+            combo.addItem(catalogoitem);
+            if ("NA".equals(normalizarDescripcion(catalogoitem))) {
+                tieneNa = true;
+            }
+        }
+        if (!tieneNa) {
+            combo.addItem(new CatalogoItem(0, ID_CATALOGO_TIPO_DOCUMENTO_PERSONA, "NA", 1));
+        }
+    }
+
+    private void seleccionarTipoDocumentoPersona(JComboBox<CatalogoItem> combo, String descripcion) {
+        String buscado = descripcion == null ? "" : descripcion.trim().toUpperCase();
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            if (buscado.equals(normalizarDescripcion(combo.getItemAt(i)))) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+        combo.setSelectedIndex(combo.getItemCount() > 0 ? 0 : -1);
+    }
+
+    private String inferirTipoDocumentoPersona(String numeroDocumento) {
+        String valor = numeroDocumento == null ? "" : numeroDocumento.trim();
+        if (valor.isEmpty()) {
+            return "NA";
+        }
+        if (valor.matches("\\d{8}")) {
+            return "DNI";
+        }
+        if (valor.matches("\\d{11}")) {
+            return "RUC";
+        }
+        return "PASAPORTE";
     }
 
     private void seleccionarCanalRecepcion(String canalRecepcion) {
@@ -945,6 +1016,8 @@ private void seleccionarDistrito(int idDistrito) {
 
         // Resetear JComboBoxes al primer elemento
         if (cboCanalRecepcion.getItemCount() > 0) cboCanalRecepcion.setSelectedIndex(-1);
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoRemitente, "NA");
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoTitular, "DNI");
         if (cboGrupoFamiliar.getItemCount() > 0) cboGrupoFamiliar.setSelectedIndex(-1);
         if (cboGradoParentesco.getItemCount() > 0) cboGradoParentesco.setSelectedIndex(-1);
         if (cboDireccionDomiciliaria.getItemCount() > 0) cboDireccionDomiciliaria.setSelectedIndex(-1);
@@ -977,7 +1050,9 @@ private void seleccionarDistrito(int idDistrito) {
         }
 
         String dniRemitente = textDniRemitente.getText().trim();
-        if (!dniRemitente.isEmpty() && !dniRemitente.matches("\\d{8}")) {
+        if (esTipoDocumentoPersona(cboTipoDocumentoRemitente, "DNI")
+                && !dniRemitente.isEmpty()
+                && !dniRemitente.matches("\\d{8}")) {
             FormValidationUI.markInvalid(textDniRemitente, "El DNI del remitente debe tener 8 dígitos.");
             JOptionPane.showMessageDialog(this, "El DNI del remitente debe tener 8 dígitos.");
             textDniRemitente.requestFocus();
@@ -1345,6 +1420,7 @@ private void seleccionarDistrito(int idDistrito) {
 
     private void aplicarReglasTipoSolicitud() {
         if (esParte()) {
+            cboTipoDocumentoRemitente.setEnabled(!modoConsulta);
             textDniRemitente.setEnabled(true);
             textApellidosNombreRemitente.setEnabled(true);
             cboUnidadOrganica.setEnabled(false);
@@ -1353,6 +1429,7 @@ private void seleccionarDistrito(int idDistrito) {
         }
 
         if (esOficio()) {
+            cboTipoDocumentoRemitente.setEnabled(false);
             textDniRemitente.setEnabled(false);
             textApellidosNombreRemitente.setEnabled(false);
             cboUnidadOrganica.setEnabled(true);
@@ -1360,6 +1437,7 @@ private void seleccionarDistrito(int idDistrito) {
             return;
         }
 
+        cboTipoDocumentoRemitente.setEnabled(false);
         textDniRemitente.setEnabled(false);
         textApellidosNombreRemitente.setEnabled(false);
         cboUnidadOrganica.setEnabled(false);
@@ -1374,14 +1452,23 @@ private void seleccionarDistrito(int idDistrito) {
         return "OFICIO".equals(descripcionTipoSolicitudSeleccionada());
     }
 
+    private boolean esTipoDocumentoPersona(JComboBox<CatalogoItem> combo, String descripcion) {
+        return descripcion != null
+                && descripcion.trim().equalsIgnoreCase(normalizarDescripcion(combo.getSelectedItem()));
+    }
+
     private void aplicarReglasTipoActa()
     {
         boolean matrimonio = esMatrimonio();
         boolean habilitar = matrimonio && !modoConsulta;
 
+        cboTipoDocumentoTitular2.setEnabled(habilitar);
         textNumeroDocumentoTitular2.setEnabled(habilitar);
         textApellidosNombreTitular2.setEnabled(habilitar);
 
+        if (panelTipoDocumentoTitular2 != null) {
+            panelTipoDocumentoTitular2.setVisible(matrimonio);
+        }
         if (panelNumeroDocumentoTitular2 != null) {
             panelNumeroDocumentoTitular2.setVisible(matrimonio);
         }
@@ -1399,6 +1486,7 @@ private void seleccionarDistrito(int idDistrito) {
 
     private void limpiarTitular2()
     {
+        seleccionarTipoDocumentoPersona(cboTipoDocumentoTitular2, "NA");
         textNumeroDocumentoTitular2.setText("");
         textApellidosNombreTitular2.setText("");
         FormValidationUI.clear(textNumeroDocumentoTitular2);
@@ -2183,6 +2271,7 @@ private void seleccionarDistrito(int idDistrito) {
     private void cboTipoSolicitudActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboTipoSolicitudActionPerformed
         if (modoConsulta) {
             cboTipoSolicitud.setEnabled(false);
+            cboTipoDocumentoRemitente.setEnabled(false);
             textDniRemitente.setEnabled(false);
             textApellidosNombreRemitente.setEnabled(false);
             cboUnidadOrganica.setEnabled(false);
