@@ -692,11 +692,7 @@ public class ExpedienteRepository
         Expediente principal = buscarDuplicadoActivoParaNumeroExpediente(conn, expediente);
         String numeroExpediente;
         if (principal != null && principal.getIdExpediente() > 0) {
-            numeroExpediente = textoSeguro(principal.getNumExpediente()).trim();
-            if (numeroExpediente.isEmpty()) {
-                numeroExpediente = generarNumeroExpediente(conn);
-                actualizarNumeroExpediente(conn, principal.getIdExpediente(), numeroExpediente);
-            }
+            numeroExpediente = null;
         } else {
             numeroExpediente = generarNumeroExpediente(conn);
         }

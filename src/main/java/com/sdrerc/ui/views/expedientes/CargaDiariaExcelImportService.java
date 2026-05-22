@@ -98,8 +98,7 @@ public class CargaDiariaExcelImportService {
                 expedienteService.agregarExpediente(expediente);
                 fila.setResultadoCarga(
                         CargaDiariaExcelRow.CARGA_REGISTRADO,
-                        "Expediente registrado correctamente. Número de expediente: "
-                                + textoSeguro(expediente.getNumExpediente()));
+                        mensajeRegistroImportado(expediente));
                 registrados++;
             } catch (Exception ex) {
                 fila.setResultadoCarga(
@@ -152,6 +151,14 @@ public class CargaDiariaExcelImportService {
             return "Error no especificado.";
         }
         return ex.getMessage().trim();
+    }
+
+    private String mensajeRegistroImportado(Expediente expediente) {
+        String numeroExpediente = textoSeguro(expediente.getNumExpediente());
+        if (numeroExpediente.isEmpty()) {
+            return "Expediente registrado correctamente. Solicitud duplicada sin número de expediente.";
+        }
+        return "Expediente registrado correctamente. Número de expediente: " + numeroExpediente;
     }
 
     private Date parseFechaTexto(String fechaSolicitud) {
@@ -452,7 +459,7 @@ public class CargaDiariaExcelImportService {
         }
         if (!clavesLeidas.add(clave)) {
             item.marcarDuplicado(
-                    "Duplicado dentro del archivo: se importará y reutilizará el número de expediente que corresponda.",
+                    "Duplicado dentro del archivo: se importará sin número de expediente.",
                     null);
             return;
         }
@@ -463,7 +470,7 @@ public class CargaDiariaExcelImportService {
                 item.esMatrimonio() ? item.getTitular2() : null);
         if (duplicadoActivo != null && duplicadoActivo.getIdExpediente() > 0) {
             item.marcarDuplicado(
-                    "Duplicado activo: se reutilizará el número de expediente del expediente principal.",
+                    "Duplicado activo: se importará sin número de expediente.",
                     duplicadoActivo);
             return;
         }
