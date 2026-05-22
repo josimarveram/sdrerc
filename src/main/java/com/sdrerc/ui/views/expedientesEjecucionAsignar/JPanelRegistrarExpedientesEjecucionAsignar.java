@@ -23,10 +23,15 @@ import com.sdrerc.domain.model.ExpedienteAnalisAbogadoDetDoc.ExpedienteAnalisisA
 import com.sdrerc.domain.model.ExpedienteAnalisisAbogado.ExpedienteAnalisisAbogadoResponse;
 import com.sdrerc.domain.model.ExpedienteAsignacion;
 import com.sdrerc.domain.model.Provincia;
+import com.sdrerc.ui.common.icon.IconUtils;
 import com.sdrerc.ui.views.asignacion.JDialogTecnico;
 import com.sdrerc.ui.views.asignacion.JPanelFiltroBusqueda;
 import com.sdrerc.util.TextFieldRules;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -36,13 +41,18 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Date;
 import java.util.List;
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -82,6 +92,76 @@ public class JPanelRegistrarExpedientesEjecucionAsignar extends javax.swing.JPan
         cargarComboParentesco();
         cargarComboDireccionDomiciliaria();
         cargarComboUnidadOrganica();
+        configurarFormularioPremium();
+    }
+
+    private void configurarFormularioPremium()
+    {
+        Color fondo = new Color(245, 247, 250);
+        setBackground(fondo);
+        jPanelPrincipal.setBackground(fondo);
+        jPanelPrincipal.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        estilizarPanelSeccion(jPanelDatosSolicitud, "Datos de la asignación de ejecución");
+        estilizarPanelSeccion(jPanelDatosSolicitud2, "Datos de la solicitud");
+        estilizarPanelSeccion(jPanelParaNotificacion, "Datos para notificación");
+        estilizarBotonSecundario(btnRegresar, "Regresar", "clear.svg");
+        estilizarBotonPrimario(btnGuardarAsignacionEjecucion, "Guardar asignación", "active.svg");
+        estilizarBotonSecundario(jButton2, "Seleccionar abogado", "users.svg");
+        txtIdTecnico.setVisible(false);
+        estilizarControles(
+                spFechaAsignacion, cboTipoActaAsignacion, cboTipoProcedimientoRegistralAsignacion,
+                textNumeroResolucionAsignacion, txtNombreTecnico, spFechaSolicitud, spFechaRecepcion,
+                textNumeroTramiteDocumento, cboTipoSolicitud, cboTipoDocumento, textNumeroDocumento,
+                cboTipoActa, textNumeroActa, cboGrupoFamiliar, cboGradoParentesco,
+                cboTipoProcedimientoRegistral, textNumeroDocumentoTitular, textApellidosNombreTitular,
+                cboUnidadOrganica, textDniRemitente, textApellidosNombreRemitente,
+                textCorreoElectronico, textCelular, cboDireccionDomiciliaria, textDomicilio);
+    }
+
+    private void estilizarPanelSeccion(JPanel panel, String titulo)
+    {
+        panel.setBackground(Color.WHITE);
+        TitledBorder border = BorderFactory.createTitledBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(218, 224, 231)),
+                        BorderFactory.createEmptyBorder(8, 10, 10, 10)),
+                titulo);
+        border.setTitleFont(new Font("Arial", Font.BOLD, 14));
+        border.setTitleColor(new Color(25, 42, 62));
+        panel.setBorder(border);
+    }
+
+    private void estilizarBotonPrimario(JButton button, String text, String icon)
+    {
+        button.setText(text);
+        button.setPreferredSize(new Dimension(170, 38));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setFocusPainted(false);
+        button.setBackground(new Color(37, 99, 235));
+        button.setForeground(Color.WHITE);
+        IconUtils.applyIcon(button, icon);
+    }
+
+    private void estilizarBotonSecundario(JButton button, String text, String icon)
+    {
+        button.setText(text);
+        button.setPreferredSize(new Dimension(170, 38));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setFocusPainted(false);
+        button.setBackground(new Color(241, 245, 249));
+        button.setForeground(new Color(25, 42, 62));
+        IconUtils.applyIcon(button, icon);
+    }
+
+    private void estilizarControles(JComponent... componentes)
+    {
+        for (JComponent componente : componentes) {
+            componente.setFont(new Font("Arial", Font.PLAIN, 13));
+            componente.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(203, 213, 225)),
+                    BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+            componente.setBackground(Color.WHITE);
+        }
     }
     
     public void cargarExpediente(String idExpediente) throws Exception 
