@@ -78,5 +78,9 @@ public class ExpedienteService
     public boolean soportaSegundoTitular() throws SQLException {
         return expedienteRepository_.soportaSegundoTitular();
     }
-    
+
+    public int asociarNumeroExpediente(List<Integer> idsExpediente, String numeroExpediente, int idExpedientePrincipal) throws SQLException {
+        return expedienteRepository_.asociarNumeroExpediente(idsExpediente, numeroExpediente, idExpedientePrincipal);
+    }
+      
 }

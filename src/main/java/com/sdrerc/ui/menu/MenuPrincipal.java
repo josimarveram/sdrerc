@@ -60,6 +60,10 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private JButton itemMenuActivo;
     private JLabel lblUsuarioSesion;
     private JButton btnSalirSesion;
+    private JButton btnOcultarMenuLateral;
+    private JButton btnMostrarMenuLateral;
+    private Dimension dimensionMenuLateral = new Dimension(270, 640);
+    private boolean menuLateralOculto;
 
     /**
      * Creates new form MenuPrincipal
@@ -264,15 +268,26 @@ public class MenuPrincipal extends javax.swing.JFrame {
         contenido.setBackground(MENU_BG);
         contenido.setBorder(BorderFactory.createEmptyBorder(14, 0, 14, 0));
 
+        JPanel panelTitulo = new JPanel(new BorderLayout(8, 0));
+        panelTitulo.setOpaque(false);
+        panelTitulo.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 10));
+        panelTitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panelTitulo.setMinimumSize(new Dimension(0, 44));
+        panelTitulo.setPreferredSize(new Dimension(270, 44));
+        panelTitulo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+
         JLabel titulo = new JLabel("SDRERC");
         titulo.setAlignmentX(Component.CENTER_ALIGNMENT);
         titulo.setForeground(MENU_TEXT);
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        titulo.setHorizontalAlignment(SwingConstants.CENTER);
-        titulo.setMinimumSize(new Dimension(0, 44));
-        titulo.setPreferredSize(new Dimension(270, 44));
-        titulo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        contenido.add(titulo);
+        titulo.setHorizontalAlignment(SwingConstants.LEFT);
+
+        btnOcultarMenuLateral = crearBotonMenuLateral("Ocultar menú", "panel-left-close.svg");
+        btnOcultarMenuLateral.addActionListener(e -> alternarMenuLateral());
+
+        panelTitulo.add(titulo, BorderLayout.CENTER);
+        panelTitulo.add(btnOcultarMenuLateral, BorderLayout.EAST);
+        contenido.add(panelTitulo);
         contenido.add(Box.createVerticalStrut(10));
 
         JButton itemInicio = crearItemMenu("Inicio", "home.svg", this::abrirHome);
@@ -472,8 +487,12 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private void configurarHeaderSesion()
     {
         jPanelHeader.removeAll();
-        jPanelHeader.setLayout(new BorderLayout(18, 0));
-        jPanelHeader.setBorder(BorderFactory.createEmptyBorder(0, 30, 0, 24));
+        jPanelHeader.setLayout(new BorderLayout(14, 0));
+        jPanelHeader.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 24));
+
+        btnMostrarMenuLateral = crearBotonMostrarMenuLateral();
+        btnMostrarMenuLateral.setVisible(menuLateralOculto);
+        jPanelHeader.add(btnMostrarMenuLateral, BorderLayout.WEST);
 
         lbl_TituloFormulario.setHorizontalAlignment(SwingConstants.LEFT);
         jPanelHeader.add(lbl_TituloFormulario, BorderLayout.CENTER);
@@ -512,6 +531,93 @@ public class MenuPrincipal extends javax.swing.JFrame {
         jPanelHeader.add(panelSesion, BorderLayout.EAST);
         jPanelHeader.revalidate();
         jPanelHeader.repaint();
+    }
+
+    private JButton crearBotonMenuLateral(String tooltip, String icono)
+    {
+        JButton button = IconUtils.createIconButton(tooltip, icono);
+        button.setToolTipText(tooltip);
+        button.setFocusable(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(34, 34));
+        button.setMinimumSize(new Dimension(34, 34));
+        button.setMaximumSize(new Dimension(34, 34));
+        button.setBackground(new Color(255, 255, 255, 34));
+        button.setForeground(Color.WHITE);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(255, 255, 255, 70)),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        ));
+        button.setBorderPainted(true);
+        return button;
+    }
+
+    private JButton crearBotonMostrarMenuLateral()
+    {
+        JButton button = IconUtils.createIconButton("Mostrar menú", "panel-left-open.svg");
+        button.setToolTipText("Mostrar menú");
+        button.setFocusable(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(38, 38));
+        button.setMinimumSize(new Dimension(38, 38));
+        button.setMaximumSize(new Dimension(38, 38));
+        button.setBackground(new Color(239, 246, 255));
+        button.setForeground(new Color(25, 120, 210));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(191, 219, 254)),
+                BorderFactory.createEmptyBorder(7, 7, 7, 7)
+        ));
+        button.setBorderPainted(true);
+        button.addActionListener(e -> alternarMenuLateral());
+        return button;
+    }
+
+    private void alternarMenuLateral()
+    {
+        if (menuLateralOculto) {
+            mostrarMenuLateral();
+        } else {
+            ocultarMenuLateral();
+        }
+    }
+
+    private void ocultarMenuLateral()
+    {
+        int anchoActual = jpanelMenu.getWidth() > 0 ? jpanelMenu.getWidth() : jpanelMenu.getPreferredSize().width;
+        int altoActual = jpanelMenu.getHeight() > 0 ? jpanelMenu.getHeight() : jpanelMenu.getPreferredSize().height;
+        if (anchoActual > 0) {
+            dimensionMenuLateral = new Dimension(anchoActual, Math.max(altoActual, 640));
+        }
+        menuLateralOculto = true;
+        jpanelMenu.setVisible(false);
+        if (btnMostrarMenuLateral != null) {
+            btnMostrarMenuLateral.setVisible(true);
+        }
+        actualizarLayoutPrincipal();
+    }
+
+    private void mostrarMenuLateral()
+    {
+        menuLateralOculto = false;
+        jpanelMenu.setPreferredSize(dimensionMenuLateral);
+        jpanelMenu.setMinimumSize(new Dimension(0, 0));
+        jpanelMenu.setVisible(true);
+        if (btnMostrarMenuLateral != null) {
+            btnMostrarMenuLateral.setVisible(false);
+        }
+        actualizarLayoutPrincipal();
+    }
+
+    private void actualizarLayoutPrincipal()
+    {
+        jpanelMenu.revalidate();
+        jpanelMenu.repaint();
+        jPanelHeader.revalidate();
+        jPanelHeader.repaint();
+        background.revalidate();
+        background.repaint();
+        getContentPane().revalidate();
+        getContentPane().repaint();
     }
 
     private String obtenerNombreUsuarioSesion()

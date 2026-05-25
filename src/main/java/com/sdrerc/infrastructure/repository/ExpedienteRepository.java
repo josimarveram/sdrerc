@@ -8,6 +8,7 @@ import com.sdrerc.domain.model.Expediente.Expediente;
 import com.sdrerc.domain.model.Expediente.ExpedienteResponse;
 import com.sdrerc.domain.model.User;
 import com.sdrerc.infrastructure.database.OracleConnection;
+import com.sdrerc.shared.constants.FlujoExpedienteConstants.EstadoExpediente;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -764,6 +765,132 @@ public class ExpedienteRepository
             ps.setInt(2, idExpediente);
             ps.executeUpdate();
         }
+    }
+
+    public int asociarNumeroExpediente(List<Integer> idsExpediente, String numeroExpediente, int idExpedientePrincipal) throws SQLException {
+        if (idsExpediente == null || idsExpediente.isEmpty()) {
+            return 0;
+        }
+        String updateExpedienteSql = "UPDATE EXPEDIENTE "
+                + "SET NUM_EXPEDIENTE = ?, ESTADO = ?, FECHA_MODIFICA = SYSDATE "
+                + "WHERE ID_EXPEDIENTE = ? "
+                + "AND (NUM_EXPEDIENTE IS NULL OR TRIM(NUM_EXPEDIENTE) IS NULL)";
+        int actualizados = 0;
+        try (Connection conn = OracleConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                AsignacionActiva asignacionPrincipal = obtenerAsignacionActiva(conn, idExpedientePrincipal);
+                if (asignacionPrincipal == null || asignacionPrincipal.idTecnico <= 0) {
+                    throw new SQLException("La solicitud principal no tiene abogado asignado.");
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(updateExpedienteSql)) {
+                    for (Integer idExpediente : idsExpediente) {
+                        if (idExpediente == null || idExpediente <= 0) {
+                            continue;
+                        }
+                        ps.setString(1, numeroExpediente);
+                        ps.setInt(2, EstadoExpediente.EXPEDIENTE_ASIGNADO);
+                        ps.setInt(3, idExpediente);
+                        int actualizado = ps.executeUpdate();
+                        if (actualizado > 0) {
+                            asegurarAsignacionActiva(conn, idExpediente, asignacionPrincipal);
+                            actualizados += actualizado;
+                        }
+                    }
+                }
+                conn.commit();
+                return actualizados;
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            }
+        }
+    }
+
+    private AsignacionActiva obtenerAsignacionActiva(Connection conn, int idExpediente) throws SQLException {
+        String sql = "SELECT ID_TECNICO, HOJA_ENVIO_ASIGNACION, ID_TIPO_PERSONAL_ASIGNACION, TIPO_PERSONAL_ASIGNACION "
+                + "FROM EXPEDIENTE_ASIGNACION "
+                + "WHERE ID_EXPEDIENTE = ? AND ACTIVE = 1 AND ETAPA_FLUJO IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    AsignacionActiva asignacion = new AsignacionActiva();
+                    asignacion.idTecnico = rs.getInt("ID_TECNICO");
+                    asignacion.hojaEnvioAsignacion = rs.getString("HOJA_ENVIO_ASIGNACION");
+                    Object idTipoPersonal = rs.getObject("ID_TIPO_PERSONAL_ASIGNACION");
+                    asignacion.idTipoPersonalAsignacion = idTipoPersonal == null ? null : ((Number) idTipoPersonal).intValue();
+                    asignacion.tipoPersonalAsignacion = rs.getString("TIPO_PERSONAL_ASIGNACION");
+                    return asignacion;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void asegurarAsignacionActiva(Connection conn, int idExpediente, AsignacionActiva asignacionPrincipal) throws SQLException {
+        if (existeAsignacionActiva(conn, idExpediente)) {
+            actualizarAsignacionActiva(conn, idExpediente, asignacionPrincipal);
+        } else {
+            insertarAsignacionActiva(conn, idExpediente, asignacionPrincipal);
+        }
+    }
+
+    private boolean existeAsignacionActiva(Connection conn, int idExpediente) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM EXPEDIENTE_ASIGNACION "
+                + "WHERE ID_EXPEDIENTE = ? AND ACTIVE = 1 AND ETAPA_FLUJO IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    private void actualizarAsignacionActiva(Connection conn, int idExpediente, AsignacionActiva asignacionPrincipal) throws SQLException {
+        String sql = "UPDATE EXPEDIENTE_ASIGNACION "
+                + "SET ID_TECNICO = ?, FECHA_ASIGNACION = SYSDATE, HOJA_ENVIO_ASIGNACION = ?, "
+                + "ID_TIPO_PERSONAL_ASIGNACION = ?, TIPO_PERSONAL_ASIGNACION = ? "
+                + "WHERE ID_EXPEDIENTE = ? AND ACTIVE = 1 AND ETAPA_FLUJO IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, asignacionPrincipal.idTecnico);
+            ps.setString(2, asignacionPrincipal.hojaEnvioAsignacion);
+            if (asignacionPrincipal.idTipoPersonalAsignacion == null) {
+                ps.setNull(3, Types.INTEGER);
+            } else {
+                ps.setInt(3, asignacionPrincipal.idTipoPersonalAsignacion);
+            }
+            ps.setString(4, asignacionPrincipal.tipoPersonalAsignacion);
+            ps.setInt(5, idExpediente);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarAsignacionActiva(Connection conn, int idExpediente, AsignacionActiva asignacionPrincipal) throws SQLException {
+        String sql = "INSERT INTO EXPEDIENTE_ASIGNACION "
+                + "(ID_EXPEDIENTE, ID_TECNICO, FECHA_ASIGNACION, HOJA_ENVIO_ASIGNACION, "
+                + "ID_TIPO_PERSONAL_ASIGNACION, TIPO_PERSONAL_ASIGNACION) "
+                + "VALUES (?, ?, SYSDATE, ?, ?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idExpediente);
+            ps.setInt(2, asignacionPrincipal.idTecnico);
+            ps.setString(3, asignacionPrincipal.hojaEnvioAsignacion);
+            if (asignacionPrincipal.idTipoPersonalAsignacion == null) {
+                ps.setNull(4, Types.INTEGER);
+            } else {
+                ps.setInt(4, asignacionPrincipal.idTipoPersonalAsignacion);
+            }
+            ps.setString(5, asignacionPrincipal.tipoPersonalAsignacion);
+            ps.executeUpdate();
+        }
+    }
+
+    private static class AsignacionActiva {
+        private int idTecnico;
+        private String hojaEnvioAsignacion;
+        private Integer idTipoPersonalAsignacion;
+        private String tipoPersonalAsignacion;
     }
 
     private String generarNumeroExpediente(Connection conn) throws SQLException {
