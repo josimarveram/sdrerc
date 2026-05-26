@@ -42,6 +42,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
     private final ExpedientePorNotificarService expedientePorNotificarService;
     private final Map<Integer, String> estadosPorId;
     private final Map<Integer, String> procedimientosPorId;
+    private final Map<Integer, String> tiposDocumentoPorId;
     private final Map<Integer, String> tiposActaPorId;
     private final SimpleDateFormat formatoFecha;
     private final PlazoAtencionService plazoAtencionService;
@@ -57,6 +58,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
         this.expedientePorNotificarService = new ExpedientePorNotificarService();
         this.estadosPorId = new HashMap<>();
         this.procedimientosPorId = new HashMap<>();
+        this.tiposDocumentoPorId = new HashMap<>();
         this.tiposActaPorId = new HashMap<>();
         this.formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
         this.formatoFecha.setLenient(false);
@@ -126,7 +128,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
     {        
         String[] columnas = {
           "ID expediente", "Días restantes", "Fecha solicitud", "Num. Expediente",
-          "Procedimiento registral", "Acta", "Titular", "Estado"
+          "Proc. Reg", "Tipo Doc.", "Acta", "Titular", "Estado"
         };
         
         DefaultTableModel model = new DefaultTableModel(columnas, 0)
@@ -146,6 +148,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
                     formatearFecha(e.getFechaSolicitud()),
                     obtenerNumeroExpedienteListado(e),
                     obtenerDescripcionCatalogo(procedimientosPorId, e.getTipoProcedimientoRegistral()),
+                    obtenerDescripcionCatalogo(tiposDocumentoPorId, e.getTipoDocumento()),
                     obtenerActa(e),
                     obtenerTitularListado(e),
                     obtenerDescripcionEstado(e.getEstado())
@@ -165,6 +168,7 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
     }
 
     private void cargarCatalogosListado() {
+        cargarMapaCatalogo(2, tiposDocumentoPorId);
         cargarMapaCatalogo(3, procedimientosPorId);
         cargarMapaCatalogo(4, tiposActaPorId);
     }
@@ -217,11 +221,12 @@ public class JPanelListadoExpedientesNotificacionPorTrabajar extends javax.swing
         ocultarColumna(0);
         ajustarColumna(1, 80, 95, 110);
         ajustarColumna(2, 90, 105, 120);
-        ajustarColumna(3, 170, 210, 270);
-        ajustarColumna(4, 180, 230, 320);
-        ajustarColumna(5, 120, 155, 210);
-        ajustarColumna(6, 220, 300, 420);
-        ajustarColumna(7, 115, 140, 175);
+        ajustarColumna(3, 150, 185, 230);
+        ajustarColumna(4, 95, 125, 165);
+        ajustarColumna(5, 95, 125, 165);
+        ajustarColumna(6, 90, 115, 145);
+        ajustarColumna(7, 180, 260, Integer.MAX_VALUE);
+        ajustarColumna(8, 90, 110, 130);
         jTable1.getColumnModel().getColumn(1).setCellRenderer(new PlazoAtencionCellRenderer());
     }
 

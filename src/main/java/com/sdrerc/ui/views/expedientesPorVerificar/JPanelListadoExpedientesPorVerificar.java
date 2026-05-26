@@ -322,8 +322,8 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
     {
         String[] columnas = {
                 "", "ID expediente", "Fecha solicitud", "Canal", "Num. Expediente", "Tipo solicitud",
-                "Procedimiento registral", "Acta", "Titular", "Estado", "Días restantes", "EstadoId",
-                "Tipo documento", "N° documento", "Tipo acta", "N° acta",
+                "Proc. Reg", "Acta", "Titular", "Estado", "Días restantes", "EstadoId",
+                "Tipo Doc.", "N° documento", "Tipo acta", "N° acta",
                 "DNI titular 1", "Titular 1", "DNI titular 2", "Titular 2",
                 "Unidad orgánica", "Correo electrónico", "Celular", "Dirección domiciliaria",
                 "Domicilio", "Departamento", "Provincia", "Distrito",
@@ -1032,14 +1032,15 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         agregarFiltroColumna(panel, "Plazo", filtrosTextoPorColumna.get(COL_DIAS_RESTANTES), 0, 0.70, 70);
         agregarFiltroColumna(panel, "Fecha", filtroFechaSolicitudColumna, 1, 0.82, 96);
         agregarFiltroColumna(panel, "Num. Expediente", filtrosTextoPorColumna.get(COL_REFERENCIA), 2, 1.35, 170);
-        agregarFiltroColumna(panel, "Procedimiento", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 3, 1.25);
-        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 4, 0.95);
-        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 5, 1.75);
-        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 6, 0.90);
+        agregarFiltroColumna(panel, "Proc. Reg", filtrosTextoPorColumna.get(COL_PROCEDIMIENTO_REGISTRAL), 3, 1.05);
+        agregarFiltroColumna(panel, "Tipo Doc.", filtrosTextoPorColumna.get(COL_TIPO_DOCUMENTO), 4, 1.05);
+        agregarFiltroColumna(panel, "Acta", filtrosTextoPorColumna.get(COL_ACTA), 5, 0.95);
+        agregarFiltroColumna(panel, "Titular", filtrosTextoPorColumna.get(COL_TITULAR), 6, 1.75);
+        agregarFiltroColumna(panel, "Estado", filtrosTextoPorColumna.get(COL_ESTADO), 7, 0.90);
 
         JButton btnLimpiarFiltros = crearBotonLimpiarFiltrosPorColumna();
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 7;
+        gbc.gridx = 8;
         gbc.gridy = 1;
         gbc.insets = new Insets(4, 6, 0, 0);
         gbc.fill = GridBagConstraints.NONE;
@@ -1101,6 +1102,7 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         crearFiltroTextoColumna(COL_REFERENCIA, "Filtrar referencia");
         crearFiltroTextoColumna(COL_TIPO_SOLICITUD, "Filtrar tipo de solicitud");
         crearFiltroTextoColumna(COL_PROCEDIMIENTO_REGISTRAL, "Filtrar procedimiento registral");
+        crearFiltroTextoColumna(COL_TIPO_DOCUMENTO, "Filtrar tipo documento");
         crearFiltroTextoColumna(COL_ACTA, "Filtrar acta");
         crearFiltroTextoColumna(COL_TITULAR, "Filtrar titular");
         crearFiltroTextoColumna(COL_ESTADO, "Filtrar estado");
@@ -1384,10 +1386,11 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
             configurarAnchoColumna(COL_ESTADO, 95, 110, 130);
             configurarAnchoColumna(COL_DIAS_RESTANTES, 85, 95, 110);
             configurarAnchoColumna(COL_ESTADO_ID, 0, 0, 0);
-            for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getColumnModel().getColumnCount(); column++) {
+            for (int column = COL_NUMERO_DOCUMENTO; column < jTable1.getColumnModel().getColumnCount(); column++) {
                 configurarAnchoColumna(column, 0, 0, 0);
             }
             moverColumnaDiasRestantesAntesDeFecha();
+            moverColumnaTipoDocumentoDespuesDeProcedimiento();
         }
     }
 
@@ -1400,6 +1403,15 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         }
     }
 
+    private void moverColumnaTipoDocumentoDespuesDeProcedimiento()
+    {
+        int viewTipoDocumento = jTable1.convertColumnIndexToView(COL_TIPO_DOCUMENTO);
+        int viewProcedimiento = jTable1.convertColumnIndexToView(COL_PROCEDIMIENTO_REGISTRAL);
+        if (viewTipoDocumento >= 0 && viewProcedimiento >= 0 && viewTipoDocumento != viewProcedimiento + 1) {
+            int target = viewTipoDocumento < viewProcedimiento ? viewProcedimiento : viewProcedimiento + 1;
+            jTable1.getColumnModel().moveColumn(viewTipoDocumento, target);
+        }
+    }
     private void configurarRendererPlazoAtencion()
     {
         if (jTable1.getColumnModel().getColumnCount() > COL_DIAS_RESTANTES) {
@@ -1422,7 +1434,7 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
         sorter.setComparator(COL_ESTADO_ID, compararEnteros());
         sorter.setSortable(COL_ID, false);
         sorter.setSortable(COL_ESTADO_ID, false);
-        for (int column = COL_TIPO_DOCUMENTO; column < jTable1.getModel().getColumnCount(); column++) {
+        for (int column = COL_NUMERO_DOCUMENTO; column < jTable1.getModel().getColumnCount(); column++) {
             sorter.setSortable(column, false);
         }
         sorter.setSortsOnUpdates(true);
@@ -2063,7 +2075,4 @@ public class JPanelListadoExpedientesPorVerificar extends javax.swing.JPanel imp
     private javax.swing.JTextField txtValorBusqueda;
     // End of variables declaration//GEN-END:variables
 }
-
-
-
 
