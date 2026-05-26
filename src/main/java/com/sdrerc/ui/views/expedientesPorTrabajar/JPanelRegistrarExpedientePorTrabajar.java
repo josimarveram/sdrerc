@@ -112,6 +112,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     private JLabel badgeEstadoActual;
     private JLabel badgeTramiteActual;
     private JLabel badgeTitularActual;
+    private JCheckBox chkEstaIncorporado;
+    private JCheckBox chkRequiereReconstitucion;
+    private JCheckBox chkTieneLegitimidad;
+    private JCheckBox chkCumpleMediosProbatorios;
     private boolean analisisBloqueado;
     
     /**
@@ -152,6 +156,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         cargarTipoObservacion();
         cargarAnalisis();  
         configurarValoresInicialesObservacion();
+        configurarChecksResultadoAnalisis();
         
                 
         registrarEventos();
@@ -428,13 +433,31 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
 
-        agregarCampoTrabajo(grid, 0, 0, 1, "¿Tiene observación?", cboTieneObservacion);
-        agregarCampoTrabajo(grid, 1, 0, 1, "Tipo de observación", cboTipoObservacion);
-        agregarCampoTrabajo(grid, 2, 0, 1, "Resultado", cboAnalisisAbogado);
-        agregarCampoTrabajo(grid, 0, 1, 3, "Descripción de la observación", jScrollPane1);
+        agregarCheckAnalisis(grid, 0, 0, chkEstaIncorporado);
+        agregarCheckAnalisis(grid, 1, 0, chkRequiereReconstitucion);
+        agregarCheckAnalisis(grid, 0, 1, chkTieneLegitimidad);
+        agregarCheckAnalisis(grid, 1, 1, chkCumpleMediosProbatorios);
+        agregarCampoTrabajo(grid, 0, 2, 2, "Resultado", cboAnalisisAbogado);
 
         card.add(grid, BorderLayout.CENTER);
         return card;
+    }
+
+    private void agregarCheckAnalisis(JPanel parent, int x, int y, JCheckBox checkBox) {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        wrapper.add(checkBox, BorderLayout.CENTER);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 10, 10);
+        parent.add(wrapper, gbc);
     }
 
     private JPanel crearCardDocumentosAnalizados() {
@@ -539,6 +562,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         btnGenerarDocumento.setIcon(IconUtils.load("file.svg", 16));
         btnRegresar.setIcon(IconUtils.load("clear.svg", 16));
         btnAgregarTipoAnalisis.setIcon(IconUtils.load("add.svg", 16));
+        estilizarCheckAnalisis(chkEstaIncorporado);
+        estilizarCheckAnalisis(chkRequiereReconstitucion);
+        estilizarCheckAnalisis(chkTieneLegitimidad);
+        estilizarCheckAnalisis(chkCumpleMediosProbatorios);
 
         configurarCamposConsultaSolicitud();
         configurarTooltipsSolicitud();
@@ -841,6 +868,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         cboAnalisisAbogado.setEnabled(!atendidoPorTrabajador);
         cboTipoDocumentoAnalizado.setEnabled(!atendidoPorTrabajador);
         cboTieneObservacion.setEnabled(!atendidoPorTrabajador);
+        habilitarChecksResultadoAnalisis(!atendidoPorTrabajador);
         textDescripcionDocumentoAnalisis.setEditable(!atendidoPorTrabajador);
         jTableDocumentosAnalisis.setEnabled(!atendidoPorTrabajador);
         btnRegresar.setEnabled(true);
@@ -1236,7 +1264,45 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
                 return label;
             }
         });
-    }	
+    }
+
+    private void configurarChecksResultadoAnalisis() {
+        chkEstaIncorporado = crearCheckResultadoAnalisis("Está incorporado");
+        chkRequiereReconstitucion = crearCheckResultadoAnalisis("Requiere reconstitución");
+        chkTieneLegitimidad = crearCheckResultadoAnalisis("Tiene legitimidad");
+        chkCumpleMediosProbatorios = crearCheckResultadoAnalisis("Cumple medios probatorios");
+    }
+
+    private void habilitarChecksResultadoAnalisis(boolean habilitado) {
+        if (chkEstaIncorporado == null) {
+            return;
+        }
+        chkEstaIncorporado.setEnabled(habilitado);
+        chkRequiereReconstitucion.setEnabled(habilitado);
+        chkTieneLegitimidad.setEnabled(habilitado);
+        chkCumpleMediosProbatorios.setEnabled(habilitado);
+    }
+
+    private JCheckBox crearCheckResultadoAnalisis(String texto) {
+        JCheckBox checkBox = new JCheckBox(texto);
+        checkBox.setOpaque(false);
+        checkBox.setFocusPainted(false);
+        checkBox.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        checkBox.setForeground(COLOR_TITULO);
+        checkBox.setToolTipText(texto);
+        return checkBox;
+    }
+
+    private void estilizarCheckAnalisis(JCheckBox checkBox) {
+        if (checkBox == null) {
+            return;
+        }
+        checkBox.setOpaque(false);
+        checkBox.setFocusPainted(false);
+        checkBox.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        checkBox.setForeground(COLOR_TITULO);
+        checkBox.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
 	
     private void configurarColumnas() 
     {
@@ -2184,8 +2250,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     private boolean validarAntesDeRegistrarAnalisis() {
         return validarExpedienteCargado()
                 && validarResultadoAnalisis()
-                && validarDocumentosAnalizados()
-                && validarObservacionSiAplica();
+                && validarDocumentosAnalizados();
     }
 
     private boolean validarExpedienteCargado() {
