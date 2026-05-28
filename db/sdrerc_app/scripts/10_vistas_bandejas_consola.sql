@@ -143,6 +143,23 @@ SELECT * FROM expediente_notificacion WHERE activo = 1;
 CREATE OR REPLACE VIEW vw_expediente_cargos_acuse AS
 SELECT * FROM expediente_cargo_acuse WHERE activo = 1;
 
+CREATE OR REPLACE VIEW vw_expediente_publicacion AS
+SELECT p.id_expediente_publicacion,
+       p.id_expediente,
+       e.numero_expediente,
+       p.id_expediente_notificacion,
+       p.tipo_publicacion,
+       p.estado_publicacion,
+       p.fecha_generacion,
+       p.fecha_publicacion,
+       p.medio_publicacion,
+       p.numero_publicacion,
+       p.observacion,
+       p.activo
+FROM expediente_publicacion p
+JOIN expediente e ON e.id_expediente = p.id_expediente
+WHERE p.activo = 1;
+
 CREATE OR REPLACE VIEW vw_expediente_digital AS
 SELECT * FROM expediente_digital WHERE activo = 1;
 
@@ -151,13 +168,16 @@ SELECT e.id_expediente,
        ft.codigo_accion,
        ft.nombre_accion,
        ft.requiere_comentario,
-       ft.requiere_documento
+       ft.requiere_documento,
+       et_dest.codigo AS etapa_destino_codigo,
+       es_dest.codigo AS estado_destino_codigo
 FROM expediente e
 JOIN flujo f ON f.codigo = 'SDRERC_TO_BE' AND f.activo = 1
 JOIN flujo_transicion ft
   ON ft.id_flujo = f.id_flujo
  AND (ft.id_etapa_origen = e.id_etapa_actual OR ft.id_etapa_origen IS NULL)
  AND (ft.id_estado_origen = e.id_estado_actual OR ft.id_estado_origen IS NULL)
+JOIN etapa_expediente et_dest ON et_dest.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente es_dest ON es_dest.id_estado = ft.id_estado_destino
 WHERE e.activo = 1
   AND ft.activo = 1;
-
