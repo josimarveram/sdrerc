@@ -1,0 +1,8 @@
+|NUMERO_ACTA|TITULAR_1                           |TITULAR_2|CANTIDAD|
+|-----------|------------------------------------|---------|--------|
+|1001349827 |VILLACORTA MENDOZA MANUEL BERNARDINO|         |2       |
+|1004976802 |ALMEYDA HUAMANEIZA LUIS ALBERTO     |         |2       |
+|1004992948 |ACOSTA HUAMANCIZA FREDDY ALEJANDRO  |         |2       |
+|1005006707 |TENORIO CASTRO MARCELINO            |         |2       |
+|1010611578 |DEXTRE LOYOLA ANDRÉS JAVIER         |         |2       |
+|3006471132 |REYES GIL CARLOS RENE               |         |2       |

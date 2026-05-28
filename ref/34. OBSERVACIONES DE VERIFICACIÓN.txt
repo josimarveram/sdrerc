@@ -1,0 +1,3 @@
+|TIENE_OBSERVACION|TIPO_OBSERVACION|CANTIDAD|
+|-----------------|----------------|--------|
+|0                |0               |7       |

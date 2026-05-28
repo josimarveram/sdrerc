@@ -112,7 +112,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     private JLabel badgeEstadoActual;
     private JLabel badgeTramiteActual;
     private JLabel badgeTitularActual;
-    private JCheckBox chkEstaIncorporado;
+    private JComboBox<String> cboEstaIncorporado;
     private JCheckBox chkRequiereReconstitucion;
     private JCheckBox chkTieneLegitimidad;
     private JCheckBox chkCumpleMediosProbatorios;
@@ -433,7 +433,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
 
-        agregarCheckAnalisis(grid, 0, 0, chkEstaIncorporado);
+        agregarCampoTrabajo(grid, 0, 0, 1, "¿Está incorporado?", cboEstaIncorporado);
         agregarCheckAnalisis(grid, 1, 0, chkRequiereReconstitucion);
         agregarCheckAnalisis(grid, 0, 1, chkTieneLegitimidad);
         agregarCheckAnalisis(grid, 1, 1, chkCumpleMediosProbatorios);
@@ -562,10 +562,11 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         btnGenerarDocumento.setIcon(IconUtils.load("file.svg", 16));
         btnRegresar.setIcon(IconUtils.load("clear.svg", 16));
         btnAgregarTipoAnalisis.setIcon(IconUtils.load("add.svg", 16));
-        estilizarCheckAnalisis(chkEstaIncorporado);
         estilizarCheckAnalisis(chkRequiereReconstitucion);
         estilizarCheckAnalisis(chkTieneLegitimidad);
         estilizarCheckAnalisis(chkCumpleMediosProbatorios);
+        cboEstaIncorporado.addActionListener(e -> aplicarReglasIncorporado());
+        aplicarReglasIncorporado();
 
         configurarCamposConsultaSolicitud();
         configurarTooltipsSolicitud();
@@ -868,6 +869,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         cboAnalisisAbogado.setEnabled(!atendidoPorTrabajador);
         cboTipoDocumentoAnalizado.setEnabled(!atendidoPorTrabajador);
         cboTieneObservacion.setEnabled(!atendidoPorTrabajador);
+        cboEstaIncorporado.setEnabled(!atendidoPorTrabajador);
         habilitarChecksResultadoAnalisis(!atendidoPorTrabajador);
         textDescripcionDocumentoAnalisis.setEditable(!atendidoPorTrabajador);
         jTableDocumentosAnalisis.setEnabled(!atendidoPorTrabajador);
@@ -1267,20 +1269,32 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
     }
 
     private void configurarChecksResultadoAnalisis() {
-        chkEstaIncorporado = crearCheckResultadoAnalisis("Está incorporado");
+        cboEstaIncorporado = new JComboBox<>(new String[]{"Si", "No"});
+        cboEstaIncorporado.setSelectedIndex(-1);
+        cboEstaIncorporado.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        cboEstaIncorporado.setToolTipText("Seleccione si está incorporado.");
         chkRequiereReconstitucion = crearCheckResultadoAnalisis("Requiere reconstitución");
         chkTieneLegitimidad = crearCheckResultadoAnalisis("Tiene legitimidad");
         chkCumpleMediosProbatorios = crearCheckResultadoAnalisis("Cumple medios probatorios");
     }
 
     private void habilitarChecksResultadoAnalisis(boolean habilitado) {
-        if (chkEstaIncorporado == null) {
+        if (chkRequiereReconstitucion == null) {
             return;
         }
-        chkEstaIncorporado.setEnabled(habilitado);
-        chkRequiereReconstitucion.setEnabled(habilitado);
-        chkTieneLegitimidad.setEnabled(habilitado);
-        chkCumpleMediosProbatorios.setEnabled(habilitado);
+        boolean incorporado = habilitado && esSeleccionSi(cboEstaIncorporado.getSelectedItem());
+        chkRequiereReconstitucion.setEnabled(incorporado);
+        chkTieneLegitimidad.setEnabled(incorporado);
+        chkCumpleMediosProbatorios.setEnabled(incorporado);
+        if (!incorporado) {
+            chkRequiereReconstitucion.setSelected(false);
+            chkTieneLegitimidad.setSelected(false);
+            chkCumpleMediosProbatorios.setSelected(false);
+        }
+    }
+
+    private void aplicarReglasIncorporado() {
+        habilitarChecksResultadoAnalisis(!analisisBloqueado);
     }
 
     private JCheckBox crearCheckResultadoAnalisis(String texto) {
@@ -2249,6 +2263,7 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
 
     private boolean validarAntesDeRegistrarAnalisis() {
         return validarExpedienteCargado()
+                && validarEstaIncorporado()
                 && validarResultadoAnalisis()
                 && validarDocumentosAnalizados();
     }
@@ -2265,6 +2280,15 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
         if (cboAnalisisAbogado.getSelectedItem() == null) {
             JOptionPane.showMessageDialog(this, "Seleccione el resultado del análisis.", "Validación", JOptionPane.WARNING_MESSAGE);
             cboAnalisisAbogado.requestFocusInWindow();
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validarEstaIncorporado() {
+        if (cboEstaIncorporado.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione si está incorporado.", "Validación", JOptionPane.WARNING_MESSAGE);
+            cboEstaIncorporado.requestFocusInWindow();
             return false;
         }
         return true;
@@ -2348,6 +2372,10 @@ public class JPanelRegistrarExpedientePorTrabajar extends javax.swing.JPanel imp
             oExpedienteAnalisisAbogado.setIdExpediente(idExpedienteOculto);                                    
             oExpedienteAnalisisAbogado.setIdAbogado(1);            
             oExpedienteAnalisisAbogado.setUsuarioRegistro(1);
+            oExpedienteAnalisisAbogado.setEstaIncorporado(esSeleccionSi(cboEstaIncorporado.getSelectedItem()) ? 1 : 0);
+            oExpedienteAnalisisAbogado.setRequiereReconstitucion(chkRequiereReconstitucion.isSelected() ? 1 : 0);
+            oExpedienteAnalisisAbogado.setTieneLegitimidad(chkTieneLegitimidad.isSelected() ? 1 : 0);
+            oExpedienteAnalisisAbogado.setCumpleMediosProbatorios(chkCumpleMediosProbatorios.isSelected() ? 1 : 0);
             
             // Llamar al servicio
             if(idExpedienteOculto == 0)

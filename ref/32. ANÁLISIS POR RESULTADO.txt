@@ -1,0 +1,3 @@
+|ID_ANALISIS|RESULTADO  |CANTIDAD|
+|-----------|-----------|--------|
+|73         |PROCEDENTE |7       |

@@ -1,0 +1,19 @@
+|TABLE_NAME              |CONSTRAINT_NAME        |COLUMN_NAME             |POSITION|
+|------------------------|-----------------------|------------------------|--------|
+|APP_USERS               |UK_APP_USERS_ID_TECNICO|ID_TECNICO              |1       |
+|APP_USER_SUPERVISION    |UK_APP_USER_SUP_ABOGADO|ABOGADO_ID              |1       |
+|APP_USER_SUPERVISION    |UK_APP_USER_SUP_PAIR   |SUPERVISOR_ID           |1       |
+|APP_USER_SUPERVISION    |UK_APP_USER_SUP_PAIR   |ABOGADO_ID              |2       |
+|AQ$_INTERNET_AGENT_PRIVS|UNQ_PAIRS              |AGENT_NAME              |1       |
+|AQ$_INTERNET_AGENT_PRIVS|UNQ_PAIRS              |DB_USERNAME             |2       |
+|AQ$_KEY_SHARD_MAP       |AQ$_KEY_SHARD_MAP_PK   |QUEUE                   |1       |
+|AQ$_KEY_SHARD_MAP       |AQ$_KEY_SHARD_MAP_PK   |KEY                     |2       |
+|AQ$_QUEUES              |AQ$_QUEUES_CHECK       |NAME                    |1       |
+|AQ$_QUEUES              |AQ$_QUEUES_CHECK       |TABLE_OBJNO             |2       |
+|AQ$_SCHEDULES           |AQ$_SCHEDULES_CHECK    |JOBNO                   |1       |
+|CATALOGO                |SYS_C008321            |DESCRIPCION             |1       |
+|DEPARTAMENTO            |UQ_DEPARTAMENTO_CODIGO |CODIGO_DEPARTAMENTO_INEI|1       |
+|DISTRITO                |UQ_DISTRITO_CODIGO     |CODIGO_DISTRITO_INEI    |1       |
+|LOGMNR_SESSION$         |LOGMNR_SESSION_UK1     |SESSION_NAME            |1       |
+|PLAZO_ATENCION_DOCUMENTO|UK_PLAZO_ATENCION_DOC  |ID_TIPO_DOCUMENTO       |1       |
+|PROVINCIA               |UQ_PROVINCIA_CODIGO    |CODIGO_PROVINCIA_INEI   |1       |

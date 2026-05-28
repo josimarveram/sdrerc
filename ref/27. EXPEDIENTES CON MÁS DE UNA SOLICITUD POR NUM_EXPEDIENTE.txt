@@ -1,0 +1,4 @@
+|NUM_EXPEDIENTE        |CANTIDAD|
+|----------------------|--------|
+|SDRERC_EXP_2026_000105|2       |
+|SDRERC_EXP_2026_000106|2       |

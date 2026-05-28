@@ -1,0 +1,8 @@
+|ID_TIPO_DOCUMENTO_ANALIZADO|TIPO_DOCUMENTO_ANALIZADO|CANTIDAD|
+|---------------------------|------------------------|--------|
+|70                         |OFICIO                  |10      |
+|71                         |RESOLUCIONES            |9       |
+|60                         |CARTA EDICTO            |7       |
+|61                         |CARTA FALTA SUSTENTO    |3       |
+|72                         |INFORMES                |1       |
+|64                         |CARTA PRETENSIÓN        |1       |

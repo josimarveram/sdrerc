@@ -29,8 +29,8 @@ public class ExpedienteAnalisisAbogadoRepository
     public boolean InsertarAnalisisAbogado(ExpedienteAnalisisAbogado o) throws SQLException 
     {
         String insertAnalisisAbogadoSql = "INSERT INTO EXPEDIENTE_ANALISIS_ABOGADO " 
-                   + "(ID_EXPEDIENTE,ID_ABOGADO,ID_ANALISIS,FECHA_ATENCION,FECHA_REGISTRO,USUARIO_REGISTRO)"
-                   + "VALUES (?, ?, ?, ?, ?, ?) " 
+                   + "(ID_EXPEDIENTE,ID_ABOGADO,ID_ANALISIS,ESTA_INCORPORADO,REQUIERE_RECONSTITUCION,TIENE_LEGITIMIDAD,CUMPLE_MEDIOS_PROBATORIOS,FECHA_ATENCION,FECHA_REGISTRO,USUARIO_REGISTRO)"
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
 				   + "RETURNING ID_EXPEDIENTE_ANALISIS_ABOGADO INTO ?";
         
         String insertAnalisisAbogadoDetDocSql = "INSERT INTO EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC " 
@@ -52,6 +52,10 @@ public class ExpedienteAnalisisAbogadoRepository
                     "UPDATE EXPEDIENTE_ANALISIS_ABOGADO SET " +
                     " ID_ABOGADO = ?, " +
                     " ID_ANALISIS = ?, " +
+                    " ESTA_INCORPORADO = ?, " +
+                    " REQUIERE_RECONSTITUCION = ?, " +
+                    " TIENE_LEGITIMIDAD = ?, " +
+                    " CUMPLE_MEDIOS_PROBATORIOS = ?, " +
                     " FECHA_ATENCION = ?, " +
                     " FECHA_MODIFICACION = ?, " +
                     " USUARIO_MODIFICACION = ? " +
@@ -113,11 +117,15 @@ public class ExpedienteAnalisisAbogadoRepository
                     psInsert.setInt(1, o.getIdExpediente());
                     psInsert.setInt(2, o.getIdAbogado());
                     psInsert.setInt(3, o.getIdAnalisis());
-                    psInsert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-                    psInsert.setDate(5, new java.sql.Date(System.currentTimeMillis()));
-                    psInsert.setInt(6, o.getUsuarioRegistro());
+                    psInsert.setInt(4, o.getEstaIncorporado());
+                    psInsert.setInt(5, o.getRequiereReconstitucion());
+                    psInsert.setInt(6, o.getTieneLegitimidad());
+                    psInsert.setInt(7, o.getCumpleMediosProbatorios());
+                    psInsert.setDate(8, new java.sql.Date(System.currentTimeMillis()));
+                    psInsert.setDate(9, new java.sql.Date(System.currentTimeMillis()));
+                    psInsert.setInt(10, o.getUsuarioRegistro());
 
-                    psInsert.registerReturnParameter(7, OracleTypes.NUMBER);
+                    psInsert.registerReturnParameter(11, OracleTypes.NUMBER);
                     psInsert.executeUpdate();
 
                     try (ResultSet rs =
@@ -137,10 +145,14 @@ public class ExpedienteAnalisisAbogadoRepository
 
                     psUpdate.setInt(1, o.getIdAbogado());
                     psUpdate.setInt(2, o.getIdAnalisis());
-                    psUpdate.setDate(3, new java.sql.Date(System.currentTimeMillis()));
-                    psUpdate.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-                    psUpdate.setInt(5, o.getUsuarioModificacion());
-                    psUpdate.setInt(6, idAnalisisAbogado);
+                    psUpdate.setInt(3, o.getEstaIncorporado());
+                    psUpdate.setInt(4, o.getRequiereReconstitucion());
+                    psUpdate.setInt(5, o.getTieneLegitimidad());
+                    psUpdate.setInt(6, o.getCumpleMediosProbatorios());
+                    psUpdate.setDate(7, new java.sql.Date(System.currentTimeMillis()));
+                    psUpdate.setDate(8, new java.sql.Date(System.currentTimeMillis()));
+                    psUpdate.setInt(9, o.getUsuarioModificacion());
+                    psUpdate.setInt(10, idAnalisisAbogado);
 
                     psUpdate.executeUpdate();
                 }

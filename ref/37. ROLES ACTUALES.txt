@@ -1,0 +1,12 @@
+|ROLE_ID|ROLE_NAME        |DESCRIPTION                                                                                                             |STATUS|
+|-------|-----------------|------------------------------------------------------------------------------------------------------------------------|------|
+|1      |ADMIN_SISTEMA    |Administrador general del sistema: usuarios, roles, catálogos, parámetros y acceso total.                               |ACTIVE|
+|2      |RECEPCION        |Registra y recibe solicitudes iniciales, completa datos de recepción y consulta registros iniciales.                    |ACTIVE|
+|3      |ASIGNACION       |Asigna solicitudes a abogados o técnicos, revisa carga de trabajo y deriva expedientes según criterios funcionales.     |ACTIVE|
+|4      |ABOGADO          |Acepta expedientes asignados, realiza análisis, genera informes, resoluciones, cartas u oficios y atiende observaciones.|ACTIVE|
+|5      |SUPERVISION      |Verifica análisis, registra observaciones, aprueba documentos, firma o deriva según corresponda.                        |ACTIVE|
+|6      |EJECUCION        |Gestiona la ejecución de resoluciones procedentes y registra resultados de ejecución.                                   |ACTIVE|
+|7      |NOTIFICACION     |Gestiona notificaciones, cartas, resoluciones emitidas y documentos notificables.                                       |ACTIVE|
+|8      |PROCESAMIENTO    |Atiende casos especiales como culminación de línea, validaciones de actas o bandejas internas de procesamiento.         |ACTIVE|
+|9      |JEFATURA_REPORTES|Consulta reportes, estadísticas, carga de trabajo, tiempos, avance de solicitudes y monitoreo general.                  |ACTIVE|
+|10     |SOPORTE_TI       |Soporte técnico del aplicativo, diagnóstico, mantenimiento y apoyo operativo sin responsabilidad funcional directa.     |ACTIVE|

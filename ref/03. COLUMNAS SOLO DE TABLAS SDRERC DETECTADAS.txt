@@ -1,0 +1,193 @@
+|TABLE_NAME                         |COLUMN_ID|COLUMN_NAME                           |DATA_TYPE   |DATA_LENGTH|DATA_PRECISION|DATA_SCALE|NULLABLE|DATA_DEFAULT                         |
+|-----------------------------------|---------|--------------------------------------|------------|-----------|--------------|----------|--------|-------------------------------------|
+|APP_ROLES                          |1        |ROLE_ID                               |NUMBER      |22         |              |          |N       |"\"SYSTEM\".\"ISEQ$$_76635\".nextval"|
+|APP_ROLES                          |2        |ROLE_NAME                             |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|APP_ROLES                          |3        |DESCRIPTION                           |VARCHAR2    |150        |              |          |Y       |[BLOB[]]                             |
+|APP_ROLES                          |4        |STATUS                                |VARCHAR2    |20         |              |          |Y       |"'ACTIVE'
+"                         |
+|APP_USER_ROLES                     |1        |USER_ID                               |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|APP_USER_ROLES                     |2        |ROLE_ID                               |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|APP_USERS                          |1        |USER_ID                               |NUMBER      |22         |              |          |N       |"\"SYSTEM\".\"ISEQ$$_76638\".nextval"|
+|APP_USERS                          |2        |USERNAME                              |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|APP_USERS                          |3        |PASSWORD_HASH                         |VARCHAR2    |200        |              |          |Y       |[BLOB[]]                             |
+|APP_USERS                          |4        |FULL_NAME                             |VARCHAR2    |120        |              |          |Y       |[BLOB[]]                             |
+|APP_USERS                          |5        |STATUS                                |VARCHAR2    |20         |              |          |Y       |"'ACTIVE'"                           |
+|APP_USERS                          |6        |CREATED_AT                            |TIMESTAMP(6)|11         |              |6         |Y       |"SYSTIMESTAMP
+   "                  |
+|APP_USERS                          |7        |ID_TECNICO                            |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|APP_USERS                          |8        |MUST_CHANGE_PASSWORD                  |NUMBER      |22         |1             |0         |N       |"0 "                                 |
+|APP_USERS                          |9        |PASSWORD_UPDATED_AT                   |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|APP_USERS                          |10       |PASSWORD_RESET_AT                     |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|APP_USERS                          |11       |PASSWORD_RESET_BY                     |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|APP_USER_SUPERVISION               |1        |ID_USER_SUPERVISION                   |NUMBER      |22         |              |          |N       |"\"SYSTEM\".\"ISEQ$$_81361\".nextval"|
+|APP_USER_SUPERVISION               |2        |SUPERVISOR_ID                         |NUMBER      |22         |              |          |N       |[BLOB[]]                             |
+|APP_USER_SUPERVISION               |3        |ABOGADO_ID                            |NUMBER      |22         |              |          |N       |[BLOB[]]                             |
+|APP_USER_SUPERVISION               |4        |STATUS                                |VARCHAR2    |20         |              |          |N       |"'ACTIVO' "                          |
+|APP_USER_SUPERVISION               |5        |CREATED_AT                            |TIMESTAMP(6)|11         |              |6         |N       |"SYSTIMESTAMP "                      |
+|APP_USER_SUPERVISION               |6        |CREATED_BY                            |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|APP_USER_SUPERVISION               |7        |UPDATED_AT                            |TIMESTAMP(6)|11         |              |6         |Y       |[BLOB[]]                             |
+|APP_USER_SUPERVISION               |8        |UPDATED_BY                            |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|CATALOGO                           |1        |ID_CATALOGO                           |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|CATALOGO                           |2        |DESCRIPCION                           |VARCHAR2    |200        |              |          |N       |[BLOB[]]                             |
+|CATALOGO                           |3        |ACTIVE                                |NUMBER      |22         |1             |0         |Y       |"1"                                  |
+|CATALOGO                           |4        |FECHA_REGISTRO                        |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|CATALOGO                           |5        |USUARIO_REGISTRO                      |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|CATALOGO                           |6        |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|CATALOGO                           |7        |USUARIO_MODIFICACION                  |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |1        |ID_CATALOGO_ITEM                      |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |2        |ID_CATALOGO                           |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |3        |DESCRIPCION                           |VARCHAR2    |200        |              |          |Y       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |4        |ACTIVE                                |NUMBER      |22         |1             |0         |Y       |"1"                                  |
+|CATALOGO_ITEM                      |5        |FECHA_REGISTRO                        |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|CATALOGO_ITEM                      |6        |USUARIO_REGISTRO                      |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |7        |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|CATALOGO_ITEM                      |8        |USUARIO_MODIFICACION                  |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |9        |MODULO                                |VARCHAR2    |100        |              |          |Y       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |10       |ORDEN                                 |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|CATALOGO_ITEM                      |11       |DESCRIPCION2                          |VARCHAR2    |100        |              |          |Y       |[BLOB[]]                             |
+|DEPARTAMENTO                       |1        |ID_DEPARTAMENTO                       |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|DEPARTAMENTO                       |2        |CODIGO_DEPARTAMENTO_INEI              |VARCHAR2    |10         |              |          |N       |[BLOB[]]                             |
+|DEPARTAMENTO                       |3        |CODIGO_DEPARTAMENTO_RENIEC            |VARCHAR2    |10         |              |          |Y       |[BLOB[]]                             |
+|DEPARTAMENTO                       |4        |DESCRIPCION                           |VARCHAR2    |100        |              |          |N       |[BLOB[]]                             |
+|DEPARTAMENTO                       |5        |ABREVIATURA                           |VARCHAR2    |7          |              |          |Y       |[BLOB[]]                             |
+|DEPARTAMENTO                       |6        |ACTIVE                                |NUMBER      |22         |1             |0         |N       |[BLOB[]]                             |
+|DEPARTAMENTO                       |7        |FECHA_REGISTRO                        |DATE        |7          |              |          |N       |[BLOB[]]                             |
+|DEPARTAMENTO                       |8        |USUARIO_REGISTRO                      |VARCHAR2    |20         |              |          |N       |[BLOB[]]                             |
+|DEPARTAMENTO                       |9        |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|DEPARTAMENTO                       |10       |USUARIO_MODIFICACION                  |VARCHAR2    |20         |              |          |Y       |[BLOB[]]                             |
+|DISTRITO                           |1        |ID_DISTRITO                           |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|DISTRITO                           |2        |ID_DEPARTAMENTO                       |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|DISTRITO                           |3        |ID_PROVINCIA                          |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|DISTRITO                           |4        |CODIGO_DISTRITO_INEI                  |VARCHAR2    |10         |              |          |N       |[BLOB[]]                             |
+|DISTRITO                           |5        |CODIGO_DISTRITO_RENIEC                |VARCHAR2    |10         |              |          |Y       |[BLOB[]]                             |
+|DISTRITO                           |6        |DESCRIPCION                           |VARCHAR2    |100        |              |          |N       |[BLOB[]]                             |
+|DISTRITO                           |7        |ABREVIATURA                           |VARCHAR2    |7          |              |          |Y       |[BLOB[]]                             |
+|DISTRITO                           |8        |ACTIVE                                |NUMBER      |22         |1             |0         |N       |[BLOB[]]                             |
+|DISTRITO                           |9        |FECHA_REGISTRO                        |DATE        |7          |              |          |N       |[BLOB[]]                             |
+|DISTRITO                           |10       |USUARIO_REGISTRO                      |VARCHAR2    |20         |              |          |N       |[BLOB[]]                             |
+|DISTRITO                           |11       |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|DISTRITO                           |12       |USUARIO_MODIFICACION                  |VARCHAR2    |20         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |1        |ID_EXPEDIENTE                         |NUMBER      |22         |              |0         |N       |"\"SYSTEM\".\"ISEQ$$_76654\".nextval"|
+|EXPEDIENTE                         |2        |ES_REGISTRO_SDRERC                    |NUMBER      |22         |1             |0         |N       |[BLOB[]]                             |
+|EXPEDIENTE                         |3        |HOJA_ENVIO_EXPEDIENTE                 |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |4        |NUMERO_TRAMITE_DOCUMENTO              |VARCHAR2    |20         |              |          |N       |[BLOB[]]                             |
+|EXPEDIENTE                         |5        |FECHA_SOLICITUD                       |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |6        |TIPO_DOCUMENTO                        |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |7        |NUMERO_DOCUMENTO                      |VARCHAR2    |100        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |8        |TIPO_ACTA                             |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |9        |NUMERO_ACTA                           |VARCHAR2    |20         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |10       |TIPO_GRUPO_FAMILIAR                   |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |11       |GRADO_PARENTESCO                      |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |12       |TIPO_PROCEDIMIENTO_REGISTRAL          |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |13       |TIPO_SOLICITUD                        |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |14       |DNI_REMITENTE                         |CHAR        |8          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |15       |APELLIDO_NOMBRE_REMITENTE             |VARCHAR2    |500        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |16       |UNIDAD_ORGANICA                       |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |17       |DNI_TITULAR                           |CHAR        |8          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |18       |APELLIDO_NOMBRE_TITULAR               |VARCHAR2    |500        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |19       |DEPARTAMENTO                          |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |20       |PROVINCIA                             |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |21       |DISTRITO                              |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |22       |DIRECCION_DOMICILIARIA                |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |23       |DOMICILIO                             |VARCHAR2    |200        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |24       |CORREO_ELECTRONICO                    |VARCHAR2    |500        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |25       |CELULAR                               |VARCHAR2    |9          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |26       |ESTADO                                |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |27       |ID_USUARIO_CREA                       |NUMBER      |22         |              |0         |N       |[BLOB[]]                             |
+|EXPEDIENTE                         |28       |FECHA_REGISTRA                        |DATE        |7          |              |          |N       |[BLOB[]]                             |
+|EXPEDIENTE                         |29       |ID_USUARIO_MODIFICA                   |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |30       |FECHA_MODIFICA                        |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |31       |CANAL_RECEPCION                       |VARCHAR2    |120        |              |          |N       |[BLOB[]]                             |
+|EXPEDIENTE                         |32       |DNI_TITULAR_2                         |CHAR        |8          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |33       |APELLIDO_NOMBRE_TITULAR_2             |VARCHAR2    |500        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |34       |NUM_EXPEDIENTE                        |VARCHAR2    |100        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |35       |TIPO_DOCUMENTO_REMITENTE              |NUMBER      |22         |38            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |36       |TIPO_DOCUMENTO_TITULAR1               |NUMBER      |22         |38            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE                         |37       |TIPO_DOCUMENTO_TITULAR2               |NUMBER      |22         |38            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |1        |ID_EXPEDIENTE_ANALISIS_ABOGADO        |NUMBER      |22         |              |0         |N       |"\"SYSTEM\".\"ISEQ$$_76657\".nextval"|
+|EXPEDIENTE_ANALISIS_ABOGADO        |2        |ID_EXPEDIENTE                         |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |3        |ID_ABOGADO                            |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |4        |ID_ANALISIS                           |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |5        |DESC_FUNDAMENTO                       |VARCHAR2    |500        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |6        |FECHA_ATENCION                        |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |7        |ACTIVE                                |NUMBER      |22         |1             |0         |Y       |"1"                                  |
+|EXPEDIENTE_ANALISIS_ABOGADO        |8        |FECHA_REGISTRO                        |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |9        |USUARIO_REGISTRO                      |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |10       |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |11       |USUARIO_MODIFICACION                  |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO        |12       |ESTA_INCORPORADO                      |NUMBER      |22         |1             |0         |N       |"0 "                                 |
+|EXPEDIENTE_ANALISIS_ABOGADO        |13       |REQUIERE_RECONSTITUCION               |NUMBER      |22         |1             |0         |N       |"0 "                                 |
+|EXPEDIENTE_ANALISIS_ABOGADO        |14       |TIENE_LEGITIMIDAD                     |NUMBER      |22         |1             |0         |N       |"0 "                                 |
+|EXPEDIENTE_ANALISIS_ABOGADO        |15       |CUMPLE_MEDIOS_PROBATORIOS             |NUMBER      |22         |1             |0         |N       |"0 "                                 |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|1        |ID_EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|NUMBER      |22         |              |0         |N       |"\"SYSTEM\".\"ISEQ$$_76660\".nextval"|
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|2        |ID_EXPEDIENTE_ANALISIS_ABOGADO        |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|3        |ID_TIPO_DOCUMENTO_ANALIZADO           |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|4        |DESC_DOCUMENTO                        |VARCHAR2    |500        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|5        |ACTIVE                                |NUMBER      |22         |1             |0         |Y       |"1"                                  |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|6        |FECHA_REGISTRO                        |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|7        |USUARIO_REGISTRO                      |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|8        |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|9        |USUARIO_MODIFICACION                  |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |1        |ID_EXPEDIENTE_ASIGNACION              |NUMBER      |22         |              |0         |N       |"\"SYSTEM\".\"ISEQ$$_76663\".nextval"|
+|EXPEDIENTE_ASIGNACION              |2        |ID_EXPEDIENTE                         |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |3        |ID_TECNICO                            |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |4        |FECHA_ASIGNACION                      |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |5        |ACEPTA_RECEPCION                      |CHAR        |1          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |6        |FECHA_RECEPCION                       |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |7        |HOJA_ENVIO_ASIGNACION                 |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |8        |ETAPA_FLUJO                           |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |9        |TIPO_PROCEDIMIENTO_REGISTRAL          |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |10       |NUMERO_RESOLUCION                     |VARCHAR2    |20         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |11       |TIPO_ACTA                             |NUMBER      |22         |              |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |12       |ACTIVE                                |NUMBER      |22         |1             |0         |Y       |"1"                                  |
+|EXPEDIENTE_ASIGNACION              |13       |FECHA_REGISTRO                        |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|EXPEDIENTE_ASIGNACION              |14       |USUARIO_REGISTRO                      |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |15       |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|EXPEDIENTE_ASIGNACION              |16       |USUARIO_MODIFICACION                  |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |17       |TIPO_PERSONAL_ASIGNACION              |VARCHAR2    |80         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_ASIGNACION              |18       |ID_TIPO_PERSONAL_ASIGNACION           |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |1        |ID_EXPEDIENTE_OBSERVACION_EJECUCION   |NUMBER      |22         |10            |0         |N       |"\"SYSTEM\".\"ISEQ$$_76666\".nextval"|
+|EXPEDIENTE_OBSERVACION_EJECUCION   |2        |ID_EXPEDIENTE                         |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |3        |ID_ESTADO_EJECUCION                   |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |4        |TIENE_OBSERVACION                     |NUMBER      |22         |1             |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |5        |DESCRIPCION_OBSERVACION               |VARCHAR2    |250        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |6        |FECHA_EJECUCION                       |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|1        |ID_EXPEDIENTE_OBSERVACION_VERIFICACION|NUMBER      |22         |10            |0         |N       |"\"SYSTEM\".\"ISEQ$$_76669\".nextval"|
+|EXPEDIENTE_OBSERVACION_VERIFICACION|2        |ID_EXPEDIENTE                         |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|3        |HOJA_ENVIO                            |VARCHAR2    |100        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|4        |TIENE_OBSERVACION                     |NUMBER      |22         |1             |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|5        |TIPO_OBSERVACION                      |NUMBER      |22         |10            |0         |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|6        |DESCRIPCION_OBSERVACION               |VARCHAR2    |250        |              |          |Y       |[BLOB[]]                             |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|7        |RESOLUCION                            |VARCHAR2    |200        |              |          |Y       |[BLOB[]]                             |
+|PLAZO_ATENCION_DOCUMENTO           |1        |ID_PLAZO_ATENCION                     |NUMBER      |22         |              |          |N       |"\"SYSTEM\".\"ISEQ$$_84143\".nextval"|
+|PLAZO_ATENCION_DOCUMENTO           |2        |ID_TIPO_DOCUMENTO                     |NUMBER      |22         |              |          |N       |[BLOB[]]                             |
+|PLAZO_ATENCION_DOCUMENTO           |3        |DIAS_PLAZO                            |NUMBER      |22         |3             |0         |N       |[BLOB[]]                             |
+|PLAZO_ATENCION_DOCUMENTO           |4        |PORCENTAJE_VERDE_DESDE                |NUMBER      |22         |3             |0         |N       |"51 "                                |
+|PLAZO_ATENCION_DOCUMENTO           |5        |PORCENTAJE_AMARILLO_DESDE             |NUMBER      |22         |3             |0         |N       |"21 "                                |
+|PLAZO_ATENCION_DOCUMENTO           |6        |PORCENTAJE_ROJO_DESDE                 |NUMBER      |22         |3             |0         |N       |"0 "                                 |
+|PLAZO_ATENCION_DOCUMENTO           |7        |ACTIVO                                |NUMBER      |22         |1             |0         |N       |"1 "                                 |
+|PLAZO_ATENCION_DOCUMENTO           |8        |FECHA_REGISTRO                        |DATE        |7          |              |          |N       |"SYSDATE "                           |
+|PLAZO_ATENCION_DOCUMENTO           |9        |ID_USUARIO_REGISTRO                   |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|PROVINCIA                          |1        |ID_PROVINCIA                          |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|PROVINCIA                          |2        |ID_DEPARTAMENTO                       |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|PROVINCIA                          |3        |CODIGO_PROVINCIA_INEI                 |VARCHAR2    |10         |              |          |N       |[BLOB[]]                             |
+|PROVINCIA                          |4        |CODIGO_PROVINCIA_RENIEC               |VARCHAR2    |10         |              |          |Y       |[BLOB[]]                             |
+|PROVINCIA                          |5        |DESCRIPCION                           |VARCHAR2    |100        |              |          |N       |[BLOB[]]                             |
+|PROVINCIA                          |6        |ABREVIATURA                           |VARCHAR2    |7          |              |          |Y       |[BLOB[]]                             |
+|PROVINCIA                          |7        |ACTIVE                                |NUMBER      |22         |1             |0         |N       |[BLOB[]]                             |
+|PROVINCIA                          |8        |FECHA_REGISTRO                        |DATE        |7          |              |          |N       |[BLOB[]]                             |
+|PROVINCIA                          |9        |USUARIO_REGISTRO                      |VARCHAR2    |20         |              |          |N       |[BLOB[]]                             |
+|PROVINCIA                          |10       |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |[BLOB[]]                             |
+|PROVINCIA                          |11       |USUARIO_MODIFICACION                  |VARCHAR2    |20         |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |1        |ID_TECNICO                            |NUMBER      |22         |10            |0         |N       |[BLOB[]]                             |
+|TECNICO                            |2        |ID_TIPO_DOCUMENTO                     |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |3        |NUMERO_DOCUMENTO                      |NUMBER      |22         |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |4        |APELLIDO_PATERNO                      |VARCHAR2    |200        |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |5        |APELLIDO_MATERNO                      |VARCHAR2    |200        |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |6        |NOMBRES                               |VARCHAR2    |200        |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |7        |ACTIVE                                |NUMBER      |22         |1             |0         |Y       |"1"                                  |
+|TECNICO                            |8        |FECHA_REGISTRO                        |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|TECNICO                            |9        |USUARIO_REGISTRO                      |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |10       |FECHA_MODIFICACION                    |DATE        |7          |              |          |Y       |"SYSDATE"                            |
+|TECNICO                            |11       |USUARIO_MODIFICACION                  |VARCHAR2    |50         |              |          |Y       |[BLOB[]]                             |
+|TECNICO                            |12       |ID_TIPO_PERSONAL                      |NUMBER      |22         |38            |0         |Y       |[BLOB[]]                             |

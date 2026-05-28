@@ -1,0 +1,92 @@
+|NAME                      |TYPE    |REFERENCED_NAME             |REFERENCED_TYPE|
+|--------------------------|--------|----------------------------|---------------|
+|AQ$_QUEUES                |TABLE   |AQ$_AGENT                   |TYPE           |
+|AQ$_QUEUES                |TABLE   |AQ$_SUBSCRIBERS             |TYPE           |
+|AQ$_QUEUES                |TABLE   |STANDARD                    |PACKAGE        |
+|CATALOG                   |SYNONYM |CATALOG                     |VIEW           |
+|COL                       |SYNONYM |COL                         |VIEW           |
+|LOGMNR$COL_GG_REC         |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$COL_GG_RECS        |TYPE    |LOGMNR$COL_GG_REC           |TYPE           |
+|LOGMNR$COL_GG_RECS        |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$COL_GG_TABF_PUBLIC |FUNCTION|LOGMNR$COL_GG_RECS          |TYPE           |
+|LOGMNR$COL_GG_TABF_PUBLIC |FUNCTION|LOGMNR_DICT_CACHE           |PACKAGE        |
+|LOGMNR$COL_GG_TABF_PUBLIC |FUNCTION|PLITBLM                     |SYNONYM        |
+|LOGMNR$COL_GG_TABF_PUBLIC |FUNCTION|STANDARD                    |PACKAGE        |
+|LOGMNR$COL_GG_TABF_PUBLIC |FUNCTION|SYS_STUB_FOR_PURITY_ANALYSIS|PACKAGE        |
+|LOGMNR$GSBA_GG_REC        |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$GSBA_GG_RECS       |TYPE    |LOGMNR$GSBA_GG_REC          |TYPE           |
+|LOGMNR$GSBA_GG_RECS       |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$GSBA_GG_TABF_PUBLIC|FUNCTION|LOGMNR_DICT_CACHE           |PACKAGE        |
+|LOGMNR$GSBA_GG_TABF_PUBLIC|FUNCTION|LOGMNR$GSBA_GG_RECS         |TYPE           |
+|LOGMNR$GSBA_GG_TABF_PUBLIC|FUNCTION|PLITBLM                     |SYNONYM        |
+|LOGMNR$GSBA_GG_TABF_PUBLIC|FUNCTION|STANDARD                    |PACKAGE        |
+|LOGMNR$GSBA_GG_TABF_PUBLIC|FUNCTION|SYS_STUB_FOR_PURITY_ANALYSIS|PACKAGE        |
+|LOGMNR$KEY_GG_REC         |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$KEY_GG_RECS        |TYPE    |LOGMNR$KEY_GG_REC           |TYPE           |
+|LOGMNR$KEY_GG_RECS        |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$KEY_GG_TABF_PUBLIC |FUNCTION|LOGMNR_DICT_CACHE           |PACKAGE        |
+|LOGMNR$KEY_GG_TABF_PUBLIC |FUNCTION|LOGMNR$KEY_GG_RECS          |TYPE           |
+|LOGMNR$KEY_GG_TABF_PUBLIC |FUNCTION|PLITBLM                     |SYNONYM        |
+|LOGMNR$KEY_GG_TABF_PUBLIC |FUNCTION|STANDARD                    |PACKAGE        |
+|LOGMNR$KEY_GG_TABF_PUBLIC |FUNCTION|SYS_STUB_FOR_PURITY_ANALYSIS|PACKAGE        |
+|LOGMNR$SEQ_GG_REC         |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$SEQ_GG_RECS        |TYPE    |LOGMNR$SEQ_GG_REC           |TYPE           |
+|LOGMNR$SEQ_GG_RECS        |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$SEQ_GG_TABF_PUBLIC |FUNCTION|LOGMNR_DICT_CACHE           |PACKAGE        |
+|LOGMNR$SEQ_GG_TABF_PUBLIC |FUNCTION|LOGMNR$SEQ_GG_RECS          |TYPE           |
+|LOGMNR$SEQ_GG_TABF_PUBLIC |FUNCTION|PLITBLM                     |SYNONYM        |
+|LOGMNR$SEQ_GG_TABF_PUBLIC |FUNCTION|STANDARD                    |PACKAGE        |
+|LOGMNR$SEQ_GG_TABF_PUBLIC |FUNCTION|SYS_STUB_FOR_PURITY_ANALYSIS|PACKAGE        |
+|LOGMNR$TAB_GG_REC         |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$TAB_GG_RECS        |TYPE    |LOGMNR$TAB_GG_REC           |TYPE           |
+|LOGMNR$TAB_GG_RECS        |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$TAB_GG_TABF_PUBLIC |FUNCTION|LOGMNR_DICT_CACHE           |PACKAGE        |
+|LOGMNR$TAB_GG_TABF_PUBLIC |FUNCTION|LOGMNR$TAB_GG_RECS          |TYPE           |
+|LOGMNR$TAB_GG_TABF_PUBLIC |FUNCTION|PLITBLM                     |SYNONYM        |
+|LOGMNR$TAB_GG_TABF_PUBLIC |FUNCTION|STANDARD                    |PACKAGE        |
+|LOGMNR$TAB_GG_TABF_PUBLIC |FUNCTION|SYS_STUB_FOR_PURITY_ANALYSIS|PACKAGE        |
+|LOGMNR$USER_GG_REC        |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$USER_GG_RECS       |TYPE    |LOGMNR$USER_GG_REC          |TYPE           |
+|LOGMNR$USER_GG_RECS       |TYPE    |STANDARD                    |PACKAGE        |
+|LOGMNR$USER_GG_TABF_PUBLIC|FUNCTION|LOGMNR_DICT_CACHE           |PACKAGE        |
+|LOGMNR$USER_GG_TABF_PUBLIC|FUNCTION|LOGMNR$USER_GG_RECS         |TYPE           |
+|LOGMNR$USER_GG_TABF_PUBLIC|FUNCTION|PLITBLM                     |SYNONYM        |
+|LOGMNR$USER_GG_TABF_PUBLIC|FUNCTION|STANDARD                    |PACKAGE        |
+|LOGMNR$USER_GG_TABF_PUBLIC|FUNCTION|SYS_STUB_FOR_PURITY_ANALYSIS|PACKAGE        |
+|MVIEW_EVALUATIONS         |VIEW    |ALL_USERS                   |SYNONYM        |
+|MVIEW_EVALUATIONS         |VIEW    |MVIEW$_ADV_LOG              |TABLE          |
+|MVIEW_EVALUATIONS         |VIEW    |MVIEW$_ADV_OUTPUT           |TABLE          |
+|MVIEW_EXCEPTIONS          |VIEW    |ALL_USERS                   |SYNONYM        |
+|MVIEW_EXCEPTIONS          |VIEW    |MVIEW$_ADV_EXCEPTIONS       |TABLE          |
+|MVIEW_EXCEPTIONS          |VIEW    |MVIEW$_ADV_LOG              |TABLE          |
+|MVIEW_FILTER              |VIEW    |ALL_USERS                   |SYNONYM        |
+|MVIEW_FILTER              |VIEW    |MVIEW$_ADV_FILTER           |TABLE          |
+|MVIEW_FILTER              |VIEW    |MVIEW$_ADV_LOG              |TABLE          |
+|MVIEW_FILTERINSTANCE      |VIEW    |MVIEW$_ADV_FILTERINSTANCE   |TABLE          |
+|MVIEW_LOG                 |VIEW    |ALL_USERS                   |SYNONYM        |
+|MVIEW_LOG                 |VIEW    |MVIEW$_ADV_LOG              |TABLE          |
+|MVIEW_RECOMMENDATIONS     |VIEW    |ALL_USERS                   |SYNONYM        |
+|MVIEW_RECOMMENDATIONS     |VIEW    |MVIEW$_ADV_LOG              |TABLE          |
+|MVIEW_RECOMMENDATIONS     |VIEW    |MVIEW$_ADV_OUTPUT           |TABLE          |
+|MVIEW_WORKLOAD            |VIEW    |ALL_USERS                   |SYNONYM        |
+|MVIEW_WORKLOAD            |VIEW    |MVIEW$_ADV_LOG              |TABLE          |
+|MVIEW_WORKLOAD            |VIEW    |MVIEW$_ADV_WORKLOAD         |TABLE          |
+|PRODUCT_PRIVS             |VIEW    |SQLPLUS_PRODUCT_PROFILE     |TABLE          |
+|PRODUCT_USER_PROFILE      |SYNONYM |SQLPLUS_PRODUCT_PROFILE     |TABLE          |
+|PUBLICSYN                 |SYNONYM |PUBLICSYN                   |VIEW           |
+|SCHEDULER_JOB_ARGS        |VIEW    |ALL_SCHEDULER_JOB_ARGS      |VIEW           |
+|SCHEDULER_JOB_ARGS        |VIEW    |ANYDATA                     |TYPE           |
+|SCHEDULER_JOB_ARGS        |VIEW    |DBMS_SCHEDULER              |PACKAGE        |
+|SCHEDULER_JOB_ARGS        |VIEW    |STANDARD                    |PACKAGE        |
+|SCHEDULER_JOB_ARGS_TBL    |TABLE   |ANYDATA                     |TYPE           |
+|SCHEDULER_JOB_ARGS_TBL    |TABLE   |STANDARD                    |PACKAGE        |
+|SCHEDULER_PROGRAM_ARGS    |VIEW    |ALL_SCHEDULER_PROGRAM_ARGS  |VIEW           |
+|SCHEDULER_PROGRAM_ARGS    |VIEW    |ANYDATA                     |TYPE           |
+|SCHEDULER_PROGRAM_ARGS    |VIEW    |DBMS_SCHEDULER              |PACKAGE        |
+|SCHEDULER_PROGRAM_ARGS    |VIEW    |STANDARD                    |PACKAGE        |
+|SCHEDULER_PROGRAM_ARGS_TBL|TABLE   |ANYDATA                     |TYPE           |
+|SCHEDULER_PROGRAM_ARGS_TBL|TABLE   |STANDARD                    |PACKAGE        |
+|SYSCATALOG                |SYNONYM |SYSCATALOG                  |VIEW           |
+|SYSFILES                  |SYNONYM |SYSFILES                    |VIEW           |
+|TAB                       |SYNONYM |TAB                         |VIEW           |
+|TABQUOTAS                 |SYNONYM |TABQUOTAS                   |VIEW           |

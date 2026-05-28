@@ -1,0 +1,19 @@
+|TABLA                              |CANTIDAD|
+|-----------------------------------|--------|
+|EXPEDIENTE                         |183     |
+|EXPEDIENTE_ASIGNACION              |26      |
+|EXPEDIENTE_ANALISIS_ABOGADO        |7       |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|31      |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|7       |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |3       |
+|CATALOGO                           |17      |
+|CATALOGO_ITEM                      |100     |
+|PLAZO_ATENCION_DOCUMENTO           |7       |
+|APP_USERS                          |80      |
+|APP_ROLES                          |10      |
+|APP_USER_ROLES                     |84      |
+|APP_USER_SUPERVISION               |70      |
+|TECNICO                            |78      |
+|DEPARTAMENTO                       |25      |
+|PROVINCIA                          |196     |
+|DISTRITO                           |1.890   |

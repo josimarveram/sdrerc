@@ -1,0 +1,82 @@
+|USER_ID|USERNAME      |FULL_NAME                                        |STATUS  |ID_TECNICO|ROLES                                         |
+|-------|--------------|-------------------------------------------------|--------|----------|----------------------------------------------|
+|1      |admin         |Administrador                                    |ACTIVE  |          |ADMIN_SISTEMA, SUPERVISION                    |
+|2      |kalhuayl      |ALHUAY LOZANO KATHYA SIBERIA                     |ACTIVE  |1         |ABOGADO                                       |
+|3      |amachucav     |MACHUCA VARGAS ARIADNA CLAUDIA                   |ACTIVE  |2         |SUPERVISION                                   |
+|4      |jalvaradoc    |ALVARADO CAZORLA JOSE PAUL                       |ACTIVE  |3         |ABOGADO                                       |
+|5      |jsolisg       |SOLIS GOZAR JULIO SANTIAGO                       |ACTIVE  |4         |SUPERVISION                                   |
+|6      |aalvarezg     |ALVAREZ GARCIA ANA CAROLINA                      |ACTIVE  |5         |ABOGADO                                       |
+|7      |earesteguic   |ARESTEGUI CAHUANA ELMER ARNALDO                  |ACTIVE  |6         |ABOGADO                                       |
+|8      |jpintow       |PINTO WEHRLE JUANA CARLOTA                       |ACTIVE  |7         |SUPERVISION                                   |
+|9      |aarmisl       |ARMIS LIMA ABEL JIMMY                            |ACTIVE  |8         |ABOGADO                                       |
+|10     |rastoo        |ASTO OCHOA RICARDO ALBERTO                       |ACTIVE  |9         |ABOGADO                                       |
+|11     |fbardalesm    |BARDALES MALDONADO FLOR MARLLORY                 |ACTIVE  |10        |ABOGADO                                       |
+|12     |dcelis        |CELI SILVA DE RUIZ LIUBEN DEL PILAR              |ACTIVE  |11        |SUPERVISION                                   |
+|13     |mbautistah    |BAUTISTA HUAMANCONDOR MARIELLA MARIA             |ACTIVE  |12        |ABOGADO                                       |
+|14     |gbrunoa       |BRUNO ARIAS GLENYS GABRIELA                      |ACTIVE  |13        |SUPERVISION                                   |
+|15     |jbellmunta    |BELLMUNT ALLAIN JOSE CRISTOBAL                   |ACTIVE  |14        |ABOGADO                                       |
+|16     |pcabanaa      |CABANA AGUILAR PAUL STEVEN                       |ACTIVE  |15        |ABOGADO                                       |
+|17     |ccasimiroj    |CASIMIRO JULCA CARMEN BERTHA                     |ACTIVE  |16        |ABOGADO                                       |
+|18     |acastilloc    |CASTILLO CURAY ANGEL GIANCARLO                   |ACTIVE  |17        |ABOGADO                                       |
+|19     |fzapanac      |ZAPANA CARO FLOR ESTELA                          |ACTIVE  |18        |SUPERVISION                                   |
+|20     |jcespedesb    |CESPEDES BERNUY JUAN CARLOS                      |ACTIVE  |19        |ABOGADO                                       |
+|21     |cchampim      |CHAMPI MENDOZA CARMEN ROSA                       |ACTIVE  |20        |ABOGADO                                       |
+|22     |tcordoval     |CORDOVA LA TORRE SAMIRA                          |ACTIVE  |21        |ABOGADO                                       |
+|23     |ccotrinam     |COTRINA MESIAS CINTHYA KAROLAYN                  |ACTIVE  |22        |ABOGADO                                       |
+|24     |jcurif        |CURI FIGUEREDO JOYCE CYNTHIA                     |ACTIVE  |23        |ABOGADO                                       |
+|25     |cdel          |DE LA CRUZ PIZARRO WILSON                        |ACTIVE  |24        |ABOGADO                                       |
+|26     |vdelc         |DEL CASTILLO VERA LIEZBETH                       |ACTIVE  |25        |ABOGADO                                       |
+|27     |jdiazr        |DIAZ ROJAS JAVIER PASCUAL                        |ACTIVE  |26        |ABOGADO                                       |
+|28     |ndonayrer     |DONAYRE RIVADENEYRA NANCY CARMEN                 |ACTIVE  |27        |ABOGADO                                       |
+|29     |sfernandezf   |FERNANDEZ FERNANDEZ SERGIO ORLANDO               |ACTIVE  |28        |ABOGADO                                       |
+|30     |mfiestasc     |FIESTAS CHERRE MANUEL SIXTO                      |ACTIVE  |29        |ABOGADO                                       |
+|31     |tgilb         |GIL BERNALES TANIA YSABEL                        |ACTIVE  |30        |ABOGADO                                       |
+|32     |sdiosesl      |DIOSES LEQUERNAQUE SHIRLEY YUVICSA               |ACTIVE  |31        |SUPERVISION                                   |
+|33     |cgozarc       |GOZAR CASAS CLAUDIA ARACELI                      |ACTIVE  |32        |ABOGADO                                       |
+|34     |jguardapucllaq|GUARDAPUCLLA QUISPE JAIME                        |ACTIVE  |33        |ABOGADO                                       |
+|35     |phanccon      |HANCCO NAVARRO PERCY LEON                        |ACTIVE  |34        |ABOGADO                                       |
+|36     |licocheam     |ICOCHEA MARTEL LUIS JAIME                        |ACTIVE  |35        |ABOGADO                                       |
+|37     |cilavev       |ILAVE VELASCO CAROLINE BERTA                     |ACTIVE  |36        |ABOGADO                                       |
+|38     |djimenezc     |JIMENEZ CONCHA DE SILVA MAGALY                   |ACTIVE  |37        |ABOGADO                                       |
+|39     |yjimenezm     |JIMENEZ MORVELI YENI                             |ACTIVE  |38        |ABOGADO                                       |
+|40     |clat          |LA TORRE CASTILLO CARLOS ALCIBIADES CELSO        |ACTIVE  |39        |ABOGADO                                       |
+|41     |dleons        |LEON SANCHEZ DYAN YOMARA                         |ACTIVE  |40        |ABOGADO                                       |
+|42     |slinoq        |LINO QUECANO SUSSAN MILAGROS                     |ACTIVE  |41        |ABOGADO                                       |
+|43     |mmaqueh       |MAQUE HANCCO MARIA                               |ACTIVE  |42        |ABOGADO                                       |
+|44     |emartineze    |MARTINEZ EYZAGUIRRE EVELYN YAHAYRA               |ACTIVE  |43        |ABOGADO                                       |
+|45     |rmendozam     |MENDOZA MOLINA ROSARIO                           |ACTIVE  |44        |ABOGADO                                       |
+|46     |cmiliant      |MILIAN TORRES CATHERINE MARISELA                 |ACTIVE  |45        |ABOGADO                                       |
+|47     |kmoralesh     |MORALES HIDALGO KARLA SUSANA                     |ACTIVE  |46        |ABOGADO                                       |
+|48     |jmoralesv     |MORALES VASQUEZ JUAN FRANCO                      |ACTIVE  |47        |ABOGADO                                       |
+|49     |smorochom     |MOROCHO MARCHAN SILVIA JANET                     |ACTIVE  |48        |ABOGADO                                       |
+|50     |smunantel     |MUNANTE LUNA SANDRA VERONICA                     |ACTIVE  |49        |ABOGADO                                       |
+|51     |mpachasa      |PACHAS ALMEYDA MARIA VIVIANA                     |ACTIVE  |50        |ABOGADO                                       |
+|52     |mparedesg     |PAREDES GUTIERREZ MILIPSA OLGA                   |ACTIVE  |51        |ABOGADO                                       |
+|53     |fpomaliaa     |POMALIA ALVARO FIORELLA JULIA                    |ACTIVE  |52        |ABOGADO                                       |
+|54     |fpuchp        |PUCH PARDO FIGUEROA DAVID EDUARDO                |ACTIVE  |53        |ABOGADO                                       |
+|55     |jquerevalup   |QUEREVALU PEREZ JESSICA GLADYS                   |ACTIVE  |54        |ABOGADO                                       |
+|56     |nquispea      |QUISPE ALFARO NILDA                              |ACTIVE  |55        |ABOGADO                                       |
+|57     |rramirezz     |RAMIREZ ZAPATA RUTH DEL SOCORRO                  |ACTIVE  |56        |ABOGADO                                       |
+|58     |cramosc       |RAMOS CAMPOS CARMEN LUISA                        |ACTIVE  |57        |ABOGADO                                       |
+|59     |mreateguib    |REATEGUI BRANDYCH MEGGIE                         |ACTIVE  |58        |ABOGADO                                       |
+|60     |mreateguik    |REATEGUI KOCLENG MAIKOL STIFF                    |ACTIVE  |59        |ABOGADO                                       |
+|61     |iriosi        |RIOS IBANEZ IVAN                                 |ACTIVE  |60        |ABOGADO                                       |
+|62     |grodasv       |RODAS VALLE GABRIELA ANATOLIA                    |ACTIVE  |61        |ABOGADO                                       |
+|63     |hrojasp       |ROJAS PORRAS HUGO ENRIQUE                        |ACTIVE  |62        |ABOGADO                                       |
+|64     |lromanic      |ROMANI CAHUANA LUIS ENRIQUE                      |ACTIVE  |63        |ABOGADO                                       |
+|65     |rromeroo      |ROMERO OROZCO REBECA ANGELICA                    |ACTIVE  |64        |ABOGADO                                       |
+|66     |ssalazarz     |SALAZAR ZUMAETA SANDRA JESSICA                   |ACTIVE  |65        |ABOGADO                                       |
+|67     |rtapiag       |TAPIA GONZALES ROSA YANET                        |ACTIVE  |66        |ABOGADO                                       |
+|68     |ntumialanf    |TUMIALAN FABIAN NANCY                            |ACTIVE  |67        |ABOGADO                                       |
+|69     |gtupacy       |TUPAC YUPANQUI GARAGATTI NATALI INES ALEJANDRA   |ACTIVE  |68        |ABOGADO                                       |
+|70     |cvargasp      |VARGAS POMEZ CARLOS ENRIQUE                      |ACTIVE  |69        |ABOGADO                                       |
+|71     |fvasquezm     |VASQUEZ MORAN FELICIO SAMUEL                     |ACTIVE  |70        |ABOGADO                                       |
+|72     |nvereauf      |VEREAU FLORES NANCY SIDNEY                       |ACTIVE  |71        |ABOGADO                                       |
+|73     |azegarrar     |ZEGARRA RAMOS ABEL AUGUSTO                       |ACTIVE  |72        |ABOGADO                                       |
+|74     |tsalazarq     |SALAZAR QUINONES TERESA DILAINES                 |ACTIVE  |73        |ABOGADO                                       |
+|75     |msalvadors    |SALVADOR SEGURA MARIA ALEXANDRA SUSANA           |ACTIVE  |74        |ABOGADO                                       |
+|76     |mmedinab      |MEDINA BARRANCA MAYRA ALEJANDRA                  |ACTIVE  |75        |ABOGADO                                       |
+|77     |ncapaniz      |CAPANI ZORRILLA NAOMY ISABEL                     |ACTIVE  |76        |ABOGADO                                       |
+|82     |admin2        |1erNombre2 2doNombre2 ApellidoP2 ApellidoMaterno2|INACTIVE|          |ADMIN_SISTEMA                                 |
+|104    |jveram        |VERA MIRANDA JOSIMAR                             |ACTIVE  |79        |ABOGADO, ADMIN_SISTEMA, EJECUCION, SUPERVISION|
+|105    |mlopezr       |LOPEZ RAMOS MARIA                                |ACTIVE  |80        |SUPERVISION                                   |

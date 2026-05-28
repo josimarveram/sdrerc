@@ -25,6 +25,10 @@ public class ExpedienteAnalisisAbogado
     private Date fechaModificacion;
     private int usuarioModificacion;
     private int idEstadoExpediente;
+    private int estaIncorporado;
+    private int requiereReconstitucion;
+    private int tieneLegitimidad;
+    private int cumpleMediosProbatorios;
     private List<ExpedienteAnalisisAbogadoDetDoc> expedienteAnalisisAbogadoDetDoc;
 
     // Constructor con parámetros
@@ -147,6 +151,38 @@ public class ExpedienteAnalisisAbogado
     public void setIdEstadoExpediente(int idEstadoExpediente) {
         this.idEstadoExpediente = idEstadoExpediente;
     }    
+
+    public int getEstaIncorporado() {
+        return estaIncorporado;
+    }
+
+    public void setEstaIncorporado(int estaIncorporado) {
+        this.estaIncorporado = estaIncorporado;
+    }
+
+    public int getRequiereReconstitucion() {
+        return requiereReconstitucion;
+    }
+
+    public void setRequiereReconstitucion(int requiereReconstitucion) {
+        this.requiereReconstitucion = requiereReconstitucion;
+    }
+
+    public int getTieneLegitimidad() {
+        return tieneLegitimidad;
+    }
+
+    public void setTieneLegitimidad(int tieneLegitimidad) {
+        this.tieneLegitimidad = tieneLegitimidad;
+    }
+
+    public int getCumpleMediosProbatorios() {
+        return cumpleMediosProbatorios;
+    }
+
+    public void setCumpleMediosProbatorios(int cumpleMediosProbatorios) {
+        this.cumpleMediosProbatorios = cumpleMediosProbatorios;
+    }
 
     public List<ExpedienteAnalisisAbogadoDetDoc> getExpedienteAnalisisAbogadoDetDoc() {
         if (expedienteAnalisisAbogadoDetDoc == null) {

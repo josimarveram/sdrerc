@@ -1,0 +1,19 @@
+|ID_CATALOGO|CATALOGO                       |ACTIVE|
+|-----------|-------------------------------|------|
+|1          |Tipo de Solicitud              |1     |
+|2          |Tipo de Documento              |1     |
+|3          |Tipo de Procedimiento Registral|1     |
+|4          |Tipo Acta                      |1     |
+|5          |Estado del trámite             |1     |
+|6          |Grupo Familiar                 |1     |
+|7          |Grupo de Parentesco            |1     |
+|8          |Direccion domiciliaria         |1     |
+|9          |Unidad orgánica                |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |1     |
+|11         |TIPO DE ANÁLISIS               |1     |
+|12         |TIENE OBSERVACIÓN              |1     |
+|13         |TIPO OBSERVACIÓN               |1     |
+|14         |TIPO NOTIFICACIÖN              |1     |
+|15         |TIPO CULMINACION EN LINEA      |1     |
+|16         |TIPO PERSONAL                  |1     |
+|17         |Tipo de Documento Identidad    |1     |

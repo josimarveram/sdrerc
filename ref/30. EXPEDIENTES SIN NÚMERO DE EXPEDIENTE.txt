@@ -1,0 +1,6 @@
+|ID_EXPEDIENTE|NUM_EXPEDIENTE|NUMERO_ACTA|APELLIDO_NOMBRE_TITULAR             |ESTADO|FECHA_SOLICITUD        |
+|-------------|--------------|-----------|------------------------------------|------|-----------------------|
+|1.414        |              |1001349827 |VILLACORTA MENDOZA MANUEL BERNARDINO|56    |2026-05-13 00:00:00.000|
+|1.454        |              |1005006707 |TENORIO CASTRO MARCELINO            |56    |2026-05-13 00:00:00.000|
+|1.520        |              |3006471132 |REYES GIL CARLOS RENE               |56    |2026-05-13 00:00:00.000|
+|1.556        |              |1010611578 |DEXTRE LOYOLA ANDRÉS JAVIER         |56    |2026-05-25 00:00:00.000|

@@ -1,0 +1,4 @@
+|ID_ESTADO_EJECUCION|TIENE_OBSERVACION|CANTIDAD|
+|-------------------|-----------------|--------|
+|82                 |0                |2       |
+|83                 |1                |1       |

@@ -1,0 +1,72 @@
+|SUPERVISOR_ID|SUPERVISOR_USUARIO|SUPERVISOR_NOMBRE                  |ABOGADO_ID|ABOGADO_USUARIO|ABOGADO_NOMBRE                                |
+|-------------|------------------|-----------------------------------|----------|---------------|----------------------------------------------|
+|1            |admin             |Administrador                      |104       |jveram         |VERA MIRANDA JOSIMAR                          |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |13        |mbautistah     |BAUTISTA HUAMANCONDOR MARIELLA MARIA          |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |15        |jbellmunta     |BELLMUNT ALLAIN JOSE CRISTOBAL                |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |26        |vdelc          |DEL CASTILLO VERA LIEZBETH                    |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |27        |jdiazr         |DIAZ ROJAS JAVIER PASCUAL                     |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |38        |djimenezc      |JIMENEZ CONCHA DE SILVA MAGALY                |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |45        |rmendozam      |MENDOZA MOLINA ROSARIO                        |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |51        |mpachasa       |PACHAS ALMEYDA MARIA VIVIANA                  |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |52        |mparedesg      |PAREDES GUTIERREZ MILIPSA OLGA                |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |55        |jquerevalup    |QUEREVALU PEREZ JESSICA GLADYS                |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |56        |nquispea       |QUISPE ALFARO NILDA                           |
+|14           |gbrunoa           |BRUNO ARIAS GLENYS GABRIELA        |60        |mreateguik     |REATEGUI KOCLENG MAIKOL STIFF                 |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|11        |fbardalesm     |BARDALES MALDONADO FLOR MARLLORY              |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|16        |pcabanaa       |CABANA AGUILAR PAUL STEVEN                    |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|25        |cdel           |DE LA CRUZ PIZARRO WILSON                     |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|36        |licocheam      |ICOCHEA MARTEL LUIS JAIME                     |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|44        |emartineze     |MARTINEZ EYZAGUIRRE EVELYN YAHAYRA            |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|49        |smorochom      |MOROCHO MARCHAN SILVIA JANET                  |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|54        |fpuchp         |PUCH PARDO FIGUEROA DAVID EDUARDO             |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|63        |hrojasp        |ROJAS PORRAS HUGO ENRIQUE                     |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|64        |lromanic       |ROMANI CAHUANA LUIS ENRIQUE                   |
+|12           |dcelis            |CELI SILVA DE RUIZ LIUBEN DEL PILAR|73        |azegarrar      |ZEGARRA RAMOS ABEL AUGUSTO                    |
+|32           |sdiosesl          |DIOSES LEQUERNAQUE SHIRLEY YUVICSA |31        |tgilb          |GIL BERNALES TANIA YSABEL                     |
+|32           |sdiosesl          |DIOSES LEQUERNAQUE SHIRLEY YUVICSA |69        |gtupacy        |TUPAC YUPANQUI GARAGATTI NATALI INES ALEJANDRA|
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |2         |kalhuayl       |ALHUAY LOZANO KATHYA SIBERIA                  |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |10        |rastoo         |ASTO OCHOA RICARDO ALBERTO                    |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |17        |ccasimiroj     |CASIMIRO JULCA CARMEN BERTHA                  |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |20        |jcespedesb     |CESPEDES BERNUY JUAN CARLOS                   |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |29        |sfernandezf    |FERNANDEZ FERNANDEZ SERGIO ORLANDO            |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |33        |cgozarc        |GOZAR CASAS CLAUDIA ARACELI                   |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |34        |jguardapucllaq |GUARDAPUCLLA QUISPE JAIME                     |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |37        |cilavev        |ILAVE VELASCO CAROLINE BERTA                  |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |53        |fpomaliaa      |POMALIA ALVARO FIORELLA JULIA                 |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |58        |cramosc        |RAMOS CAMPOS CARMEN LUISA                     |
+|3            |amachucav         |MACHUCA VARGAS ARIADNA CLAUDIA     |75        |msalvadors     |SALVADOR SEGURA MARIA ALEXANDRA SUSANA        |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |7         |earesteguic    |ARESTEGUI CAHUANA ELMER ARNALDO               |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |21        |cchampim       |CHAMPI MENDOZA CARMEN ROSA                    |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |22        |tcordoval      |CORDOVA LA TORRE SAMIRA                       |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |40        |clat           |LA TORRE CASTILLO CARLOS ALCIBIADES CELSO     |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |41        |dleons         |LEON SANCHEZ DYAN YOMARA                      |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |46        |cmiliant       |MILIAN TORRES CATHERINE MARISELA              |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |57        |rramirezz      |RAMIREZ ZAPATA RUTH DEL SOCORRO               |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |61        |iriosi         |RIOS IBANEZ IVAN                              |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |67        |rtapiag        |TAPIA GONZALES ROSA YANET                     |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |70        |cvargasp       |VARGAS POMEZ CARLOS ENRIQUE                   |
+|8            |jpintow           |PINTO WEHRLE JUANA CARLOTA         |72        |nvereauf       |VEREAU FLORES NANCY SIDNEY                    |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |4         |jalvaradoc     |ALVARADO CAZORLA JOSE PAUL                    |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |6         |aalvarezg      |ALVAREZ GARCIA ANA CAROLINA                   |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |9         |aarmisl        |ARMIS LIMA ABEL JIMMY                         |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |23        |ccotrinam      |COTRINA MESIAS CINTHYA KAROLAYN               |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |24        |jcurif         |CURI FIGUEREDO JOYCE CYNTHIA                  |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |28        |ndonayrer      |DONAYRE RIVADENEYRA NANCY CARMEN              |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |30        |mfiestasc      |FIESTAS CHERRE MANUEL SIXTO                   |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |35        |phanccon       |HANCCO NAVARRO PERCY LEON                     |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |43        |mmaqueh        |MAQUE HANCCO MARIA                            |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |76        |mmedinab       |MEDINA BARRANCA MAYRA ALEJANDRA               |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |50        |smunantel      |MUNANTE LUNA SANDRA VERONICA                  |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |59        |mreateguib     |REATEGUI BRANDYCH MEGGIE                      |
+|5            |jsolisg           |SOLIS GOZAR JULIO SANTIAGO         |74        |tsalazarq      |SALAZAR QUINONES TERESA DILAINES              |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |77        |ncapaniz       |CAPANI ZORRILLA NAOMY ISABEL                  |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |18        |acastilloc     |CASTILLO CURAY ANGEL GIANCARLO                |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |39        |yjimenezm      |JIMENEZ MORVELI YENI                          |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |42        |slinoq         |LINO QUECANO SUSSAN MILAGROS                  |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |47        |kmoralesh      |MORALES HIDALGO KARLA SUSANA                  |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |48        |jmoralesv      |MORALES VASQUEZ JUAN FRANCO                   |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |62        |grodasv        |RODAS VALLE GABRIELA ANATOLIA                 |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |65        |rromeroo       |ROMERO OROZCO REBECA ANGELICA                 |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |66        |ssalazarz      |SALAZAR ZUMAETA SANDRA JESSICA                |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |68        |ntumialanf     |TUMIALAN FABIAN NANCY                         |
+|19           |fzapanac          |ZAPANA CARO FLOR ESTELA            |71        |fvasquezm      |VASQUEZ MORAN FELICIO SAMUEL                  |

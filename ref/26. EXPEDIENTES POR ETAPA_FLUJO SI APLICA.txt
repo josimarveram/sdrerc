@@ -1,0 +1,5 @@
+|ETAPA_FLUJO|ETAPA_DESCRIPCION      |CANTIDAD|
+|-----------|-----------------------|--------|
+|88         |Asignado a ejecución   |5       |
+|90         |Asignado a notificación|2       |
+|           |                       |19      |

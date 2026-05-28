@@ -1,0 +1,27 @@
+|CHILD_TABLE              |FK_NAME                     |CHILD_COLUMN   |PARENT_TABLE       |PARENT_CONSTRAINT     |PARENT_COLUMN  |POSITION|
+|-------------------------|----------------------------|---------------|-------------------|----------------------|---------------|--------|
+|APP_USERS                |FK_APP_USERS_TECNICO        |ID_TECNICO     |TECNICO            |PK_TECNICO            |ID_TECNICO     |1       |
+|APP_USER_SUPERVISION     |FK_APP_USER_SUP_ABOGADO     |ABOGADO_ID     |APP_USERS          |PK_APP_USERS          |USER_ID        |1       |
+|APP_USER_SUPERVISION     |FK_APP_USER_SUP_SUPERVISOR  |SUPERVISOR_ID  |APP_USERS          |PK_APP_USERS          |USER_ID        |1       |
+|AQ$_INTERNET_AGENT_PRIVS |AGENT_MUST_BE_CREATED       |AGENT_NAME     |AQ$_INTERNET_AGENTS|SYS_C002815           |AGENT_NAME     |1       |
+|CATALOGO_ITEM            |FK_DETALLE_CABECERA         |ID_CATALOGO    |CATALOGO           |PK_CABECERA           |ID_CATALOGO    |1       |
+|DISTRITO                 |FK_DISTRITO_DEPARTAMENTO    |ID_DEPARTAMENTO|DEPARTAMENTO       |PK_DEPARTAMENTO       |ID_DEPARTAMENTO|1       |
+|DISTRITO                 |FK_DISTRITO_PROVINCIA       |ID_PROVINCIA   |PROVINCIA          |PK_PROVINCIA          |ID_PROVINCIA   |1       |
+|MVIEW$_ADV_AJG           |MVIEW$_ADV_AJG_FK           |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_BASETABLE     |MVIEW$_ADV_BASETABLE_FK     |QUERYID#       |MVIEW$_ADV_WORKLOAD|MVIEW$_ADV_WORKLOAD_PK|QUERYID#       |1       |
+|MVIEW$_ADV_CLIQUE        |MVIEW$_ADV_CLIQUE_FK        |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_ELIGIBLE      |MVIEW$_ADV_ELIGIBLE_FK      |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_EXCEPTIONS    |MVIEW$_ADV_EXCEPTION_FK     |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_FILTERINSTANCE|MVIEW$_ADV_FILTERINSTANCE_FK|RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_FJG           |MVIEW$_ADV_FJG_FK           |AJGID#         |MVIEW$_ADV_AJG     |MVIEW$_ADV_AJG_PK     |AJGID#         |1       |
+|MVIEW$_ADV_GC            |MVIEW$_ADV_GC_FK            |FJGID#         |MVIEW$_ADV_FJG     |MVIEW$_ADV_FJG_PK     |FJGID#         |1       |
+|MVIEW$_ADV_INFO          |MVIEW$_ADV_INFO_FK          |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_JOURNAL       |MVIEW$_ADV_JOURNAL_FK       |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_LEVEL         |MVIEW$_ADV_LEVEL_FK         |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_OUTPUT        |MVIEW$_ADV_OUTPUT_FK        |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_ROLLUP        |MVIEW$_ADV_ROLLUP_CFK       |RUNID#         |MVIEW$_ADV_LEVEL   |MVIEW$_ADV_LEVEL_PK   |RUNID#         |1       |
+|MVIEW$_ADV_ROLLUP        |MVIEW$_ADV_ROLLUP_CFK       |CLEVELID#      |MVIEW$_ADV_LEVEL   |MVIEW$_ADV_LEVEL_PK   |LEVELID#       |2       |
+|MVIEW$_ADV_ROLLUP        |MVIEW$_ADV_ROLLUP_FK        |RUNID#         |MVIEW$_ADV_LOG     |MVIEW$_ADV_LOG_PK     |RUNID#         |1       |
+|MVIEW$_ADV_ROLLUP        |MVIEW$_ADV_ROLLUP_PFK       |RUNID#         |MVIEW$_ADV_LEVEL   |MVIEW$_ADV_LEVEL_PK   |RUNID#         |1       |
+|MVIEW$_ADV_ROLLUP        |MVIEW$_ADV_ROLLUP_PFK       |PLEVELID#      |MVIEW$_ADV_LEVEL   |MVIEW$_ADV_LEVEL_PK   |LEVELID#       |2       |
+|PROVINCIA                |FK_PROVINCIA_DEPARTAMENTO   |ID_DEPARTAMENTO|DEPARTAMENTO       |PK_DEPARTAMENTO       |ID_DEPARTAMENTO|1       |

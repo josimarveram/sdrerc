@@ -1,0 +1,637 @@
+|TABLE_NAME                         |CONSTRAINT_NAME                       |CONSTRAINT_TYPE|STATUS  |VALIDATED    |COLUMN_NAME                           |POSITION|
+|-----------------------------------|--------------------------------------|---------------|--------|-------------|--------------------------------------|--------|
+|APP_MENUS                          |SYS_C008315                           |C              |ENABLED |VALIDATED    |MENU_ID                               |        |
+|APP_ROLES                          |SYS_C008316                           |C              |ENABLED |VALIDATED    |ROLE_ID                               |        |
+|APP_USERS                          |CK_APP_USERS_MUST_CHANGE_PASSWORD     |C              |ENABLED |VALIDATED    |MUST_CHANGE_PASSWORD                  |        |
+|APP_USERS                          |SYS_C008317                           |C              |ENABLED |VALIDATED    |USER_ID                               |        |
+|APP_USERS                          |SYS_C008393                           |C              |ENABLED |VALIDATED    |MUST_CHANGE_PASSWORD                  |        |
+|APP_USERS                          |PK_APP_USERS                          |P              |ENABLED |VALIDATED    |USER_ID                               |1       |
+|APP_USERS                          |FK_APP_USERS_TECNICO                  |R              |ENABLED |VALIDATED    |ID_TECNICO                            |1       |
+|APP_USERS                          |UK_APP_USERS_ID_TECNICO               |U              |ENABLED |VALIDATED    |ID_TECNICO                            |1       |
+|APP_USER_SUPERVISION               |CK_APP_USER_SUP_STATUS                |C              |ENABLED |VALIDATED    |STATUS                                |        |
+|APP_USER_SUPERVISION               |SYS_C008382                           |C              |ENABLED |VALIDATED    |ID_USER_SUPERVISION                   |        |
+|APP_USER_SUPERVISION               |SYS_C008383                           |C              |ENABLED |VALIDATED    |SUPERVISOR_ID                         |        |
+|APP_USER_SUPERVISION               |SYS_C008384                           |C              |ENABLED |VALIDATED    |ABOGADO_ID                            |        |
+|APP_USER_SUPERVISION               |SYS_C008385                           |C              |ENABLED |VALIDATED    |STATUS                                |        |
+|APP_USER_SUPERVISION               |SYS_C008386                           |C              |ENABLED |VALIDATED    |CREATED_AT                            |        |
+|APP_USER_SUPERVISION               |SYS_C008388                           |P              |ENABLED |VALIDATED    |ID_USER_SUPERVISION                   |1       |
+|APP_USER_SUPERVISION               |FK_APP_USER_SUP_ABOGADO               |R              |ENABLED |VALIDATED    |ABOGADO_ID                            |1       |
+|APP_USER_SUPERVISION               |FK_APP_USER_SUP_SUPERVISOR            |R              |ENABLED |VALIDATED    |SUPERVISOR_ID                         |1       |
+|APP_USER_SUPERVISION               |UK_APP_USER_SUP_ABOGADO               |U              |ENABLED |VALIDATED    |ABOGADO_ID                            |1       |
+|APP_USER_SUPERVISION               |UK_APP_USER_SUP_PAIR                  |U              |ENABLED |VALIDATED    |SUPERVISOR_ID                         |1       |
+|APP_USER_SUPERVISION               |UK_APP_USER_SUP_PAIR                  |U              |ENABLED |VALIDATED    |ABOGADO_ID                            |2       |
+|AQ$_INTERNET_AGENT_PRIVS           |SYS_C002832                           |C              |ENABLED |VALIDATED    |AGENT_NAME                            |        |
+|AQ$_INTERNET_AGENT_PRIVS           |SYS_C002834                           |C              |ENABLED |VALIDATED    |DB_USERNAME                           |        |
+|AQ$_INTERNET_AGENT_PRIVS           |AGENT_MUST_BE_CREATED                 |R              |ENABLED |VALIDATED    |AGENT_NAME                            |1       |
+|AQ$_INTERNET_AGENT_PRIVS           |UNQ_PAIRS                             |U              |ENABLED |VALIDATED    |AGENT_NAME                            |1       |
+|AQ$_INTERNET_AGENT_PRIVS           |UNQ_PAIRS                             |U              |ENABLED |VALIDATED    |DB_USERNAME                           |2       |
+|AQ$_INTERNET_AGENTS                |SYS_C002813                           |C              |ENABLED |VALIDATED    |AGENT_NAME                            |        |
+|AQ$_INTERNET_AGENTS                |SYS_C002814                           |C              |ENABLED |VALIDATED    |PROTOCOL                              |        |
+|AQ$_INTERNET_AGENTS                |SYS_C002815                           |P              |ENABLED |VALIDATED    |AGENT_NAME                            |1       |
+|AQ$_KEY_SHARD_MAP                  |SYS_C002542                           |C              |ENABLED |VALIDATED    |QUEUE                                 |        |
+|AQ$_KEY_SHARD_MAP                  |SYS_C002543                           |C              |ENABLED |VALIDATED    |KEY                                   |        |
+|AQ$_KEY_SHARD_MAP                  |SYS_C002544                           |C              |ENABLED |VALIDATED    |SHARD                                 |        |
+|AQ$_KEY_SHARD_MAP                  |SYS_C002545                           |C              |ENABLED |VALIDATED    |DELAY_SHARD                           |        |
+|AQ$_KEY_SHARD_MAP                  |AQ$_KEY_SHARD_MAP_PK                  |U              |ENABLED |VALIDATED    |QUEUE                                 |1       |
+|AQ$_KEY_SHARD_MAP                  |AQ$_KEY_SHARD_MAP_PK                  |U              |ENABLED |VALIDATED    |KEY                                   |2       |
+|AQ$_QUEUES                         |SYS_C002553                           |C              |ENABLED |VALIDATED    |EVENTID                               |        |
+|AQ$_QUEUES                         |SYS_C002554                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|AQ$_QUEUES                         |SYS_C002555                           |C              |ENABLED |VALIDATED    |TABLE_OBJNO                           |        |
+|AQ$_QUEUES                         |SYS_C002556                           |C              |ENABLED |VALIDATED    |USAGE                                 |        |
+|AQ$_QUEUES                         |SYS_C002557                           |C              |ENABLED |VALIDATED    |ENABLE_FLAG                           |        |
+|AQ$_QUEUES                         |AQ$_QUEUES_PRIMARY                    |P              |ENABLED |VALIDATED    |OID                                   |1       |
+|AQ$_QUEUES                         |AQ$_QUEUES_CHECK                      |U              |ENABLED |VALIDATED    |NAME                                  |1       |
+|AQ$_QUEUES                         |AQ$_QUEUES_CHECK                      |U              |ENABLED |VALIDATED    |TABLE_OBJNO                           |2       |
+|AQ$_QUEUE_TABLES                   |SYS_C002535                           |C              |ENABLED |VALIDATED    |SCHEMA                                |        |
+|AQ$_QUEUE_TABLES                   |SYS_C002536                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|AQ$_QUEUE_TABLES                   |SYS_C002537                           |C              |ENABLED |VALIDATED    |UDATA_TYPE                            |        |
+|AQ$_QUEUE_TABLES                   |SYS_C002538                           |C              |ENABLED |VALIDATED    |OBJNO                                 |        |
+|AQ$_QUEUE_TABLES                   |SYS_C002539                           |C              |ENABLED |VALIDATED    |FLAGS                                 |        |
+|AQ$_QUEUE_TABLES                   |SYS_C002540                           |C              |ENABLED |VALIDATED    |SORT_COLS                             |        |
+|AQ$_QUEUE_TABLES                   |AQ$_QUEUE_TABLES_PRIMARY              |P              |ENABLED |VALIDATED    |OBJNO                                 |1       |
+|AQ$_SCHEDULES                      |SYS_C002590                           |C              |ENABLED |VALIDATED    |DESTINATION                           |        |
+|AQ$_SCHEDULES                      |AQ$_SCHEDULES_PRIMARY                 |P              |ENABLED |VALIDATED    |OID                                   |1       |
+|AQ$_SCHEDULES                      |AQ$_SCHEDULES_PRIMARY                 |P              |ENABLED |VALIDATED    |DESTINATION                           |2       |
+|AQ$_SCHEDULES                      |AQ$_SCHEDULES_CHECK                   |U              |ENABLED |VALIDATED    |JOBNO                                 |1       |
+|CATALOGO                           |SYS_C008318                           |C              |ENABLED |VALIDATED    |ID_CATALOGO                           |        |
+|CATALOGO                           |SYS_C008319                           |C              |ENABLED |VALIDATED    |DESCRIPCION                           |        |
+|CATALOGO                           |PK_CABECERA                           |P              |ENABLED |VALIDATED    |ID_CATALOGO                           |1       |
+|CATALOGO                           |SYS_C008321                           |U              |ENABLED |VALIDATED    |DESCRIPCION                           |1       |
+|CATALOGO_ITEM                      |SYS_C008322                           |C              |ENABLED |VALIDATED    |ID_CATALOGO_ITEM                      |        |
+|CATALOGO_ITEM                      |SYS_C008323                           |C              |ENABLED |VALIDATED    |ID_CATALOGO                           |        |
+|CATALOGO_ITEM                      |PK_DETALLE                            |P              |ENABLED |VALIDATED    |ID_CATALOGO_ITEM                      |1       |
+|CATALOGO_ITEM                      |FK_DETALLE_CABECERA                   |R              |ENABLED |VALIDATED    |ID_CATALOGO                           |1       |
+|DEPARTAMENTO                       |SYS_C008326                           |C              |ENABLED |VALIDATED    |ID_DEPARTAMENTO                       |        |
+|DEPARTAMENTO                       |SYS_C008327                           |C              |ENABLED |VALIDATED    |CODIGO_DEPARTAMENTO_INEI              |        |
+|DEPARTAMENTO                       |SYS_C008328                           |C              |ENABLED |VALIDATED    |DESCRIPCION                           |        |
+|DEPARTAMENTO                       |SYS_C008329                           |C              |ENABLED |VALIDATED    |ACTIVE                                |        |
+|DEPARTAMENTO                       |SYS_C008330                           |C              |ENABLED |VALIDATED    |FECHA_REGISTRO                        |        |
+|DEPARTAMENTO                       |SYS_C008331                           |C              |ENABLED |VALIDATED    |USUARIO_REGISTRO                      |        |
+|DEPARTAMENTO                       |PK_DEPARTAMENTO                       |P              |ENABLED |VALIDATED    |ID_DEPARTAMENTO                       |1       |
+|DEPARTAMENTO                       |UQ_DEPARTAMENTO_CODIGO                |U              |ENABLED |VALIDATED    |CODIGO_DEPARTAMENTO_INEI              |1       |
+|DISTRITO                           |SYS_C008344                           |C              |ENABLED |VALIDATED    |ID_DISTRITO                           |        |
+|DISTRITO                           |SYS_C008345                           |C              |ENABLED |VALIDATED    |ID_DEPARTAMENTO                       |        |
+|DISTRITO                           |SYS_C008346                           |C              |ENABLED |VALIDATED    |ID_PROVINCIA                          |        |
+|DISTRITO                           |SYS_C008347                           |C              |ENABLED |VALIDATED    |CODIGO_DISTRITO_INEI                  |        |
+|DISTRITO                           |SYS_C008348                           |C              |ENABLED |VALIDATED    |DESCRIPCION                           |        |
+|DISTRITO                           |SYS_C008349                           |C              |ENABLED |VALIDATED    |ACTIVE                                |        |
+|DISTRITO                           |SYS_C008350                           |C              |ENABLED |VALIDATED    |FECHA_REGISTRO                        |        |
+|DISTRITO                           |SYS_C008351                           |C              |ENABLED |VALIDATED    |USUARIO_REGISTRO                      |        |
+|DISTRITO                           |PK_DISTRITO                           |P              |ENABLED |VALIDATED    |ID_DISTRITO                           |1       |
+|DISTRITO                           |FK_DISTRITO_DEPARTAMENTO              |R              |ENABLED |VALIDATED    |ID_DEPARTAMENTO                       |1       |
+|DISTRITO                           |FK_DISTRITO_PROVINCIA                 |R              |ENABLED |VALIDATED    |ID_PROVINCIA                          |1       |
+|DISTRITO                           |UQ_DISTRITO_CODIGO                    |U              |ENABLED |VALIDATED    |CODIGO_DISTRITO_INEI                  |1       |
+|EXPEDIENTE                         |SYS_C008356                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE                         |        |
+|EXPEDIENTE                         |SYS_C008357                           |C              |ENABLED |VALIDATED    |ES_REGISTRO_SDRERC                    |        |
+|EXPEDIENTE                         |SYS_C008358                           |C              |ENABLED |VALIDATED    |NUMERO_TRAMITE_DOCUMENTO              |        |
+|EXPEDIENTE                         |SYS_C008359                           |C              |ENABLED |VALIDATED    |ID_USUARIO_CREA                       |        |
+|EXPEDIENTE                         |SYS_C008360                           |C              |ENABLED |VALIDATED    |FECHA_REGISTRA                        |        |
+|EXPEDIENTE                         |SYS_C008376                           |C              |ENABLED |VALIDATED    |CANAL_RECEPCION                       |        |
+|EXPEDIENTE                         |EXPEDIENTE_PK                         |P              |ENABLED |VALIDATED    |ID_EXPEDIENTE                         |1       |
+|EXPEDIENTE_ANALISIS_ABOGADO        |SYS_C008362                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE_ANALISIS_ABOGADO        |        |
+|EXPEDIENTE_ANALISIS_ABOGADO        |SYS_C008406                           |C              |ENABLED |VALIDATED    |ESTA_INCORPORADO                      |        |
+|EXPEDIENTE_ANALISIS_ABOGADO        |SYS_C008407                           |C              |ENABLED |VALIDATED    |REQUIERE_RECONSTITUCION               |        |
+|EXPEDIENTE_ANALISIS_ABOGADO        |SYS_C008408                           |C              |ENABLED |VALIDATED    |TIENE_LEGITIMIDAD                     |        |
+|EXPEDIENTE_ANALISIS_ABOGADO        |SYS_C008409                           |C              |ENABLED |VALIDATED    |CUMPLE_MEDIOS_PROBATORIOS             |        |
+|EXPEDIENTE_ANALISIS_ABOGADO        |EXPEDIENTE_ANALISIS_ABOGADO_PK        |P              |ENABLED |VALIDATED    |ID_EXPEDIENTE_ANALISIS_ABOGADO        |1       |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|SYS_C008364                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|        |
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC_PK|P              |ENABLED |VALIDATED    |ID_EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|1       |
+|EXPEDIENTE_ASIGNACION              |SYS_C008366                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE_ASIGNACION              |        |
+|EXPEDIENTE_ASIGNACION              |EXPEDIENTE_ASIGNACION_PK              |P              |ENABLED |VALIDATED    |ID_EXPEDIENTE_ASIGNACION              |1       |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |SYS_C008368                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE_OBSERVACION_EJECUCION   |        |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |SYS_C008369                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE                         |        |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |SYS_C008370                           |C              |ENABLED |VALIDATED    |TIENE_OBSERVACION                     |        |
+|EXPEDIENTE_OBSERVACION_EJECUCION   |SYS_C008371                           |P              |ENABLED |VALIDATED    |ID_EXPEDIENTE_OBSERVACION_EJECUCION   |1       |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|SYS_C008372                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE_OBSERVACION_VERIFICACION|        |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|SYS_C008373                           |C              |ENABLED |VALIDATED    |ID_EXPEDIENTE                         |        |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|SYS_C008374                           |C              |ENABLED |VALIDATED    |TIENE_OBSERVACION                     |        |
+|EXPEDIENTE_OBSERVACION_VERIFICACION|SYS_C008375                           |P              |ENABLED |VALIDATED    |ID_EXPEDIENTE_OBSERVACION_VERIFICACION|1       |
+|HELP                               |SYS_C006855                           |C              |ENABLED |VALIDATED    |TOPIC                                 |        |
+|HELP                               |SYS_C006856                           |C              |ENABLED |VALIDATED    |SEQ                                   |        |
+|HELP                               |HELP_TOPIC_SEQ                        |P              |ENABLED |VALIDATED    |TOPIC                                 |1       |
+|HELP                               |HELP_TOPIC_SEQ                        |P              |ENABLED |VALIDATED    |SEQ                                   |2       |
+|LOGMNR_AGE_SPILL$                  |LOGMNR_AGE_SPILL$_PK                  |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_AGE_SPILL$                  |LOGMNR_AGE_SPILL$_PK                  |P              |ENABLED |VALIDATED    |PDBID                                 |2       |
+|LOGMNR_AGE_SPILL$                  |LOGMNR_AGE_SPILL$_PK                  |P              |ENABLED |VALIDATED    |XIDUSN                                |3       |
+|LOGMNR_AGE_SPILL$                  |LOGMNR_AGE_SPILL$_PK                  |P              |ENABLED |VALIDATED    |XIDSLT                                |4       |
+|LOGMNR_AGE_SPILL$                  |LOGMNR_AGE_SPILL$_PK                  |P              |ENABLED |VALIDATED    |XIDSQN                                |5       |
+|LOGMNR_AGE_SPILL$                  |LOGMNR_AGE_SPILL$_PK                  |P              |ENABLED |VALIDATED    |CHUNK                                 |6       |
+|LOGMNR_AGE_SPILL$                  |LOGMNR_AGE_SPILL$_PK                  |P              |ENABLED |VALIDATED    |SEQUENCE#                             |7       |
+|LOGMNR_ATTRCOL$                    |SYS_C003252                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_ATTRCOL$                    |LOGMNR_ATTRCOL$_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_ATTRCOL$                    |LOGMNR_ATTRCOL$_PK                    |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_ATTRCOL$                    |LOGMNR_ATTRCOL$_PK                    |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_ATTRIBUTE$                  |SYS_C003407                           |C              |ENABLED |VALIDATED    |TOID                                  |        |
+|LOGMNR_ATTRIBUTE$                  |LOGMNR_ATTRIBUTE$_PK                  |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_ATTRIBUTE$                  |LOGMNR_ATTRIBUTE$_PK                  |P              |DISABLED|NOT VALIDATED|TOID                                  |2       |
+|LOGMNR_ATTRIBUTE$                  |LOGMNR_ATTRIBUTE$_PK                  |P              |DISABLED|NOT VALIDATED|VERSION#                              |3       |
+|LOGMNR_ATTRIBUTE$                  |LOGMNR_ATTRIBUTE$_PK                  |P              |DISABLED|NOT VALIDATED|ATTRIBUTE#                            |4       |
+|LOGMNR_CCOL$                       |SYS_C003452                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNR_CCOL$                       |LOGMNR_CCOL$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_CCOL$                       |LOGMNR_CCOL$_PK                       |P              |DISABLED|NOT VALIDATED|CON#                                  |2       |
+|LOGMNR_CCOL$                       |LOGMNR_CCOL$_PK                       |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNRC_CONCOL_GG                  |SYS_C003055                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_CONCOL_GG                  |SYS_C003056                           |C              |ENABLED |VALIDATED    |CON#                                  |        |
+|LOGMNRC_CONCOL_GG                  |SYS_C003058                           |C              |ENABLED |VALIDATED    |COMMIT_SCN                            |        |
+|LOGMNRC_CONCOL_GG                  |SYS_C003060                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNRC_CONCOL_GG                  |LOGMNRC_CONCOL_GG_PK                  |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_CONCOL_GG                  |LOGMNRC_CONCOL_GG_PK                  |P              |ENABLED |VALIDATED    |CON#                                  |2       |
+|LOGMNRC_CONCOL_GG                  |LOGMNRC_CONCOL_GG_PK                  |P              |ENABLED |VALIDATED    |COMMIT_SCN                            |3       |
+|LOGMNRC_CONCOL_GG                  |LOGMNRC_CONCOL_GG_PK                  |P              |ENABLED |VALIDATED    |INTCOL#                               |4       |
+|LOGMNRC_CON_GG                     |SYS_C003015                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_CON_GG                     |SYS_C003016                           |C              |ENABLED |VALIDATED    |CON#                                  |        |
+|LOGMNRC_CON_GG                     |SYS_C003017                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNRC_CON_GG                     |SYS_C003018                           |C              |ENABLED |VALIDATED    |COMMIT_SCN                            |        |
+|LOGMNRC_CON_GG                     |SYS_C003019                           |C              |ENABLED |VALIDATED    |BASEOBJ#                              |        |
+|LOGMNRC_CON_GG                     |SYS_C003020                           |C              |ENABLED |VALIDATED    |BASEOBJV#                             |        |
+|LOGMNRC_CON_GG                     |SYS_C003021                           |C              |ENABLED |VALIDATED    |FLAGS                                 |        |
+|LOGMNRC_CON_GG                     |LOGMNRC_CON_GG_PK                     |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_CON_GG                     |LOGMNRC_CON_GG_PK                     |P              |ENABLED |VALIDATED    |CON#                                  |2       |
+|LOGMNRC_CON_GG                     |LOGMNRC_CON_GG_PK                     |P              |ENABLED |VALIDATED    |COMMIT_SCN                            |3       |
+|LOGMNRC_DBNAME_UID_MAP             |SYS_C001749                           |C              |ENABLED |VALIDATED    |GLOBAL_NAME                           |        |
+|LOGMNRC_DBNAME_UID_MAP             |SYS_C001750                           |C              |ENABLED |VALIDATED    |LOGMNR_MDH                            |        |
+|LOGMNRC_DBNAME_UID_MAP             |LOGMNRC_DBNAME_UID_MAP_PK             |P              |ENABLED |VALIDATED    |GLOBAL_NAME                           |1       |
+|LOGMNRC_DBNAME_UID_MAP             |LOGMNRC_DBNAME_UID_MAP_PK             |P              |ENABLED |VALIDATED    |LOGMNR_MDH                            |2       |
+|LOGMNR_CDEF$                       |SYS_C003443                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_CDEF$                       |LOGMNR_CDEF$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_CDEF$                       |LOGMNR_CDEF$_PK                       |P              |DISABLED|NOT VALIDATED|CON#                                  |2       |
+|LOGMNRC_GSBA                       |SYS_C003156                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_GSBA                       |SYS_C003158                           |C              |ENABLED |VALIDATED    |AS_OF_SCN                             |        |
+|LOGMNRC_GSBA                       |LOGMNRC_GSBA_PK                       |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_GSBA                       |LOGMNRC_GSBA_PK                       |P              |ENABLED |VALIDATED    |AS_OF_SCN                             |2       |
+|LOGMNRC_GSII                       |SYS_C003143                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_GSII                       |SYS_C003144                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNRC_GSII                       |SYS_C003146                           |C              |ENABLED |VALIDATED    |BO#                                   |        |
+|LOGMNRC_GSII                       |SYS_C003147                           |C              |ENABLED |VALIDATED    |INDTYPE#                              |        |
+|LOGMNRC_GSII                       |LOGMNRC_GSII_PK                       |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_GSII                       |LOGMNRC_GSII_PK                       |P              |ENABLED |VALIDATED    |OBJ#                                  |2       |
+|LOGMNRC_GTCS                       |SYS_C002961                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_GTCS                       |SYS_C002963                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNRC_GTCS                       |SYS_C002965                           |C              |ENABLED |VALIDATED    |OBJV#                                 |        |
+|LOGMNRC_GTCS                       |SYS_C002967                           |C              |ENABLED |VALIDATED    |SEGCOL#                               |        |
+|LOGMNRC_GTCS                       |SYS_C002969                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNRC_GTCS                       |SYS_C002971                           |C              |ENABLED |VALIDATED    |COLNAME                               |        |
+|LOGMNRC_GTCS                       |SYS_C002973                           |C              |ENABLED |VALIDATED    |TYPE#                                 |        |
+|LOGMNRC_GTCS                       |LOGMNRC_GTCS_PK                       |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_GTCS                       |LOGMNRC_GTCS_PK                       |P              |ENABLED |VALIDATED    |OBJ#                                  |2       |
+|LOGMNRC_GTCS                       |LOGMNRC_GTCS_PK                       |P              |ENABLED |VALIDATED    |OBJV#                                 |3       |
+|LOGMNRC_GTCS                       |LOGMNRC_GTCS_PK                       |P              |ENABLED |VALIDATED    |INTCOL#                               |4       |
+|LOGMNRC_GTLO                       |SYS_C002937                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_GTLO                       |SYS_C002938                           |C              |ENABLED |VALIDATED    |KEYOBJ#                               |        |
+|LOGMNRC_GTLO                       |SYS_C002939                           |C              |ENABLED |VALIDATED    |LVLCNT                                |        |
+|LOGMNRC_GTLO                       |SYS_C002940                           |C              |ENABLED |VALIDATED    |BASEOBJ#                              |        |
+|LOGMNRC_GTLO                       |SYS_C002941                           |C              |ENABLED |VALIDATED    |BASEOBJV#                             |        |
+|LOGMNRC_GTLO                       |SYS_C002942                           |C              |ENABLED |VALIDATED    |LVL0TYPE#                             |        |
+|LOGMNRC_GTLO                       |SYS_C002943                           |C              |ENABLED |VALIDATED    |OWNERNAME                             |        |
+|LOGMNRC_GTLO                       |SYS_C002944                           |C              |ENABLED |VALIDATED    |LVL0NAME                              |        |
+|LOGMNRC_GTLO                       |SYS_C002945                           |C              |ENABLED |VALIDATED    |INTCOLS                               |        |
+|LOGMNRC_GTLO                       |SYS_C002946                           |C              |ENABLED |VALIDATED    |START_SCN                             |        |
+|LOGMNRC_GTLO                       |LOGMNRC_GTLO_PK                       |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_GTLO                       |LOGMNRC_GTLO_PK                       |P              |ENABLED |VALIDATED    |KEYOBJ#                               |2       |
+|LOGMNRC_GTLO                       |LOGMNRC_GTLO_PK                       |P              |ENABLED |VALIDATED    |BASEOBJV#                             |3       |
+|LOGMNRC_INDCOL_GG                  |SYS_C003098                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_INDCOL_GG                  |SYS_C003099                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNRC_INDCOL_GG                  |SYS_C003100                           |C              |ENABLED |VALIDATED    |COMMIT_SCN                            |        |
+|LOGMNRC_INDCOL_GG                  |SYS_C003101                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNRC_INDCOL_GG                  |SYS_C003102                           |C              |ENABLED |VALIDATED    |POS#                                  |        |
+|LOGMNRC_INDCOL_GG                  |LOGMNRC_INDCOL_GG_PK                  |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_INDCOL_GG                  |LOGMNRC_INDCOL_GG_PK                  |P              |ENABLED |VALIDATED    |OBJ#                                  |2       |
+|LOGMNRC_INDCOL_GG                  |LOGMNRC_INDCOL_GG_PK                  |P              |ENABLED |VALIDATED    |COMMIT_SCN                            |3       |
+|LOGMNRC_INDCOL_GG                  |LOGMNRC_INDCOL_GG_PK                  |P              |ENABLED |VALIDATED    |INTCOL#                               |4       |
+|LOGMNRC_IND_GG                     |SYS_C003074                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_IND_GG                     |SYS_C003075                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNRC_IND_GG                     |SYS_C003076                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNRC_IND_GG                     |SYS_C003077                           |C              |ENABLED |VALIDATED    |COMMIT_SCN                            |        |
+|LOGMNRC_IND_GG                     |SYS_C003078                           |C              |ENABLED |VALIDATED    |BASEOBJ#                              |        |
+|LOGMNRC_IND_GG                     |SYS_C003079                           |C              |ENABLED |VALIDATED    |BASEOBJV#                             |        |
+|LOGMNRC_IND_GG                     |SYS_C003080                           |C              |ENABLED |VALIDATED    |FLAGS                                 |        |
+|LOGMNRC_IND_GG                     |SYS_C003081                           |C              |ENABLED |VALIDATED    |OWNER#                                |        |
+|LOGMNRC_IND_GG                     |SYS_C003082                           |C              |ENABLED |VALIDATED    |OWNERNAME                             |        |
+|LOGMNRC_IND_GG                     |LOGMNRC_IND_GG_PK                     |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_IND_GG                     |LOGMNRC_IND_GG_PK                     |P              |ENABLED |VALIDATED    |OBJ#                                  |2       |
+|LOGMNRC_IND_GG                     |LOGMNRC_IND_GG_PK                     |P              |ENABLED |VALIDATED    |COMMIT_SCN                            |3       |
+|LOGMNR_COL$                        |SYS_C003227                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_COL$                        |LOGMNR_COL$_PK                        |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_COL$                        |LOGMNR_COL$_PK                        |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_COL$                        |LOGMNR_COL$_PK                        |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_COLTYPE$                    |SYS_C003386                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_COLTYPE$                    |LOGMNR_COLTYPE$_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_COLTYPE$                    |LOGMNR_COLTYPE$_PK                    |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_COLTYPE$                    |LOGMNR_COLTYPE$_PK                    |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_CON$                        |SYS_C003421                           |C              |ENABLED |VALIDATED    |OWNER#                                |        |
+|LOGMNR_CON$                        |SYS_C003422                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNR_CON$                        |SYS_C003423                           |C              |ENABLED |VALIDATED    |CON#                                  |        |
+|LOGMNR_CON$                        |LOGMNR_CON$_PK                        |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_CON$                        |LOGMNR_CON$_PK                        |P              |DISABLED|NOT VALIDATED|CON#                                  |2       |
+|LOGMNR_CONTAINER$                  |SYS_C003430                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_CONTAINER$                  |SYS_C003432                           |C              |ENABLED |VALIDATED    |CON_ID#                               |        |
+|LOGMNR_CONTAINER$                  |SYS_C003433                           |C              |ENABLED |VALIDATED    |DBID                                  |        |
+|LOGMNR_CONTAINER$                  |SYS_C003434                           |C              |ENABLED |VALIDATED    |CON_UID                               |        |
+|LOGMNR_CONTAINER$                  |SYS_C003435                           |C              |ENABLED |VALIDATED    |CREATE_SCNWRP                         |        |
+|LOGMNR_CONTAINER$                  |SYS_C003436                           |C              |ENABLED |VALIDATED    |CREATE_SCNBAS                         |        |
+|LOGMNR_CONTAINER$                  |SYS_C003437                           |C              |ENABLED |VALIDATED    |STATUS                                |        |
+|LOGMNR_CONTAINER$                  |LOGMNR_CONTAINER$_PK                  |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_CONTAINER$                  |LOGMNR_CONTAINER$_PK                  |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNRC_SEQ_GG                     |SYS_C002985                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_SEQ_GG                     |SYS_C002986                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNRC_SEQ_GG                     |SYS_C002987                           |C              |ENABLED |VALIDATED    |COMMIT_SCN                            |        |
+|LOGMNRC_SEQ_GG                     |SYS_C002988                           |C              |ENABLED |VALIDATED    |SEQ_FLAGS                             |        |
+|LOGMNRC_SEQ_GG                     |SYS_C002989                           |C              |ENABLED |VALIDATED    |OWNER#                                |        |
+|LOGMNRC_SEQ_GG                     |SYS_C002990                           |C              |ENABLED |VALIDATED    |OWNERNAME                             |        |
+|LOGMNRC_SEQ_GG                     |SYS_C002991                           |C              |ENABLED |VALIDATED    |OBJNAME                               |        |
+|LOGMNRC_SEQ_GG                     |LOGMNRC_SEQ_GG_PK                     |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_SEQ_GG                     |LOGMNRC_SEQ_GG_PK                     |P              |ENABLED |VALIDATED    |OBJ#                                  |2       |
+|LOGMNRC_SEQ_GG                     |LOGMNRC_SEQ_GG_PK                     |P              |ENABLED |VALIDATED    |COMMIT_SCN                            |3       |
+|LOGMNRC_SHARD_TS                   |SYS_C003107                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_SHARD_TS                   |SYS_C003108                           |C              |ENABLED |VALIDATED    |TABLESPACE_NAME                       |        |
+|LOGMNRC_SHARD_TS                   |SYS_C003109                           |C              |ENABLED |VALIDATED    |CHUNK_NUMBER                          |        |
+|LOGMNRC_SHARD_TS                   |SYS_C003110                           |C              |ENABLED |VALIDATED    |START_SCN                             |        |
+|LOGMNRC_SHARD_TS                   |LOGMNRC_SHARD_TS_PK                   |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_SHARD_TS                   |LOGMNRC_SHARD_TS_PK                   |P              |ENABLED |VALIDATED    |TABLESPACE_NAME                       |2       |
+|LOGMNRC_SHARD_TS                   |LOGMNRC_SHARD_TS_PK                   |P              |ENABLED |VALIDATED    |START_SCN                             |3       |
+|LOGMNRC_TS                         |SYS_C003128                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_TS                         |SYS_C003130                           |C              |ENABLED |VALIDATED    |START_SCN                             |        |
+|LOGMNRC_TS                         |LOGMNRC_TS_PK                         |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_TS                         |LOGMNRC_TS_PK                         |P              |ENABLED |VALIDATED    |TS#                                   |2       |
+|LOGMNRC_TS                         |LOGMNRC_TS_PK                         |P              |ENABLED |VALIDATED    |START_SCN                             |3       |
+|LOGMNRC_TSPART                     |SYS_C003114                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_TSPART                     |SYS_C003115                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNRC_TSPART                     |SYS_C003116                           |C              |ENABLED |VALIDATED    |TS#                                   |        |
+|LOGMNRC_TSPART                     |SYS_C003117                           |C              |ENABLED |VALIDATED    |START_SCN                             |        |
+|LOGMNRC_TSPART                     |LOGMNRC_TSPART_PK                     |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_TSPART                     |LOGMNRC_TSPART_PK                     |P              |ENABLED |VALIDATED    |OBJ#                                  |2       |
+|LOGMNRC_TSPART                     |LOGMNRC_TSPART_PK                     |P              |ENABLED |VALIDATED    |START_SCN                             |3       |
+|LOGMNRC_USER                       |SYS_C003163                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRC_USER                       |SYS_C003164                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNRC_USER                       |SYS_C003165                           |C              |ENABLED |VALIDATED    |START_SCN                             |        |
+|LOGMNRC_USER                       |LOGMNRC_USER_PK                       |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRC_USER                       |LOGMNRC_USER_PK                       |P              |ENABLED |VALIDATED    |USER#                                 |2       |
+|LOGMNRC_USER                       |LOGMNRC_USER_PK                       |P              |ENABLED |VALIDATED    |START_SCN                             |3       |
+|LOGMNR_DICTIONARY$                 |SYS_C003193                           |C              |ENABLED |VALIDATED    |DB_DICT_OBJECTCOUNT                   |        |
+|LOGMNR_DICTIONARY$                 |LOGMNR_DICTIONARY$_PK                 |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_DICTSTATE$                  |LOGMNR_DICTSTATE$_PK                  |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_DID$                        |LOGMNR_DID$_PK                        |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_ENC$                        |SYS_C003518                           |C              |ENABLED |VALIDATED    |MKEYID                                |        |
+|LOGMNR_ENC$                        |LOGMNR_ENC$_PK                        |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_ENC$                        |LOGMNR_ENC$_PK                        |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_ENC$                        |LOGMNR_ENC$_PK                        |P              |DISABLED|NOT VALIDATED|OWNER#                                |3       |
+|LOGMNRGGC_GTCS                     |SYS_C001740                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRGGC_GTCS                     |SYS_C001741                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNRGGC_GTCS                     |SYS_C001742                           |C              |ENABLED |VALIDATED    |OBJV#                                 |        |
+|LOGMNRGGC_GTCS                     |SYS_C001743                           |C              |ENABLED |VALIDATED    |SEGCOL#                               |        |
+|LOGMNRGGC_GTCS                     |SYS_C001744                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNRGGC_GTCS                     |SYS_C001745                           |C              |ENABLED |VALIDATED    |COLNAME                               |        |
+|LOGMNRGGC_GTCS                     |SYS_C001746                           |C              |ENABLED |VALIDATED    |TYPE#                                 |        |
+|LOGMNRGGC_GTCS                     |LOGMNRGGC_GTCS_PK                     |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRGGC_GTCS                     |LOGMNRGGC_GTCS_PK                     |P              |ENABLED |VALIDATED    |OBJ#                                  |2       |
+|LOGMNRGGC_GTCS                     |LOGMNRGGC_GTCS_PK                     |P              |ENABLED |VALIDATED    |OBJV#                                 |3       |
+|LOGMNRGGC_GTCS                     |LOGMNRGGC_GTCS_PK                     |P              |ENABLED |VALIDATED    |INTCOL#                               |4       |
+|LOGMNRGGC_GTLO                     |SYS_C001729                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRGGC_GTLO                     |SYS_C001730                           |C              |ENABLED |VALIDATED    |KEYOBJ#                               |        |
+|LOGMNRGGC_GTLO                     |SYS_C001731                           |C              |ENABLED |VALIDATED    |LVLCNT                                |        |
+|LOGMNRGGC_GTLO                     |SYS_C001732                           |C              |ENABLED |VALIDATED    |BASEOBJ#                              |        |
+|LOGMNRGGC_GTLO                     |SYS_C001733                           |C              |ENABLED |VALIDATED    |BASEOBJV#                             |        |
+|LOGMNRGGC_GTLO                     |SYS_C001734                           |C              |ENABLED |VALIDATED    |LVL0TYPE#                             |        |
+|LOGMNRGGC_GTLO                     |SYS_C001735                           |C              |ENABLED |VALIDATED    |OWNERNAME                             |        |
+|LOGMNRGGC_GTLO                     |SYS_C001736                           |C              |ENABLED |VALIDATED    |LVL0NAME                              |        |
+|LOGMNRGGC_GTLO                     |SYS_C001737                           |C              |ENABLED |VALIDATED    |INTCOLS                               |        |
+|LOGMNRGGC_GTLO                     |SYS_C001738                           |C              |ENABLED |VALIDATED    |START_SCN                             |        |
+|LOGMNRGGC_GTLO                     |LOGMNRGGC_GTLO_PK                     |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRGGC_GTLO                     |LOGMNRGGC_GTLO_PK                     |P              |ENABLED |VALIDATED    |KEYOBJ#                               |2       |
+|LOGMNRGGC_GTLO                     |LOGMNRGGC_GTLO_PK                     |P              |ENABLED |VALIDATED    |BASEOBJV#                             |3       |
+|LOGMNR_ICOL$                       |SYS_C003460                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNR_ICOL$                       |LOGMNR_ICOL$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_ICOL$                       |LOGMNR_ICOL$_PK                       |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_ICOL$                       |LOGMNR_ICOL$_PK                       |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_IDNSEQ$                     |SYS_C003535                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_IDNSEQ$                     |SYS_C003536                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNR_IDNSEQ$                     |SYS_C003538                           |C              |ENABLED |VALIDATED    |SEQOBJ#                               |        |
+|LOGMNR_IDNSEQ$                     |SYS_C003540                           |C              |ENABLED |VALIDATED    |STARTWITH                             |        |
+|LOGMNR_IDNSEQ$                     |LOGMNR_IDNSEQ$_PK                     |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_IDNSEQ$                     |LOGMNR_IDNSEQ$_PK                     |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_IDNSEQ$                     |LOGMNR_IDNSEQ$_PK                     |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_IND$                        |SYS_C003265                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_IND$                        |LOGMNR_IND$_PK                        |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_IND$                        |LOGMNR_IND$_PK                        |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_INDCOMPART$                 |SYS_C003489                           |C              |ENABLED |VALIDATED    |PART#                                 |        |
+|LOGMNR_INDCOMPART$                 |LOGMNR_INDCOMPART$_PK                 |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_INDCOMPART$                 |LOGMNR_INDCOMPART$_PK                 |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_INDPART$                    |SYS_C003473                           |C              |ENABLED |VALIDATED    |TS#                                   |        |
+|LOGMNR_INDPART$                    |LOGMNR_INDPART$_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_INDPART$                    |LOGMNR_INDPART$_PK                    |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_INDPART$                    |LOGMNR_INDPART$_PK                    |P              |DISABLED|NOT VALIDATED|BO#                                   |3       |
+|LOGMNR_INDSUBPART$                 |SYS_C003481                           |C              |ENABLED |VALIDATED    |TS#                                   |        |
+|LOGMNR_INDSUBPART$                 |LOGMNR_INDSUBPART$_PK                 |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_INDSUBPART$                 |LOGMNR_INDSUBPART$_PK                 |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_INDSUBPART$                 |LOGMNR_INDSUBPART$_PK                 |P              |DISABLED|NOT VALIDATED|POBJ#                                 |3       |
+|LOGMNR_KOPM$                       |SYS_C003505                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNR_KOPM$                       |LOGMNR_KOPM$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_KOPM$                       |LOGMNR_KOPM$_PK                       |P              |DISABLED|NOT VALIDATED|NAME                                  |2       |
+|LOGMNR_LOB$                        |SYS_C003416                           |C              |ENABLED |VALIDATED    |CHUNK                                 |        |
+|LOGMNR_LOB$                        |LOGMNR_LOB$_PK                        |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_LOB$                        |LOGMNR_LOB$_PK                        |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_LOB$                        |LOGMNR_LOB$_PK                        |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_LOBFRAG$                    |SYS_C003465                           |C              |ENABLED |VALIDATED    |FRAG#                                 |        |
+|LOGMNR_LOBFRAG$                    |LOGMNR_LOBFRAG$_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_LOBFRAG$                    |LOGMNR_LOBFRAG$_PK                    |P              |DISABLED|NOT VALIDATED|FRAGOBJ#                              |2       |
+|LOGMNR_LOG$                        |LOGMNR_LOG$_PK                        |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_LOG$                        |LOGMNR_LOG$_PK                        |P              |ENABLED |VALIDATED    |THREAD#                               |2       |
+|LOGMNR_LOG$                        |LOGMNR_LOG$_PK                        |P              |ENABLED |VALIDATED    |SEQUENCE#                             |3       |
+|LOGMNR_LOG$                        |LOGMNR_LOG$_PK                        |P              |ENABLED |VALIDATED    |FIRST_CHANGE#                         |4       |
+|LOGMNR_LOG$                        |LOGMNR_LOG$_PK                        |P              |ENABLED |VALIDATED    |DB_ID                                 |5       |
+|LOGMNR_LOG$                        |LOGMNR_LOG$_PK                        |P              |ENABLED |VALIDATED    |RESETLOGS_CHANGE#                     |6       |
+|LOGMNR_LOG$                        |LOGMNR_LOG$_PK                        |P              |ENABLED |VALIDATED    |RESET_TIMESTAMP                       |7       |
+|LOGMNR_LOGMNR_BUILDLOG             |SYS_C003491                           |C              |ENABLED |VALIDATED    |INITIAL_XID                           |        |
+|LOGMNR_LOGMNR_BUILDLOG             |LOGMNR_LOGMNR_BUILDLOG_PK             |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_LOGMNR_BUILDLOG             |LOGMNR_LOGMNR_BUILDLOG_PK             |P              |DISABLED|NOT VALIDATED|INITIAL_XID                           |2       |
+|LOGMNR_NTAB$                       |SYS_C003495                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_NTAB$                       |LOGMNR_NTAB$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_NTAB$                       |LOGMNR_NTAB$_PK                       |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_NTAB$                       |LOGMNR_NTAB$_PK                       |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_OBJ$                        |SYS_C003200                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_OBJ$                        |LOGMNR_OBJ$_PK                        |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_OBJ$                        |LOGMNR_OBJ$_PK                        |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_OPQTYPE$                    |SYS_C003497                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNR_OPQTYPE$                    |SYS_C003498                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_OPQTYPE$                    |LOGMNR_OPQTYPE$_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_OPQTYPE$                    |LOGMNR_OPQTYPE$_PK                    |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_OPQTYPE$                    |LOGMNR_OPQTYPE$_PK                    |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_PARAMETER$                  |SYS_C001763                           |C              |ENABLED |VALIDATED    |SESSION#                              |        |
+|LOGMNR_PARAMETER$                  |SYS_C001764                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNR_PARTOBJ$                    |SYS_C003563                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_PARTOBJ$                    |LOGMNR_PARTOBJ$_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_PARTOBJ$                    |LOGMNR_PARTOBJ$_PK                    |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNRP_CTAS_PART_MAP              |SYS_C003575                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNRP_CTAS_PART_MAP              |SYS_C003576                           |C              |ENABLED |VALIDATED    |BASEOBJ#                              |        |
+|LOGMNRP_CTAS_PART_MAP              |SYS_C003577                           |C              |ENABLED |VALIDATED    |BASEOBJV#                             |        |
+|LOGMNRP_CTAS_PART_MAP              |SYS_C003578                           |C              |ENABLED |VALIDATED    |KEYOBJ#                               |        |
+|LOGMNRP_CTAS_PART_MAP              |SYS_C003579                           |C              |ENABLED |VALIDATED    |PART#                                 |        |
+|LOGMNRP_CTAS_PART_MAP              |LOGMNRP_CTAS_PART_MAP_PK              |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNRP_CTAS_PART_MAP              |LOGMNRP_CTAS_PART_MAP_PK              |P              |ENABLED |VALIDATED    |BASEOBJV#                             |2       |
+|LOGMNRP_CTAS_PART_MAP              |LOGMNRP_CTAS_PART_MAP_PK              |P              |ENABLED |VALIDATED    |KEYOBJ#                               |3       |
+|LOGMNR_PDB_INFO$                   |SYS_C001723                           |C              |ENABLED |VALIDATED    |LOGMNR_DID                            |        |
+|LOGMNR_PDB_INFO$                   |SYS_C001724                           |C              |ENABLED |VALIDATED    |LOGMNR_MDH                            |        |
+|LOGMNR_PDB_INFO$                   |SYS_C001725                           |C              |ENABLED |VALIDATED    |PLUGIN_SCN                            |        |
+|LOGMNR_PDB_INFO$                   |LOGMNR_PDB_INFO$_PK                   |P              |ENABLED |VALIDATED    |LOGMNR_DID                            |1       |
+|LOGMNR_PDB_INFO$                   |LOGMNR_PDB_INFO$_PK                   |P              |ENABLED |VALIDATED    |LOGMNR_MDH                            |2       |
+|LOGMNR_PDB_INFO$                   |LOGMNR_PDB_INFO$_PK                   |P              |ENABLED |VALIDATED    |PLUGIN_SCN                            |3       |
+|LOGMNR_PROCESSED_LOG$              |LOGMNR_PROCESSED_LOG$_PK              |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_PROCESSED_LOG$              |LOGMNR_PROCESSED_LOG$_PK              |P              |ENABLED |VALIDATED    |THREAD#                               |2       |
+|LOGMNR_PROFILE_PLSQL_STATS$        |LOGMNR_PROFILE_PLSQL$_PK              |P              |ENABLED |VALIDATED    |PKGOWNER                              |1       |
+|LOGMNR_PROFILE_PLSQL_STATS$        |LOGMNR_PROFILE_PLSQL$_PK              |P              |ENABLED |VALIDATED    |PKGNAME                               |2       |
+|LOGMNR_PROFILE_PLSQL_STATS$        |LOGMNR_PROFILE_PLSQL$_PK              |P              |ENABLED |VALIDATED    |NAME                                  |3       |
+|LOGMNR_PROFILE_TABLE_STATS$        |LOGMNR_PROFILE_TABLE$_PK              |P              |ENABLED |VALIDATED    |OBJID                                 |1       |
+|LOGMNR_PROPS$                      |SYS_C003507                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNR_PROPS$                      |LOGMNR_PROPS$_PK                      |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_PROPS$                      |LOGMNR_PROPS$_PK                      |P              |DISABLED|NOT VALIDATED|NAME                                  |2       |
+|LOGMNR_REFCON$                     |SYS_C003529                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_REFCON$                     |LOGMNR_REFCON$_PK                     |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_REFCON$                     |LOGMNR_REFCON$_PK                     |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_REFCON$                     |LOGMNR_REFCON$_PK                     |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |CKPT_SCN                              |2       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |XIDUSN                                |3       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |XIDSLT                                |4       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |XIDSQN                                |5       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |PDBID                                 |6       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |SESSION_NUM                           |7       |
+|LOGMNR_RESTART_CKPT$               |LOGMNR_RESTART_CKPT$_PK               |P              |ENABLED |VALIDATED    |SERIAL_NUM                            |8       |
+|LOGMNR_RESTART_CKPT_TXINFO$        |LOGMNR_RESTART_CKPT_TXINFO$_PK        |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_RESTART_CKPT_TXINFO$        |LOGMNR_RESTART_CKPT_TXINFO$_PK        |P              |ENABLED |VALIDATED    |XIDUSN                                |2       |
+|LOGMNR_RESTART_CKPT_TXINFO$        |LOGMNR_RESTART_CKPT_TXINFO$_PK        |P              |ENABLED |VALIDATED    |XIDSLT                                |3       |
+|LOGMNR_RESTART_CKPT_TXINFO$        |LOGMNR_RESTART_CKPT_TXINFO$_PK        |P              |ENABLED |VALIDATED    |XIDSQN                                |4       |
+|LOGMNR_RESTART_CKPT_TXINFO$        |LOGMNR_RESTART_CKPT_TXINFO$_PK        |P              |ENABLED |VALIDATED    |SESSION_NUM                           |5       |
+|LOGMNR_RESTART_CKPT_TXINFO$        |LOGMNR_RESTART_CKPT_TXINFO$_PK        |P              |ENABLED |VALIDATED    |SERIAL_NUM                            |6       |
+|LOGMNR_RESTART_CKPT_TXINFO$        |LOGMNR_RESTART_CKPT_TXINFO$_PK        |P              |ENABLED |VALIDATED    |EFFECTIVE_SCN                         |7       |
+|LOGMNR_SEED$                       |SYS_C003185                           |C              |ENABLED |VALIDATED    |NULL$                                 |        |
+|LOGMNR_SEED$                       |LOGMNR_SEED$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_SEED$                       |LOGMNR_SEED$_PK                       |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_SEED$                       |LOGMNR_SEED$_PK                       |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_SESSION$                    |SYS_C001765                           |C              |ENABLED |VALIDATED    |SESSION_NAME                          |        |
+|LOGMNR_SESSION$                    |LOGMNR_SESSION_PK                     |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_SESSION$                    |LOGMNR_SESSION_UK1                    |U              |ENABLED |VALIDATED    |SESSION_NAME                          |1       |
+|LOGMNR_SESSION_ACTIONS$            |SYS_C001758                           |C              |ENABLED |VALIDATED    |ACTIONNAME                            |        |
+|LOGMNR_SESSION_ACTIONS$            |SYS_C001759                           |C              |ENABLED |VALIDATED    |LOGMNRSESSION#                        |        |
+|LOGMNR_SESSION_ACTIONS$            |SYS_C001760                           |C              |ENABLED |VALIDATED    |PROCESSROLE#                          |        |
+|LOGMNR_SESSION_ACTIONS$            |SYS_C001761                           |C              |ENABLED |VALIDATED    |ACTIONTYPE#                           |        |
+|LOGMNR_SESSION_ACTIONS$            |LOGMNR_SESSION_ACTION$_PK             |P              |ENABLED |VALIDATED    |LOGMNRSESSION#                        |1       |
+|LOGMNR_SESSION_ACTIONS$            |LOGMNR_SESSION_ACTION$_PK             |P              |ENABLED |VALIDATED    |ACTIONNAME                            |2       |
+|LOGMNR_SESSION_EVOLVE$             |LOGMNR_SESSION_EVOLVE$_PK             |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_SESSION_EVOLVE$             |LOGMNR_SESSION_EVOLVE$_PK             |P              |ENABLED |VALIDATED    |DB_ID                                 |2       |
+|LOGMNR_SESSION_EVOLVE$             |LOGMNR_SESSION_EVOLVE$_PK             |P              |ENABLED |VALIDATED    |RESET_SCN                             |3       |
+|LOGMNR_SESSION_EVOLVE$             |LOGMNR_SESSION_EVOLVE$_PK             |P              |ENABLED |VALIDATED    |RESET_TIMESTAMP                       |4       |
+|LOGMNR_SHARD_TS                    |SYS_C003584                           |C              |ENABLED |VALIDATED    |LOGMNR_UID                            |        |
+|LOGMNR_SHARD_TS                    |SYS_C003585                           |C              |ENABLED |VALIDATED    |TABLESPACE_NAME                       |        |
+|LOGMNR_SHARD_TS                    |SYS_C003586                           |C              |ENABLED |VALIDATED    |CHUNK_NUMBER                          |        |
+|LOGMNR_SHARD_TS                    |LOGMNR_SHARD_TS_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_SHARD_TS                    |LOGMNR_SHARD_TS_PK                    |P              |DISABLED|NOT VALIDATED|TABLESPACE_NAME                       |2       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |SESSION#                              |1       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |PDBID                                 |2       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |XIDUSN                                |3       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |XIDSLT                                |4       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |XIDSQN                                |5       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |CHUNK                                 |6       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |STARTIDX                              |7       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |ENDIDX                                |8       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |FLAG                                  |9       |
+|LOGMNR_SPILL$                      |LOGMNR_SPILL$_PK                      |P              |ENABLED |VALIDATED    |SEQUENCE#                             |10      |
+|LOGMNR_SUBCOLTYPE$                 |SYS_C003500                           |C              |ENABLED |VALIDATED    |INTCOL#                               |        |
+|LOGMNR_SUBCOLTYPE$                 |SYS_C003501                           |C              |ENABLED |VALIDATED    |TOID                                  |        |
+|LOGMNR_SUBCOLTYPE$                 |SYS_C003502                           |C              |ENABLED |VALIDATED    |VERSION#                              |        |
+|LOGMNR_SUBCOLTYPE$                 |SYS_C003503                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_SUBCOLTYPE$                 |LOGMNR_SUBCOLTYPE$_PK                 |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_SUBCOLTYPE$                 |LOGMNR_SUBCOLTYPE$_PK                 |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_SUBCOLTYPE$                 |LOGMNR_SUBCOLTYPE$_PK                 |P              |DISABLED|NOT VALIDATED|INTCOL#                               |3       |
+|LOGMNR_SUBCOLTYPE$                 |LOGMNR_SUBCOLTYPE$_PK                 |P              |DISABLED|NOT VALIDATED|TOID                                  |4       |
+|LOGMNR_TAB$                        |SYS_C003209                           |C              |ENABLED |VALIDATED    |OBJ#                                  |        |
+|LOGMNR_TAB$                        |LOGMNR_TAB$_PK                        |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_TAB$                        |LOGMNR_TAB$_PK                        |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_TABCOMPART$                 |SYS_C003351                           |C              |ENABLED |VALIDATED    |PART#                                 |        |
+|LOGMNR_TABCOMPART$                 |LOGMNR_TABCOMPART$_PK                 |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_TABCOMPART$                 |LOGMNR_TABCOMPART$_PK                 |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_TABPART$                    |SYS_C003313                           |C              |ENABLED |VALIDATED    |BO#                                   |        |
+|LOGMNR_TABPART$                    |LOGMNR_TABPART$_PK                    |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_TABPART$                    |LOGMNR_TABPART$_PK                    |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_TABPART$                    |LOGMNR_TABPART$_PK                    |P              |DISABLED|NOT VALIDATED|BO#                                   |3       |
+|LOGMNR_TABSUBPART$                 |SYS_C003327                           |C              |ENABLED |VALIDATED    |TS#                                   |        |
+|LOGMNR_TABSUBPART$                 |LOGMNR_TABSUBPART$_PK                 |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_TABSUBPART$                 |LOGMNR_TABSUBPART$_PK                 |P              |DISABLED|NOT VALIDATED|OBJ#                                  |2       |
+|LOGMNR_TABSUBPART$                 |LOGMNR_TABSUBPART$_PK                 |P              |DISABLED|NOT VALIDATED|POBJ#                                 |3       |
+|LOGMNRT_MDDL$                      |SYS_C001821                           |C              |ENABLED |VALIDATED    |DEST_ROWID                            |        |
+|LOGMNRT_MDDL$                      |LOGMNRT_MDDL$_PK                      |P              |ENABLED |VALIDATED    |SOURCE_OBJ#                           |1       |
+|LOGMNRT_MDDL$                      |LOGMNRT_MDDL$_PK                      |P              |ENABLED |VALIDATED    |SOURCE_ROWID                          |2       |
+|LOGMNR_TS$                         |SYS_C003256                           |C              |ENABLED |VALIDATED    |BLOCKSIZE                             |        |
+|LOGMNR_TS$                         |LOGMNR_TS$_PK                         |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_TS$                         |LOGMNR_TS$_PK                         |P              |DISABLED|NOT VALIDATED|TS#                                   |2       |
+|LOGMNR_TYPE$                       |SYS_C003374                           |C              |ENABLED |VALIDATED    |TOID                                  |        |
+|LOGMNR_TYPE$                       |LOGMNR_TYPE$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_TYPE$                       |LOGMNR_TYPE$_PK                       |P              |DISABLED|NOT VALIDATED|TOID                                  |2       |
+|LOGMNR_TYPE$                       |LOGMNR_TYPE$_PK                       |P              |DISABLED|NOT VALIDATED|VERSION#                              |3       |
+|LOGMNR_UID$                        |LOGMNR_UID$_PK                        |P              |ENABLED |VALIDATED    |LOGMNR_UID                            |1       |
+|LOGMNR_USER$                       |SYS_C003282                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|LOGMNR_USER$                       |LOGMNR_USER$_PK                       |P              |DISABLED|NOT VALIDATED|LOGMNR_UID                            |1       |
+|LOGMNR_USER$                       |LOGMNR_USER$_PK                       |P              |DISABLED|NOT VALIDATED|USER#                                 |2       |
+|LOGSTDBY$APPLY_MILESTONE           |SYS_C005838                           |C              |ENABLED |VALIDATED    |SESSION_ID                            |        |
+|LOGSTDBY$APPLY_MILESTONE           |SYS_C005839                           |C              |ENABLED |VALIDATED    |COMMIT_SCN                            |        |
+|LOGSTDBY$APPLY_MILESTONE           |SYS_C005840                           |C              |ENABLED |VALIDATED    |SYNCH_SCN                             |        |
+|LOGSTDBY$APPLY_MILESTONE           |SYS_C005841                           |C              |ENABLED |VALIDATED    |EPOCH                                 |        |
+|LOGSTDBY$APPLY_MILESTONE           |SYS_C005842                           |C              |ENABLED |VALIDATED    |PROCESSED_SCN                         |        |
+|LOGSTDBY$APPLY_MILESTONE           |SYS_C005843                           |C              |ENABLED |VALIDATED    |FETCHLWM_SCN                          |        |
+|LOGSTDBY$EDS_TABLES                |LOGSTDBY$EDS_TABLES_PKEY              |P              |ENABLED |VALIDATED    |OWNER                                 |1       |
+|LOGSTDBY$EDS_TABLES                |LOGSTDBY$EDS_TABLES_PKEY              |P              |ENABLED |VALIDATED    |TABLE_NAME                            |2       |
+|LOGSTDBY$EVENTS                    |SYS_C005837                           |C              |ENABLED |VALIDATED    |EVENT_TIME                            |        |
+|LOGSTDBY$FLASHBACK_SCN             |SYS_C005844                           |C              |ENABLED |VALIDATED    |PRIMARY_SCN                           |        |
+|LOGSTDBY$FLASHBACK_SCN             |SYS_C005845                           |P              |ENABLED |VALIDATED    |PRIMARY_SCN                           |1       |
+|LOGSTDBY$SKIP_SUPPORT              |SYS_C005846                           |C              |ENABLED |VALIDATED    |ACTION                                |        |
+|LOGSTDBY$SKIP_SUPPORT              |SYS_C005847                           |C              |ENABLED |VALIDATED    |NAME                                  |        |
+|MVIEW$_ADV_AJG                     |SYS_C002160                           |C              |ENABLED |VALIDATED    |AJGID#                                |        |
+|MVIEW$_ADV_AJG                     |SYS_C002161                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_AJG                     |SYS_C002162                           |C              |ENABLED |VALIDATED    |AJGDESLEN                             |        |
+|MVIEW$_ADV_AJG                     |SYS_C002163                           |C              |ENABLED |VALIDATED    |AJGDES                                |        |
+|MVIEW$_ADV_AJG                     |SYS_C002164                           |C              |ENABLED |VALIDATED    |HASHVALUE                             |        |
+|MVIEW$_ADV_AJG                     |MVIEW$_ADV_AJG_PK                     |P              |ENABLED |VALIDATED    |AJGID#                                |1       |
+|MVIEW$_ADV_AJG                     |MVIEW$_ADV_AJG_FK                     |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_BASETABLE               |SYS_C002134                           |C              |ENABLED |VALIDATED    |COLLECTIONID#                         |        |
+|MVIEW$_ADV_BASETABLE               |SYS_C002135                           |C              |ENABLED |VALIDATED    |QUERYID#                              |        |
+|MVIEW$_ADV_BASETABLE               |MVIEW$_ADV_BASETABLE_FK               |R              |ENABLED |VALIDATED    |QUERYID#                              |1       |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002181                           |C              |ENABLED |VALIDATED    |CLIQUEID#                             |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002182                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002183                           |C              |ENABLED |VALIDATED    |CLIQUEDESLEN                          |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002184                           |C              |ENABLED |VALIDATED    |CLIQUEDES                             |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002185                           |C              |ENABLED |VALIDATED    |HASHVALUE                             |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002186                           |C              |ENABLED |VALIDATED    |FREQUENCY                             |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002187                           |C              |ENABLED |VALIDATED    |BYTECOST                              |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002188                           |C              |ENABLED |VALIDATED    |ROWSIZE                               |        |
+|MVIEW$_ADV_CLIQUE                  |SYS_C002189                           |C              |ENABLED |VALIDATED    |NUMROWS                               |        |
+|MVIEW$_ADV_CLIQUE                  |MVIEW$_ADV_CLIQUE_PK                  |P              |ENABLED |VALIDATED    |CLIQUEID#                             |1       |
+|MVIEW$_ADV_CLIQUE                  |MVIEW$_ADV_CLIQUE_FK                  |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_ELIGIBLE                |SYS_C002192                           |C              |ENABLED |VALIDATED    |SUMOBJN#                              |        |
+|MVIEW$_ADV_ELIGIBLE                |SYS_C002193                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_ELIGIBLE                |SYS_C002194                           |C              |ENABLED |VALIDATED    |BYTECOST                              |        |
+|MVIEW$_ADV_ELIGIBLE                |SYS_C002195                           |C              |ENABLED |VALIDATED    |FLAGS                                 |        |
+|MVIEW$_ADV_ELIGIBLE                |SYS_C002196                           |C              |ENABLED |VALIDATED    |FREQUENCY                             |        |
+|MVIEW$_ADV_ELIGIBLE                |MVIEW$_ADV_ELIGIBLE_PK                |P              |ENABLED |VALIDATED    |SUMOBJN#                              |1       |
+|MVIEW$_ADV_ELIGIBLE                |MVIEW$_ADV_ELIGIBLE_PK                |P              |ENABLED |VALIDATED    |RUNID#                                |2       |
+|MVIEW$_ADV_ELIGIBLE                |MVIEW$_ADV_ELIGIBLE_FK                |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_EXCEPTIONS              |MVIEW$_ADV_EXCEPTION_FK               |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_FILTER                  |SYS_C002137                           |C              |ENABLED |VALIDATED    |FILTERID#                             |        |
+|MVIEW$_ADV_FILTER                  |SYS_C002138                           |C              |ENABLED |VALIDATED    |SUBFILTERNUM#                         |        |
+|MVIEW$_ADV_FILTER                  |SYS_C002139                           |C              |ENABLED |VALIDATED    |SUBFILTERTYPE                         |        |
+|MVIEW$_ADV_FILTER                  |MVIEW$_ADV_FILTER_PK                  |P              |ENABLED |VALIDATED    |FILTERID#                             |1       |
+|MVIEW$_ADV_FILTER                  |MVIEW$_ADV_FILTER_PK                  |P              |ENABLED |VALIDATED    |SUBFILTERNUM#                         |2       |
+|MVIEW$_ADV_FILTERINSTANCE          |SYS_C002143                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_FILTERINSTANCE          |MVIEW$_ADV_FILTERINSTANCE_FK          |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_FJG                     |SYS_C002167                           |C              |ENABLED |VALIDATED    |FJGID#                                |        |
+|MVIEW$_ADV_FJG                     |SYS_C002168                           |C              |ENABLED |VALIDATED    |AJGID#                                |        |
+|MVIEW$_ADV_FJG                     |SYS_C002169                           |C              |ENABLED |VALIDATED    |FJGDESLEN                             |        |
+|MVIEW$_ADV_FJG                     |SYS_C002170                           |C              |ENABLED |VALIDATED    |FJGDES                                |        |
+|MVIEW$_ADV_FJG                     |SYS_C002171                           |C              |ENABLED |VALIDATED    |HASHVALUE                             |        |
+|MVIEW$_ADV_FJG                     |MVIEW$_ADV_FJG_PK                     |P              |ENABLED |VALIDATED    |FJGID#                                |1       |
+|MVIEW$_ADV_FJG                     |MVIEW$_ADV_FJG_FK                     |R              |ENABLED |VALIDATED    |AJGID#                                |1       |
+|MVIEW$_ADV_GC                      |SYS_C002174                           |C              |ENABLED |VALIDATED    |GCID#                                 |        |
+|MVIEW$_ADV_GC                      |SYS_C002175                           |C              |ENABLED |VALIDATED    |FJGID#                                |        |
+|MVIEW$_ADV_GC                      |SYS_C002176                           |C              |ENABLED |VALIDATED    |GCDESLEN                              |        |
+|MVIEW$_ADV_GC                      |SYS_C002177                           |C              |ENABLED |VALIDATED    |GCDES                                 |        |
+|MVIEW$_ADV_GC                      |SYS_C002178                           |C              |ENABLED |VALIDATED    |HASHVALUE                             |        |
+|MVIEW$_ADV_GC                      |MVIEW$_ADV_GC_PK                      |P              |ENABLED |VALIDATED    |GCID#                                 |1       |
+|MVIEW$_ADV_GC                      |MVIEW$_ADV_GC_FK                      |R              |ENABLED |VALIDATED    |FJGID#                                |1       |
+|MVIEW$_ADV_INFO                    |SYS_C002207                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_INFO                    |SYS_C002208                           |C              |ENABLED |VALIDATED    |SEQ#                                  |        |
+|MVIEW$_ADV_INFO                    |SYS_C002209                           |C              |ENABLED |VALIDATED    |TYPE                                  |        |
+|MVIEW$_ADV_INFO                    |SYS_C002210                           |C              |ENABLED |VALIDATED    |INFOLEN                               |        |
+|MVIEW$_ADV_INFO                    |MVIEW$_ADV_INFO_PK                    |P              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_INFO                    |MVIEW$_ADV_INFO_PK                    |P              |ENABLED |VALIDATED    |SEQ#                                  |2       |
+|MVIEW$_ADV_INFO                    |MVIEW$_ADV_INFO_FK                    |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_JOURNAL                 |SYS_C002213                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_JOURNAL                 |SYS_C002214                           |C              |ENABLED |VALIDATED    |SEQ#                                  |        |
+|MVIEW$_ADV_JOURNAL                 |SYS_C002215                           |C              |ENABLED |VALIDATED    |TIMESTAMP                             |        |
+|MVIEW$_ADV_JOURNAL                 |SYS_C002216                           |C              |ENABLED |VALIDATED    |FLAGS                                 |        |
+|MVIEW$_ADV_JOURNAL                 |MVIEW$_ADV_JOURNAL_PK                 |P              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_JOURNAL                 |MVIEW$_ADV_JOURNAL_PK                 |P              |ENABLED |VALIDATED    |SEQ#                                  |2       |
+|MVIEW$_ADV_JOURNAL                 |MVIEW$_ADV_JOURNAL_FK                 |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_LEVEL                   |SYS_C002145                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_LEVEL                   |SYS_C002146                           |C              |ENABLED |VALIDATED    |LEVELID#                              |        |
+|MVIEW$_ADV_LEVEL                   |SYS_C002147                           |C              |ENABLED |VALIDATED    |FLAGS                                 |        |
+|MVIEW$_ADV_LEVEL                   |SYS_C002148                           |C              |ENABLED |VALIDATED    |TBLOBJ#                               |        |
+|MVIEW$_ADV_LEVEL                   |SYS_C002149                           |C              |ENABLED |VALIDATED    |COLUMNLIST                            |        |
+|MVIEW$_ADV_LEVEL                   |MVIEW$_ADV_LEVEL_PK                   |P              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_LEVEL                   |MVIEW$_ADV_LEVEL_PK                   |P              |ENABLED |VALIDATED    |LEVELID#                              |2       |
+|MVIEW$_ADV_LEVEL                   |MVIEW$_ADV_LEVEL_FK                   |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_LOG                     |SYS_C002141                           |C              |ENABLED |VALIDATED    |STATUS                                |        |
+|MVIEW$_ADV_LOG                     |MVIEW$_ADV_LOG_PK                     |P              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_OUTPUT                  |SYS_C002199                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_OUTPUT                  |SYS_C002200                           |C              |ENABLED |VALIDATED    |OUTPUT_TYPE                           |        |
+|MVIEW$_ADV_OUTPUT                  |SYS_C002201                           |C              |ENABLED |VALIDATED    |BENEFIT_TO_COST_RATIO                 |        |
+|MVIEW$_ADV_OUTPUT                  |MVIEW$_ADV_OUTPUT_PK                  |P              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_OUTPUT                  |MVIEW$_ADV_OUTPUT_PK                  |P              |ENABLED |VALIDATED    |RANK#                                 |2       |
+|MVIEW$_ADV_OUTPUT                  |MVIEW$_ADV_OUTPUT_FK                  |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_PARAMETERS              |SYS_C002205                           |C              |ENABLED |VALIDATED    |PARAMETER_TYPE                        |        |
+|MVIEW$_ADV_PARAMETERS              |MVIEW$_ADV_PARAMETERS_PK              |P              |ENABLED |VALIDATED    |PARAMETER_NAME                        |1       |
+|MVIEW$_ADV_ROLLUP                  |SYS_C002152                           |C              |ENABLED |VALIDATED    |RUNID#                                |        |
+|MVIEW$_ADV_ROLLUP                  |SYS_C002153                           |C              |ENABLED |VALIDATED    |CLEVELID#                             |        |
+|MVIEW$_ADV_ROLLUP                  |SYS_C002154                           |C              |ENABLED |VALIDATED    |PLEVELID#                             |        |
+|MVIEW$_ADV_ROLLUP                  |SYS_C002155                           |C              |ENABLED |VALIDATED    |FLAGS                                 |        |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_PK                  |P              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_PK                  |P              |ENABLED |VALIDATED    |CLEVELID#                             |2       |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_PK                  |P              |ENABLED |VALIDATED    |PLEVELID#                             |3       |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_CFK                 |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_CFK                 |R              |ENABLED |VALIDATED    |CLEVELID#                             |2       |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_FK                  |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_PFK                 |R              |ENABLED |VALIDATED    |RUNID#                                |1       |
+|MVIEW$_ADV_ROLLUP                  |MVIEW$_ADV_ROLLUP_PFK                 |R              |ENABLED |VALIDATED    |PLEVELID#                             |2       |
+|MVIEW$_ADV_WORKLOAD                |SYS_C002127                           |C              |ENABLED |VALIDATED    |QUERYID#                              |        |
+|MVIEW$_ADV_WORKLOAD                |SYS_C002128                           |C              |ENABLED |VALIDATED    |COLLECTIONID#                         |        |
+|MVIEW$_ADV_WORKLOAD                |SYS_C002129                           |C              |ENABLED |VALIDATED    |COLLECTTIME                           |        |
+|MVIEW$_ADV_WORKLOAD                |SYS_C002130                           |C              |ENABLED |VALIDATED    |UNAME                                 |        |
+|MVIEW$_ADV_WORKLOAD                |SYS_C002131                           |C              |ENABLED |VALIDATED    |SQL_TEXT                              |        |
+|MVIEW$_ADV_WORKLOAD                |SYS_C002132                           |C              |ENABLED |VALIDATED    |SQL_TEXTLEN                           |        |
+|MVIEW$_ADV_WORKLOAD                |MVIEW$_ADV_WORKLOAD_PK                |P              |ENABLED |VALIDATED    |QUERYID#                              |1       |
+|PLAZO_ATENCION_DOCUMENTO           |CK_PLAZO_ATENCION_ACTIVO              |C              |ENABLED |VALIDATED    |ACTIVO                                |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008395                           |C              |ENABLED |VALIDATED    |ID_PLAZO_ATENCION                     |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008396                           |C              |ENABLED |VALIDATED    |ID_TIPO_DOCUMENTO                     |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008397                           |C              |ENABLED |VALIDATED    |DIAS_PLAZO                            |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008398                           |C              |ENABLED |VALIDATED    |PORCENTAJE_VERDE_DESDE                |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008399                           |C              |ENABLED |VALIDATED    |PORCENTAJE_AMARILLO_DESDE             |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008400                           |C              |ENABLED |VALIDATED    |PORCENTAJE_ROJO_DESDE                 |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008401                           |C              |ENABLED |VALIDATED    |ACTIVO                                |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008402                           |C              |ENABLED |VALIDATED    |FECHA_REGISTRO                        |        |
+|PLAZO_ATENCION_DOCUMENTO           |SYS_C008404                           |P              |ENABLED |VALIDATED    |ID_PLAZO_ATENCION                     |1       |
+|PLAZO_ATENCION_DOCUMENTO           |UK_PLAZO_ATENCION_DOC                 |U              |ENABLED |VALIDATED    |ID_TIPO_DOCUMENTO                     |1       |
+|PROVINCIA                          |SYS_C008334                           |C              |ENABLED |VALIDATED    |ID_PROVINCIA                          |        |
+|PROVINCIA                          |SYS_C008335                           |C              |ENABLED |VALIDATED    |ID_DEPARTAMENTO                       |        |
+|PROVINCIA                          |SYS_C008336                           |C              |ENABLED |VALIDATED    |CODIGO_PROVINCIA_INEI                 |        |
+|PROVINCIA                          |SYS_C008337                           |C              |ENABLED |VALIDATED    |DESCRIPCION                           |        |
+|PROVINCIA                          |SYS_C008338                           |C              |ENABLED |VALIDATED    |ACTIVE                                |        |
+|PROVINCIA                          |SYS_C008339                           |C              |ENABLED |VALIDATED    |FECHA_REGISTRO                        |        |
+|PROVINCIA                          |SYS_C008340                           |C              |ENABLED |VALIDATED    |USUARIO_REGISTRO                      |        |
+|PROVINCIA                          |PK_PROVINCIA                          |P              |ENABLED |VALIDATED    |ID_PROVINCIA                          |1       |
+|PROVINCIA                          |FK_PROVINCIA_DEPARTAMENTO             |R              |ENABLED |VALIDATED    |ID_DEPARTAMENTO                       |1       |
+|PROVINCIA                          |UQ_PROVINCIA_CODIGO                   |U              |ENABLED |VALIDATED    |CODIGO_PROVINCIA_INEI                 |1       |
+|REDO_DB                            |SYS_C001862                           |C              |ENABLED |VALIDATED    |DBID                                  |        |
+|REDO_DB                            |SYS_C001863                           |C              |ENABLED |VALIDATED    |THREAD#                               |        |
+|REDO_DB                            |SYS_C001864                           |C              |ENABLED |VALIDATED    |RESETLOGS_TIME                        |        |
+|REDO_DB                            |SYS_C001865                           |C              |ENABLED |VALIDATED    |PRESETLOGS_TIME                       |        |
+|REDO_DB                            |SYS_C001866                           |C              |ENABLED |VALIDATED    |RESETLOGS_SCN                         |        |
+|REDO_DB                            |SYS_C001867                           |C              |ENABLED |VALIDATED    |PRESETLOGS_SCN                        |        |
+|REDO_DB                            |SYS_C001868                           |C              |ENABLED |VALIDATED    |TENANT_KEY                            |        |
+|REDO_LOG                           |SYS_C001869                           |C              |ENABLED |VALIDATED    |DBID                                  |        |
+|REDO_LOG                           |SYS_C001870                           |C              |ENABLED |VALIDATED    |THREAD#                               |        |
+|REDO_LOG                           |SYS_C001871                           |C              |ENABLED |VALIDATED    |RESETLOGS_TIME                        |        |
+|REDO_LOG                           |SYS_C001872                           |C              |ENABLED |VALIDATED    |PRESETLOGS_TIME                       |        |
+|REDO_LOG                           |SYS_C001873                           |C              |ENABLED |VALIDATED    |SEQUENCE#                             |        |
+|REDO_LOG                           |SYS_C001874                           |C              |ENABLED |VALIDATED    |RESETLOGS_SCN                         |        |
+|REDO_LOG                           |SYS_C001875                           |C              |ENABLED |VALIDATED    |PRESETLOGS_SCN                        |        |
+|REDO_LOG                           |SYS_C001876                           |C              |ENABLED |VALIDATED    |TENANT_KEY                            |        |
+|REPL_SUPPORT_MATRIX                |SYS_C005849                           |C              |ENABLED |VALIDATED    |REPL_PRODUCT                          |        |
+|REPL_SUPPORT_MATRIX                |SYS_C005850                           |C              |ENABLED |VALIDATED    |SUPPORT_MODE                          |        |
+|REPL_SUPPORT_MATRIX                |REPL_SUPPORT_MATRIX_PK                |P              |ENABLED |VALIDATED    |BMAP1                                 |1       |
+|REPL_SUPPORT_MATRIX                |REPL_SUPPORT_MATRIX_PK                |P              |ENABLED |VALIDATED    |BMAP2                                 |2       |
+|REPL_SUPPORT_MATRIX                |REPL_SUPPORT_MATRIX_PK                |P              |ENABLED |VALIDATED    |REPL_PRODUCT                          |3       |
+|REPL_SUPPORT_MATRIX                |REPL_SUPPORT_MATRIX_PK                |P              |ENABLED |VALIDATED    |SUPPORT_MODE                          |4       |
+|SCHEDULER_PROGRAM_ARGS_TBL         |SYS_C005793                           |C              |ENABLED |VALIDATED    |OWNER                                 |        |
+|SCHEDULER_PROGRAM_ARGS_TBL         |SYS_C005794                           |C              |ENABLED |VALIDATED    |PROGRAM_NAME                          |        |
+|SCHEDULER_PROGRAM_ARGS_TBL         |SYS_C005795                           |C              |ENABLED |VALIDATED    |ARGUMENT_POSITION                     |        |
+|SQLPLUS_PRODUCT_PROFILE            |SYS_C006854                           |C              |ENABLED |VALIDATED    |PRODUCT                               |        |
+|TECNICO                            |SYS_C008378                           |C              |ENABLED |VALIDATED    |ID_TECNICO                            |        |
+|TECNICO                            |PK_TECNICO                            |P              |ENABLED |VALIDATED    |ID_TECNICO                            |1       |
+|USERS                              |SYS_C008314                           |C              |ENABLED |VALIDATED    |ID                                    |        |

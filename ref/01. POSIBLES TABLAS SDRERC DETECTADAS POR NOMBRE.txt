@@ -1,0 +1,19 @@
+|TABLE_NAME                         |TABLESPACE_NAME|STATUS|NUM_ROWS|LAST_ANALYZED          |
+|-----------------------------------|---------------|------|--------|-----------------------|
+|APP_ROLES                          |USERS          |VALID |10      |2026-05-01 22:00:30.000|
+|APP_USER_ROLES                     |USERS          |VALID |81      |2026-05-06 22:00:45.000|
+|APP_USERS                          |USERS          |VALID |80      |2026-05-22 22:00:49.000|
+|APP_USER_SUPERVISION               |SYSTEM         |VALID |70      |2026-05-15 22:01:08.000|
+|CATALOGO                           |SYSTEM         |VALID |17      |2026-05-15 22:00:54.000|
+|CATALOGO_ITEM                      |SYSTEM         |VALID |100     |2026-05-22 22:00:57.000|
+|DEPARTAMENTO                       |SYSTEM         |VALID |25      |2026-04-16 22:00:21.000|
+|DISTRITO                           |SYSTEM         |VALID |1.890   |2026-04-16 22:00:22.000|
+|EXPEDIENTE                         |SYSTEM         |VALID |183     |2026-05-22 22:00:32.000|
+|EXPEDIENTE_ANALISIS_ABOGADO        |SYSTEM         |VALID |7       |2026-05-22 22:00:40.000|
+|EXPEDIENTE_ANALISIS_ABOGADO_DET_DOC|SYSTEM         |VALID |31      |2026-05-22 22:00:57.000|
+|EXPEDIENTE_ASIGNACION              |SYSTEM         |VALID |26      |2026-05-25 22:00:32.000|
+|EXPEDIENTE_OBSERVACION_EJECUCION   |USERS          |VALID |3       |2026-05-22 22:00:58.000|
+|EXPEDIENTE_OBSERVACION_VERIFICACION|SYSTEM         |VALID |7       |2026-05-22 22:00:40.000|
+|PLAZO_ATENCION_DOCUMENTO           |SYSTEM         |VALID |7       |2026-05-18 22:01:14.000|
+|PROVINCIA                          |SYSTEM         |VALID |196     |2026-04-16 22:00:21.000|
+|TECNICO                            |USERS          |VALID |78      |2026-05-15 22:01:03.000|

@@ -1,0 +1,80 @@
+|ID_TECNICO|APELLIDO_PATERNO|APELLIDO_MATERNO|NOMBRES                         |NUMERO_DOCUMENTO|ID_TIPO_PERSONAL|TIPO_PERSONAL  |ACTIVE|
+|----------|----------------|----------------|--------------------------------|----------------|----------------|---------------|------|
+|1         |ALHUAY          |LOZANO          |KATHYA SIBERIA                  |                |94              |PERSONAL OR    |1     |
+|2         |MACHUCA         |VARGAS          |ARIADNA CLAUDIA                 |                |                |               |1     |
+|3         |ALVARADO        |CAZORLA         |JOSE PAUL                       |                |95              |PERSONAL PLANTA|1     |
+|4         |SOLIS           |GOZAR           |JULIO SANTIAGO                  |                |                |               |1     |
+|5         |ALVAREZ         |GARCIA          |ANA CAROLINA                    |                |95              |PERSONAL PLANTA|1     |
+|6         |ARESTEGUI       |CAHUANA         |ELMER ARNALDO                   |                |95              |PERSONAL PLANTA|1     |
+|7         |PINTO           |WEHRLE          |JUANA CARLOTA                   |                |                |               |1     |
+|8         |ARMIS           |LIMA            |ABEL JIMMY                      |                |95              |PERSONAL PLANTA|1     |
+|9         |ASTO            |OCHOA           |RICARDO ALBERTO                 |                |95              |PERSONAL PLANTA|1     |
+|10        |BARDALES        |MALDONADO       |FLOR MARLLORY                   |                |95              |PERSONAL PLANTA|1     |
+|11        |CELI            |SILVA           |DE RUIZ LIUBEN DEL PILAR        |                |                |               |1     |
+|12        |BAUTISTA        |HUAMANCONDOR    |MARIELLA MARIA                  |                |94              |PERSONAL OR    |1     |
+|13        |BRUNO           |ARIAS           |GLENYS GABRIELA                 |                |                |               |1     |
+|14        |BELLMUNT        |ALLAIN          |JOSE CRISTOBAL                  |                |94              |PERSONAL OR    |1     |
+|15        |CABANA          |AGUILAR         |PAUL STEVEN                     |                |93              |CAS ELECTORAL  |1     |
+|16        |CASIMIRO        |JULCA           |CARMEN BERTHA                   |                |94              |PERSONAL OR    |1     |
+|17        |CASTILLO        |CURAY           |ANGEL GIANCARLO                 |                |95              |PERSONAL PLANTA|1     |
+|18        |ZAPANA          |CARO            |FLOR ESTELA                     |                |                |               |1     |
+|19        |CESPEDES        |BERNUY          |JUAN CARLOS                     |                |95              |PERSONAL PLANTA|1     |
+|20        |CHAMPI          |MENDOZA         |CARMEN ROSA                     |                |95              |PERSONAL PLANTA|1     |
+|21        |CORDOVA         |LA              |TORRE SAMIRA                    |                |95              |PERSONAL PLANTA|1     |
+|22        |COTRINA         |MESIAS          |CINTHYA KAROLAYN                |                |93              |CAS ELECTORAL  |1     |
+|23        |CURI            |FIGUEREDO       |JOYCE CYNTHIA                   |                |95              |PERSONAL PLANTA|1     |
+|24        |DE              |LA              |CRUZ PIZARRO WILSON             |                |94              |PERSONAL OR    |1     |
+|25        |DEL             |CASTILLO        |VERA LIEZBETH                   |                |94              |PERSONAL OR    |1     |
+|26        |DIAZ            |ROJAS           |JAVIER PASCUAL                  |                |94              |PERSONAL OR    |1     |
+|27        |DONAYRE         |RIVADENEYRA     |NANCY CARMEN                    |                |94              |PERSONAL OR    |1     |
+|28        |FERNANDEZ       |FERNANDEZ       |SERGIO ORLANDO                  |                |95              |PERSONAL PLANTA|1     |
+|29        |FIESTAS         |CHERRE          |MANUEL SIXTO                    |                |94              |PERSONAL OR    |1     |
+|30        |GIL             |BERNALES        |TANIA YSABEL                    |                |95              |PERSONAL PLANTA|1     |
+|31        |DIOSES          |LEQUERNAQUE     |SHIRLEY YUVICSA                 |                |                |               |1     |
+|32        |GOZAR           |CASAS           |CLAUDIA ARACELI                 |                |93              |CAS ELECTORAL  |1     |
+|33        |GUARDAPUCLLA    |QUISPE          |JAIME                           |                |94              |PERSONAL OR    |1     |
+|34        |HANCCO          |NAVARRO         |PERCY LEON                      |                |95              |PERSONAL PLANTA|1     |
+|35        |ICOCHEA         |MARTEL          |LUIS JAIME                      |                |94              |PERSONAL OR    |1     |
+|36        |ILAVE           |VELASCO         |CAROLINE BERTA                  |                |94              |PERSONAL OR    |1     |
+|37        |JIMENEZ         |CONCHA          |DE SILVA MAGALY                 |                |94              |PERSONAL OR    |1     |
+|38        |JIMENEZ         |MORVELI         |YENI                            |                |95              |PERSONAL PLANTA|1     |
+|39        |LA              |TORRE           |CASTILLO CARLOS ALCIBIADES CELSO|                |95              |PERSONAL PLANTA|1     |
+|40        |LEON            |SANCHEZ         |DYAN YOMARA                     |                |95              |PERSONAL PLANTA|1     |
+|41        |LINO            |QUECANO         |SUSSAN MILAGROS                 |                |93              |CAS ELECTORAL  |1     |
+|42        |MAQUE           |HANCCO          |MARIA                           |                |95              |PERSONAL PLANTA|1     |
+|43        |MARTINEZ        |EYZAGUIRRE      |EVELYN YAHAYRA                  |                |94              |PERSONAL OR    |1     |
+|44        |MENDOZA         |MOLINA          |ROSARIO                         |                |94              |PERSONAL OR    |1     |
+|45        |MILIAN          |TORRES          |CATHERINE MARISELA              |                |95              |PERSONAL PLANTA|1     |
+|46        |MORALES         |HIDALGO         |KARLA SUSANA                    |                |93              |CAS ELECTORAL  |1     |
+|47        |MORALES         |VASQUEZ         |JUAN FRANCO                     |                |95              |PERSONAL PLANTA|1     |
+|48        |MOROCHO         |MARCHAN         |SILVIA JANET                    |                |95              |PERSONAL PLANTA|1     |
+|49        |MUNANTE         |LUNA            |SANDRA VERONICA                 |                |94              |PERSONAL OR    |1     |
+|50        |PACHAS          |ALMEYDA         |MARIA VIVIANA                   |                |94              |PERSONAL OR    |1     |
+|51        |PAREDES         |GUTIERREZ       |MILIPSA OLGA                    |                |93              |CAS ELECTORAL  |1     |
+|52        |POMALIA         |ALVARO          |FIORELLA JULIA                  |                |94              |PERSONAL OR    |1     |
+|53        |PUCH            |PARDO           |FIGUEROA DAVID EDUARDO          |                |94              |PERSONAL OR    |1     |
+|54        |QUEREVALU       |PEREZ           |JESSICA GLADYS                  |                |94              |PERSONAL OR    |1     |
+|55        |QUISPE          |ALFARO          |NILDA                           |                |94              |PERSONAL OR    |1     |
+|56        |RAMIREZ         |ZAPATA          |RUTH DEL SOCORRO                |                |94              |PERSONAL OR    |1     |
+|57        |RAMOS           |CAMPOS          |CARMEN LUISA                    |                |94              |PERSONAL OR    |1     |
+|58        |REATEGUI        |BRANDYCH        |MEGGIE                          |                |93              |CAS ELECTORAL  |1     |
+|59        |REATEGUI        |KOCLENG         |MAIKOL STIFF                    |                |95              |PERSONAL PLANTA|1     |
+|60        |RIOS            |IBANEZ          |IVAN                            |                |95              |PERSONAL PLANTA|1     |
+|61        |RODAS           |VALLE           |GABRIELA ANATOLIA               |                |94              |PERSONAL OR    |1     |
+|62        |ROJAS           |PORRAS          |HUGO ENRIQUE                    |                |95              |PERSONAL PLANTA|1     |
+|63        |ROMANI          |CAHUANA         |LUIS ENRIQUE                    |                |93              |CAS ELECTORAL  |1     |
+|64        |ROMERO          |OROZCO          |REBECA ANGELICA                 |                |93              |CAS ELECTORAL  |1     |
+|65        |SALAZAR         |ZUMAETA         |SANDRA JESSICA                  |                |94              |PERSONAL OR    |1     |
+|66        |TAPIA           |GONZALES        |ROSA YANET                      |                |95              |PERSONAL PLANTA|1     |
+|67        |TUMIALAN        |FABIAN          |NANCY                           |                |94              |PERSONAL OR    |1     |
+|68        |TUPAC           |YUPANQUI        |GARAGATTI NATALI INES ALEJANDRA |                |93              |CAS ELECTORAL  |1     |
+|69        |VARGAS          |POMEZ           |CARLOS ENRIQUE                  |                |95              |PERSONAL PLANTA|1     |
+|70        |VASQUEZ         |MORAN           |FELICIO SAMUEL                  |                |95              |PERSONAL PLANTA|1     |
+|71        |VEREAU          |FLORES          |NANCY SIDNEY                    |                |95              |PERSONAL PLANTA|1     |
+|72        |ZEGARRA         |RAMOS           |ABEL AUGUSTO                    |                |93              |CAS ELECTORAL  |1     |
+|73        |SALAZAR         |QUINONES        |TERESA DILAINES                 |                |93              |CAS ELECTORAL  |1     |
+|74        |SALVADOR        |SEGURA          |MARIA ALEXANDRA SUSANA          |                |93              |CAS ELECTORAL  |1     |
+|75        |MEDINA          |BARRANCA        |MAYRA ALEJANDRA                 |                |93              |CAS ELECTORAL  |1     |
+|76        |CAPANI          |ZORRILLA        |NAOMY ISABEL                    |                |93              |CAS ELECTORAL  |1     |
+|79        |VERA            |MIRANDA         |JOSIMAR                         |                |93              |CAS ELECTORAL  |1     |
+|80        |LOPEZ           |RAMOS           |MARIA                           |                |                |               |1     |

@@ -1,0 +1,102 @@
+|ID_CATALOGO|CATALOGO                       |ID_CATALOGO_ITEM|ITEM                                                 |ACTIVE|
+|-----------|-------------------------------|----------------|-----------------------------------------------------|------|
+|1          |Tipo de Solicitud              |10              |PARTE                                                |1     |
+|1          |Tipo de Solicitud              |11              |OFICIO                                               |1     |
+|2          |Tipo de Documento              |13              |SOLICITUD                                            |1     |
+|2          |Tipo de Documento              |14              |CARTA                                                |1     |
+|2          |Tipo de Documento              |15              |INFORME                                              |1     |
+|2          |Tipo de Documento              |16              |OFICIO                                               |1     |
+|2          |Tipo de Documento              |17              |RESOLUCIÓN                                           |1     |
+|2          |Tipo de Documento              |18              |HOJA DE ENVÍO                                        |1     |
+|2          |Tipo de Documento              |19              |MEMORANDO                                            |1     |
+|2          |Tipo de Documento              |20              |HOJA DE ELEVACIÓN                                    |1     |
+|2          |Tipo de Documento              |21              |PROVEIDO                                             |1     |
+|2          |Tipo de Documento              |96              |PEDIDO                                               |1     |
+|2          |Tipo de Documento              |97              |FORMATO                                              |1     |
+|2          |Tipo de Documento              |98              |EXPEDIENTE                                           |1     |
+|2          |Tipo de Documento              |99              |AYUDA MEMORIA                                        |1     |
+|2          |Tipo de Documento              |100             |INFORME TÉCNICO                                      |1     |
+|3          |Tipo de Procedimiento Registral|22              |RECT. ADM.                                           |1     |
+|3          |Tipo de Procedimiento Registral|23              |TÍTULO DE NACIONALIDAD                               |1     |
+|3          |Tipo de Procedimiento Registral|24              |CANCELACIÓN                                          |1     |
+|3          |Tipo de Procedimiento Registral|25              |RECONSIDERACIÓN                                      |1     |
+|3          |Tipo de Procedimiento Registral|26              |RECONSTITUCIÓN                                       |1     |
+|3          |Tipo de Procedimiento Registral|27              |APELACIÓN                                            |1     |
+|3          |Tipo de Procedimiento Registral|28              |ACTUALIZACIÓN DE DATOS                               |1     |
+|4          |Tipo Acta                      |29              |NACIMIENTO                                           |1     |
+|4          |Tipo Acta                      |30              |MATRIMONIO                                           |1     |
+|4          |Tipo Acta                      |31              |DEFUNCIÓN                                            |1     |
+|5          |Estado del trámite             |8               |Activo                                               |0     |
+|5          |Estado del trámite             |9               |Inactivo                                             |0     |
+|5          |Estado del trámite             |56              |Registrado                                           |1     |
+|5          |Estado del trámite             |57              |Asignado                                             |1     |
+|5          |Estado del trámite             |58              |Recibido                                             |1     |
+|5          |Estado del trámite             |59              |Atendido                                             |1     |
+|5          |Estado del trámite             |87              |Verificado                                           |1     |
+|5          |Estado del trámite             |88              |Asignado a ejecución                                 |1     |
+|5          |Estado del trámite             |89              |Ejecutado                                            |1     |
+|5          |Estado del trámite             |90              |Asignado a notificación                              |1     |
+|5          |Estado del trámite             |91              |Notificado                                           |1     |
+|5          |Estado del trámite             |105             |No corresponde                                       |1     |
+|5          |Estado del trámite             |106             |Archivado                                            |1     |
+|5          |Estado del trámite             |108             |Firmado                                              |1     |
+|5          |Estado del trámite             |109             |En proyecto                                          |1     |
+|6          |Grupo Familiar                 |32              |GRUPO FAMILIAR                                       |1     |
+|6          |Grupo Familiar                 |33              |SIN GRUPO FAMILIAR                                   |1     |
+|7          |Grupo de Parentesco            |34              |PADRE                                                |1     |
+|7          |Grupo de Parentesco            |35              |MADRE                                                |1     |
+|7          |Grupo de Parentesco            |36              |HIJO(A)                                              |1     |
+|7          |Grupo de Parentesco            |37              |ABUELO(A)                                            |1     |
+|7          |Grupo de Parentesco            |38              |HERMANO(A)                                           |1     |
+|7          |Grupo de Parentesco            |39              |NIETO(A)                                             |1     |
+|7          |Grupo de Parentesco            |40              |BISABUELO(A)                                         |1     |
+|7          |Grupo de Parentesco            |41              |TIO(A)                                               |1     |
+|7          |Grupo de Parentesco            |42              |SOBRINO(A)                                           |1     |
+|7          |Grupo de Parentesco            |43              |BIZNIETO(A)                                          |1     |
+|7          |Grupo de Parentesco            |44              |TIO(A) ABUELO(A)                                     |1     |
+|7          |Grupo de Parentesco            |45              |PRIMO(A)                                             |1     |
+|7          |Grupo de Parentesco            |46              |SOBRINO(A) NIETO(A)                                  |1     |
+|8          |Direccion domiciliaria         |47              |DECLARADA EN SOLICITUD                               |1     |
+|8          |Direccion domiciliaria         |48              |REGISTRADA EN EL SIO                                 |1     |
+|8          |Direccion domiciliaria         |92              |OTRO TIPO DIRECCIÓN                                  |1     |
+|9          |Unidad orgánica                |49              |DIRECCIÓN DE REGISTROS CIVILES                       |1     |
+|9          |Unidad orgánica                |50              |SUB DIRECCIÓN TÉCNICA NORMATIVA                      |1     |
+|9          |Unidad orgánica                |51              |SUB DIRECCIÓN DE PROCESAMIENTO DE REGISTROS CIVILES  |1     |
+|9          |Unidad orgánica                |52              |SUB DIRECCIÓN DE VÍNCULOS Y ARCHIVO REGISTRAL        |1     |
+|9          |Unidad orgánica                |53              |SUB DIRECCIÓN DE INVESTIGACIÓN Y DEPURACIÓN REGISTRAL|1     |
+|9          |Unidad orgánica                |54              |SUB DIRECCIÓN DE PROCESAMIENTO DE IDENTIFICACIÓN     |1     |
+|9          |Unidad orgánica                |55              |OFICINA DE REGISTRO Y ESTADO CIVIL                   |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |60              |CARTA EDICTO                                         |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |61              |CARTA FALTA SUSTENTO                                 |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |63              |CARTA INDAGATORIO                                    |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |64              |CARTA PRETENSIÓN                                     |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |65              |OFICIO OREC CANCELACIÓN                              |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |66              |OFICIO OREC RECONSTITUCIÓN                           |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |67              |CARTA NOTIFICACIÓN PROCEDENTE                        |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |68              |CARTA NOTIFICACIÓN IMPROCEDENTE                      |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |69              |MEMORÁNDUM                                           |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |70              |OFICIO                                               |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |71              |RESOLUCIONES                                         |1     |
+|10         |PLANTILLA TIPO DOCUMENTO       |72              |INFORMES                                             |1     |
+|11         |TIPO DE ANÁLISIS               |73              |PROCEDENTE                                           |1     |
+|11         |TIPO DE ANÁLISIS               |74              |IMPROCEDENTE                                         |1     |
+|11         |TIPO DE ANÁLISIS               |107             |PROCEDENTE EN PARTE                                  |1     |
+|12         |TIENE OBSERVACIÓN              |75              |SI                                                   |1     |
+|12         |TIENE OBSERVACIÓN              |76              |NO                                                   |1     |
+|13         |TIPO OBSERVACIÓN               |77              |DE FORMA                                             |1     |
+|13         |TIPO OBSERVACIÓN               |78              |DE FONDO                                             |1     |
+|14         |TIPO NOTIFICACIÖN              |79              |SITD                                                 |1     |
+|14         |TIPO NOTIFICACIÖN              |80              |CORREO                                               |1     |
+|15         |TIPO CULMINACION EN LINEA      |82              |EJECUTADO                                            |1     |
+|15         |TIPO CULMINACION EN LINEA      |83              |NO CORRESPONDE EJECUTAR                              |1     |
+|15         |TIPO CULMINACION EN LINEA      |84              |PENDIENTE POR EJECUTAR                               |1     |
+|15         |TIPO CULMINACION EN LINEA      |85              |CULMINACIÓN EN LÍNEA                                 |1     |
+|15         |TIPO CULMINACION EN LINEA      |86              |RESOLUCIÓN OBSERVADA                                 |1     |
+|15         |TIPO CULMINACION EN LINEA      |110             |EJECUTADO POR OREC                                   |1     |
+|16         |TIPO PERSONAL                  |93              |CAS ELECTORAL                                        |1     |
+|16         |TIPO PERSONAL                  |94              |PERSONAL OR                                          |1     |
+|16         |TIPO PERSONAL                  |95              |PERSONAL PLANTA                                      |1     |
+|17         |Tipo de Documento Identidad    |101             |DNI                                                  |1     |
+|17         |Tipo de Documento Identidad    |102             |RUC                                                  |1     |
+|17         |Tipo de Documento Identidad    |103             |CE                                                   |1     |
+|17         |Tipo de Documento Identidad    |104             |PASAPORTE                                            |1     |

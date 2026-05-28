@@ -1,0 +1,12 @@
+|VIEW_NAME             |TEXT_LENGTH|
+|----------------------|-----------|
+|MVIEW_EVALUATIONS     |397        |
+|MVIEW_EXCEPTIONS      |269        |
+|MVIEW_FILTER          |763        |
+|MVIEW_FILTERINSTANCE  |659        |
+|MVIEW_LOG             |596        |
+|MVIEW_RECOMMENDATIONS |520        |
+|MVIEW_WORKLOAD        |436        |
+|PRODUCT_PRIVS         |218        |
+|SCHEDULER_JOB_ARGS    |148        |
+|SCHEDULER_PROGRAM_ARGS|193        |

@@ -1,0 +1,6 @@
+|ESTADO              |ID_ESTADO|CANTIDAD|
+|--------------------|---------|--------|
+|Registrado          |56       |178     |
+|Asignado            |57       |3       |
+|Recibido            |58       |1       |
+|Asignado a ejecución|88       |1       |

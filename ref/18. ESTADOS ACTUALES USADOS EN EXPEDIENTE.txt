@@ -1,0 +1,6 @@
+|ESTADO|ESTADO_DESCRIPCION  |CANTIDAD|
+|------|--------------------|--------|
+|56    |Registrado          |178     |
+|57    |Asignado            |3       |
+|58    |Recibido            |1       |
+|88    |Asignado a ejecución|1       |
