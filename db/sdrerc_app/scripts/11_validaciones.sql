@@ -78,3 +78,132 @@ FROM auditoria_evento
 GROUP BY tabla_afectada, operacion
 ORDER BY tabla_afectada, operacion;
 
+SELECT ft.codigo_accion,
+       eo.codigo AS etapa_origen,
+       so.codigo AS estado_origen,
+       ed.codigo AS etapa_destino,
+       sd.codigo AS estado_destino,
+       ft.requiere_comentario,
+       ft.requiere_documento,
+       ft.activo
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+LEFT JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+LEFT JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion IN (
+    'ENVIO_VERIFICACION',
+    'REGISTRO_OBSERVACION_VERIFICACION',
+    'REVERSION_ESTADO_DOCUMENTO',
+    'DEVOLUCION_A_ANALISIS',
+    'CORRECCION_DOCUMENTO',
+    'REENVIO_VERIFICACION',
+    'APROBACION_VERIFICACION',
+    'ENVIO_FIRMA'
+  )
+ORDER BY ft.codigo_accion, etapa_origen, estado_origen;
+
+SELECT 'ANALISIS_VERIFICACION_ENVIO_INICIAL' AS validacion,
+       COUNT(*) AS rutas_encontradas
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion = 'ENVIO_VERIFICACION'
+  AND eo.codigo = 'ANALISIS'
+  AND so.codigo = 'ATENDIDO'
+  AND ed.codigo = 'VERIFICACION'
+  AND sd.codigo = 'EN_VERIFICACION';
+
+SELECT 'VERIFICACION_REGISTRO_OBSERVACION' AS validacion,
+       COUNT(*) AS rutas_encontradas
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion = 'REGISTRO_OBSERVACION_VERIFICACION'
+  AND eo.codigo = 'VERIFICACION'
+  AND so.codigo = 'EN_VERIFICACION'
+  AND ed.codigo = 'VERIFICACION'
+  AND sd.codigo = 'REQUIERE_CORRECCION';
+
+SELECT 'VERIFICACION_DOCUMENTO_INCONSISTENTE' AS validacion,
+       COUNT(*) AS rutas_encontradas
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion = 'REVERSION_ESTADO_DOCUMENTO'
+  AND eo.codigo = 'VERIFICACION'
+  AND so.codigo = 'EN_VERIFICACION'
+  AND ed.codigo = 'VERIFICACION'
+  AND sd.codigo = 'DOCUMENTO_INCONSISTENTE';
+
+SELECT 'VERIFICACION_ANALISIS_DEVOLUCION' AS validacion,
+       COUNT(*) AS rutas_encontradas
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion = 'DEVOLUCION_A_ANALISIS'
+  AND eo.codigo = 'VERIFICACION'
+  AND ed.codigo = 'ANALISIS'
+  AND sd.codigo = 'OBSERVADO';
+
+SELECT 'ANALISIS_ANALISIS_CORRECCION' AS validacion,
+       COUNT(*) AS rutas_encontradas
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion = 'CORRECCION_DOCUMENTO'
+  AND eo.codigo = 'ANALISIS'
+  AND so.codigo = 'OBSERVADO'
+  AND ed.codigo = 'ANALISIS'
+  AND sd.codigo = 'SUBSANADO';
+
+SELECT 'ANALISIS_VERIFICACION_REENVIO' AS validacion,
+       COUNT(*) AS rutas_encontradas
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion = 'REENVIO_VERIFICACION'
+  AND eo.codigo = 'ANALISIS'
+  AND so.codigo = 'SUBSANADO'
+  AND ed.codigo = 'VERIFICACION'
+  AND sd.codigo = 'EN_VERIFICACION';
+
+SELECT 'VERIFICACION_FIRMA_ENVIO' AS validacion,
+       COUNT(*) AS rutas_encontradas
+FROM flujo_transicion ft
+JOIN flujo f ON f.id_flujo = ft.id_flujo
+JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen
+JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino
+JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen
+JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino
+WHERE f.codigo = 'SDRERC_TO_BE'
+  AND ft.codigo_accion = 'ENVIO_FIRMA'
+  AND eo.codigo = 'VERIFICACION'
+  AND so.codigo = 'VERIFICADO'
+  AND ed.codigo = 'FIRMA_EMISION'
+  AND sd.codigo = 'PARA_FIRMA';

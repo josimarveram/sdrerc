@@ -86,6 +86,14 @@ ALTER TABLE estado_notificacion ADD CONSTRAINT uk_estado_notificacion_codigo UNI
 ALTER TABLE estado_cargo_acuse ADD CONSTRAINT uk_estado_cargo_codigo UNIQUE (codigo);
 ALTER TABLE tipo_resolucion ADD CONSTRAINT uk_tipo_resolucion_codigo UNIQUE (codigo);
 ALTER TABLE flujo ADD CONSTRAINT uk_flujo_codigo UNIQUE (codigo);
+ALTER TABLE flujo_transicion ADD CONSTRAINT uk_flujo_transicion_ruta UNIQUE (
+  id_flujo,
+  id_etapa_origen,
+  id_estado_origen,
+  codigo_accion,
+  id_etapa_destino,
+  id_estado_destino
+);
 ALTER TABLE legacy_estado_map ADD CONSTRAINT uk_legacy_estado_id UNIQUE (id_legacy);
 ALTER TABLE permiso ADD CONSTRAINT uk_permiso_codigo UNIQUE (codigo);
 

@@ -57,8 +57,13 @@ INSERT INTO estado_expediente (id_etapa, codigo, nombre, id_legacy) SELECT id_et
 INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'NO_CORRESPONDE', 'No corresponde' FROM etapa_expediente WHERE codigo = 'ANALISIS';
 INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'EN_ABANDONO', 'En abandono' FROM etapa_expediente WHERE codigo = 'ANALISIS';
 INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'OBSERVACION_ADMINISTRATIVA', 'Observacion administrativa' FROM etapa_expediente WHERE codigo = 'ANALISIS';
+INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'OBSERVADO', 'Observado' FROM etapa_expediente WHERE codigo = 'ANALISIS';
+INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'SUBSANADO', 'Subsanado' FROM etapa_expediente WHERE codigo = 'ANALISIS';
+INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'EN_VERIFICACION', 'En verificacion' FROM etapa_expediente WHERE codigo = 'VERIFICACION';
 INSERT INTO estado_expediente (id_etapa, codigo, nombre, id_legacy) SELECT id_etapa, 'VERIFICADO', 'Verificado', 87 FROM etapa_expediente WHERE codigo = 'VERIFICACION';
 INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'REQUIERE_CORRECCION', 'Requiere correccion' FROM etapa_expediente WHERE codigo = 'VERIFICACION';
+INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'DOCUMENTO_INCONSISTENTE', 'Documento inconsistente' FROM etapa_expediente WHERE codigo = 'VERIFICACION';
+INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'PARA_FIRMA', 'Para firma' FROM etapa_expediente WHERE codigo = 'FIRMA_EMISION';
 INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'FIRMADO', 'Firmado' FROM etapa_expediente WHERE codigo = 'FIRMA_EMISION';
 INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'EMITIDO', 'Emitido' FROM etapa_expediente WHERE codigo = 'FIRMA_EMISION';
 INSERT INTO estado_expediente (id_etapa, codigo, nombre) SELECT id_etapa, 'RESOLUCION_NUMERADA', 'Resolucion numerada' FROM etapa_expediente WHERE codigo = 'FIRMA_EMISION';
@@ -117,8 +122,15 @@ INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('ASOCIACION_DUPLICADO', 'As
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('ASIGNACION_ABOGADO', 'Asignacion de abogado');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('RECEPCION_ASIGNACION', 'Recepcion de asignacion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REGISTRO_RESULTADO_ANALISIS', 'Registro de resultado de analisis');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('ENVIO_VERIFICACION', 'Envio a verificacion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REVISION_SUPERVISOR', 'Revision de supervisor');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REGISTRO_OBSERVACION_VERIFICACION', 'Registro de observacion en verificacion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REVERSION_ESTADO_DOCUMENTO', 'Reversion de estado de documento');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('DEVOLUCION_A_ANALISIS', 'Devolucion a analisis');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('CORRECCION_DOCUMENTO', 'Correccion de documento');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REENVIO_VERIFICACION', 'Reenvio a verificacion');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('APROBACION_VERIFICACION', 'Aprobacion de verificacion');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('ENVIO_FIRMA', 'Envio a firma');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('FIRMA_DOCUMENTO', 'Firma de documento');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REGISTRO_NUMERO_RESOLUCION', 'Registro de numero de resolucion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('INICIO_EJECUCION', 'Inicio de ejecucion');
@@ -169,10 +181,49 @@ INSERT INTO flujo_transicion (
   codigo_accion, nombre_accion, requiere_comentario, requiere_documento
 )
 SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
-       'REGISTRO_RESULTADO_ANALISIS', 'Enviar analisis a verificacion', 0, 1
+       'ENVIO_VERIFICACION', 'Enviar analisis a verificacion', 0, 1
 FROM flujo f
 JOIN etapa_expediente eo ON eo.codigo = 'ANALISIS'
 JOIN estado_expediente so ON so.codigo = 'ATENDIDO'
+JOIN etapa_expediente ed ON ed.codigo = 'VERIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'EN_VERIFICACION'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'REGISTRO_OBSERVACION_VERIFICACION', 'Registrar observacion de verificacion', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'VERIFICACION'
+JOIN estado_expediente so ON so.codigo = 'EN_VERIFICACION'
+JOIN etapa_expediente ed ON ed.codigo = 'VERIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'REQUIERE_CORRECCION'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'REVERSION_ESTADO_DOCUMENTO', 'Registrar documento inconsistente', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'VERIFICACION'
+JOIN estado_expediente so ON so.codigo = 'EN_VERIFICACION'
+JOIN etapa_expediente ed ON ed.codigo = 'VERIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'DOCUMENTO_INCONSISTENTE'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'APROBACION_VERIFICACION', 'Aprobar verificacion', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'VERIFICACION'
+JOIN estado_expediente so ON so.codigo = 'EN_VERIFICACION'
 JOIN etapa_expediente ed ON ed.codigo = 'VERIFICACION'
 JOIN estado_expediente sd ON sd.codigo = 'VERIFICADO'
 WHERE f.codigo = 'SDRERC_TO_BE';
@@ -182,12 +233,64 @@ INSERT INTO flujo_transicion (
   codigo_accion, nombre_accion, requiere_comentario, requiere_documento
 )
 SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
-       'REVISION_SUPERVISOR', 'Enviar a firma y emision', 0, 1
+       'DEVOLUCION_A_ANALISIS', 'Devolver expediente a analisis por correccion', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'VERIFICACION'
+JOIN estado_expediente so ON so.codigo = 'REQUIERE_CORRECCION'
+JOIN etapa_expediente ed ON ed.codigo = 'ANALISIS'
+JOIN estado_expediente sd ON sd.codigo = 'OBSERVADO'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'DEVOLUCION_A_ANALISIS', 'Devolver documento inconsistente a analisis', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'VERIFICACION'
+JOIN estado_expediente so ON so.codigo = 'DOCUMENTO_INCONSISTENTE'
+JOIN etapa_expediente ed ON ed.codigo = 'ANALISIS'
+JOIN estado_expediente sd ON sd.codigo = 'OBSERVADO'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'CORRECCION_DOCUMENTO', 'Registrar correccion de documento', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'ANALISIS'
+JOIN estado_expediente so ON so.codigo = 'OBSERVADO'
+JOIN etapa_expediente ed ON ed.codigo = 'ANALISIS'
+JOIN estado_expediente sd ON sd.codigo = 'SUBSANADO'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'REENVIO_VERIFICACION', 'Reenviar correccion a verificacion', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'ANALISIS'
+JOIN estado_expediente so ON so.codigo = 'SUBSANADO'
+JOIN etapa_expediente ed ON ed.codigo = 'VERIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'EN_VERIFICACION'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'ENVIO_FIRMA', 'Enviar expediente verificado a firma', 0, 1
 FROM flujo f
 JOIN etapa_expediente eo ON eo.codigo = 'VERIFICACION'
 JOIN estado_expediente so ON so.codigo = 'VERIFICADO'
 JOIN etapa_expediente ed ON ed.codigo = 'FIRMA_EMISION'
-JOIN estado_expediente sd ON sd.codigo = 'FIRMADO'
+JOIN estado_expediente sd ON sd.codigo = 'PARA_FIRMA'
 WHERE f.codigo = 'SDRERC_TO_BE';
 
 INSERT INTO flujo_transicion (
@@ -201,6 +304,19 @@ JOIN etapa_expediente eo ON eo.codigo = 'FIRMA_EMISION'
 JOIN estado_expediente so ON so.codigo = 'RESOLUCION_NUMERADA'
 JOIN etapa_expediente ed ON ed.codigo = 'EJECUCION'
 JOIN estado_expediente sd ON sd.codigo = 'EN_EJECUCION'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'FIRMA_DOCUMENTO', 'Emitir documento firmado', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'FIRMA_EMISION'
+JOIN estado_expediente so ON so.codigo = 'PARA_FIRMA'
+JOIN etapa_expediente ed ON ed.codigo = 'FIRMA_EMISION'
+JOIN estado_expediente sd ON sd.codigo = 'FIRMADO'
 WHERE f.codigo = 'SDRERC_TO_BE';
 
 INSERT INTO flujo_transicion (

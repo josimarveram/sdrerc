@@ -5,7 +5,7 @@
    Ajustar password y tablespace si corresponde.
    ============================================================ */
 
-CREATE USER SDRERC_APP IDENTIFIED BY "Cambiar_Clave_Segura_2026"
+CREATE USER SDRERC_APP IDENTIFIED BY "satrapa12345"
   DEFAULT TABLESPACE USERS
   TEMPORARY TABLESPACE TEMP
   QUOTA UNLIMITED ON USERS;
