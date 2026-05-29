@@ -126,6 +126,8 @@ INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('ENVIO_VERIFICACION', 'Envi
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REVISION_SUPERVISOR', 'Revision de supervisor');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REGISTRO_OBSERVACION_VERIFICACION', 'Registro de observacion en verificacion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REVERSION_ESTADO_DOCUMENTO', 'Reversion de estado de documento');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REVERSION_ESTADO_DOCUMENTO_EJECUCION', 'Reversion de estado de documento en ejecucion');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('OBSERVACION_EJECUCION', 'Observacion en ejecucion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('DEVOLUCION_A_ANALISIS', 'Devolucion a analisis');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('CORRECCION_DOCUMENTO', 'Correccion de documento');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REENVIO_VERIFICACION', 'Reenvio a verificacion');
@@ -138,9 +140,12 @@ INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('NOTIFICACION_VIRTUAL', 'No
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('NOTIFICACION_PRESENCIAL_1', 'Primera notificacion presencial');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('NOTIFICACION_PRESENCIAL_2', 'Segunda notificacion presencial');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('RECEPCION_CARGO_ACUSE', 'Recepcion de cargo de acuse');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('CONFIRMACION_NOTIFICACION', 'Confirmacion de notificacion');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REGISTRO_NOTIFICACION_FALLIDA', 'Registro de notificacion fallida');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('DERIVACION_A_NOTIFICACION', 'Derivacion a notificacion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('DERIVACION_EXTERNA', 'Derivacion externa');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('GENERACION_PUBLICACION', 'Generacion de publicacion');
+INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REGISTRO_PUBLICACION', 'Registro de publicacion');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('CREACION_CARPETA_EXPEDIENTE_DIGITAL', 'Creacion de carpeta de expediente digital');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('REGISTRO_LINK_EXPEDIENTE_DIGITAL', 'Registro de link de expediente digital');
 INSERT INTO tipo_movimiento (codigo, nombre) VALUES ('CARGA_DOCUMENTOS_EXPEDIENTE_DIGITAL', 'Carga de documentos de expediente digital');
@@ -350,12 +355,142 @@ INSERT INTO flujo_transicion (
   codigo_accion, nombre_accion, requiere_comentario, requiere_documento
 )
 SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'REVERSION_ESTADO_DOCUMENTO_EJECUCION', 'Registrar documento inconsistente en ejecucion', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'EJECUCION'
+JOIN estado_expediente so ON so.codigo = 'EN_EJECUCION'
+JOIN etapa_expediente ed ON ed.codigo = 'EJECUCION'
+JOIN estado_expediente sd ON sd.codigo = 'DOCUMENTO_INCONSISTENTE'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'OBSERVACION_EJECUCION', 'Registrar observacion de ejecucion', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'EJECUCION'
+JOIN estado_expediente so ON so.codigo = 'EN_EJECUCION'
+JOIN etapa_expediente ed ON ed.codigo = 'EJECUCION'
+JOIN estado_expediente sd ON sd.codigo = 'REQUIERE_CORRECCION'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'DEVOLUCION_A_ANALISIS', 'Devolver documento inconsistente de ejecucion a analisis', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'EJECUCION'
+JOIN estado_expediente so ON so.codigo = 'DOCUMENTO_INCONSISTENTE'
+JOIN etapa_expediente ed ON ed.codigo = 'ANALISIS'
+JOIN estado_expediente sd ON sd.codigo = 'OBSERVADO'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'DEVOLUCION_A_ANALISIS', 'Devolver observacion de ejecucion a analisis', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'EJECUCION'
+JOIN estado_expediente so ON so.codigo = 'REQUIERE_CORRECCION'
+JOIN etapa_expediente ed ON ed.codigo = 'ANALISIS'
+JOIN estado_expediente sd ON sd.codigo = 'OBSERVADO'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
        'DERIVACION_A_NOTIFICACION', 'Derivar ejecucion a notificacion', 0, 0
 FROM flujo f
 JOIN etapa_expediente eo ON eo.codigo = 'EJECUCION'
 JOIN estado_expediente so ON so.codigo = 'EJECUTADO'
 JOIN etapa_expediente ed ON ed.codigo = 'NOTIFICACION'
 JOIN estado_expediente sd ON sd.codigo = 'EN_NOTIFICACION'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'NOTIFICACION_VIRTUAL', 'Registrar notificacion virtual', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'NOTIFICACION'
+JOIN estado_expediente so ON so.codigo = 'EN_NOTIFICACION'
+JOIN etapa_expediente ed ON ed.codigo = 'NOTIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'CARGO_PENDIENTE'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'NOTIFICACION_PRESENCIAL_1', 'Registrar primera notificacion presencial', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'NOTIFICACION'
+JOIN estado_expediente so ON so.codigo = 'EN_NOTIFICACION'
+JOIN etapa_expediente ed ON ed.codigo = 'NOTIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'CARGO_PENDIENTE'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'NOTIFICACION_PRESENCIAL_2', 'Registrar segunda notificacion presencial', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'NOTIFICACION'
+JOIN estado_expediente so ON so.codigo = 'CARGO_PENDIENTE'
+JOIN etapa_expediente ed ON ed.codigo = 'NOTIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'CARGO_PENDIENTE'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'RECEPCION_CARGO_ACUSE', 'Registrar recepcion de cargo de acuse', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'NOTIFICACION'
+JOIN estado_expediente so ON so.codigo = 'CARGO_PENDIENTE'
+JOIN etapa_expediente ed ON ed.codigo = 'NOTIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'CARGO_RECIBIDO'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'CONFIRMACION_NOTIFICACION', 'Confirmar notificacion con cargo recibido', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'NOTIFICACION'
+JOIN estado_expediente so ON so.codigo = 'CARGO_RECIBIDO'
+JOIN etapa_expediente ed ON ed.codigo = 'NOTIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'NOTIFICADO'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'REGISTRO_NOTIFICACION_FALLIDA', 'Registrar notificacion fallida y requerir publicacion', 1, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'NOTIFICACION'
+JOIN estado_expediente so ON so.codigo = 'CARGO_PENDIENTE'
+JOIN etapa_expediente ed ON ed.codigo = 'NOTIFICACION'
+JOIN estado_expediente sd ON sd.codigo = 'REQUIERE_PUBLICACION'
 WHERE f.codigo = 'SDRERC_TO_BE';
 
 INSERT INTO flujo_transicion (
@@ -434,6 +569,19 @@ JOIN etapa_expediente eo ON eo.codigo = 'NOTIFICACION'
 JOIN estado_expediente so ON so.codigo = 'REQUIERE_PUBLICACION'
 JOIN etapa_expediente ed ON ed.codigo = 'PUBLICACION_CONDICIONAL'
 JOIN estado_expediente sd ON sd.codigo = 'PENDIENTE_PUBLICACION'
+WHERE f.codigo = 'SDRERC_TO_BE';
+
+INSERT INTO flujo_transicion (
+  id_flujo, id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino,
+  codigo_accion, nombre_accion, requiere_comentario, requiere_documento
+)
+SELECT f.id_flujo, eo.id_etapa, so.id_estado, ed.id_etapa, sd.id_estado,
+       'REGISTRO_PUBLICACION', 'Registrar publicacion efectuada', 0, 1
+FROM flujo f
+JOIN etapa_expediente eo ON eo.codigo = 'PUBLICACION_CONDICIONAL'
+JOIN estado_expediente so ON so.codigo = 'PENDIENTE_PUBLICACION'
+JOIN etapa_expediente ed ON ed.codigo = 'PUBLICACION_CONDICIONAL'
+JOIN estado_expediente sd ON sd.codigo = 'PUBLICACION_REGISTRADA'
 WHERE f.codigo = 'SDRERC_TO_BE';
 
 INSERT INTO flujo_transicion (
