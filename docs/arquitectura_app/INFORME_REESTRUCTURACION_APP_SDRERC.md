@@ -28,7 +28,7 @@ Configuración actual:
 ```text
 URL: jdbc:oracle:thin:@localhost:1521/xe
 USER: system
-PASSWORD: satrapa12345
+PASSWORD: [REDACTADO]
 DRIVER: oracle.jdbc.OracleDriver
 ```
 
