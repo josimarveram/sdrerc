@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public final class SdrercAppConnection {
 
-    private static final String DEFAULT_URL = "jdbc:oracle:thin:@localhost:1521/xe";
+    private static final String DEFAULT_URL = "jdbc:oracle:thin:@localhost:1521/XEPDB1";
     private static final String DEFAULT_USER = "SDRERC_APP";
     private static final String ORACLE_DRIVER = "oracle.jdbc.OracleDriver";
 
