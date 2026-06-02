@@ -76,22 +76,28 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 
 ## 7. Reglas de git
 
-- Al terminar cada tarea, revisar `git status`.
+- Al terminar cada tarea, ejecutar `git status`.
 - No usar `git add .`.
 - Agregar solo archivos creados/modificados por la tarea.
-- No revertir cambios ajenos.
-- Si hay cambios previos no relacionados, reportarlos brevemente y dejarlos fuera del commit.
+- Si hay cambios ajenos o preexistentes, reportarlos brevemente y excluirlos del commit.
+- Si el build o verificacion falla, no hacer commit ni push, salvo que el usuario lo autorice explicitamente.
+- Si el build o verificacion pasa, hacer commit obligatorio con un mensaje claro y breve.
+- Despues del commit, hacer push obligatorio al branch actual.
+- Si el push falla por credenciales, red o permisos:
+  - reportar la causa exacta;
+  - indicar el commit creado;
+  - indicar el branch actual;
+  - indicar el comando manual para ejecutar el push.
 - No pedir el mensaje de commit al inicio.
-- Codex debe sugerir un mensaje de commit al final segun los cambios realizados y usarlo si procede.
-- Si `mvn clean compile` / `mvn clean package` pasan cuando aplican, y solo hay cambios de la tarea, ejecutar automaticamente cuando el entorno lo permita:
-  - `git add` selectivo de los archivos creados/modificados por la tarea.
-  - `git commit -m "mensaje sugerido por Codex"`.
-  - `git push`.
-- No hacer commit/push automatico si existen cambios ajenos o preexistentes que puedan mezclarse con la tarea; reportarlos y esperar instruccion.
-- Si hay riesgo de incluir archivos no relacionados, no hacer commit/push.
+- Generar un mensaje de commit coherente segun la tarea.
+- No incluir archivos no relacionados.
+- No revertir cambios ajenos.
+- No mostrar `git diff` completo salvo que se pida explicitamente.
+- Si hay conflictos o riesgo de mezclar cambios, detenerse y reportar.
+- AGENTS.md autoriza por defecto `git add` selectivo, commit y push controlado al finalizar tareas normales.
+- No hacer commit/push si el build falla, hay conflictos, hay cambios ajenos riesgosos, hay comandos destructivos pendientes, hay SQL o BD involucrada sin autorizacion, hay credenciales o datos sensibles en riesgo, o el usuario pide explicitamente no hacer commit/push.
 - Si la tarea indica explicitamente no hacer commit, obedecer.
 - Solo pedir confirmacion si hay conflictos, cambios ajenos riesgosos, comandos destructivos, restricciones del entorno o riesgo de incluir archivos no relacionados.
-- No mostrar `git diff` completo salvo que se pida explicitamente.
 
 ## 8. Autonomia / full access
 
@@ -150,20 +156,23 @@ codex --approval never --sandbox danger-full-access
 4. Compilar/verificar segun aplique.
 5. Revisar restricciones de la tarea.
 6. Revisar `git status`.
-7. Sugerir commit si procede.
-8. Hacer `git add` selectivo, commit y push automatico si procede, el build paso y no hay cambios ajenos mezclados.
-9. Entregar resumen final.
+7. Hacer `git add` selectivo solo de archivos de la tarea.
+8. Crear commit obligatorio si la verificacion paso y no hay bloqueos.
+9. Hacer push obligatorio al branch actual.
+10. Si el push falla, reportar causa exacta, commit, branch y comando manual.
+11. Entregar resumen final.
 
 ## 13. Respuesta final esperada
 
 - Responder corto y accionable.
-- Listar archivos creados/modificados.
-- Resumir la implementacion.
+- Indicar archivos creados/modificados.
+- Resumir brevemente la implementacion.
 - Indicar resultado de build o verificacion.
 - Indicar restricciones cumplidas.
 - Indicar cambios ajenos detectados si los hubo.
-- Indicar mensaje de commit usado o sugerido.
-- Confirmar push si se realizo.
+- Indicar commit creado.
+- Confirmar push realizado.
+- Si el push fallo, indicar causa exacta y comando manual para ejecutar el push.
 - Indicar bloqueos concretos si existieron.
 
 ## 14. Restricciones por defecto
