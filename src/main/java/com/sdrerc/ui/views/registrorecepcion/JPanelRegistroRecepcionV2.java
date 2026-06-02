@@ -31,7 +31,14 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 }
             }
         }));
-        tabs.addTab("Registro manual", new JPanelRegistroManualPlaceholderV2());
+        tabs.addTab("Registro manual", new JPanelRegistroManualRecepcionV2(new Runnable() {
+            @Override
+            public void run() {
+                if (bandejaRegistro != null) {
+                    bandejaRegistro.refrescar();
+                }
+            }
+        }));
         return tabs;
     }
 

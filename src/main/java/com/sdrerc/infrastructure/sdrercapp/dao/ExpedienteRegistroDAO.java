@@ -3,6 +3,12 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosNotificacionDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
+import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
 import java.sql.Date;
@@ -22,6 +28,10 @@ public class ExpedienteRegistroDAO {
     private static final String CODIGO_ETAPA_REGISTRO = "REGISTRO";
     private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
     private static final String CODIGO_MOVIMIENTO_CARGA_DIARIA = "IMPORTACION_CARGA_DIARIA";
+    private static final String CODIGO_MOVIMIENTO_REGISTRO_MANUAL = "RECEPCION_DOCUMENTO";
+    private static final String CODIGO_ESTADO_NOTIFICACION_PENDIENTE = "PENDIENTE";
+    private static final String CODIGO_NOTIFICACION_VIRTUAL = "VIRTUAL";
+    private static final String CODIGO_NOTIFICACION_PRESENCIAL = "PRESENCIAL_1";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
 
@@ -136,6 +146,52 @@ public class ExpedienteRegistroDAO {
                 omitidos,
                 confirmados.size() + " expediente(s) registrado(s) en SDRERC_APP.",
                 registros);
+    }
+
+    public RegistroManualResultadoDTO registrarManual(
+            RegistroManualExpedienteDTO registro,
+            CorrelativoExpedienteService correlativoService) throws SQLException {
+        if (registro == null) {
+            throw new IllegalArgumentException("Complete los datos del registro manual.");
+        }
+
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
+                Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
+                Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_REGISTRO_MANUAL), "movimiento RECEPCION_DOCUMENTO");
+
+                Long idTitular = insertarPersonaManual(conn, registro.getTitular());
+                Long idRemitente = insertarPersonaManual(conn, registro.getRemitente());
+                Long idExpediente = insertarExpedienteManual(conn, registro.getSolicitud(), idEtapaRegistro, idEstadoRegistrado);
+                String numeroExpediente = correlativoService.generarDesdeId(idExpediente);
+                actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
+
+                insertarSolicitudManual(conn, registro, idExpediente, idRemitente);
+                insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
+                insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
+                insertarActaManual(conn, registro.getActa(), idExpediente);
+                insertarDocumentoManual(conn, registro.getSolicitud(), idExpediente);
+                insertarNotificacionesManual(conn, registro.getNotificacion(), idExpediente);
+                insertarHistorialManual(conn, registro, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado, numeroExpediente);
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return new RegistroManualResultadoDTO(
+                        idExpediente,
+                        numeroExpediente,
+                        "Expediente " + numeroExpediente + " registrado en SDRERC_APP.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
     }
 
     private String buscarPorTramite(Connection conn, String numeroTramite) throws SQLException {
@@ -290,6 +346,201 @@ public class ExpedienteRegistroDAO {
         }
     }
 
+    private Long insertarPersonaManual(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
+        String sql = "INSERT INTO persona ("
+                + "tipo_documento, numero_documento, razon_social, correo_electronico, telefono, direccion, activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
+            ps.setString(1, persona.getTipoDocumento());
+            ps.setString(2, persona.getNumeroDocumento());
+            ps.setString(3, persona.getNombreCompleto());
+            ps.setString(4, persona.getCorreo());
+            ps.setString(5, persona.getTelefono());
+            ps.setString(6, persona.getDireccion());
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "persona");
+        }
+    }
+
+    private Long insertarExpedienteManual(Connection conn, DatosSolicitudDTO solicitud, Long idEtapa, Long idEstado) throws SQLException {
+        String sql = "INSERT INTO expediente ("
+                + "numero_expediente, numero_tramite_documentario, id_etapa_actual, id_estado_actual, "
+                + "fecha_registro, fecha_ultimo_movimiento, prioridad, requiere_publicacion, "
+                + "expediente_digital_completo, archivado, cerrado, activo"
+                + ") VALUES (NULL, ?, ?, ?, SYSTIMESTAMP, SYSTIMESTAMP, ?, 0, 0, 0, 0, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE"})) {
+            ps.setString(1, solicitud.getNumeroTramite());
+            ps.setLong(2, idEtapa);
+            ps.setLong(3, idEstado);
+            ps.setString(4, hasText(solicitud.getPrioridad()) ? solicitud.getPrioridad() : "NORMAL");
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "expediente");
+        }
+    }
+
+    private void insertarSolicitudManual(
+            Connection conn,
+            RegistroManualExpedienteDTO registro,
+            Long idExpediente,
+            Long idPersonaSolicitante) throws SQLException {
+        DatosSolicitudDTO solicitud = registro.getSolicitud();
+        Long idCanal = null;
+        if (hasText(solicitud.getCanalCodigo())) {
+            idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, solicitud.getCanalCodigo()), "canal " + solicitud.getCanalNombre());
+        }
+
+        String sql = "INSERT INTO expediente_solicitud ("
+                + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
+                + "fecha_recepcion, asunto, observacion, es_tramite_virtual, correo_electronico, potencial_duplicado, activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            setLongOrNull(ps, 2, idCanal);
+            setLongOrNull(ps, 3, idPersonaSolicitante);
+            ps.setString(4, solicitud.getNumeroTramite());
+            ps.setDate(5, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
+            ps.setString(6, solicitud.getTipoProcedimientoNombre());
+            ps.setString(7, limitar(observacionSolicitud(registro), 1000));
+            ps.setInt(8, registro.getNotificacion().requiereVirtual() ? 1 : 0);
+            ps.setString(9, registro.getNotificacion().getCorreo());
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarActaManual(Connection conn, DatosActaDTO acta, Long idExpediente) throws SQLException {
+        Long idTipoActa = null;
+        if (hasText(acta.getTipoActaCodigo())) {
+            idTipoActa = requerirId(catalogoLookupDAO.obtenerTipoActaId(conn, acta.getTipoActaCodigo()), "tipo de acta " + acta.getTipoActaNombre());
+        }
+
+        String sql = "INSERT INTO expediente_acta ("
+                + "id_expediente, id_tipo_acta, numero_acta, anio_acta, oficina_registral, libro, folio, activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            setLongOrNull(ps, 2, idTipoActa);
+            ps.setString(3, acta.getNumeroActa());
+            setIntegerOrNull(ps, 4, acta.getAnioActa());
+            ps.setString(5, acta.getUbicacionRegistral());
+            ps.setNull(6, Types.VARCHAR);
+            ps.setNull(7, Types.VARCHAR);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarDocumentoManual(Connection conn, DatosSolicitudDTO solicitud, Long idExpediente) throws SQLException {
+        String sql = "INSERT INTO expediente_documento ("
+                + "id_expediente, nombre_documento, numero_documento, fecha_documento, activo"
+                + ") VALUES (?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, solicitud.getTipoDocumentoNombre());
+            ps.setString(3, solicitud.getNumeroTramite());
+            ps.setDate(4, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarNotificacionesManual(Connection conn, DatosNotificacionDTO notificacion, Long idExpediente) throws SQLException {
+        if (notificacion == null || !notificacion.requiereRegistroNotificacion()) {
+            return;
+        }
+        Long idEstadoPendiente = requerirId(
+                catalogoLookupDAO.obtenerEstadoNotificacionId(conn, CODIGO_ESTADO_NOTIFICACION_PENDIENTE),
+                "estado de notificación PENDIENTE");
+        if (notificacion.requiereVirtual()) {
+            insertarNotificacionManual(conn, idExpediente, CODIGO_NOTIFICACION_VIRTUAL, idEstadoPendiente, 1, notificacion);
+        }
+        if (notificacion.requiereFisica()) {
+            insertarNotificacionManual(conn, idExpediente, CODIGO_NOTIFICACION_PRESENCIAL, idEstadoPendiente, notificacion.requiereVirtual() ? 2 : 1, notificacion);
+        }
+    }
+
+    private void insertarNotificacionManual(
+            Connection conn,
+            Long idExpediente,
+            String codigoTipoNotificacion,
+            Long idEstadoPendiente,
+            int numeroIntento,
+            DatosNotificacionDTO notificacion) throws SQLException {
+        Long idTipoNotificacion = requerirId(
+                catalogoLookupDAO.obtenerTipoNotificacionId(conn, codigoTipoNotificacion),
+                "tipo de notificación " + codigoTipoNotificacion);
+        String sql = "INSERT INTO expediente_notificacion ("
+                + "id_expediente, id_tipo_notificacion, id_estado_notificacion, numero_intento, observacion, activo"
+                + ") VALUES (?, ?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idTipoNotificacion);
+            ps.setLong(3, idEstadoPendiente);
+            ps.setInt(4, numeroIntento);
+            ps.setString(5, limitar(observacionNotificacion(notificacion), 1000));
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarHistorialManual(
+            Connection conn,
+            RegistroManualExpedienteDTO registro,
+            Long idExpediente,
+            Long idTipoMovimiento,
+            Long idEtapaDestino,
+            Long idEstadoDestino,
+            String numeroExpediente) throws SQLException {
+        String sql = "INSERT INTO expediente_historial ("
+                + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_etapa_destino, id_estado_destino, "
+                + "tabla_relacionada, id_registro_relacionado, comentario, motivo, activo"
+                + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, 'EXPEDIENTE', ?, ?, 'REGISTRO_MANUAL', 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idTipoMovimiento);
+            ps.setLong(3, idEtapaDestino);
+            ps.setLong(4, idEstadoDestino);
+            ps.setLong(5, idExpediente);
+            ps.setString(6, limitar("Registro manual inicial. Expediente: " + numeroExpediente
+                    + ". Trámite: " + registro.getSolicitud().getNumeroTramite()
+                    + ". Titular: " + registro.getTitular().getNombreCompleto(), 2000));
+            ps.executeUpdate();
+        }
+    }
+
+    private String observacionSolicitud(RegistroManualExpedienteDTO registro) {
+        StringBuilder sb = new StringBuilder();
+        append(sb, "Observación de solicitud", registro.getSolicitud().getObservacionInicial());
+        append(sb, "Observación de acta", registro.getActa().getObservacion());
+        append(sb, "Observación de remitente", registro.getRemitente().getObservacion());
+        append(sb, "Observación general", registro.getObservacionesGenerales());
+        append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
+        append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
+        append(sb, "Origen registral", registro.getActa().getOrigenRegistral());
+        return sb.toString();
+    }
+
+    private String observacionNotificacion(DatosNotificacionDTO notificacion) {
+        StringBuilder sb = new StringBuilder();
+        append(sb, "Tipo preferente", notificacion.getTipoNotificacionNombre());
+        append(sb, "Correo", notificacion.getCorreo());
+        append(sb, "Teléfono", notificacion.getTelefono());
+        append(sb, "Dirección", notificacion.getDireccion());
+        append(sb, "Distrito", notificacion.getDistrito());
+        append(sb, "Provincia", notificacion.getProvincia());
+        append(sb, "Departamento", notificacion.getDepartamento());
+        append(sb, "Referencia", notificacion.getReferenciaDireccion());
+        append(sb, "Contacto", notificacion.getPersonaContacto());
+        append(sb, "Observación", notificacion.getObservacion());
+        return sb.toString();
+    }
+
+    private void append(StringBuilder sb, String etiqueta, String valor) {
+        if (!hasText(valor)) {
+            return;
+        }
+        if (sb.length() > 0) {
+            sb.append(" | ");
+        }
+        sb.append(etiqueta).append(": ").append(valor.trim());
+    }
+
     private Long obtenerGeneratedKey(PreparedStatement ps, String entidad) throws SQLException {
         try (ResultSet rs = ps.getGeneratedKeys()) {
             if (rs.next()) {
@@ -313,6 +564,21 @@ public class ExpedienteRegistroDAO {
         } else {
             ps.setLong(index, value);
         }
+    }
+
+    private void setIntegerOrNull(PreparedStatement ps, int index, Integer value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.INTEGER);
+        } else {
+            ps.setInt(index, value);
+        }
+    }
+
+    private String limitar(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private void rollbackSilencioso(Connection conn) {

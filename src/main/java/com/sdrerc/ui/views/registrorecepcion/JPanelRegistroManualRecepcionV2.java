@@ -1,0 +1,864 @@
+package com.sdrerc.ui.views.registrorecepcion;
+
+import com.sdrerc.application.sdrercapp.CatalogoLookupService;
+import com.sdrerc.application.sdrercapp.RegistroManualExpedienteService;
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosNotificacionDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO;
+import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
+import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
+import com.sdrerc.ui.appv2.components.BadgeV2;
+import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
+import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingWorker;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+
+public class JPanelRegistroManualRecepcionV2 extends JPanel {
+
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    private final CatalogoLookupService catalogoService = new CatalogoLookupService();
+    private final RegistroManualExpedienteService registroService = new RegistroManualExpedienteService();
+    private final Runnable onRegistroConfirmado;
+
+    private final JTextField txtNumeroTramite = new JTextField();
+    private final JTextField txtFechaRecepcion = new JTextField(DATE_FORMAT.format(LocalDate.now()));
+    private final JComboBox<FiltroCatalogoItemV2> cmbProcedimiento = comboBase("Seleccione procedimiento");
+    private final JTextField txtProcedimientoLibre = new JTextField();
+    private final JComboBox<FiltroCatalogoItemV2> cmbTipoDocumento = comboBase("Seleccione tipo documento");
+    private final JTextField txtTipoDocumentoLibre = new JTextField();
+    private final JComboBox<FiltroCatalogoItemV2> cmbCanal = comboBase("Seleccione canal");
+    private final JComboBox<FiltroCatalogoItemV2> cmbPrioridad = new JComboBox<FiltroCatalogoItemV2>(new FiltroCatalogoItemV2[]{
+        new FiltroCatalogoItemV2("NORMAL", "Normal"),
+        new FiltroCatalogoItemV2("ALTA", "Alta"),
+        new FiltroCatalogoItemV2("URGENTE", "Urgente")
+    });
+    private final JTextArea txtObservacionSolicitud = area(3);
+
+    private final JComboBox<FiltroCatalogoItemV2> cmbTipoActa = comboBase("Seleccione tipo acta");
+    private final JTextField txtTipoActaLibre = new JTextField();
+    private final JTextField txtNumeroActa = new JTextField();
+    private final JTextField txtAnioActa = new JTextField();
+    private final JTextField txtUbicacionRegistral = new JTextField();
+    private final JTextField txtOrigenRegistral = new JTextField();
+    private final JTextArea txtObservacionActa = area(3);
+
+    private final JTextField txtTitularNombre = new JTextField();
+    private final JComboBox<FiltroCatalogoItemV2> cmbTitularTipoDoc = new JComboBox<FiltroCatalogoItemV2>(crearTiposDocumentoIdentidad());
+    private final JTextField txtTitularDocumento = new JTextField();
+    private final JTextField txtTitularTelefono = new JTextField();
+    private final JTextField txtTitularCorreo = new JTextField();
+    private final JTextField txtTitularDireccion = new JTextField();
+    private final JButton btnAgregarTitular = new JButton("Agregar otro titular");
+
+    private final JTextField txtRemitenteNombre = new JTextField();
+    private final JComboBox<FiltroCatalogoItemV2> cmbTipoRemitente = new JComboBox<FiltroCatalogoItemV2>(new FiltroCatalogoItemV2[]{
+        new FiltroCatalogoItemV2("PERSONA", "Persona"),
+        new FiltroCatalogoItemV2("ENTIDAD", "Entidad"),
+        new FiltroCatalogoItemV2("MUNICIPALIDAD", "Municipalidad"),
+        new FiltroCatalogoItemV2("OTRO", "Otro")
+    });
+    private final JTextField txtRemitenteDocumento = new JTextField();
+    private final JTextField txtRemitenteTelefono = new JTextField();
+    private final JTextField txtRemitenteCorreo = new JTextField();
+    private final JTextArea txtRemitenteObservacion = area(3);
+
+    private final JComboBox<FiltroCatalogoItemV2> cmbTipoNotificacion = new JComboBox<FiltroCatalogoItemV2>(new FiltroCatalogoItemV2[]{
+        new FiltroCatalogoItemV2(null, "No definida"),
+        new FiltroCatalogoItemV2("VIRTUAL", "Virtual"),
+        new FiltroCatalogoItemV2("PRESENCIAL_1", "Física / presencial"),
+        new FiltroCatalogoItemV2("AMBAS", "Ambas")
+    });
+    private final JTextField txtNotificacionCorreo = new JTextField();
+    private final JTextField txtNotificacionTelefono = new JTextField();
+    private final JTextField txtNotificacionDireccion = new JTextField();
+    private final JTextField txtNotificacionDistrito = new JTextField();
+    private final JTextField txtNotificacionProvincia = new JTextField();
+    private final JTextField txtNotificacionDepartamento = new JTextField();
+    private final JTextField txtNotificacionReferencia = new JTextField();
+    private final JTextField txtNotificacionContacto = new JTextField();
+    private final JTextArea txtNotificacionObservacion = area(3);
+
+    private final JTextArea txtObservacionesGenerales = area(4);
+    private final JTextArea txtErrores = area(5);
+    private final JTextArea txtResumen = area(8);
+    private final JLabel lblEstado = new JLabel("Complete los datos y presione Validar.");
+    private final JLabel lblNumeroExpediente = new JLabel("Pendiente de generación al guardar");
+    private final JButton btnValidar = new JButton("Validar");
+    private final JButton btnLimpiar = new JButton("Limpiar");
+    private final JButton btnRegistrar = new JButton("Registrar expediente");
+
+    private boolean trabajando;
+    private boolean validado;
+    private RegistroManualExpedienteDTO registroValidado;
+
+    public JPanelRegistroManualRecepcionV2(Runnable onRegistroConfirmado) {
+        this.onRegistroConfirmado = onRegistroConfirmado;
+        setLayout(new BorderLayout(12, 12));
+        setBackground(AppV2Theme.BACKGROUND);
+        add(crearHeader(), BorderLayout.NORTH);
+        add(crearFormulario(), BorderLayout.CENTER);
+        add(crearFooter(), BorderLayout.SOUTH);
+        configurarEstadoInicial();
+        configurarEventos();
+        cargarCatalogos();
+    }
+
+    private JPanel crearHeader() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(AppV2Theme.SURFACE);
+        panel.setBorder(AppV2Theme.cardBorder());
+
+        JLabel title = new JLabel("Registro manual de expediente");
+        title.setFont(AppV2Theme.fontBold(18));
+        title.setForeground(AppV2Theme.TEXT_PRIMARY);
+        JLabel subtitle = new JLabel("Complete los datos de solicitud y notificación antes de registrar el expediente.");
+        subtitle.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        subtitle.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel text = new JPanel(new BorderLayout(0, 4));
+        text.setOpaque(false);
+        text.add(title, BorderLayout.NORTH);
+        text.add(subtitle, BorderLayout.CENTER);
+        panel.add(text, BorderLayout.CENTER);
+        panel.add(new BadgeV2("Escritura controlada", AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS), BorderLayout.EAST);
+        return panel;
+    }
+
+    private JScrollPane crearFormulario() {
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 0, 12, 12);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1;
+
+        gbc.gridy = 0;
+        gbc.gridx = 0;
+        form.add(crearDatosSolicitud(), gbc);
+        gbc.gridx = 1;
+        form.add(crearDatosActa(), gbc);
+
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        form.add(crearTitular(), gbc);
+        gbc.gridx = 1;
+        form.add(crearRemitente(), gbc);
+
+        gbc.gridy = 2;
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        form.add(crearNotificacion(), gbc);
+
+        gbc.gridy = 3;
+        form.add(crearObservacionesResumen(), gbc);
+
+        JScrollPane scroll = new JScrollPane(form);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        return scroll;
+    }
+
+    private JPanel crearDatosSolicitud() {
+        JPanel panel = seccion("Datos de solicitud");
+        agregarFila(panel, 0, "Número de trámite *", txtNumeroTramite);
+        agregarFila(panel, 1, "Fecha recepción *", txtFechaRecepcion);
+        agregarFila(panel, 2, "Tipo procedimiento *", comboMasTexto(cmbProcedimiento, txtProcedimientoLibre, "Otro procedimiento"));
+        agregarFila(panel, 3, "Tipo documento *", comboMasTexto(cmbTipoDocumento, txtTipoDocumentoLibre, "Otro documento"));
+        agregarFila(panel, 4, "Canal de ingreso", cmbCanal);
+        agregarFila(panel, 5, "Prioridad", cmbPrioridad);
+        agregarFila(panel, 6, "Observación inicial", scrollArea(txtObservacionSolicitud));
+        return panel;
+    }
+
+    private JPanel crearDatosActa() {
+        JPanel panel = seccion("Datos del acta / documento");
+        agregarFila(panel, 0, "Tipo de acta", comboMasTexto(cmbTipoActa, txtTipoActaLibre, "Otro tipo"));
+        agregarFila(panel, 1, "Número / referencia *", txtNumeroActa);
+        agregarFila(panel, 2, "Año del acta", txtAnioActa);
+        agregarFila(panel, 3, "Ubicación registral", txtUbicacionRegistral);
+        agregarFila(panel, 4, "ORE / origen registral", txtOrigenRegistral);
+        agregarFila(panel, 5, "Observación del acta", scrollArea(txtObservacionActa));
+        return panel;
+    }
+
+    private JPanel crearTitular() {
+        JPanel panel = seccion("Titular");
+        agregarFila(panel, 0, "Nombres / razón social *", txtTitularNombre);
+        agregarFila(panel, 1, "Tipo documento", cmbTitularTipoDoc);
+        agregarFila(panel, 2, "Número documento", txtTitularDocumento);
+        agregarFila(panel, 3, "Teléfono", txtTitularTelefono);
+        agregarFila(panel, 4, "Correo", txtTitularCorreo);
+        agregarFila(panel, 5, "Dirección", txtTitularDireccion);
+        btnAgregarTitular.setEnabled(false);
+        btnAgregarTitular.setToolTipText("Preparado para múltiples titulares en un incremento posterior.");
+        agregarFila(panel, 6, "Múltiples titulares", btnAgregarTitular);
+        return panel;
+    }
+
+    private JPanel crearRemitente() {
+        JPanel panel = seccion("Remitente");
+        agregarFila(panel, 0, "Nombre / entidad *", txtRemitenteNombre);
+        agregarFila(panel, 1, "Tipo remitente", cmbTipoRemitente);
+        agregarFila(panel, 2, "Documento", txtRemitenteDocumento);
+        agregarFila(panel, 3, "Teléfono", txtRemitenteTelefono);
+        agregarFila(panel, 4, "Correo", txtRemitenteCorreo);
+        agregarFila(panel, 5, "Observación", scrollArea(txtRemitenteObservacion));
+        return panel;
+    }
+
+    private JPanel crearNotificacion() {
+        JPanel panel = seccion("Datos de notificación");
+        agregarFila(panel, 0, "Tipo preferente", cmbTipoNotificacion);
+        agregarFila(panel, 1, "Correo notificación", txtNotificacionCorreo);
+        agregarFila(panel, 2, "Teléfono contacto", txtNotificacionTelefono);
+        agregarFila(panel, 3, "Dirección", txtNotificacionDireccion);
+        agregarFila(panel, 4, "Distrito", txtNotificacionDistrito);
+        agregarFila(panel, 5, "Provincia", txtNotificacionProvincia);
+        agregarFila(panel, 6, "Departamento", txtNotificacionDepartamento);
+        agregarFila(panel, 7, "Referencia dirección", txtNotificacionReferencia);
+        agregarFila(panel, 8, "Persona contacto", txtNotificacionContacto);
+        agregarFila(panel, 9, "Observación", scrollArea(txtNotificacionObservacion));
+        return panel;
+    }
+
+    private JPanel crearObservacionesResumen() {
+        JPanel wrapper = new JPanel(new GridLayout(1, 2, 12, 0));
+        wrapper.setOpaque(false);
+
+        JPanel observaciones = seccion("Observaciones");
+        agregarFila(observaciones, 0, "Observaciones generales", scrollArea(txtObservacionesGenerales));
+
+        JPanel resumen = seccion("Resumen y confirmación");
+        lblNumeroExpediente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        lblNumeroExpediente.setForeground(AppV2Theme.INFO);
+        txtErrores.setEditable(false);
+        txtResumen.setEditable(false);
+        txtErrores.setBackground(AppV2Theme.SOFT_RED);
+        txtResumen.setBackground(AppV2Theme.SURFACE_ALT);
+        agregarFila(resumen, 0, "Número expediente", lblNumeroExpediente);
+        agregarFila(resumen, 1, "Errores / advertencias", scrollArea(txtErrores));
+        agregarFila(resumen, 2, "Resumen", scrollArea(txtResumen));
+
+        wrapper.add(observaciones);
+        wrapper.add(resumen);
+        return wrapper;
+    }
+
+    private JPanel crearFooter() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setOpaque(false);
+        lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnValidar);
+        acciones.add(btnLimpiar);
+        acciones.add(btnRegistrar);
+
+        panel.add(lblEstado, BorderLayout.CENTER);
+        panel.add(acciones, BorderLayout.EAST);
+        return panel;
+    }
+
+    private JPanel seccion(String title) {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(AppV2Theme.SURFACE);
+        panel.setBorder(AppV2Theme.sectionBorder());
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(AppV2Theme.fontBold(17));
+        lblTitle.setForeground(AppV2Theme.TEXT_PRIMARY);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        panel.add(lblTitle, gbc);
+        return panel;
+    }
+
+    private void agregarFila(JPanel panel, int row, String label, Component component) {
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = 0;
+        gbcLabel.gridy = row + 1;
+        gbcLabel.anchor = GridBagConstraints.NORTHWEST;
+        gbcLabel.insets = new Insets(5, 0, 5, 12);
+
+        GridBagConstraints gbcValue = new GridBagConstraints();
+        gbcValue.gridx = 1;
+        gbcValue.gridy = row + 1;
+        gbcValue.weightx = 1;
+        gbcValue.fill = GridBagConstraints.HORIZONTAL;
+        gbcValue.insets = new Insets(5, 0, 5, 0);
+
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lbl.setForeground(AppV2Theme.TEXT_SECONDARY);
+        panel.add(lbl, gbcLabel);
+        panel.add(component, gbcValue);
+    }
+
+    private JPanel comboMasTexto(JComboBox<FiltroCatalogoItemV2> combo, JTextField text, String placeholder) {
+        JPanel panel = new JPanel(new GridLayout(1, 2, 8, 0));
+        panel.setOpaque(false);
+        text.setToolTipText(placeholder);
+        panel.add(combo);
+        panel.add(text);
+        return panel;
+    }
+
+    private JScrollPane scrollArea(JTextArea area) {
+        JScrollPane scroll = new JScrollPane(area);
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setPreferredSize(new Dimension(240, Math.max(70, area.getRows() * 22)));
+        return scroll;
+    }
+
+    private void configurarEstadoInicial() {
+        configurarCampo(txtNumeroTramite);
+        configurarCampo(txtFechaRecepcion);
+        configurarCampo(txtProcedimientoLibre);
+        configurarCampo(txtTipoDocumentoLibre);
+        configurarCampo(txtTipoActaLibre);
+        configurarCampo(txtNumeroActa);
+        configurarCampo(txtAnioActa);
+        configurarCampo(txtUbicacionRegistral);
+        configurarCampo(txtOrigenRegistral);
+        configurarCampo(txtTitularNombre);
+        configurarCampo(txtTitularDocumento);
+        configurarCampo(txtTitularTelefono);
+        configurarCampo(txtTitularCorreo);
+        configurarCampo(txtTitularDireccion);
+        configurarCampo(txtRemitenteNombre);
+        configurarCampo(txtRemitenteDocumento);
+        configurarCampo(txtRemitenteTelefono);
+        configurarCampo(txtRemitenteCorreo);
+        configurarCampo(txtNotificacionCorreo);
+        configurarCampo(txtNotificacionTelefono);
+        configurarCampo(txtNotificacionDireccion);
+        configurarCampo(txtNotificacionDistrito);
+        configurarCampo(txtNotificacionProvincia);
+        configurarCampo(txtNotificacionDepartamento);
+        configurarCampo(txtNotificacionReferencia);
+        configurarCampo(txtNotificacionContacto);
+        configurarCombo(cmbProcedimiento);
+        configurarCombo(cmbTipoDocumento);
+        configurarCombo(cmbCanal);
+        configurarCombo(cmbPrioridad);
+        configurarCombo(cmbTipoActa);
+        configurarCombo(cmbTitularTipoDoc);
+        configurarCombo(cmbTipoRemitente);
+        configurarCombo(cmbTipoNotificacion);
+        txtResumen.setText("Validación pendiente.");
+        txtErrores.setText("");
+        btnRegistrar.setEnabled(false);
+    }
+
+    private void configurarCampo(JTextField field) {
+        field.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(7, 9, 7, 9)));
+    }
+
+    private void configurarCombo(JComboBox<FiltroCatalogoItemV2> combo) {
+        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        combo.setPreferredSize(new Dimension(180, 34));
+    }
+
+    private void configurarEventos() {
+        btnValidar.addActionListener(e -> validarFormulario());
+        btnLimpiar.addActionListener(e -> limpiar());
+        btnRegistrar.addActionListener(e -> registrarExpediente());
+        registrarInvalidacion();
+    }
+
+    private void registrarInvalidacion() {
+        DocumentListener listener = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                invalidarValidacion();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                invalidarValidacion();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                invalidarValidacion();
+            }
+        };
+        for (JTextField field : camposTexto()) {
+            field.getDocument().addDocumentListener(listener);
+        }
+        for (JTextArea area : areasTexto()) {
+            area.getDocument().addDocumentListener(listener);
+        }
+        for (JComboBox<FiltroCatalogoItemV2> combo : combos()) {
+            combo.addActionListener(e -> invalidarValidacion());
+        }
+    }
+
+    private List<JTextField> camposTexto() {
+        List<JTextField> fields = new ArrayList<JTextField>();
+        fields.add(txtNumeroTramite);
+        fields.add(txtFechaRecepcion);
+        fields.add(txtProcedimientoLibre);
+        fields.add(txtTipoDocumentoLibre);
+        fields.add(txtTipoActaLibre);
+        fields.add(txtNumeroActa);
+        fields.add(txtAnioActa);
+        fields.add(txtUbicacionRegistral);
+        fields.add(txtOrigenRegistral);
+        fields.add(txtTitularNombre);
+        fields.add(txtTitularDocumento);
+        fields.add(txtTitularTelefono);
+        fields.add(txtTitularCorreo);
+        fields.add(txtTitularDireccion);
+        fields.add(txtRemitenteNombre);
+        fields.add(txtRemitenteDocumento);
+        fields.add(txtRemitenteTelefono);
+        fields.add(txtRemitenteCorreo);
+        fields.add(txtNotificacionCorreo);
+        fields.add(txtNotificacionTelefono);
+        fields.add(txtNotificacionDireccion);
+        fields.add(txtNotificacionDistrito);
+        fields.add(txtNotificacionProvincia);
+        fields.add(txtNotificacionDepartamento);
+        fields.add(txtNotificacionReferencia);
+        fields.add(txtNotificacionContacto);
+        return fields;
+    }
+
+    private List<JTextArea> areasTexto() {
+        List<JTextArea> areas = new ArrayList<JTextArea>();
+        areas.add(txtObservacionSolicitud);
+        areas.add(txtObservacionActa);
+        areas.add(txtRemitenteObservacion);
+        areas.add(txtNotificacionObservacion);
+        areas.add(txtObservacionesGenerales);
+        return areas;
+    }
+
+    private List<JComboBox<FiltroCatalogoItemV2>> combos() {
+        List<JComboBox<FiltroCatalogoItemV2>> comboList = new ArrayList<JComboBox<FiltroCatalogoItemV2>>();
+        comboList.add(cmbProcedimiento);
+        comboList.add(cmbTipoDocumento);
+        comboList.add(cmbCanal);
+        comboList.add(cmbPrioridad);
+        comboList.add(cmbTipoActa);
+        comboList.add(cmbTitularTipoDoc);
+        comboList.add(cmbTipoRemitente);
+        comboList.add(cmbTipoNotificacion);
+        return comboList;
+    }
+
+    private void cargarCatalogos() {
+        lblEstado.setText("Cargando catálogos de SDRERC_APP...");
+        SwingWorker<CatalogosFormulario, Void> worker = new SwingWorker<CatalogosFormulario, Void>() {
+            @Override
+            protected CatalogosFormulario doInBackground() throws Exception {
+                return new CatalogosFormulario(
+                        catalogoService.listarCanalesRecepcion(),
+                        catalogoService.listarProcedimientosRegistrales(),
+                        catalogoService.listarTiposDocumento(),
+                        catalogoService.listarTiposActa());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    CatalogosFormulario catalogos = get();
+                    aplicarCatalogos(catalogos);
+                    lblEstado.setText("Catálogos cargados. Complete el formulario y presione Validar.");
+                } catch (Exception ex) {
+                    lblEstado.setText("No se pudieron cargar catálogos. Puede usar texto libre donde corresponda.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void aplicarCatalogos(CatalogosFormulario catalogos) {
+        agregarItems(cmbCanal, catalogos.canales);
+        agregarItems(cmbProcedimiento, catalogos.procedimientos);
+        agregarItems(cmbTipoDocumento, catalogos.tiposDocumento);
+        agregarItems(cmbTipoActa, catalogos.tiposActa);
+    }
+
+    private void agregarItems(JComboBox<FiltroCatalogoItemV2> combo, List<CatalogoItemDTO> items) {
+        if (items == null) {
+            return;
+        }
+        for (CatalogoItemDTO item : items) {
+            combo.addItem(new FiltroCatalogoItemV2(item.getCodigo(), item.getNombre()));
+        }
+    }
+
+    private void validarFormulario() {
+        RegistroManualExpedienteDTO dto = construirRegistro();
+        List<String> errores = registroService.validar(dto);
+        if (errores.isEmpty()) {
+            dto.setNumeroExpedienteVistaPrevia("Pendiente de generación al guardar");
+            validado = true;
+            registroValidado = dto;
+            txtErrores.setBackground(AppV2Theme.SOFT_GREEN);
+            txtErrores.setText("Sin errores críticos. Listo para registrar.");
+            txtResumen.setText(resumen(dto));
+            lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
+            lblEstado.setText("Formulario validado. Revise el resumen y registre el expediente.");
+            btnRegistrar.setEnabled(!trabajando);
+        } else {
+            validado = false;
+            registroValidado = null;
+            txtErrores.setBackground(AppV2Theme.SOFT_RED);
+            txtErrores.setText(String.join("\n", errores));
+            txtResumen.setText("Corrija los errores antes de registrar.");
+            lblNumeroExpediente.setText("Pendiente de generación al guardar");
+            lblEstado.setText("Se encontraron errores de validación.");
+            btnRegistrar.setEnabled(false);
+        }
+    }
+
+    private void registrarExpediente() {
+        if (!validado || registroValidado == null) {
+            validarFormulario();
+            if (!validado || registroValidado == null) {
+                return;
+            }
+        }
+        int option = JOptionPane.showConfirmDialog(
+                this,
+                "Se registrará un expediente en SDRERC_APP.\n\n" + resumen(registroValidado) + "\n¿Desea continuar?",
+                "Confirmar registro manual",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (option != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        setTrabajando(true, "Registrando expediente en SDRERC_APP...");
+        SwingWorker<RegistroManualResultadoDTO, Void> worker = new SwingWorker<RegistroManualResultadoDTO, Void>() {
+            @Override
+            protected RegistroManualResultadoDTO doInBackground() throws Exception {
+                return registroService.registrar(registroValidado);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    RegistroManualResultadoDTO resultado = get();
+                    lblNumeroExpediente.setText(resultado.getNumeroExpediente());
+                    lblEstado.setText(resultado.getMensaje());
+                    txtResumen.setText(resultado.getMensaje() + "\n\n" + txtResumen.getText());
+                    JOptionPane.showMessageDialog(
+                            JPanelRegistroManualRecepcionV2.this,
+                            resultado.getMensaje(),
+                            "Registro manual confirmado",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    validado = false;
+                    btnRegistrar.setEnabled(false);
+                    if (onRegistroConfirmado != null) {
+                        onRegistroConfirmado.run();
+                    }
+                    preguntarLimpiar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo registrar el expediente. La transacción fue revertida.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private RegistroManualExpedienteDTO construirRegistro() {
+        RegistroManualExpedienteDTO dto = new RegistroManualExpedienteDTO();
+        DatosSolicitudDTO solicitud = new DatosSolicitudDTO();
+        solicitud.setNumeroTramite(txtNumeroTramite.getText());
+        solicitud.setFechaRecepcion(parseFecha(txtFechaRecepcion.getText()));
+        solicitud.setTipoProcedimientoCodigo(codigo(cmbProcedimiento));
+        solicitud.setTipoProcedimientoNombre(valorCatalogoConLibre(cmbProcedimiento, txtProcedimientoLibre));
+        solicitud.setTipoDocumentoCodigo(codigo(cmbTipoDocumento));
+        solicitud.setTipoDocumentoNombre(valorCatalogoConLibre(cmbTipoDocumento, txtTipoDocumentoLibre));
+        solicitud.setCanalCodigo(codigo(cmbCanal));
+        solicitud.setCanalNombre(nombre(cmbCanal));
+        solicitud.setPrioridad(codigo(cmbPrioridad));
+        solicitud.setObservacionInicial(txtObservacionSolicitud.getText());
+        dto.setSolicitud(solicitud);
+
+        DatosActaDTO acta = new DatosActaDTO();
+        acta.setTipoActaCodigo(codigo(cmbTipoActa));
+        acta.setTipoActaNombre(valorCatalogoConLibre(cmbTipoActa, txtTipoActaLibre));
+        acta.setNumeroActa(txtNumeroActa.getText());
+        acta.setAnioActa(parseInteger(txtAnioActa.getText()));
+        acta.setUbicacionRegistral(txtUbicacionRegistral.getText());
+        acta.setOrigenRegistral(txtOrigenRegistral.getText());
+        acta.setObservacion(txtObservacionActa.getText());
+        dto.setActa(acta);
+
+        DatosPersonaRegistroDTO titular = new DatosPersonaRegistroDTO();
+        titular.setNombreCompleto(txtTitularNombre.getText());
+        titular.setTipoDocumento(codigo(cmbTitularTipoDoc));
+        titular.setNumeroDocumento(txtTitularDocumento.getText());
+        titular.setTelefono(txtTitularTelefono.getText());
+        titular.setCorreo(txtTitularCorreo.getText());
+        titular.setDireccion(txtTitularDireccion.getText());
+        dto.setTitular(titular);
+
+        DatosPersonaRegistroDTO remitente = new DatosPersonaRegistroDTO();
+        remitente.setNombreCompleto(txtRemitenteNombre.getText());
+        remitente.setTipoRemitente(nombre(cmbTipoRemitente));
+        remitente.setNumeroDocumento(txtRemitenteDocumento.getText());
+        remitente.setTelefono(txtRemitenteTelefono.getText());
+        remitente.setCorreo(txtRemitenteCorreo.getText());
+        remitente.setObservacion(txtRemitenteObservacion.getText());
+        dto.setRemitente(remitente);
+
+        DatosNotificacionDTO notificacion = new DatosNotificacionDTO();
+        notificacion.setTipoNotificacionCodigo(codigo(cmbTipoNotificacion));
+        notificacion.setTipoNotificacionNombre(nombre(cmbTipoNotificacion));
+        notificacion.setCorreo(txtNotificacionCorreo.getText());
+        notificacion.setTelefono(txtNotificacionTelefono.getText());
+        notificacion.setDireccion(txtNotificacionDireccion.getText());
+        notificacion.setDistrito(txtNotificacionDistrito.getText());
+        notificacion.setProvincia(txtNotificacionProvincia.getText());
+        notificacion.setDepartamento(txtNotificacionDepartamento.getText());
+        notificacion.setReferenciaDireccion(txtNotificacionReferencia.getText());
+        notificacion.setPersonaContacto(txtNotificacionContacto.getText());
+        notificacion.setObservacion(txtNotificacionObservacion.getText());
+        dto.setNotificacion(notificacion);
+        dto.setObservacionesGenerales(txtObservacionesGenerales.getText());
+        return dto;
+    }
+
+    private String resumen(RegistroManualExpedienteDTO dto) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Trámite: ").append(safe(dto.getSolicitud().getNumeroTramite())).append("\n");
+        sb.append("Titular: ").append(safe(dto.getTitular().getNombreCompleto())).append("\n");
+        sb.append("Procedimiento: ").append(safe(dto.getSolicitud().getTipoProcedimientoNombre())).append("\n");
+        sb.append("Acta: ").append(safe(dto.getActa().getNumeroActa())).append("\n");
+        sb.append("Remitente: ").append(safe(dto.getRemitente().getNombreCompleto())).append("\n");
+        sb.append("Notificación: ").append(safe(dto.getNotificacion().getTipoNotificacionNombre())).append("\n");
+        sb.append("Número expediente: ").append(safe(dto.getNumeroExpedienteVistaPrevia()));
+        return sb.toString();
+    }
+
+    private void preguntarLimpiar() {
+        int option = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea limpiar el formulario para registrar otro expediente?",
+                "Registro / Recepción V2",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (option == JOptionPane.YES_OPTION) {
+            limpiar();
+        }
+    }
+
+    private void limpiar() {
+        for (JTextField field : camposTexto()) {
+            field.setText("");
+        }
+        for (JTextArea area : areasTexto()) {
+            area.setText("");
+        }
+        txtFechaRecepcion.setText(DATE_FORMAT.format(LocalDate.now()));
+        seleccionarPrimero(cmbProcedimiento);
+        seleccionarPrimero(cmbTipoDocumento);
+        seleccionarPrimero(cmbCanal);
+        seleccionarPrimero(cmbTipoActa);
+        seleccionarPrimero(cmbTitularTipoDoc);
+        cmbPrioridad.setSelectedIndex(0);
+        cmbTipoRemitente.setSelectedIndex(0);
+        cmbTipoNotificacion.setSelectedIndex(0);
+        txtErrores.setText("");
+        txtResumen.setText("Validación pendiente.");
+        lblNumeroExpediente.setText("Pendiente de generación al guardar");
+        lblEstado.setText("Complete los datos y presione Validar.");
+        validado = false;
+        registroValidado = null;
+        btnRegistrar.setEnabled(false);
+    }
+
+    private void seleccionarPrimero(JComboBox<FiltroCatalogoItemV2> combo) {
+        if (combo.getItemCount() > 0) {
+            combo.setSelectedIndex(0);
+        }
+    }
+
+    private void invalidarValidacion() {
+        if (trabajando) {
+            return;
+        }
+        validado = false;
+        registroValidado = null;
+        btnRegistrar.setEnabled(false);
+        lblNumeroExpediente.setText("Pendiente de generación al guardar");
+        lblEstado.setText("Cambios pendientes de validación.");
+    }
+
+    private void setTrabajando(boolean trabajando, String mensaje) {
+        this.trabajando = trabajando;
+        btnValidar.setEnabled(!trabajando);
+        btnLimpiar.setEnabled(!trabajando);
+        btnRegistrar.setEnabled(!trabajando && validado);
+        if (mensaje != null) {
+            lblEstado.setText(mensaje);
+        }
+    }
+
+    private void mostrarError(String titulo, Exception ex) {
+        String message = extraerMensajeUsuario(ex);
+        if (message == null || message.trim().isEmpty()) {
+            message = "Revise los datos ingresados o la conexión de SDRERC_APP.";
+        }
+        txtErrores.setBackground(AppV2Theme.SOFT_RED);
+        txtErrores.setText(message);
+        lblEstado.setText(titulo);
+        JOptionPane.showMessageDialog(this, titulo + "\n" + message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private String extraerMensajeUsuario(Throwable throwable) {
+        Throwable actual = throwable;
+        while (actual != null && actual.getCause() != null) {
+            actual = actual.getCause();
+        }
+        if (actual == null || actual.getMessage() == null) {
+            return null;
+        }
+        return actual.getMessage().replaceFirst("^java\\.[a-zA-Z0-9_.]+:\\s*", "").trim();
+    }
+
+    private static JTextArea area(int rows) {
+        JTextArea area = new JTextArea(rows, 20);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        area.setBorder(BorderFactory.createEmptyBorder(7, 9, 7, 9));
+        return area;
+    }
+
+    private static JComboBox<FiltroCatalogoItemV2> comboBase(String label) {
+        return new JComboBox<FiltroCatalogoItemV2>(new FiltroCatalogoItemV2[]{
+            new FiltroCatalogoItemV2(null, label)
+        });
+    }
+
+    private static FiltroCatalogoItemV2[] crearTiposDocumentoIdentidad() {
+        return new FiltroCatalogoItemV2[]{
+            new FiltroCatalogoItemV2(null, "No definido"),
+            new FiltroCatalogoItemV2("DNI", "DNI"),
+            new FiltroCatalogoItemV2("CE", "Carné de extranjería"),
+            new FiltroCatalogoItemV2("RUC", "RUC"),
+            new FiltroCatalogoItemV2("PASAPORTE", "Pasaporte")
+        };
+    }
+
+    private static String codigo(JComboBox<FiltroCatalogoItemV2> combo) {
+        Object selected = combo.getSelectedItem();
+        return selected instanceof FiltroCatalogoItemV2 ? ((FiltroCatalogoItemV2) selected).getCodigo() : null;
+    }
+
+    private static String nombre(JComboBox<FiltroCatalogoItemV2> combo) {
+        Object selected = combo.getSelectedItem();
+        return selected instanceof FiltroCatalogoItemV2 ? ((FiltroCatalogoItemV2) selected).getNombreVisible() : null;
+    }
+
+    private static String valorCatalogoConLibre(JComboBox<FiltroCatalogoItemV2> combo, JTextField libre) {
+        String textoLibre = trimToNull(libre.getText());
+        if (textoLibre != null) {
+            return textoLibre;
+        }
+        FiltroCatalogoItemV2 item = combo.getSelectedItem() instanceof FiltroCatalogoItemV2
+                ? (FiltroCatalogoItemV2) combo.getSelectedItem()
+                : null;
+        return item != null && item.hasCodigo() ? item.getNombreVisible() : null;
+    }
+
+    private static LocalDate parseFecha(String value) {
+        String cleaned = trimToNull(value);
+        if (cleaned == null) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(cleaned, DATE_FORMAT);
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
+    private static Integer parseInteger(String value) {
+        String cleaned = trimToNull(value);
+        if (cleaned == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(cleaned);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String safe(String value) {
+        return value == null ? "-" : value;
+    }
+
+    private static class CatalogosFormulario {
+
+        private final List<CatalogoItemDTO> canales;
+        private final List<CatalogoItemDTO> procedimientos;
+        private final List<CatalogoItemDTO> tiposDocumento;
+        private final List<CatalogoItemDTO> tiposActa;
+
+        private CatalogosFormulario(
+                List<CatalogoItemDTO> canales,
+                List<CatalogoItemDTO> procedimientos,
+                List<CatalogoItemDTO> tiposDocumento,
+                List<CatalogoItemDTO> tiposActa) {
+            this.canales = canales;
+            this.procedimientos = procedimientos;
+            this.tiposDocumento = tiposDocumento;
+            this.tiposActa = tiposActa;
+        }
+    }
+}
