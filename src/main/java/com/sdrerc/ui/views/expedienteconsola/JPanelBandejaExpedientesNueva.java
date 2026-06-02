@@ -45,6 +45,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final String tituloBandeja;
     private final String subtituloBandeja;
     private final boolean etapaBloqueada;
+    private final boolean mostrarEncabezado;
     private final JTextField txtBusqueda = new JTextField(18);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
@@ -82,12 +83,25 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         this(new ExpedienteConsultaService());
     }
 
+    public JPanelBandejaExpedientesNueva(boolean mostrarEncabezado) {
+        this(new ExpedienteConsultaService(), null, "Bandeja General V2", "Consulta de expedientes por etapa, estado, responsable y plazo", false, mostrarEncabezado);
+    }
+
     public JPanelBandejaExpedientesNueva(String etapaInicial, String tituloBandeja, String subtituloBandeja, boolean etapaBloqueada) {
-        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada);
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, true);
+    }
+
+    public JPanelBandejaExpedientesNueva(
+            String etapaInicial,
+            String tituloBandeja,
+            String subtituloBandeja,
+            boolean etapaBloqueada,
+            boolean mostrarEncabezado) {
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado);
     }
 
     public JPanelBandejaExpedientesNueva(ExpedienteConsultaService consultaService) {
-        this(consultaService, null, "Bandeja General V2", "Consulta de expedientes por etapa, estado, responsable y plazo", false);
+        this(consultaService, null, "Bandeja General V2", "Consulta de expedientes por etapa, estado, responsable y plazo", false, true);
     }
 
     private JPanelBandejaExpedientesNueva(
@@ -95,12 +109,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             String etapaInicial,
             String tituloBandeja,
             String subtituloBandeja,
-            boolean etapaBloqueada) {
+            boolean etapaBloqueada,
+            boolean mostrarEncabezado) {
         this.consultaService = consultaService;
         this.etapaInicial = normalizar(etapaInicial);
         this.tituloBandeja = textoConDefault(tituloBandeja, "Bandeja General V2");
         this.subtituloBandeja = textoConDefault(subtituloBandeja, "Consulta de expedientes por etapa, estado, responsable y plazo");
         this.etapaBloqueada = etapaBloqueada && this.etapaInicial != null;
+        this.mostrarEncabezado = mostrarEncabezado;
         configurarLayout();
         configurarTabla();
         aplicarConfiguracionInicial();
@@ -171,16 +187,19 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         JPanel superior = new JPanel(new BorderLayout(8, 8));
         superior.setOpaque(false);
-        JLabel titulo = new JLabel(tituloBandeja);
-        titulo.setFont(AppV2Theme.fontBold(22));
-        titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
-        JLabel subtitulo = new JLabel(subtituloBandeja);
-        subtitulo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        subtitulo.setForeground(AppV2Theme.TEXT_SECONDARY);
-        JPanel titleBlock = new JPanel(new BorderLayout(0, 4));
-        titleBlock.setOpaque(false);
-        titleBlock.add(titulo, BorderLayout.NORTH);
-        titleBlock.add(subtitulo, BorderLayout.CENTER);
+        if (mostrarEncabezado) {
+            JLabel titulo = new JLabel(tituloBandeja);
+            titulo.setFont(AppV2Theme.fontBold(22));
+            titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
+            JLabel subtitulo = new JLabel(subtituloBandeja);
+            subtitulo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            subtitulo.setForeground(AppV2Theme.TEXT_SECONDARY);
+            JPanel titleBlock = new JPanel(new BorderLayout(0, 4));
+            titleBlock.setOpaque(false);
+            titleBlock.add(titulo, BorderLayout.NORTH);
+            titleBlock.add(subtitulo, BorderLayout.CENTER);
+            superior.add(titleBlock, BorderLayout.NORTH);
+        }
 
         lblResultado.setText(etapaBloqueada
                 ? "Seleccione un expediente y presione Ver detalle para abrir la consola."
@@ -188,7 +207,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         lblResultado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblResultado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        superior.add(titleBlock, BorderLayout.NORTH);
         superior.add(filtros, BorderLayout.CENTER);
         superior.add(lblResultado, BorderLayout.SOUTH);
 

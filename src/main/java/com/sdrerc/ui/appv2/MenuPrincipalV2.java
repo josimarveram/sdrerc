@@ -233,7 +233,7 @@ public class MenuPrincipalV2 extends JFrame {
     private void mostrarBandeja(JButton boton) {
         lblTitulo.setText("Bandeja Expedientes V2");
         lblSubtitulo.setText("Listado general de expedientes consultado desde SDRERC_APP");
-        cambiarContenido(new JPanelBandejaExpedientesNueva());
+        cambiarContenido(new JPanelBandejaExpedientesNueva(false));
         aplicarEstadoActivo(boton);
     }
 
