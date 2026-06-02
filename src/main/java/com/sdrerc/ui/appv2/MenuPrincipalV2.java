@@ -239,7 +239,7 @@ public class MenuPrincipalV2 extends JFrame {
 
     private void mostrarRegistroRecepcion(JButton boton) {
         lblTitulo.setText("Registro / Recepción");
-        lblSubtitulo.setText("Carga diaria, previsualización y registro manual preparados sin escritura");
+        lblSubtitulo.setText("Bandeja, carga diaria y registro manual preparados para la nueva arquitectura SDRERC_APP");
         cambiarContenido(new JPanelRegistroRecepcionV2());
         aplicarEstadoActivo(boton);
     }

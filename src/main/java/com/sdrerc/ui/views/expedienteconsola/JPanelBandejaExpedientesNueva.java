@@ -41,6 +41,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final ExpedienteConsultaService consultaService;
+    private final String etapaInicial;
+    private final String tituloBandeja;
+    private final String subtituloBandeja;
+    private final boolean etapaBloqueada;
     private final JTextField txtBusqueda = new JTextField(18);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
@@ -78,10 +82,28 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         this(new ExpedienteConsultaService());
     }
 
+    public JPanelBandejaExpedientesNueva(String etapaInicial, String tituloBandeja, String subtituloBandeja, boolean etapaBloqueada) {
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada);
+    }
+
     public JPanelBandejaExpedientesNueva(ExpedienteConsultaService consultaService) {
+        this(consultaService, null, "Bandeja General V2", "Consulta de expedientes por etapa, estado, responsable y plazo", false);
+    }
+
+    private JPanelBandejaExpedientesNueva(
+            ExpedienteConsultaService consultaService,
+            String etapaInicial,
+            String tituloBandeja,
+            String subtituloBandeja,
+            boolean etapaBloqueada) {
         this.consultaService = consultaService;
+        this.etapaInicial = normalizar(etapaInicial);
+        this.tituloBandeja = textoConDefault(tituloBandeja, "Bandeja General V2");
+        this.subtituloBandeja = textoConDefault(subtituloBandeja, "Consulta de expedientes por etapa, estado, responsable y plazo");
+        this.etapaBloqueada = etapaBloqueada && this.etapaInicial != null;
         configurarLayout();
         configurarTabla();
+        aplicarConfiguracionInicial();
         configurarEventos();
     }
 
@@ -149,10 +171,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         JPanel superior = new JPanel(new BorderLayout(8, 8));
         superior.setOpaque(false);
-        JLabel titulo = new JLabel("Bandeja General V2");
+        JLabel titulo = new JLabel(tituloBandeja);
         titulo.setFont(AppV2Theme.fontBold(22));
         titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
-        JLabel subtitulo = new JLabel("Consulta de expedientes por etapa, estado, responsable y plazo");
+        JLabel subtitulo = new JLabel(subtituloBandeja);
         subtitulo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         subtitulo.setForeground(AppV2Theme.TEXT_SECONDARY);
         JPanel titleBlock = new JPanel(new BorderLayout(0, 4));
@@ -160,7 +182,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         titleBlock.add(titulo, BorderLayout.NORTH);
         titleBlock.add(subtitulo, BorderLayout.CENTER);
 
-        lblResultado.setText("Seleccione filtros y presione Buscar. Doble clic o Ver detalle abre la consola.");
+        lblResultado.setText(etapaBloqueada
+                ? "Seleccione un expediente y presione Ver detalle para abrir la consola."
+                : "Seleccione filtros y presione Buscar. Doble clic o Ver detalle abre la consola.");
         lblResultado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblResultado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
@@ -172,6 +196,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         add(scroll, BorderLayout.CENTER);
+    }
+
+    private void aplicarConfiguracionInicial() {
+        seleccionarEtapaInicial();
+        if (etapaBloqueada) {
+            cmbEtapa.setEnabled(false);
+            cmbEtapa.setToolTipText("Bandeja filtrada por etapa " + DisplayNameMapperV2.etapa(etapaInicial));
+        }
     }
 
     private void configurarTabla() {
@@ -272,12 +304,18 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void limpiar() {
         txtBusqueda.setText("");
-        cmbEtapa.setSelectedIndex(0);
+        if (etapaBloqueada) {
+            seleccionarEtapaInicial();
+        } else {
+            cmbEtapa.setSelectedIndex(0);
+        }
         cmbEstado.setSelectedIndex(0);
         spnLimite.setValue(200);
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
-        lblResultado.setText("Filtros limpiados. Presione Buscar para cargar expedientes.");
+        lblResultado.setText(etapaBloqueada
+                ? "Filtros limpiados. La bandeja permanece filtrada por Registro."
+                : "Filtros limpiados. Presione Buscar para cargar expedientes.");
     }
 
     private void cargarTabla(List<ExpedienteBandejaDTO> expedientes) {
@@ -370,6 +408,30 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return item.hasCodigo() ? item.getCodigo() : null;
         }
         return null;
+    }
+
+    private void seleccionarEtapaInicial() {
+        if (etapaInicial == null) {
+            return;
+        }
+        for (int i = 0; i < cmbEtapa.getItemCount(); i++) {
+            FiltroCatalogoItemV2 item = cmbEtapa.getItemAt(i);
+            if (etapaInicial.equals(item.getCodigo())) {
+                cmbEtapa.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    private static String normalizar(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static String textoConDefault(String value, String defaultValue) {
+        return value == null || value.trim().isEmpty() ? defaultValue : value.trim();
     }
 
     private static FiltroCatalogoItemV2[] crearItemsEtapa() {
