@@ -55,6 +55,11 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Mantener UI moderna tipo Service Console / Case Management.
 - Mantener nombres visuales amigables para etapas y estados; no mostrar codigos tecnicos al usuario final cuando exista nombre amigable.
 - No crear etapa visual `VALIDACION`.
+- En Registro Manual V2 no capturar datos de notificacion; esa gestion queda para el modulo/etapa de Notificacion futuro.
+- El campo `Fecha recepcion` de Registro Manual debe usar un componente reutilizable premium con formato `dd/MM/yyyy`, apertura del calendario al hacer clic en la caja o el icono y alineacion visual institucional.
+- En Registro Manual, `Hoja de envio` solo aplica como texto condicional cuando la validacion inicial no corresponde a la SDRERC.
+- En Registro Manual, mantener combos de catalogo con nombres amigables; excluir `RUC` del combo de Titular y permitirlo en Remitente cuando el modelo lo requiera.
+- Si el modelo aun no separa canal de ingreso y modalidad, usar opciones compuestas amigables en la UI y dejar documentada la separacion futura como mejora de arquitectura.
 
 ## 5. Reglas de SQL y BD
 
