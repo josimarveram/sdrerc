@@ -9,10 +9,9 @@ import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
 import com.sdrerc.ui.appv2.components.BadgeV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
-import com.sdrerc.util.DateRangePickerSupport;
-import com.toedter.calendar.JDateChooser;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -47,7 +46,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private final Runnable onRegistroConfirmado;
 
     private final JTextField txtNumeroTramite = new JTextField();
-    private final JDateChooser fechaRecepcionPicker = new JDateChooser();
+    private final PremiumDateFieldV2 fechaRecepcionField = new PremiumDateFieldV2();
     private final JRadioButton rdoCorrespondeSdrerc = new JRadioButton("Sí corresponde a la SDRERC", true);
     private final JRadioButton rdoNoCorrespondeSdrerc = new JRadioButton("No corresponde a la SDRERC");
     private final ButtonGroup grupoValidacionInicial = new ButtonGroup();
@@ -175,7 +174,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private JPanel crearDatosSolicitud() {
         JPanel panel = seccion("Datos de solicitud");
         agregarFila(panel, 0, "Nro. trámite web *", txtNumeroTramite);
-        agregarFila(panel, 1, "Fecha recepción *", fechaRecepcionPicker);
+        agregarFila(panel, 1, "Fecha recepción *", fechaRecepcionField);
         agregarFila(panel, 2, "Procedimiento registral *", cmbProcedimiento);
         agregarFila(panel, 3, "Tipo documento *", cmbTipoDocumento);
         agregarFila(panel, 4, "Canal de ingreso", cmbCanal);
@@ -285,7 +284,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private void configurarEstadoInicial() {
         configurarCampo(txtNumeroTramite);
-        configurarFecha(fechaRecepcionPicker);
+        fechaRecepcionField.setDate(toDate(LocalDate.now()));
         configurarCampo(txtHojaEnvio);
         configurarCampo(txtNumeroActa);
         configurarCampo(txtTitularNombre);
@@ -315,15 +314,6 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private void configurarCombo(JComboBox<FiltroCatalogoItemV2> combo) {
         combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         combo.setPreferredSize(new Dimension(260, 34));
-    }
-
-    private void configurarFecha(JDateChooser picker) {
-        DateRangePickerSupport.configurePicker(picker);
-        picker.setDate(toDate(LocalDate.now()));
-        picker.setPreferredSize(new Dimension(190, 40));
-        picker.setMinimumSize(new Dimension(160, 40));
-        Component editor = picker.getDateEditor().getUiComponent();
-        editor.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
     }
 
     private void configurarRadio(JRadioButton radio) {
@@ -365,7 +355,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         for (JComboBox<FiltroCatalogoItemV2> combo : combos()) {
             combo.addActionListener(e -> invalidarValidacion());
         }
-        fechaRecepcionPicker.getDateEditor().addPropertyChangeListener("date", e -> invalidarValidacion());
+        fechaRecepcionField.addDateChangeListener(e -> invalidarValidacion());
         rdoCorrespondeSdrerc.addActionListener(e -> invalidarValidacion());
         rdoNoCorrespondeSdrerc.addActionListener(e -> invalidarValidacion());
         rdoCorrespondeSdrerc.addActionListener(e -> actualizarEstadoHojaEnvio());
@@ -523,7 +513,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         RegistroManualExpedienteDTO dto = new RegistroManualExpedienteDTO();
         DatosSolicitudDTO solicitud = new DatosSolicitudDTO();
         solicitud.setNumeroTramite(txtNumeroTramite.getText());
-        solicitud.setFechaRecepcion(localDate(fechaRecepcionPicker.getDate()));
+        solicitud.setFechaRecepcion(localDate(fechaRecepcionField.getDate()));
         solicitud.setValidacionInicial(valorValidacionInicial());
         solicitud.setHojaEnvio(txtHojaEnvio.getText());
         solicitud.setTipoProcedimientoCodigo(codigo(cmbProcedimiento));
@@ -589,7 +579,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         for (JTextArea area : areasTexto()) {
             area.setText("");
         }
-        fechaRecepcionPicker.setDate(toDate(LocalDate.now()));
+        fechaRecepcionField.setDate(toDate(LocalDate.now()));
         rdoCorrespondeSdrerc.setSelected(true);
         actualizarEstadoHojaEnvio();
         seleccionarPrimero(cmbProcedimiento);

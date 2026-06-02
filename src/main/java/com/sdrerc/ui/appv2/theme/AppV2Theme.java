@@ -19,6 +19,11 @@ public final class AppV2Theme {
     public static final Color SURFACE_ALT = new Color(250, 251, 253);
     public static final Color BORDER = new Color(218, 225, 233);
     public static final Color BORDER_STRONG = new Color(196, 205, 216);
+    public static final Color INPUT_BACKGROUND = Color.WHITE;
+    public static final Color INPUT_BORDER = new Color(214, 223, 232);
+    public static final Color INPUT_BORDER_HOVER = new Color(188, 201, 214);
+    public static final Color INPUT_BORDER_FOCUS = PRIMARY;
+    public static final Color INPUT_ICON = new Color(96, 110, 126);
     public static final Color TEXT_PRIMARY = new Color(28, 36, 46);
     public static final Color TEXT_SECONDARY = new Color(82, 95, 110);
     public static final Color SUCCESS = new Color(38, 129, 80);
