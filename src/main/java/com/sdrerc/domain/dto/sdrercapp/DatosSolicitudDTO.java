@@ -13,6 +13,7 @@ public class DatosSolicitudDTO {
     private String canalCodigo;
     private String canalNombre;
     private String prioridad;
+    private String validacionInicial;
     private String observacionInicial;
 
     public String getNumeroTramite() {
@@ -85,6 +86,14 @@ public class DatosSolicitudDTO {
 
     public void setPrioridad(String prioridad) {
         this.prioridad = trimToNull(prioridad);
+    }
+
+    public String getValidacionInicial() {
+        return validacionInicial;
+    }
+
+    public void setValidacionInicial(String validacionInicial) {
+        this.validacionInicial = trimToNull(validacionInicial);
     }
 
     public String getObservacionInicial() {

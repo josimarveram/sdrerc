@@ -1,7 +1,6 @@
 package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
-import com.sdrerc.domain.dto.sdrercapp.DatosNotificacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
@@ -27,11 +26,13 @@ public class RegistroManualValidacionService {
         validarActa(registro.getActa(), errores);
         validarPersona("Titular", registro.getTitular(), true, errores);
         validarPersona("Remitente", registro.getRemitente(), true, errores);
-        validarNotificacion(registro.getNotificacion(), errores);
         return errores;
     }
 
     private void validarSolicitud(DatosSolicitudDTO solicitud, List<String> errores) {
+        if (!hasText(solicitud.getValidacionInicial())) {
+            errores.add("Seleccione el resultado de validación inicial.");
+        }
         if (!hasText(solicitud.getNumeroTramite())) {
             errores.add("Número de trámite obligatorio.");
         }
@@ -69,25 +70,6 @@ public class RegistroManualValidacionService {
         }
         if (hasText(persona.getTelefono()) && !PHONE_PATTERN.matcher(persona.getTelefono()).matches()) {
             errores.add("Teléfono de " + etiqueta.toLowerCase() + " inválido.");
-        }
-    }
-
-    private void validarNotificacion(DatosNotificacionDTO notificacion, List<String> errores) {
-        if (notificacion == null || !notificacion.requiereRegistroNotificacion()) {
-            return;
-        }
-        if (notificacion.requiereVirtual()) {
-            if (!hasText(notificacion.getCorreo())) {
-                errores.add("Correo de notificación obligatorio para notificación virtual.");
-            } else if (!EMAIL_PATTERN.matcher(notificacion.getCorreo()).matches()) {
-                errores.add("Correo de notificación inválido.");
-            }
-        }
-        if (notificacion.requiereFisica() && !hasText(notificacion.getDireccion())) {
-            errores.add("Dirección de notificación obligatoria para notificación física/presencial.");
-        }
-        if (hasText(notificacion.getTelefono()) && !PHONE_PATTERN.matcher(notificacion.getTelefono()).matches()) {
-            errores.add("Teléfono de notificación inválido.");
         }
     }
 

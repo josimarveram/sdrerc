@@ -4,7 +4,6 @@ import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
-import com.sdrerc.domain.dto.sdrercapp.DatosNotificacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
@@ -29,9 +28,6 @@ public class ExpedienteRegistroDAO {
     private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
     private static final String CODIGO_MOVIMIENTO_CARGA_DIARIA = "IMPORTACION_CARGA_DIARIA";
     private static final String CODIGO_MOVIMIENTO_REGISTRO_MANUAL = "RECEPCION_DOCUMENTO";
-    private static final String CODIGO_ESTADO_NOTIFICACION_PENDIENTE = "PENDIENTE";
-    private static final String CODIGO_NOTIFICACION_VIRTUAL = "VIRTUAL";
-    private static final String CODIGO_NOTIFICACION_PRESENCIAL = "PRESENCIAL_1";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
 
@@ -174,7 +170,6 @@ public class ExpedienteRegistroDAO {
                 insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
                 insertarActaManual(conn, registro.getActa(), idExpediente);
                 insertarDocumentoManual(conn, registro.getSolicitud(), idExpediente);
-                insertarNotificacionesManual(conn, registro.getNotificacion(), idExpediente);
                 insertarHistorialManual(conn, registro, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado, numeroExpediente);
 
                 conn.commit();
@@ -401,8 +396,8 @@ public class ExpedienteRegistroDAO {
             ps.setDate(5, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
             ps.setString(6, solicitud.getTipoProcedimientoNombre());
             ps.setString(7, limitar(observacionSolicitud(registro), 1000));
-            ps.setInt(8, registro.getNotificacion().requiereVirtual() ? 1 : 0);
-            ps.setString(9, registro.getNotificacion().getCorreo());
+            ps.setInt(8, 0);
+            ps.setNull(9, Types.VARCHAR);
             ps.executeUpdate();
         }
     }
@@ -441,44 +436,6 @@ public class ExpedienteRegistroDAO {
         }
     }
 
-    private void insertarNotificacionesManual(Connection conn, DatosNotificacionDTO notificacion, Long idExpediente) throws SQLException {
-        if (notificacion == null || !notificacion.requiereRegistroNotificacion()) {
-            return;
-        }
-        Long idEstadoPendiente = requerirId(
-                catalogoLookupDAO.obtenerEstadoNotificacionId(conn, CODIGO_ESTADO_NOTIFICACION_PENDIENTE),
-                "estado de notificación PENDIENTE");
-        if (notificacion.requiereVirtual()) {
-            insertarNotificacionManual(conn, idExpediente, CODIGO_NOTIFICACION_VIRTUAL, idEstadoPendiente, 1, notificacion);
-        }
-        if (notificacion.requiereFisica()) {
-            insertarNotificacionManual(conn, idExpediente, CODIGO_NOTIFICACION_PRESENCIAL, idEstadoPendiente, notificacion.requiereVirtual() ? 2 : 1, notificacion);
-        }
-    }
-
-    private void insertarNotificacionManual(
-            Connection conn,
-            Long idExpediente,
-            String codigoTipoNotificacion,
-            Long idEstadoPendiente,
-            int numeroIntento,
-            DatosNotificacionDTO notificacion) throws SQLException {
-        Long idTipoNotificacion = requerirId(
-                catalogoLookupDAO.obtenerTipoNotificacionId(conn, codigoTipoNotificacion),
-                "tipo de notificación " + codigoTipoNotificacion);
-        String sql = "INSERT INTO expediente_notificacion ("
-                + "id_expediente, id_tipo_notificacion, id_estado_notificacion, numero_intento, observacion, activo"
-                + ") VALUES (?, ?, ?, ?, ?, 1)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, idExpediente);
-            ps.setLong(2, idTipoNotificacion);
-            ps.setLong(3, idEstadoPendiente);
-            ps.setInt(4, numeroIntento);
-            ps.setString(5, limitar(observacionNotificacion(notificacion), 1000));
-            ps.executeUpdate();
-        }
-    }
-
     private void insertarHistorialManual(
             Connection conn,
             RegistroManualExpedienteDTO registro,
@@ -510,24 +467,10 @@ public class ExpedienteRegistroDAO {
         append(sb, "Observación de acta", registro.getActa().getObservacion());
         append(sb, "Observación de remitente", registro.getRemitente().getObservacion());
         append(sb, "Observación general", registro.getObservacionesGenerales());
+        append(sb, "Validación inicial", registro.getSolicitud().getValidacionInicial());
         append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
         append(sb, "Origen registral", registro.getActa().getOrigenRegistral());
-        return sb.toString();
-    }
-
-    private String observacionNotificacion(DatosNotificacionDTO notificacion) {
-        StringBuilder sb = new StringBuilder();
-        append(sb, "Tipo preferente", notificacion.getTipoNotificacionNombre());
-        append(sb, "Correo", notificacion.getCorreo());
-        append(sb, "Teléfono", notificacion.getTelefono());
-        append(sb, "Dirección", notificacion.getDireccion());
-        append(sb, "Distrito", notificacion.getDistrito());
-        append(sb, "Provincia", notificacion.getProvincia());
-        append(sb, "Departamento", notificacion.getDepartamento());
-        append(sb, "Referencia", notificacion.getReferenciaDireccion());
-        append(sb, "Contacto", notificacion.getPersonaContacto());
-        append(sb, "Observación", notificacion.getObservacion());
         return sb.toString();
     }
 

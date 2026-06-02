@@ -6,7 +6,6 @@ public class RegistroManualExpedienteDTO {
     private DatosActaDTO acta = new DatosActaDTO();
     private DatosPersonaRegistroDTO titular = new DatosPersonaRegistroDTO();
     private DatosPersonaRegistroDTO remitente = new DatosPersonaRegistroDTO();
-    private DatosNotificacionDTO notificacion = new DatosNotificacionDTO();
     private String observacionesGenerales;
     private String numeroExpedienteVistaPrevia;
 
@@ -40,14 +39,6 @@ public class RegistroManualExpedienteDTO {
 
     public void setRemitente(DatosPersonaRegistroDTO remitente) {
         this.remitente = remitente == null ? new DatosPersonaRegistroDTO() : remitente;
-    }
-
-    public DatosNotificacionDTO getNotificacion() {
-        return notificacion;
-    }
-
-    public void setNotificacion(DatosNotificacionDTO notificacion) {
-        this.notificacion = notificacion == null ? new DatosNotificacionDTO() : notificacion;
     }
 
     public String getObservacionesGenerales() {
