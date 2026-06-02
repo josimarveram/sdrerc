@@ -10,6 +10,8 @@ import javax.swing.JTabbedPane;
 
 public class JPanelRegistroRecepcionV2 extends JPanel {
 
+    private JPanelBandejaExpedientesNueva bandejaRegistro;
+
     public JPanelRegistroRecepcionV2() {
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
@@ -21,7 +23,14 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         tabs.addTab("Bandeja Registro", crearBandejaRegistro());
-        tabs.addTab("Carga diaria", new JPanelCargaDiariaRecepcionV2());
+        tabs.addTab("Carga diaria", new JPanelCargaDiariaRecepcionV2(new Runnable() {
+            @Override
+            public void run() {
+                if (bandejaRegistro != null) {
+                    bandejaRegistro.refrescar();
+                }
+            }
+        }));
         tabs.addTab("Registro manual", new JPanelRegistroManualPlaceholderV2());
         return tabs;
     }
@@ -37,7 +46,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         metricas.add(new MetricCardV2("Observados", "-", "Validación futura", AppV2Theme.WARNING));
         metricas.add(new MetricCardV2("Duplicados", "-", "Conservados para revisión", AppV2Theme.INDIGO));
 
-        JPanelBandejaExpedientesNueva bandejaRegistro = new JPanelBandejaExpedientesNueva(
+        bandejaRegistro = new JPanelBandejaExpedientesNueva(
                 "REGISTRO",
                 "Registro / Recepción",
                 "Expedientes registrados o recibidos pendientes de gestión",

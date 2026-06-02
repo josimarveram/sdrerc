@@ -1,38 +1,70 @@
 package com.sdrerc.ui.views.registrorecepcion;
 
-import com.sdrerc.ui.appv2.components.BadgeV2;
-import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.application.sdrercapp.CargaDiariaArchivoParserService;
+import com.sdrerc.application.sdrercapp.CargaDiariaRegistroService;
+import com.sdrerc.application.sdrercapp.CargaDiariaValidacionService;
+import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
+import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResumenDTO;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.io.File;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.SwingWorker;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
 public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    private final CargaDiariaArchivoParserService parserService = new CargaDiariaArchivoParserService();
+    private final CargaDiariaValidacionService validacionService = new CargaDiariaValidacionService();
+    private final CargaDiariaRegistroService registroService = new CargaDiariaRegistroService();
+    private final Runnable onCargaConfirmada;
+
+    private final JButton btnArchivo = new JButton("Seleccionar archivo");
+    private final JButton btnPrevisualizar = new JButton("Previsualizar");
+    private final JButton btnValidar = new JButton("Validar");
+    private final JButton btnConfirmar = new JButton("Confirmar carga");
+    private final JButton btnLimpiar = new JButton("Limpiar");
+    private final JLabel lblArchivo = new JLabel("Sin archivo seleccionado");
+    private final JLabel lblEstado = new JLabel("Seleccione un archivo .xlsx o .csv para iniciar.");
+
+    private final ResumenCard cardTotal = new ResumenCard("Total leídos", "0", "Pendiente de archivo", AppV2Theme.INFO);
+    private final ResumenCard cardValidos = new ResumenCard("Válidos", "0", "Pendiente de validación", AppV2Theme.SUCCESS);
+    private final ResumenCard cardErrores = new ResumenCard("Con errores", "0", "No registrables", AppV2Theme.ERROR);
+    private final ResumenCard cardDuplicados = new ResumenCard("Posibles duplicados", "0", "Se conservan", AppV2Theme.WARNING);
+    private final ResumenCard cardListos = new ResumenCard("Listos para registrar", "0", "Confirmación requerida", AppV2Theme.TEAL);
+    private final ResumenCard cardRegistrados = new ResumenCard("Registrados", "0", "Pendiente", AppV2Theme.INDIGO);
+
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[]{
-                "Número de trámite",
-                "Tipo de procedimiento",
-                "Titular",
+                "Fila",
+                "Número trámite",
+                "Tipo procedimiento",
+                "Tipo documento",
                 "Acta",
-                "Fecha recepción",
+                "Titular",
                 "Remitente",
-                "Estado de validación",
+                "Fecha recepción",
+                "Estado validación",
                 "Posible duplicado",
                 "Número expediente generado",
                 "Observación"
@@ -45,13 +77,25 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     };
     private final JTable table = new JTable(tableModel);
 
+    private File archivoSeleccionado;
+    private List<CargaDiariaPreviewDTO> registros = new ArrayList<>();
+    private boolean trabajando;
+
     public JPanelCargaDiariaRecepcionV2() {
+        this(null);
+    }
+
+    public JPanelCargaDiariaRecepcionV2(Runnable onCargaConfirmada) {
+        this.onCargaConfirmada = onCargaConfirmada;
         setLayout(new BorderLayout(12, 12));
         setBackground(AppV2Theme.BACKGROUND);
         add(crearPanelSuperior(), BorderLayout.NORTH);
         add(crearTablaPreview(), BorderLayout.CENTER);
         add(crearPanelNotas(), BorderLayout.SOUTH);
+        configurarEventos();
         cargarPrevisualizacion(Collections.<CargaDiariaPreviewDTO>emptyList());
+        actualizarResumen();
+        actualizarBotones();
     }
 
     private JPanel crearPanelSuperior() {
@@ -64,40 +108,41 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         acciones.setOpaque(false);
-        JButton btnArchivo = crearBotonPendiente("Seleccionar archivo");
-        JButton btnPrevisualizar = crearBotonPendiente("Previsualizar");
-        JButton btnValidar = crearBotonPendiente("Validar registros");
-        JButton btnConfirmar = new JButton("Confirmar carga");
-        btnConfirmar.setEnabled(false);
-        btnConfirmar.setToolTipText("Pendiente de implementación de escritura controlada");
         acciones.add(btnArchivo);
         acciones.add(btnPrevisualizar);
         acciones.add(btnValidar);
         acciones.add(btnConfirmar);
+        acciones.add(btnLimpiar);
 
-        JLabel modo = new JLabel("Preparación visual · sin escritura");
-        modo.setOpaque(true);
-        modo.setBackground(AppV2Theme.SOFT_ORANGE);
-        modo.setForeground(AppV2Theme.WARNING);
-        modo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        modo.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+        lblArchivo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblArchivo.setForeground(AppV2Theme.TEXT_SECONDARY);
 
         toolbar.add(acciones, BorderLayout.WEST);
-        toolbar.add(modo, BorderLayout.EAST);
+        toolbar.add(lblArchivo, BorderLayout.EAST);
 
-        JLabel ayuda = new JLabel("<html>El número de expediente se generará durante la confirmación de la carga, una vez validados los registros. En este incremento solo se prepara la previsualización.</html>");
+        JLabel ayuda = new JLabel("<html>La carga diaria genera número de expediente al confirmar los registros válidos. Revise la previsualización antes de registrar.</html>");
         ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        JPanel metricas = new JPanel(new GridLayout(1, 4, 12, 0));
+        lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel mensajes = new JPanel(new BorderLayout(0, 4));
+        mensajes.setOpaque(false);
+        mensajes.add(ayuda, BorderLayout.NORTH);
+        mensajes.add(lblEstado, BorderLayout.SOUTH);
+
+        JPanel metricas = new JPanel(new GridLayout(1, 6, 10, 0));
         metricas.setOpaque(false);
-        metricas.add(new MetricCardV2("Registros leídos", "0", "Pendiente de archivo", AppV2Theme.INFO));
-        metricas.add(new MetricCardV2("Válidos", "0", "Pendiente de validación", AppV2Theme.SUCCESS));
-        metricas.add(new MetricCardV2("Posibles duplicados", "0", "Se conservarán en la carga", AppV2Theme.WARNING));
-        metricas.add(new MetricCardV2("Expedientes a generar", "0", "Pendiente de confirmación", AppV2Theme.TEAL));
+        metricas.add(cardTotal);
+        metricas.add(cardValidos);
+        metricas.add(cardErrores);
+        metricas.add(cardDuplicados);
+        metricas.add(cardListos);
+        metricas.add(cardRegistrados);
 
         wrapper.add(toolbar, BorderLayout.NORTH);
-        wrapper.add(ayuda, BorderLayout.CENTER);
+        wrapper.add(mensajes, BorderLayout.CENTER);
         wrapper.add(metricas, BorderLayout.SOUTH);
         return wrapper;
     }
@@ -112,10 +157,13 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setGridColor(AppV2Theme.BORDER);
         table.setIntercellSpacing(new Dimension(0, 1));
-        table.getColumnModel().getColumn(0).setPreferredWidth(150);
-        table.getColumnModel().getColumn(1).setPreferredWidth(160);
-        table.getColumnModel().getColumn(2).setPreferredWidth(180);
-        table.getColumnModel().getColumn(8).setPreferredWidth(190);
+        table.getColumnModel().getColumn(0).setMaxWidth(60);
+        table.getColumnModel().getColumn(1).setPreferredWidth(140);
+        table.getColumnModel().getColumn(2).setPreferredWidth(160);
+        table.getColumnModel().getColumn(3).setPreferredWidth(140);
+        table.getColumnModel().getColumn(5).setPreferredWidth(180);
+        table.getColumnModel().getColumn(10).setPreferredWidth(190);
+        table.getColumnModel().getColumn(11).setPreferredWidth(260);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
@@ -127,27 +175,21 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         panel.setOpaque(false);
         panel.add(crearNota(
                 "Duplicados",
-                "Los posibles duplicados se conservarán en la carga y se mostrarán antes de confirmar. La asociación de duplicados se realizará en la etapa correspondiente.",
-                new BadgeV2("Regla funcional", AppV2Theme.SOFT_BLUE, AppV2Theme.INFO)));
+                "Los posibles duplicados se conservan en la previsualización y pueden registrarse como advertencia. La asociación final se gestionará después en la etapa correspondiente."));
         panel.add(crearNota(
-                "Generación futura",
-                "La futura generación debe considerar correlativo único, año o periodo, tipo de procedimiento si aplica, concurrencia, no duplicidad, trazabilidad, historial inicial y usuario confirmante.",
-                new BadgeV2("Pendiente técnico", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY)));
+                "Confirmación",
+                "La confirmación registra expediente, solicitud, acta, personas, documento inicial e historial en una transacción sobre SDRERC_APP."));
         return panel;
     }
 
-    private JPanel crearNota(String title, String text, BadgeV2 badge) {
+    private JPanel crearNota(String title, String text) {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBackground(AppV2Theme.SURFACE);
         panel.setBorder(AppV2Theme.cardBorder());
 
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_MEDIUM));
         lblTitle.setForeground(AppV2Theme.TEXT_PRIMARY);
-        header.add(lblTitle, BorderLayout.WEST);
-        header.add(badge, BorderLayout.EAST);
 
         JTextArea detail = new JTextArea(text);
         detail.setEditable(false);
@@ -158,37 +200,230 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         detail.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         detail.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        panel.add(header, BorderLayout.NORTH);
+        panel.add(lblTitle, BorderLayout.NORTH);
         panel.add(detail, BorderLayout.CENTER);
         return panel;
     }
 
-    private JButton crearBotonPendiente(String text) {
-        JButton button = new JButton(text);
-        button.addActionListener(e -> JOptionPane.showMessageDialog(
+    private void configurarEventos() {
+        btnArchivo.addActionListener(e -> seleccionarArchivo());
+        btnPrevisualizar.addActionListener(e -> previsualizar());
+        btnValidar.addActionListener(e -> validar());
+        btnConfirmar.addActionListener(e -> confirmarCarga());
+        btnLimpiar.addActionListener(e -> limpiar());
+    }
+
+    private void seleccionarArchivo() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("Archivos de carga diaria (.xlsx, .csv)", "xlsx", "csv"));
+        int result = chooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            archivoSeleccionado = chooser.getSelectedFile();
+            lblArchivo.setText(archivoSeleccionado.getName());
+            lblEstado.setText("Archivo seleccionado. Presione Previsualizar para leer registros.");
+            registros = new ArrayList<>();
+            cargarPrevisualizacion(registros);
+            actualizarResumen();
+            actualizarBotones();
+        }
+    }
+
+    private void previsualizar() {
+        if (archivoSeleccionado == null) {
+            mostrarInfo("Seleccione un archivo antes de previsualizar.");
+            return;
+        }
+        setTrabajando(true, "Leyendo archivo de carga diaria...");
+        SwingWorker<List<CargaDiariaPreviewDTO>, Void> worker = new SwingWorker<List<CargaDiariaPreviewDTO>, Void>() {
+            @Override
+            protected List<CargaDiariaPreviewDTO> doInBackground() throws Exception {
+                return parserService.leerArchivo(archivoSeleccionado);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    registros = get();
+                    cargarPrevisualizacion(registros);
+                    lblEstado.setText(registros.size() + " registro(s) leídos. Presione Validar para revisar reglas y duplicados.");
+                } catch (Exception ex) {
+                    registros = new ArrayList<>();
+                    cargarPrevisualizacion(registros);
+                    mostrarError("No se pudo previsualizar el archivo.", ex);
+                } finally {
+                    actualizarResumen();
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void validar() {
+        if (registros.isEmpty()) {
+            mostrarInfo("Previsualice registros antes de validar.");
+            return;
+        }
+        setTrabajando(true, "Validando registros y posibles duplicados en SDRERC_APP...");
+        SwingWorker<List<CargaDiariaPreviewDTO>, Void> worker = new SwingWorker<List<CargaDiariaPreviewDTO>, Void>() {
+            @Override
+            protected List<CargaDiariaPreviewDTO> doInBackground() throws Exception {
+                return validacionService.validar(registros);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    registros = get();
+                    cargarPrevisualizacion(registros);
+                    CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
+                    lblEstado.setText(resumen.getListosParaRegistrar() + " registro(s) listo(s) para confirmar.");
+                } catch (Exception ex) {
+                    mostrarError("No se pudo validar la carga diaria. No se registró ningún dato.", ex);
+                } finally {
+                    actualizarResumen();
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void confirmarCarga() {
+        CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
+        if (resumen.getListosParaRegistrar() == 0) {
+            mostrarInfo("No hay registros listos para registrar.");
+            return;
+        }
+        int option = JOptionPane.showConfirmDialog(
                 this,
-                "Pendiente de implementación. Este incremento solo prepara la interfaz.",
-                "Registro / Recepción V2",
-                JOptionPane.INFORMATION_MESSAGE));
-        return button;
+                "Se registrarán " + resumen.getListosParaRegistrar() + " expediente(s) en SDRERC_APP.\n"
+                        + "Los registros con advertencia por duplicado se conservarán.\n\n"
+                        + "¿Desea confirmar la carga?",
+                "Confirmar carga diaria",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (option != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        setTrabajando(true, "Confirmando carga diaria en SDRERC_APP...");
+        SwingWorker<CargaDiariaResultadoDTO, Void> worker = new SwingWorker<CargaDiariaResultadoDTO, Void>() {
+            @Override
+            protected CargaDiariaResultadoDTO doInBackground() throws Exception {
+                return registroService.confirmarCarga(registros);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    CargaDiariaResultadoDTO resultado = get();
+                    registros = new ArrayList<CargaDiariaPreviewDTO>(resultado.getRegistros());
+                    cargarPrevisualizacion(registros);
+                    lblEstado.setText(resultado.getMensaje());
+                    JOptionPane.showMessageDialog(
+                            JPanelCargaDiariaRecepcionV2.this,
+                            resultado.getMensaje(),
+                            "Carga diaria confirmada",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    if (resultado.getRegistrados() > 0 && onCargaConfirmada != null) {
+                        onCargaConfirmada.run();
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudo confirmar la carga diaria. La transacción fue revertida.", ex);
+                } finally {
+                    actualizarResumen();
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void limpiar() {
+        archivoSeleccionado = null;
+        registros = new ArrayList<>();
+        lblArchivo.setText("Sin archivo seleccionado");
+        lblEstado.setText("Seleccione un archivo .xlsx o .csv para iniciar.");
+        cargarPrevisualizacion(registros);
+        actualizarResumen();
+        actualizarBotones();
     }
 
     private void cargarPrevisualizacion(List<CargaDiariaPreviewDTO> items) {
         tableModel.setRowCount(0);
         for (CargaDiariaPreviewDTO item : items) {
             tableModel.addRow(new Object[]{
+                item.getFila(),
                 safe(item.getNumeroTramite()),
                 safe(item.getTipoProcedimiento()),
-                safe(item.getTitular()),
+                safe(item.getTipoDocumento()),
                 safe(item.getActa()),
-                item.getFechaRecepcion() == null ? "" : DATE_FORMAT.format(item.getFechaRecepcion()),
+                safe(item.getTitular()),
                 safe(item.getRemitente()),
+                item.getFechaRecepcion() == null ? safe(item.getFechaRecepcionTexto()) : DATE_FORMAT.format(item.getFechaRecepcion()),
                 safe(item.getEstadoValidacion()),
                 item.isPosibleDuplicado() ? "Sí" : "No",
                 safeOrPending(item.getNumeroExpedienteGenerado()),
-                safe(item.getObservacion())
+                observacionTabla(item)
             });
         }
+    }
+
+    private void actualizarResumen() {
+        CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
+        cardTotal.actualizar(String.valueOf(resumen.getTotalLeidos()), resumen.getTotalLeidos() == 0 ? "Pendiente de archivo" : "Archivo leído");
+        cardValidos.actualizar(String.valueOf(resumen.getValidos()), "Sin errores críticos");
+        cardErrores.actualizar(String.valueOf(resumen.getConErrores()), "No registrables");
+        cardDuplicados.actualizar(String.valueOf(resumen.getPosiblesDuplicados()), "Advertencia");
+        cardListos.actualizar(String.valueOf(resumen.getListosParaRegistrar()), "Confirmación requerida");
+        cardRegistrados.actualizar(String.valueOf(resumen.getRegistrados()), "En SDRERC_APP");
+        actualizarBotones();
+    }
+
+    private void actualizarBotones() {
+        CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
+        btnPrevisualizar.setEnabled(!trabajando && archivoSeleccionado != null);
+        btnValidar.setEnabled(!trabajando && !registros.isEmpty());
+        btnConfirmar.setEnabled(!trabajando && resumen.getListosParaRegistrar() > 0);
+        btnArchivo.setEnabled(!trabajando);
+        btnLimpiar.setEnabled(!trabajando && (archivoSeleccionado != null || !registros.isEmpty()));
+    }
+
+    private void setTrabajando(boolean trabajando, String mensaje) {
+        this.trabajando = trabajando;
+        if (mensaje != null) {
+            lblEstado.setText(mensaje);
+        }
+        actualizarBotones();
+    }
+
+    private void mostrarInfo(String message) {
+        JOptionPane.showMessageDialog(this, message, "Registro / Recepción V2", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void mostrarError(String titulo, Exception ex) {
+        String message = ex.getMessage();
+        if (message == null && ex.getCause() != null) {
+            message = ex.getCause().getMessage();
+        }
+        if (message == null || message.trim().isEmpty()) {
+            message = "Revise el archivo o la conexión de SDRERC_APP.";
+        }
+        lblEstado.setText(titulo + " " + message);
+        JOptionPane.showMessageDialog(this, titulo + "\n" + message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private static String observacionTabla(CargaDiariaPreviewDTO item) {
+        String observacion = safe(item.getObservacionInicial());
+        String mensaje = safe(item.getMensajeValidacion());
+        if (observacion.isEmpty()) {
+            return mensaje;
+        }
+        if (mensaje.isEmpty()) {
+            return observacion;
+        }
+        return observacion + " | " + mensaje;
     }
 
     private static String safe(String value) {
@@ -197,5 +432,39 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String safeOrPending(String value) {
         return value == null || value.trim().isEmpty() ? "Pendiente" : value;
+    }
+
+    private static class ResumenCard extends JPanel {
+
+        private final JLabel lblValue = new JLabel();
+        private final JLabel lblCaption = new JLabel();
+
+        private ResumenCard(String title, String value, String caption, Color accent) {
+            super(new BorderLayout(6, 4));
+            setBackground(AppV2Theme.SURFACE);
+            setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 4, 0, 0, accent),
+                    AppV2Theme.cardBorder()));
+
+            JLabel lblTitle = new JLabel(title);
+            lblTitle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            lblTitle.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+            lblValue.setFont(AppV2Theme.fontBold(22));
+            lblValue.setForeground(AppV2Theme.TEXT_PRIMARY);
+
+            lblCaption.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            lblCaption.setForeground(AppV2Theme.MUTED);
+
+            add(lblTitle, BorderLayout.NORTH);
+            add(lblValue, BorderLayout.CENTER);
+            add(lblCaption, BorderLayout.SOUTH);
+            actualizar(value, caption);
+        }
+
+        private void actualizar(String value, String caption) {
+            lblValue.setText(value);
+            lblCaption.setText(caption);
+        }
     }
 }

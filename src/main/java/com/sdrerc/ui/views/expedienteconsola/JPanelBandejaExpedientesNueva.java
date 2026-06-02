@@ -293,6 +293,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         });
     }
 
+    public void refrescar() {
+        buscar();
+    }
+
     private void buscar() {
         setBuscando(true);
         String texto = txtBusqueda.getText();
