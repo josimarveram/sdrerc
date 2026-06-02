@@ -33,6 +33,9 @@ public class RegistroManualValidacionService {
         if (!hasText(solicitud.getValidacionInicial())) {
             errores.add("Seleccione el resultado de validación inicial.");
         }
+        if (esNoCorresponde(solicitud.getValidacionInicial()) && !hasText(solicitud.getHojaEnvio())) {
+            errores.add("Hoja de envío obligatoria cuando no corresponde a la SDRERC.");
+        }
         if (!hasText(solicitud.getNumeroTramite())) {
             errores.add("Número de trámite obligatorio.");
         }
@@ -51,7 +54,7 @@ public class RegistroManualValidacionService {
 
     private void validarActa(DatosActaDTO acta, List<String> errores) {
         if (!hasText(acta.getNumeroActa())) {
-            errores.add("Número o referencia de acta obligatorio.");
+            errores.add("Número de acta obligatorio.");
         }
         if (acta.getAnioActa() != null && (acta.getAnioActa() < 1900 || acta.getAnioActa() > LocalDate.now().getYear() + 1)) {
             errores.add("Año del acta fuera de rango.");
@@ -75,5 +78,9 @@ public class RegistroManualValidacionService {
 
     private static boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private static boolean esNoCorresponde(String value) {
+        return "No corresponde a la SDRERC".equalsIgnoreCase(value == null ? "" : value.trim());
     }
 }

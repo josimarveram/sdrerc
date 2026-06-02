@@ -14,6 +14,7 @@ public class DatosSolicitudDTO {
     private String canalNombre;
     private String prioridad;
     private String validacionInicial;
+    private String hojaEnvio;
     private String observacionInicial;
 
     public String getNumeroTramite() {
@@ -94,6 +95,14 @@ public class DatosSolicitudDTO {
 
     public void setValidacionInicial(String validacionInicial) {
         this.validacionInicial = trimToNull(validacionInicial);
+    }
+
+    public String getHojaEnvio() {
+        return hojaEnvio;
+    }
+
+    public void setHojaEnvio(String hojaEnvio) {
+        this.hojaEnvio = trimToNull(hojaEnvio);
     }
 
     public String getObservacionInicial() {

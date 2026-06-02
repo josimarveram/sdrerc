@@ -463,14 +463,10 @@ public class ExpedienteRegistroDAO {
 
     private String observacionSolicitud(RegistroManualExpedienteDTO registro) {
         StringBuilder sb = new StringBuilder();
-        append(sb, "Observación de solicitud", registro.getSolicitud().getObservacionInicial());
-        append(sb, "Observación de acta", registro.getActa().getObservacion());
-        append(sb, "Observación de remitente", registro.getRemitente().getObservacion());
-        append(sb, "Observación general", registro.getObservacionesGenerales());
         append(sb, "Validación inicial", registro.getSolicitud().getValidacionInicial());
+        append(sb, "Hoja de envío", registro.getSolicitud().getHojaEnvio());
         append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
-        append(sb, "Origen registral", registro.getActa().getOrigenRegistral());
         return sb.toString();
     }
 
