@@ -220,7 +220,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         if (result == JFileChooser.APPROVE_OPTION) {
             archivoSeleccionado = chooser.getSelectedFile();
             lblArchivo.setText(archivoSeleccionado.getName());
-            lblEstado.setText("Archivo seleccionado. Presione Previsualizar para leer registros.");
+            lblEstado.setText("Archivo seleccionado correctamente. Presione Previsualizar para revisar los registros.");
             registros = new ArrayList<>();
             cargarPrevisualizacion(registros);
             actualizarResumen();
@@ -245,7 +245,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 try {
                     registros = get();
                     cargarPrevisualizacion(registros);
-                    lblEstado.setText(registros.size() + " registro(s) leídos. Presione Validar para revisar reglas y duplicados.");
+                    String diagnostico = parserService.getUltimoDiagnostico();
+                    lblEstado.setText(registros.size() + " registro(s) leídos. "
+                            + (diagnostico.isEmpty() ? "" : diagnostico + " ")
+                            + "Presione Validar para revisar reglas y duplicados.");
                 } catch (Exception ex) {
                     registros = new ArrayList<>();
                     cargarPrevisualizacion(registros);
@@ -403,15 +406,27 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private void mostrarError(String titulo, Exception ex) {
-        String message = ex.getMessage();
-        if (message == null && ex.getCause() != null) {
-            message = ex.getCause().getMessage();
-        }
+        String message = extraerMensajeUsuario(ex);
         if (message == null || message.trim().isEmpty()) {
             message = "Revise el archivo o la conexión de SDRERC_APP.";
         }
         lblEstado.setText(titulo + " " + message);
         JOptionPane.showMessageDialog(this, titulo + "\n" + message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private String extraerMensajeUsuario(Throwable throwable) {
+        Throwable actual = throwable;
+        while (actual != null && actual.getCause() != null) {
+            actual = actual.getCause();
+        }
+        if (actual == null) {
+            return null;
+        }
+        String message = actual.getMessage();
+        if (message == null) {
+            return null;
+        }
+        return message.replaceFirst("^java\\.[a-zA-Z0-9_.]+:\\s*", "").trim();
     }
 
     private static String observacionTabla(CargaDiariaPreviewDTO item) {

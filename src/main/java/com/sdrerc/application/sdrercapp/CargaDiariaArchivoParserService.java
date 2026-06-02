@@ -30,6 +30,17 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 public class CargaDiariaArchivoParserService {
 
+    private static final int MAX_HEADER_SCAN_ROWS = 15;
+    private static final List<String> REQUIRED_COLUMNS = Arrays.asList(
+            "numeroTramite",
+            "tipoProcedimiento",
+            "tipoDocumento",
+            "acta",
+            "titular",
+            "remitente",
+            "fechaRecepcion"
+    );
+    private static final Map<String, String> REQUIRED_COLUMN_NAMES = crearNombresColumnasObligatorias();
     private static final List<DateTimeFormatter> DATE_FORMATTERS = Arrays.asList(
             DateTimeFormatter.ISO_LOCAL_DATE,
             DateTimeFormatter.ofPattern("dd/MM/yyyy"),
@@ -38,6 +49,11 @@ public class CargaDiariaArchivoParserService {
     );
 
     private static final Map<String, List<String>> ALIASES = crearAliases();
+    private String ultimoDiagnostico;
+
+    public String getUltimoDiagnostico() {
+        return ultimoDiagnostico == null ? "" : ultimoDiagnostico;
+    }
 
     public List<CargaDiariaPreviewDTO> leerArchivo(File archivo) throws IOException {
         if (archivo == null) {
@@ -55,18 +71,19 @@ public class CargaDiariaArchivoParserService {
 
     private List<CargaDiariaPreviewDTO> leerExcel(File archivo) throws IOException {
         try (Workbook workbook = WorkbookFactory.create(archivo)) {
-            Sheet sheet = workbook.getSheetAt(0);
-            if (sheet == null || sheet.getPhysicalNumberOfRows() == 0) {
+            if (workbook.getNumberOfSheets() == 0) {
                 throw new IllegalArgumentException("El archivo no contiene filas para previsualizar.");
             }
 
             DataFormatter formatter = new DataFormatter(new Locale("es", "PE"));
-            Row headerRow = sheet.getRow(sheet.getFirstRowNum());
-            Map<String, Integer> columnas = mapearColumnasExcel(headerRow, formatter);
-            validarColumnasObligatorias(columnas);
+            HeaderInfo header = detectarEncabezadoExcel(workbook, formatter);
+            Map<String, Integer> columnas = header.columnas;
+            validarColumnasObligatorias(columnas, header);
+            Sheet sheet = workbook.getSheetAt(header.sheetIndex);
+            ultimoDiagnostico = "Hoja \"" + sheet.getSheetName() + "\", encabezados en fila " + (header.rowIndex + 1) + ".";
 
             List<CargaDiariaPreviewDTO> registros = new ArrayList<>();
-            for (int rowIndex = sheet.getFirstRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            for (int rowIndex = header.rowIndex + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (row == null || filaVacia(row, formatter)) {
                     continue;
@@ -85,7 +102,7 @@ public class CargaDiariaArchivoParserService {
                 registros.add(dto);
             }
             if (registros.isEmpty()) {
-                throw new IllegalArgumentException("No se encontraron registros en el archivo seleccionado.");
+                throw new IllegalArgumentException("No se encontraron registros debajo de la fila de encabezados detectada. " + ultimoDiagnostico);
             }
             return registros;
         } catch (IllegalArgumentException ex) {
@@ -102,8 +119,11 @@ public class CargaDiariaArchivoParserService {
                 throw new IllegalArgumentException("El archivo CSV no contiene encabezados.");
             }
             char separador = detectarSeparador(header);
-            Map<String, Integer> columnas = mapearColumnasCsv(parseCsvLine(header, separador));
-            validarColumnasObligatorias(columnas);
+            HeaderInfo headerInfo = new HeaderInfo(0, 0, parseCsvLine(header, separador));
+            Map<String, Integer> columnas = mapearColumnasCsv(headerInfo.headers);
+            headerInfo.columnas.putAll(columnas);
+            validarColumnasObligatorias(columnas, headerInfo);
+            ultimoDiagnostico = "CSV, encabezados en fila 1.";
 
             List<CargaDiariaPreviewDTO> registros = new ArrayList<>();
             String line;
@@ -134,15 +154,41 @@ public class CargaDiariaArchivoParserService {
         }
     }
 
-    private Map<String, Integer> mapearColumnasExcel(Row headerRow, DataFormatter formatter) {
-        if (headerRow == null) {
-            throw new IllegalArgumentException("El archivo no contiene fila de encabezados.");
+    private HeaderInfo detectarEncabezadoExcel(Workbook workbook, DataFormatter formatter) {
+        HeaderInfo mejor = null;
+        for (int sheetIndex = 0; sheetIndex < workbook.getNumberOfSheets(); sheetIndex++) {
+            Sheet currentSheet = workbook.getSheetAt(sheetIndex);
+            int first = currentSheet.getFirstRowNum();
+            int last = Math.min(currentSheet.getLastRowNum(), first + MAX_HEADER_SCAN_ROWS - 1);
+            for (int rowIndex = first; rowIndex <= last; rowIndex++) {
+                Row row = currentSheet.getRow(rowIndex);
+                if (row == null) {
+                    continue;
+                }
+                HeaderInfo candidato = new HeaderInfo(sheetIndex, rowIndex, leerHeaders(row, formatter));
+                candidato.columnas.putAll(mapearColumnasCsv(candidato.headers));
+                if (mejor == null || candidato.getScore() > mejor.getScore()) {
+                    mejor = candidato;
+                }
+                if (candidato.tieneTodasObligatorias()) {
+                    return candidato;
+                }
+            }
         }
+        if (mejor == null || mejor.headers.isEmpty()) {
+            throw new IllegalArgumentException("No se pudo detectar una fila de encabezados en las primeras "
+                    + MAX_HEADER_SCAN_ROWS + " filas del archivo.");
+        }
+        return mejor;
+    }
+
+    private List<String> leerHeaders(Row row, DataFormatter formatter) {
         List<String> headers = new ArrayList<>();
-        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
-            headers.add(formatter.formatCellValue(headerRow.getCell(i)));
+        int last = Math.max(row.getLastCellNum(), 0);
+        for (int i = 0; i < last; i++) {
+            headers.add(formatter.formatCellValue(row.getCell(i)));
         }
-        return mapearColumnasCsv(headers);
+        return headers;
     }
 
     private Map<String, Integer> mapearColumnasCsv(List<String> headers) {
@@ -158,24 +204,20 @@ public class CargaDiariaArchivoParserService {
         return columnas;
     }
 
-    private void validarColumnasObligatorias(Map<String, Integer> columnas) {
-        Map<String, String> nombres = new LinkedHashMap<>();
-        nombres.put("numeroTramite", "número de trámite");
-        nombres.put("tipoProcedimiento", "tipo de procedimiento");
-        nombres.put("tipoDocumento", "tipo de documento");
-        nombres.put("acta", "acta");
-        nombres.put("titular", "titular");
-        nombres.put("remitente", "remitente");
-        nombres.put("fechaRecepcion", "fecha recepción");
-
+    private void validarColumnasObligatorias(Map<String, Integer> columnas, HeaderInfo header) {
         List<String> faltantes = new ArrayList<>();
-        for (Map.Entry<String, String> entry : nombres.entrySet()) {
-            if (!columnas.containsKey(entry.getKey())) {
-                faltantes.add(entry.getValue());
+        for (String key : REQUIRED_COLUMNS) {
+            if (!columnas.containsKey(key)) {
+                faltantes.add(REQUIRED_COLUMN_NAMES.get(key));
             }
         }
         if (!faltantes.isEmpty()) {
-            throw new IllegalArgumentException("Faltan columnas obligatorias: " + String.join(", ", faltantes) + ".");
+            throw new IllegalArgumentException(
+                    "No se pudo previsualizar el archivo porque la plantilla no contiene las columnas obligatorias esperadas.\n"
+                    + "Columnas faltantes: " + String.join(", ", faltantes) + ".\n"
+                    + "Columnas encontradas: " + describirHeaders(header.headers) + ".\n"
+                    + "Ubicación revisada: " + header.descripcion() + ".\n"
+                    + "Verifique que esté usando la plantilla correcta.");
         }
     }
 
@@ -301,15 +343,98 @@ public class CargaDiariaArchivoParserService {
 
     private static Map<String, List<String>> crearAliases() {
         Map<String, List<String>> aliases = new LinkedHashMap<>();
-        aliases.put("numeroTramite", normalizarLista("NUMERO_TRAMITE", "NRO_TRAMITE", "TRAMITE", "NUMERO TRAMITE", "NRO TRAMITE"));
-        aliases.put("tipoProcedimiento", normalizarLista("TIPO_PROCEDIMIENTO", "PROCEDIMIENTO", "TIPO PROCEDIMIENTO"));
-        aliases.put("tipoDocumento", normalizarLista("TIPO_DOCUMENTO", "DOCUMENTO", "TIPO DOCUMENTO"));
-        aliases.put("acta", normalizarLista("ACTA", "NUMERO_ACTA", "NRO_ACTA", "NUMERO ACTA"));
-        aliases.put("titular", normalizarLista("TITULAR", "NOMBRE_TITULAR", "NOMBRE TITULAR"));
-        aliases.put("remitente", normalizarLista("REMITENTE"));
-        aliases.put("fechaRecepcion", normalizarLista("FECHA_RECEPCION", "FECHA", "FECHA RECEPCION"));
-        aliases.put("observacionInicial", normalizarLista("OBSERVACION", "OBSERVACIONES", "OBSERVACION_INICIAL", "OBSERVACION INICIAL"));
+        aliases.put("numeroTramite", normalizarLista(
+                "NUMERO_TRAMITE",
+                "NRO_TRAMITE",
+                "NRO. TRAMITE",
+                "N° TRAMITE",
+                "N TRAMITE",
+                "NUMERO DE TRAMITE",
+                "NÚMERO DE TRÁMITE",
+                "TRAMITE",
+                "TRÁMITE",
+                "N° TRAMITE WEB",
+                "N TRAMITE WEB",
+                "NRO TRAMITE WEB",
+                "NUMERO TRAMITE WEB"));
+        aliases.put("tipoProcedimiento", normalizarLista(
+                "TIPO_PROCEDIMIENTO",
+                "TIPO DE PROCEDIMIENTO",
+                "PROCEDIMIENTO",
+                "PROC. REG",
+                "PROCEDIMIENTO REGISTRAL",
+                "PROCESO"));
+        aliases.put("tipoDocumento", normalizarLista(
+                "TIPO_DOCUMENTO",
+                "TIPO DE DOCUMENTO",
+                "DOCUMENTO",
+                "TIPO DOC",
+                "TIPO DOC."));
+        aliases.put("acta", normalizarLista(
+                "ACTA",
+                "NUMERO_ACTA",
+                "NRO_ACTA",
+                "N° ACTA",
+                "N ACTA",
+                "NUMERO DE ACTA",
+                "NÚMERO DE ACTA",
+                "ACTA REGISTRAL"));
+        aliases.put("titular", normalizarLista(
+                "TITULAR",
+                "NOMBRE_TITULAR",
+                "NOMBRE DEL TITULAR",
+                "APELLIDOS Y NOMBRES",
+                "NOMBRES",
+                "PERSONA"));
+        aliases.put("remitente", normalizarLista(
+                "REMITENTE",
+                "ENTIDAD REMITENTE",
+                "NOMBRE REMITENTE",
+                "SOLICITANTE",
+                "ORIGEN",
+                "SOLICITADO POR"));
+        aliases.put("fechaRecepcion", normalizarLista(
+                "FECHA_RECEPCION",
+                "FECHA RECEPCION",
+                "FECHA DE RECEPCION",
+                "FECHA DE RECEPCIÓN",
+                "FECHA",
+                "FECHA SOLICITUD",
+                "FECHA DE SOLICITUD"));
+        aliases.put("observacionInicial", normalizarLista(
+                "OBSERVACION",
+                "OBSERVACIÓN",
+                "OBSERVACIONES",
+                "COMENTARIO",
+                "COMENTARIOS",
+                "OBSERVACION_INICIAL",
+                "OBSERVACION INICIAL"));
         return aliases;
+    }
+
+    private static Map<String, String> crearNombresColumnasObligatorias() {
+        Map<String, String> nombres = new LinkedHashMap<>();
+        nombres.put("numeroTramite", "Número de trámite");
+        nombres.put("tipoProcedimiento", "Tipo de procedimiento");
+        nombres.put("tipoDocumento", "Tipo de documento");
+        nombres.put("acta", "Acta");
+        nombres.put("titular", "Titular");
+        nombres.put("remitente", "Remitente");
+        nombres.put("fechaRecepcion", "Fecha recepción");
+        return nombres;
+    }
+
+    private static String describirHeaders(List<String> headers) {
+        List<String> nonEmpty = new ArrayList<>();
+        for (String header : headers) {
+            if (header != null && !header.trim().isEmpty()) {
+                nonEmpty.add(header.trim().replaceAll("\\s+", " "));
+            }
+        }
+        if (nonEmpty.isEmpty()) {
+            return "sin encabezados visibles";
+        }
+        return nonEmpty.toString();
     }
 
     private static List<String> normalizarLista(String... values) {
@@ -336,5 +461,45 @@ public class CargaDiariaArchivoParserService {
             return null;
         }
         return value.replace("\uFEFF", "").trim();
+    }
+
+    private static class HeaderInfo {
+
+        private final int sheetIndex;
+        private final int rowIndex;
+        private final List<String> headers;
+        private final Map<String, Integer> columnas = new HashMap<>();
+
+        private HeaderInfo(int sheetIndex, int rowIndex, List<String> headers) {
+            this.sheetIndex = sheetIndex;
+            this.rowIndex = rowIndex;
+            this.headers = headers == null ? new ArrayList<String>() : headers;
+        }
+
+        private int getScore() {
+            int score = 0;
+            for (String key : REQUIRED_COLUMNS) {
+                if (columnas.containsKey(key)) {
+                    score += 10;
+                }
+            }
+            if (columnas.containsKey("observacionInicial")) {
+                score += 1;
+            }
+            return score;
+        }
+
+        private boolean tieneTodasObligatorias() {
+            for (String key : REQUIRED_COLUMNS) {
+                if (!columnas.containsKey(key)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private String descripcion() {
+            return "hoja " + (sheetIndex + 1) + ", fila " + (rowIndex + 1);
+        }
     }
 }
