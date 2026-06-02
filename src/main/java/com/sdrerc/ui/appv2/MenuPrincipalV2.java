@@ -2,6 +2,7 @@ package com.sdrerc.ui.appv2;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
+import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -25,6 +26,7 @@ public class MenuPrincipalV2 extends JFrame {
     private final JLabel lblSubtitulo = new JLabel("Panel inicial de SDRERC V2");
     private JButton btnInicio;
     private JButton btnBandeja;
+    private JButton btnRegistroRecepcion;
     private JButton botonActivo;
 
     public MenuPrincipalV2() {
@@ -76,7 +78,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnBandeja = crearBotonMenu("Bandeja Expedientes V2");
         btnBandeja.addActionListener(e -> mostrarBandeja(btnBandeja));
         opciones.add(btnBandeja);
-        opciones.add(crearBotonPendiente("Registro / Recepción"));
+        btnRegistroRecepcion = crearBotonMenu("Registro / Recepción");
+        btnRegistroRecepcion.addActionListener(e -> mostrarRegistroRecepcion(btnRegistroRecepcion));
+        opciones.add(btnRegistroRecepcion);
         opciones.add(crearBotonPendiente("Asignación"));
         opciones.add(crearBotonPendiente("Análisis"));
         opciones.add(crearBotonPendiente("Verificación"));
@@ -230,6 +234,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Bandeja Expedientes V2");
         lblSubtitulo.setText("Listado general de expedientes consultado desde SDRERC_APP");
         cambiarContenido(new JPanelBandejaExpedientesNueva());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarRegistroRecepcion(JButton boton) {
+        lblTitulo.setText("Registro / Recepción");
+        lblSubtitulo.setText("Carga diaria, previsualización y registro manual preparados sin escritura");
+        cambiarContenido(new JPanelRegistroRecepcionV2());
         aplicarEstadoActivo(boton);
     }
 

@@ -81,10 +81,15 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Agregar solo archivos creados/modificados por la tarea.
 - No revertir cambios ajenos.
 - Si hay cambios previos no relacionados, reportarlos brevemente y dejarlos fuera del commit.
-- No hacer commit/push automatico si existen cambios no relacionados o preexistentes que puedan mezclarse con la tarea.
 - No pedir el mensaje de commit al inicio.
-- Sugerir un mensaje de commit al final segun los cambios realizados.
-- No ejecutar `git commit` ni `git push` salvo autorizacion clara del usuario o tarea explicita que lo pida.
+- Codex debe sugerir un mensaje de commit al final segun los cambios realizados y usarlo si procede.
+- Si `mvn clean compile` / `mvn clean package` pasan cuando aplican, y solo hay cambios de la tarea, ejecutar automaticamente cuando el entorno lo permita:
+  - `git add` selectivo de los archivos creados/modificados por la tarea.
+  - `git commit -m "mensaje sugerido por Codex"`.
+  - `git push`.
+- No hacer commit/push automatico si existen cambios ajenos o preexistentes que puedan mezclarse con la tarea; reportarlos y esperar instruccion.
+- Si hay riesgo de incluir archivos no relacionados, no hacer commit/push.
+- Si la tarea indica explicitamente no hacer commit, obedecer.
 - Solo pedir confirmacion si hay conflictos, cambios ajenos riesgosos, comandos destructivos, restricciones del entorno o riesgo de incluir archivos no relacionados.
 - No mostrar `git diff` completo salvo que se pida explicitamente.
 
@@ -92,13 +97,13 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 
 - Asumir aprobacion para comandos normales de lectura, edicion, compilacion, pruebas y git cuando el entorno lo permita.
 - Pedir confirmacion solo ante operaciones destructivas, SQL, datos sensibles, credenciales, conflictos de git o cambios fuera de alcance.
-- En Codex CLI, se puede usar modo autonomo con:
+- Para evitar preguntas de aprobacion en Codex CLI, se recomienda usar modo autonomo con:
 
 ```powershell
 codex --approval never --sandbox workspace-write
 ```
 
-- Para entornos controlados y de confianza, se puede usar:
+- Para maxima autonomia en entornos controlados y de confianza, se puede usar:
 
 ```powershell
 codex --approval never --sandbox danger-full-access
@@ -106,15 +111,18 @@ codex --approval never --sandbox danger-full-access
 
 - `danger-full-access` reduce barreras de seguridad. Usarlo solo cuando el repo, la tarea y el entorno sean confiables.
 - Aunque el entorno tenga full access, respetar las restricciones del proyecto, especialmente legacy, SQL, credenciales y cambios de BD.
+- Aun con full access, respetar por defecto: no SQL, no legacy, no datos de BD y no passwords salvo autorizacion explicita.
 
 ## 9. Ahorro de tokens
 
 - No pegar salidas largas de consola.
 - No devolver `git diff` completo salvo pedido explicito.
+- No pegar bloques largos de codigo en la respuesta final.
 - Resumir cambios por archivo.
 - Resumir errores solo con lo necesario para corregirlos.
 - Entregar respuestas finales cortas y accionables.
 - Evitar repetir codigo completo si solo se modificaron fragmentos.
+- Evitar mostrar contenido completo de archivos creados/modificados salvo que se pida.
 - Preferir referencias a archivos y resumen de impacto antes que bloques largos de texto.
 
 ## 10. Alcance y forma de trabajo
@@ -143,7 +151,7 @@ codex --approval never --sandbox danger-full-access
 5. Revisar restricciones de la tarea.
 6. Revisar `git status`.
 7. Sugerir commit si procede.
-8. Hacer commit/push solo con autorizacion clara o tarea explicita.
+8. Hacer `git add` selectivo, commit y push automatico si procede, el build paso y no hay cambios ajenos mezclados.
 9. Entregar resumen final.
 
 ## 13. Respuesta final esperada
@@ -154,7 +162,8 @@ codex --approval never --sandbox danger-full-access
 - Indicar resultado de build o verificacion.
 - Indicar restricciones cumplidas.
 - Indicar cambios ajenos detectados si los hubo.
-- Sugerir mensaje de commit, sin hacer commit/push salvo autorizacion.
+- Indicar mensaje de commit usado o sugerido.
+- Confirmar push si se realizo.
 - Indicar bloqueos concretos si existieron.
 
 ## 14. Restricciones por defecto
