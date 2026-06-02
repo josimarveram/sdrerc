@@ -1,30 +1,28 @@
 package com.sdrerc.ui.appv2;
 
+import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridLayout;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 
 public class MenuPrincipalV2 extends JFrame {
 
-    private static final Color SIDEBAR_BG = new Color(28, 74, 128);
-    private static final Color SIDEBAR_ACTIVE = new Color(18, 55, 100);
-    private static final Color SIDEBAR_HOVER = new Color(40, 91, 150);
-    private static final Color CONTENT_BG = new Color(245, 247, 250);
-    private static final Color HEADER_BG = Color.WHITE;
-    private static final Color BORDER = new Color(220, 224, 230);
-
     private final JPanel body = new JPanel(new BorderLayout());
     private final JLabel lblTitulo = new JLabel("Inicio");
+    private final JLabel lblSubtitulo = new JLabel("Panel inicial de SDRERC V2");
     private JButton btnInicio;
     private JButton btnBandeja;
     private JButton botonActivo;
@@ -38,13 +36,13 @@ public class MenuPrincipalV2 extends JFrame {
     private void configurarVentana() {
         setTitle("SDRERC V2");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setMinimumSize(new Dimension(1050, 680));
-        setSize(1180, 760);
+        setMinimumSize(new Dimension(1120, 720));
+        setSize(1240, 800);
     }
 
     private void configurarLayout() {
         JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(CONTENT_BG);
+        root.setBackground(AppV2Theme.BACKGROUND);
         setContentPane(root);
 
         root.add(crearMenuLateral(), BorderLayout.WEST);
@@ -53,86 +51,161 @@ public class MenuPrincipalV2 extends JFrame {
 
     private JPanel crearMenuLateral() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(245, 0));
-        sidebar.setBackground(SIDEBAR_BG);
-        sidebar.setBorder(BorderFactory.createEmptyBorder(18, 14, 18, 14));
+        sidebar.setPreferredSize(new Dimension(286, 0));
+        sidebar.setBackground(AppV2Theme.SIDEBAR);
+        sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 12));
 
-        JLabel marca = new JLabel("<html><b>SDRERC</b><br>V2</html>");
+        JLabel marca = new JLabel("<html><b>SDRERC V2</b><br><span style='font-size:10px'>Service Console</span></html>");
         marca.setForeground(Color.WHITE);
-        marca.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        marca.setBorder(BorderFactory.createEmptyBorder(0, 8, 18, 8));
+        marca.setFont(AppV2Theme.fontBold(22));
+        marca.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(57, 91, 120)),
+                BorderFactory.createEmptyBorder(0, 8, 16, 8)));
 
-        JPanel opciones = new JPanel(new GridLayout(0, 1, 0, 8));
+        JPanel opciones = new JPanel();
         opciones.setOpaque(false);
+        opciones.setLayout(new BoxLayout(opciones, BoxLayout.Y_AXIS));
+
+        opciones.add(crearSeccionMenu("Inicio"));
         btnInicio = crearBotonMenu("Inicio");
-        btnBandeja = crearBotonMenu("Bandeja Expedientes V2");
-        JButton btnSalir = crearBotonMenu("Salir");
-
         btnInicio.addActionListener(e -> mostrarInicio());
-        btnBandeja.addActionListener(e -> mostrarBandeja(btnBandeja));
-        btnSalir.addActionListener(e -> dispose());
-
         opciones.add(btnInicio);
+        opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
+
+        opciones.add(crearSeccionMenu("Expedientes"));
+        btnBandeja = crearBotonMenu("Bandeja Expedientes V2");
+        btnBandeja.addActionListener(e -> mostrarBandeja(btnBandeja));
         opciones.add(btnBandeja);
+        opciones.add(crearBotonPendiente("Registro / Recepción"));
+        opciones.add(crearBotonPendiente("Asignación"));
+        opciones.add(crearBotonPendiente("Análisis"));
+        opciones.add(crearBotonPendiente("Verificación"));
+        opciones.add(crearBotonPendiente("Firma / Emisión"));
+        opciones.add(crearBotonPendiente("Ejecución"));
+        opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
+
+        opciones.add(crearSeccionMenu("Seguimiento"));
+        opciones.add(crearBotonPendiente("Notificación"));
+        opciones.add(crearBotonPendiente("Publicación"));
+        opciones.add(crearBotonPendiente("Expediente digital"));
+        opciones.add(crearBotonPendiente("Cierre / Archivo"));
+        opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
+
+        opciones.add(crearSeccionMenu("Administración"));
+        opciones.add(crearBotonPendiente("Usuarios"));
+        opciones.add(crearBotonPendiente("Equipo jurídico"));
+        opciones.add(crearBotonPendiente("Roles"));
+        opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
+
+        JButton btnSalir = crearBotonMenu("Salir");
+        btnSalir.addActionListener(e -> dispose());
         opciones.add(btnSalir);
 
+        JScrollPane scrollMenu = new JScrollPane(opciones);
+        scrollMenu.setOpaque(false);
+        scrollMenu.getViewport().setOpaque(false);
+        scrollMenu.setBorder(null);
+        scrollMenu.getVerticalScrollBar().setUnitIncrement(16);
+
         sidebar.add(marca, BorderLayout.NORTH);
-        sidebar.add(opciones, BorderLayout.CENTER);
+        sidebar.add(scrollMenu, BorderLayout.CENTER);
         botonActivo = btnInicio;
         aplicarEstadoActivo(btnInicio);
         return sidebar;
     }
 
+    private JLabel crearSeccionMenu(String texto) {
+        JLabel label = new JLabel(texto.toUpperCase());
+        label.setForeground(new Color(190, 211, 230));
+        label.setFont(AppV2Theme.fontBold(11));
+        label.setBorder(BorderFactory.createEmptyBorder(14, 10, 6, 10));
+        label.setAlignmentX(LEFT_ALIGNMENT);
+        return label;
+    }
+
     private JPanel crearAreaPrincipal() {
         JPanel main = new JPanel(new BorderLayout());
-        main.setBackground(CONTENT_BG);
+        main.setBackground(AppV2Theme.BACKGROUND);
         main.add(crearHeader(), BorderLayout.NORTH);
-        body.setBackground(CONTENT_BG);
+        body.setBackground(AppV2Theme.BACKGROUND);
         main.add(body, BorderLayout.CENTER);
         return main;
     }
 
     private JPanel crearHeader() {
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(HEADER_BG);
+        header.setBackground(AppV2Theme.SURFACE);
         header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
-                BorderFactory.createEmptyBorder(16, 24, 16, 24)));
+                BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(14, 24, 14, 24)));
 
-        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblTitulo.setForeground(new Color(33, 37, 41));
+        lblTitulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_TITLE));
+        lblTitulo.setForeground(AppV2Theme.TEXT_PRIMARY);
 
-        JLabel lblModo = new JLabel("SDRERC_APP - solo lectura inicial");
+        lblSubtitulo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblSubtitulo.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel tituloPanel = new JPanel();
+        tituloPanel.setOpaque(false);
+        tituloPanel.setLayout(new BoxLayout(tituloPanel, BoxLayout.Y_AXIS));
+        tituloPanel.add(lblTitulo);
+        tituloPanel.add(Box.createVerticalStrut(2));
+        tituloPanel.add(lblSubtitulo);
+
+        JLabel lblModo = new JLabel("SDRERC_APP · lectura");
         lblModo.setHorizontalAlignment(SwingConstants.RIGHT);
-        lblModo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblModo.setForeground(new Color(96, 108, 120));
+        lblModo.setOpaque(true);
+        lblModo.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        lblModo.setBackground(AppV2Theme.SOFT_GREEN);
+        lblModo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblModo.setForeground(AppV2Theme.SUCCESS);
 
-        header.add(lblTitulo, BorderLayout.WEST);
+        header.add(tituloPanel, BorderLayout.WEST);
         header.add(lblModo, BorderLayout.EAST);
         return header;
+    }
+
+    private JButton crearBotonPendiente(String texto) {
+        JButton boton = crearBotonMenu(texto);
+        boton.addActionListener(e -> {
+            aplicarEstadoActivo(boton);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Módulo pendiente de implementación en SDRERC V2.",
+                    "SDRERC V2",
+                    JOptionPane.INFORMATION_MESSAGE);
+        });
+        return boton;
     }
 
     private JButton crearBotonMenu(String texto) {
         JButton boton = new JButton(texto);
         boton.setHorizontalAlignment(SwingConstants.LEFT);
         boton.setFocusPainted(false);
-        boton.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        boton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.SIDEBAR),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
         boton.setForeground(Color.WHITE);
-        boton.setBackground(SIDEBAR_BG);
-        boton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        boton.setBackground(AppV2Theme.SIDEBAR);
+        boton.setOpaque(true);
+        boton.setContentAreaFilled(true);
+        boton.setBorderPainted(true);
+        boton.setFont(new Font(AppV2Theme.FONT_FAMILY, Font.BOLD, 13));
         boton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        boton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        boton.setAlignmentX(LEFT_ALIGNMENT);
         boton.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
                 if (boton != botonActivo) {
-                    boton.setBackground(SIDEBAR_HOVER);
+                    boton.setBackground(AppV2Theme.SIDEBAR_HOVER);
                 }
             }
 
             @Override
             public void mouseExited(java.awt.event.MouseEvent e) {
                 if (boton != botonActivo) {
-                    boton.setBackground(SIDEBAR_BG);
+                    aplicarEstadoNormal(boton);
                 }
             }
         });
@@ -141,7 +214,13 @@ public class MenuPrincipalV2 extends JFrame {
 
     private void mostrarInicio() {
         lblTitulo.setText("Inicio");
-        cambiarContenido(new HomeV2());
+        lblSubtitulo.setText("Dashboard inicial y accesos rápidos de SDRERC V2");
+        cambiarContenido(new HomeV2(new Runnable() {
+            @Override
+            public void run() {
+                mostrarBandeja(btnBandeja);
+            }
+        }));
         if (btnInicio != null) {
             aplicarEstadoActivo(btnInicio);
         }
@@ -149,6 +228,7 @@ public class MenuPrincipalV2 extends JFrame {
 
     private void mostrarBandeja(JButton boton) {
         lblTitulo.setText("Bandeja Expedientes V2");
+        lblSubtitulo.setText("Listado general de expedientes consultado desde SDRERC_APP");
         cambiarContenido(new JPanelBandejaExpedientesNueva());
         aplicarEstadoActivo(boton);
     }
@@ -165,10 +245,18 @@ public class MenuPrincipalV2 extends JFrame {
             aplicarEstadoNormal(botonActivo);
         }
         botonActivo = boton;
-        boton.setBackground(SIDEBAR_ACTIVE);
+        boton.setBackground(AppV2Theme.SIDEBAR_ACTIVE);
+        boton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.TEAL),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        boton.setForeground(Color.WHITE);
     }
 
     private void aplicarEstadoNormal(JButton boton) {
-        boton.setBackground(SIDEBAR_BG);
+        boton.setBackground(AppV2Theme.SIDEBAR);
+        boton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.SIDEBAR),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        boton.setForeground(Color.WHITE);
     }
 }

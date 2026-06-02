@@ -393,3 +393,27 @@ WHERE id_expediente = (
   WHERE numero_expediente = 'EXP-PRUEBA-SDRERC-0001'
 )
 ORDER BY codigo_accion;
+
+
+
+SELECT *
+FROM (
+    SELECT
+        id_expediente,
+        numero_expediente,
+        numero_tramite_documentario,
+        etapa_codigo,
+        estado_codigo,
+        abogado_inicial,
+        responsable_actual,
+        equipo_actual,
+        fecha_registro,
+        fecha_ultimo_movimiento,
+        fecha_vencimiento,
+        requiere_publicacion,
+        expediente_digital_completo
+    FROM vw_expediente_bandeja
+    WHERE 1 = 1
+    ORDER BY fecha_ultimo_movimiento DESC NULLS LAST, id_expediente DESC
+)
+WHERE ROWNUM <= 200;

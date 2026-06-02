@@ -2,15 +2,25 @@ package com.sdrerc.ui.views.expedienteconsola;
 
 import com.sdrerc.application.sdrercapp.ExpedienteConsultaService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
+import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
+import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -18,8 +28,10 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
@@ -30,28 +42,28 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private final ExpedienteConsultaService consultaService;
     private final JTextField txtBusqueda = new JTextField(18);
-    private final JTextField txtEtapa = new JTextField(12);
-    private final JTextField txtEstado = new JTextField(12);
+    private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
+    private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
-    private final JLabel lblResultado = new JLabel("Sin busqueda ejecutada");
+    private final JLabel lblResultado = new JLabel("Seleccione un expediente y presione Ver detalle para abrir la consola.");
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[]{
                 "ID",
                 "Expediente",
-                "Tramite",
+                "Trámite",
                 "Etapa",
                 "Estado",
                 "Abogado inicial",
                 "Responsable",
                 "Equipo",
                 "Registro",
-                "Ultimo mov.",
+                "Último mov.",
                 "Vencimiento",
-                "Dias",
-                "Publicacion",
+                "Días",
+                "Publicación",
                 "Digital"
             },
             0) {
@@ -74,59 +86,168 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void configurarLayout() {
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        setLayout(new BorderLayout(14, 14));
+        setBackground(AppV2Theme.BACKGROUND);
+        setBorder(AppV2Theme.pageBorder());
 
-        JPanel filtros = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        filtros.setBorder(BorderFactory.createTitledBorder("Bandeja SDRERC_APP - solo lectura"));
-        filtros.add(new JLabel("Buscar"));
-        filtros.add(txtBusqueda);
-        filtros.add(new JLabel("Etapa"));
-        filtros.add(txtEtapa);
-        filtros.add(new JLabel("Estado"));
-        filtros.add(txtEstado);
-        filtros.add(new JLabel("Limite"));
-        filtros.add(spnLimite);
-        filtros.add(btnBuscar);
-        filtros.add(btnLimpiar);
-        filtros.add(btnVerDetalle);
+        configurarBotones();
+
+        JPanel filtros = new JPanel(new GridBagLayout());
+        filtros.setBackground(AppV2Theme.SURFACE);
+        filtros.setBorder(AppV2Theme.toolbarBorder());
+        configurarControlesFiltro();
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 6, 4, 6);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridy = 0;
+        gbc.gridx = 0;
+        filtros.add(crearLabelFiltro("Buscar expediente, trámite o titular"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridwidth = 3;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtros.add(txtBusqueda, gbc);
+        gbc.gridwidth = 1;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnBuscar);
+        acciones.add(btnLimpiar);
+        acciones.add(btnVerDetalle);
+        gbc.gridx = 4;
+        gbc.gridwidth = 3;
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtros.add(acciones, gbc);
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
+
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        filtros.add(crearLabelFiltro("Etapa"), gbc);
+        gbc.gridx = 1;
+        filtros.add(cmbEtapa, gbc);
+
+        gbc.gridx = 2;
+        filtros.add(crearLabelFiltro("Estado"), gbc);
+        gbc.gridx = 3;
+        filtros.add(cmbEstado, gbc);
+
+        gbc.gridx = 4;
+        filtros.add(crearLabelFiltro("Mostrar"), gbc);
+        gbc.gridx = 5;
+        filtros.add(spnLimite, gbc);
 
         btnVerDetalle.setEnabled(false);
-        btnVerDetalle.setToolTipText("Pendiente de implementacion");
+        btnVerDetalle.setToolTipText("Seleccione un expediente para abrir la consola V2");
 
         JPanel superior = new JPanel(new BorderLayout(8, 8));
-        JLabel titulo = new JLabel("Nueva bandeja de expedientes");
-        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 18f));
-        superior.add(titulo, BorderLayout.NORTH);
+        superior.setOpaque(false);
+        JLabel titulo = new JLabel("Bandeja General V2");
+        titulo.setFont(AppV2Theme.fontBold(22));
+        titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
+        JLabel subtitulo = new JLabel("Consulta de expedientes por etapa, estado, responsable y plazo");
+        subtitulo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        subtitulo.setForeground(AppV2Theme.TEXT_SECONDARY);
+        JPanel titleBlock = new JPanel(new BorderLayout(0, 4));
+        titleBlock.setOpaque(false);
+        titleBlock.add(titulo, BorderLayout.NORTH);
+        titleBlock.add(subtitulo, BorderLayout.CENTER);
+
+        lblResultado.setText("Seleccione filtros y presione Buscar. Doble clic o Ver detalle abre la consola.");
+        lblResultado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblResultado.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        superior.add(titleBlock, BorderLayout.NORTH);
         superior.add(filtros, BorderLayout.CENTER);
         superior.add(lblResultado, BorderLayout.SOUTH);
 
         add(superior, BorderLayout.NORTH);
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        add(scroll, BorderLayout.CENTER);
     }
 
     private void configurarTabla() {
-        table.setRowHeight(28);
+        table.setRowHeight(34);
         table.setAutoCreateRowSorter(true);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        table.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        table.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        table.setGridColor(AppV2Theme.BORDER);
+        table.setShowVerticalLines(false);
+        table.setIntercellSpacing(new java.awt.Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new BandejaCellRenderer());
+        table.getColumnModel().getColumn(0).setMaxWidth(72);
+        table.getColumnModel().getColumn(3).setMinWidth(120);
+        table.getColumnModel().getColumn(4).setMinWidth(130);
+        table.getColumnModel().getColumn(11).setMaxWidth(80);
+    }
+
+    private JLabel crearLabelFiltro(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        label.setForeground(AppV2Theme.TEXT_SECONDARY);
+        return label;
+    }
+
+    private void configurarControlesFiltro() {
+        txtBusqueda.setColumns(34);
+        txtBusqueda.setPreferredSize(new Dimension(360, 34));
+        txtBusqueda.setMinimumSize(new Dimension(280, 34));
+
+        cmbEtapa.setPreferredSize(new Dimension(190, 34));
+        cmbEtapa.setMinimumSize(new Dimension(180, 34));
+        cmbEstado.setPreferredSize(new Dimension(240, 34));
+        cmbEstado.setMinimumSize(new Dimension(220, 34));
+
+        Dimension limiteSize = new Dimension(86, 34);
+        spnLimite.setPreferredSize(limiteSize);
+        spnLimite.setMinimumSize(limiteSize);
+
+        cmbEtapa.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+    }
+
+    private void configurarBotones() {
+        btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnVerDetalle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnLimpiar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
     }
 
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
-        btnVerDetalle.addActionListener(e -> JOptionPane.showMessageDialog(
-                this,
-                "Detalle pendiente de implementacion.",
-                "SDRERC",
-                JOptionPane.INFORMATION_MESSAGE));
+        btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                btnVerDetalle.setEnabled(table.getSelectedRow() >= 0);
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && table.getSelectedRow() >= 0) {
+                    abrirDetalleSeleccionado();
+                }
+            }
+        });
     }
 
     private void buscar() {
         setBuscando(true);
         String texto = txtBusqueda.getText();
-        String etapa = txtEtapa.getText();
-        String estado = txtEstado.getText();
+        String etapa = codigoSeleccionado(cmbEtapa);
+        String estado = codigoSeleccionado(cmbEstado);
         int limite = ((Number) spnLimite.getValue()).intValue();
 
         SwingWorker<List<ExpedienteBandejaDTO>, Void> worker = new SwingWorker<List<ExpedienteBandejaDTO>, Void>() {
@@ -151,22 +272,24 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void limpiar() {
         txtBusqueda.setText("");
-        txtEtapa.setText("");
-        txtEstado.setText("");
+        cmbEtapa.setSelectedIndex(0);
+        cmbEstado.setSelectedIndex(0);
         spnLimite.setValue(200);
         tableModel.setRowCount(0);
-        lblResultado.setText("Filtros limpiados");
+        btnVerDetalle.setEnabled(false);
+        lblResultado.setText("Filtros limpiados. Presione Buscar para cargar expedientes.");
     }
 
     private void cargarTabla(List<ExpedienteBandejaDTO> expedientes) {
         tableModel.setRowCount(0);
+        btnVerDetalle.setEnabled(false);
         for (ExpedienteBandejaDTO item : expedientes) {
             tableModel.addRow(new Object[]{
                 item.getIdExpediente(),
                 item.getNumeroExpediente(),
                 item.getNumeroTramiteDocumentario(),
-                item.getEtapaCodigo(),
-                item.getEstadoCodigo(),
+                DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
+                DisplayNameMapperV2.estado(item.getEstadoCodigo()),
                 item.getAbogadoInicial(),
                 item.getResponsableActual(),
                 item.getEquipoActual(),
@@ -178,13 +301,53 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente"
             });
         }
-        lblResultado.setText(expedientes.size() + " expediente(s) encontrado(s)");
+        if (expedientes.isEmpty()) {
+            lblResultado.setText("No se encontraron expedientes con los filtros ingresados.");
+        } else {
+            lblResultado.setText(expedientes.size() + " expediente(s) encontrado(s). Seleccione uno y presione Ver detalle.");
+        }
+    }
+
+    private void abrirDetalleSeleccionado() {
+        Long idExpediente = obtenerIdExpedienteSeleccionado();
+        if (idExpediente == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Seleccione un expediente para ver el detalle.",
+                    "SDRERC V2",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(owner, idExpediente);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private Long obtenerIdExpedienteSeleccionado() {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0) {
+            return null;
+        }
+        int modelRow = table.convertRowIndexToModel(selectedRow);
+        Object value = tableModel.getValueAt(modelRow, 0);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.toString());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private void setBuscando(boolean buscando) {
         btnBuscar.setEnabled(!buscando);
         btnLimpiar.setEnabled(!buscando);
-        lblResultado.setText(buscando ? "Consultando SDRERC_APP..." : lblResultado.getText());
+        lblResultado.setText(buscando ? "Consultando bandeja de SDRERC_APP..." : lblResultado.getText());
     }
 
     private void mostrarError(Exception ex) {
@@ -194,10 +357,66 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         JOptionPane.showMessageDialog(
                 this,
-                message == null ? "No se pudo consultar la bandeja." : message,
+                message == null ? "No se pudo consultar la bandeja. Revise la conexión de solo lectura a SDRERC_APP." : message,
                 "Error de consulta",
                 JOptionPane.ERROR_MESSAGE);
-        lblResultado.setText("Error al consultar SDRERC_APP");
+        lblResultado.setText("No se pudo consultar SDRERC_APP. La bandeja no realizó cambios en BD.");
+    }
+
+    private static String codigoSeleccionado(JComboBox<FiltroCatalogoItemV2> combo) {
+        Object selected = combo.getSelectedItem();
+        if (selected instanceof FiltroCatalogoItemV2) {
+            FiltroCatalogoItemV2 item = (FiltroCatalogoItemV2) selected;
+            return item.hasCodigo() ? item.getCodigo() : null;
+        }
+        return null;
+    }
+
+    private static FiltroCatalogoItemV2[] crearItemsEtapa() {
+        return new FiltroCatalogoItemV2[]{
+            new FiltroCatalogoItemV2(null, "Todas"),
+            new FiltroCatalogoItemV2("REGISTRO", "Registro"),
+            new FiltroCatalogoItemV2("ASIGNACION", "Asignación"),
+            new FiltroCatalogoItemV2("ANALISIS", "Análisis"),
+            new FiltroCatalogoItemV2("VERIFICACION", "Verificación"),
+            new FiltroCatalogoItemV2("FIRMA_EMISION", "Firma / Emisión"),
+            new FiltroCatalogoItemV2("EJECUCION", "Ejecución"),
+            new FiltroCatalogoItemV2("NOTIFICACION", "Notificación"),
+            new FiltroCatalogoItemV2("PUBLICACION_CONDICIONAL", "Publicación"),
+            new FiltroCatalogoItemV2("EXPEDIENTE_DIGITAL", "Expediente digital"),
+            new FiltroCatalogoItemV2("CIERRE_ARCHIVO", "Cierre / Archivo")
+        };
+    }
+
+    private static FiltroCatalogoItemV2[] crearItemsEstado() {
+        return new FiltroCatalogoItemV2[]{
+            new FiltroCatalogoItemV2(null, "Todos"),
+            new FiltroCatalogoItemV2("REGISTRADO", "Registrado"),
+            new FiltroCatalogoItemV2("ASIGNADO", "Asignado"),
+            new FiltroCatalogoItemV2("RECIBIDO_POR_ABOGADO", "Recibido por abogado"),
+            new FiltroCatalogoItemV2("ATENDIDO", "Atendido"),
+            new FiltroCatalogoItemV2("OBSERVADO", "Observado"),
+            new FiltroCatalogoItemV2("SUBSANADO", "Subsanado"),
+            new FiltroCatalogoItemV2("EN_VERIFICACION", "En verificación"),
+            new FiltroCatalogoItemV2("REQUIERE_CORRECCION", "Requiere corrección"),
+            new FiltroCatalogoItemV2("DOCUMENTO_INCONSISTENTE", "Documento inconsistente"),
+            new FiltroCatalogoItemV2("VERIFICADO", "Verificado"),
+            new FiltroCatalogoItemV2("PARA_FIRMA", "Para firma"),
+            new FiltroCatalogoItemV2("FIRMADO", "Firmado"),
+            new FiltroCatalogoItemV2("EMITIDO", "Emitido"),
+            new FiltroCatalogoItemV2("RESOLUCION_NUMERADA", "Resolución numerada"),
+            new FiltroCatalogoItemV2("EN_EJECUCION", "En ejecución"),
+            new FiltroCatalogoItemV2("EJECUTADO", "Ejecutado"),
+            new FiltroCatalogoItemV2("EN_NOTIFICACION", "En notificación"),
+            new FiltroCatalogoItemV2("CARGO_PENDIENTE", "Cargo pendiente"),
+            new FiltroCatalogoItemV2("CARGO_RECIBIDO", "Cargo recibido"),
+            new FiltroCatalogoItemV2("NOTIFICADO", "Notificado"),
+            new FiltroCatalogoItemV2("REQUIERE_PUBLICACION", "Requiere publicación"),
+            new FiltroCatalogoItemV2("PENDIENTE_PUBLICACION", "Pendiente publicación"),
+            new FiltroCatalogoItemV2("PUBLICACION_REGISTRADA", "Publicación registrada"),
+            new FiltroCatalogoItemV2("CERRADO", "Cerrado"),
+            new FiltroCatalogoItemV2("ARCHIVADO", "Archivado")
+        };
     }
 
     private static String formatDateTime(java.time.LocalDateTime dateTime) {
@@ -205,10 +424,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private static class BandejaCellRenderer extends DefaultTableCellRenderer {
-        private final Color etapaColor = new Color(230, 242, 255);
-        private final Color estadoColor = new Color(232, 245, 233);
-        private final Color alertaColor = new Color(255, 235, 238);
-
         @Override
         public Component getTableCellRendererComponent(
                 JTable table,
@@ -217,30 +432,25 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 boolean hasFocus,
                 int row,
                 int column) {
+            int modelColumn = table.convertColumnIndexToModel(column);
+            if (!isSelected && modelColumn == 3) {
+                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
+            }
+            if (!isSelected && modelColumn == 4) {
+                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
+            }
+            if (!isSelected && modelColumn == 11) {
+                return StatusBadgeV2.forDias(value);
+            }
+
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             if (!isSelected) {
-                c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 249, 250));
-                int modelColumn = table.convertColumnIndexToModel(column);
-                if (modelColumn == 3) {
-                    c.setBackground(etapaColor);
-                } else if (modelColumn == 4) {
-                    c.setBackground(estadoColor);
-                } else if (modelColumn == 11 && esVencido(value)) {
-                    c.setBackground(alertaColor);
-                }
+                c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+                c.setForeground(AppV2Theme.TEXT_PRIMARY);
             }
             return c;
-        }
-
-        private boolean esVencido(Object value) {
-            if (value instanceof Number) {
-                return ((Number) value).longValue() < 0;
-            }
-            try {
-                return value != null && !value.toString().isEmpty() && Long.parseLong(value.toString()) < 0;
-            } catch (NumberFormatException ex) {
-                return false;
-            }
         }
     }
 }
