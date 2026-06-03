@@ -1,6 +1,7 @@
 package com.sdrerc.ui.appv2;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import com.sdrerc.ui.views.administracion.equipojuridico.JPanelEquipoJuridicoV2;
 import com.sdrerc.ui.views.administracion.usuarios.JPanelUsuariosV2;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
@@ -32,6 +33,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnRegistroRecepcion;
     private JButton btnAsignacion;
     private JButton btnUsuarios;
+    private JButton btnEquipoJuridico;
     private JButton btnRoles;
     private JButton botonActivo;
 
@@ -107,7 +109,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnUsuarios = crearBotonMenu("Usuarios");
         btnUsuarios.addActionListener(e -> mostrarUsuarios(btnUsuarios));
         opciones.add(btnUsuarios);
-        opciones.add(crearBotonPendiente("Equipo jurídico"));
+        btnEquipoJuridico = crearBotonMenu("Equipo Jurídico");
+        btnEquipoJuridico.addActionListener(e -> mostrarEquipoJuridico(btnEquipoJuridico));
+        opciones.add(btnEquipoJuridico);
         btnRoles = crearBotonMenu("Roles");
         btnRoles.addActionListener(e -> mostrarRoles(btnRoles));
         opciones.add(btnRoles);
@@ -267,6 +271,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Usuarios");
         lblSubtitulo.setText("Administración de usuarios, roles y acceso al aplicativo");
         cambiarContenido(new JPanelUsuariosV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarEquipoJuridico(JButton boton) {
+        lblTitulo.setText("Equipo Jurídico");
+        lblSubtitulo.setText("Administración de equipos, abogados y supervisores para la gestión de expedientes");
+        cambiarContenido(new JPanelEquipoJuridicoV2());
         aplicarEstadoActivo(boton);
     }
 
