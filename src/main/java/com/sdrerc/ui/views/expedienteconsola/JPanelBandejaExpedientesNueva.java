@@ -84,7 +84,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     public JPanelBandejaExpedientesNueva(boolean mostrarEncabezado) {
-        this(new ExpedienteConsultaService(), null, "Bandeja General V2", "Consulta de expedientes por etapa, estado, responsable y plazo", false, mostrarEncabezado);
+        this(new ExpedienteConsultaService(), null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, mostrarEncabezado);
     }
 
     public JPanelBandejaExpedientesNueva(String etapaInicial, String tituloBandeja, String subtituloBandeja, boolean etapaBloqueada) {
@@ -101,7 +101,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     public JPanelBandejaExpedientesNueva(ExpedienteConsultaService consultaService) {
-        this(consultaService, null, "Bandeja General V2", "Consulta de expedientes por etapa, estado, responsable y plazo", false, true);
+        this(consultaService, null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, true);
     }
 
     private JPanelBandejaExpedientesNueva(
@@ -113,8 +113,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             boolean mostrarEncabezado) {
         this.consultaService = consultaService;
         this.etapaInicial = normalizar(etapaInicial);
-        this.tituloBandeja = textoConDefault(tituloBandeja, "Bandeja General V2");
-        this.subtituloBandeja = textoConDefault(subtituloBandeja, "Consulta de expedientes por etapa, estado, responsable y plazo");
+        this.tituloBandeja = textoConDefault(tituloBandeja, "Bandeja de Expedientes");
+        this.subtituloBandeja = textoConDefault(subtituloBandeja, "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención");
         this.etapaBloqueada = etapaBloqueada && this.etapaInicial != null;
         this.mostrarEncabezado = mostrarEncabezado;
         configurarLayout();

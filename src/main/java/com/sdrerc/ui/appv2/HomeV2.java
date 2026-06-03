@@ -129,7 +129,7 @@ public class HomeV2 extends JPanel {
         panel.setBackground(AppV2Theme.SURFACE);
         panel.setBorder(AppV2Theme.cardBorder());
 
-        JLabel title = new JLabel("Bandeja Expedientes V2");
+        JLabel title = new JLabel("Bandeja de Expedientes");
         title.setFont(AppV2Theme.fontBold(16));
         title.setForeground(AppV2Theme.TEXT_PRIMARY);
 

@@ -83,7 +83,7 @@ public class MenuPrincipalV2 extends JFrame {
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Expedientes"));
-        btnBandeja = crearBotonMenu("Bandeja Expedientes V2");
+        btnBandeja = crearBotonMenu("Bandeja de Expedientes");
         btnBandeja.addActionListener(e -> mostrarBandeja(btnBandeja));
         opciones.add(btnBandeja);
         btnRegistroRecepcion = crearBotonMenu("Registro / Recepción");
@@ -247,8 +247,8 @@ public class MenuPrincipalV2 extends JFrame {
     }
 
     private void mostrarBandeja(JButton boton) {
-        lblTitulo.setText("Bandeja Expedientes V2");
-        lblSubtitulo.setText("Listado general de expedientes consultado desde SDRERC_APP");
+        lblTitulo.setText("Bandeja de Expedientes");
+        lblSubtitulo.setText("Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención");
         cambiarContenido(new JPanelBandejaExpedientesNueva(false));
         aplicarEstadoActivo(boton);
     }
