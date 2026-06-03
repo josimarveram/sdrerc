@@ -6,7 +6,6 @@ import com.sdrerc.domain.dto.sdrercapp.PermisoDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolResultadoDTO;
-import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
@@ -96,7 +95,7 @@ public class JPanelRolesV2 extends JPanel {
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
-        add(crearHeader(), BorderLayout.NORTH);
+        add(crearMetricas(), BorderLayout.NORTH);
         add(crearCentro(), BorderLayout.CENTER);
         configurarControles();
         configurarTablas();
@@ -105,37 +104,13 @@ public class JPanelRolesV2 extends JPanel {
         cargarRoles();
     }
 
-    private JPanel crearHeader() {
-        JPanel wrapper = new JPanel(new BorderLayout(12, 12));
-        wrapper.setOpaque(false);
-
-        JPanel header = new JPanel(new BorderLayout(12, 8));
-        header.setBackground(AppV2Theme.SURFACE);
-        header.setBorder(AppV2Theme.cardBorder());
-
-        JPanel textos = new JPanel(new BorderLayout(0, 4));
-        textos.setOpaque(false);
-        JLabel title = new JLabel("Roles");
-        title.setFont(AppV2Theme.fontBold(22));
-        title.setForeground(AppV2Theme.TEXT_PRIMARY);
-        JLabel subtitle = new JLabel("Administración de perfiles de acceso y permisos del aplicativo");
-        subtitle.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        subtitle.setForeground(AppV2Theme.TEXT_SECONDARY);
-        textos.add(title, BorderLayout.NORTH);
-        textos.add(subtitle, BorderLayout.CENTER);
-
-        header.add(textos, BorderLayout.CENTER);
-        header.add(new BadgeV2("Administración", AppV2Theme.SOFT_BLUE, AppV2Theme.PRIMARY), BorderLayout.EAST);
-
+    private JPanel crearMetricas() {
         JPanel metricas = new JPanel(new GridLayout(1, 3, 12, 0));
         metricas.setOpaque(false);
         metricas.add(cardRoles);
         metricas.add(cardActivos);
         metricas.add(cardInactivos);
-
-        wrapper.add(header, BorderLayout.NORTH);
-        wrapper.add(metricas, BorderLayout.CENTER);
-        return wrapper;
+        return metricas;
     }
 
     private Component crearCentro() {
