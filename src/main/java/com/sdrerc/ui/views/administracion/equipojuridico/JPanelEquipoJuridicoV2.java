@@ -1045,7 +1045,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private class EquiposTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Código", "Nombre", "Área", "Responsable", "Estado", "Miembros", "Abogados", "Creado", "Modificado"
+            "ID", "Código", "Nombre", "Área", "Responsable", "Estado", "Miembros", "Abogados"
         };
 
         @Override
@@ -1083,10 +1083,6 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                     return equipo.getMiembrosActivos();
                 case 7:
                     return equipo.getAbogadosActivos();
-                case 8:
-                    return formatDate(equipo.getCreadoEn());
-                case 9:
-                    return formatDate(equipo.getModificadoEn());
                 default:
                     return "";
             }

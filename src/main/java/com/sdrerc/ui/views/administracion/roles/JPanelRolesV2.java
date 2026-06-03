@@ -16,8 +16,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
@@ -44,8 +42,6 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
 public class JPanelRolesV2 extends JPanel {
-
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final RolService rolService;
     private final PermisoRolService permisoRolService;
@@ -722,10 +718,6 @@ public class JPanelRolesV2 extends JPanel {
                 BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
-    private String formatFecha(LocalDateTime fecha) {
-        return fecha == null ? "-" : DATE_TIME_FORMAT.format(fecha);
-    }
-
     private String nullToEmpty(String value) {
         return value == null ? "" : value;
     }
@@ -733,7 +725,7 @@ public class JPanelRolesV2 extends JPanel {
     private class RolesTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Código", "Nombre", "Descripción", "Estado", "Usuarios", "Permisos", "Creado", "Modificado"
+            "ID", "Código", "Nombre", "Descripción", "Estado", "Usuarios", "Permisos"
         };
 
         @Override
@@ -780,10 +772,6 @@ public class JPanelRolesV2 extends JPanel {
                     return rol.getUsuariosAsociados();
                 case 6:
                     return rol.getPermisosAsociados();
-                case 7:
-                    return formatFecha(rol.getCreadoEn());
-                case 8:
-                    return formatFecha(rol.getModificadoEn());
                 default:
                     return "";
             }

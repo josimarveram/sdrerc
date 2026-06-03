@@ -16,8 +16,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -45,8 +43,6 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
 public class JPanelUsuariosV2 extends JPanel {
-
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final UsuarioService usuarioService;
 
@@ -782,10 +778,6 @@ public class JPanelUsuariosV2 extends JPanel {
                 BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
-    private String formatFecha(LocalDateTime fecha) {
-        return fecha == null ? "-" : DATE_TIME_FORMAT.format(fecha);
-    }
-
     private String nullToEmpty(String value) {
         return value == null ? "" : value;
     }
@@ -793,7 +785,7 @@ public class JPanelUsuariosV2 extends JPanel {
     private class UsuariosTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Usuario", "Nombres", "Apellidos", "Documento", "Correo", "Estado", "Roles", "Equipo / área", "Creado", "Modificado"
+            "ID", "Usuario", "Nombres", "Apellidos", "Documento", "Correo", "Estado", "Roles", "Equipo / área"
         };
 
         @Override
@@ -841,10 +833,6 @@ public class JPanelUsuariosV2 extends JPanel {
                     return nullToEmpty(usuario.getRolesResumen());
                 case 8:
                     return equipoArea(usuario);
-                case 9:
-                    return formatFecha(usuario.getCreadoEn());
-                case 10:
-                    return formatFecha(usuario.getModificadoEn());
                 default:
                     return "";
             }
