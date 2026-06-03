@@ -98,36 +98,12 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel wrapper = new JPanel(new BorderLayout(12, 12));
-        wrapper.setOpaque(false);
-
-        JPanel header = new JPanel(new BorderLayout(12, 8));
-        header.setBackground(AppV2Theme.SURFACE);
-        header.setBorder(AppV2Theme.cardBorder());
-
-        JLabel title = new JLabel("Asignación");
-        title.setFont(AppV2Theme.fontBold(22));
-        title.setForeground(AppV2Theme.TEXT_PRIMARY);
-        JLabel subtitle = new JLabel("Expedientes pendientes de asignación a abogado o equipo responsable");
-        subtitle.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        subtitle.setForeground(AppV2Theme.TEXT_SECONDARY);
-
-        JPanel text = new JPanel(new BorderLayout(0, 4));
-        text.setOpaque(false);
-        text.add(title, BorderLayout.NORTH);
-        text.add(subtitle, BorderLayout.CENTER);
-        header.add(text, BorderLayout.CENTER);
-        header.add(new BadgeV2("Escritura controlada", AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS), BorderLayout.EAST);
-
         JPanel metricas = new JPanel(new GridLayout(1, 3, 12, 0));
         metricas.setOpaque(false);
         metricas.add(cardPendientes);
         metricas.add(cardSeleccionados);
         metricas.add(cardRelacionados);
-
-        wrapper.add(header, BorderLayout.NORTH);
-        wrapper.add(metricas, BorderLayout.CENTER);
-        return wrapper;
+        return metricas;
     }
 
     private JPanel crearCentro() {

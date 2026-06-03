@@ -262,7 +262,7 @@ public class MenuPrincipalV2 extends JFrame {
 
     private void mostrarAsignacion(JButton boton) {
         lblTitulo.setText("Asignación");
-        lblSubtitulo.setText("Asignación controlada de expedientes REGISTRO / REGISTRADO");
+        lblSubtitulo.setText("Gestión de expedientes pendientes, responsables y alertas de posibles relacionados");
         cambiarContenido(new JPanelAsignacionV2());
         aplicarEstadoActivo(boton);
     }
