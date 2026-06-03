@@ -1,6 +1,7 @@
 package com.sdrerc.ui.appv2;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
 import java.awt.BorderLayout;
@@ -27,6 +28,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnInicio;
     private JButton btnBandeja;
     private JButton btnRegistroRecepcion;
+    private JButton btnAsignacion;
     private JButton botonActivo;
 
     public MenuPrincipalV2() {
@@ -81,7 +83,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnRegistroRecepcion = crearBotonMenu("Registro / Recepción");
         btnRegistroRecepcion.addActionListener(e -> mostrarRegistroRecepcion(btnRegistroRecepcion));
         opciones.add(btnRegistroRecepcion);
-        opciones.add(crearBotonPendiente("Asignación"));
+        btnAsignacion = crearBotonMenu("Asignación");
+        btnAsignacion.addActionListener(e -> mostrarAsignacion(btnAsignacion));
+        opciones.add(btnAsignacion);
         opciones.add(crearBotonPendiente("Análisis"));
         opciones.add(crearBotonPendiente("Verificación"));
         opciones.add(crearBotonPendiente("Firma / Emisión"));
@@ -241,6 +245,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Registro / Recepción");
         lblSubtitulo.setText("Bandeja, carga diaria y registro manual preparados para la nueva arquitectura SDRERC_APP");
         cambiarContenido(new JPanelRegistroRecepcionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarAsignacion(JButton boton) {
+        lblTitulo.setText("Asignación");
+        lblSubtitulo.setText("Asignación controlada de expedientes REGISTRO / REGISTRADO");
+        cambiarContenido(new JPanelAsignacionV2());
         aplicarEstadoActivo(boton);
     }
 

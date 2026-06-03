@@ -1,8 +1,10 @@
 package com.sdrerc.ui.views.expedienteconsola;
 
 import com.sdrerc.application.sdrercapp.ExpedienteDetalleService;
+import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.domain.dto.sdrercapp.AccionPermitidaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
+import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteTimelineDTO;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.EmptyStatePanelV2;
@@ -48,8 +50,11 @@ public class DlgConsolaExpedienteV2 extends JDialog {
 
     private final Long idExpediente;
     private final ExpedienteDetalleService detalleService;
+    private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
     private final JLabel lblTitulo = new JLabel("Consola Expediente V2");
     private final JLabel lblSubtitulo = new JLabel("Cargando datos del expediente...");
+    private final JLabel lblAsociadosEstado = new JLabel("Cargando expedientes asociados...");
+    private final JButton btnAbrirAsociado = new JButton("Abrir expediente asociado");
     private final JPanel panelBadges = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JPanel panelEtapas = new JPanel(new BorderLayout());
     private final JPanel headerDatos = new JPanel(new GridLayout(1, 5, 10, 0));
@@ -66,6 +71,15 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         }
     };
     private final JTable timelineTable = new JTable(timelineModel);
+    private final DefaultTableModel asociadosModel = new DefaultTableModel(
+            new Object[]{"ID", "Número expediente", "Tipo relación", "Descripción", "Etapa", "Estado", "Fecha asociación", "Usuario"},
+            0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable asociadosTable = new JTable(asociadosModel);
 
     public DlgConsolaExpedienteV2(Window owner, Long idExpediente) {
         this(owner, idExpediente, new ExpedienteDetalleService());
@@ -130,6 +144,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         tabs.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         tabs.addTab("Detalles", crearDetallesTab());
         tabs.addTab("Documentos", crearDocumentosTab());
+        tabs.addTab("Expedientes asociados", crearAsociadosTab());
         tabs.addTab("Timeline / Historial", crearTimelineTab());
         tabs.addTab("Acciones disponibles", crearAccionesTab());
 
@@ -159,6 +174,47 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         JScrollPane scroll = new JScrollPane(documentosPanel);
         scroll.setBorder(null);
         return scroll;
+    }
+
+    private JPanel crearAsociadosTab() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(AppV2Theme.SURFACE);
+        panel.setBorder(AppV2Theme.sectionBorder());
+
+        asociadosTable.setRowHeight(34);
+        asociadosTable.setAutoCreateRowSorter(true);
+        asociadosTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        asociadosTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        asociadosTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        asociadosTable.setGridColor(AppV2Theme.BORDER);
+        asociadosTable.setShowVerticalLines(false);
+        asociadosTable.setDefaultRenderer(Object.class, new AsociadosCellRenderer());
+        asociadosTable.getColumnModel().getColumn(0).setMaxWidth(70);
+        asociadosTable.getColumnModel().getColumn(4).setPreferredWidth(130);
+        asociadosTable.getColumnModel().getColumn(5).setPreferredWidth(130);
+        asociadosTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                btnAbrirAsociado.setEnabled(asociadosTable.getSelectedRow() >= 0);
+            }
+        });
+
+        btnAbrirAsociado.setEnabled(false);
+        btnAbrirAsociado.addActionListener(e -> abrirExpedienteAsociado());
+
+        lblAsociadosEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblAsociadosEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setOpaque(false);
+        footer.add(lblAsociadosEstado, BorderLayout.CENTER);
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnAbrirAsociado);
+        footer.add(acciones, BorderLayout.EAST);
+
+        panel.add(new JScrollPane(asociadosTable), BorderLayout.CENTER);
+        panel.add(footer, BorderLayout.SOUTH);
+        return panel;
     }
 
     private JScrollPane crearTimelineTab() {
@@ -205,7 +261,8 @@ public class DlgConsolaExpedienteV2 extends JDialog {
                 ExpedienteConsolaDTO consola = detalleService.obtenerConsolaPorExpediente(idExpediente);
                 List<ExpedienteTimelineDTO> timeline = detalleService.listarTimeline(idExpediente);
                 List<AccionPermitidaDTO> acciones = detalleService.listarAccionesPermitidas(idExpediente);
-                return new DetalleCarga(consola, timeline, acciones);
+                List<ExpedienteRelacionadoDTO> asociados = relacionadoService.listarAsociadosConfirmados(idExpediente);
+                return new DetalleCarga(consola, timeline, acciones, asociados);
             }
 
             @Override
@@ -229,6 +286,8 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         datosGenerales.removeAll();
         documentosPanel.removeAll();
         accionesPanel.removeAll();
+        asociadosModel.setRowCount(0);
+        btnAbrirAsociado.setEnabled(false);
         timelineModel.setRowCount(0);
     }
 
@@ -249,6 +308,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         cargarEtapas(expediente);
         cargarDatosGenerales(expediente);
         cargarDocumentos(expediente);
+        cargarAsociados(carga.asociados);
         cargarAcciones(carga.acciones);
         cargarTimeline(carga.timeline);
         cargarPanelLateral(expediente, carga.timeline, carga.acciones);
@@ -388,6 +448,49 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         documentosPanel.add(crearInfoCard("Expediente digital", expediente.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente", "Completitud digital"));
         documentosPanel.revalidate();
         documentosPanel.repaint();
+    }
+
+    private void cargarAsociados(List<ExpedienteRelacionadoDTO> asociados) {
+        asociadosModel.setRowCount(0);
+        for (ExpedienteRelacionadoDTO item : asociados) {
+            asociadosModel.addRow(new Object[]{
+                item.getIdExpediente(),
+                item.getNumeroExpediente(),
+                DisplayNameMapperV2.accion(item.getTipoRelacion()),
+                item.getDescripcionRelacion(),
+                DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
+                DisplayNameMapperV2.estado(item.getEstadoCodigo()),
+                formatDateTime(item.getFechaRelacion()),
+                item.getUsuarioRelacion()
+            });
+        }
+        if (asociados.isEmpty()) {
+            lblAsociadosEstado.setText("No existen expedientes asociados para este expediente.");
+        } else {
+            lblAsociadosEstado.setText(asociados.size() + " expediente(s) asociado(s) confirmados.");
+        }
+        btnAbrirAsociado.setEnabled(false);
+    }
+
+    private void abrirExpedienteAsociado() {
+        int selectedRow = asociadosTable.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Seleccione un expediente asociado para abrirlo.",
+                    "Expedientes asociados",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int modelRow = asociadosTable.convertRowIndexToModel(selectedRow);
+        Object value = asociadosModel.getValueAt(modelRow, 0);
+        if (!(value instanceof Number)) {
+            return;
+        }
+        Long idAsociado = ((Number) value).longValue();
+        DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(getOwner(), idAsociado);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     private JPanel crearInfoCard(String title, String value, String caption) {
@@ -568,14 +671,44 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         private final ExpedienteConsolaDTO consola;
         private final List<ExpedienteTimelineDTO> timeline;
         private final List<AccionPermitidaDTO> acciones;
+        private final List<ExpedienteRelacionadoDTO> asociados;
 
         private DetalleCarga(
                 ExpedienteConsolaDTO consola,
                 List<ExpedienteTimelineDTO> timeline,
-                List<AccionPermitidaDTO> acciones) {
+                List<AccionPermitidaDTO> acciones,
+                List<ExpedienteRelacionadoDTO> asociados) {
             this.consola = consola;
             this.timeline = timeline == null ? new ArrayList<ExpedienteTimelineDTO>() : timeline;
             this.acciones = acciones == null ? new ArrayList<AccionPermitidaDTO>() : acciones;
+            this.asociados = asociados == null ? new ArrayList<ExpedienteRelacionadoDTO>() : asociados;
+        }
+    }
+
+    private static class AsociadosCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            int modelColumn = table.convertColumnIndexToModel(column);
+            if (!isSelected && modelColumn == 4) {
+                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
+            }
+            if (!isSelected && modelColumn == 5) {
+                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
+            }
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            if (!isSelected) {
+                c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+                c.setForeground(modelColumn == 1 ? AppV2Theme.PRIMARY : AppV2Theme.TEXT_PRIMARY);
+            }
+            return c;
         }
     }
 

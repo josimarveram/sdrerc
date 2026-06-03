@@ -9,6 +9,8 @@ import javax.swing.JPanel;
 
 public class MetricCardV2 extends JPanel {
 
+    private final JLabel lblValue;
+
     public MetricCardV2(String title, String value, String caption, Color accent) {
         super(new BorderLayout(8, 6));
         setBackground(AppV2Theme.SURFACE);
@@ -20,7 +22,7 @@ public class MetricCardV2 extends JPanel {
         lblTitle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblTitle.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        JLabel lblValue = new JLabel(value);
+        lblValue = new JLabel(value);
         lblValue.setFont(AppV2Theme.fontBold(28));
         lblValue.setForeground(AppV2Theme.TEXT_PRIMARY);
 
@@ -31,5 +33,9 @@ public class MetricCardV2 extends JPanel {
         add(lblTitle, BorderLayout.NORTH);
         add(lblValue, BorderLayout.CENTER);
         add(lblCaption, BorderLayout.SOUTH);
+    }
+
+    public void setValue(String value) {
+        lblValue.setText(value == null ? "" : value);
     }
 }
