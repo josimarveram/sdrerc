@@ -2,6 +2,7 @@ package com.sdrerc.ui.appv2;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
+import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
 import java.awt.BorderLayout;
@@ -29,6 +30,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnBandeja;
     private JButton btnRegistroRecepcion;
     private JButton btnAsignacion;
+    private JButton btnRoles;
     private JButton botonActivo;
 
     public MenuPrincipalV2() {
@@ -102,7 +104,9 @@ public class MenuPrincipalV2 extends JFrame {
         opciones.add(crearSeccionMenu("Administración"));
         opciones.add(crearBotonPendiente("Usuarios"));
         opciones.add(crearBotonPendiente("Equipo jurídico"));
-        opciones.add(crearBotonPendiente("Roles"));
+        btnRoles = crearBotonMenu("Roles");
+        btnRoles.addActionListener(e -> mostrarRoles(btnRoles));
+        opciones.add(btnRoles);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         JButton btnSalir = crearBotonMenu("Salir");
@@ -252,6 +256,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Asignación");
         lblSubtitulo.setText("Asignación controlada de expedientes REGISTRO / REGISTRADO");
         cambiarContenido(new JPanelAsignacionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarRoles(JButton boton) {
+        lblTitulo.setText("Roles");
+        lblSubtitulo.setText("Administración de perfiles de acceso y permisos del aplicativo");
+        cambiarContenido(new JPanelRolesV2());
         aplicarEstadoActivo(boton);
     }
 
