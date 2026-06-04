@@ -55,7 +55,7 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Mantener UI moderna tipo Service Console / Case Management.
 - Mantener nombres visuales amigables para etapas y estados; no mostrar codigos tecnicos al usuario final cuando exista nombre amigable.
 - No crear etapa visual `VALIDACION`.
-- En Registro Manual V2 no capturar datos de notificacion; esa gestion queda para el modulo/etapa de Notificacion futuro.
+- En Registro Manual V2 no capturar datos de notificacion; esa gestion corresponde al modulo/etapa de Notificacion.
 - El campo `Fecha recepcion` de Registro Manual debe usar un componente reutilizable premium con formato `dd/MM/yyyy`, apertura del calendario al hacer clic en la caja o el icono y alineacion visual institucional.
 - En Registro Manual, `Hoja de envio` solo aplica como texto condicional cuando la validacion inicial no corresponde a la SDRERC.
 - En Registro Manual, mantener combos de catalogo con nombres amigables; excluir `RUC` del combo de Titular y permitirlo en Remitente cuando el modelo lo requiera.
@@ -72,6 +72,7 @@ Modulos V2 ya incorporados o en uso dentro de la app nueva:
 - Verificacion.
 - Firma / Emision.
 - Ejecucion.
+- Notificacion.
 - Administracion / Usuarios.
 - Administracion / Equipo Juridico.
 - Administracion / Roles.
@@ -83,7 +84,7 @@ Reglas por modulo:
 - `Ver detalle` en bandejas operativas debe abrir la consola unica `DlgConsolaExpedienteV2`, no crear consolas paralelas.
 - Los modulos administrativos `Roles`, `Usuarios` y `Equipo Juridico` no deben mostrar columnas `Creado` ni `Modificado` en sus listados principales, salvo que el usuario lo pida explicitamente.
 - Los modulos V2 deben evitar bloques de cabecera duplicados dentro del panel cuando `MenuPrincipalV2` ya muestra titulo y subtitulo. Si el panel interno necesita un bloque superior, debe aportar contexto operativo nuevo y no repetir titulo/subtitulo.
-- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Firma / Emision`, `Ejecucion` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
+- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Firma / Emision`, `Ejecucion`, `Notificacion` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
 
 ## 4.2 Escritura controlada ya autorizada en V2
 
@@ -105,6 +106,12 @@ Por defecto V2 sigue siendo lectura/consulta. Las escrituras reales solo son val
 - `Ejecucion`: no crear tabla paralela de ejecucion si el modelo no la define; usar `EXPEDIENTE`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_OBSERVACION`, `EXPEDIENTE_RESOLUCION` y documentos/metadata existentes segun corresponda.
 - `Ejecucion`: las acciones autorizadas deben resolver transiciones reales por codigo, como `INICIO_EJECUCION`, `OBSERVACION_EJECUCION`, `REVERSION_ESTADO_DOCUMENTO_EJECUCION`, `DEVOLUCION_A_ANALISIS` y `DERIVACION_A_NOTIFICACION`; si falta transicion, catalogo, documento requerido o constraint, bloquear con diagnostico sin escritura parcial.
 - `Ejecucion`: toda reversion a Analisis debe exigir motivo/comentario, preservar resolucion y documentos previos, registrar historial y evitar borrados o reemplazos fisicos.
+- `Notificacion`: consultar expedientes en `NOTIFICACION`, revisar resolucion/documento, documentos, analisis, verificacion, ejecucion, historial y expedientes asociados, registrar modalidad de notificacion, cargo de acuse, resultado de notificacion, publicacion requerida y cierre cuando el flujo `SDRERC_TO_BE` lo permita.
+- `Notificacion`: usar las tablas reales `EXPEDIENTE_NOTIFICACION`, `EXPEDIENTE_CARGO_ACUSE`, `EXPEDIENTE_PUBLICACION`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_RESOLUCION` y `EXPEDIENTE` segun corresponda; no crear tablas paralelas ni guardar datos no soportados por el modelo.
+- `Notificacion`: las acciones autorizadas deben resolver transiciones reales por codigo, como `NOTIFICACION_VIRTUAL`, `NOTIFICACION_PRESENCIAL_1`, `NOTIFICACION_PRESENCIAL_2`, `RECEPCION_CARGO_ACUSE`, `CONFIRMACION_NOTIFICACION`, `REGISTRO_NOTIFICACION_FALLIDA`, `GENERACION_PUBLICACION` y `CIERRE`; si falta transicion, catalogo, documento requerido o constraint, bloquear con diagnostico sin escritura parcial.
+- `Notificacion`: no implementar envio real de correos, SMS, WhatsApp ni integraciones externas de notificacion sin autorizacion explicita; el modulo registra metadata y trazabilidad funcional, no comunicaciones externas.
+- `Notificacion`: para publicacion condicional, primero registrar notificacion fallida o estado `REQUIERE_PUBLICACION` si el flujo lo exige, y luego derivar a `PUBLICACION_CONDICIONAL / PENDIENTE_PUBLICACION` solo con transicion activa.
+- `Notificacion`: el cierre desde `NOTIFICACION / NOTIFICADO` hacia `CIERRE_ARCHIVO / CERRADO` debe marcar el expediente como cerrado cuando el modelo lo soporte, registrar historial y nunca eliminar datos fisicamente.
 - `Roles`: crear, editar, activar e inactivar roles. Nunca eliminar fisicamente roles.
 - `Usuarios`: crear, editar, activar e inactivar usuarios, y asociar roles/equipo si el modelo lo permite. Nunca mostrar ni guardar passwords en texto plano.
 - `Equipo Juridico`: crear, editar, activar e inactivar equipos, y gestionar miembros/supervisor si el modelo lo permite. Nunca eliminar fisicamente equipos ni usuarios.
