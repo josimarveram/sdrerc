@@ -67,6 +67,10 @@ public class CatalogoLookupDAO {
         return obtenerIdPorCodigo(conn, "tipo_resolucion", "id_tipo_resolucion", codigo);
     }
 
+    public Long obtenerTipoResultadoEjecucionId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "tipo_resultado_ejecucion", "id_tipo_resultado_ejecucion", codigo);
+    }
+
     public List<CatalogoItemDTO> listarCanalesRecepcion() throws SQLException {
         return listarCatalogo("canal_recepcion");
     }
@@ -109,6 +113,10 @@ public class CatalogoLookupDAO {
 
     public List<CatalogoItemDTO> listarTiposResolucion() throws SQLException {
         return listarCatalogo("tipo_resolucion");
+    }
+
+    public List<CatalogoItemDTO> listarResultadosEjecucion() throws SQLException {
+        return listarCatalogo("tipo_resultado_ejecucion");
     }
 
     private Long obtenerIdPorCodigo(Connection conn, String tabla, String columnaId, String codigo) throws SQLException {

@@ -6,6 +6,7 @@ import com.sdrerc.ui.views.administracion.usuarios.JPanelUsuariosV2;
 import com.sdrerc.ui.views.analisis.JPanelAnalisisV2;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
+import com.sdrerc.ui.views.ejecucion.JPanelEjecucionV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.firmaemision.JPanelFirmaEmisionV2;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
@@ -38,6 +39,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnAnalisis;
     private JButton btnVerificacion;
     private JButton btnFirmaEmision;
+    private JButton btnEjecucion;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -107,7 +109,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnFirmaEmision = crearBotonMenu("Firma / Emisión");
         btnFirmaEmision.addActionListener(e -> mostrarFirmaEmision(btnFirmaEmision));
         opciones.add(btnFirmaEmision);
-        opciones.add(crearBotonPendiente("Ejecución"));
+        btnEjecucion = crearBotonMenu("Ejecución");
+        btnEjecucion.addActionListener(e -> mostrarEjecucion(btnEjecucion));
+        opciones.add(btnEjecucion);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Seguimiento"));
@@ -297,6 +301,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Firma / Emisión");
         lblSubtitulo.setText("Expedientes aprobados para firma, emisión y numeración del documento resolutivo");
         cambiarContenido(new JPanelFirmaEmisionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarEjecucion(JButton boton) {
+        lblTitulo.setText("Ejecución");
+        lblSubtitulo.setText("Gestión de expedientes con resolución o documento listo para ejecución");
+        cambiarContenido(new JPanelEjecucionV2());
         aplicarEstadoActivo(boton);
     }
 
