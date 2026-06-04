@@ -61,6 +61,55 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - En Registro Manual, mantener combos de catalogo con nombres amigables; excluir `RUC` del combo de Titular y permitirlo en Remitente cuando el modelo lo requiera.
 - Si el modelo aun no separa canal de ingreso y modalidad, usar opciones compuestas amigables en la UI y dejar documentada la separacion futura como mejora de arquitectura.
 
+## 4.1 Estado actual de modulos SDRERC V2
+
+Modulos V2 ya incorporados o en uso dentro de la app nueva:
+
+- Bandeja de Expedientes.
+- Registro / Recepcion.
+- Asignacion.
+- Analisis.
+- Administracion / Usuarios.
+- Administracion / Equipo Juridico.
+- Administracion / Roles.
+
+Reglas por modulo:
+
+- `MenuPrincipalV2` es el punto de integracion visual de modulos V2; no usar el menu legacy para nuevas entradas.
+- La Bandeja de Expedientes no debe mostrar `V2` en el titulo ni en el nombre visual del modulo.
+- `Ver detalle` en bandejas operativas debe abrir la consola unica `DlgConsolaExpedienteV2`, no crear consolas paralelas.
+- Los modulos administrativos `Roles`, `Usuarios` y `Equipo Juridico` no deben mostrar columnas `Creado` ni `Modificado` en sus listados principales, salvo que el usuario lo pida explicitamente.
+- Los modulos V2 deben evitar bloques de cabecera duplicados dentro del panel cuando `MenuPrincipalV2` ya muestra titulo y subtitulo. Si el panel interno necesita un bloque superior, debe aportar contexto operativo nuevo y no repetir titulo/subtitulo.
+- En los bloques superiores de `Registro / Recepcion`, `Asignacion` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
+
+## 4.2 Escritura controlada ya autorizada en V2
+
+Por defecto V2 sigue siendo lectura/consulta. Las escrituras reales solo son validas dentro de los modulos ya autorizados y con DAO/Service transaccional:
+
+- `Asignacion`: asignar expedientes `REGISTRO / REGISTRADO` hacia `ASIGNACION / ASIGNADO`, registrar historial y evitar doble asignacion.
+- `Asignacion`: detectar posibles relacionados solo de forma visual; insertar en `EXPEDIENTE_RELACION` unicamente cuando el usuario confirma la asociacion. No fusionar expedientes.
+- `Analisis`: recibir expedientes `ASIGNACION / ASIGNADO`, registrar evaluacion, observaciones y documentos analizados, enviar a verificacion, derivar a notificacion en rutas especiales y archivar no corresponde si el flujo `SDRERC_TO_BE` lo permite.
+- `Analisis`: la derivacion externa requiere entidad destino, tipo de derivacion y datos documentales; si esa estructura funcional no esta completa en el modulo, debe mostrarse como accion preparada/bloqueada con diagnostico, sin escritura parcial.
+- `Roles`: crear, editar, activar e inactivar roles. Nunca eliminar fisicamente roles.
+- `Usuarios`: crear, editar, activar e inactivar usuarios, y asociar roles/equipo si el modelo lo permite. Nunca mostrar ni guardar passwords en texto plano.
+- `Equipo Juridico`: crear, editar, activar e inactivar equipos, y gestionar miembros/supervisor si el modelo lo permite. Nunca eliminar fisicamente equipos ni usuarios.
+
+Toda escritura V2 autorizada debe:
+
+- Resolver IDs por codigo o catalogo, no hardcodearlos.
+- Validar estado actual antes de escribir para prevenir cambios concurrentes.
+- Usar transaccion completa con commit/rollback.
+- Registrar historial/movimiento cuando el modelo lo soporte.
+- Bloquear la accion y reportar diagnostico exacto si falta tabla, columna, catalogo, transicion o constraint.
+
+## 4.3 Lenguaje visual vigente
+
+- Usar nombres amigables y sin sufijo tecnico `V2` en titulos visibles de modulos.
+- No usar `padre` ni `hijo` en UI para relaciones de expedientes. Usar `Expedientes asociados`, `Posibles relacionados`, `Misma acta y titular` o `Relacion confirmada`.
+- En listados administrativos, priorizar datos operativos visibles; auditoria tecnica solo debe mostrarse en detalle o cuando se solicite.
+- Mantener badges sobrios para estado, etapa, alertas, asociados y escritura controlada.
+- Evitar repetir literalmente subtitulos como cards internas del mismo modulo.
+
 ## 5. Reglas de SQL y BD
 
 - No ejecutar SQL sin autorizacion explicita.
