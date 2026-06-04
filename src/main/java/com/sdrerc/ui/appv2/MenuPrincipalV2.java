@@ -9,6 +9,7 @@ import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
 import com.sdrerc.ui.views.ejecucion.JPanelEjecucionV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.firmaemision.JPanelFirmaEmisionV2;
+import com.sdrerc.ui.views.notificacion.JPanelNotificacionV2;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
 import com.sdrerc.ui.views.verificacion.JPanelVerificacionV2;
 import java.awt.BorderLayout;
@@ -40,6 +41,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnVerificacion;
     private JButton btnFirmaEmision;
     private JButton btnEjecucion;
+    private JButton btnNotificacion;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -112,10 +114,12 @@ public class MenuPrincipalV2 extends JFrame {
         btnEjecucion = crearBotonMenu("Ejecución");
         btnEjecucion.addActionListener(e -> mostrarEjecucion(btnEjecucion));
         opciones.add(btnEjecucion);
+        btnNotificacion = crearBotonMenu("Notificación");
+        btnNotificacion.addActionListener(e -> mostrarNotificacion(btnNotificacion));
+        opciones.add(btnNotificacion);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Seguimiento"));
-        opciones.add(crearBotonPendiente("Notificación"));
         opciones.add(crearBotonPendiente("Publicación"));
         opciones.add(crearBotonPendiente("Expediente digital"));
         opciones.add(crearBotonPendiente("Cierre / Archivo"));
@@ -308,6 +312,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Ejecución");
         lblSubtitulo.setText("Gestión de expedientes con resolución o documento listo para ejecución");
         cambiarContenido(new JPanelEjecucionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarNotificacion(JButton boton) {
+        lblTitulo.setText("Notificación");
+        lblSubtitulo.setText("Gestión de notificaciones, cargos de acuse y resultado de comunicación al administrado");
+        cambiarContenido(new JPanelNotificacionV2());
         aplicarEstadoActivo(boton);
     }
 

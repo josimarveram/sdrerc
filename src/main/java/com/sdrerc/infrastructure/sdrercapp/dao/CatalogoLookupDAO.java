@@ -39,6 +39,10 @@ public class CatalogoLookupDAO {
         return obtenerIdPorCodigo(conn, "estado_notificacion", "id_estado_notificacion", codigo);
     }
 
+    public Long obtenerEstadoCargoAcuseId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "estado_cargo_acuse", "id_estado_cargo_acuse", codigo);
+    }
+
     public Long obtenerTipoResultadoEvaluacionId(Connection conn, String codigo) throws SQLException {
         return obtenerIdPorCodigo(conn, "tipo_resultado_evaluacion", "id_tipo_resultado_evaluacion", codigo);
     }
@@ -117,6 +121,18 @@ public class CatalogoLookupDAO {
 
     public List<CatalogoItemDTO> listarResultadosEjecucion() throws SQLException {
         return listarCatalogo("tipo_resultado_ejecucion");
+    }
+
+    public List<CatalogoItemDTO> listarTiposNotificacion() throws SQLException {
+        return listarCatalogo("tipo_notificacion");
+    }
+
+    public List<CatalogoItemDTO> listarEstadosNotificacion() throws SQLException {
+        return listarCatalogo("estado_notificacion");
+    }
+
+    public List<CatalogoItemDTO> listarEstadosCargoAcuse() throws SQLException {
+        return listarCatalogo("estado_cargo_acuse");
     }
 
     private Long obtenerIdPorCodigo(Connection conn, String tabla, String columnaId, String codigo) throws SQLException {

@@ -1,0 +1,1118 @@
+package com.sdrerc.ui.views.notificacion;
+
+import com.sdrerc.application.sdrercapp.DocumentoEjecucionService;
+import com.sdrerc.application.sdrercapp.NotificacionExpedienteService;
+import com.sdrerc.domain.dto.sdrercapp.CargoAcuseDTO;
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
+import com.sdrerc.domain.dto.sdrercapp.CierreNotificacionDTO;
+import com.sdrerc.domain.dto.sdrercapp.DocumentoEjecucionDTO;
+import com.sdrerc.domain.dto.sdrercapp.NotificacionExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.NotificacionRegistroDTO;
+import com.sdrerc.domain.dto.sdrercapp.NotificacionResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.PublicacionRequeridaDTO;
+import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
+import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.Window;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+
+public class JPanelNotificacionV2 extends JPanel {
+
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    private final NotificacionExpedienteService notificacionService;
+    private final DocumentoEjecucionService documentoService;
+
+    private final JTextField txtBusqueda = new JTextField(26);
+    private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
+    private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
+    private final JButton btnBuscar = new JButton("Buscar");
+    private final JButton btnLimpiar = new JButton("Limpiar");
+    private final JButton btnRefrescar = new JButton("Refrescar");
+    private final JButton btnVerDetalle = new JButton("Ver detalle");
+    private final JButton btnRegistrarNotificacion = new JButton("Registrar notificación");
+    private final JButton btnRegistrarCargo = new JButton("Registrar cargo");
+    private final JButton btnMarcarNotificado = new JButton("Marcar notificado");
+    private final JButton btnRequierePublicacion = new JButton("Requiere publicación");
+    private final JButton btnCerrarExpediente = new JButton("Cerrar expediente");
+
+    private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes en Notificación.");
+    private final JLabel lblExpediente = new JLabel("-");
+    private final JLabel lblTitular = new JLabel("-");
+    private final JLabel lblActa = new JLabel("-");
+    private final JLabel lblProcedimiento = new JLabel("-");
+    private final JLabel lblEtapaEstado = new JLabel("-");
+    private final JLabel lblResolucion = new JLabel("-");
+    private final JLabel lblNotificacion = new JLabel("-");
+    private final JLabel lblCargo = new JLabel("-");
+    private final JLabel lblAlertas = new JLabel("Sin alertas.");
+    private final JLabel lblAcciones = new JLabel("-");
+    private final JLabel lblAnalisis = new JLabel("-");
+    private final JLabel lblVerificacion = new JLabel("-");
+    private final JLabel lblEjecucion = new JLabel("-");
+
+    private final JComboBox<SimpleItem> cmbTipoNotificacion = new JComboBox<SimpleItem>();
+    private final JComboBox<SimpleItem> cmbEstadoCargo = new JComboBox<SimpleItem>();
+    private final JTextField txtFechaNotificacion = new JTextField(10);
+    private final JTextField txtFechaCargo = new JTextField(10);
+    private final JTextField txtDestinatario = new JTextField(22);
+    private final JTextField txtResultado = new JTextField(22);
+    private final JTextField txtRecibidoPor = new JTextField(22);
+    private final JTextArea txtComentario = new JTextArea(4, 22);
+    private final JTextArea txtMotivoPublicacion = new JTextArea(3, 22);
+    private final JTextArea txtObservacion = new JTextArea(3, 22);
+
+    private final NotificacionTableModel tableModel = new NotificacionTableModel();
+    private final JTable table = new JTable(tableModel);
+    private final DefaultTableModel documentosModel = new DefaultTableModel(
+            new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
+            0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable documentosTable = new JTable(documentosModel);
+    private final List<NotificacionExpedienteDTO> expedientes = new ArrayList<NotificacionExpedienteDTO>();
+
+    private final MetricCardV2 cardEnNotificacion = new MetricCardV2("En notificación", "0", "Pendientes de registro", AppV2Theme.INFO);
+    private final MetricCardV2 cardCargo = new MetricCardV2("Cargo", "0", "Pendiente o recibido", AppV2Theme.WARNING);
+    private final MetricCardV2 cardNotificados = new MetricCardV2("Notificados", "0", "Listos para cierre", AppV2Theme.SUCCESS);
+
+    public JPanelNotificacionV2() {
+        this(new NotificacionExpedienteService(), new DocumentoEjecucionService());
+    }
+
+    public JPanelNotificacionV2(
+            NotificacionExpedienteService notificacionService,
+            DocumentoEjecucionService documentoService) {
+        this.notificacionService = notificacionService;
+        this.documentoService = documentoService;
+        setLayout(new BorderLayout(14, 14));
+        setBackground(AppV2Theme.BACKGROUND);
+        setBorder(AppV2Theme.pageBorder());
+        add(crearHeader(), BorderLayout.NORTH);
+        add(crearCentro(), BorderLayout.CENTER);
+        configurarTabla();
+        configurarDocumentosTabla();
+        configurarEventos();
+        cargarFiltrosBase();
+        cargarCatalogos();
+        inicializarFechas();
+        actualizarSeleccion();
+    }
+
+    private JPanel crearHeader() {
+        JPanel metricas = new JPanel(new GridLayout(1, 3, 12, 0));
+        metricas.setOpaque(false);
+        metricas.add(cardEnNotificacion);
+        metricas.add(cardCargo);
+        metricas.add(cardNotificados);
+        return metricas;
+    }
+
+    private JPanel crearCentro() {
+        JPanel centro = new JPanel(new BorderLayout(14, 14));
+        centro.setOpaque(false);
+        centro.add(crearBandeja(), BorderLayout.CENTER);
+        centro.add(crearPanelNotificacion(), BorderLayout.EAST);
+        return centro;
+    }
+
+    private JPanel crearBandeja() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setOpaque(false);
+
+        JPanel filtros = new JPanel(new GridBagLayout());
+        filtros.setBackground(AppV2Theme.SURFACE);
+        filtros.setBorder(AppV2Theme.toolbarBorder());
+        configurarControles();
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 6, 4, 6);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridy = 0;
+        gbc.gridx = 0;
+        filtros.add(label("Buscar"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtros.add(txtBusqueda, gbc);
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 2;
+        filtros.add(label("Estado"), gbc);
+        gbc.gridx = 3;
+        filtros.add(cmbEstadoFiltro, gbc);
+        gbc.gridx = 4;
+        filtros.add(label("Mostrar"), gbc);
+        gbc.gridx = 5;
+        filtros.add(spnLimite, gbc);
+
+        JPanel accionesFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        accionesFiltro.setOpaque(false);
+        accionesFiltro.add(btnBuscar);
+        accionesFiltro.add(btnLimpiar);
+        accionesFiltro.add(btnRefrescar);
+        accionesFiltro.add(btnVerDetalle);
+        gbc.gridx = 6;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtros.add(accionesFiltro, gbc);
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnRegistrarNotificacion);
+        acciones.add(btnRegistrarCargo);
+        acciones.add(btnMarcarNotificado);
+        acciones.add(btnRequierePublicacion);
+        acciones.add(btnCerrarExpediente);
+
+        JPanel superior = new JPanel(new BorderLayout(8, 8));
+        superior.setOpaque(false);
+        superior.add(filtros, BorderLayout.NORTH);
+        superior.add(acciones, BorderLayout.CENTER);
+        superior.add(lblEstado, BorderLayout.SOUTH);
+        lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        panel.add(superior, BorderLayout.NORTH);
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearPanelNotificacion() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setPreferredSize(new Dimension(440, 0));
+        panel.setBackground(AppV2Theme.SURFACE);
+        panel.setBorder(AppV2Theme.sectionBorder());
+
+        JLabel title = new JLabel("Panel de notificación");
+        title.setFont(AppV2Theme.fontBold(18));
+        title.setForeground(AppV2Theme.TEXT_PRIMARY);
+
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
+        content.add(crearResumenSeleccion());
+        content.add(crearAntecedentes());
+        content.add(crearDocumentosPanel());
+        content.add(crearFormularioNotificacion());
+
+        JScrollPane scroll = new JScrollPane(content);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        panel.add(title, BorderLayout.NORTH);
+        panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearResumenSeleccion() {
+        JPanel panel = section("Expediente seleccionado");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Expediente", lblExpediente);
+        addRow(grid, row++, "Titular", lblTitular);
+        addRow(grid, row++, "Acta", lblActa);
+        addRow(grid, row++, "Procedimiento", lblProcedimiento);
+        addRow(grid, row++, "Etapa / Estado", lblEtapaEstado);
+        addRow(grid, row++, "Resolución", lblResolucion);
+        addRow(grid, row++, "Notificación", lblNotificacion);
+        addRow(grid, row++, "Cargo", lblCargo);
+        addRow(grid, row++, "Acciones", lblAcciones);
+        addRow(grid, row, "Alertas", lblAlertas);
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearAntecedentes() {
+        JPanel panel = section("Antecedentes");
+        txtObservacion.setEditable(false);
+        txtObservacion.setBackground(AppV2Theme.SURFACE_ALT);
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Análisis", lblAnalisis);
+        addRow(grid, row++, "Verificación", lblVerificacion);
+        addRow(grid, row++, "Ejecución", lblEjecucion);
+        addRow(grid, row, "Observación", scrollText(txtObservacion, 72));
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearDocumentosPanel() {
+        JPanel panel = section("Documentos y resolución");
+        JScrollPane scroll = new JScrollPane(documentosTable);
+        scroll.setPreferredSize(new Dimension(360, 132));
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearFormularioNotificacion() {
+        JPanel panel = section("Registro de notificación");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Tipo / modalidad", cmbTipoNotificacion);
+        addRow(grid, row++, "Fecha notificación", txtFechaNotificacion);
+        addRow(grid, row++, "Destinatario", txtDestinatario);
+        addRow(grid, row++, "Resultado", txtResultado);
+        addRow(grid, row++, "Estado cargo", cmbEstadoCargo);
+        addRow(grid, row++, "Fecha cargo", txtFechaCargo);
+        addRow(grid, row++, "Recibido por", txtRecibidoPor);
+        addRow(grid, row++, "Comentario", scrollText(txtComentario, 86));
+        addRow(grid, row, "Motivo publicación", scrollText(txtMotivoPublicacion, 72));
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel section(String title) {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(AppV2Theme.SURFACE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(12, 0, 12, 0)));
+        JLabel label = new JLabel(title);
+        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_MEDIUM));
+        label.setForeground(AppV2Theme.TEXT_PRIMARY);
+        panel.add(label, BorderLayout.NORTH);
+        return panel;
+    }
+
+    private JScrollPane scrollText(JTextArea area, int height) {
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        area.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        JScrollPane scroll = new JScrollPane(area);
+        scroll.setPreferredSize(new Dimension(250, height));
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        return scroll;
+    }
+
+    private void addRow(JPanel target, int row, String label, Component component) {
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = 0;
+        gbcLabel.gridy = row;
+        gbcLabel.anchor = GridBagConstraints.NORTHWEST;
+        gbcLabel.insets = new Insets(5, 0, 5, 10);
+
+        GridBagConstraints gbcValue = new GridBagConstraints();
+        gbcValue.gridx = 1;
+        gbcValue.gridy = row;
+        gbcValue.weightx = 1;
+        gbcValue.fill = GridBagConstraints.HORIZONTAL;
+        gbcValue.insets = new Insets(5, 0, 5, 0);
+        target.add(label(label), gbcLabel);
+        target.add(component, gbcValue);
+    }
+
+    private JLabel label(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        label.setForeground(AppV2Theme.TEXT_SECONDARY);
+        return label;
+    }
+
+    private void configurarControles() {
+        txtBusqueda.setPreferredSize(new Dimension(340, 34));
+        cmbEstadoFiltro.setPreferredSize(new Dimension(220, 34));
+        cmbTipoNotificacion.setPreferredSize(new Dimension(250, 34));
+        cmbEstadoCargo.setPreferredSize(new Dimension(250, 34));
+        txtFechaNotificacion.setPreferredSize(new Dimension(250, 34));
+        txtFechaCargo.setPreferredSize(new Dimension(250, 34));
+        txtDestinatario.setPreferredSize(new Dimension(250, 34));
+        txtResultado.setPreferredSize(new Dimension(250, 34));
+        txtRecibidoPor.setPreferredSize(new Dimension(250, 34));
+        spnLimite.setPreferredSize(new Dimension(86, 34));
+        btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnRegistrarNotificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnRegistrarCargo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnMarcarNotificado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnRequierePublicacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnCerrarExpediente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+    }
+
+    private void configurarTabla() {
+        table.setRowHeight(34);
+        table.setAutoCreateRowSorter(true);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        table.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        table.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        table.setGridColor(AppV2Theme.BORDER);
+        table.setShowVerticalLines(false);
+        table.setIntercellSpacing(new Dimension(0, 1));
+        table.setDefaultRenderer(Object.class, new NotificacionRenderer());
+        table.getColumnModel().getColumn(0).setMaxWidth(70);
+        table.getColumnModel().getColumn(10).setPreferredWidth(145);
+        table.getColumnModel().getColumn(11).setPreferredWidth(160);
+        table.getColumnModel().getColumn(12).setMaxWidth(92);
+        table.getColumnModel().getColumn(15).setMaxWidth(92);
+        table.getColumnModel().getColumn(16).setMaxWidth(92);
+    }
+
+    private void configurarDocumentosTabla() {
+        documentosTable.setRowHeight(30);
+        documentosTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        documentosTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        documentosTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        documentosTable.setGridColor(AppV2Theme.BORDER);
+        documentosTable.setShowVerticalLines(false);
+    }
+
+    private void configurarEventos() {
+        btnBuscar.addActionListener(e -> buscar());
+        btnLimpiar.addActionListener(e -> limpiar());
+        btnRefrescar.addActionListener(e -> buscar());
+        btnVerDetalle.addActionListener(e -> abrirDetalle());
+        btnRegistrarNotificacion.addActionListener(e -> registrarNotificacion());
+        btnRegistrarCargo.addActionListener(e -> registrarCargo());
+        btnMarcarNotificado.addActionListener(e -> marcarNotificado());
+        btnRequierePublicacion.addActionListener(e -> requierePublicacion());
+        btnCerrarExpediente.addActionListener(e -> cerrarExpediente());
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                actualizarSeleccion();
+            }
+        });
+    }
+
+    private void cargarFiltrosBase() {
+        cmbEstadoFiltro.removeAllItems();
+        cmbEstadoFiltro.addItem(new SimpleItem("TODOS", "Todos"));
+        cmbEstadoFiltro.addItem(new SimpleItem("EN_NOTIFICACION", "En notificación"));
+        cmbEstadoFiltro.addItem(new SimpleItem("CARGO_PENDIENTE", "Cargo pendiente"));
+        cmbEstadoFiltro.addItem(new SimpleItem("CARGO_RECIBIDO", "Cargo recibido"));
+        cmbEstadoFiltro.addItem(new SimpleItem("NOTIFICADO", "Notificado"));
+        cmbEstadoFiltro.addItem(new SimpleItem("REQUIERE_PUBLICACION", "Requiere publicación"));
+    }
+
+    private void cargarCatalogos() {
+        setTrabajando(true, "Cargando catálogos de notificación...");
+        SwingWorker<CatalogosCarga, Void> worker = new SwingWorker<CatalogosCarga, Void>() {
+            @Override
+            protected CatalogosCarga doInBackground() throws Exception {
+                return new CatalogosCarga(
+                        notificacionService.listarTiposNotificacion(),
+                        notificacionService.listarEstadosCargoAcuse());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    CatalogosCarga carga = get();
+                    cargarCombo(cmbTipoNotificacion, carga.tiposNotificacion, false);
+                    cargarCombo(cmbEstadoCargo, carga.estadosCargo, false);
+                } catch (Exception ex) {
+                    cargarFallbackCatalogos();
+                    mostrarError("No se pudieron cargar catálogos de notificación. Se usaron opciones base.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarFallbackCatalogos() {
+        cmbTipoNotificacion.removeAllItems();
+        cmbTipoNotificacion.addItem(new SimpleItem("VIRTUAL", "Virtual"));
+        cmbTipoNotificacion.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
+        cmbTipoNotificacion.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
+        cmbEstadoCargo.removeAllItems();
+        cmbEstadoCargo.addItem(new SimpleItem("CARGO_RECIBIDO", "Cargo recibido"));
+        cmbEstadoCargo.addItem(new SimpleItem("CARGO_PENDIENTE", "Cargo pendiente"));
+    }
+
+    private void cargarCombo(JComboBox<SimpleItem> combo, List<CatalogoItemDTO> items, boolean incluirTodos) {
+        combo.removeAllItems();
+        if (incluirTodos) {
+            combo.addItem(new SimpleItem("TODOS", "Todos"));
+        }
+        for (CatalogoItemDTO item : items) {
+            combo.addItem(new SimpleItem(item.getCodigo(), item.getNombre()));
+        }
+    }
+
+    private void inicializarFechas() {
+        String hoy = DATE_FORMAT.format(LocalDate.now());
+        txtFechaNotificacion.setText(hoy);
+        txtFechaCargo.setText(hoy);
+    }
+
+    private void buscar() {
+        setTrabajando(true, "Consultando expedientes en Notificación...");
+        final String texto = txtBusqueda.getText();
+        final String estado = obtenerCodigo(cmbEstadoFiltro);
+        final int limite = ((Number) spnLimite.getValue()).intValue();
+        SwingWorker<List<NotificacionExpedienteDTO>, Void> worker = new SwingWorker<List<NotificacionExpedienteDTO>, Void>() {
+            @Override
+            protected List<NotificacionExpedienteDTO> doInBackground() throws Exception {
+                return notificacionService.buscarExpedientes(texto, estado, limite);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    expedientes.clear();
+                    expedientes.addAll(get());
+                    tableModel.fireTableDataChanged();
+                    actualizarMetricas();
+                    lblEstado.setText(expedientes.size() + " expediente(s) en Notificación encontrados.");
+                    if (!expedientes.isEmpty()) {
+                        table.setRowSelectionInterval(0, 0);
+                    } else {
+                        actualizarSeleccion();
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudo consultar la bandeja de Notificación.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void limpiar() {
+        txtBusqueda.setText("");
+        cmbEstadoFiltro.setSelectedIndex(0);
+        expedientes.clear();
+        tableModel.fireTableDataChanged();
+        actualizarMetricas();
+        actualizarSeleccion();
+        lblEstado.setText("Filtros limpiados. Presione Buscar para consultar Notificación.");
+    }
+
+    private void actualizarMetricas() {
+        int enNotificacion = 0;
+        int cargo = 0;
+        int notificados = 0;
+        for (NotificacionExpedienteDTO expediente : expedientes) {
+            if (expediente.isEnNotificacion()) {
+                enNotificacion++;
+            }
+            if (expediente.isCargoPendiente() || expediente.isCargoRecibido()) {
+                cargo++;
+            }
+            if (expediente.isNotificado() || expediente.isRequierePublicacionEstado()) {
+                notificados++;
+            }
+        }
+        cardEnNotificacion.setValue(String.valueOf(enNotificacion));
+        cardCargo.setValue(String.valueOf(cargo));
+        cardNotificados.setValue(String.valueOf(notificados));
+    }
+
+    private void actualizarSeleccion() {
+        NotificacionExpedienteDTO expediente = seleccionado();
+        if (expediente == null) {
+            limpiarResumen();
+            return;
+        }
+        lblExpediente.setText(valor(expediente.getNumeroExpediente()));
+        lblTitular.setText(valor(expediente.getTitular()));
+        lblActa.setText(valor(expediente.getTipoActa()) + " · " + valor(expediente.getNumeroActa()));
+        lblProcedimiento.setText(valor(expediente.getProcedimiento()));
+        lblEtapaEstado.setText(DisplayNameMapperV2.etapa(expediente.getEtapaCodigo()) + " / " + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()));
+        lblResolucion.setText(resolucionTexto(expediente));
+        lblNotificacion.setText(notificacionTexto(expediente));
+        lblCargo.setText(cargoTexto(expediente));
+        lblAcciones.setText(accionesTexto(expediente));
+        lblAlertas.setText(alertasTexto(expediente));
+        lblAnalisis.setText(valor(expediente.getResultadoAnalisis()));
+        lblVerificacion.setText(valor(expediente.getResultadoVerificacion()));
+        lblEjecucion.setText(valor(expediente.getResultadoEjecucion()));
+        txtObservacion.setText(valor(expediente.getUltimaObservacion()));
+        if (hasText(expediente.getTitular())) {
+            txtDestinatario.setText(expediente.getTitular());
+        }
+        cargarDocumentos(expediente.getIdExpediente());
+        actualizarAcciones(expediente);
+    }
+
+    private void limpiarResumen() {
+        lblExpediente.setText("-");
+        lblTitular.setText("-");
+        lblActa.setText("-");
+        lblProcedimiento.setText("-");
+        lblEtapaEstado.setText("-");
+        lblResolucion.setText("-");
+        lblNotificacion.setText("-");
+        lblCargo.setText("-");
+        lblAcciones.setText("-");
+        lblAlertas.setText("Sin expediente seleccionado.");
+        lblAnalisis.setText("-");
+        lblVerificacion.setText("-");
+        lblEjecucion.setText("-");
+        txtDestinatario.setText("");
+        txtResultado.setText("");
+        txtRecibidoPor.setText("");
+        txtComentario.setText("");
+        txtMotivoPublicacion.setText("");
+        txtObservacion.setText("");
+        inicializarFechas();
+        documentosModel.setRowCount(0);
+        actualizarAcciones(null);
+    }
+
+    private void cargarDocumentos(Long idExpediente) {
+        documentosModel.setRowCount(0);
+        SwingWorker<List<DocumentoEjecucionDTO>, Void> worker = new SwingWorker<List<DocumentoEjecucionDTO>, Void>() {
+            @Override
+            protected List<DocumentoEjecucionDTO> doInBackground() throws Exception {
+                return documentoService.listarPorExpediente(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    cargarDocumentosVista(get());
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los documentos del expediente.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarDocumentosVista(List<DocumentoEjecucionDTO> documentos) {
+        documentosModel.setRowCount(0);
+        for (DocumentoEjecucionDTO documento : documentos) {
+            documentosModel.addRow(new Object[]{
+                valor(documento.getTipoDocumento()),
+                valor(documento.getEstadoDocumento()),
+                valor(documento.getNumeroDocumento()),
+                valor(documento.getNombreDocumento()),
+                format(documento.getFechaDocumento())
+            });
+        }
+    }
+
+    private void actualizarAcciones(NotificacionExpedienteDTO expediente) {
+        boolean seleccionado = expediente != null;
+        btnVerDetalle.setEnabled(seleccionado);
+        btnRegistrarNotificacion.setEnabled(seleccionado
+                && (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)
+                || expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1)
+                || expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)));
+        btnRegistrarCargo.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_RECEPCION_CARGO));
+        btnMarcarNotificado.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_CONFIRMACION));
+        btnRequierePublicacion.setEnabled(seleccionado
+                && (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_FALLIDA)
+                || expediente.hasAccion(NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION)));
+        btnCerrarExpediente.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_CIERRE));
+    }
+
+    private void registrarNotificacion() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null) {
+            return;
+        }
+        final String accion = resolverAccionNotificacion(expediente);
+        if (!hasText(accion)) {
+            JOptionPane.showMessageDialog(this, "No hay una acción de notificación activa para el tipo seleccionado.", "Notificación", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (!confirmar("Se registrará la notificación del expediente " + expediente.getNumeroExpediente() + ". ¿Desea continuar?")) {
+            return;
+        }
+        ejecutarOperacion("Registrando notificación...", new Callable<NotificacionResultadoDTO>() {
+            @Override
+            public NotificacionResultadoDTO call() throws Exception {
+                return notificacionService.registrarNotificacion(crearRegistro(accion));
+            }
+        });
+    }
+
+    private void registrarCargo() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null || !confirmar("Se registrará el cargo de acuse de " + expediente.getNumeroExpediente() + ". ¿Desea continuar?")) {
+            return;
+        }
+        ejecutarOperacion("Registrando cargo de acuse...", new Callable<NotificacionResultadoDTO>() {
+            @Override
+            public NotificacionResultadoDTO call() throws Exception {
+                return notificacionService.registrarCargo(crearCargo());
+            }
+        });
+    }
+
+    private void marcarNotificado() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null || !confirmar("El expediente " + expediente.getNumeroExpediente() + " será marcado como notificado. ¿Desea continuar?")) {
+            return;
+        }
+        ejecutarOperacion("Marcando expediente como notificado...", new Callable<NotificacionResultadoDTO>() {
+            @Override
+            public NotificacionResultadoDTO call() throws Exception {
+                return notificacionService.marcarNotificado(crearRegistro(NotificacionExpedienteService.ACCION_CONFIRMACION));
+            }
+        });
+    }
+
+    private void requierePublicacion() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null) {
+            return;
+        }
+        final String accion = expediente.hasAccion(NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION)
+                ? NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION
+                : NotificacionExpedienteService.ACCION_NOTIFICACION_FALLIDA;
+        String mensaje = NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION.equals(accion)
+                ? "El expediente será derivado a Publicación condicional. ¿Desea continuar?"
+                : "Se registrará notificación fallida y requerimiento de publicación. ¿Desea continuar?";
+        if (!confirmar(mensaje)) {
+            return;
+        }
+        ejecutarOperacion("Registrando publicación requerida...", new Callable<NotificacionResultadoDTO>() {
+            @Override
+            public NotificacionResultadoDTO call() throws Exception {
+                return notificacionService.registrarPublicacion(crearPublicacion(accion));
+            }
+        });
+    }
+
+    private void cerrarExpediente() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null || !confirmar("El expediente " + expediente.getNumeroExpediente() + " será cerrado. ¿Desea continuar?")) {
+            return;
+        }
+        ejecutarOperacion("Cerrando expediente...", new Callable<NotificacionResultadoDTO>() {
+            @Override
+            public NotificacionResultadoDTO call() throws Exception {
+                return notificacionService.cerrarExpediente(crearCierre());
+            }
+        });
+    }
+
+    private void ejecutarOperacion(String mensajeTrabajo, Callable<NotificacionResultadoDTO> operacion) {
+        setTrabajando(true, mensajeTrabajo);
+        SwingWorker<NotificacionResultadoDTO, Void> worker = new SwingWorker<NotificacionResultadoDTO, Void>() {
+            @Override
+            protected NotificacionResultadoDTO doInBackground() throws Exception {
+                return operacion.call();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    NotificacionResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelNotificacionV2.this,
+                            resultado.getMensaje(),
+                            "Notificación",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo completar la acción.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private NotificacionRegistroDTO crearRegistro(String accionCodigo) {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente.");
+        }
+        SimpleItem tipo = (SimpleItem) cmbTipoNotificacion.getSelectedItem();
+        return new NotificacionRegistroDTO(
+                expediente.getIdExpediente(),
+                accionCodigo,
+                tipo == null ? "" : tipo.getCodigo(),
+                parseFecha(txtFechaNotificacion, "notificación"),
+                txtResultado.getText(),
+                txtDestinatario.getText(),
+                txtComentario.getText());
+    }
+
+    private CargoAcuseDTO crearCargo() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente.");
+        }
+        SimpleItem estadoCargo = (SimpleItem) cmbEstadoCargo.getSelectedItem();
+        return new CargoAcuseDTO(
+                expediente.getIdExpediente(),
+                NotificacionExpedienteService.ACCION_RECEPCION_CARGO,
+                estadoCargo == null ? "CARGO_RECIBIDO" : estadoCargo.getCodigo(),
+                parseFecha(txtFechaCargo, "cargo"),
+                txtRecibidoPor.getText(),
+                txtComentario.getText());
+    }
+
+    private PublicacionRequeridaDTO crearPublicacion(String accionCodigo) {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente.");
+        }
+        return new PublicacionRequeridaDTO(
+                expediente.getIdExpediente(),
+                accionCodigo,
+                txtMotivoPublicacion.getText(),
+                txtComentario.getText());
+    }
+
+    private CierreNotificacionDTO crearCierre() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente.");
+        }
+        return new CierreNotificacionDTO(
+                expediente.getIdExpediente(),
+                NotificacionExpedienteService.ACCION_CIERRE,
+                txtComentario.getText());
+    }
+
+    private String resolverAccionNotificacion(NotificacionExpedienteDTO expediente) {
+        SimpleItem tipo = (SimpleItem) cmbTipoNotificacion.getSelectedItem();
+        String codigo = tipo == null ? "" : tipo.getCodigo();
+        if ("VIRTUAL".equalsIgnoreCase(codigo) && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)) {
+            return NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL;
+        }
+        if ("PRESENCIAL_1".equalsIgnoreCase(codigo) && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1)) {
+            return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1;
+        }
+        if ("PRESENCIAL_2".equalsIgnoreCase(codigo) && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)) {
+            return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2;
+        }
+        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)) {
+            return NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL;
+        }
+        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1)) {
+            return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1;
+        }
+        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)) {
+            return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2;
+        }
+        return "";
+    }
+
+    private LocalDate parseFecha(JTextField field, String nombreCampo) {
+        String value = field.getText() == null ? "" : field.getText().trim();
+        if (value.isEmpty()) {
+            return LocalDate.now();
+        }
+        try {
+            return LocalDate.parse(value, DATE_FORMAT);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Ingrese una fecha de " + nombreCampo + " válida con formato yyyy-MM-dd.");
+        }
+    }
+
+    private void abrirDetalle() {
+        NotificacionExpedienteDTO expediente = requerirSeleccion();
+        if (expediente == null) {
+            return;
+        }
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(owner, expediente.getIdExpediente());
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private NotificacionExpedienteDTO seleccionado() {
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0) {
+            return null;
+        }
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        if (modelRow < 0 || modelRow >= expedientes.size()) {
+            return null;
+        }
+        return expedientes.get(modelRow);
+    }
+
+    private NotificacionExpedienteDTO requerirSeleccion() {
+        NotificacionExpedienteDTO expediente = seleccionado();
+        if (expediente == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione un expediente.", "Notificación", JOptionPane.INFORMATION_MESSAGE);
+        }
+        return expediente;
+    }
+
+    private boolean confirmar(String mensaje) {
+        return JOptionPane.showConfirmDialog(
+                this,
+                mensaje,
+                "Confirmar acción",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION;
+    }
+
+    private void setTrabajando(boolean trabajando, String mensaje) {
+        btnBuscar.setEnabled(!trabajando);
+        btnLimpiar.setEnabled(!trabajando);
+        btnRefrescar.setEnabled(!trabajando);
+        table.setEnabled(!trabajando);
+        if (mensaje != null) {
+            lblEstado.setText(mensaje);
+        }
+        if (!trabajando) {
+            actualizarAcciones(seleccionado());
+        } else {
+            btnVerDetalle.setEnabled(false);
+            btnRegistrarNotificacion.setEnabled(false);
+            btnRegistrarCargo.setEnabled(false);
+            btnMarcarNotificado.setEnabled(false);
+            btnRequierePublicacion.setEnabled(false);
+            btnCerrarExpediente.setEnabled(false);
+        }
+    }
+
+    private String obtenerCodigo(JComboBox<SimpleItem> combo) {
+        SimpleItem item = (SimpleItem) combo.getSelectedItem();
+        return item == null ? "" : item.getCodigo();
+    }
+
+    private String alertasTexto(NotificacionExpedienteDTO expediente) {
+        List<String> alertas = new ArrayList<String>();
+        if (expediente.getTotalRelacionados() > 0) {
+            alertas.add(expediente.getTotalRelacionados() + " expediente(s) asociado(s)");
+        }
+        if (expediente.getTotalDocumentos() == 0) {
+            alertas.add("Sin documentos registrados");
+        }
+        if (!hasText(expediente.getNumeroResolucion())) {
+            alertas.add("Sin resolución visible");
+        }
+        if (expediente.isCargoPendiente() && !expediente.hasAccion(NotificacionExpedienteService.ACCION_RECEPCION_CARGO)) {
+            alertas.add("No hay transición activa para cargo");
+        }
+        if (expediente.isRequierePublicacion()) {
+            alertas.add("Publicación requerida");
+        }
+        return alertas.isEmpty() ? "Sin alertas." : String.join(" · ", alertas);
+    }
+
+    private String accionesTexto(NotificacionExpedienteDTO expediente) {
+        return hasText(expediente.getAccionesPermitidas())
+                ? expediente.getAccionesPermitidas().replace(",", ", ")
+                : "Sin acciones activas";
+    }
+
+    private String resolucionTexto(NotificacionExpedienteDTO expediente) {
+        if (hasText(expediente.getNumeroResolucion())) {
+            return expediente.getNumeroResolucion() + " · " + format(expediente.getFechaResolucion());
+        }
+        if (expediente.getIdResolucion() != null) {
+            return "Resolución sin número visible";
+        }
+        return "Sin resolución registrada";
+    }
+
+    private String notificacionTexto(NotificacionExpedienteDTO expediente) {
+        if (expediente.getIdNotificacion() == null) {
+            return "Sin notificación registrada";
+        }
+        String intento = expediente.getNumeroIntento() == null ? "" : " · Intento " + expediente.getNumeroIntento();
+        return valor(expediente.getTipoNotificacion()) + " · " + valor(expediente.getEstadoNotificacion()) + intento;
+    }
+
+    private String cargoTexto(NotificacionExpedienteDTO expediente) {
+        if (expediente.getIdCargoAcuse() == null) {
+            return "Sin cargo registrado";
+        }
+        return valor(expediente.getEstadoCargo()) + " · " + format(expediente.getFechaCargo());
+    }
+
+    private void mostrarError(String contexto, Exception ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String detalle = cause.getMessage() == null ? "Error no especificado." : cause.getMessage();
+        JOptionPane.showMessageDialog(this, contexto + "\n" + detalle, "Notificación", JOptionPane.WARNING_MESSAGE);
+        lblEstado.setText(contexto);
+    }
+
+    private String format(LocalDate value) {
+        return value == null ? "-" : DATE_FORMAT.format(value);
+    }
+
+    private String format(LocalDateTime value) {
+        return value == null ? "-" : DATE_TIME_FORMAT.format(value);
+    }
+
+    private String valor(String value) {
+        return hasText(value) ? value : "-";
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private class NotificacionTableModel extends AbstractTableModel {
+
+        private final String[] columns = {
+            "ID", "Expediente", "Trámite", "Procedimiento", "Tipo doc.", "Tipo acta", "Nro. acta",
+            "Titular", "Nro. resolución", "Ingreso notificación", "Etapa", "Estado",
+            "Días", "Modalidad", "Cargo", "Docs", "Asociados"
+        };
+
+        @Override
+        public int getRowCount() {
+            return expedientes.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return columns.length;
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return columns[column];
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            NotificacionExpedienteDTO item = expedientes.get(rowIndex);
+            switch (columnIndex) {
+                case 0:
+                    return item.getIdExpediente();
+                case 1:
+                    return item.getNumeroExpediente();
+                case 2:
+                    return item.getNumeroTramiteDocumentario();
+                case 3:
+                    return item.getProcedimiento();
+                case 4:
+                    return item.getTipoDocumento();
+                case 5:
+                    return item.getTipoActa();
+                case 6:
+                    return item.getNumeroActa();
+                case 7:
+                    return item.getTitular();
+                case 8:
+                    return item.getNumeroResolucion();
+                case 9:
+                    return format(item.getFechaIngresoNotificacion());
+                case 10:
+                    return item.getEtapaCodigo();
+                case 11:
+                    return item.getEstadoCodigo();
+                case 12:
+                    return item.getDiasEnEtapa();
+                case 13:
+                    return item.getTipoNotificacion();
+                case 14:
+                    return item.getEstadoCargo();
+                case 15:
+                    return item.getTotalDocumentos();
+                case 16:
+                    return item.getTotalRelacionados();
+                default:
+                    return "";
+            }
+        }
+    }
+
+    private class NotificacionRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            if (column == 10) {
+                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
+            }
+            if (column == 11) {
+                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
+            }
+            if (column == 12) {
+                return StatusBadgeV2.forDias(value);
+            }
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            if (!isSelected) {
+                label.setForeground(AppV2Theme.TEXT_PRIMARY);
+                label.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            }
+            if (value == null || value.toString().trim().isEmpty()) {
+                label.setText("-");
+                label.setForeground(AppV2Theme.MUTED);
+            }
+            return label;
+        }
+    }
+
+    private static class CatalogosCarga {
+
+        private final List<CatalogoItemDTO> tiposNotificacion;
+        private final List<CatalogoItemDTO> estadosCargo;
+
+        private CatalogosCarga(List<CatalogoItemDTO> tiposNotificacion, List<CatalogoItemDTO> estadosCargo) {
+            this.tiposNotificacion = tiposNotificacion;
+            this.estadosCargo = estadosCargo;
+        }
+    }
+
+    private static class SimpleItem {
+
+        private final String codigo;
+        private final String nombre;
+
+        private SimpleItem(String codigo, String nombre) {
+            this.codigo = codigo == null ? "" : codigo;
+            this.nombre = nombre == null || nombre.trim().isEmpty() ? this.codigo : nombre;
+        }
+
+        private String getCodigo() {
+            return codigo;
+        }
+
+        @Override
+        public String toString() {
+            return nombre;
+        }
+    }
+}
