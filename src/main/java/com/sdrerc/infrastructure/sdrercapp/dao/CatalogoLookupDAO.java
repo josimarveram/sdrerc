@@ -59,6 +59,10 @@ public class CatalogoLookupDAO {
         return obtenerIdPorCodigo(conn, "motivo_no_corresponde", "id_motivo_no_corresponde", codigo);
     }
 
+    public Long obtenerMotivoCorreccionId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "motivo_correccion", "id_motivo_correccion", codigo);
+    }
+
     public List<CatalogoItemDTO> listarCanalesRecepcion() throws SQLException {
         return listarCatalogo("canal_recepcion");
     }
@@ -93,6 +97,10 @@ public class CatalogoLookupDAO {
 
     public List<CatalogoItemDTO> listarMotivosNoCorresponde() throws SQLException {
         return listarCatalogo("motivo_no_corresponde");
+    }
+
+    public List<CatalogoItemDTO> listarMotivosCorreccion() throws SQLException {
+        return listarCatalogo("motivo_correccion");
     }
 
     private Long obtenerIdPorCodigo(Connection conn, String tabla, String columnaId, String codigo) throws SQLException {

@@ -8,6 +8,7 @@ import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
+import com.sdrerc.ui.views.verificacion.JPanelVerificacionV2;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -34,6 +35,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnRegistroRecepcion;
     private JButton btnAsignacion;
     private JButton btnAnalisis;
+    private JButton btnVerificacion;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -97,7 +99,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnAnalisis = crearBotonMenu("Análisis");
         btnAnalisis.addActionListener(e -> mostrarAnalisis(btnAnalisis));
         opciones.add(btnAnalisis);
-        opciones.add(crearBotonPendiente("Verificación"));
+        btnVerificacion = crearBotonMenu("Verificación");
+        btnVerificacion.addActionListener(e -> mostrarVerificacion(btnVerificacion));
+        opciones.add(btnVerificacion);
         opciones.add(crearBotonPendiente("Firma / Emisión"));
         opciones.add(crearBotonPendiente("Ejecución"));
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
@@ -275,6 +279,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Análisis");
         lblSubtitulo.setText("Evaluación jurídica y documental de expedientes asignados");
         cambiarContenido(new JPanelAnalisisV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarVerificacion(JButton boton) {
+        lblTitulo.setText("Verificación");
+        lblSubtitulo.setText("Revisión de expedientes enviados desde análisis para aprobación u observación");
+        cambiarContenido(new JPanelVerificacionV2());
         aplicarEstadoActivo(boton);
     }
 
