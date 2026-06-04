@@ -3,6 +3,7 @@ package com.sdrerc.ui.appv2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.administracion.equipojuridico.JPanelEquipoJuridicoV2;
 import com.sdrerc.ui.views.administracion.usuarios.JPanelUsuariosV2;
+import com.sdrerc.ui.views.analisis.JPanelAnalisisV2;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
@@ -32,6 +33,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnBandeja;
     private JButton btnRegistroRecepcion;
     private JButton btnAsignacion;
+    private JButton btnAnalisis;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -92,7 +94,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnAsignacion = crearBotonMenu("Asignación");
         btnAsignacion.addActionListener(e -> mostrarAsignacion(btnAsignacion));
         opciones.add(btnAsignacion);
-        opciones.add(crearBotonPendiente("Análisis"));
+        btnAnalisis = crearBotonMenu("Análisis");
+        btnAnalisis.addActionListener(e -> mostrarAnalisis(btnAnalisis));
+        opciones.add(btnAnalisis);
         opciones.add(crearBotonPendiente("Verificación"));
         opciones.add(crearBotonPendiente("Firma / Emisión"));
         opciones.add(crearBotonPendiente("Ejecución"));
@@ -264,6 +268,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Asignación");
         lblSubtitulo.setText("Gestión de expedientes pendientes, responsables y alertas de posibles relacionados");
         cambiarContenido(new JPanelAsignacionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarAnalisis(JButton boton) {
+        lblTitulo.setText("Análisis");
+        lblSubtitulo.setText("Evaluación jurídica y documental de expedientes asignados");
+        cambiarContenido(new JPanelAnalisisV2());
         aplicarEstadoActivo(boton);
     }
 

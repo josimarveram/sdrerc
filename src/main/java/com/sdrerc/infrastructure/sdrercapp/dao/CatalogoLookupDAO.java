@@ -39,6 +39,26 @@ public class CatalogoLookupDAO {
         return obtenerIdPorCodigo(conn, "estado_notificacion", "id_estado_notificacion", codigo);
     }
 
+    public Long obtenerTipoResultadoEvaluacionId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "tipo_resultado_evaluacion", "id_tipo_resultado_evaluacion", codigo);
+    }
+
+    public Long obtenerTipoDocumentoAdjuntoId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "tipo_documento_adjunto", "id_tipo_documento_adjunto", codigo);
+    }
+
+    public Long obtenerEstadoDocumentoId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "estado_documento", "id_estado_documento", codigo);
+    }
+
+    public Long obtenerTipoObservacionId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "tipo_observacion", "id_tipo_observacion", codigo);
+    }
+
+    public Long obtenerMotivoNoCorrespondeId(Connection conn, String codigo) throws SQLException {
+        return obtenerIdPorCodigo(conn, "motivo_no_corresponde", "id_motivo_no_corresponde", codigo);
+    }
+
     public List<CatalogoItemDTO> listarCanalesRecepcion() throws SQLException {
         return listarCatalogo("canal_recepcion");
     }
@@ -53,6 +73,26 @@ public class CatalogoLookupDAO {
 
     public List<CatalogoItemDTO> listarTiposActa() throws SQLException {
         return listarCatalogo("tipo_acta");
+    }
+
+    public List<CatalogoItemDTO> listarResultadosEvaluacion() throws SQLException {
+        return listarCatalogo("tipo_resultado_evaluacion");
+    }
+
+    public List<CatalogoItemDTO> listarTiposDocumentoAdjunto() throws SQLException {
+        return listarCatalogo("tipo_documento_adjunto");
+    }
+
+    public List<CatalogoItemDTO> listarEstadosDocumento() throws SQLException {
+        return listarCatalogo("estado_documento");
+    }
+
+    public List<CatalogoItemDTO> listarTiposObservacion() throws SQLException {
+        return listarCatalogo("tipo_observacion");
+    }
+
+    public List<CatalogoItemDTO> listarMotivosNoCorresponde() throws SQLException {
+        return listarCatalogo("motivo_no_corresponde");
     }
 
     private Long obtenerIdPorCodigo(Connection conn, String tabla, String columnaId, String codigo) throws SQLException {
