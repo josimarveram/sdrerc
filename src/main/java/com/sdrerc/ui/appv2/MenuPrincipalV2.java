@@ -7,6 +7,7 @@ import com.sdrerc.ui.views.analisis.JPanelAnalisisV2;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
+import com.sdrerc.ui.views.firmaemision.JPanelFirmaEmisionV2;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
 import com.sdrerc.ui.views.verificacion.JPanelVerificacionV2;
 import java.awt.BorderLayout;
@@ -36,6 +37,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnAsignacion;
     private JButton btnAnalisis;
     private JButton btnVerificacion;
+    private JButton btnFirmaEmision;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -102,7 +104,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnVerificacion = crearBotonMenu("Verificación");
         btnVerificacion.addActionListener(e -> mostrarVerificacion(btnVerificacion));
         opciones.add(btnVerificacion);
-        opciones.add(crearBotonPendiente("Firma / Emisión"));
+        btnFirmaEmision = crearBotonMenu("Firma / Emisión");
+        btnFirmaEmision.addActionListener(e -> mostrarFirmaEmision(btnFirmaEmision));
+        opciones.add(btnFirmaEmision);
         opciones.add(crearBotonPendiente("Ejecución"));
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
@@ -286,6 +290,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Verificación");
         lblSubtitulo.setText("Revisión de expedientes enviados desde análisis para aprobación u observación");
         cambiarContenido(new JPanelVerificacionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarFirmaEmision(JButton boton) {
+        lblTitulo.setText("Firma / Emisión");
+        lblSubtitulo.setText("Expedientes aprobados para firma, emisión y numeración del documento resolutivo");
+        cambiarContenido(new JPanelFirmaEmisionV2());
         aplicarEstadoActivo(boton);
     }
 
