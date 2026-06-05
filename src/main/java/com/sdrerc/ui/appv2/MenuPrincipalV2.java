@@ -7,6 +7,7 @@ import com.sdrerc.ui.views.analisis.JPanelAnalisisV2;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
 import com.sdrerc.ui.views.ejecucion.JPanelEjecucionV2;
+import com.sdrerc.ui.views.expedientedigital.JPanelExpedienteDigitalV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.firmaemision.JPanelFirmaEmisionV2;
 import com.sdrerc.ui.views.notificacion.JPanelNotificacionV2;
@@ -44,6 +45,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnEjecucion;
     private JButton btnNotificacion;
     private JButton btnPublicacion;
+    private JButton btnExpedienteDigital;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -122,10 +124,12 @@ public class MenuPrincipalV2 extends JFrame {
         btnPublicacion = crearBotonMenu("Publicación");
         btnPublicacion.addActionListener(e -> mostrarPublicacion(btnPublicacion));
         opciones.add(btnPublicacion);
+        btnExpedienteDigital = crearBotonMenu("Expediente digital");
+        btnExpedienteDigital.addActionListener(e -> mostrarExpedienteDigital(btnExpedienteDigital));
+        opciones.add(btnExpedienteDigital);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Seguimiento"));
-        opciones.add(crearBotonPendiente("Expediente digital"));
         opciones.add(crearBotonPendiente("Cierre / Archivo"));
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
@@ -330,6 +334,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Publicación");
         lblSubtitulo.setText("Gestión de expedientes con publicación pendiente por notificación no concretada");
         cambiarContenido(new JPanelPublicacionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarExpedienteDigital(JButton boton) {
+        lblTitulo.setText("Expediente digital");
+        lblSubtitulo.setText("Gestión de carpeta, enlace y completitud digital del expediente");
+        cambiarContenido(new JPanelExpedienteDigitalV2());
         aplicarEstadoActivo(boton);
     }
 
