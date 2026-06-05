@@ -75,6 +75,7 @@ Modulos V2 ya incorporados o en uso dentro de la app nueva:
 - Notificacion.
 - Publicacion.
 - Expediente digital.
+- Cierre / Archivo.
 - Administracion / Usuarios.
 - Administracion / Equipo Juridico.
 - Administracion / Roles.
@@ -86,7 +87,7 @@ Reglas por modulo:
 - `Ver detalle` en bandejas operativas debe abrir la consola unica `DlgConsolaExpedienteV2`, no crear consolas paralelas.
 - Los modulos administrativos `Roles`, `Usuarios` y `Equipo Juridico` no deben mostrar columnas `Creado` ni `Modificado` en sus listados principales, salvo que el usuario lo pida explicitamente.
 - Los modulos V2 deben evitar bloques de cabecera duplicados dentro del panel cuando `MenuPrincipalV2` ya muestra titulo y subtitulo. Si el panel interno necesita un bloque superior, debe aportar contexto operativo nuevo y no repetir titulo/subtitulo.
-- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Firma / Emision`, `Ejecucion`, `Notificacion`, `Publicacion`, `Expediente digital` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
+- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Firma / Emision`, `Ejecucion`, `Notificacion`, `Publicacion`, `Expediente digital`, `Cierre / Archivo` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
 
 ## 4.2 Escritura controlada ya autorizada en V2
 
@@ -126,6 +127,12 @@ Por defecto V2 sigue siendo lectura/consulta. Las escrituras reales solo son val
 - `Expediente digital`: las acciones autorizadas deben resolver transiciones reales por codigo, como `CREACION_CARPETA_EXPEDIENTE_DIGITAL` y `CARGA_DOCUMENTOS_EXPEDIENTE_DIGITAL`; si `REGISTRO_LINK_EXPEDIENTE_DIGITAL` existe como catalogo pero no como transicion activa, usar la transicion real configurada y reportar el diagnostico.
 - `Expediente digital`: al marcar completo, actualizar `EXPEDIENTE.EXPEDIENTE_DIGITAL_COMPLETO` cuando el modelo lo soporte, validar documentos o metadata requerida, registrar historial y no hacer escritura parcial si falta tabla, columna, catalogo, transicion o constraint.
 - `Expediente digital`: no mover archivos fisicamente, no eliminar archivos, no implementar carga masiva documental ni integraciones externas con NAS, SharePoint, Drive, MinIO u otros repositorios sin autorizacion explicita.
+- `Cierre / Archivo`: consultar expedientes en `CIERRE_ARCHIVO` y expedientes candidatos con acciones activas `CIERRE` o `ARCHIVO`, revisar antecedentes completos, documentos, resolucion, notificacion, publicacion, expediente digital, historial y expedientes asociados.
+- `Cierre / Archivo`: registrar cierre hacia `CIERRE_ARCHIVO / CERRADO` y archivo hacia `CIERRE_ARCHIVO / ARCHIVADO` solo cuando el flujo `SDRERC_TO_BE` exponga transicion real activa.
+- `Cierre / Archivo`: usar las tablas reales `EXPEDIENTE`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_OBSERVACION`, `EXPEDIENTE_RESOLUCION`, `EXPEDIENTE_NOTIFICACION`, `EXPEDIENTE_PUBLICACION`, `EXPEDIENTE_DIGITAL` y `EXPEDIENTE_DERIVACION_EXTERNA` segun corresponda; no crear tablas paralelas ni guardar datos no soportados por el modelo.
+- `Cierre / Archivo`: las acciones autorizadas deben resolver transiciones reales por codigo, como `CIERRE` y `ARCHIVO`; si falta transicion, catalogo, documento requerido, tabla, columna o constraint, bloquear con diagnostico sin escritura parcial.
+- `Cierre / Archivo`: marcar `EXPEDIENTE.CERRADO` o `EXPEDIENTE.ARCHIVADO` cuando el modelo lo soporte, registrar historial/movimiento y nunca eliminar fisicamente expedientes, documentos ni archivos.
+- `Cierre / Archivo`: la derivacion externa pendiente puede mostrarse en consulta/preparacion; no registrar derivaciones externas desde este modulo salvo autorizacion explicita y estructura completa de entidad destino, tipo de derivacion y documento soporte.
 - `Roles`: crear, editar, activar e inactivar roles. Nunca eliminar fisicamente roles.
 - `Usuarios`: crear, editar, activar e inactivar usuarios, y asociar roles/equipo si el modelo lo permite. Nunca mostrar ni guardar passwords en texto plano.
 - `Equipo Juridico`: crear, editar, activar e inactivar equipos, y gestionar miembros/supervisor si el modelo lo permite. Nunca eliminar fisicamente equipos ni usuarios.
