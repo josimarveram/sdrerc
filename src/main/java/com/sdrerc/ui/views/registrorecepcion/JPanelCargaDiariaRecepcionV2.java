@@ -6,6 +6,7 @@ import com.sdrerc.application.sdrercapp.CargaDiariaValidacionService;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResumenDTO;
+import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -75,7 +76,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             return false;
         }
     };
-    private final JTable table = new JTable(tableModel);
+    private final JTable table = new AppV2Table(tableModel);
 
     private File archivoSeleccionado;
     private List<CargaDiariaPreviewDTO> registros = new ArrayList<>();

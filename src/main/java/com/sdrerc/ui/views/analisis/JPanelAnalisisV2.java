@@ -8,6 +8,11 @@ import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
+import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
+import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
@@ -17,7 +22,6 @@ import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -38,7 +42,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -54,7 +57,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final AnalisisExpedienteService analisisService;
     private final DocumentoAnalisisService documentoService;
 
-    private final JTextField txtBusqueda = new JTextField(26);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o responsable", 28);
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
@@ -96,7 +99,11 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JTextArea txtComentarioMovimiento = new JTextArea(3, 22);
 
     private final AnalisisTableModel tableModel = new AnalisisTableModel();
-    private final JTable table = new JTable(tableModel);
+    private final JTable table = new AppV2Table(tableModel);
+    private final AppV2TablePanel tablePanel = new AppV2TablePanel(
+            table,
+            "Sin expedientes para mostrar",
+            "Seleccione filtros y presione Buscar.");
     private final DefaultTableModel documentoModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Fecha", "Descripción", "tipo_codigo", "estado_codigo"},
             0) {
@@ -105,7 +112,7 @@ public class JPanelAnalisisV2 extends JPanel {
             return false;
         }
     };
-    private final JTable documentosTable = new JTable(documentoModel);
+    private final JTable documentosTable = new AppV2Table(documentoModel);
     private final List<AnalisisExpedienteDTO> expedientes = new ArrayList<AnalisisExpedienteDTO>();
     private final MetricCardV2 cardPorRecibir = new MetricCardV2("Por recibir", "0", "Asignación / Asignado", AppV2Theme.INFO);
     private final MetricCardV2 cardEnAnalisis = new MetricCardV2("En análisis", "0", "Recibidos y observados", AppV2Theme.TEAL);
@@ -154,9 +161,7 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setOpaque(false);
 
-        JPanel filtros = new JPanel(new GridBagLayout());
-        filtros.setBackground(AppV2Theme.SURFACE);
-        filtros.setBorder(AppV2Theme.toolbarBorder());
+        JPanel filtros = new AppV2FilterPanel();
         configurarControles();
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -164,34 +169,41 @@ public class JPanelAnalisisV2 extends JPanel {
         gbc.anchor = GridBagConstraints.WEST;
         gbc.gridy = 0;
         gbc.gridx = 0;
-        filtros.add(label("Buscar"), gbc);
+        filtros.add(label("Búsqueda"), gbc);
         gbc.gridx = 1;
+        gbc.gridwidth = 3;
         gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         filtros.add(txtBusqueda, gbc);
+        gbc.gridwidth = 1;
         gbc.weightx = 0;
         gbc.fill = GridBagConstraints.NONE;
-        gbc.gridx = 2;
-        filtros.add(label("Estado"), gbc);
-        gbc.gridx = 3;
-        filtros.add(cmbEstadoFiltro, gbc);
-        gbc.gridx = 4;
-        filtros.add(label("Mostrar"), gbc);
-        gbc.gridx = 5;
-        filtros.add(spnLimite, gbc);
 
-        JPanel accionesFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        accionesFiltro.setOpaque(false);
+        JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnRefrescar);
         accionesFiltro.add(btnVerDetalle);
-        gbc.gridx = 6;
+        accionesFiltro.add(btnRefrescar);
+        gbc.gridx = 4;
+        gbc.gridwidth = 4;
+        gbc.anchor = GridBagConstraints.EAST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         filtros.add(accionesFiltro, gbc);
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
 
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        acciones.setOpaque(false);
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        filtros.add(label("Estado"), gbc);
+        gbc.gridx = 1;
+        filtros.add(cmbEstadoFiltro, gbc);
+        gbc.gridx = 2;
+        filtros.add(label("Mostrar"), gbc);
+        gbc.gridx = 3;
+        filtros.add(spnLimite, gbc);
+
+        JPanel acciones = AppV2ActionPanel.left();
         acciones.add(btnRecibir);
         acciones.add(btnRegistrarAnalisis);
         acciones.add(btnEnviarVerificacion);
@@ -208,13 +220,13 @@ public class JPanelAnalisisV2 extends JPanel {
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
         panel.add(superior, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(tablePanel, BorderLayout.CENTER);
         return panel;
     }
 
     private JPanel crearPanelAnalisis() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(390, 0));
+        panel.setPreferredSize(new Dimension(420, 0));
         panel.setBackground(AppV2Theme.SURFACE);
         panel.setBorder(AppV2Theme.sectionBorder());
 
@@ -233,6 +245,7 @@ public class JPanelAnalisisV2 extends JPanel {
         JScrollPane scroll = new JScrollPane(content);
         scroll.setBorder(null);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         panel.add(title, BorderLayout.NORTH);
         panel.add(scroll, BorderLayout.CENTER);
@@ -285,14 +298,13 @@ public class JPanelAnalisisV2 extends JPanel {
         addRow(form, row++, "Tipo", cmbTipoDocumento);
         addRow(form, row++, "Estado", cmbEstadoDocumento);
         addRow(form, row++, "Descripción", scrollText(txtDescripcionDocumento, 58));
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        acciones.setOpaque(false);
+        JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnAgregarDocumento);
         acciones.add(btnQuitarDocumento);
         addRow(form, row, "", acciones);
 
         JScrollPane scroll = new JScrollPane(documentosTable);
-        scroll.setPreferredSize(new Dimension(330, 140));
+        scroll.setPreferredSize(new Dimension(360, 140));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
 
         panel.add(form, BorderLayout.NORTH);
@@ -340,7 +352,7 @@ public class JPanelAnalisisV2 extends JPanel {
         area.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         area.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
         JScrollPane scroll = new JScrollPane(area);
-        scroll.setPreferredSize(new Dimension(230, height));
+        scroll.setPreferredSize(new Dimension(260, height));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         return scroll;
     }
@@ -374,15 +386,16 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void configurarControles() {
-        txtBusqueda.setPreferredSize(new Dimension(340, 34));
-        cmbEstadoFiltro.setPreferredSize(new Dimension(220, 34));
+        txtBusqueda.setPreferredSize(new Dimension(420, 34));
+        txtBusqueda.setMinimumSize(new Dimension(320, 34));
+        cmbEstadoFiltro.setPreferredSize(new Dimension(250, 34));
         spnLimite.setPreferredSize(new Dimension(86, 34));
-        cmbResultado.setPreferredSize(new Dimension(230, 34));
-        cmbIncorporado.setPreferredSize(new Dimension(230, 34));
-        cmbMotivoNoCorresponde.setPreferredSize(new Dimension(230, 34));
-        cmbTipoDocumento.setPreferredSize(new Dimension(230, 34));
-        cmbEstadoDocumento.setPreferredSize(new Dimension(230, 34));
-        cmbTipoObservacion.setPreferredSize(new Dimension(230, 34));
+        cmbResultado.setPreferredSize(new Dimension(260, 34));
+        cmbIncorporado.setPreferredSize(new Dimension(260, 34));
+        cmbMotivoNoCorresponde.setPreferredSize(new Dimension(260, 34));
+        cmbTipoDocumento.setPreferredSize(new Dimension(260, 34));
+        cmbEstadoDocumento.setPreferredSize(new Dimension(260, 34));
+        cmbTipoObservacion.setPreferredSize(new Dimension(260, 34));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRecibir.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRegistrarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -585,6 +598,7 @@ public class JPanelAnalisisV2 extends JPanel {
         lblEstado.setText(items.isEmpty()
                 ? "No se encontraron expedientes para análisis."
                 : items.size() + " expediente(s) encontrados.");
+        tablePanel.setEmpty(items.isEmpty());
         actualizarSeleccion();
     }
 
@@ -594,6 +608,7 @@ public class JPanelAnalisisV2 extends JPanel {
         spnLimite.setValue(200);
         expedientes.clear();
         tableModel.setRowCount(0);
+        tablePanel.setEmpty(true);
         limpiarFormulario();
         cardPorRecibir.setValue("0");
         cardEnAnalisis.setValue("0");

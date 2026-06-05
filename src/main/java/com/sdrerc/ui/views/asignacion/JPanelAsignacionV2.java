@@ -6,6 +6,11 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
+import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
+import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
@@ -15,7 +20,6 @@ import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -34,7 +38,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -49,7 +52,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
-    private final JTextField txtBusqueda = new JTextField(26);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o documento", 28);
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
@@ -70,7 +73,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
     private final JTextArea txtComentario = new JTextArea(3, 18);
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
-    private final JTable table = new JTable(tableModel);
+    private final JTable table = new AppV2Table(tableModel);
+    private final AppV2TablePanel tablePanel = new AppV2TablePanel(
+            table,
+            "Sin expedientes para mostrar",
+            "Seleccione filtros y presione Buscar.");
     private final List<AsignacionExpedienteDTO> expedientes = new ArrayList<>();
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "REGISTRO / REGISTRADO", AppV2Theme.INFO);
     private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
@@ -118,9 +125,7 @@ public class JPanelAsignacionV2 extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setOpaque(false);
 
-        JPanel filtros = new JPanel(new GridBagLayout());
-        filtros.setBackground(AppV2Theme.SURFACE);
-        filtros.setBorder(AppV2Theme.toolbarBorder());
+        JPanel filtros = new AppV2FilterPanel();
 
         configurarControles();
         GridBagConstraints gbc = new GridBagConstraints();
@@ -129,7 +134,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        filtros.add(label("Buscar"), gbc);
+        filtros.add(label("Búsqueda"), gbc);
         gbc.gridx = 1;
         gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -142,8 +147,7 @@ public class JPanelAsignacionV2 extends JPanel {
         gbc.gridx = 3;
         filtros.add(spnLimite, gbc);
 
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        acciones.setOpaque(false);
+        JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
         acciones.add(btnVerDetalle);
@@ -152,12 +156,9 @@ public class JPanelAsignacionV2 extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         filtros.add(acciones, gbc);
 
-        JPanel seleccion = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        seleccion.setOpaque(false);
+        JPanel seleccion = AppV2ActionPanel.left();
         seleccion.add(btnSeleccionarVisibles);
         seleccion.add(btnLimpiarSeleccion);
-        seleccion.add(btnAsignarSeleccionado);
-        seleccion.add(btnAsignarSeleccionados);
         seleccion.add(lblSeleccionados);
 
         JPanel barra = new JPanel(new BorderLayout(8, 8));
@@ -172,13 +173,13 @@ public class JPanelAsignacionV2 extends JPanel {
         lblSeleccionados.setForeground(AppV2Theme.PRIMARY);
 
         panel.add(barra, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(tablePanel, BorderLayout.CENTER);
         return panel;
     }
 
     private JPanel crearPanelAsignacion() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(360, 0));
+        panel.setPreferredSize(new Dimension(400, 0));
         panel.setBackground(AppV2Theme.SURFACE);
         panel.setBorder(AppV2Theme.sectionBorder());
 
@@ -204,8 +205,13 @@ public class JPanelAsignacionV2 extends JPanel {
         acciones.add(btnAsignarSeleccionado);
         acciones.add(btnAsignarSeleccionados);
 
+        JScrollPane formScroll = new JScrollPane(form);
+        formScroll.setBorder(null);
+        formScroll.getVerticalScrollBar().setUnitIncrement(16);
+        formScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
         panel.add(title, BorderLayout.NORTH);
-        panel.add(form, BorderLayout.CENTER);
+        panel.add(formScroll, BorderLayout.CENTER);
         panel.add(acciones, BorderLayout.SOUTH);
         return panel;
     }
@@ -249,6 +255,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void configurarControles() {
         txtBusqueda.setPreferredSize(new Dimension(360, 34));
+        txtBusqueda.setMinimumSize(new Dimension(300, 34));
         spnLimite.setPreferredSize(new Dimension(88, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
@@ -422,6 +429,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblEstado.setText(items.isEmpty()
                 ? "No se encontraron expedientes pendientes de asignación."
                 : items.size() + " expediente(s) pendiente(s) encontrados.");
+        tablePanel.setEmpty(items.isEmpty());
         actualizarPanelSeleccion();
     }
 
@@ -437,6 +445,7 @@ public class JPanelAsignacionV2 extends JPanel {
         spnLimite.setValue(200);
         expedientes.clear();
         tableModel.setRowCount(0);
+        tablePanel.setEmpty(true);
         txtComentario.setText("");
         cardPendientes.setValue("0");
         cardRelacionados.setValue("0");

@@ -2,6 +2,11 @@ package com.sdrerc.ui.views.expedienteconsola;
 
 import com.sdrerc.application.sdrercapp.ExpedienteConsultaService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
+import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
+import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -9,9 +14,7 @@ import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
@@ -24,10 +27,8 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
@@ -46,7 +47,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final String subtituloBandeja;
     private final boolean etapaBloqueada;
     private final boolean mostrarEncabezado;
-    private final JTextField txtBusqueda = new JTextField(18);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular o responsable", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
@@ -77,7 +78,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return false;
         }
     };
-    private final JTable table = new JTable(tableModel);
+    private final JTable table = new AppV2Table(tableModel);
+    private final AppV2TablePanel tablePanel = new AppV2TablePanel(
+            table,
+            "Sin expedientes para mostrar",
+            "Seleccione filtros y presione Buscar.");
 
     public JPanelBandejaExpedientesNueva() {
         this(new ExpedienteConsultaService());
@@ -130,9 +135,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         configurarBotones();
 
-        JPanel filtros = new JPanel(new GridBagLayout());
-        filtros.setBackground(AppV2Theme.SURFACE);
-        filtros.setBorder(AppV2Theme.toolbarBorder());
+        JPanel filtros = new AppV2FilterPanel();
         configurarControlesFiltro();
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -141,7 +144,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         gbc.gridy = 0;
         gbc.gridx = 0;
-        filtros.add(crearLabelFiltro("Buscar expediente, trámite o titular"), gbc);
+        filtros.add(crearLabelFiltro("Búsqueda"), gbc);
 
         gbc.gridx = 1;
         gbc.gridwidth = 3;
@@ -152,8 +155,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         gbc.weightx = 0;
         gbc.fill = GridBagConstraints.NONE;
 
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        acciones.setOpaque(false);
+        JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
         acciones.add(btnVerDetalle);
@@ -211,9 +213,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         superior.add(lblResultado, BorderLayout.SOUTH);
 
         add(superior, BorderLayout.NORTH);
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        add(scroll, BorderLayout.CENTER);
+        add(tablePanel, BorderLayout.CENTER);
     }
 
     private void aplicarConfiguracionInicial() {
@@ -335,6 +335,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         spnLimite.setValue(200);
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
+        tablePanel.setEmpty(true);
         lblResultado.setText(etapaBloqueada
                 ? "Filtros limpiados. La bandeja permanece filtrada por Registro."
                 : "Filtros limpiados. Presione Buscar para cargar expedientes.");
@@ -361,6 +362,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente"
             });
         }
+        tablePanel.setEmpty(expedientes.isEmpty());
         if (expedientes.isEmpty()) {
             lblResultado.setText("No se encontraron expedientes con los filtros ingresados.");
         } else {

@@ -1,5 +1,6 @@
 package com.sdrerc.ui.appv2;
 
+import com.sdrerc.ui.appv2.components.AppV2SidebarCollapseButton;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.administracion.equipojuridico.JPanelEquipoJuridicoV2;
 import com.sdrerc.ui.views.administracion.usuarios.JPanelUsuariosV2;
@@ -29,12 +30,26 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MenuPrincipalV2 extends JFrame {
+
+    private static final int SIDEBAR_EXPANDED_WIDTH = 286;
+    private static final int SIDEBAR_COLLAPSED_WIDTH = 76;
 
     private final JPanel body = new JPanel(new BorderLayout());
     private final JLabel lblTitulo = new JLabel("Inicio");
     private final JLabel lblSubtitulo = new JLabel("Panel inicial de SDRERC V2");
+    private final List<JButton> botonesMenu = new ArrayList<JButton>();
+    private final List<JLabel> seccionesMenu = new ArrayList<JLabel>();
+    private final Map<JButton, String> textosBotonesMenu = new LinkedHashMap<JButton, String>();
+    private JPanel sidebar;
+    private JLabel marca;
+    private AppV2SidebarCollapseButton btnToggleSidebar;
+    private boolean sidebarCollapsed;
     private JButton btnInicio;
     private JButton btnBandeja;
     private JButton btnRegistroRecepcion;
@@ -75,17 +90,24 @@ public class MenuPrincipalV2 extends JFrame {
     }
 
     private JPanel crearMenuLateral() {
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(286, 0));
+        sidebar = new JPanel(new BorderLayout());
+        sidebar.setPreferredSize(new Dimension(SIDEBAR_EXPANDED_WIDTH, 0));
         sidebar.setBackground(AppV2Theme.SIDEBAR);
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 12));
 
-        JLabel marca = new JLabel("<html><b>SDRERC V2</b><br><span style='font-size:10px'>Service Console</span></html>");
+        marca = new JLabel("<html><b>SDRERC V2</b><br><span style='font-size:10px'>Service Console</span></html>");
         marca.setForeground(Color.WHITE);
         marca.setFont(AppV2Theme.fontBold(22));
         marca.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(57, 91, 120)),
                 BorderFactory.createEmptyBorder(0, 8, 16, 8)));
+        btnToggleSidebar = new AppV2SidebarCollapseButton();
+        btnToggleSidebar.addActionListener(e -> toggleSidebar());
+
+        JPanel top = new JPanel(new BorderLayout(8, 0));
+        top.setOpaque(false);
+        top.add(marca, BorderLayout.CENTER);
+        top.add(btnToggleSidebar, BorderLayout.EAST);
 
         JPanel opciones = new JPanel();
         opciones.setOpaque(false);
@@ -155,7 +177,7 @@ public class MenuPrincipalV2 extends JFrame {
         scrollMenu.setBorder(null);
         scrollMenu.getVerticalScrollBar().setUnitIncrement(16);
 
-        sidebar.add(marca, BorderLayout.NORTH);
+        sidebar.add(top, BorderLayout.NORTH);
         sidebar.add(scrollMenu, BorderLayout.CENTER);
         botonActivo = btnInicio;
         aplicarEstadoActivo(btnInicio);
@@ -168,6 +190,7 @@ public class MenuPrincipalV2 extends JFrame {
         label.setFont(AppV2Theme.fontBold(11));
         label.setBorder(BorderFactory.createEmptyBorder(14, 10, 6, 10));
         label.setAlignmentX(LEFT_ALIGNMENT);
+        seccionesMenu.add(label);
         return label;
     }
 
@@ -229,6 +252,9 @@ public class MenuPrincipalV2 extends JFrame {
         boton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         boton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         boton.setAlignmentX(LEFT_ALIGNMENT);
+        boton.setToolTipText(texto);
+        textosBotonesMenu.put(boton, texto);
+        botonesMenu.add(boton);
         boton.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
@@ -245,6 +271,92 @@ public class MenuPrincipalV2 extends JFrame {
             }
         });
         return boton;
+    }
+
+    private void toggleSidebar() {
+        sidebarCollapsed = !sidebarCollapsed;
+        actualizarSidebar();
+    }
+
+    private void actualizarSidebar() {
+        sidebar.setPreferredSize(new Dimension(sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH, 0));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 12));
+        marca.setText(sidebarCollapsed
+                ? "<html><b>SD</b></html>"
+                : "<html><b>SDRERC V2</b><br><span style='font-size:10px'>Service Console</span></html>");
+        marca.setFont(AppV2Theme.fontBold(sidebarCollapsed ? 18 : 22));
+        marca.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
+        btnToggleSidebar.setCollapsed(sidebarCollapsed);
+        for (JLabel seccion : seccionesMenu) {
+            seccion.setVisible(!sidebarCollapsed);
+        }
+        for (JButton boton : botonesMenu) {
+            String texto = textosBotonesMenu.get(boton);
+            boton.setText(sidebarCollapsed ? abreviarMenu(texto) : texto);
+            boton.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
+            boton.setToolTipText(texto);
+            if (boton == botonActivo) {
+                aplicarEstadoActivo(boton);
+            } else {
+                aplicarEstadoNormal(boton);
+            }
+        }
+        sidebar.revalidate();
+        sidebar.repaint();
+        getContentPane().revalidate();
+        getContentPane().repaint();
+    }
+
+    private String abreviarMenu(String texto) {
+        if ("Inicio".equals(texto)) {
+            return "IN";
+        }
+        if ("Bandeja de Expedientes".equals(texto)) {
+            return "BE";
+        }
+        if ("Registro / Recepción".equals(texto)) {
+            return "RR";
+        }
+        if ("Asignación".equals(texto)) {
+            return "AS";
+        }
+        if ("Análisis".equals(texto)) {
+            return "AN";
+        }
+        if ("Verificación".equals(texto)) {
+            return "VE";
+        }
+        if ("Firma / Emisión".equals(texto)) {
+            return "FE";
+        }
+        if ("Ejecución".equals(texto)) {
+            return "EJ";
+        }
+        if ("Notificación".equals(texto)) {
+            return "NO";
+        }
+        if ("Publicación".equals(texto)) {
+            return "PU";
+        }
+        if ("Expediente digital".equals(texto)) {
+            return "ED";
+        }
+        if ("Cierre / Archivo".equals(texto)) {
+            return "CA";
+        }
+        if ("Usuarios".equals(texto)) {
+            return "US";
+        }
+        if ("Equipo Jurídico".equals(texto)) {
+            return "EQ";
+        }
+        if ("Roles".equals(texto)) {
+            return "RO";
+        }
+        if ("Salir".equals(texto)) {
+            return "SA";
+        }
+        return texto == null || texto.length() < 2 ? "" : texto.substring(0, 2).toUpperCase();
     }
 
     private void mostrarInicio() {
@@ -374,7 +486,8 @@ public class MenuPrincipalV2 extends JFrame {
         boton.setBackground(AppV2Theme.SIDEBAR_ACTIVE);
         boton.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.TEAL),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+                BorderFactory.createEmptyBorder(10, sidebarCollapsed ? 4 : 12, 10, sidebarCollapsed ? 4 : 12)));
+        boton.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
         boton.setForeground(Color.WHITE);
     }
 
@@ -382,7 +495,8 @@ public class MenuPrincipalV2 extends JFrame {
         boton.setBackground(AppV2Theme.SIDEBAR);
         boton.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.SIDEBAR),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+                BorderFactory.createEmptyBorder(10, sidebarCollapsed ? 4 : 12, 10, sidebarCollapsed ? 4 : 12)));
+        boton.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
         boton.setForeground(Color.WHITE);
     }
 }

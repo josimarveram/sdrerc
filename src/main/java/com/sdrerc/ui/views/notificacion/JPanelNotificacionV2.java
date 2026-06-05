@@ -10,6 +10,8 @@ import com.sdrerc.domain.dto.sdrercapp.NotificacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionRequeridaDTO;
+import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -58,7 +60,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final NotificacionExpedienteService notificacionService;
     private final DocumentoEjecucionService documentoService;
 
-    private final JTextField txtBusqueda = new JTextField(26);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, resolución o destinatario", 28);
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
@@ -98,7 +100,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JTextArea txtObservacion = new JTextArea(3, 22);
 
     private final NotificacionTableModel tableModel = new NotificacionTableModel();
-    private final JTable table = new JTable(tableModel);
+    private final JTable table = new AppV2Table(tableModel);
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -168,7 +170,7 @@ public class JPanelNotificacionV2 extends JPanel {
         gbc.anchor = GridBagConstraints.WEST;
         gbc.gridy = 0;
         gbc.gridx = 0;
-        filtros.add(label("Buscar"), gbc);
+        filtros.add(label("Búsqueda"), gbc);
         gbc.gridx = 1;
         gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
