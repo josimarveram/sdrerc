@@ -9,7 +9,7 @@ import javax.swing.JButton;
 public class AppV2SidebarCollapseButton extends JButton {
 
     public AppV2SidebarCollapseButton() {
-        super("<");
+        super();
         setFocusPainted(false);
         setOpaque(true);
         setContentAreaFilled(true);
@@ -17,15 +17,16 @@ public class AppV2SidebarCollapseButton extends JButton {
         setBackground(AppV2Theme.SIDEBAR_HOVER);
         setForeground(java.awt.Color.WHITE);
         setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+        setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        setPreferredSize(new Dimension(34, 30));
-        setMinimumSize(new Dimension(34, 30));
+        setPreferredSize(new Dimension(36, 32));
+        setMinimumSize(new Dimension(36, 32));
+        setIcon(AppV2IconProvider.action(AppV2IconProvider.COLLAPSE));
         setToolTipText("Colapsar menú");
     }
 
     public void setCollapsed(boolean collapsed) {
-        setText(collapsed ? ">" : "<");
+        setIcon(AppV2IconProvider.action(collapsed ? AppV2IconProvider.EXPAND : AppV2IconProvider.COLLAPSE));
         setToolTipText(collapsed ? "Expandir menú" : "Colapsar menú");
     }
 }

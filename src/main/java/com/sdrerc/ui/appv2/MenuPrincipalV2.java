@@ -1,5 +1,6 @@
 package com.sdrerc.ui.appv2;
 
+import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2SidebarCollapseButton;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.administracion.equipojuridico.JPanelEquipoJuridicoV2;
@@ -37,8 +38,8 @@ import java.util.Map;
 
 public class MenuPrincipalV2 extends JFrame {
 
-    private static final int SIDEBAR_EXPANDED_WIDTH = 286;
-    private static final int SIDEBAR_COLLAPSED_WIDTH = 76;
+    private static final int SIDEBAR_EXPANDED_WIDTH = 304;
+    private static final int SIDEBAR_COLLAPSED_WIDTH = 72;
 
     private final JPanel body = new JPanel(new BorderLayout());
     private final JLabel lblTitulo = new JLabel("Inicio");
@@ -46,6 +47,8 @@ public class MenuPrincipalV2 extends JFrame {
     private final List<JButton> botonesMenu = new ArrayList<JButton>();
     private final List<JLabel> seccionesMenu = new ArrayList<JLabel>();
     private final Map<JButton, String> textosBotonesMenu = new LinkedHashMap<JButton, String>();
+    private final Map<JButton, String> iconosBotonesMenu = new LinkedHashMap<JButton, String>();
+    private final Map<JLabel, String> textosSeccionesMenu = new LinkedHashMap<JLabel, String>();
     private JPanel sidebar;
     private JLabel marca;
     private AppV2SidebarCollapseButton btnToggleSidebar;
@@ -114,60 +117,64 @@ public class MenuPrincipalV2 extends JFrame {
         opciones.setLayout(new BoxLayout(opciones, BoxLayout.Y_AXIS));
 
         opciones.add(crearSeccionMenu("Inicio"));
-        btnInicio = crearBotonMenu("Inicio");
+        btnInicio = crearBotonMenu("Inicio", AppV2IconProvider.HOME);
         btnInicio.addActionListener(e -> mostrarInicio());
         opciones.add(btnInicio);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
-        opciones.add(crearSeccionMenu("Expedientes"));
-        btnBandeja = crearBotonMenu("Bandeja de Expedientes");
+        opciones.add(crearSeccionMenu("Operación registral"));
+        btnBandeja = crearBotonMenu("Bandeja de Expedientes", AppV2IconProvider.BANDEJA);
         btnBandeja.addActionListener(e -> mostrarBandeja(btnBandeja));
         opciones.add(btnBandeja);
-        btnRegistroRecepcion = crearBotonMenu("Registro / Recepción");
+        btnRegistroRecepcion = crearBotonMenu("Registro / Recepción", AppV2IconProvider.REGISTRO);
         btnRegistroRecepcion.addActionListener(e -> mostrarRegistroRecepcion(btnRegistroRecepcion));
         opciones.add(btnRegistroRecepcion);
-        btnAsignacion = crearBotonMenu("Asignación");
+        btnAsignacion = crearBotonMenu("Asignación", AppV2IconProvider.ASIGNACION);
         btnAsignacion.addActionListener(e -> mostrarAsignacion(btnAsignacion));
         opciones.add(btnAsignacion);
-        btnAnalisis = crearBotonMenu("Análisis");
+        btnAnalisis = crearBotonMenu("Análisis", AppV2IconProvider.ANALISIS);
         btnAnalisis.addActionListener(e -> mostrarAnalisis(btnAnalisis));
         opciones.add(btnAnalisis);
-        btnVerificacion = crearBotonMenu("Verificación");
+        btnVerificacion = crearBotonMenu("Verificación", AppV2IconProvider.VERIFICACION);
         btnVerificacion.addActionListener(e -> mostrarVerificacion(btnVerificacion));
         opciones.add(btnVerificacion);
-        btnFirmaEmision = crearBotonMenu("Firma / Emisión");
+        btnFirmaEmision = crearBotonMenu("Firma / Emisión", AppV2IconProvider.FIRMA_EMISION);
         btnFirmaEmision.addActionListener(e -> mostrarFirmaEmision(btnFirmaEmision));
         opciones.add(btnFirmaEmision);
-        btnEjecucion = crearBotonMenu("Ejecución");
+        btnEjecucion = crearBotonMenu("Ejecución", AppV2IconProvider.EJECUCION);
         btnEjecucion.addActionListener(e -> mostrarEjecucion(btnEjecucion));
         opciones.add(btnEjecucion);
-        btnNotificacion = crearBotonMenu("Notificación");
+        opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
+
+        opciones.add(crearSeccionMenu("Seguimiento y comunicación"));
+        btnNotificacion = crearBotonMenu("Notificación", AppV2IconProvider.NOTIFICACION);
         btnNotificacion.addActionListener(e -> mostrarNotificacion(btnNotificacion));
         opciones.add(btnNotificacion);
-        btnPublicacion = crearBotonMenu("Publicación");
+        btnPublicacion = crearBotonMenu("Publicación", AppV2IconProvider.PUBLICACION);
         btnPublicacion.addActionListener(e -> mostrarPublicacion(btnPublicacion));
         opciones.add(btnPublicacion);
-        btnExpedienteDigital = crearBotonMenu("Expediente digital");
+        btnExpedienteDigital = crearBotonMenu("Expediente digital", AppV2IconProvider.EXPEDIENTE_DIGITAL);
         btnExpedienteDigital.addActionListener(e -> mostrarExpedienteDigital(btnExpedienteDigital));
         opciones.add(btnExpedienteDigital);
-        btnCierreArchivo = crearBotonMenu("Cierre / Archivo");
+        btnCierreArchivo = crearBotonMenu("Cierre / Archivo", AppV2IconProvider.CIERRE_ARCHIVO);
         btnCierreArchivo.addActionListener(e -> mostrarCierreArchivo(btnCierreArchivo));
         opciones.add(btnCierreArchivo);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Administración"));
-        btnUsuarios = crearBotonMenu("Usuarios");
+        btnUsuarios = crearBotonMenu("Usuarios", AppV2IconProvider.USUARIOS);
         btnUsuarios.addActionListener(e -> mostrarUsuarios(btnUsuarios));
         opciones.add(btnUsuarios);
-        btnEquipoJuridico = crearBotonMenu("Equipo Jurídico");
+        btnEquipoJuridico = crearBotonMenu("Equipo Jurídico", AppV2IconProvider.EQUIPO_JURIDICO);
         btnEquipoJuridico.addActionListener(e -> mostrarEquipoJuridico(btnEquipoJuridico));
         opciones.add(btnEquipoJuridico);
-        btnRoles = crearBotonMenu("Roles");
+        btnRoles = crearBotonMenu("Roles", AppV2IconProvider.ROLES);
         btnRoles.addActionListener(e -> mostrarRoles(btnRoles));
         opciones.add(btnRoles);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
-        JButton btnSalir = crearBotonMenu("Salir");
+        opciones.add(crearSeccionMenu("Sistema"));
+        JButton btnSalir = crearBotonMenu("Salir", AppV2IconProvider.SALIR);
         btnSalir.addActionListener(e -> dispose());
         opciones.add(btnSalir);
 
@@ -189,7 +196,9 @@ public class MenuPrincipalV2 extends JFrame {
         label.setForeground(new Color(190, 211, 230));
         label.setFont(AppV2Theme.fontBold(11));
         label.setBorder(BorderFactory.createEmptyBorder(14, 10, 6, 10));
+        label.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         label.setAlignmentX(LEFT_ALIGNMENT);
+        textosSeccionesMenu.put(label, texto.toUpperCase());
         seccionesMenu.add(label);
         return label;
     }
@@ -236,9 +245,13 @@ public class MenuPrincipalV2 extends JFrame {
         return header;
     }
 
-    private JButton crearBotonMenu(String texto) {
+    private JButton crearBotonMenu(String texto, String iconCode) {
         JButton boton = new JButton(texto);
+        boton.setIcon(AppV2IconProvider.menu(iconCode));
+        boton.setIconTextGap(12);
         boton.setHorizontalAlignment(SwingConstants.LEFT);
+        boton.setHorizontalTextPosition(SwingConstants.RIGHT);
+        boton.setVerticalTextPosition(SwingConstants.CENTER);
         boton.setFocusPainted(false);
         boton.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.SIDEBAR),
@@ -250,10 +263,11 @@ public class MenuPrincipalV2 extends JFrame {
         boton.setBorderPainted(true);
         boton.setFont(new Font(AppV2Theme.FONT_FAMILY, Font.BOLD, 13));
         boton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        boton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        boton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         boton.setAlignmentX(LEFT_ALIGNMENT);
         boton.setToolTipText(texto);
         textosBotonesMenu.put(boton, texto);
+        iconosBotonesMenu.put(boton, iconCode);
         botonesMenu.add(boton);
         boton.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -282,17 +296,29 @@ public class MenuPrincipalV2 extends JFrame {
         sidebar.setPreferredSize(new Dimension(sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH, 0));
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 12));
         marca.setText(sidebarCollapsed
-                ? "<html><b>SD</b></html>"
+                ? ""
                 : "<html><b>SDRERC V2</b><br><span style='font-size:10px'>Service Console</span></html>");
+        marca.setVisible(!sidebarCollapsed);
         marca.setFont(AppV2Theme.fontBold(sidebarCollapsed ? 18 : 22));
         marca.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
         btnToggleSidebar.setCollapsed(sidebarCollapsed);
         for (JLabel seccion : seccionesMenu) {
-            seccion.setVisible(!sidebarCollapsed);
+            String textoSeccion = textosSeccionesMenu.get(seccion);
+            seccion.setVisible(true);
+            seccion.setText(sidebarCollapsed ? "" : textoSeccion);
+            seccion.setBorder(sidebarCollapsed
+                    ? BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(52, 83, 109)),
+                            BorderFactory.createEmptyBorder(7, 0, 5, 0))
+                    : BorderFactory.createEmptyBorder(14, 10, 6, 10));
+            seccion.setMaximumSize(new Dimension(Integer.MAX_VALUE, sidebarCollapsed ? 14 : 34));
         }
         for (JButton boton : botonesMenu) {
             String texto = textosBotonesMenu.get(boton);
-            boton.setText(sidebarCollapsed ? abreviarMenu(texto) : texto);
+            String iconCode = iconosBotonesMenu.get(boton);
+            boton.setText(sidebarCollapsed ? "" : texto);
+            boton.setIcon(sidebarCollapsed ? AppV2IconProvider.menuCollapsed(iconCode) : AppV2IconProvider.menu(iconCode));
+            boton.setIconTextGap(sidebarCollapsed ? 0 : 12);
             boton.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
             boton.setToolTipText(texto);
             if (boton == botonActivo) {
@@ -305,58 +331,6 @@ public class MenuPrincipalV2 extends JFrame {
         sidebar.repaint();
         getContentPane().revalidate();
         getContentPane().repaint();
-    }
-
-    private String abreviarMenu(String texto) {
-        if ("Inicio".equals(texto)) {
-            return "IN";
-        }
-        if ("Bandeja de Expedientes".equals(texto)) {
-            return "BE";
-        }
-        if ("Registro / Recepción".equals(texto)) {
-            return "RR";
-        }
-        if ("Asignación".equals(texto)) {
-            return "AS";
-        }
-        if ("Análisis".equals(texto)) {
-            return "AN";
-        }
-        if ("Verificación".equals(texto)) {
-            return "VE";
-        }
-        if ("Firma / Emisión".equals(texto)) {
-            return "FE";
-        }
-        if ("Ejecución".equals(texto)) {
-            return "EJ";
-        }
-        if ("Notificación".equals(texto)) {
-            return "NO";
-        }
-        if ("Publicación".equals(texto)) {
-            return "PU";
-        }
-        if ("Expediente digital".equals(texto)) {
-            return "ED";
-        }
-        if ("Cierre / Archivo".equals(texto)) {
-            return "CA";
-        }
-        if ("Usuarios".equals(texto)) {
-            return "US";
-        }
-        if ("Equipo Jurídico".equals(texto)) {
-            return "EQ";
-        }
-        if ("Roles".equals(texto)) {
-            return "RO";
-        }
-        if ("Salir".equals(texto)) {
-            return "SA";
-        }
-        return texto == null || texto.length() < 2 ? "" : texto.substring(0, 2).toUpperCase();
     }
 
     private void mostrarInicio() {
@@ -486,8 +460,9 @@ public class MenuPrincipalV2 extends JFrame {
         boton.setBackground(AppV2Theme.SIDEBAR_ACTIVE);
         boton.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.TEAL),
-                BorderFactory.createEmptyBorder(10, sidebarCollapsed ? 4 : 12, 10, sidebarCollapsed ? 4 : 12)));
+                BorderFactory.createEmptyBorder(10, sidebarCollapsed ? 6 : 12, 10, sidebarCollapsed ? 6 : 12)));
         boton.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
+        boton.setIconTextGap(sidebarCollapsed ? 0 : 12);
         boton.setForeground(Color.WHITE);
     }
 
@@ -495,8 +470,9 @@ public class MenuPrincipalV2 extends JFrame {
         boton.setBackground(AppV2Theme.SIDEBAR);
         boton.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.SIDEBAR),
-                BorderFactory.createEmptyBorder(10, sidebarCollapsed ? 4 : 12, 10, sidebarCollapsed ? 4 : 12)));
+                BorderFactory.createEmptyBorder(10, sidebarCollapsed ? 6 : 12, 10, sidebarCollapsed ? 6 : 12)));
         boton.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
+        boton.setIconTextGap(sidebarCollapsed ? 0 : 12);
         boton.setForeground(Color.WHITE);
     }
 }
