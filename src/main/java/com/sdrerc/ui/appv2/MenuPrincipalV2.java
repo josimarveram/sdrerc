@@ -10,6 +10,7 @@ import com.sdrerc.ui.views.ejecucion.JPanelEjecucionV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.firmaemision.JPanelFirmaEmisionV2;
 import com.sdrerc.ui.views.notificacion.JPanelNotificacionV2;
+import com.sdrerc.ui.views.publicacion.JPanelPublicacionV2;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
 import com.sdrerc.ui.views.verificacion.JPanelVerificacionV2;
 import java.awt.BorderLayout;
@@ -42,6 +43,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnFirmaEmision;
     private JButton btnEjecucion;
     private JButton btnNotificacion;
+    private JButton btnPublicacion;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -117,10 +119,12 @@ public class MenuPrincipalV2 extends JFrame {
         btnNotificacion = crearBotonMenu("Notificación");
         btnNotificacion.addActionListener(e -> mostrarNotificacion(btnNotificacion));
         opciones.add(btnNotificacion);
+        btnPublicacion = crearBotonMenu("Publicación");
+        btnPublicacion.addActionListener(e -> mostrarPublicacion(btnPublicacion));
+        opciones.add(btnPublicacion);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Seguimiento"));
-        opciones.add(crearBotonPendiente("Publicación"));
         opciones.add(crearBotonPendiente("Expediente digital"));
         opciones.add(crearBotonPendiente("Cierre / Archivo"));
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
@@ -319,6 +323,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Notificación");
         lblSubtitulo.setText("Gestión de notificaciones, cargos de acuse y resultado de comunicación al administrado");
         cambiarContenido(new JPanelNotificacionV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarPublicacion(JButton boton) {
+        lblTitulo.setText("Publicación");
+        lblSubtitulo.setText("Gestión de expedientes con publicación pendiente por notificación no concretada");
+        cambiarContenido(new JPanelPublicacionV2());
         aplicarEstadoActivo(boton);
     }
 
