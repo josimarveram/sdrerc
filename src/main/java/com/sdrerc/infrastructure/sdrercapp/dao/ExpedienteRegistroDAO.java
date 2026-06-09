@@ -48,10 +48,6 @@ public class ExpedienteRegistroDAO {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             for (CargaDiariaPreviewDTO item : registros) {
                 List<String> motivos = new ArrayList<>();
-                String porTramite = buscarPorTramite(conn, item.getNumeroTramite());
-                if (porTramite != null) {
-                    motivos.add("Trámite ya existe en " + porTramite);
-                }
                 String porActaTitular = buscarPorActaYTitular(conn, item.getNumeroActa(), item.getTitular());
                 if (porActaTitular != null) {
                     motivos.add("Acta y titular ya existen en " + porActaTitular);
@@ -185,20 +181,6 @@ public class ExpedienteRegistroDAO {
                     throw (SQLException) ex;
                 }
                 throw new SQLException(ex.getMessage(), ex);
-            }
-        }
-    }
-
-    private String buscarPorTramite(Connection conn, String numeroTramite) throws SQLException {
-        if (!hasText(numeroTramite)) {
-            return null;
-        }
-        String sql = "SELECT numero_expediente FROM expediente "
-                + "WHERE activo = 1 AND UPPER(numero_tramite_documentario) = ? AND ROWNUM = 1";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, numeroTramite.trim().toUpperCase(Locale.ROOT));
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getString("numero_expediente") : null;
             }
         }
     }

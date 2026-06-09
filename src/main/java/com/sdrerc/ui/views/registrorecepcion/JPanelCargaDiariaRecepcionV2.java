@@ -52,7 +52,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private final ResumenCard cardTotal = new ResumenCard("Total leídos", "0", "Pendiente de archivo", AppV2Theme.INFO);
     private final ResumenCard cardValidos = new ResumenCard("Válidos", "0", "Pendiente de validación", AppV2Theme.SUCCESS);
     private final ResumenCard cardErrores = new ResumenCard("Con errores", "0", "No registrables", AppV2Theme.ERROR);
-    private final ResumenCard cardDuplicados = new ResumenCard("Posibles duplicados", "0", "Se conservan", AppV2Theme.WARNING);
+    private final ResumenCard cardDuplicados = new ResumenCard("Posibles duplicados", "0", "Acta + titular", AppV2Theme.WARNING);
     private final ResumenCard cardListos = new ResumenCard("Listos para registrar", "0", "Confirmación requerida", AppV2Theme.TEAL);
     private final ResumenCard cardRegistrados = new ResumenCard("Registrados", "0", "Pendiente", AppV2Theme.INDIGO);
 
@@ -184,7 +184,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         panel.setOpaque(false);
         panel.add(crearNota(
                 "Duplicados",
-                "Los duplicados se detectan por número de trámite o por la combinación acta y titular. Las filas repetidas se bloquean para evitar generar otro expediente."));
+                "Los duplicados se detectan únicamente por la combinación acta y titular. Las filas repetidas se bloquean para evitar generar otro expediente."));
         panel.add(crearNota(
                 "Confirmación",
                 "La confirmación registra expediente, solicitud, acta, personas, documento inicial e historial en una transacción sobre SDRERC_APP."));
@@ -276,7 +276,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             mostrarInfo("Previsualice registros antes de validar.");
             return;
         }
-        setTrabajando(true, "Validando registros y posibles duplicados en SDRERC_APP...");
+        setTrabajando(true, "Validando registros y duplicidad por acta y titular en SDRERC_APP...");
         SwingWorker<List<CargaDiariaPreviewDTO>, Void> worker = new SwingWorker<List<CargaDiariaPreviewDTO>, Void>() {
             @Override
             protected List<CargaDiariaPreviewDTO> doInBackground() throws Exception {
@@ -390,7 +390,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         cardTotal.actualizar(String.valueOf(resumen.getTotalLeidos()), resumen.getTotalLeidos() == 0 ? "Pendiente de archivo" : "Archivo leído");
         cardValidos.actualizar(String.valueOf(resumen.getValidos()), "Sin errores críticos");
         cardErrores.actualizar(String.valueOf(resumen.getConErrores()), "No registrables");
-        cardDuplicados.actualizar(String.valueOf(resumen.getPosiblesDuplicados()), "Advertencia");
+        cardDuplicados.actualizar(String.valueOf(resumen.getPosiblesDuplicados()), "Acta + titular");
         cardListos.actualizar(String.valueOf(resumen.getListosParaRegistrar()), "Confirmación requerida");
         cardRegistrados.actualizar(String.valueOf(resumen.getRegistrados()), "En SDRERC_APP");
         actualizarBotones();

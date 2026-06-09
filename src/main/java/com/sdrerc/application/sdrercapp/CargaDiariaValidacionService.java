@@ -31,12 +31,10 @@ public class CargaDiariaValidacionService {
             return new ArrayList<>();
         }
 
-        Map<String, Integer> tramites = new HashMap<>();
         Map<String, Integer> actaTitular = new HashMap<>();
         Map<String, Integer> primeraFilaActaTitular = new HashMap<>();
         for (CargaDiariaPreviewDTO item : registros) {
             item.reiniciarValidacion();
-            sumar(tramites, item.getNumeroTramite());
             String claveActaTitular = claveActaTitular(item);
             sumarClave(actaTitular, claveActaTitular);
             if (hasText(claveActaTitular) && !primeraFilaActaTitular.containsKey(claveActaTitular)) {
@@ -84,11 +82,6 @@ public class CargaDiariaValidacionService {
             }
 
             List<String> motivosDuplicado = new ArrayList<>();
-            if (hasText(item.getNumeroTramite()) && tramites.get(clave(item.getNumeroTramite())) != null
-                    && tramites.get(clave(item.getNumeroTramite())) > 1) {
-                motivosDuplicado.add("Trámite repetido en el archivo.");
-                bloqueadoPorDuplicado = true;
-            }
             String claveActaTitular = claveActaTitular(item);
             Integer cantidadActaTitular = hasText(claveActaTitular) ? actaTitular.get(claveActaTitular) : null;
             if (cantidadActaTitular != null && cantidadActaTitular > 1) {
@@ -127,14 +120,6 @@ public class CargaDiariaValidacionService {
         }
 
         return registros;
-    }
-
-    private void sumar(Map<String, Integer> contador, String value) {
-        if (!hasText(value)) {
-            return;
-        }
-        String key = clave(value);
-        sumarClave(contador, key);
     }
 
     private void sumarClave(Map<String, Integer> contador, String key) {
