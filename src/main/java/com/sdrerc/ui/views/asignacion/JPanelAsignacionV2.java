@@ -30,6 +30,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -137,16 +138,13 @@ public class JPanelAsignacionV2 extends JPanel {
         gbc.gridy = 0;
         filtros.add(label("Búsqueda"), gbc);
         gbc.gridx = 1;
+        gbc.gridwidth = 3;
         gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         filtros.add(txtBusqueda, gbc);
+        gbc.gridwidth = 1;
         gbc.weightx = 0;
         gbc.fill = GridBagConstraints.NONE;
-
-        gbc.gridx = 2;
-        filtros.add(label("Mostrar"), gbc);
-        gbc.gridx = 3;
-        filtros.add(spnLimite, gbc);
 
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
@@ -154,8 +152,19 @@ public class JPanelAsignacionV2 extends JPanel {
         acciones.add(btnVerDetalle);
         acciones.add(btnVerRelacionados);
         gbc.gridx = 4;
+        gbc.gridwidth = 4;
+        gbc.anchor = GridBagConstraints.EAST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         filtros.add(acciones, gbc);
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        filtros.add(label("Mostrar"), gbc);
+        gbc.gridx = 1;
+        filtros.add(spnLimite, gbc);
 
         JPanel seleccion = AppV2ActionPanel.left();
         seleccion.add(btnSeleccionarVisibles);
@@ -180,7 +189,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private JPanel crearPanelAsignacion() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(400, 0));
+        panel.setPreferredSize(new Dimension(420, 0));
         panel.setBackground(AppV2Theme.SURFACE);
         panel.setBorder(AppV2Theme.sectionBorder());
 
@@ -188,32 +197,87 @@ public class JPanelAsignacionV2 extends JPanel {
         title.setFont(AppV2Theme.fontBold(18));
         title.setForeground(AppV2Theme.TEXT_PRIMARY);
 
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setOpaque(false);
-        int row = 0;
-        agregarFila(form, row++, "Seleccionados", lblSeleccionados);
-        agregarFila(form, row++, "Expediente", lblExpedienteSeleccionado);
-        agregarFila(form, row++, "Origen", lblOrigen);
-        agregarFila(form, row++, "Destino", lblDestino);
-        agregarFila(form, row++, "Equipo destino", cmbEquipo);
-        agregarFila(form, row++, "Abogado responsable", cmbAbogado);
-        agregarFila(form, row++, "Supervisor", lblSupervisor);
-        agregarFila(form, row++, "Comentario", scrollComentario());
-        agregarFila(form, row, "Relacionados", lblRelacionados);
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
+        content.add(crearResumenAsignacion());
+        content.add(Box.createVerticalStrut(10));
+        content.add(crearDestinoAsignacion());
+        content.add(Box.createVerticalStrut(10));
+        content.add(crearComentarioAsignacion());
 
-        JPanel acciones = new JPanel(new GridLayout(1, 2, 8, 0));
-        acciones.setOpaque(false);
-        acciones.add(btnAsignarSeleccionado);
-        acciones.add(btnAsignarSeleccionados);
-
-        JScrollPane formScroll = new JScrollPane(form);
+        JScrollPane formScroll = new JScrollPane(content);
         formScroll.setBorder(null);
+        formScroll.setOpaque(false);
+        formScroll.getViewport().setOpaque(false);
         formScroll.getVerticalScrollBar().setUnitIncrement(16);
         formScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         panel.add(title, BorderLayout.NORTH);
         panel.add(formScroll, BorderLayout.CENTER);
-        panel.add(acciones, BorderLayout.SOUTH);
+        panel.add(crearAccionesAsignacion(), BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private JPanel crearResumenAsignacion() {
+        JPanel section = section("Expediente seleccionado");
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+
+        int row = 0;
+        agregarFila(form, row++, "Seleccionados", lblSeleccionados);
+        agregarFila(form, row++, "Expediente", lblExpedienteSeleccionado);
+        agregarFila(form, row++, "Origen", lblOrigen);
+        agregarFila(form, row++, "Destino", lblDestino);
+        agregarFila(form, row, "Relacionados", lblRelacionados);
+
+        section.add(form, BorderLayout.CENTER);
+        return section;
+    }
+
+    private JPanel crearDestinoAsignacion() {
+        JPanel section = section("Destino operativo");
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+
+        int row = 0;
+        agregarFila(form, row++, "Equipo destino", cmbEquipo);
+        agregarFila(form, row++, "Abogado responsable", cmbAbogado);
+        agregarFila(form, row, "Supervisor", lblSupervisor);
+
+        section.add(form, BorderLayout.CENTER);
+        return section;
+    }
+
+    private JPanel crearComentarioAsignacion() {
+        JPanel section = section("Sustento de asignación");
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+        agregarFila(form, 0, "Comentario", scrollComentario());
+        section.add(form, BorderLayout.CENTER);
+        return section;
+    }
+
+    private JPanel crearAccionesAsignacion() {
+        JPanel acciones = new JPanel(new GridLayout(1, 2, 8, 0));
+        acciones.setOpaque(false);
+        acciones.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        acciones.add(btnAsignarSeleccionado);
+        acciones.add(btnAsignarSeleccionados);
+        return acciones;
+    }
+
+    private JPanel section(String title) {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(AppV2Theme.SURFACE_ALT);
+        panel.setBorder(AppV2Theme.cardBorder());
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+
+        JLabel label = new JLabel(title);
+        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        label.setForeground(AppV2Theme.TEXT_PRIMARY);
+        panel.add(label, BorderLayout.NORTH);
         return panel;
     }
 
@@ -223,7 +287,7 @@ public class JPanelAsignacionV2 extends JPanel {
         txtComentario.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         txtComentario.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
         JScrollPane scroll = new JScrollPane(txtComentario);
-        scroll.setPreferredSize(new Dimension(220, 76));
+        scroll.setPreferredSize(new Dimension(260, 84));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         return scroll;
     }
@@ -255,8 +319,8 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void configurarControles() {
-        txtBusqueda.setPreferredSize(new Dimension(360, 34));
-        txtBusqueda.setMinimumSize(new Dimension(300, 34));
+        txtBusqueda.setPreferredSize(new Dimension(560, 36));
+        txtBusqueda.setMinimumSize(new Dimension(420, 36));
         spnLimite.setPreferredSize(new Dimension(88, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
