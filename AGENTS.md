@@ -65,6 +65,7 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 
 Modulos V2 ya incorporados o en uso dentro de la app nueva:
 
+- Inicio.
 - Bandeja de Expedientes.
 - Registro / Recepcion.
 - Asignacion.
@@ -152,6 +153,19 @@ Toda escritura V2 autorizada debe:
 - En listados administrativos, priorizar datos operativos visibles; auditoria tecnica solo debe mostrarse en detalle o cuando se solicite.
 - Mantener badges sobrios para estado, etapa, alertas, asociados y escritura controlada.
 - Evitar repetir literalmente subtitulos como cards internas del mismo modulo.
+
+## 4.4 Home / Inicio y navegacion V2
+
+- El Home / Inicio es la portada operativa de la aplicacion oficial SDRERC; no debe mostrar textos visibles que sugieran app legacy, migracion temporal, version alterna o sufijo tecnico `V2`.
+- El hero del Home debe usar el logo RENIEC desde recurso local empaquetado, actualmente `src/main/resources/com/sdrerc/ui/imagenes/LogoRENIEC.png`.
+- No cargar logos, imagenes ni iconos desde internet en runtime; los recursos visuales deben vivir en `src/main/resources`.
+- El logo RENIEC del Home debe verse natural, sin recorte, sin distorsion, con proporcion original y con el fondo que corresponda al arte aprobado. Si el logo trae fondo blanco, conservarlo y evitar bordes o lineas superiores artificiales.
+- El Home debe evitar scroll horizontal global. Las metricas, accesos rapidos, flujo operativo y modulos principales deben reacomodarse segun el ancho disponible.
+- El bloque `Flujo operativo` del Home debe verse como una secuencia premium de etapas, no como una lista plana. Debe mantener flechas o conectores visibles, tarjetas/chips de etapa, numeracion o jerarquia clara, y nombres amigables.
+- El flujo operativo puede usar colores sobrios por etapa para mejorar lectura, siempre dentro de la paleta institucional. Evitar colores brillantes, saturados o ajenos al estilo SDRERC.
+- El flujo operativo debe usar estas etapas amigables y en este orden: Registro, Asignacion, Analisis, Verificacion, Firma / Emision, Ejecucion, Notificacion, Publicacion, Expediente digital, Cierre / Archivo.
+- El flujo operativo no debe mostrar codigos tecnicos como `FIRMA_EMISION`, `PUBLICACION_CONDICIONAL`, `EXPEDIENTE_DIGITAL` o `CIERRE_ARCHIVO`.
+- El menu lateral V2 debe mantener iconos locales, tooltips en modo colapsado, agrupacion visual clara y navegacion funcional. No usar abreviaturas como reemplazo principal de iconos en modo colapsado.
 
 ## 5. Reglas de SQL y BD
 
