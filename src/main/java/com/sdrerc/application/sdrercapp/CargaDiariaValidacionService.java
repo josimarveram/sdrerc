@@ -32,11 +32,16 @@ public class CargaDiariaValidacionService {
         }
 
         Map<String, Integer> tramites = new HashMap<>();
-        Map<String, Integer> actas = new HashMap<>();
+        Map<String, Integer> actaTitular = new HashMap<>();
+        Map<String, Integer> primeraFilaActaTitular = new HashMap<>();
         for (CargaDiariaPreviewDTO item : registros) {
             item.reiniciarValidacion();
             sumar(tramites, item.getNumeroTramite());
-            sumar(actas, item.getNumeroActa());
+            String claveActaTitular = claveActaTitular(item);
+            sumarClave(actaTitular, claveActaTitular);
+            if (hasText(claveActaTitular) && !primeraFilaActaTitular.containsKey(claveActaTitular)) {
+                primeraFilaActaTitular.put(claveActaTitular, item.getFila());
+            }
         }
 
         Map<Integer, String> duplicadosBase = expedienteRegistroDAO.detectarDuplicadosContraBase(registros);
@@ -44,6 +49,7 @@ public class CargaDiariaValidacionService {
         int indiceValido = 1;
         for (CargaDiariaPreviewDTO item : registros) {
             boolean error = false;
+            boolean bloqueadoPorDuplicado = false;
             if (!hasText(item.getNumeroTramite())) {
                 item.agregarMensaje("Número de trámite obligatorio.");
                 error = true;
@@ -81,14 +87,23 @@ public class CargaDiariaValidacionService {
             if (hasText(item.getNumeroTramite()) && tramites.get(clave(item.getNumeroTramite())) != null
                     && tramites.get(clave(item.getNumeroTramite())) > 1) {
                 motivosDuplicado.add("Trámite repetido en el archivo.");
+                bloqueadoPorDuplicado = true;
             }
-            if (hasText(item.getNumeroActa()) && actas.get(clave(item.getNumeroActa())) != null
-                    && actas.get(clave(item.getNumeroActa())) > 1) {
-                motivosDuplicado.add("Acta repetida en el archivo.");
+            String claveActaTitular = claveActaTitular(item);
+            Integer cantidadActaTitular = hasText(claveActaTitular) ? actaTitular.get(claveActaTitular) : null;
+            if (cantidadActaTitular != null && cantidadActaTitular > 1) {
+                Integer primeraFila = primeraFilaActaTitular.get(claveActaTitular);
+                if (primeraFila != null && item.getFila() == primeraFila) {
+                    motivosDuplicado.add("Existen filas repetidas con la misma acta y titular. Solo esta primera ocurrencia quedará lista.");
+                } else {
+                    motivosDuplicado.add("Acta y titular repetidos en el archivo. Ya existe una primera ocurrencia en la fila " + primeraFila + ".");
+                    bloqueadoPorDuplicado = true;
+                }
             }
             String duplicadoBd = duplicadosBase.get(item.getFila());
             if (duplicadoBd != null) {
                 motivosDuplicado.add(duplicadoBd);
+                bloqueadoPorDuplicado = true;
             }
 
             if (!motivosDuplicado.isEmpty()) {
@@ -97,8 +112,8 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje(item.getMotivoDuplicado());
             }
 
-            if (error) {
-                item.setEstadoValidacion("Error");
+            if (error || bloqueadoPorDuplicado) {
+                item.setEstadoValidacion(bloqueadoPorDuplicado ? "Duplicado" : "Error");
                 item.setListoParaRegistrar(false);
                 item.setNumeroExpedienteGenerado(null);
             } else {
@@ -119,8 +134,22 @@ public class CargaDiariaValidacionService {
             return;
         }
         String key = clave(value);
+        sumarClave(contador, key);
+    }
+
+    private void sumarClave(Map<String, Integer> contador, String key) {
+        if (!hasText(key)) {
+            return;
+        }
         Integer actual = contador.get(key);
         contador.put(key, actual == null ? 1 : actual + 1);
+    }
+
+    private String claveActaTitular(CargaDiariaPreviewDTO item) {
+        if (item == null || !hasText(item.getNumeroActa()) || !hasText(item.getTitular())) {
+            return null;
+        }
+        return clave(item.getNumeroActa()) + "|" + clave(item.getTitular());
     }
 
     private String clave(String value) {

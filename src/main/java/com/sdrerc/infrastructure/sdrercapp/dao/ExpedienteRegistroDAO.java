@@ -52,9 +52,9 @@ public class ExpedienteRegistroDAO {
                 if (porTramite != null) {
                     motivos.add("Trámite ya existe en " + porTramite);
                 }
-                String porActa = buscarPorActa(conn, item.getNumeroActa());
-                if (porActa != null) {
-                    motivos.add("Acta ya existe en " + porActa);
+                String porActaTitular = buscarPorActaYTitular(conn, item.getNumeroActa(), item.getTitular());
+                if (porActaTitular != null) {
+                    motivos.add("Acta y titular ya existen en " + porActaTitular);
                 }
                 if (!motivos.isEmpty()) {
                     duplicados.put(item.getFila(), String.join("; ", motivos));
@@ -203,15 +203,24 @@ public class ExpedienteRegistroDAO {
         }
     }
 
-    private String buscarPorActa(Connection conn, String acta) throws SQLException {
-        if (!hasText(acta)) {
+    private String buscarPorActaYTitular(Connection conn, String acta, String titular) throws SQLException {
+        if (!hasText(acta) || !hasText(titular)) {
             return null;
         }
         String sql = "SELECT e.numero_expediente FROM expediente e "
                 + "JOIN expediente_acta a ON a.id_expediente = e.id_expediente "
-                + "WHERE e.activo = 1 AND a.activo = 1 AND UPPER(a.numero_acta) = ? AND ROWNUM = 1";
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                + "JOIN persona p ON p.id_persona = ep.id_persona "
+                + "WHERE e.activo = 1 AND a.activo = 1 AND ep.activo = 1 "
+                + "AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "AND UPPER(TRIM(a.numero_acta)) = ? "
+                + "AND UPPER(TRIM(COALESCE(NULLIF(TRIM(p.razon_social), ''), "
+                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
+                + "p.numero_documento))) = ? "
+                + "AND ROWNUM = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, acta.trim().toUpperCase(Locale.ROOT));
+            ps.setString(2, titular.trim().toUpperCase(Locale.ROOT));
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getString("numero_expediente") : null;
             }

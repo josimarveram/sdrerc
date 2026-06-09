@@ -184,7 +184,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         panel.setOpaque(false);
         panel.add(crearNota(
                 "Duplicados",
-                "Los posibles duplicados se conservan en la previsualización y pueden registrarse como advertencia. La asociación final se gestionará después en la etapa correspondiente."));
+                "Los duplicados se detectan por número de trámite o por la combinación acta y titular. Las filas repetidas se bloquean para evitar generar otro expediente."));
         panel.add(crearNota(
                 "Confirmación",
                 "La confirmación registra expediente, solicitud, acta, personas, documento inicial e historial en una transacción sobre SDRERC_APP."));

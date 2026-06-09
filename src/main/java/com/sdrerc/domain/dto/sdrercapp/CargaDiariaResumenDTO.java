@@ -48,7 +48,7 @@ public class CargaDiariaResumenDTO {
                 registrados++;
             }
             String estado = item.getEstadoValidacion();
-            if ("Error".equalsIgnoreCase(estado)) {
+            if ("Error".equalsIgnoreCase(estado) || "Duplicado".equalsIgnoreCase(estado)) {
                 conErrores++;
             } else if ("Valido".equalsIgnoreCase(normalizarEstado(estado))
                     || "Advertencia".equalsIgnoreCase(estado)
