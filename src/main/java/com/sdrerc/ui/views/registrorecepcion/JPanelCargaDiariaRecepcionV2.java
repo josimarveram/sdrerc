@@ -51,7 +51,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private final ResumenCard cardTotal = new ResumenCard("Total leídos", "0", "Pendiente de archivo", AppV2Theme.INFO);
     private final ResumenCard cardValidos = new ResumenCard("Válidos", "0", "Pendiente de validación", AppV2Theme.SUCCESS);
-    private final ResumenCard cardErrores = new ResumenCard("Con errores", "0", "No registrables", AppV2Theme.ERROR);
+    private final ResumenCard cardErrores = new ResumenCard("Con observaciones", "0", "Registrables", AppV2Theme.WARNING);
     private final ResumenCard cardDuplicados = new ResumenCard("Posibles duplicados", "0", "Acta + titular", AppV2Theme.WARNING);
     private final ResumenCard cardListos = new ResumenCard("Listos para registrar", "0", "Confirmación requerida", AppV2Theme.TEAL);
     private final ResumenCard cardRegistrados = new ResumenCard("Registrados", "0", "Pendiente", AppV2Theme.INDIGO);
@@ -184,7 +184,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         panel.setOpaque(false);
         panel.add(crearNota(
                 "Duplicados",
-                "Los duplicados se detectan únicamente por la combinación acta y titular. Las filas repetidas se bloquean para evitar generar otro expediente."));
+                "Los duplicados se detectan únicamente por la combinación acta y titular. Se registran y quedan marcados para identificarlos en Asignación."));
         panel.add(crearNota(
                 "Confirmación",
                 "La confirmación registra expediente, solicitud, acta, personas, documento inicial e historial en una transacción sobre SDRERC_APP."));
@@ -310,7 +310,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         int option = JOptionPane.showConfirmDialog(
                 this,
                 "Se registrarán " + resumen.getListosParaRegistrar() + " expediente(s) en SDRERC_APP.\n"
-                        + "Los registros con advertencia por duplicado se conservarán.\n\n"
+                        + "Los registros con observaciones o duplicidad también se registrarán y quedarán marcados.\n\n"
                         + "¿Desea confirmar la carga?",
                 "Confirmar carga diaria",
                 JOptionPane.YES_NO_OPTION,
@@ -389,7 +389,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
         cardTotal.actualizar(String.valueOf(resumen.getTotalLeidos()), resumen.getTotalLeidos() == 0 ? "Pendiente de archivo" : "Archivo leído");
         cardValidos.actualizar(String.valueOf(resumen.getValidos()), "Sin errores críticos");
-        cardErrores.actualizar(String.valueOf(resumen.getConErrores()), "No registrables");
+        cardErrores.actualizar(String.valueOf(resumen.getConErrores()), "Registrables");
         cardDuplicados.actualizar(String.valueOf(resumen.getPosiblesDuplicados()), "Acta + titular");
         cardListos.actualizar(String.valueOf(resumen.getListosParaRegistrar()), "Confirmación requerida");
         cardRegistrados.actualizar(String.valueOf(resumen.getRegistrados()), "En SDRERC_APP");

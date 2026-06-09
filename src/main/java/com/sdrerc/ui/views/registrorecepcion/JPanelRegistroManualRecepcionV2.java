@@ -465,14 +465,16 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             lblEstado.setText("Formulario validado. Revise el resumen y registre el expediente.");
             btnRegistrar.setEnabled(!trabajando);
         } else {
-            validado = false;
-            registroValidado = null;
-            txtErrores.setBackground(AppV2Theme.SOFT_RED);
+            dto.setNumeroExpedienteVistaPrevia("Pendiente de generación al guardar");
+            dto.setObservacionesGenerales("Advertencias de validación: " + String.join(" | ", errores));
+            validado = true;
+            registroValidado = dto;
+            txtErrores.setBackground(AppV2Theme.SOFT_ORANGE);
             txtErrores.setText(String.join("\n", errores));
-            txtResumen.setText("Corrija los errores antes de registrar.");
-            lblNumeroExpediente.setText("Pendiente de generación al guardar");
-            lblEstado.setText("Se encontraron errores de validación.");
-            btnRegistrar.setEnabled(false);
+            txtResumen.setText(resumen(dto));
+            lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
+            lblEstado.setText("Se encontraron observaciones. Puede registrar el expediente y quedará marcado para revisión.");
+            btnRegistrar.setEnabled(!trabajando);
         }
     }
 
@@ -483,9 +485,13 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
                 return;
             }
         }
+        boolean conObservaciones = registroValidado.getObservacionesGenerales() != null
+                && !registroValidado.getObservacionesGenerales().trim().isEmpty();
         int option = JOptionPane.showConfirmDialog(
                 this,
-                "Se registrará un expediente en SDRERC_APP.\n\n" + resumen(registroValidado) + "\n¿Desea continuar?",
+                "Se registrará un expediente en SDRERC_APP"
+                        + (conObservaciones ? " con observaciones" : "")
+                        + ".\n\n" + resumen(registroValidado) + "\n¿Desea continuar?",
                 "Confirmar registro manual",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
@@ -579,6 +585,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         sb.append("Validación inicial: ").append(safe(dto.getSolicitud().getValidacionInicial())).append("\n");
         if (requiereHojaEnvio(dto.getSolicitud().getValidacionInicial())) {
             sb.append("Hoja de envío: ").append(safe(dto.getSolicitud().getHojaEnvio())).append("\n");
+        }
+        if (dto.getObservacionesGenerales() != null && !dto.getObservacionesGenerales().trim().isEmpty()) {
+            sb.append("Observaciones: ").append(dto.getObservacionesGenerales()).append("\n");
         }
         sb.append("Número expediente: ").append(safe(dto.getNumeroExpedienteVistaPrevia()));
         return sb.toString();

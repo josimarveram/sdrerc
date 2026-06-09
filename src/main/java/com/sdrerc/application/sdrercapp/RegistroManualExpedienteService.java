@@ -30,10 +30,28 @@ public class RegistroManualExpedienteService {
     }
 
     public RegistroManualResultadoDTO registrar(RegistroManualExpedienteDTO registro) throws SQLException {
+        if (registro == null) {
+            throw new IllegalArgumentException("Complete los datos del formulario antes de registrar.");
+        }
         List<String> errores = validar(registro);
         if (!errores.isEmpty()) {
-            throw new IllegalArgumentException(String.join("\n", errores));
+            registro.setObservacionesGenerales(unirObservaciones(
+                    registro.getObservacionesGenerales(),
+                    "Advertencias de validación: " + String.join(" | ", errores)));
         }
         return expedienteRegistroDAO.registrarManual(registro, correlativoExpedienteService);
+    }
+
+    private String unirObservaciones(String actual, String nueva) {
+        if (actual == null || actual.trim().isEmpty()) {
+            return nueva;
+        }
+        if (nueva == null || nueva.trim().isEmpty()) {
+            return actual;
+        }
+        if (actual.contains(nueva)) {
+            return actual;
+        }
+        return actual.trim() + " | " + nueva.trim();
     }
 }

@@ -154,6 +154,14 @@ public class ExpedienteRegistroDAO {
                 Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
                 Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_REGISTRO_MANUAL), "movimiento RECEPCION_DOCUMENTO");
+                String duplicadoActaTitular = buscarPorActaYTitular(
+                        conn,
+                        registro.getActa().getNumeroActa(),
+                        registro.getTitular().getNombreCompleto());
+                if (duplicadoActaTitular != null) {
+                    registro.setPosibleDuplicado(true);
+                    registro.setMotivoDuplicado("Acta y titular ya existen en " + duplicadoActaTitular);
+                }
 
                 Long idTitular = insertarPersonaManual(conn, registro.getTitular());
                 Long idRemitente = insertarPersonaManual(conn, registro.getRemitente());
@@ -282,9 +290,7 @@ public class ExpedienteRegistroDAO {
         }
         Long idTipoActa = null;
         if (hasText(item.getTipoActa())) {
-            idTipoActa = requerirId(
-                    catalogoLookupDAO.obtenerTipoActaIdPorCodigoONombre(conn, item.getTipoActa()),
-                    "tipo de acta " + item.getTipoActa());
+            idTipoActa = catalogoLookupDAO.obtenerTipoActaIdPorCodigoONombre(conn, item.getTipoActa());
         }
         String sql = "INSERT INTO expediente_acta (id_expediente, id_tipo_acta, numero_acta, anio_acta, activo) "
                 + "VALUES (?, ?, ?, ?, 1)";
@@ -385,7 +391,7 @@ public class ExpedienteRegistroDAO {
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                 + "fecha_recepcion, asunto, observacion, es_tramite_virtual, correo_electronico, potencial_duplicado, activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)";
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             setLongOrNull(ps, 2, idCanal);
@@ -394,8 +400,8 @@ public class ExpedienteRegistroDAO {
             ps.setDate(5, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
             ps.setString(6, solicitud.getTipoProcedimientoNombre());
             ps.setString(7, limitar(observacionSolicitud(registro), 1000));
-            ps.setInt(8, 0);
-            ps.setNull(9, Types.VARCHAR);
+            ps.setNull(8, Types.VARCHAR);
+            ps.setInt(9, registro.isPosibleDuplicado() ? 1 : 0);
             ps.executeUpdate();
         }
     }
@@ -403,7 +409,7 @@ public class ExpedienteRegistroDAO {
     private void insertarActaManual(Connection conn, DatosActaDTO acta, Long idExpediente) throws SQLException {
         Long idTipoActa = null;
         if (hasText(acta.getTipoActaCodigo())) {
-            idTipoActa = requerirId(catalogoLookupDAO.obtenerTipoActaId(conn, acta.getTipoActaCodigo()), "tipo de acta " + acta.getTipoActaNombre());
+            idTipoActa = catalogoLookupDAO.obtenerTipoActaId(conn, acta.getTipoActaCodigo());
         }
 
         String sql = "INSERT INTO expediente_acta ("
@@ -466,13 +472,20 @@ public class ExpedienteRegistroDAO {
         append(sb, "Tipo de solicitud", registro.getSolicitud().getTipoSolicitudNombre());
         append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
+        append(sb, "Observaciones de registro", registro.getObservacionesGenerales());
+        append(sb, "Motivo duplicado", registro.getMotivoDuplicado());
         return sb.toString();
     }
 
     private String observacionSolicitud(CargaDiariaPreviewDTO item) {
         StringBuilder sb = new StringBuilder();
         append(sb, "Tipo de solicitud", item.getTipoSolicitud());
+        append(sb, "Tipo de acta informado", item.getTipoActa());
         append(sb, "Observación inicial", item.getObservacionInicial());
+        if (!"Válido".equalsIgnoreCase(item.getEstadoValidacion())) {
+            append(sb, "Advertencias de validación", item.getMensajeValidacion());
+        }
+        append(sb, "Motivo duplicado", item.getMotivoDuplicado());
         return sb.toString();
     }
 

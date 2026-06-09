@@ -54,7 +54,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
-    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o documento", 28);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta, documento u observación", 28);
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
@@ -69,6 +69,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblExpedienteSeleccionado = new JLabel("-");
     private final JLabel lblOrigen = new JLabel("Registro / Registrado");
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
+    private final JLabel lblIngreso = new JLabel("Normal");
     private final JLabel lblSupervisor = new JLabel("-");
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
@@ -229,6 +230,7 @@ public class JPanelAsignacionV2 extends JPanel {
         agregarFila(form, row++, "Expediente", lblExpedienteSeleccionado);
         agregarFila(form, row++, "Origen", lblOrigen);
         agregarFila(form, row++, "Destino", lblDestino);
+        agregarFila(form, row++, "Ingreso", lblIngreso);
         agregarFila(form, row, "Relacionados", lblRelacionados);
 
         section.add(form, BorderLayout.CENTER);
@@ -346,6 +348,7 @@ public class JPanelAsignacionV2 extends JPanel {
         table.getColumnModel().getColumn(1).setMaxWidth(70);
         table.getColumnModel().getColumn(10).setPreferredWidth(120);
         table.getColumnModel().getColumn(11).setPreferredWidth(150);
+        table.getColumnModel().getColumn(12).setPreferredWidth(150);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
     }
 
@@ -474,6 +477,8 @@ public class JPanelAsignacionV2 extends JPanel {
         for (AsignacionExpedienteDTO item : expedientes) {
             if (item.getPosiblesRelacionados() > 0) {
                 alertas++;
+            } else if (!"Normal".equalsIgnoreCase(item.getAlertaIngreso())) {
+                alertas++;
             }
             tableModel.addRow(new Object[]{
                 Boolean.FALSE,
@@ -487,6 +492,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 item.getFechaRegistro() == null ? "" : DATE_TIME_FORMAT.format(item.getFechaRegistro()),
                 item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
+                item.getAlertaIngreso(),
                 item.getPosiblesRelacionados() > 0 ? item.getPosiblesRelacionados() + " relacionados" : "Sin alerta"
             });
         }
@@ -696,11 +702,15 @@ public class JPanelAsignacionV2 extends JPanel {
         if (modelRow >= 0 && modelRow < expedientes.size()) {
             AsignacionExpedienteDTO item = expedientes.get(modelRow);
             lblExpedienteSeleccionado.setText(item.getNumeroExpediente());
+            lblIngreso.setText(item.getAlertaIngreso());
+            lblIngreso.setToolTipText(item.getObservacionSolicitud().isEmpty() ? item.getAlertaIngreso() : item.getObservacionSolicitud());
             lblRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? item.getPosiblesRelacionados() + " posibles relacionados por misma acta y titular."
                     : "Sin alerta de relacionados.");
         } else {
             lblExpedienteSeleccionado.setText(seleccionados == 1 ? expedienteSeleccionadoMarcado() : "-");
+            lblIngreso.setText("Normal");
+            lblIngreso.setToolTipText(null);
             lblRelacionados.setText("Sin alerta de relacionados.");
         }
     }
@@ -770,6 +780,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Fecha registro",
                 "Días",
                 "Estado",
+                "Ingreso",
                 "Relacionados"
             }, 0);
         }
@@ -802,6 +813,12 @@ public class JPanelAsignacionV2 extends JPanel {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
             if (!isSelected && modelColumn == 11) {
+                String text = value == null ? "" : value.toString();
+                if (!"Normal".equalsIgnoreCase(text)) {
+                    return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
+                }
+            }
+            if (!isSelected && modelColumn == 12) {
                 String text = value == null ? "" : value.toString();
                 if (!text.startsWith("Sin")) {
                     return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);

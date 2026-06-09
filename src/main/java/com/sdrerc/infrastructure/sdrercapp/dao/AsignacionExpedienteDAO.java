@@ -48,7 +48,8 @@ public class AsignacionExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
         sql.append(nombrePersona("p")).append(" AS titular, p.numero_documento AS numero_documento_titular, ");
-        sql.append("esol.fecha_recepcion, e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("esol.fecha_recepcion, esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
+        sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
         sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa ");
         sql.append("FROM expediente e ");
@@ -73,9 +74,10 @@ public class AsignacionExpedienteDAO {
             sql.append("OR UPPER(NVL(ea.numero_acta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(esol.observacion, '')) LIKE ? ");
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase(Locale.ROOT) + "%";
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < 7; i++) {
                 params.add(pattern);
             }
         }
@@ -206,7 +208,9 @@ public class AsignacionExpedienteDAO {
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 rs.getInt("asignacion_activa") > 0,
-                expedienteRelacionadoDAO.contarPosiblesRelacionados(conn, idExpediente));
+                expedienteRelacionadoDAO.contarPosiblesRelacionados(conn, idExpediente),
+                rs.getInt("potencial_duplicado") > 0,
+                rs.getString("observacion_solicitud"));
     }
 
     private void validarTransicion(

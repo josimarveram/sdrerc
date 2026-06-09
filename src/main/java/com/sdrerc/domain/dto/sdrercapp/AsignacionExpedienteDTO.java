@@ -20,6 +20,8 @@ public class AsignacionExpedienteDTO {
     private final String estadoCodigo;
     private final boolean asignacionActiva;
     private final int posiblesRelacionados;
+    private final boolean potencialDuplicado;
+    private final String observacionSolicitud;
 
     public AsignacionExpedienteDTO(
             Long idExpediente,
@@ -35,7 +37,9 @@ public class AsignacionExpedienteDTO {
             String etapaCodigo,
             String estadoCodigo,
             boolean asignacionActiva,
-            int posiblesRelacionados) {
+            int posiblesRelacionados,
+            boolean potencialDuplicado,
+            String observacionSolicitud) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
@@ -50,6 +54,8 @@ public class AsignacionExpedienteDTO {
         this.estadoCodigo = safe(estadoCodigo);
         this.asignacionActiva = asignacionActiva;
         this.posiblesRelacionados = posiblesRelacionados;
+        this.potencialDuplicado = potencialDuplicado;
+        this.observacionSolicitud = safe(observacionSolicitud);
     }
 
     public Long getIdExpediente() {
@@ -106,6 +112,30 @@ public class AsignacionExpedienteDTO {
 
     public int getPosiblesRelacionados() {
         return posiblesRelacionados;
+    }
+
+    public boolean isPotencialDuplicado() {
+        return potencialDuplicado;
+    }
+
+    public String getObservacionSolicitud() {
+        return observacionSolicitud;
+    }
+
+    public boolean tieneObservacionRegistro() {
+        String observacion = observacionSolicitud.toUpperCase();
+        return observacion.contains("ADVERTENCIAS DE VALIDACIÓN")
+                || observacion.contains("MOTIVO DUPLICADO");
+    }
+
+    public String getAlertaIngreso() {
+        if (potencialDuplicado) {
+            return "Potencial duplicado";
+        }
+        if (tieneObservacionRegistro()) {
+            return "Con observaciones";
+        }
+        return "Normal";
     }
 
     public Long getDiasDesdeRegistro() {

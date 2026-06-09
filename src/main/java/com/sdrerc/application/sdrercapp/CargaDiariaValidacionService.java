@@ -47,7 +47,6 @@ public class CargaDiariaValidacionService {
         int indiceValido = 1;
         for (CargaDiariaPreviewDTO item : registros) {
             boolean error = false;
-            boolean bloqueadoPorDuplicado = false;
             if (!hasText(item.getNumeroTramite())) {
                 item.agregarMensaje("Número de trámite obligatorio.");
                 error = true;
@@ -87,16 +86,14 @@ public class CargaDiariaValidacionService {
             if (cantidadActaTitular != null && cantidadActaTitular > 1) {
                 Integer primeraFila = primeraFilaActaTitular.get(claveActaTitular);
                 if (primeraFila != null && item.getFila() == primeraFila) {
-                    motivosDuplicado.add("Existen filas repetidas con la misma acta y titular. Solo esta primera ocurrencia quedará lista.");
+                    motivosDuplicado.add("Existen filas repetidas con la misma acta y titular.");
                 } else {
                     motivosDuplicado.add("Acta y titular repetidos en el archivo. Ya existe una primera ocurrencia en la fila " + primeraFila + ".");
-                    bloqueadoPorDuplicado = true;
                 }
             }
             String duplicadoBd = duplicadosBase.get(item.getFila());
             if (duplicadoBd != null) {
                 motivosDuplicado.add(duplicadoBd);
-                bloqueadoPorDuplicado = true;
             }
 
             if (!motivosDuplicado.isEmpty()) {
@@ -105,17 +102,15 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje(item.getMotivoDuplicado());
             }
 
-            if (error || bloqueadoPorDuplicado) {
-                item.setEstadoValidacion(bloqueadoPorDuplicado ? "Duplicado" : "Error");
-                item.setListoParaRegistrar(false);
-                item.setNumeroExpedienteGenerado(null);
+            item.setNumeroExpedienteGenerado(correlativoExpedienteService.generarPreliminar(indiceValido++));
+            item.setListoParaRegistrar(true);
+            if (item.isPosibleDuplicado()) {
+                item.setEstadoValidacion("Duplicado");
+            } else if (error) {
+                item.setEstadoValidacion("Con observaciones");
             } else {
-                item.setNumeroExpedienteGenerado(correlativoExpedienteService.generarPreliminar(indiceValido++));
-                item.setListoParaRegistrar(true);
-                item.setEstadoValidacion(item.isPosibleDuplicado() ? "Advertencia" : "Válido");
-                if (!item.isPosibleDuplicado()) {
-                    item.setMensajeValidacion("Listo para registrar.");
-                }
+                item.setEstadoValidacion("Válido");
+                item.setMensajeValidacion("Listo para registrar.");
             }
         }
 
