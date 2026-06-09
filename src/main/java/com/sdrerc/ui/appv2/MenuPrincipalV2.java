@@ -43,7 +43,7 @@ public class MenuPrincipalV2 extends JFrame {
 
     private final JPanel body = new JPanel(new BorderLayout());
     private final JLabel lblTitulo = new JLabel("Inicio");
-    private final JLabel lblSubtitulo = new JLabel("Panel inicial de SDRERC V2");
+    private final JLabel lblSubtitulo = new JLabel("Panel ejecutivo de expedientes registrales");
     private final List<JButton> botonesMenu = new ArrayList<JButton>();
     private final List<JLabel> seccionesMenu = new ArrayList<JLabel>();
     private final Map<JButton, String> textosBotonesMenu = new LinkedHashMap<JButton, String>();
@@ -77,7 +77,7 @@ public class MenuPrincipalV2 extends JFrame {
     }
 
     private void configurarVentana() {
-        setTitle("SDRERC V2");
+        setTitle("SDRERC");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1120, 720));
         setSize(1240, 800);
@@ -98,7 +98,7 @@ public class MenuPrincipalV2 extends JFrame {
         sidebar.setBackground(AppV2Theme.SIDEBAR);
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 12));
 
-        marca = new JLabel("<html><b>SDRERC V2</b><br><span style='font-size:10px'>Service Console</span></html>");
+        marca = new JLabel("<html><b>SDRERC</b><br><span style='font-size:10px'>Gestión de expedientes</span></html>");
         marca.setForeground(Color.WHITE);
         marca.setFont(AppV2Theme.fontBold(22));
         marca.setBorder(BorderFactory.createCompoundBorder(
@@ -297,7 +297,7 @@ public class MenuPrincipalV2 extends JFrame {
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 12));
         marca.setText(sidebarCollapsed
                 ? ""
-                : "<html><b>SDRERC V2</b><br><span style='font-size:10px'>Service Console</span></html>");
+                : "<html><b>SDRERC</b><br><span style='font-size:10px'>Gestión de expedientes</span></html>");
         marca.setVisible(!sidebarCollapsed);
         marca.setFont(AppV2Theme.fontBold(sidebarCollapsed ? 18 : 22));
         marca.setHorizontalAlignment(sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
@@ -335,7 +335,7 @@ public class MenuPrincipalV2 extends JFrame {
 
     private void mostrarInicio() {
         lblTitulo.setText("Inicio");
-        lblSubtitulo.setText("Dashboard inicial y accesos rápidos de SDRERC V2");
+        lblSubtitulo.setText("Panel ejecutivo y seguimiento integral de expedientes");
         cambiarContenido(new HomeV2(new Runnable() {
             @Override
             public void run() {
