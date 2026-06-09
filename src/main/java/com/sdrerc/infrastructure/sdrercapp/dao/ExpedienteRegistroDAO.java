@@ -28,6 +28,7 @@ public class ExpedienteRegistroDAO {
     private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
     private static final String CODIGO_MOVIMIENTO_CARGA_DIARIA = "IMPORTACION_CARGA_DIARIA";
     private static final String CODIGO_MOVIMIENTO_REGISTRO_MANUAL = "RECEPCION_DOCUMENTO";
+    private static final int DIAS_PLAZO_INICIAL = 30;
 
     private final CatalogoLookupDAO catalogoLookupDAO;
 
@@ -229,13 +230,14 @@ public class ExpedienteRegistroDAO {
     private Long insertarExpediente(Connection conn, CargaDiariaPreviewDTO item, Long idEtapa, Long idEstado) throws SQLException {
         String sql = "INSERT INTO expediente ("
                 + "numero_expediente, numero_tramite_documentario, id_etapa_actual, id_estado_actual, "
-                + "fecha_registro, fecha_ultimo_movimiento, prioridad, requiere_publicacion, "
+                + "fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, prioridad, requiere_publicacion, "
                 + "expediente_digital_completo, archivado, cerrado, activo"
-                + ") VALUES (NULL, ?, ?, ?, SYSTIMESTAMP, SYSTIMESTAMP, 'NORMAL', 0, 0, 0, 0, 1)";
+                + ") VALUES (NULL, ?, ?, ?, SYSTIMESTAMP, SYSTIMESTAMP, ?, 'NORMAL', 0, 0, 0, 0, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE"})) {
             ps.setString(1, item.getNumeroTramite());
             ps.setLong(2, idEtapa);
             ps.setLong(3, idEstado);
+            ps.setDate(4, calcularFechaVencimiento(item.getFechaRecepcion()));
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente");
         }
@@ -364,17 +366,25 @@ public class ExpedienteRegistroDAO {
     private Long insertarExpedienteManual(Connection conn, DatosSolicitudDTO solicitud, Long idEtapa, Long idEstado) throws SQLException {
         String sql = "INSERT INTO expediente ("
                 + "numero_expediente, numero_tramite_documentario, id_etapa_actual, id_estado_actual, "
-                + "fecha_registro, fecha_ultimo_movimiento, prioridad, requiere_publicacion, "
+                + "fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, prioridad, requiere_publicacion, "
                 + "expediente_digital_completo, archivado, cerrado, activo"
-                + ") VALUES (NULL, ?, ?, ?, SYSTIMESTAMP, SYSTIMESTAMP, ?, 0, 0, 0, 0, 1)";
+                + ") VALUES (NULL, ?, ?, ?, SYSTIMESTAMP, SYSTIMESTAMP, ?, ?, 0, 0, 0, 0, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE"})) {
             ps.setString(1, solicitud.getNumeroTramite());
             ps.setLong(2, idEtapa);
             ps.setLong(3, idEstado);
-            ps.setString(4, hasText(solicitud.getPrioridad()) ? solicitud.getPrioridad() : "NORMAL");
+            ps.setDate(4, calcularFechaVencimiento(solicitud.getFechaRecepcion()));
+            ps.setString(5, hasText(solicitud.getPrioridad()) ? solicitud.getPrioridad() : "NORMAL");
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente");
         }
+    }
+
+    private Date calcularFechaVencimiento(java.time.LocalDate fechaSolicitud) {
+        if (fechaSolicitud == null) {
+            return null;
+        }
+        return Date.valueOf(fechaSolicitud.plusDays(DIAS_PLAZO_INICIAL));
     }
 
     private void insertarSolicitudManual(

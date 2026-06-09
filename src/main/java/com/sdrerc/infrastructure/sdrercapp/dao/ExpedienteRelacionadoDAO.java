@@ -20,6 +20,7 @@ public class ExpedienteRelacionadoDAO {
     private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
     private static final String MOVIMIENTO_ASOCIACION_DUPLICADO = "ASOCIACION_DUPLICADO";
     private static final String MOTIVO_MISMA_ACTA_TITULAR = "Misma acta y titular";
+    private static final int DIAS_PLAZO_INICIAL = 30;
 
     private final CatalogoLookupDAO catalogoLookupDAO;
 
@@ -170,6 +171,7 @@ public class ExpedienteRelacionadoDAO {
             conn.setAutoCommit(false);
             try {
                 Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, MOVIMIENTO_ASOCIACION_DUPLICADO);
+                Date fechaVencimientoPrincipal = resolverFechaVencimientoPrincipal(conn, idExpedientePrincipal, idUsuarioCreador);
                 for (Long idRelacionado : idsRelacionados) {
                     if (idRelacionado == null || idRelacionado.equals(idExpedientePrincipal)) {
                         omitidos++;
@@ -183,6 +185,7 @@ public class ExpedienteRelacionadoDAO {
                         continue;
                     }
                     Long idRelacion = insertarRelacion(conn, idExpedientePrincipal, idRelacionado, idUsuarioCreador, descripcion);
+                    sincronizarFechaVencimientoRelacionado(conn, idRelacionado, fechaVencimientoPrincipal, idUsuarioCreador);
                     if (idMovimiento != null) {
                         insertarHistorialRelacion(conn, idExpedientePrincipal, idMovimiento, idUsuarioCreador, idRelacion, descripcion);
                         insertarHistorialRelacion(conn, idRelacionado, idMovimiento, idUsuarioCreador, idRelacion, descripcion);
@@ -249,6 +252,55 @@ public class ExpedienteRelacionadoDAO {
             ps.setString(6, TIPO_RELACION_MISMA_ACTA_TITULAR);
             setLongOrNull(ps, 7, idUsuarioCreador);
             ps.executeUpdate();
+        }
+    }
+
+    private Date resolverFechaVencimientoPrincipal(Connection conn, Long idExpedientePrincipal, Long idUsuarioCreador) throws SQLException {
+        String sql = "SELECT e.fecha_vencimiento, esol.fecha_recepcion "
+                + "FROM expediente e "
+                + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                + "WHERE e.id_expediente = ? AND e.activo = 1 "
+                + "ORDER BY esol.fecha_recepcion ASC NULLS LAST";
+        Date fechaVencimiento = null;
+        Date fechaSolicitud = null;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpedientePrincipal);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    fechaVencimiento = rs.getDate("fecha_vencimiento");
+                    fechaSolicitud = rs.getDate("fecha_recepcion");
+                }
+            }
+        }
+        if (fechaVencimiento != null) {
+            return fechaVencimiento;
+        }
+        if (fechaSolicitud == null) {
+            return null;
+        }
+        Date calculada = Date.valueOf(fechaSolicitud.toLocalDate().plusDays(DIAS_PLAZO_INICIAL));
+        sincronizarFechaVencimientoRelacionado(conn, idExpedientePrincipal, calculada, idUsuarioCreador);
+        return calculada;
+    }
+
+    private void sincronizarFechaVencimientoRelacionado(
+            Connection conn,
+            Long idExpediente,
+            Date fechaVencimiento,
+            Long idUsuarioModificador) throws SQLException {
+        if (idExpediente == null || fechaVencimiento == null) {
+            return;
+        }
+        String sql = "UPDATE expediente SET fecha_vencimiento = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, fechaVencimiento);
+            setLongOrNull(ps, 2, idUsuarioModificador);
+            ps.setLong(3, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar la fecha de vencimiento del expediente relacionado.");
+            }
         }
     }
 
