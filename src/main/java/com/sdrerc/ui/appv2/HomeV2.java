@@ -1,6 +1,5 @@
 package com.sdrerc.ui.appv2;
 
-import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2WrapPanel;
@@ -12,9 +11,13 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 import javax.imageio.ImageIO;
@@ -43,6 +46,45 @@ public class HomeV2 extends JPanel {
         "Publicación",
         "Expediente digital",
         "Cierre / Archivo"
+    };
+
+    private static final String[] ETAPAS_FLUJO_DETALLE = {
+        "Ingreso y control inicial",
+        "Responsable definido",
+        "Evaluación jurídica",
+        "Control documental",
+        "Documento resolutivo",
+        "Cumplimiento operativo",
+        "Comunicación formal",
+        "Ruta condicional",
+        "Carpeta y trazabilidad",
+        "Estado final"
+    };
+
+    private static final Color[] FLUJO_ACCENTOS = {
+        AppV2Theme.INFO,
+        AppV2Theme.TEAL,
+        AppV2Theme.INDIGO,
+        AppV2Theme.SUCCESS,
+        new Color(116, 78, 145),
+        AppV2Theme.WARNING,
+        new Color(178, 72, 86),
+        new Color(150, 91, 33),
+        new Color(54, 104, 126),
+        new Color(88, 98, 110)
+    };
+
+    private static final Color[] FLUJO_FONDOS = {
+        new Color(232, 243, 252),
+        new Color(229, 244, 244),
+        new Color(237, 239, 249),
+        new Color(230, 245, 236),
+        new Color(243, 237, 248),
+        new Color(255, 244, 226),
+        new Color(252, 237, 240),
+        new Color(250, 240, 229),
+        new Color(232, 242, 246),
+        new Color(241, 243, 246)
     };
 
     private static final String[][] MODULOS = {
@@ -178,29 +220,80 @@ public class HomeV2 extends JPanel {
     }
 
     private JPanel crearFlujoOperativo() {
-        AppV2WrapPanel flow = new AppV2WrapPanel(10, 10);
+        JPanel board = baseCard();
+        board.setLayout(new BorderLayout(0, 0));
+        board.setBackground(new Color(252, 253, 255));
+        board.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(210, 219, 230)),
+                BorderFactory.createEmptyBorder(14, 14, 14, 14)));
+
+        AppV2WrapPanel flow = new AppV2WrapPanel(8, 12);
         for (int i = 0; i < ETAPAS_FLUJO.length; i++) {
-            String etapa = ETAPAS_FLUJO[i];
-            JPanel item = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-            item.setOpaque(false);
-            BadgeV2 badge = new BadgeV2(etapa, AppV2Theme.SOFT_BLUE, AppV2Theme.PRIMARY);
-            badge.setHorizontalAlignment(SwingConstants.CENTER);
-            badge.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(199, 218, 235)),
-                    BorderFactory.createEmptyBorder(7, 11, 7, 11)));
-            item.add(badge);
-            if (i < ETAPAS_FLUJO.length - 1) {
-                JLabel arrow = new JLabel("→");
-                arrow.setFont(AppV2Theme.fontBold(16));
-                arrow.setForeground(AppV2Theme.TEAL);
-                item.add(arrow);
-            }
-            flow.add(item);
+            flow.add(crearEtapaFlujoItem(i));
         }
+        board.add(flow, BorderLayout.CENTER);
+
         return crearSeccion(
                 "Flujo operativo",
                 "Ruta de atención del expediente desde el registro hasta el cierre",
-                flow);
+                board);
+    }
+
+    private JPanel crearEtapaFlujoItem(int index) {
+        JPanel item = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        item.setOpaque(false);
+        item.add(crearEtapaFlujoCard(index));
+        if (index < ETAPAS_FLUJO.length - 1) {
+            JLabel arrow = new JLabel("→");
+            arrow.setFont(AppV2Theme.fontBold(18));
+            arrow.setForeground(new Color(74, 129, 143));
+            arrow.setBorder(BorderFactory.createEmptyBorder(24, 0, 0, 0));
+            item.add(arrow);
+        }
+        return item;
+    }
+
+    private JPanel crearEtapaFlujoCard(int index) {
+        Color accent = FLUJO_ACCENTOS[index % FLUJO_ACCENTOS.length];
+        Color background = FLUJO_FONDOS[index % FLUJO_FONDOS.length];
+
+        JPanel card = new JPanel(new BorderLayout(10, 0));
+        card.setOpaque(true);
+        card.setBackground(background);
+        card.setPreferredSize(new Dimension(220, 74));
+        card.setMinimumSize(new Dimension(198, 70));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(
+                        Math.max(0, accent.getRed() - 8),
+                        Math.max(0, accent.getGreen() - 8),
+                        Math.max(0, accent.getBlue() - 8))),
+                BorderFactory.createEmptyBorder(10, 10, 10, 12)));
+
+        StageNumberBadge number = new StageNumberBadge(String.format("%02d", index + 1), accent);
+
+        JPanel text = new JPanel();
+        text.setOpaque(false);
+        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+
+        JLabel title = new JLabel(ETAPAS_FLUJO[index]);
+        title.setFont(AppV2Theme.fontBold(13));
+        title.setForeground(AppV2Theme.TEXT_PRIMARY);
+        title.setAlignmentX(LEFT_ALIGNMENT);
+
+        JLabel detail = new JLabel(ETAPAS_FLUJO_DETALLE[index]);
+        detail.setFont(AppV2Theme.fontPlain(11));
+        detail.setForeground(AppV2Theme.TEXT_SECONDARY);
+        detail.setAlignmentX(LEFT_ALIGNMENT);
+
+        text.add(Box.createVerticalGlue());
+        text.add(title);
+        text.add(Box.createVerticalStrut(3));
+        text.add(detail);
+        text.add(Box.createVerticalGlue());
+
+        card.add(number, BorderLayout.WEST);
+        card.add(text, BorderLayout.CENTER);
+        return card;
     }
 
     private JPanel crearModulos() {
@@ -378,6 +471,45 @@ public class HomeV2 extends JPanel {
                     swingComponent.getMaximumSize().height));
         }
         return component;
+    }
+
+    private static final class StageNumberBadge extends JLabel {
+
+        private final Color background;
+
+        private StageNumberBadge(String text, Color background) {
+            super(text);
+            this.background = background;
+            setOpaque(false);
+            setFont(AppV2Theme.fontBold(11));
+            setForeground(Color.WHITE);
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setPreferredSize(new Dimension(36, 36));
+            setMinimumSize(new Dimension(36, 36));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(background);
+                int size = Math.min(getWidth(), getHeight()) - 1;
+                int x = (getWidth() - size) / 2;
+                int y = (getHeight() - size) / 2;
+                g2.fillOval(x, y, size, size);
+
+                g2.setColor(Color.WHITE);
+                g2.setFont(getFont());
+                FontMetrics metrics = g2.getFontMetrics();
+                String value = getText();
+                int textX = (getWidth() - metrics.stringWidth(value)) / 2;
+                int textY = (getHeight() - metrics.getHeight()) / 2 + metrics.getAscent();
+                g2.drawString(value, textX, textY);
+            } finally {
+                g2.dispose();
+            }
+        }
     }
 
     private static final class HomeScrollContent extends JPanel implements Scrollable {
