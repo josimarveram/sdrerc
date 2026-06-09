@@ -2,8 +2,10 @@ package com.sdrerc.ui.appv2.components;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
+import java.awt.Insets;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 
 public class CardPanelV2 extends JPanel {
 
@@ -16,21 +18,17 @@ public class CardPanelV2 extends JPanel {
         lblTitle.setFont(AppV2Theme.fontBold(16));
         lblTitle.setForeground(AppV2Theme.TEXT_PRIMARY);
 
-        JLabel lblDescription = new JLabel("<html><body style='width:210px'>" + escape(description) + "</body></html>");
+        JTextArea lblDescription = new JTextArea(description == null ? "" : description);
+        lblDescription.setEditable(false);
+        lblDescription.setFocusable(false);
+        lblDescription.setOpaque(false);
+        lblDescription.setLineWrap(true);
+        lblDescription.setWrapStyleWord(true);
+        lblDescription.setMargin(new Insets(0, 0, 0, 0));
         lblDescription.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         lblDescription.setForeground(AppV2Theme.TEXT_SECONDARY);
 
         add(lblTitle, BorderLayout.NORTH);
         add(lblDescription, BorderLayout.CENTER);
-    }
-
-    private static String escape(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;");
     }
 }
