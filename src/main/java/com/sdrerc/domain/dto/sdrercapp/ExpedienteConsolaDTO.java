@@ -21,6 +21,7 @@ public class ExpedienteConsolaDTO {
     private final String procedimiento;
     private final String canalRecepcion;
     private final LocalDate fechaRecepcion;
+    private final String tipoSolicitud;
     private final String tipoDocumento;
     private final String numeroDocumento;
     private final String tipoActa;
@@ -66,6 +67,7 @@ public class ExpedienteConsolaDTO {
             String procedimiento,
             String canalRecepcion,
             LocalDate fechaRecepcion,
+            String tipoSolicitud,
             String tipoDocumento,
             String numeroDocumento,
             String tipoActa,
@@ -109,6 +111,7 @@ public class ExpedienteConsolaDTO {
         this.procedimiento = safe(procedimiento);
         this.canalRecepcion = safe(canalRecepcion);
         this.fechaRecepcion = fechaRecepcion;
+        this.tipoSolicitud = safe(tipoSolicitud);
         this.tipoDocumento = safe(tipoDocumento);
         this.numeroDocumento = safe(numeroDocumento);
         this.tipoActa = safe(tipoActa);
@@ -197,6 +200,10 @@ public class ExpedienteConsolaDTO {
 
     public LocalDate getFechaRecepcion() {
         return fechaRecepcion;
+    }
+
+    public String getTipoSolicitud() {
+        return tipoSolicitud;
     }
 
     public String getTipoDocumento() {

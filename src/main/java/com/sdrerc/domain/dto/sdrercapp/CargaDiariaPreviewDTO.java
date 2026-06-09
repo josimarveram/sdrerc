@@ -6,7 +6,9 @@ public class CargaDiariaPreviewDTO {
 
     private int fila;
     private String numeroTramite;
+    private String numeroDocumento;
     private String tipoProcedimiento;
+    private String tipoSolicitud;
     private String tipoDocumento;
     private String tipoActa;
     private String numeroActa;
@@ -41,12 +43,28 @@ public class CargaDiariaPreviewDTO {
         this.numeroTramite = trimToNull(numeroTramite);
     }
 
+    public String getNumeroDocumento() {
+        return numeroDocumento;
+    }
+
+    public void setNumeroDocumento(String numeroDocumento) {
+        this.numeroDocumento = trimToNull(numeroDocumento);
+    }
+
     public String getTipoProcedimiento() {
         return tipoProcedimiento;
     }
 
     public void setTipoProcedimiento(String tipoProcedimiento) {
         this.tipoProcedimiento = trimToNull(tipoProcedimiento);
+    }
+
+    public String getTipoSolicitud() {
+        return tipoSolicitud;
+    }
+
+    public void setTipoSolicitud(String tipoSolicitud) {
+        this.tipoSolicitud = normalizarTipoSolicitud(tipoSolicitud);
     }
 
     public String getTipoDocumento() {
@@ -214,5 +232,19 @@ public class CargaDiariaPreviewDTO {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String normalizarTipoSolicitud(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+        if ("PARTE".equalsIgnoreCase(trimmed)) {
+            return "Parte";
+        }
+        if ("OFICIO".equalsIgnoreCase(trimmed)) {
+            return "Oficio";
+        }
+        return trimmed;
     }
 }

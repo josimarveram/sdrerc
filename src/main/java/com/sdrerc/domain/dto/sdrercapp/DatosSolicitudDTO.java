@@ -5,7 +5,10 @@ import java.time.LocalDate;
 public class DatosSolicitudDTO {
 
     private String numeroTramite;
+    private String numeroDocumento;
     private LocalDate fechaRecepcion;
+    private String tipoSolicitudCodigo;
+    private String tipoSolicitudNombre;
     private String tipoProcedimientoCodigo;
     private String tipoProcedimientoNombre;
     private String tipoDocumentoCodigo;
@@ -25,12 +28,36 @@ public class DatosSolicitudDTO {
         this.numeroTramite = trimToNull(numeroTramite);
     }
 
+    public String getNumeroDocumento() {
+        return numeroDocumento;
+    }
+
+    public void setNumeroDocumento(String numeroDocumento) {
+        this.numeroDocumento = trimToNull(numeroDocumento);
+    }
+
     public LocalDate getFechaRecepcion() {
         return fechaRecepcion;
     }
 
     public void setFechaRecepcion(LocalDate fechaRecepcion) {
         this.fechaRecepcion = fechaRecepcion;
+    }
+
+    public String getTipoSolicitudCodigo() {
+        return tipoSolicitudCodigo;
+    }
+
+    public void setTipoSolicitudCodigo(String tipoSolicitudCodigo) {
+        this.tipoSolicitudCodigo = trimToNull(tipoSolicitudCodigo);
+    }
+
+    public String getTipoSolicitudNombre() {
+        return tipoSolicitudNombre;
+    }
+
+    public void setTipoSolicitudNombre(String tipoSolicitudNombre) {
+        this.tipoSolicitudNombre = normalizarTipoSolicitud(tipoSolicitudNombre);
     }
 
     public String getTipoProcedimientoCodigo() {
@@ -119,5 +146,19 @@ public class DatosSolicitudDTO {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String normalizarTipoSolicitud(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+        if ("PARTE".equalsIgnoreCase(trimmed)) {
+            return "Parte";
+        }
+        if ("OFICIO".equalsIgnoreCase(trimmed)) {
+            return "Oficio";
+        }
+        return trimmed;
     }
 }

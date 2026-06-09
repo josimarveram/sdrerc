@@ -33,7 +33,9 @@ public class CargaDiariaArchivoParserService {
     private static final int MAX_HEADER_SCAN_ROWS = 15;
     private static final List<String> REQUIRED_COLUMNS = Arrays.asList(
             "numeroTramite",
+            "numeroDocumento",
             "tipoProcedimiento",
+            "tipoSolicitud",
             "tipoDocumento",
             "numeroActa",
             "titular",
@@ -91,7 +93,9 @@ public class CargaDiariaArchivoParserService {
                 CargaDiariaPreviewDTO dto = new CargaDiariaPreviewDTO();
                 dto.setFila(rowIndex + 1);
                 dto.setNumeroTramite(valorExcel(row, columnas.get("numeroTramite"), formatter));
+                dto.setNumeroDocumento(valorExcel(row, columnas.get("numeroDocumento"), formatter));
                 dto.setTipoProcedimiento(valorExcel(row, columnas.get("tipoProcedimiento"), formatter));
+                dto.setTipoSolicitud(valorExcel(row, columnas.get("tipoSolicitud"), formatter));
                 dto.setTipoDocumento(valorExcel(row, columnas.get("tipoDocumento"), formatter));
                 dto.setTipoActa(valorExcel(row, columnas.get("tipoActa"), formatter));
                 dto.setNumeroActa(valorExcel(row, columnas.get("numeroActa"), formatter));
@@ -138,7 +142,9 @@ public class CargaDiariaArchivoParserService {
                 CargaDiariaPreviewDTO dto = new CargaDiariaPreviewDTO();
                 dto.setFila(fila);
                 dto.setNumeroTramite(valorCsv(valores, columnas.get("numeroTramite")));
+                dto.setNumeroDocumento(valorCsv(valores, columnas.get("numeroDocumento")));
                 dto.setTipoProcedimiento(valorCsv(valores, columnas.get("tipoProcedimiento")));
+                dto.setTipoSolicitud(valorCsv(valores, columnas.get("tipoSolicitud")));
                 dto.setTipoDocumento(valorCsv(valores, columnas.get("tipoDocumento")));
                 dto.setTipoActa(valorCsv(valores, columnas.get("tipoActa")));
                 dto.setNumeroActa(valorCsv(valores, columnas.get("numeroActa")));
@@ -359,6 +365,18 @@ public class CargaDiariaArchivoParserService {
                 "N TRAMITE WEB",
                 "NRO TRAMITE WEB",
                 "NUMERO TRAMITE WEB"));
+        aliases.put("numeroDocumento", normalizarLista(
+                "NUMERO_DOCUMENTO",
+                "NUMERO DOCUMENTO",
+                "NRO_DOCUMENTO",
+                "NRO DOCUMENTO",
+                "NRO. DOCUMENTO",
+                "N° DOCUMENTO",
+                "N DOCUMENTO",
+                "NUMERO DE DOCUMENTO",
+                "NÚMERO DE DOCUMENTO",
+                "DOCUMENTO NUMERO",
+                "DOCUMENTO NRO"));
         aliases.put("tipoProcedimiento", normalizarLista(
                 "TIPO_PROCEDIMIENTO",
                 "TIPO DE PROCEDIMIENTO",
@@ -366,6 +384,14 @@ public class CargaDiariaArchivoParserService {
                 "PROC. REG",
                 "PROCEDIMIENTO REGISTRAL",
                 "PROCESO"));
+        aliases.put("tipoSolicitud", normalizarLista(
+                "TIPO_SOLICITUD",
+                "TIPO SOLICITUD",
+                "TIPO DE SOLICITUD",
+                "TIPO DE SOLICITUD (PARTE / OFICIO)",
+                "TIPO DE SOLICITUD PARTE OFICIO",
+                "PARTE OFICIO",
+                "PARTE/OFICIO"));
         aliases.put("tipoDocumento", normalizarLista(
                 "TIPO_DOCUMENTO",
                 "TIPO DE DOCUMENTO",
@@ -423,7 +449,9 @@ public class CargaDiariaArchivoParserService {
     private static Map<String, String> crearNombresColumnasObligatorias() {
         Map<String, String> nombres = new LinkedHashMap<>();
         nombres.put("numeroTramite", "Número de trámite");
+        nombres.put("numeroDocumento", "N° documento");
         nombres.put("tipoProcedimiento", "Tipo de procedimiento");
+        nombres.put("tipoSolicitud", "Tipo de solicitud");
         nombres.put("tipoDocumento", "Tipo de documento");
         nombres.put("numeroActa", "Número de acta");
         nombres.put("titular", "Titular");

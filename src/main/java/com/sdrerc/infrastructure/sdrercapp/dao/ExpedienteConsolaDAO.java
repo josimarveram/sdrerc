@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 public class ExpedienteConsolaDAO {
 
@@ -21,7 +22,7 @@ public class ExpedienteConsolaDAO {
         String sql = "SELECT id_expediente, numero_expediente, numero_tramite_documentario, "
                 + "etapa_codigo, estado_codigo, abogado_inicial, responsable_actual, equipo_actual, "
                 + "titular, titular_documento, remitente, remitente_documento, procedimiento, canal_recepcion, fecha_recepcion, "
-                + "tipo_documento, numero_documento, tipo_acta, numero_acta, anio_acta, oficina_registral, "
+                + "solicitud_observacion, tipo_documento, numero_documento, tipo_acta, numero_acta, anio_acta, oficina_registral, "
                 + "tipo_resolucion, numero_resolucion, fecha_resolucion, fecha_firma, "
                 + "tipo_notificacion, estado_notificacion, resultado_notificacion, estado_cargo_acuse, "
                 + "estado_publicacion, medio_publicacion, numero_publicacion, ruta_carpeta_digital, enlace_carpeta_digital, "
@@ -36,6 +37,7 @@ public class ExpedienteConsolaDAO {
                 + ", (SELECT procedimiento FROM (SELECT s.asunto AS procedimiento FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS procedimiento "
                 + ", (SELECT canal FROM (SELECT cr.nombre AS canal FROM expediente_solicitud s LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = s.id_canal_recepcion WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS canal_recepcion "
                 + ", (SELECT fecha_recepcion FROM (SELECT s.fecha_recepcion FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS fecha_recepcion "
+                + ", (SELECT solicitud_observacion FROM (SELECT s.observacion AS solicitud_observacion FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS solicitud_observacion "
                 + ", (SELECT tipo_documento FROM (SELECT d.nombre_documento AS tipo_documento FROM expediente_documento d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS tipo_documento "
                 + ", (SELECT numero_documento FROM (SELECT d.numero_documento FROM expediente_documento d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS numero_documento "
                 + ", (SELECT tipo_acta FROM (SELECT ta.nombre AS tipo_acta FROM expediente_acta a LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = a.id_tipo_acta WHERE a.id_expediente = c.id_expediente AND a.activo = 1 ORDER BY a.creado_en DESC) WHERE ROWNUM = 1) AS tipo_acta "
@@ -87,6 +89,7 @@ public class ExpedienteConsolaDAO {
                 rs.getString("procedimiento"),
                 rs.getString("canal_recepcion"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                extraerValorObservacion(rs.getString("solicitud_observacion"), "Tipo de solicitud"),
                 rs.getString("tipo_documento"),
                 rs.getString("numero_documento"),
                 rs.getString("tipo_acta"),
@@ -132,6 +135,22 @@ public class ExpedienteConsolaDAO {
                 + "FROM expediente_persona ep JOIN persona p ON p.id_persona = ep.id_persona "
                 + "WHERE ep.id_expediente = c.id_expediente AND ep.activo = 1 AND ep.tipo_relacion_persona = '" + tipoRelacion + "' "
                 + "ORDER BY ep.creado_en DESC) WHERE ROWNUM = 1) AS " + alias;
+    }
+
+    private static String extraerValorObservacion(String observacion, String etiqueta) {
+        if (observacion == null || etiqueta == null) {
+            return null;
+        }
+        String prefix = etiqueta.trim().toLowerCase(Locale.ROOT) + ":";
+        String[] partes = observacion.split("\\|");
+        for (String parte : partes) {
+            String limpia = parte == null ? "" : parte.trim();
+            if (limpia.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                String valor = limpia.substring(prefix.length()).trim();
+                return valor.isEmpty() ? null : valor;
+            }
+        }
+        return null;
     }
 
     private static Long getLongOrNull(ResultSet rs, String column) throws SQLException {

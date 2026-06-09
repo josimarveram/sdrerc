@@ -46,11 +46,13 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private final Runnable onRegistroConfirmado;
 
     private final JTextField txtNumeroTramite = new JTextField();
+    private final JTextField txtNumeroDocumento = new JTextField();
     private final PremiumDateFieldV2 fechaRecepcionField = new PremiumDateFieldV2();
     private final JRadioButton rdoCorrespondeSdrerc = new JRadioButton("Sí corresponde a la SDRERC", true);
     private final JRadioButton rdoNoCorrespondeSdrerc = new JRadioButton("No corresponde a la SDRERC");
     private final ButtonGroup grupoValidacionInicial = new ButtonGroup();
     private final JTextField txtHojaEnvio = new JTextField();
+    private final JComboBox<FiltroCatalogoItemV2> cmbTipoSolicitud = new JComboBox<FiltroCatalogoItemV2>(crearTiposSolicitud());
     private final JComboBox<FiltroCatalogoItemV2> cmbProcedimiento = comboBase("Seleccione procedimiento");
     private final JComboBox<FiltroCatalogoItemV2> cmbTipoDocumento = comboBase("Seleccione tipo documento");
     private final JComboBox<FiltroCatalogoItemV2> cmbCanal = comboBase("Seleccione canal");
@@ -174,11 +176,13 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private JPanel crearDatosSolicitud() {
         JPanel panel = seccion("Datos de solicitud");
         agregarFila(panel, 0, "Nro. trámite web *", txtNumeroTramite);
-        agregarFila(panel, 1, "Fecha recepción *", fechaRecepcionField);
-        agregarFila(panel, 2, "Procedimiento registral *", cmbProcedimiento);
-        agregarFila(panel, 3, "Tipo documento *", cmbTipoDocumento);
-        agregarFila(panel, 4, "Canal de ingreso", cmbCanal);
-        agregarFila(panel, 5, "Prioridad", cmbPrioridad);
+        agregarFila(panel, 1, "N° documento *", txtNumeroDocumento);
+        agregarFila(panel, 2, "Tipo de solicitud *", cmbTipoSolicitud);
+        agregarFila(panel, 3, "Fecha recepción *", fechaRecepcionField);
+        agregarFila(panel, 4, "Procedimiento registral *", cmbProcedimiento);
+        agregarFila(panel, 5, "Tipo documento *", cmbTipoDocumento);
+        agregarFila(panel, 6, "Canal de ingreso", cmbCanal);
+        agregarFila(panel, 7, "Prioridad", cmbPrioridad);
         return panel;
     }
 
@@ -284,6 +288,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private void configurarEstadoInicial() {
         configurarCampo(txtNumeroTramite);
+        configurarCampo(txtNumeroDocumento);
         fechaRecepcionField.setDate(toDate(LocalDate.now()));
         configurarCampo(txtHojaEnvio);
         configurarCampo(txtNumeroActa);
@@ -292,6 +297,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         configurarCampo(txtRemitenteNombre);
         configurarCampo(txtRemitenteDocumento);
         configurarCombo(cmbProcedimiento);
+        configurarCombo(cmbTipoSolicitud);
         configurarCombo(cmbTipoDocumento);
         configurarCombo(cmbCanal);
         configurarCombo(cmbPrioridad);
@@ -365,6 +371,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private List<JTextField> camposTexto() {
         List<JTextField> fields = new ArrayList<JTextField>();
         fields.add(txtNumeroTramite);
+        fields.add(txtNumeroDocumento);
         fields.add(txtHojaEnvio);
         fields.add(txtNumeroActa);
         fields.add(txtTitularNombre);
@@ -381,6 +388,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private List<JComboBox<FiltroCatalogoItemV2>> combos() {
         List<JComboBox<FiltroCatalogoItemV2>> comboList = new ArrayList<JComboBox<FiltroCatalogoItemV2>>();
         comboList.add(cmbProcedimiento);
+        comboList.add(cmbTipoSolicitud);
         comboList.add(cmbTipoDocumento);
         comboList.add(cmbCanal);
         comboList.add(cmbPrioridad);
@@ -524,9 +532,12 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         RegistroManualExpedienteDTO dto = new RegistroManualExpedienteDTO();
         DatosSolicitudDTO solicitud = new DatosSolicitudDTO();
         solicitud.setNumeroTramite(txtNumeroTramite.getText());
+        solicitud.setNumeroDocumento(txtNumeroDocumento.getText());
         solicitud.setFechaRecepcion(localDate(fechaRecepcionField.getDate()));
         solicitud.setValidacionInicial(valorValidacionInicial());
         solicitud.setHojaEnvio(txtHojaEnvio.getText());
+        solicitud.setTipoSolicitudCodigo(codigo(cmbTipoSolicitud));
+        solicitud.setTipoSolicitudNombre(nombreSeleccionadoConCodigo(cmbTipoSolicitud));
         solicitud.setTipoProcedimientoCodigo(codigo(cmbProcedimiento));
         solicitud.setTipoProcedimientoNombre(nombreSeleccionadoConCodigo(cmbProcedimiento));
         solicitud.setTipoDocumentoCodigo(codigo(cmbTipoDocumento));
@@ -559,6 +570,8 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private String resumen(RegistroManualExpedienteDTO dto) {
         StringBuilder sb = new StringBuilder();
         sb.append("Trámite: ").append(safe(dto.getSolicitud().getNumeroTramite())).append("\n");
+        sb.append("N° documento: ").append(safe(dto.getSolicitud().getNumeroDocumento())).append("\n");
+        sb.append("Tipo de solicitud: ").append(safe(dto.getSolicitud().getTipoSolicitudNombre())).append("\n");
         sb.append("Titular: ").append(safe(dto.getTitular().getNombreCompleto())).append("\n");
         sb.append("Procedimiento: ").append(safe(dto.getSolicitud().getTipoProcedimientoNombre())).append("\n");
         sb.append("Acta: ").append(safe(dto.getActa().getNumeroActa())).append("\n");
@@ -594,6 +607,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         rdoCorrespondeSdrerc.setSelected(true);
         actualizarEstadoHojaEnvio();
         seleccionarPrimero(cmbProcedimiento);
+        seleccionarPrimero(cmbTipoSolicitud);
         seleccionarPrimero(cmbTipoDocumento);
         seleccionarPrimero(cmbCanal);
         seleccionarPrimero(cmbTipoActa);
@@ -698,6 +712,14 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             new FiltroCatalogoItemV2("CE", "Carné de extranjería"),
             new FiltroCatalogoItemV2("RUC", "RUC"),
             new FiltroCatalogoItemV2("PASAPORTE", "Pasaporte")
+        };
+    }
+
+    private static FiltroCatalogoItemV2[] crearTiposSolicitud() {
+        return new FiltroCatalogoItemV2[]{
+            new FiltroCatalogoItemV2(null, "Seleccione tipo de solicitud"),
+            new FiltroCatalogoItemV2("PARTE", "Parte"),
+            new FiltroCatalogoItemV2("OFICIO", "Oficio")
         };
     }
 

@@ -265,7 +265,7 @@ public class ExpedienteRegistroDAO {
             ps.setString(3, item.getNumeroTramite());
             ps.setDate(4, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
             ps.setString(5, item.getTipoProcedimiento());
-            ps.setString(6, item.getObservacionInicial());
+            ps.setString(6, limitar(observacionSolicitud(item), 1000));
             ps.setInt(7, item.isPosibleDuplicado() ? 1 : 0);
             ps.executeUpdate();
         }
@@ -320,7 +320,7 @@ public class ExpedienteRegistroDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             ps.setString(2, item.getTipoDocumento());
-            ps.setString(3, item.getNumeroTramite());
+            ps.setString(3, item.getNumeroDocumento());
             ps.setDate(4, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
             ps.executeUpdate();
         }
@@ -437,7 +437,7 @@ public class ExpedienteRegistroDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             ps.setString(2, solicitud.getTipoDocumentoNombre());
-            ps.setString(3, solicitud.getNumeroTramite());
+            ps.setString(3, solicitud.getNumeroDocumento());
             ps.setDate(4, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
             ps.executeUpdate();
         }
@@ -472,8 +472,16 @@ public class ExpedienteRegistroDAO {
         StringBuilder sb = new StringBuilder();
         append(sb, "Validación inicial", registro.getSolicitud().getValidacionInicial());
         append(sb, "Hoja de envío", registro.getSolicitud().getHojaEnvio());
+        append(sb, "Tipo de solicitud", registro.getSolicitud().getTipoSolicitudNombre());
         append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
+        return sb.toString();
+    }
+
+    private String observacionSolicitud(CargaDiariaPreviewDTO item) {
+        StringBuilder sb = new StringBuilder();
+        append(sb, "Tipo de solicitud", item.getTipoSolicitud());
+        append(sb, "Observación inicial", item.getObservacionInicial());
         return sb.toString();
     }
 

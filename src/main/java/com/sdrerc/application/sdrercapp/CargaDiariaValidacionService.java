@@ -48,8 +48,16 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje("Número de trámite obligatorio.");
                 error = true;
             }
+            if (!hasText(item.getNumeroDocumento())) {
+                item.agregarMensaje("Número de documento obligatorio.");
+                error = true;
+            }
             if (!hasText(item.getTipoProcedimiento())) {
                 item.agregarMensaje("Tipo de procedimiento obligatorio.");
+                error = true;
+            }
+            if (!hasText(item.getTipoSolicitud())) {
+                item.agregarMensaje("Tipo de solicitud obligatorio.");
                 error = true;
             }
             if (!hasText(item.getTipoDocumento())) {

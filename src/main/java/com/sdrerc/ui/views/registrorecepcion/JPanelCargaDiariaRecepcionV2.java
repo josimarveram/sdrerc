@@ -60,7 +60,9 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             new Object[]{
                 "Fila",
                 "Número trámite",
+                "N° documento",
                 "Tipo procedimiento",
+                "Tipo solicitud",
                 "Tipo documento",
                 "Tipo acta",
                 "Número acta",
@@ -162,12 +164,14 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         table.setIntercellSpacing(new Dimension(0, 1));
         table.getColumnModel().getColumn(0).setMaxWidth(60);
         table.getColumnModel().getColumn(1).setPreferredWidth(140);
-        table.getColumnModel().getColumn(2).setPreferredWidth(160);
-        table.getColumnModel().getColumn(3).setPreferredWidth(140);
+        table.getColumnModel().getColumn(2).setPreferredWidth(150);
+        table.getColumnModel().getColumn(3).setPreferredWidth(160);
         table.getColumnModel().getColumn(4).setPreferredWidth(120);
-        table.getColumnModel().getColumn(6).setPreferredWidth(180);
-        table.getColumnModel().getColumn(11).setPreferredWidth(190);
-        table.getColumnModel().getColumn(12).setPreferredWidth(260);
+        table.getColumnModel().getColumn(5).setPreferredWidth(140);
+        table.getColumnModel().getColumn(6).setPreferredWidth(120);
+        table.getColumnModel().getColumn(8).setPreferredWidth(180);
+        table.getColumnModel().getColumn(13).setPreferredWidth(190);
+        table.getColumnModel().getColumn(14).setPreferredWidth(260);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
 
         JScrollPane scroll = new JScrollPane(table);
@@ -364,7 +368,9 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             tableModel.addRow(new Object[]{
                 item.getFila(),
                 safe(item.getNumeroTramite()),
+                safe(item.getNumeroDocumento()),
                 safe(item.getTipoProcedimiento()),
+                safe(item.getTipoSolicitud()),
                 safe(item.getTipoDocumento()),
                 safe(item.getTipoActa()),
                 safe(item.getNumeroActa()),

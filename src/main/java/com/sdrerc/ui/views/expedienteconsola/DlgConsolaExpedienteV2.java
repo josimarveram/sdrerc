@@ -395,6 +395,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             {"Procedimiento", expediente.getProcedimiento()},
             {"Canal de recepción", expediente.getCanalRecepcion()},
             {"Fecha recepción", formatDate(expediente.getFechaRecepcion())},
+            {"Tipo de solicitud", expediente.getTipoSolicitud()},
             {"Tipo documento", expediente.getTipoDocumento()},
             {"Número documento", expediente.getNumeroDocumento()}
         }));

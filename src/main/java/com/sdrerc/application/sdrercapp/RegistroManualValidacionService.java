@@ -39,6 +39,12 @@ public class RegistroManualValidacionService {
         if (!hasText(solicitud.getNumeroTramite())) {
             errores.add("Número de trámite obligatorio.");
         }
+        if (!hasText(solicitud.getNumeroDocumento())) {
+            errores.add("Número de documento obligatorio.");
+        }
+        if (!hasText(solicitud.getTipoSolicitudNombre())) {
+            errores.add("Tipo de solicitud obligatorio.");
+        }
         if (solicitud.getFechaRecepcion() == null) {
             errores.add("Fecha de recepción obligatoria o inválida.");
         } else if (solicitud.getFechaRecepcion().isAfter(LocalDate.now())) {
