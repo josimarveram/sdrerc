@@ -406,30 +406,41 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             protected void done() {
                 try {
                     CatalogosFormulario catalogos = get();
-                    aplicarCatalogos(catalogos);
-                    lblEstado.setText("Catálogos cargados. Complete el formulario y presione Validar.");
+                    int vacios = aplicarCatalogos(catalogos);
+                    lblEstado.setText(vacios == 0
+                            ? "Catálogos cargados. Complete el formulario y presione Validar."
+                            : "Catálogos cargados con " + vacios + " combo(s) sin opciones activas. Revise datos maestros.");
                 } catch (Exception ex) {
-                    lblEstado.setText("No se pudieron cargar catálogos. Puede usar texto libre donde corresponda.");
+                    String message = ex.getMessage();
+                    if (message == null && ex.getCause() != null) {
+                        message = ex.getCause().getMessage();
+                    }
+                    lblEstado.setText("No se pudieron cargar catálogos de SDRERC_APP. " + (message == null ? "" : message));
                 }
             }
         };
         worker.execute();
     }
 
-    private void aplicarCatalogos(CatalogosFormulario catalogos) {
-        agregarItems(cmbCanal, catalogos.canales);
-        agregarItems(cmbProcedimiento, catalogos.procedimientos);
-        agregarItems(cmbTipoDocumento, catalogos.tiposDocumento);
-        agregarItems(cmbTipoActa, catalogos.tiposActa);
+    private int aplicarCatalogos(CatalogosFormulario catalogos) {
+        int vacios = 0;
+        vacios += agregarItems(cmbCanal, catalogos.canales, "canales de recepción");
+        vacios += agregarItems(cmbProcedimiento, catalogos.procedimientos, "procedimientos registrales");
+        vacios += agregarItems(cmbTipoDocumento, catalogos.tiposDocumento, "tipos de documento");
+        vacios += agregarItems(cmbTipoActa, catalogos.tiposActa, "tipos de acta");
+        return vacios;
     }
 
-    private void agregarItems(JComboBox<FiltroCatalogoItemV2> combo, List<CatalogoItemDTO> items) {
-        if (items == null) {
-            return;
+    private int agregarItems(JComboBox<FiltroCatalogoItemV2> combo, List<CatalogoItemDTO> items, String nombreCatalogo) {
+        if (items == null || items.isEmpty()) {
+            combo.setToolTipText("No hay opciones activas para " + nombreCatalogo + ".");
+            return 1;
         }
         for (CatalogoItemDTO item : items) {
             combo.addItem(new FiltroCatalogoItemV2(item.getCodigo(), item.getNombre()));
         }
+        combo.setToolTipText(null);
+        return 0;
     }
 
     private void validarFormulario() {

@@ -10,6 +10,7 @@ import com.sdrerc.domain.dto.sdrercapp.VerificacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
@@ -369,6 +370,7 @@ public class JPanelVerificacionV2 extends JPanel {
         table.getColumnModel().getColumn(10).setPreferredWidth(150);
         table.getColumnModel().getColumn(11).setPreferredWidth(160);
         table.getColumnModel().getColumn(12).setMaxWidth(92);
+        AppV2TableColumnSizer.applyFriendlyDefaults(table);
     }
 
     private void configurarDocumentosTabla() {

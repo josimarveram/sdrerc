@@ -7,6 +7,8 @@ import com.sdrerc.domain.dto.sdrercapp.EquipoJuridicoFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoJuridicoResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoMiembroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableEquipoDTO;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
@@ -79,9 +81,9 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private final JCheckBox chkActivo = new JCheckBox("Equipo activo");
 
     private final EquiposTableModel equiposModel = new EquiposTableModel();
-    private final JTable tblEquipos = new JTable(equiposModel);
+    private final JTable tblEquipos = new AppV2Table(equiposModel);
     private final MiembrosTableModel miembrosModel = new MiembrosTableModel();
-    private final JTable tblMiembros = new JTable(miembrosModel);
+    private final JTable tblMiembros = new AppV2Table(miembrosModel);
     private final JTabbedPane tabsDetalle = new JTabbedPane();
 
     private final MetricCardV2 cardEquipos = new MetricCardV2("Equipos", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
@@ -334,6 +336,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         tblEquipos.getColumnModel().getColumn(6).setPreferredWidth(76);
         tblEquipos.getColumnModel().getColumn(7).setPreferredWidth(80);
         tblEquipos.getColumnModel().getColumn(5).setCellRenderer(new EstadoRenderer());
+        AppV2TableColumnSizer.applyFriendlyDefaults(tblEquipos);
 
         tblMiembros.setModel(miembrosModel);
         tblMiembros.setRowHeight(28);
@@ -347,6 +350,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         tblMiembros.getColumnModel().getColumn(3).setPreferredWidth(85);
         tblMiembros.getColumnModel().getColumn(4).setPreferredWidth(92);
         tblMiembros.getColumnModel().getColumn(5).setPreferredWidth(76);
+        AppV2TableColumnSizer.applyFriendlyDefaults(tblMiembros);
     }
 
     private void configurarEventos() {

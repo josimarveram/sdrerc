@@ -12,6 +12,7 @@ import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
@@ -425,6 +426,7 @@ public class JPanelAnalisisV2 extends JPanel {
         table.getColumnModel().getColumn(9).setPreferredWidth(150);
         table.getColumnModel().getColumn(10).setPreferredWidth(150);
         table.getColumnModel().getColumn(11).setMaxWidth(92);
+        AppV2TableColumnSizer.applyFriendlyDefaults(table);
     }
 
     private void configurarDocumentoTabla() {

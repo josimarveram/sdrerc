@@ -6,6 +6,8 @@ import com.sdrerc.domain.dto.sdrercapp.RolDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioResultadoDTO;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
@@ -64,7 +66,7 @@ public class JPanelUsuariosV2 extends JPanel {
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar usuarios.");
     private final JLabel lblUsuarioSeleccionado = new JLabel("Sin usuario seleccionado");
     private final JLabel lblArea = new JLabel("-");
-    private final JLabel lblClave = new JLabel("Gestión de clave pendiente de mecanismo de autenticación V2.");
+    private final JLabel lblClave = new JLabel("Gestión de clave pendiente de mecanismo de autenticación.");
     private final JTextField txtUsername = new JTextField(20);
     private final JTextField txtNombres = new JTextField(22);
     private final JTextField txtApellidos = new JTextField(22);
@@ -75,9 +77,9 @@ public class JPanelUsuariosV2 extends JPanel {
     private final JCheckBox chkActivo = new JCheckBox("Usuario activo");
 
     private final UsuariosTableModel usuariosModel = new UsuariosTableModel();
-    private final JTable tblUsuarios = new JTable(usuariosModel);
+    private final JTable tblUsuarios = new AppV2Table(usuariosModel);
     private final RolesUsuarioTableModel rolesUsuarioModel = new RolesUsuarioTableModel();
-    private final JTable tblRoles = new JTable(rolesUsuarioModel);
+    private final JTable tblRoles = new AppV2Table(rolesUsuarioModel);
 
     private final MetricCardV2 cardUsuarios = new MetricCardV2("Usuarios", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Acceso habilitado", AppV2Theme.SUCCESS);
@@ -340,6 +342,7 @@ public class JPanelUsuariosV2 extends JPanel {
         tblUsuarios.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblUsuarios.getColumnModel().getColumn(0).setMaxWidth(70);
         tblUsuarios.getColumnModel().getColumn(6).setCellRenderer(new EstadoUsuarioRenderer());
+        AppV2TableColumnSizer.applyFriendlyDefaults(tblUsuarios);
 
         tblRoles.setRowHeight(30);
         tblRoles.setFillsViewportHeight(true);
@@ -347,6 +350,7 @@ public class JPanelUsuariosV2 extends JPanel {
         tblRoles.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.getColumnModel().getColumn(0).setMaxWidth(72);
         tblRoles.getColumnModel().getColumn(0).setCellRenderer(tblRoles.getDefaultRenderer(Boolean.class));
+        AppV2TableColumnSizer.applyFriendlyDefaults(tblRoles);
     }
 
     private void configurarEventos() {

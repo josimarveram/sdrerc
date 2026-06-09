@@ -8,6 +8,7 @@ import com.sdrerc.domain.dto.sdrercapp.ExpedienteDigitalRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteDigitalResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -363,6 +364,7 @@ public class JPanelExpedienteDigitalV2 extends JPanel {
         table.getColumnModel().getColumn(12).setMaxWidth(90);
         table.getColumnModel().getColumn(13).setMaxWidth(90);
         table.getColumnModel().getColumn(14).setMaxWidth(90);
+        AppV2TableColumnSizer.applyFriendlyDefaults(table);
     }
 
     private void configurarDocumentosTabla() {

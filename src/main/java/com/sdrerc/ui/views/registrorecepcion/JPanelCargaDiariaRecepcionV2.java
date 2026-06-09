@@ -7,6 +7,7 @@ import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResumenDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -165,6 +166,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         table.getColumnModel().getColumn(5).setPreferredWidth(180);
         table.getColumnModel().getColumn(10).setPreferredWidth(190);
         table.getColumnModel().getColumn(11).setPreferredWidth(260);
+        AppV2TableColumnSizer.applyFriendlyDefaults(table);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));

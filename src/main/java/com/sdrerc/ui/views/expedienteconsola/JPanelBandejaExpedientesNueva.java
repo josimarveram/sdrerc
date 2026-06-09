@@ -6,6 +6,7 @@ import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
@@ -185,7 +186,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         filtros.add(spnLimite, gbc);
 
         btnVerDetalle.setEnabled(false);
-        btnVerDetalle.setToolTipText("Seleccione un expediente para abrir la consola V2");
+        btnVerDetalle.setToolTipText("Seleccione un expediente para abrir la consola de expediente");
 
         JPanel superior = new JPanel(new BorderLayout(8, 8));
         superior.setOpaque(false);
@@ -240,6 +241,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.getColumnModel().getColumn(3).setMinWidth(120);
         table.getColumnModel().getColumn(4).setMinWidth(130);
         table.getColumnModel().getColumn(11).setMaxWidth(80);
+        AppV2TableColumnSizer.applyFriendlyDefaults(table);
     }
 
     private JLabel crearLabelFiltro(String text) {
@@ -376,7 +378,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             JOptionPane.showMessageDialog(
                     this,
                     "Seleccione un expediente para ver el detalle.",
-                    "SDRERC V2",
+                    "SDRERC",
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }

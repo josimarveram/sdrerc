@@ -6,6 +6,8 @@ import com.sdrerc.domain.dto.sdrercapp.AccionPermitidaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteTimelineDTO;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.EmptyStatePanelV2;
 import com.sdrerc.ui.appv2.components.SideInfoPanelV2;
@@ -51,7 +53,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
     private final Long idExpediente;
     private final ExpedienteDetalleService detalleService;
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
-    private final JLabel lblTitulo = new JLabel("Consola Expediente V2");
+    private final JLabel lblTitulo = new JLabel("Consola de expediente");
     private final JLabel lblSubtitulo = new JLabel("Cargando datos del expediente...");
     private final JLabel lblAsociadosEstado = new JLabel("Cargando expedientes asociados...");
     private final JButton btnAbrirAsociado = new JButton("Abrir expediente asociado");
@@ -70,7 +72,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             return false;
         }
     };
-    private final JTable timelineTable = new JTable(timelineModel);
+    private final JTable timelineTable = new AppV2Table(timelineModel);
     private final DefaultTableModel asociadosModel = new DefaultTableModel(
             new Object[]{"ID", "Número expediente", "Tipo relación", "Descripción", "Etapa", "Estado", "Fecha asociación", "Usuario"},
             0) {
@@ -79,14 +81,14 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             return false;
         }
     };
-    private final JTable asociadosTable = new JTable(asociadosModel);
+    private final JTable asociadosTable = new AppV2Table(asociadosModel);
 
     public DlgConsolaExpedienteV2(Window owner, Long idExpediente) {
         this(owner, idExpediente, new ExpedienteDetalleService());
     }
 
     public DlgConsolaExpedienteV2(Window owner, Long idExpediente, ExpedienteDetalleService detalleService) {
-        super(owner, "Consola Expediente V2", ModalityType.APPLICATION_MODAL);
+        super(owner, "Consola de expediente", ModalityType.APPLICATION_MODAL);
         this.idExpediente = idExpediente;
         this.detalleService = detalleService;
         configurarDialogo();
@@ -192,6 +194,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         asociadosTable.getColumnModel().getColumn(0).setMaxWidth(70);
         asociadosTable.getColumnModel().getColumn(4).setPreferredWidth(130);
         asociadosTable.getColumnModel().getColumn(5).setPreferredWidth(130);
+        AppV2TableColumnSizer.applyFriendlyDefaults(asociadosTable);
         asociadosTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 btnAbrirAsociado.setEnabled(asociadosTable.getSelectedRow() >= 0);
@@ -231,6 +234,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         timelineTable.getColumnModel().getColumn(2).setPreferredWidth(130);
         timelineTable.getColumnModel().getColumn(3).setPreferredWidth(230);
         timelineTable.getColumnModel().getColumn(4).setPreferredWidth(260);
+        AppV2TableColumnSizer.applyFriendlyDefaults(timelineTable);
         JScrollPane scroll = new JScrollPane(timelineTable);
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         return scroll;
@@ -279,7 +283,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
 
     private void setLoadingState() {
         lblTitulo.setText("Cargando expediente...");
-        lblSubtitulo.setText("Consultando vistas de solo lectura SDRERC_APP");
+        lblSubtitulo.setText("Consultando detalle del expediente");
         panelBadges.removeAll();
         panelEtapas.removeAll();
         headerDatos.removeAll();
@@ -302,7 +306,8 @@ public class DlgConsolaExpedienteV2 extends JDialog {
 
         ExpedienteConsolaDTO expediente = carga.consola;
         lblTitulo.setText("Expediente " + expediente.getNumeroExpediente());
-        lblSubtitulo.setText("Titular: No disponible · Procedimiento: No disponible");
+        lblSubtitulo.setText("Titular: " + safe(expediente.getTitular())
+                + " · Procedimiento: " + safe(expediente.getProcedimiento()));
         cargarHeaderDatos(expediente);
         cargarBadges(expediente);
         cargarEtapas(expediente);
@@ -340,7 +345,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         headerDatos.removeAll();
         headerDatos.add(crearHeaderDato("Trámite", expediente.getNumeroTramiteDocumentario()));
         headerDatos.add(crearHeaderDato("Responsable", expediente.getResponsableActual()));
-        headerDatos.add(crearHeaderDato("Fecha registro", formatDateTime(expediente.getFechaRegistro())));
+        headerDatos.add(crearHeaderDato("Recepción", formatDate(expediente.getFechaRecepcion())));
         headerDatos.add(crearHeaderDato("Vencimiento", formatDate(expediente.getFechaVencimiento())));
         headerDatos.add(crearHeaderDato("Días restantes", value(expediente.getDiasRestantes())));
         headerDatos.revalidate();
@@ -379,15 +384,33 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         content.add(crearSeccionDetalle("Datos del expediente", new String[][]{
             {"ID expediente", value(expediente.getIdExpediente())},
             {"Número expediente", expediente.getNumeroExpediente()},
+            {"Número trámite", expediente.getNumeroTramiteDocumentario()},
             {"Etapa actual", DisplayNameMapperV2.etapa(expediente.getEtapaCodigo())},
-            {"Estado actual", DisplayNameMapperV2.estado(expediente.getEstadoCodigo())}
+            {"Estado actual", DisplayNameMapperV2.estado(expediente.getEstadoCodigo())},
+            {"Fecha registro", formatDateTime(expediente.getFechaRegistro())},
+            {"Último movimiento", formatDateTime(expediente.getFechaUltimoMovimiento())}
         }));
         content.add(Box.createVerticalStrut(10));
         content.add(crearSeccionDetalle("Datos del trámite", new String[][]{
-            {"Número trámite", expediente.getNumeroTramiteDocumentario()},
-            {"Titular", "No disponible en vista actual"},
-            {"Procedimiento", "No disponible en vista actual"},
-            {"Número de resolución", "No disponible en vista actual"}
+            {"Procedimiento", expediente.getProcedimiento()},
+            {"Canal de recepción", expediente.getCanalRecepcion()},
+            {"Fecha recepción", formatDate(expediente.getFechaRecepcion())},
+            {"Tipo documento", expediente.getTipoDocumento()},
+            {"Número documento", expediente.getNumeroDocumento()}
+        }));
+        content.add(Box.createVerticalStrut(10));
+        content.add(crearSeccionDetalle("Personas", new String[][]{
+            {"Titular", expediente.getTitular()},
+            {"Documento titular", expediente.getTitularDocumento()},
+            {"Remitente", expediente.getRemitente()},
+            {"Documento remitente", expediente.getRemitenteDocumento()}
+        }));
+        content.add(Box.createVerticalStrut(10));
+        content.add(crearSeccionDetalle("Acta", new String[][]{
+            {"Tipo acta", expediente.getTipoActa()},
+            {"Número acta", expediente.getNumeroActa()},
+            {"Año acta", value(expediente.getAnioActa())},
+            {"Oficina registral", expediente.getOficinaRegistral()}
         }));
         content.add(Box.createVerticalStrut(10));
         content.add(crearSeccionDetalle("Responsables", new String[][]{
@@ -396,9 +419,30 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             {"Equipo actual", expediente.getEquipoActual()}
         }));
         content.add(Box.createVerticalStrut(10));
+        content.add(crearSeccionDetalle("Resolución / documento", new String[][]{
+            {"Tipo resolución", expediente.getTipoResolucion()},
+            {"Número resolución", expediente.getNumeroResolucion()},
+            {"Fecha resolución", formatDate(expediente.getFechaResolucion())},
+            {"Fecha firma", formatDateTime(expediente.getFechaFirma())}
+        }));
+        content.add(Box.createVerticalStrut(10));
+        content.add(crearSeccionDetalle("Notificación y publicación", new String[][]{
+            {"Tipo notificación", expediente.getTipoNotificacion()},
+            {"Estado notificación", expediente.getEstadoNotificacion()},
+            {"Resultado notificación", expediente.getResultadoNotificacion()},
+            {"Cargo de acuse", expediente.getEstadoCargoAcuse()},
+            {"Estado publicación", DisplayNameMapperV2.valor(expediente.getEstadoPublicacion())},
+            {"Medio publicación", expediente.getMedioPublicacion()},
+            {"Número publicación", expediente.getNumeroPublicacion()}
+        }));
+        content.add(Box.createVerticalStrut(10));
+        content.add(crearSeccionDetalle("Expediente digital", new String[][]{
+            {"Ruta / carpeta", expediente.getRutaCarpetaDigital()},
+            {"Enlace digital", expediente.getEnlaceCarpetaDigital()},
+            {"Completitud", expediente.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente"}
+        }));
+        content.add(Box.createVerticalStrut(10));
         content.add(crearSeccionDetalle("Plazos", new String[][]{
-            {"Fecha registro", formatDateTime(expediente.getFechaRegistro())},
-            {"Último movimiento", formatDateTime(expediente.getFechaUltimoMovimiento())},
             {"Fecha vencimiento", formatDate(expediente.getFechaVencimiento())},
             {"Días restantes", value(expediente.getDiasRestantes())}
         }));
@@ -538,6 +582,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         val.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         val.setForeground(AppV2Theme.TEXT_PRIMARY);
         val.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER));
+        val.setToolTipText(value == null || value.isEmpty() ? null : value);
 
         target.add(lbl, gbcLabel);
         target.add(val, gbcValue);
@@ -696,10 +741,18 @@ public class DlgConsolaExpedienteV2 extends JDialog {
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
             if (!isSelected && modelColumn == 4) {
-                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
+                Component badge = StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
+                if (badge instanceof JLabel) {
+                    ((JLabel) badge).setToolTipText(value == null ? null : value.toString());
+                }
+                return badge;
             }
             if (!isSelected && modelColumn == 5) {
-                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
+                Component badge = StatusBadgeV2.forEstado(value == null ? "" : value.toString());
+                if (badge instanceof JLabel) {
+                    ((JLabel) badge).setToolTipText(value == null ? null : value.toString());
+                }
+                return badge;
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
@@ -708,6 +761,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
                 c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
                 c.setForeground(modelColumn == 1 ? AppV2Theme.PRIMARY : AppV2Theme.TEXT_PRIMARY);
             }
+            setToolTipText(value == null ? null : value.toString());
             return c;
         }
     }
@@ -728,6 +782,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
                 c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
                 c.setForeground(column == 1 ? AppV2Theme.PRIMARY : AppV2Theme.TEXT_PRIMARY);
             }
+            setToolTipText(value == null ? null : value.toString());
             return c;
         }
     }

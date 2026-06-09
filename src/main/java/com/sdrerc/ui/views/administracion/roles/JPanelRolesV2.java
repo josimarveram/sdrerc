@@ -6,6 +6,8 @@ import com.sdrerc.domain.dto.sdrercapp.PermisoDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolResultadoDTO;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
@@ -68,9 +70,9 @@ public class JPanelRolesV2 extends JPanel {
     private final JCheckBox chkActivo = new JCheckBox("Rol activo");
 
     private final RolesTableModel rolesModel = new RolesTableModel();
-    private final JTable tblRoles = new JTable(rolesModel);
+    private final JTable tblRoles = new AppV2Table(rolesModel);
     private final PermisosTableModel permisosModel = new PermisosTableModel();
-    private final JTable tblPermisos = new JTable(permisosModel);
+    private final JTable tblPermisos = new AppV2Table(permisosModel);
 
     private final MetricCardV2 cardRoles = new MetricCardV2("Roles", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Habilitados para uso", AppV2Theme.SUCCESS);
@@ -317,6 +319,7 @@ public class JPanelRolesV2 extends JPanel {
         tblRoles.getColumnModel().getColumn(4).setCellRenderer(new EstadoRolRenderer());
         tblRoles.getColumnModel().getColumn(5).setMaxWidth(80);
         tblRoles.getColumnModel().getColumn(6).setMaxWidth(80);
+        AppV2TableColumnSizer.applyFriendlyDefaults(tblRoles);
 
         tblPermisos.setRowHeight(30);
         tblPermisos.setFillsViewportHeight(true);
@@ -325,6 +328,7 @@ public class JPanelRolesV2 extends JPanel {
         tblPermisos.getColumnModel().getColumn(0).setMaxWidth(72);
         tblPermisos.getColumnModel().getColumn(0).setCellRenderer(tblPermisos.getDefaultRenderer(Boolean.class));
         tblPermisos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        AppV2TableColumnSizer.applyFriendlyDefaults(tblPermisos);
     }
 
     private void configurarEventos() {

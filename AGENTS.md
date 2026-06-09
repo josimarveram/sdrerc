@@ -167,6 +167,17 @@ Toda escritura V2 autorizada debe:
 - El flujo operativo no debe mostrar codigos tecnicos como `FIRMA_EMISION`, `PUBLICACION_CONDICIONAL`, `EXPEDIENTE_DIGITAL` o `CIERRE_ARCHIVO`.
 - El menu lateral V2 debe mantener iconos locales, tooltips en modo colapsado, agrupacion visual clara y navegacion funcional. No usar abreviaturas como reemplazo principal de iconos en modo colapsado.
 
+## 4.5 Estabilizacion V2 de catalogos, detalle y tablas
+
+- Los combos de catalogo V2 deben cargar desde `CatalogoLookupService` o servicios especificos; no hardcodear listas operativas si existe tabla de catalogo real.
+- Si un catalogo requerido queda sin opciones activas, la UI debe mostrar diagnostico amigable y no fallar silenciosamente.
+- Los datos maestros faltantes para combos deben resolverse con scripts idempotentes separados y autorizados; no modificar scripts base ni reestructurar BD durante estabilizaciones funcionales.
+- La consola unica `DlgConsolaExpedienteV2` debe mostrar datos disponibles del modelo real: solicitud, titular, remitente, acta, documento, resolucion, notificacion, cargo, publicacion, expediente digital, historial, observaciones y asociados.
+- No usar placeholders permanentes como `No disponible en vista actual` cuando el dato puede obtenerse por DAO de lectura desde tablas reales.
+- Las bandejas y listados V2 deben usar `AppV2Table` y `AppV2TableColumnSizer` cuando aplique, con tooltips para valores largos y nombres amigables para etapas, estados y acciones.
+- Mantener el mapper visual central `DisplayNameMapperV2`; no crear mapeos duplicados de etapa/estado/accion en cada panel.
+- En tablas, conservar codigos tecnicos internamente si son necesarios para acciones, pero mostrar valores amigables al usuario final.
+
 ## 5. Reglas de SQL y BD
 
 - No ejecutar SQL sin autorizacion explicita.
