@@ -12,11 +12,16 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.net.URL;
+import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -128,15 +133,8 @@ public class HomeV2 extends JPanel {
         copy.add(Box.createVerticalStrut(AppV2Theme.SPACE_SMALL));
         copy.add(subtitulo);
 
-        JPanel estado = new JPanel();
-        estado.setOpaque(false);
-        estado.setLayout(new BoxLayout(estado, BoxLayout.Y_AXIS));
-        estado.add(heroBadge("Operación oficial"));
-        estado.add(Box.createVerticalStrut(8));
-        estado.add(heroBadge("Flujo integral"));
-
         hero.add(copy, BorderLayout.CENTER);
-        hero.add(estado, BorderLayout.EAST);
+        hero.add(crearLogoReniecPanel(), BorderLayout.EAST);
         return hero;
     }
 
@@ -317,15 +315,43 @@ public class HomeV2 extends JPanel {
         return card;
     }
 
-    private JLabel heroBadge(String text) {
-        JLabel badge = new JLabel(text);
-        badge.setOpaque(true);
-        badge.setBackground(Color.WHITE);
-        badge.setForeground(AppV2Theme.PRIMARY_DARK);
-        badge.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        badge.setBorder(BorderFactory.createEmptyBorder(7, 12, 7, 12));
-        badge.setAlignmentX(RIGHT_ALIGNMENT);
-        return badge;
+    private JPanel crearLogoReniecPanel() {
+        JPanel logoCard = new JPanel(new BorderLayout());
+        logoCard.setBackground(Color.WHITE);
+        logoCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(12, 14, 12, 14)));
+        logoCard.setPreferredSize(new Dimension(228, 86));
+        logoCard.setMinimumSize(new Dimension(190, 76));
+
+        JLabel logo = new JLabel(cargarLogoReniec());
+        logo.setHorizontalAlignment(SwingConstants.CENTER);
+        logo.setVerticalAlignment(SwingConstants.CENTER);
+        logo.setToolTipText("Registro Nacional de Identificación y Estado Civil");
+        logoCard.add(logo, BorderLayout.CENTER);
+        return logoCard;
+    }
+
+    private static ImageIcon cargarLogoReniec() {
+        URL url = HomeV2.class.getResource("/com/sdrerc/ui/imagenes/LogoRENIEC.png");
+        if (url == null) {
+            url = HomeV2.class.getResource("/com/sdrerc/ui/imagenes/logo.png");
+        }
+        if (url == null) {
+            return null;
+        }
+        try {
+            BufferedImage source = ImageIO.read(url);
+            if (source == null) {
+                return new ImageIcon(url);
+            }
+            int targetWidth = 190;
+            int targetHeight = Math.max(1, source.getHeight() * targetWidth / source.getWidth());
+            Image scaled = source.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
+            return new ImageIcon(scaled);
+        } catch (Exception ex) {
+            return new ImageIcon(url);
+        }
     }
 
     private static JTextArea textArea(String text, java.awt.Font font, Color foreground) {
