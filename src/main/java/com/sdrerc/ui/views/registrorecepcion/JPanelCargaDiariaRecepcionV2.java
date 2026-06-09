@@ -62,7 +62,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 "Número trámite",
                 "Tipo procedimiento",
                 "Tipo documento",
-                "Acta",
+                "Tipo acta",
+                "Número acta",
                 "Titular",
                 "Remitente",
                 "Fecha recepción",
@@ -163,9 +164,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         table.getColumnModel().getColumn(1).setPreferredWidth(140);
         table.getColumnModel().getColumn(2).setPreferredWidth(160);
         table.getColumnModel().getColumn(3).setPreferredWidth(140);
-        table.getColumnModel().getColumn(5).setPreferredWidth(180);
-        table.getColumnModel().getColumn(10).setPreferredWidth(190);
-        table.getColumnModel().getColumn(11).setPreferredWidth(260);
+        table.getColumnModel().getColumn(4).setPreferredWidth(120);
+        table.getColumnModel().getColumn(6).setPreferredWidth(180);
+        table.getColumnModel().getColumn(11).setPreferredWidth(190);
+        table.getColumnModel().getColumn(12).setPreferredWidth(260);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
 
         JScrollPane scroll = new JScrollPane(table);
@@ -364,7 +366,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 safe(item.getNumeroTramite()),
                 safe(item.getTipoProcedimiento()),
                 safe(item.getTipoDocumento()),
-                safe(item.getActa()),
+                safe(item.getTipoActa()),
+                safe(item.getNumeroActa()),
                 safe(item.getTitular()),
                 safe(item.getRemitente()),
                 item.getFechaRecepcion() == null ? safe(item.getFechaRecepcionTexto()) : DATE_FORMAT.format(item.getFechaRecepcion()),

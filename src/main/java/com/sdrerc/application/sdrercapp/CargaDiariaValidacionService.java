@@ -36,7 +36,7 @@ public class CargaDiariaValidacionService {
         for (CargaDiariaPreviewDTO item : registros) {
             item.reiniciarValidacion();
             sumar(tramites, item.getNumeroTramite());
-            sumar(actas, item.getActa());
+            sumar(actas, item.getNumeroActa());
         }
 
         Map<Integer, String> duplicadosBase = expedienteRegistroDAO.detectarDuplicadosContraBase(registros);
@@ -56,8 +56,8 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje("Tipo de documento obligatorio.");
                 error = true;
             }
-            if (!hasText(item.getActa())) {
-                item.agregarMensaje("Acta obligatoria.");
+            if (!hasText(item.getNumeroActa())) {
+                item.agregarMensaje("Número de acta obligatorio.");
                 error = true;
             }
             if (!hasText(item.getTitular())) {
@@ -74,8 +74,8 @@ public class CargaDiariaValidacionService {
                     && tramites.get(clave(item.getNumeroTramite())) > 1) {
                 motivosDuplicado.add("Trámite repetido en el archivo.");
             }
-            if (hasText(item.getActa()) && actas.get(clave(item.getActa())) != null
-                    && actas.get(clave(item.getActa())) > 1) {
+            if (hasText(item.getNumeroActa()) && actas.get(clave(item.getNumeroActa())) != null
+                    && actas.get(clave(item.getNumeroActa())) > 1) {
                 motivosDuplicado.add("Acta repetida en el archivo.");
             }
             String duplicadoBd = duplicadosBase.get(item.getFila());

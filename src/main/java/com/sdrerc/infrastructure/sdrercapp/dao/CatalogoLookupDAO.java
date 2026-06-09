@@ -31,6 +31,10 @@ public class CatalogoLookupDAO {
         return obtenerIdPorCodigo(conn, "tipo_acta", "id_tipo_acta", codigo);
     }
 
+    public Long obtenerTipoActaIdPorCodigoONombre(Connection conn, String value) throws SQLException {
+        return obtenerIdPorCodigoONombre(conn, "tipo_acta", "id_tipo_acta", value);
+    }
+
     public Long obtenerTipoNotificacionId(Connection conn, String codigo) throws SQLException {
         return obtenerIdPorCodigo(conn, "tipo_notificacion", "id_tipo_notificacion", codigo);
     }
@@ -145,6 +149,26 @@ public class CatalogoLookupDAO {
                 }
                 long value = rs.getLong(1);
                 return rs.wasNull() ? null : value;
+            }
+        }
+    }
+
+    private Long obtenerIdPorCodigoONombre(Connection conn, String tabla, String columnaId, String value) throws SQLException {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String sql = "SELECT " + columnaId + " FROM " + tabla
+                + " WHERE activo = 1 AND (UPPER(codigo) = ? OR UPPER(nombre) = ?) AND ROWNUM = 1";
+        String normalized = value.trim().toUpperCase();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, normalized);
+            ps.setString(2, normalized);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                long id = rs.getLong(1);
+                return rs.wasNull() ? null : id;
             }
         }
     }

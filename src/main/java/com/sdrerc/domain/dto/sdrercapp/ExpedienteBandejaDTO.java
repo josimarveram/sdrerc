@@ -14,6 +14,7 @@ public class ExpedienteBandejaDTO {
     private final String abogadoInicial;
     private final String responsableActual;
     private final String equipoActual;
+    private final LocalDate fechaRecepcion;
     private final LocalDateTime fechaRegistro;
     private final LocalDateTime fechaUltimoMovimiento;
     private final LocalDate fechaVencimiento;
@@ -29,6 +30,7 @@ public class ExpedienteBandejaDTO {
             String abogadoInicial,
             String responsableActual,
             String equipoActual,
+            LocalDate fechaRecepcion,
             LocalDateTime fechaRegistro,
             LocalDateTime fechaUltimoMovimiento,
             LocalDate fechaVencimiento,
@@ -42,6 +44,7 @@ public class ExpedienteBandejaDTO {
         this.abogadoInicial = safe(abogadoInicial);
         this.responsableActual = safe(responsableActual);
         this.equipoActual = safe(equipoActual);
+        this.fechaRecepcion = fechaRecepcion;
         this.fechaRegistro = fechaRegistro;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.fechaVencimiento = fechaVencimiento;
@@ -81,6 +84,10 @@ public class ExpedienteBandejaDTO {
         return equipoActual;
     }
 
+    public LocalDate getFechaRecepcion() {
+        return fechaRecepcion;
+    }
+
     public LocalDateTime getFechaRegistro() {
         return fechaRegistro;
     }
@@ -106,6 +113,14 @@ public class ExpedienteBandejaDTO {
             return null;
         }
         return ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
+    }
+
+    public Long getDiasDesdeSolicitud() {
+        LocalDate base = fechaRecepcion;
+        if (base == null && fechaRegistro != null) {
+            base = fechaRegistro.toLocalDate();
+        }
+        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
     }
 
     private static String safe(String value) {

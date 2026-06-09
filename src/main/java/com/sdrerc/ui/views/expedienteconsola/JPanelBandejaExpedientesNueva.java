@@ -359,7 +359,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 formatDateTime(item.getFechaRegistro()),
                 formatDateTime(item.getFechaUltimoMovimiento()),
                 item.getFechaVencimiento() == null ? "" : DATE_FORMAT.format(item.getFechaVencimiento()),
-                item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
+                item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
                 item.isRequierePublicacion() ? "Si" : "No",
                 item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente"
             });

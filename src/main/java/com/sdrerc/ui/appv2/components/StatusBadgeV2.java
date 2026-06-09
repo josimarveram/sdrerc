@@ -32,17 +32,19 @@ public final class StatusBadgeV2 {
 
     public static BadgeV2 forDias(Object value) {
         if (value == null || value.toString().isEmpty()) {
-                return compact("Sin plazo", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
+            BadgeV2 badge = compact("", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
+            badge.setToolTipText("Sin días calculados");
+            return badge;
         }
         try {
             long dias = Long.parseLong(value.toString());
             if (dias < 0) {
-                return compact(dias + " vencido", AppV2Theme.SOFT_RED, AppV2Theme.ERROR);
+                return compact(String.valueOf(dias), AppV2Theme.SOFT_RED, AppV2Theme.ERROR);
             }
             if (dias <= 3) {
-                return compact(dias + " días", AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
+                return compact(String.valueOf(dias), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
             }
-            return compact(dias + " días", AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS);
+            return compact(String.valueOf(dias), AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS);
         } catch (NumberFormatException ex) {
             return compact(value.toString(), AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
         }

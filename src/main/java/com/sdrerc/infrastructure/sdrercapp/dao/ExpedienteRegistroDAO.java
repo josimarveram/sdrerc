@@ -52,7 +52,7 @@ public class ExpedienteRegistroDAO {
                 if (porTramite != null) {
                     motivos.add("Trámite ya existe en " + porTramite);
                 }
-                String porActa = buscarPorActa(conn, item.getActa());
+                String porActa = buscarPorActa(conn, item.getNumeroActa());
                 if (porActa != null) {
                     motivos.add("Acta ya existe en " + porActa);
                 }
@@ -286,18 +286,25 @@ public class ExpedienteRegistroDAO {
     }
 
     private void insertarActa(Connection conn, CargaDiariaPreviewDTO item, Long idExpediente) throws SQLException {
-        if (!hasText(item.getActa())) {
+        if (!hasText(item.getNumeroActa())) {
             return;
         }
-        String sql = "INSERT INTO expediente_acta (id_expediente, numero_acta, anio_acta, activo) "
-                + "VALUES (?, ?, ?, 1)";
+        Long idTipoActa = null;
+        if (hasText(item.getTipoActa())) {
+            idTipoActa = requerirId(
+                    catalogoLookupDAO.obtenerTipoActaIdPorCodigoONombre(conn, item.getTipoActa()),
+                    "tipo de acta " + item.getTipoActa());
+        }
+        String sql = "INSERT INTO expediente_acta (id_expediente, id_tipo_acta, numero_acta, anio_acta, activo) "
+                + "VALUES (?, ?, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
-            ps.setString(2, item.getActa());
+            setLongOrNull(ps, 2, idTipoActa);
+            ps.setString(3, item.getNumeroActa());
             if (item.getFechaRecepcion() == null) {
-                ps.setNull(3, Types.INTEGER);
+                ps.setNull(4, Types.INTEGER);
             } else {
-                ps.setInt(3, item.getFechaRecepcion().getYear());
+                ps.setInt(4, item.getFechaRecepcion().getYear());
             }
             ps.executeUpdate();
         }

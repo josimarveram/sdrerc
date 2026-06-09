@@ -40,9 +40,11 @@ public class ExpedienteBandejaDAO {
         sql.append("SELECT * FROM (");
         sql.append("SELECT id_expediente, numero_expediente, numero_tramite_documentario, ");
         sql.append("etapa_codigo, estado_codigo, abogado_inicial, responsable_actual, equipo_actual, ");
+        sql.append("(SELECT fecha_recepcion FROM (SELECT s.fecha_recepcion FROM expediente_solicitud s ");
+        sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS fecha_recepcion, ");
         sql.append("fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, ");
         sql.append("requiere_publicacion, expediente_digital_completo ");
-        sql.append("FROM vw_expediente_bandeja WHERE 1 = 1 ");
+        sql.append("FROM vw_expediente_bandeja b WHERE 1 = 1 ");
 
         if (hasText(textoLibre)) {
             sql.append("AND (");
@@ -99,6 +101,7 @@ public class ExpedienteBandejaDAO {
                 rs.getString("abogado_inicial"),
                 rs.getString("responsable_actual"),
                 rs.getString("equipo_actual"),
+                toLocalDate(rs.getDate("fecha_recepcion")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 toLocalDate(rs.getDate("fecha_vencimiento")),

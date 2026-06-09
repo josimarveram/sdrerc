@@ -158,11 +158,17 @@ public class AnalisisExpedienteDTO {
     }
 
     public Long getDiasEnEtapa() {
-        LocalDateTime base = fechaUltimoMovimiento == null ? fechaAsignacion : fechaUltimoMovimiento;
-        if (base == null) {
-            base = fechaRegistro;
+        LocalDate base = fechaRecepcion;
+        if (base == null && fechaUltimoMovimiento != null) {
+            base = fechaUltimoMovimiento.toLocalDate();
         }
-        return base == null ? null : ChronoUnit.DAYS.between(base.toLocalDate(), LocalDate.now());
+        if (base == null && fechaAsignacion != null) {
+            base = fechaAsignacion.toLocalDate();
+        }
+        if (base == null && fechaRegistro != null) {
+            base = fechaRegistro.toLocalDate();
+        }
+        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
     }
 
     public boolean isRecibible() {

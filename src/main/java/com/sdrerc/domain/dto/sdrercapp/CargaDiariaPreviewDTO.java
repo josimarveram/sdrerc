@@ -8,6 +8,8 @@ public class CargaDiariaPreviewDTO {
     private String numeroTramite;
     private String tipoProcedimiento;
     private String tipoDocumento;
+    private String tipoActa;
+    private String numeroActa;
     private String acta;
     private String titular;
     private String remitente;
@@ -55,12 +57,29 @@ public class CargaDiariaPreviewDTO {
         this.tipoDocumento = trimToNull(tipoDocumento);
     }
 
+    public String getTipoActa() {
+        return tipoActa;
+    }
+
+    public void setTipoActa(String tipoActa) {
+        this.tipoActa = trimToNull(tipoActa);
+    }
+
+    public String getNumeroActa() {
+        return numeroActa != null ? numeroActa : acta;
+    }
+
+    public void setNumeroActa(String numeroActa) {
+        this.numeroActa = trimToNull(numeroActa);
+        this.acta = this.numeroActa;
+    }
+
     public String getActa() {
-        return acta;
+        return getNumeroActa();
     }
 
     public void setActa(String acta) {
-        this.acta = trimToNull(acta);
+        setNumeroActa(acta);
     }
 
     public String getTitular() {

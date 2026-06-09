@@ -14,6 +14,7 @@ public class AsignacionExpedienteDTO {
     private final String numeroActa;
     private final String titular;
     private final String numeroDocumentoTitular;
+    private final LocalDate fechaRecepcion;
     private final LocalDateTime fechaRegistro;
     private final String etapaCodigo;
     private final String estadoCodigo;
@@ -29,6 +30,7 @@ public class AsignacionExpedienteDTO {
             String numeroActa,
             String titular,
             String numeroDocumentoTitular,
+            LocalDate fechaRecepcion,
             LocalDateTime fechaRegistro,
             String etapaCodigo,
             String estadoCodigo,
@@ -42,6 +44,7 @@ public class AsignacionExpedienteDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
+        this.fechaRecepcion = fechaRecepcion;
         this.fechaRegistro = fechaRegistro;
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
@@ -81,6 +84,10 @@ public class AsignacionExpedienteDTO {
         return numeroDocumentoTitular;
     }
 
+    public LocalDate getFechaRecepcion() {
+        return fechaRecepcion;
+    }
+
     public LocalDateTime getFechaRegistro() {
         return fechaRegistro;
     }
@@ -102,10 +109,14 @@ public class AsignacionExpedienteDTO {
     }
 
     public Long getDiasDesdeRegistro() {
-        if (fechaRegistro == null) {
+        LocalDate base = fechaRecepcion;
+        if (base == null && fechaRegistro != null) {
+            base = fechaRegistro.toLocalDate();
+        }
+        if (base == null) {
             return null;
         }
-        return ChronoUnit.DAYS.between(fechaRegistro.toLocalDate(), LocalDate.now());
+        return ChronoUnit.DAYS.between(base, LocalDate.now());
     }
 
     public boolean isAsignable() {

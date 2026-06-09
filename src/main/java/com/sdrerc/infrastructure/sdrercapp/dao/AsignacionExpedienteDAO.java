@@ -4,11 +4,13 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -46,7 +48,7 @@ public class AsignacionExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
         sql.append(nombrePersona("p")).append(" AS titular, p.numero_documento AS numero_documento_titular, ");
-        sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("esol.fecha_recepcion, e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
         sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa ");
         sql.append("FROM expediente e ");
@@ -199,6 +201,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 rs.getString("numero_documento_titular"),
+                toLocalDate(rs.getDate("fecha_recepcion")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
@@ -452,6 +455,10 @@ public class AsignacionExpedienteDAO {
 
     private static LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
+    }
+
+    private static LocalDate toLocalDate(Date date) {
+        return date == null ? null : date.toLocalDate();
     }
 
     private static String limitar(String value, int maxLength) {

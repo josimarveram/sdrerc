@@ -35,7 +35,7 @@ public class CargaDiariaArchivoParserService {
             "numeroTramite",
             "tipoProcedimiento",
             "tipoDocumento",
-            "acta",
+            "numeroActa",
             "titular",
             "remitente",
             "fechaRecepcion"
@@ -93,7 +93,8 @@ public class CargaDiariaArchivoParserService {
                 dto.setNumeroTramite(valorExcel(row, columnas.get("numeroTramite"), formatter));
                 dto.setTipoProcedimiento(valorExcel(row, columnas.get("tipoProcedimiento"), formatter));
                 dto.setTipoDocumento(valorExcel(row, columnas.get("tipoDocumento"), formatter));
-                dto.setActa(valorExcel(row, columnas.get("acta"), formatter));
+                dto.setTipoActa(valorExcel(row, columnas.get("tipoActa"), formatter));
+                dto.setNumeroActa(valorExcel(row, columnas.get("numeroActa"), formatter));
                 dto.setTitular(valorExcel(row, columnas.get("titular"), formatter));
                 dto.setRemitente(valorExcel(row, columnas.get("remitente"), formatter));
                 asignarFechaExcel(dto, row, columnas.get("fechaRecepcion"), formatter);
@@ -139,7 +140,8 @@ public class CargaDiariaArchivoParserService {
                 dto.setNumeroTramite(valorCsv(valores, columnas.get("numeroTramite")));
                 dto.setTipoProcedimiento(valorCsv(valores, columnas.get("tipoProcedimiento")));
                 dto.setTipoDocumento(valorCsv(valores, columnas.get("tipoDocumento")));
-                dto.setActa(valorCsv(valores, columnas.get("acta")));
+                dto.setTipoActa(valorCsv(valores, columnas.get("tipoActa")));
+                dto.setNumeroActa(valorCsv(valores, columnas.get("numeroActa")));
                 dto.setTitular(valorCsv(valores, columnas.get("titular")));
                 dto.setRemitente(valorCsv(valores, columnas.get("remitente")));
                 asignarFechaTexto(dto, valorCsv(valores, columnas.get("fechaRecepcion")));
@@ -370,7 +372,13 @@ public class CargaDiariaArchivoParserService {
                 "DOCUMENTO",
                 "TIPO DOC",
                 "TIPO DOC."));
-        aliases.put("acta", normalizarLista(
+        aliases.put("tipoActa", normalizarLista(
+                "TIPO_ACTA",
+                "TIPO ACTA",
+                "TIPO DE ACTA",
+                "CLASE_ACTA",
+                "CLASE DE ACTA"));
+        aliases.put("numeroActa", normalizarLista(
                 "ACTA",
                 "NUMERO_ACTA",
                 "NRO_ACTA",
@@ -417,7 +425,7 @@ public class CargaDiariaArchivoParserService {
         nombres.put("numeroTramite", "Número de trámite");
         nombres.put("tipoProcedimiento", "Tipo de procedimiento");
         nombres.put("tipoDocumento", "Tipo de documento");
-        nombres.put("acta", "Acta");
+        nombres.put("numeroActa", "Número de acta");
         nombres.put("titular", "Titular");
         nombres.put("remitente", "Remitente");
         nombres.put("fechaRecepcion", "Fecha recepción");

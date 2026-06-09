@@ -408,9 +408,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         content.add(Box.createVerticalStrut(10));
         content.add(crearSeccionDetalle("Acta", new String[][]{
             {"Tipo acta", expediente.getTipoActa()},
-            {"Número acta", expediente.getNumeroActa()},
-            {"Año acta", value(expediente.getAnioActa())},
-            {"Oficina registral", expediente.getOficinaRegistral()}
+            {"Número acta", expediente.getNumeroActa()}
         }));
         content.add(Box.createVerticalStrut(10));
         content.add(crearSeccionDetalle("Responsables", new String[][]{

@@ -180,7 +180,11 @@ public class CierreArchivoExpedienteDTO {
     public String getAccionesPermitidas() { return accionesPermitidas; }
 
     public Long getDiasEnEtapa() {
-        return fechaUltimoMovimiento == null ? null : ChronoUnit.DAYS.between(fechaUltimoMovimiento.toLocalDate(), LocalDate.now());
+        LocalDate base = fechaRecepcion;
+        if (base == null && fechaUltimoMovimiento != null) {
+            base = fechaUltimoMovimiento.toLocalDate();
+        }
+        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
     }
 
     public boolean hasAccion(String codigoAccion) {

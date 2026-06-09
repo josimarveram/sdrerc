@@ -172,8 +172,14 @@ public class VerificacionExpedienteDTO {
     }
 
     public Long getDiasEnEtapa() {
-        LocalDateTime base = fechaUltimoMovimiento == null ? fechaEnvioVerificacion : fechaUltimoMovimiento;
-        return base == null ? null : ChronoUnit.DAYS.between(base.toLocalDate(), LocalDate.now());
+        LocalDate base = fechaRecepcion;
+        if (base == null && fechaUltimoMovimiento != null) {
+            base = fechaUltimoMovimiento.toLocalDate();
+        }
+        if (base == null && fechaEnvioVerificacion != null) {
+            base = fechaEnvioVerificacion.toLocalDate();
+        }
+        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
     }
 
     public boolean isRegistrableVerificacion() {
