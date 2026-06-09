@@ -317,10 +317,11 @@ public class HomeV2 extends JPanel {
 
     private JPanel crearLogoReniecPanel() {
         JPanel logoCard = new JPanel(new BorderLayout());
-        logoCard.setOpaque(false);
-        logoCard.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 0));
-        logoCard.setPreferredSize(new Dimension(286, 88));
-        logoCard.setMinimumSize(new Dimension(236, 72));
+        logoCard.setOpaque(true);
+        logoCard.setBackground(Color.WHITE);
+        logoCard.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        logoCard.setPreferredSize(new Dimension(214, 101));
+        logoCard.setMinimumSize(new Dimension(190, 90));
 
         JLabel logo = new JLabel(cargarLogoReniec());
         logo.setHorizontalAlignment(SwingConstants.CENTER);
@@ -343,8 +344,8 @@ public class HomeV2 extends JPanel {
             if (source == null) {
                 return new ImageIcon(url);
             }
-            int maxWidth = 256;
-            int maxHeight = 61;
+            int maxWidth = 214;
+            int maxHeight = 101;
             double scale = Math.min((double) maxWidth / source.getWidth(),
                     (double) maxHeight / source.getHeight());
             int targetWidth = Math.max(1, (int) Math.round(source.getWidth() * scale));
