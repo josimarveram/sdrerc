@@ -5,6 +5,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Cursor;
+import java.awt.Color;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -14,11 +15,13 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
+import javax.swing.border.Border;
 
 public class AppV2SideActionPanel extends JPanel {
 
     private final JPanel sections = new JPanel();
     private final JPanel footer = new JPanel(new BorderLayout());
+    private final JPanel leadingSlot = new JPanel(new BorderLayout());
 
     public AppV2SideActionPanel(String title) {
         this(title, null);
@@ -30,15 +33,22 @@ public class AppV2SideActionPanel extends JPanel {
         setMinimumSize(new Dimension(380, 0));
         setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         setBackground(AppV2Theme.SURFACE);
-        setBorder(AppV2Theme.sectionBorder());
+        applyAccentBorder(null);
 
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(AppV2Theme.fontBold(18));
         lblTitle.setForeground(AppV2Theme.TEXT_PRIMARY);
 
+        leadingSlot.setOpaque(false);
+        leadingSlot.setVisible(false);
+        JPanel titleContent = new JPanel(new BorderLayout(10, 0));
+        titleContent.setOpaque(false);
+        titleContent.add(leadingSlot, BorderLayout.WEST);
+        titleContent.add(lblTitle, BorderLayout.CENTER);
+
         JPanel titleRow = new JPanel(new BorderLayout(8, 0));
         titleRow.setOpaque(false);
-        titleRow.add(lblTitle, BorderLayout.CENTER);
+        titleRow.add(titleContent, BorderLayout.CENTER);
         if (onClose != null) {
             JButton btnClose = new JButton("X");
             btnClose.setFocusable(false);
@@ -85,5 +95,38 @@ public class AppV2SideActionPanel extends JPanel {
     public void setFooter(Component component) {
         footer.removeAll();
         footer.add(component, BorderLayout.CENTER);
+    }
+
+    public void setHeaderLeadingComponent(Component component) {
+        leadingSlot.removeAll();
+        if (component != null) {
+            leadingSlot.add(component, BorderLayout.CENTER);
+            leadingSlot.setVisible(true);
+        } else {
+            leadingSlot.setVisible(false);
+        }
+        revalidate();
+        repaint();
+    }
+
+    public void setAccentColor(Color accent) {
+        applyAccentBorder(accent);
+        repaint();
+    }
+
+    private void applyAccentBorder(Color accent) {
+        Border outline = BorderFactory.createLineBorder(AppV2Theme.BORDER);
+        if (accent != null) {
+            outline = BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(4, 0, 0, 0, accent),
+                    outline);
+        }
+        setBorder(BorderFactory.createCompoundBorder(
+                outline,
+                BorderFactory.createEmptyBorder(
+                        AppV2Theme.SPACE_LARGE,
+                        AppV2Theme.SPACE_LARGE,
+                        AppV2Theme.SPACE_LARGE,
+                        AppV2Theme.SPACE_LARGE)));
     }
 }

@@ -25,8 +25,10 @@ public class AppV2OperationalSplitPanel extends JPanel {
     private final int sideMinWidth;
     private final int sidePreferredWidth;
     private int currentSideWidth;
+    private int normalSideWidth;
     private boolean sideVisible;
     private boolean adjustingDivider;
+    private boolean sideExpanded;
 
     public AppV2OperationalSplitPanel(
             Component mainComponent,
@@ -41,6 +43,7 @@ public class AppV2OperationalSplitPanel extends JPanel {
         this.sideMinWidth = sideMinWidth;
         this.sidePreferredWidth = sidePreferredWidth;
         this.currentSideWidth = sidePreferredWidth;
+        this.normalSideWidth = sidePreferredWidth;
 
         setOpaque(false);
         configureMinimums();
@@ -84,6 +87,31 @@ public class AppV2OperationalSplitPanel extends JPanel {
         return sideVisible;
     }
 
+    public boolean toggleSideExpanded() {
+        setSideExpanded(!sideExpanded);
+        return sideExpanded;
+    }
+
+    public void setSideExpanded(boolean expanded) {
+        if (!sideVisible) {
+            sideExpanded = false;
+            return;
+        }
+        if (expanded) {
+            normalSideWidth = clampSideWidth(currentSideWidth);
+            currentSideWidth = maxSideWidth();
+            sideExpanded = true;
+        } else {
+            currentSideWidth = normalSideWidth <= 0 ? sidePreferredWidth : normalSideWidth;
+            sideExpanded = false;
+        }
+        applyDividerLocationLater();
+    }
+
+    public boolean isSideExpanded() {
+        return sideExpanded;
+    }
+
     private void showSide() {
         removeAll();
         splitPane.setLeftComponent(mainComponent);
@@ -97,6 +125,10 @@ public class AppV2OperationalSplitPanel extends JPanel {
 
     private void hideSide() {
         rememberDividerWidth();
+        if (sideExpanded) {
+            currentSideWidth = normalSideWidth <= 0 ? sidePreferredWidth : normalSideWidth;
+            sideExpanded = false;
+        }
         removeAll();
         splitPane.setLeftComponent(null);
         splitPane.setRightComponent(null);
@@ -132,6 +164,9 @@ public class AppV2OperationalSplitPanel extends JPanel {
         if (!sideVisible || splitPane.getWidth() <= 0) {
             return;
         }
+        if (sideExpanded) {
+            currentSideWidth = maxSideWidth();
+        }
         int sideWidth = clampSideWidth(currentSideWidth);
         int dividerLocation = splitPane.getWidth() - splitPane.getDividerSize() - sideWidth;
         if (dividerLocation < 0) {
@@ -149,6 +184,8 @@ public class AppV2OperationalSplitPanel extends JPanel {
         int sideWidth = splitPane.getWidth() - splitPane.getDividerLocation() - splitPane.getDividerSize();
         int clamped = clampSideWidth(sideWidth);
         currentSideWidth = clamped;
+        normalSideWidth = clamped;
+        sideExpanded = clamped >= maxSideWidth() - 4;
         if (clamped != sideWidth) {
             applyDividerLocationLater();
         }
@@ -165,6 +202,17 @@ public class AppV2OperationalSplitPanel extends JPanel {
         int maxSide = Math.max(0, available - effectiveMainMin);
         int minSide = Math.min(sideMinWidth, maxSide);
         return Math.max(minSide, Math.min(desiredWidth, maxSide));
+    }
+
+    private int maxSideWidth() {
+        int totalWidth = splitPane.getWidth() > 0 ? splitPane.getWidth() : getWidth();
+        if (totalWidth <= 0) {
+            return Math.max(sideMinWidth, currentSideWidth);
+        }
+        int available = Math.max(0, totalWidth - splitPane.getDividerSize());
+        int availableAfterSideMin = Math.max(0, available - Math.min(sideMinWidth, available));
+        int effectiveMainMin = Math.min(Math.max(0, mainMinWidth), availableAfterSideMin);
+        return Math.max(0, available - effectiveMainMin);
     }
 
     private static class SubtleSplitPaneUI extends BasicSplitPaneUI {
