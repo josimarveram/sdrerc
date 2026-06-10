@@ -133,7 +133,7 @@ public class JPanelAsignacionV2 extends JPanel {
         panelOperativo.setOpaque(false);
         JPanel bandeja = crearBandeja();
         panelAsignacion = crearPanelAsignacion();
-        splitOperativo = new AppV2OperationalSplitPanel(bandeja, panelAsignacion, 600, 380, 430);
+        splitOperativo = new AppV2OperationalSplitPanel(bandeja, panelAsignacion, 0, 380, 430);
         panelOperativo.add(splitOperativo, BorderLayout.CENTER);
 
         centro.add(panelOperativo, BorderLayout.CENTER);

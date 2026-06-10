@@ -18,8 +18,6 @@ import javax.swing.plaf.basic.BasicSplitPaneUI;
 
 public class AppV2OperationalSplitPanel extends JPanel {
 
-    private static final double MAX_SIDE_RATIO = 0.55d;
-
     private final Component mainComponent;
     private final Component sideComponent;
     private final JSplitPane splitPane;
@@ -162,10 +160,9 @@ public class AppV2OperationalSplitPanel extends JPanel {
             return Math.max(sideMinWidth, desiredWidth);
         }
         int available = Math.max(0, totalWidth - splitPane.getDividerSize());
-        int effectiveMainMin = Math.min(mainMinWidth, Math.max(320, available - sideMinWidth));
-        int maxByMain = Math.max(sideMinWidth, available - effectiveMainMin);
-        int maxByRatio = Math.max(sideMinWidth, (int) Math.round(available * MAX_SIDE_RATIO));
-        int maxSide = Math.max(sideMinWidth, Math.min(maxByMain, maxByRatio));
+        int availableAfterSideMin = Math.max(0, available - Math.min(sideMinWidth, available));
+        int effectiveMainMin = Math.min(Math.max(0, mainMinWidth), availableAfterSideMin);
+        int maxSide = Math.max(0, available - effectiveMainMin);
         int minSide = Math.min(sideMinWidth, maxSide);
         return Math.max(minSide, Math.min(desiredWidth, maxSide));
     }
