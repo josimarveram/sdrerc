@@ -1,5 +1,6 @@
 package com.sdrerc.ui.views.registrorecepcion;
 
+import com.sdrerc.ui.appv2.components.AppV2FlowContextPanel;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
@@ -60,8 +61,28 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 true,
                 false);
 
-        panel.add(metricas, BorderLayout.NORTH);
+        JPanel superior = new JPanel(new BorderLayout(0, 12));
+        superior.setOpaque(false);
+        superior.add(metricas, BorderLayout.NORTH);
+        superior.add(crearContextoRegistro(), BorderLayout.CENTER);
+
+        panel.add(superior, BorderLayout.NORTH);
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;
+    }
+
+    private JPanel crearContextoRegistro() {
+        return new AppV2FlowContextPanel(
+                "Contexto BPMN de Registro",
+                "La etapa registra solicitudes, conserva observaciones y deja visibles los posibles duplicados para la asignación.")
+                .addItem("Cargar archivo actualizado",
+                        "Carga diaria y registro manual alimentan la misma bandeja de Registro.",
+                        AppV2Theme.INFO)
+                .addItem("Validar y generar expediente",
+                        "La validación asigna número de expediente sin ocultar errores o duplicados registrables.",
+                        AppV2Theme.TEAL)
+                .addItem("Duplicidad acta + titular",
+                        "Los posibles duplicados quedan identificados para revisión y asociación posterior.",
+                        AppV2Theme.WARNING);
     }
 }

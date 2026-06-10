@@ -336,12 +336,31 @@ public class MenuPrincipalV2 extends JFrame {
     private void mostrarInicio() {
         lblTitulo.setText("Inicio");
         lblSubtitulo.setText("Panel ejecutivo y seguimiento integral de expedientes");
-        cambiarContenido(new HomeV2(new Runnable() {
-            @Override
-            public void run() {
-                mostrarBandeja(btnBandeja);
-            }
-        }));
+        cambiarContenido(new HomeV2(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        mostrarBandeja(btnBandeja);
+                    }
+                },
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        mostrarRegistroRecepcion(btnRegistroRecepcion);
+                    }
+                },
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        mostrarAsignacion(btnAsignacion);
+                    }
+                },
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        mostrarAnalisis(btnAnalisis);
+                    }
+                }));
         if (btnInicio != null) {
             aplicarEstadoActivo(btnInicio);
         }

@@ -8,6 +8,7 @@ import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteTimelineDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
+import com.sdrerc.ui.appv2.components.AppV2FlowContextPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.EmptyStatePanelV2;
 import com.sdrerc.ui.appv2.components.SideInfoPanelV2;
@@ -638,6 +639,9 @@ public class DlgConsolaExpedienteV2 extends JDialog {
 
     private void cargarPanelLateral(ExpedienteConsolaDTO expediente, List<ExpedienteTimelineDTO> timeline, List<AccionPermitidaDTO> acciones) {
         sideContainer.removeAll();
+        JPanel wrapper = new JPanel(new BorderLayout(0, 10));
+        wrapper.setOpaque(false);
+
         SideInfoPanelV2 side = new SideInfoPanelV2("Resumen del expediente");
         side.addItem("Responsable actual", expediente.getResponsableActual(), expediente.getEquipoActual());
         side.addItem("Última acción", timeline.isEmpty() ? "Sin historial" : DisplayNameMapperV2.accion(timeline.get(0).getMovimiento()), timeline.isEmpty() ? "" : formatDateTime(timeline.get(0).getFechaMovimiento()));
@@ -647,9 +651,41 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         side.addItem("Publicación", expediente.isRequierePublicacion() ? "Requiere publicación" : "Sin pendiente", "Indicador de publicación");
         side.addItem("Expediente digital", expediente.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente", "Completitud digital");
         side.addItem("Acciones visibles", String.valueOf(acciones.size()), "Solo informativas");
-        sideContainer.add(side, BorderLayout.CENTER);
+
+        wrapper.add(crearContextoBpmn(expediente, acciones), BorderLayout.NORTH);
+        wrapper.add(side, BorderLayout.CENTER);
+        sideContainer.add(wrapper, BorderLayout.CENTER);
         sideContainer.revalidate();
         sideContainer.repaint();
+    }
+
+    private JPanel crearContextoBpmn(ExpedienteConsolaDTO expediente, List<AccionPermitidaDTO> acciones) {
+        String accionSiguiente = acciones.isEmpty()
+                ? "Sin acción disponible"
+                : nombreAccion(acciones.get(0));
+        return new AppV2FlowContextPanel(
+                "Posición en el flujo",
+                "La consola muestra la etapa actual y las acciones permitidas de forma informativa.")
+                .addItem("Etapa / estado",
+                        DisplayNameMapperV2.etapa(expediente.getEtapaCodigo()) + " / "
+                        + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()),
+                        AppV2Theme.INFO)
+                .addItem("Siguiente acción",
+                        accionSiguiente,
+                        acciones.isEmpty() ? AppV2Theme.MUTED : AppV2Theme.TEAL)
+                .addItem("Trazabilidad",
+                        "Revise el timeline para confirmar movimientos, comentarios y responsables.",
+                        AppV2Theme.INDIGO);
+    }
+
+    private static String nombreAccion(AccionPermitidaDTO accion) {
+        if (accion == null) {
+            return "Sin acción disponible";
+        }
+        if (accion.getNombreAccion() != null && !accion.getNombreAccion().trim().isEmpty()) {
+            return accion.getNombreAccion();
+        }
+        return DisplayNameMapperV2.accion(accion.getCodigoAccion());
     }
 
     private void mostrarError(Exception ex) {
