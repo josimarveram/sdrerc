@@ -182,6 +182,10 @@ Toda escritura V2 autorizada debe:
 - En grillas principales de expedientes, no mostrar `Responsable`, `Abogado inicial`, `Abogado` ni `Ultimo mov.` salvo necesidad funcional explicita del modulo o pedido del usuario; esos datos deben quedar disponibles en la consola/detalle cuando correspondan.
 - Las columnas principales de bandeja deben priorizar gestion operativa: `Dias`, expediente, tramite/documento, titular, procedimiento, etapa, estado y alertas/asociados cuando apliquen.
 - Las columnas de etapa, estado, plazo, publicacion, digital, observacion y asociados deben mostrarse con badges sobrios cuando el componente lo permita.
+- `Asignacion` es el primer patron base visual para modulos operativos SDRERC V2. Los siguientes modulos operativos deben tender a la estructura: cards superiores, buscador/filtros ancho, zona operativa con tabla izquierda y panel derecho de accion/contexto.
+- Los buscadores de modulos operativos deben usar campo amplio, placeholder claro, botones alineados y comportamiento responsive desktop; evitar campos cortos o controles comprimidos.
+- Los paneles derechos operativos deben usar fondo blanco, borde suave, padding, secciones internas, scroll vertical sin scroll horizontal y acciones al pie.
+- Antes de duplicar layout manual en un modulo operativo, preferir componentes reutilizables `AppV2SearchToolbar`, `AppV2TableSectionPanel`, `AppV2SideActionPanel` y `AppV2SideSectionPanel` cuando apliquen.
 
 ## 4.6 Alineamiento BPMN TO BE V2
 

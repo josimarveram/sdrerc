@@ -7,11 +7,14 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
-import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
+import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
+import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
@@ -21,16 +24,13 @@ import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.GridLayout;
-import java.awt.Insets;
 import java.awt.Window;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -54,7 +54,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
-    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta, documento u observación", 28);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o documento", 28);
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
@@ -66,6 +66,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JButton btnAsignarSeleccionados = new JButton("Asignar seleccionados");
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes pendientes.");
     private final JLabel lblSeleccionados = new JLabel("0 expedientes seleccionados");
+    private final JLabel lblSeleccionadosPanel = new JLabel("0 expedientes seleccionados");
     private final JLabel lblExpedienteSeleccionado = new JLabel("-");
     private final JLabel lblOrigen = new JLabel("Registro / Registrado");
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
@@ -119,168 +120,96 @@ public class JPanelAsignacionV2 extends JPanel {
     private JPanel crearCentro() {
         JPanel centro = new JPanel(new BorderLayout(14, 14));
         centro.setOpaque(false);
-        centro.add(crearBandeja(), BorderLayout.CENTER);
-        centro.add(crearPanelAsignacion(), BorderLayout.EAST);
+        centro.add(crearBuscador(), BorderLayout.NORTH);
+
+        JPanel operativo = new JPanel(new BorderLayout(14, 14));
+        operativo.setOpaque(false);
+        operativo.add(crearBandeja(), BorderLayout.CENTER);
+        operativo.add(crearPanelAsignacion(), BorderLayout.EAST);
+
+        centro.add(operativo, BorderLayout.CENTER);
         return centro;
     }
 
-    private JPanel crearBandeja() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setOpaque(false);
-
-        JPanel filtros = new AppV2FilterPanel();
-
+    private JPanel crearBuscador() {
         configurarControles();
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 6, 4, 6);
-        gbc.anchor = GridBagConstraints.WEST;
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        filtros.add(label("Búsqueda"), gbc);
-        gbc.gridx = 1;
-        gbc.gridwidth = 3;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(txtBusqueda, gbc);
-        gbc.gridwidth = 1;
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
-
+        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
         acciones.add(btnVerDetalle);
         acciones.add(btnVerRelacionados);
-        gbc.gridx = 4;
-        gbc.gridwidth = 4;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(acciones, gbc);
-        gbc.gridwidth = 1;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.anchor = GridBagConstraints.WEST;
+        toolbar.addSearchRow("Búsqueda", txtBusqueda, acciones);
+        toolbar.addFilter("Mostrar", spnLimite);
+        return toolbar;
+    }
 
-        gbc.gridy = 1;
-        gbc.gridx = 0;
-        filtros.add(label("Mostrar"), gbc);
-        gbc.gridx = 1;
-        filtros.add(spnLimite, gbc);
-
+    private JPanel crearBandeja() {
         JPanel seleccion = AppV2ActionPanel.left();
         seleccion.add(btnSeleccionarVisibles);
         seleccion.add(btnLimpiarSeleccion);
         seleccion.add(lblSeleccionados);
 
-        JPanel barra = new JPanel(new BorderLayout(8, 8));
-        barra.setOpaque(false);
-        barra.add(filtros, BorderLayout.NORTH);
-        barra.add(seleccion, BorderLayout.CENTER);
-        barra.add(lblEstado, BorderLayout.SOUTH);
-
         lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
         lblSeleccionados.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblSeleccionados.setForeground(AppV2Theme.PRIMARY);
+        lblSeleccionadosPanel.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblSeleccionadosPanel.setForeground(AppV2Theme.PRIMARY);
 
-        panel.add(barra, BorderLayout.NORTH);
-        panel.add(tablePanel, BorderLayout.CENTER);
-        return panel;
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablePanel);
+        section.setActions(seleccion);
+        section.setStatus(lblEstado);
+        return section;
     }
 
     private JPanel crearPanelAsignacion() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(420, 0));
-        panel.setBackground(AppV2Theme.SURFACE);
-        panel.setBorder(AppV2Theme.sectionBorder());
-
-        JLabel title = new JLabel("Panel de asignación");
-        title.setFont(AppV2Theme.fontBold(18));
-        title.setForeground(AppV2Theme.TEXT_PRIMARY);
-
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
-        content.add(crearResumenAsignacion());
-        content.add(Box.createVerticalStrut(10));
-        content.add(crearDestinoAsignacion());
-        content.add(Box.createVerticalStrut(10));
-        content.add(crearComentarioAsignacion());
-
-        JScrollPane formScroll = new JScrollPane(content);
-        formScroll.setBorder(null);
-        formScroll.setOpaque(false);
-        formScroll.getViewport().setOpaque(false);
-        formScroll.getVerticalScrollBar().setUnitIncrement(16);
-        formScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(formScroll, BorderLayout.CENTER);
-        panel.add(crearAccionesAsignacion(), BorderLayout.SOUTH);
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de asignación");
+        panel.addSection(crearResumenAsignacion());
+        panel.addSection(crearFlujoAsignacion());
+        panel.addSection(crearDestinoAsignacion());
+        panel.addSection(crearComentarioAsignacion());
+        panel.setFooter(crearAccionesAsignacion());
         return panel;
     }
 
     private JPanel crearResumenAsignacion() {
-        JPanel section = section("Expediente seleccionado");
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setOpaque(false);
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Expediente seleccionado");
+        section.addRow("Seleccionados", lblSeleccionadosPanel);
+        section.addRow("Expediente", lblExpedienteSeleccionado);
+        section.addRow("Relacionados", lblRelacionados);
+        return section;
+    }
 
-        int row = 0;
-        agregarFila(form, row++, "Seleccionados", lblSeleccionados);
-        agregarFila(form, row++, "Expediente", lblExpedienteSeleccionado);
-        agregarFila(form, row++, "Origen", lblOrigen);
-        agregarFila(form, row++, "Destino", lblDestino);
-        agregarFila(form, row++, "Ingreso", lblIngreso);
-        agregarFila(form, row, "Relacionados", lblRelacionados);
-
-        section.add(form, BorderLayout.CENTER);
+    private JPanel crearFlujoAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Flujo operativo");
+        section.addRow("Origen", lblOrigen);
+        section.addRow("Destino", lblDestino);
+        section.addRow("Ingreso", lblIngreso);
         return section;
     }
 
     private JPanel crearDestinoAsignacion() {
-        JPanel section = section("Destino operativo");
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setOpaque(false);
-
-        int row = 0;
-        agregarFila(form, row++, "Equipo destino", cmbEquipo);
-        agregarFila(form, row++, "Abogado responsable", cmbAbogado);
-        agregarFila(form, row, "Supervisor", lblSupervisor);
-
-        section.add(form, BorderLayout.CENTER);
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Destino operativo");
+        section.addRow("Equipo destino", cmbEquipo);
+        section.addRow("Abogado responsable", cmbAbogado);
+        section.addRow("Supervisor", lblSupervisor);
         return section;
     }
 
     private JPanel crearComentarioAsignacion() {
-        JPanel section = section("Sustento de asignación");
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setOpaque(false);
-        agregarFila(form, 0, "Comentario", scrollComentario());
-        section.add(form, BorderLayout.CENTER);
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Comentario");
+        section.addRow("Comentario", scrollComentario());
         return section;
     }
 
     private JPanel crearAccionesAsignacion() {
         JPanel acciones = new JPanel(new GridLayout(1, 2, 8, 0));
         acciones.setOpaque(false);
-        acciones.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        acciones.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         acciones.add(btnAsignarSeleccionado);
         acciones.add(btnAsignarSeleccionados);
         return acciones;
-    }
-
-    private JPanel section(String title) {
-        JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setBackground(AppV2Theme.SURFACE_ALT);
-        panel.setBorder(AppV2Theme.cardBorder());
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-
-        JLabel label = new JLabel(title);
-        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        label.setForeground(AppV2Theme.TEXT_PRIMARY);
-        panel.add(label, BorderLayout.NORTH);
-        return panel;
     }
 
     private JScrollPane scrollComentario() {
@@ -294,36 +223,12 @@ public class JPanelAsignacionV2 extends JPanel {
         return scroll;
     }
 
-    private void agregarFila(JPanel form, int row, String label, Component component) {
-        GridBagConstraints gbcLabel = new GridBagConstraints();
-        gbcLabel.gridx = 0;
-        gbcLabel.gridy = row;
-        gbcLabel.anchor = GridBagConstraints.NORTHWEST;
-        gbcLabel.insets = new Insets(7, 0, 7, 12);
-
-        GridBagConstraints gbcValue = new GridBagConstraints();
-        gbcValue.gridx = 1;
-        gbcValue.gridy = row;
-        gbcValue.weightx = 1;
-        gbcValue.fill = GridBagConstraints.HORIZONTAL;
-        gbcValue.insets = new Insets(7, 0, 7, 0);
-
-        JLabel lbl = label(label);
-        form.add(lbl, gbcLabel);
-        form.add(component, gbcValue);
-    }
-
-    private JLabel label(String text) {
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lbl.setForeground(AppV2Theme.TEXT_SECONDARY);
-        return lbl;
-    }
-
     private void configurarControles() {
-        txtBusqueda.setPreferredSize(new Dimension(560, 36));
-        txtBusqueda.setMinimumSize(new Dimension(420, 36));
+        txtBusqueda.setPreferredSize(new Dimension(720, 36));
+        txtBusqueda.setMinimumSize(new Dimension(360, 36));
         spnLimite.setPreferredSize(new Dimension(88, 34));
+        cmbEquipo.setPreferredSize(new Dimension(230, 34));
+        cmbAbogado.setPreferredSize(new Dimension(230, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
@@ -346,13 +251,16 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         table.getColumnModel().getColumn(0).setMaxWidth(52);
-        table.getColumnModel().getColumn(1).setMaxWidth(90);
-        table.getColumnModel().getColumn(2).setMinWidth(150);
-        table.getColumnModel().getColumn(4).setMinWidth(220);
-        table.getColumnModel().getColumn(7).setMinWidth(150);
-        table.getColumnModel().getColumn(8).setPreferredWidth(150);
-        table.getColumnModel().getColumn(9).setPreferredWidth(150);
-        table.getColumnModel().getColumn(10).setPreferredWidth(160);
+        table.getColumnModel().getColumn(1).setMinWidth(160);
+        table.getColumnModel().getColumn(2).setMinWidth(140);
+        table.getColumnModel().getColumn(3).setMinWidth(190);
+        table.getColumnModel().getColumn(4).setPreferredWidth(120);
+        table.getColumnModel().getColumn(5).setPreferredWidth(130);
+        table.getColumnModel().getColumn(6).setMinWidth(220);
+        table.getColumnModel().getColumn(7).setPreferredWidth(130);
+        table.getColumnModel().getColumn(8).setMaxWidth(88);
+        table.getColumnModel().getColumn(9).setPreferredWidth(130);
+        table.getColumnModel().getColumn(10).setPreferredWidth(150);
     }
 
     private void configurarEventos() {
@@ -485,16 +393,16 @@ public class JPanelAsignacionV2 extends JPanel {
             }
             tableModel.addRow(new Object[]{
                 Boolean.FALSE,
-                item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
                 item.getNumeroExpediente(),
                 documentoTramite(item),
                 item.getProcedimiento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
                 item.getTitular(),
+                formatDateTime(item.getFechaRegistro()),
+                item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                item.getAlertaIngreso(),
-                item.getPosiblesRelacionados() > 0 ? item.getPosiblesRelacionados() + " relacionados" : "Sin alerta",
+                alertaAsignacion(item),
                 item.getIdExpediente()
             });
         }
@@ -512,6 +420,18 @@ public class JPanelAsignacionV2 extends JPanel {
             return item.getNumeroDocumentoTitular();
         }
         return item.getNumeroTramiteDocumentario();
+    }
+
+    private String alertaAsignacion(AsignacionExpedienteDTO item) {
+        if (item.getPosiblesRelacionados() > 0) {
+            return item.getPosiblesRelacionados() + " relacionados";
+        }
+        String alerta = item.getAlertaIngreso();
+        return "Normal".equalsIgnoreCase(alerta) ? "Sin alerta" : alerta;
+    }
+
+    private static String formatDateTime(LocalDateTime value) {
+        return value == null ? "" : DATE_TIME_FORMAT.format(value);
     }
 
     private void limpiar() {
@@ -697,7 +617,9 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void actualizarPanelSeleccion() {
         int seleccionados = contarSeleccionados();
-        lblSeleccionados.setText(seleccionados + " expedientes seleccionados");
+        String seleccionadosText = seleccionados + " expedientes seleccionados";
+        lblSeleccionados.setText(seleccionadosText);
+        lblSeleccionadosPanel.setText(seleccionadosText);
         cardSeleccionados.setValue(String.valueOf(seleccionados));
 
         int modelRow = obtenerModelRowSeleccionada();
@@ -772,15 +694,15 @@ public class JPanelAsignacionV2 extends JPanel {
         private AsignacionTableModel() {
             super(new Object[]{
                 "Sel.",
-                "Días",
                 "Número expediente",
                 "Documento / trámite",
                 "Procedimiento",
                 "Tipo acta",
                 "Nro. acta",
                 "Titular",
+                "Fecha registro",
+                "Días",
                 "Estado",
-                "Ingreso",
                 "Relacionados",
                 "_ID"
             }, 0);
@@ -810,17 +732,11 @@ public class JPanelAsignacionV2 extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
-            if (!isSelected && modelColumn == 1) {
+            if (!isSelected && modelColumn == 8) {
                 return StatusBadgeV2.forDias(value);
             }
-            if (!isSelected && modelColumn == 8) {
-                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
-            }
             if (!isSelected && modelColumn == 9) {
-                String text = value == null ? "" : value.toString();
-                if (!"Normal".equalsIgnoreCase(text)) {
-                    return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
-                }
+                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
             if (!isSelected && modelColumn == 10) {
                 String text = value == null ? "" : value.toString();
