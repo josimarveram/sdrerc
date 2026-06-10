@@ -186,6 +186,7 @@ Toda escritura V2 autorizada debe:
 - Los buscadores de modulos operativos deben usar campo amplio, placeholder claro, botones alineados y comportamiento responsive desktop; evitar campos cortos o controles comprimidos.
 - Los paneles derechos operativos deben usar fondo blanco, borde suave, padding, secciones internas, scroll vertical sin scroll horizontal y acciones al pie.
 - En modulos operativos con panel derecho de accion contextual, el panel debe estar oculto inicialmente si no hay seleccion operativa; la grilla/listado debe ocupar todo el ancho disponible y el panel debe aparecer solo al seleccionar uno o mas expedientes, salvo que el modulo requiera contexto permanente.
+- Si el usuario cierra manualmente un panel derecho contextual con seleccion activa, no limpiar la seleccion; mostrar una barra contextual sobre la tabla con contador, accion para reabrir el panel y accion para limpiar seleccion.
 - Antes de duplicar layout manual en un modulo operativo, preferir componentes reutilizables `AppV2SearchToolbar`, `AppV2TableSectionPanel`, `AppV2SideActionPanel` y `AppV2SideSectionPanel` cuando apliquen.
 
 ## 4.6 Alineamiento BPMN TO BE V2

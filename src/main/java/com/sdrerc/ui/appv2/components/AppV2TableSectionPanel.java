@@ -21,6 +21,10 @@ public class AppV2TableSectionPanel extends JPanel {
         header.add(actions, BorderLayout.WEST);
     }
 
+    public void setContext(Component context) {
+        header.add(context, BorderLayout.CENTER);
+    }
+
     public void setStatus(Component status) {
         if (status != null) {
             status.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
