@@ -8,7 +8,6 @@ import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
-import com.sdrerc.ui.appv2.components.AppV2FlowContextPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
@@ -202,8 +201,6 @@ public class JPanelAsignacionV2 extends JPanel {
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
-        content.add(crearContextoAsignacion());
-        content.add(Box.createVerticalStrut(10));
         content.add(crearResumenAsignacion());
         content.add(Box.createVerticalStrut(10));
         content.add(crearDestinoAsignacion());
@@ -221,21 +218,6 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.add(formScroll, BorderLayout.CENTER);
         panel.add(crearAccionesAsignacion(), BorderLayout.SOUTH);
         return panel;
-    }
-
-    private JPanel crearContextoAsignacion() {
-        return new AppV2FlowContextPanel(
-                "Decisión BPMN de asignación",
-                "Valide relacionados, equipo y responsable antes de pasar el expediente a análisis.")
-                .addItem("Validar bandeja",
-                        "Revise expedientes en Registro / Registrado y mantenga visible la selección múltiple.",
-                        AppV2Theme.INFO)
-                .addItem("Asociar duplicados",
-                        "Los posibles relacionados se confirman por acta y titular, sin fusionar expedientes.",
-                        AppV2Theme.WARNING)
-                .addItem("Asignar responsable",
-                        "Seleccione equipo, abogado y supervisor para registrar la asignación controlada.",
-                        AppV2Theme.TEAL);
     }
 
     private JPanel crearResumenAsignacion() {
@@ -289,15 +271,13 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private JPanel section(String title) {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setBackground(AppV2Theme.SURFACE);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, AppV2Theme.BORDER),
-                BorderFactory.createEmptyBorder(12, 0, 12, 0)));
+        panel.setBackground(AppV2Theme.SURFACE_ALT);
+        panel.setBorder(AppV2Theme.cardBorder());
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
         JLabel label = new JLabel(title);
-        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_MEDIUM));
+        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         label.setForeground(AppV2Theme.TEXT_PRIMARY);
         panel.add(label, BorderLayout.NORTH);
         return panel;

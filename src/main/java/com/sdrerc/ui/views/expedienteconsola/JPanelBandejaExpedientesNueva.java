@@ -8,7 +8,6 @@ import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
-import com.sdrerc.ui.appv2.components.StageProgressPanelV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -211,33 +210,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         lblResultado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblResultado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        JPanel flujoFiltros = new JPanel(new BorderLayout(0, 8));
-        flujoFiltros.setOpaque(false);
-        flujoFiltros.add(crearRutaBpmnPanel(), BorderLayout.NORTH);
-        flujoFiltros.add(filtros, BorderLayout.CENTER);
-
-        superior.add(flujoFiltros, BorderLayout.CENTER);
+        superior.add(filtros, BorderLayout.CENTER);
         superior.add(lblResultado, BorderLayout.SOUTH);
 
         add(superior, BorderLayout.NORTH);
         add(tablePanel, BorderLayout.CENTER);
-    }
-
-    private JPanel crearRutaBpmnPanel() {
-        JPanel panel = new JPanel(new BorderLayout(0, 8));
-        panel.setBackground(AppV2Theme.SURFACE);
-        panel.setBorder(AppV2Theme.compactCardBorder());
-
-        String etapa = etapaBloqueada
-                ? "Bandeja enfocada en " + DisplayNameMapperV2.etapa(etapaInicial)
-                : "Vista ejecutiva del flujo operativo TO BE";
-        JLabel title = new JLabel(etapa);
-        title.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        title.setForeground(AppV2Theme.TEXT_SECONDARY);
-
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(new StageProgressPanelV2(etapaInicial), BorderLayout.CENTER);
-        return panel;
     }
 
     private void aplicarConfiguracionInicial() {

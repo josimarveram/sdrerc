@@ -102,27 +102,13 @@ public class HomeV2 extends JPanel {
     };
 
     private final Runnable abrirBandejaAction;
-    private final Runnable abrirRegistroAction;
-    private final Runnable abrirAsignacionAction;
-    private final Runnable abrirAnalisisAction;
 
     public HomeV2() {
         this(null);
     }
 
     public HomeV2(Runnable abrirBandejaAction) {
-        this(abrirBandejaAction, null, null, null);
-    }
-
-    public HomeV2(
-            Runnable abrirBandejaAction,
-            Runnable abrirRegistroAction,
-            Runnable abrirAsignacionAction,
-            Runnable abrirAnalisisAction) {
         this.abrirBandejaAction = abrirBandejaAction;
-        this.abrirRegistroAction = abrirRegistroAction;
-        this.abrirAsignacionAction = abrirAsignacionAction;
-        this.abrirAnalisisAction = abrirAnalisisAction;
         configurarLayout();
     }
 
@@ -216,26 +202,20 @@ public class HomeV2 extends JPanel {
                 "Abrir bandeja",
                 abrirBandejaAction));
         cards.add(crearAccesoCard(
-                "Registro / Recepción",
-                "Carga diaria, registro manual y control inicial de solicitudes.",
-                AppV2IconProvider.REGISTRO,
-                "Abrir registro",
-                abrirRegistroAction));
-        cards.add(crearAccesoCard(
-                "Asignación",
-                "Revisa duplicados, equipo, abogado responsable y supervisor.",
-                AppV2IconProvider.ASIGNACION,
-                "Abrir asignación",
-                abrirAsignacionAction));
-        cards.add(crearAccesoCard(
-                "Análisis",
-                "Recibe expedientes y registra evaluación jurídica o documental.",
+                "Consola de expediente",
+                "Revisa datos, documentos, historial y acciones desde una vista unificada.",
                 AppV2IconProvider.ANALISIS,
-                "Abrir análisis",
-                abrirAnalisisAction));
+                "Disponible desde la bandeja",
+                null));
+        cards.add(crearAccesoCard(
+                "Seguimiento integral",
+                "Ubica rápidamente la etapa actual, el responsable y la siguiente acción.",
+                AppV2IconProvider.VERIFICACION,
+                "Trazabilidad completa",
+                null));
         return crearSeccion(
                 "Accesos rápidos",
-                "Puntos de entrada del flujo operativo principal",
+                "Puntos de entrada para la gestión diaria",
                 cards);
     }
 

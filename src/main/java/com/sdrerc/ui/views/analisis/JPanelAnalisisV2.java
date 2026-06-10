@@ -10,7 +10,6 @@ import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
-import com.sdrerc.ui.appv2.components.AppV2FlowContextPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
@@ -239,7 +238,6 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
-        content.add(crearContextoAnalisis());
         content.add(crearResumenSeleccion());
         content.add(crearFormularioAnalisis());
         content.add(crearDocumentosPanel());
@@ -254,24 +252,6 @@ public class JPanelAnalisisV2 extends JPanel {
         panel.add(scroll, BorderLayout.CENTER);
         panel.add(crearComentarioMovimientoPanel(), BorderLayout.SOUTH);
         return panel;
-    }
-
-    private JPanel crearContextoAnalisis() {
-        return new AppV2FlowContextPanel(
-                "Decisiones BPMN de análisis",
-                "Registre el resultado según la evaluación jurídica y documental del expediente.")
-                .addItem("Corresponde atenderlo",
-                        "Use No corresponde solo cuando el flujo permita archivar o preparar derivación externa.",
-                        AppV2Theme.INFO)
-                .addItem("Acta, legitimidad y medios",
-                        "Marque las validaciones que sustentan procedencia, improcedencia u observación.",
-                        AppV2Theme.TEAL)
-                .addItem("Documento u observación",
-                        "Registre documentos analizados y observaciones antes de enviar a Verificación.",
-                        AppV2Theme.WARNING)
-                .addItem("Rutas especiales",
-                        "Notificación, abandono o archivo quedan visibles solo si el estado y flujo lo permiten.",
-                        AppV2Theme.INDIGO);
     }
 
     private JPanel crearResumenSeleccion() {
