@@ -178,6 +178,19 @@ Toda escritura V2 autorizada debe:
 - Mantener el mapper visual central `DisplayNameMapperV2`; no crear mapeos duplicados de etapa/estado/accion en cada panel.
 - En tablas, conservar codigos tecnicos internamente si son necesarios para acciones, pero mostrar valores amigables al usuario final.
 
+## 4.6 Alineamiento BPMN TO BE V2
+
+- El archivo `docs/arquitectura_bd/TO BE V2.bpmn` es referencia funcional para validar el flujo operativo SDRERC V2, junto con `SDRERC_APP`.
+- El BPMN TO BE V2 no autoriza crear una etapa visual `VALIDACION`; las validaciones del BPMN se implementan como acciones, observaciones, evaluaciones, estados o reglas dentro de las macroetapas existentes.
+- Los actores BPMN externos como OGD, SDPRC y Ciudadano/Entidad no deben convertirse automaticamente en usuarios, equipos o modulos internos V2 salvo autorizacion explicita.
+- La app V2 mantiene estas macroetapas como estructura visual principal: Registro, Asignacion, Analisis, Verificacion, Firma / Emision, Ejecucion, Notificacion, Publicacion, Expediente digital y Cierre / Archivo.
+- Los ajustes de flujo derivados del BPMN deben aplicarse como scripts idempotentes correlativos en `db/sdrerc_app/scripts/`, sin `DROP`, `DELETE` ni `TRUNCATE`, y sin modificar expedientes transaccionales.
+- En `SDRERC_APP`, `estado_expediente.codigo` es unico globalmente. No duplicar el mismo codigo de estado por etapa; si una accion reutiliza un estado en mas de una etapa, resolverlo por la transicion activa y documentar el criterio.
+- `Analisis` debe soportar `REGISTRO_RESULTADO_ANALISIS` desde `RECIBIDO_POR_ABOGADO`, `OBSERVADO` y `SUBSANADO` hacia `ATENDIDO`, `OBSERVADO`, `NO_CORRESPONDE`, `EN_ABANDONO` y `OBSERVACION_ADMINISTRATIVA`, siempre mediante transicion activa.
+- `Ejecucion` debe soportar `INICIO_EJECUCION` desde `EJECUCION / EN_EJECUCION` hacia `EJECUCION / EJECUTADO`, con historial y validacion de resolucion/documento cuando el modulo lo requiera.
+- Las autorizaciones de flujo por rol/equipo deben resolverse por codigo en `flujo_transicion_rol` y `flujo_transicion_equipo`, sin IDs hardcodeados.
+- Si el BPMN introduce tareas mas detalladas que el modelo actual no representa como modulo propio, mapearlas primero a la macroetapa existente y reportar cualquier brecha antes de crear tablas, etapas o pantallas nuevas.
+
 ## 5. Reglas de SQL y BD
 
 - No ejecutar SQL sin autorizacion explicita.
