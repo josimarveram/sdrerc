@@ -91,6 +91,14 @@ public class ExpedienteRegistroDAO {
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_CARGA_DIARIA), "movimiento IMPORTACION_CARGA_DIARIA");
 
                 for (CargaDiariaPreviewDTO item : candidatos) {
+                    DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(conn, item.getNumeroActa(), item.getTitular());
+                    if (duplicadoActaTitular != null) {
+                        item.setPosibleDuplicado(true);
+                        item.setMotivoDuplicado(unirMotivoDuplicado(
+                                item.getMotivoDuplicado(),
+                                "Acta y titular ya existen en " + duplicadoActaTitular.descripcion()));
+                    }
+
                     Long idTitular = insertarPersona(conn, item.getTitular());
                     Long idRemitente = hasText(item.getRemitente()) && !equalsIgnoreCase(item.getRemitente(), item.getTitular())
                             ? insertarPersona(conn, item.getRemitente())
@@ -98,8 +106,11 @@ public class ExpedienteRegistroDAO {
                     Long idSolicitante = idRemitente == null ? idTitular : idRemitente;
 
                     Long idExpediente = insertarExpediente(conn, item, idEtapaRegistro, idEstadoRegistrado);
-                    String numeroExpediente = correlativoService.generarDesdeId(idExpediente);
-                    actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
+                    String numeroExpediente = null;
+                    if (duplicadoActaTitular == null) {
+                        numeroExpediente = correlativoService.generarDesdeId(idExpediente);
+                        actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
+                    }
 
                     insertarSolicitud(conn, item, idExpediente, idSolicitante);
                     insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
@@ -110,7 +121,7 @@ public class ExpedienteRegistroDAO {
                     insertarDocumento(conn, item, idExpediente);
                     insertarHistorial(conn, item, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado);
 
-                    confirmados.add(new RegistroConfirmado(item, idExpediente, numeroExpediente));
+                    confirmados.add(new RegistroConfirmado(item, idExpediente, numeroExpediente, duplicadoActaTitular != null));
                 }
 
                 conn.commit();
@@ -125,19 +136,30 @@ public class ExpedienteRegistroDAO {
             }
         }
 
+        int sinNumeroPorDuplicado = 0;
         for (RegistroConfirmado confirmado : confirmados) {
             confirmado.item.setRegistrado(true);
             confirmado.item.setListoParaRegistrar(false);
             confirmado.item.setEstadoValidacion("Registrado");
-            confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP.");
+            if (confirmado.duplicadoSinNumero) {
+                sinNumeroPorDuplicado++;
+                confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP sin número de expediente por duplicidad de acta y titular.");
+                confirmado.item.setNumeroExpedienteGenerado("Sin número por duplicado");
+            } else {
+                confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP.");
+                confirmado.item.setNumeroExpedienteGenerado(confirmado.numeroExpediente);
+            }
             confirmado.item.setIdExpedienteRegistrado(confirmado.idExpediente);
-            confirmado.item.setNumeroExpedienteGenerado(confirmado.numeroExpediente);
         }
 
+        String mensaje = confirmados.size() + " expediente(s) registrado(s) en SDRERC_APP.";
+        if (sinNumeroPorDuplicado > 0) {
+            mensaje += " " + sinNumeroPorDuplicado + " duplicado(s) quedaron sin número de expediente.";
+        }
         return new CargaDiariaResultadoDTO(
                 confirmados.size(),
                 omitidos,
-                confirmados.size() + " expediente(s) registrado(s) en SDRERC_APP.",
+                mensaje,
                 registros);
     }
 
@@ -155,20 +177,23 @@ public class ExpedienteRegistroDAO {
                 Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
                 Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_REGISTRO_MANUAL), "movimiento RECEPCION_DOCUMENTO");
-                String duplicadoActaTitular = buscarPorActaYTitular(
+                DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(
                         conn,
                         registro.getActa().getNumeroActa(),
                         registro.getTitular().getNombreCompleto());
                 if (duplicadoActaTitular != null) {
                     registro.setPosibleDuplicado(true);
-                    registro.setMotivoDuplicado("Acta y titular ya existen en " + duplicadoActaTitular);
+                    registro.setMotivoDuplicado("Acta y titular ya existen en " + duplicadoActaTitular.descripcion());
                 }
 
                 Long idTitular = insertarPersonaManual(conn, registro.getTitular());
                 Long idRemitente = insertarPersonaManual(conn, registro.getRemitente());
                 Long idExpediente = insertarExpedienteManual(conn, registro.getSolicitud(), idEtapaRegistro, idEstadoRegistrado);
-                String numeroExpediente = correlativoService.generarDesdeId(idExpediente);
-                actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
+                String numeroExpediente = null;
+                if (duplicadoActaTitular == null) {
+                    numeroExpediente = correlativoService.generarDesdeId(idExpediente);
+                    actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
+                }
 
                 insertarSolicitudManual(conn, registro, idExpediente, idRemitente);
                 insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
@@ -179,6 +204,13 @@ public class ExpedienteRegistroDAO {
 
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);
+                if (duplicadoActaTitular != null) {
+                    return new RegistroManualResultadoDTO(
+                            idExpediente,
+                            "Sin número por duplicado",
+                            "Registro manual guardado sin número de expediente por duplicidad de acta y titular. "
+                                    + "Registro previo: " + duplicadoActaTitular.descripcion() + ".");
+                }
                 return new RegistroManualResultadoDTO(
                         idExpediente,
                         numeroExpediente,
@@ -195,10 +227,15 @@ public class ExpedienteRegistroDAO {
     }
 
     private String buscarPorActaYTitular(Connection conn, String acta, String titular) throws SQLException {
+        DuplicadoRegistro duplicado = buscarRegistroPorActaYTitular(conn, acta, titular);
+        return duplicado == null ? null : duplicado.descripcion();
+    }
+
+    private DuplicadoRegistro buscarRegistroPorActaYTitular(Connection conn, String acta, String titular) throws SQLException {
         if (!hasText(acta) || !hasText(titular)) {
             return null;
         }
-        String sql = "SELECT e.numero_expediente FROM expediente e "
+        String sql = "SELECT e.id_expediente, e.numero_expediente FROM expediente e "
                 + "JOIN expediente_acta a ON a.id_expediente = e.id_expediente "
                 + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
                 + "JOIN persona p ON p.id_persona = ep.id_persona "
@@ -213,7 +250,10 @@ public class ExpedienteRegistroDAO {
             ps.setString(1, acta.trim().toUpperCase(Locale.ROOT));
             ps.setString(2, titular.trim().toUpperCase(Locale.ROOT));
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getString("numero_expediente") : null;
+                if (!rs.next()) {
+                    return null;
+                }
+                return new DuplicadoRegistro(rs.getLong("id_expediente"), rs.getString("numero_expediente"));
             }
         }
     }
@@ -463,12 +503,13 @@ public class ExpedienteRegistroDAO {
                 + "tabla_relacionada, id_registro_relacionado, comentario, motivo, activo"
                 + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, 'EXPEDIENTE', ?, ?, 'REGISTRO_MANUAL', 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            String numeroVisual = hasText(numeroExpediente) ? numeroExpediente : "sin número por duplicado";
             ps.setLong(1, idExpediente);
             ps.setLong(2, idTipoMovimiento);
             ps.setLong(3, idEtapaDestino);
             ps.setLong(4, idEstadoDestino);
             ps.setLong(5, idExpediente);
-            ps.setString(6, limitar("Registro manual inicial. Expediente: " + numeroExpediente
+            ps.setString(6, limitar("Registro manual inicial. Expediente: " + numeroVisual
                     + ". Trámite: " + registro.getSolicitud().getNumeroTramite()
                     + ". Titular: " + registro.getTitular().getNombreCompleto(), 2000));
             ps.executeUpdate();
@@ -549,6 +590,16 @@ public class ExpedienteRegistroDAO {
         return value.substring(0, maxLength);
     }
 
+    private String unirMotivoDuplicado(String actual, String nuevo) {
+        if (!hasText(actual)) {
+            return nuevo;
+        }
+        if (!hasText(nuevo) || actual.contains(nuevo)) {
+            return actual;
+        }
+        return actual.trim() + " | " + nuevo.trim();
+    }
+
     private void rollbackSilencioso(Connection conn) {
         try {
             conn.rollback();
@@ -570,11 +621,31 @@ public class ExpedienteRegistroDAO {
         private final CargaDiariaPreviewDTO item;
         private final Long idExpediente;
         private final String numeroExpediente;
+        private final boolean duplicadoSinNumero;
 
-        private RegistroConfirmado(CargaDiariaPreviewDTO item, Long idExpediente, String numeroExpediente) {
+        private RegistroConfirmado(CargaDiariaPreviewDTO item, Long idExpediente, String numeroExpediente, boolean duplicadoSinNumero) {
             this.item = item;
             this.idExpediente = idExpediente;
             this.numeroExpediente = numeroExpediente;
+            this.duplicadoSinNumero = duplicadoSinNumero;
+        }
+    }
+
+    private static class DuplicadoRegistro {
+
+        private final long idExpediente;
+        private final String numeroExpediente;
+
+        private DuplicadoRegistro(long idExpediente, String numeroExpediente) {
+            this.idExpediente = idExpediente;
+            this.numeroExpediente = numeroExpediente;
+        }
+
+        private String descripcion() {
+            if (hasText(numeroExpediente)) {
+                return numeroExpediente;
+            }
+            return "expediente ID " + idExpediente + " sin número";
         }
     }
 }

@@ -377,7 +377,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         for (ExpedienteBandejaDTO item : expedientes) {
             if (perfilRegistroRecepcion) {
                 tableModel.addRow(new Object[]{
-                    item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
+                    item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
                     item.getNumeroExpediente(),
                     item.getCanal(),
                     formatFechaSolicitud(item),

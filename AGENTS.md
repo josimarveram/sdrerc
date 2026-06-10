@@ -60,6 +60,8 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - En Registro Manual, `Hoja de envio` solo aplica como texto condicional cuando la validacion inicial no corresponde a la SDRERC.
 - En Registro Manual, mantener combos de catalogo con nombres amigables; excluir `RUC` del combo de Titular y permitirlo en Remitente cuando el modelo lo requiera.
 - Si el modelo aun no separa canal de ingreso y modalidad, usar opciones compuestas amigables en la UI y dejar documentada la separacion futura como mejora de arquitectura.
+- En Registro / Recepcion, la carga diaria y el registro manual deben detectar duplicidad solo por la combinacion `numero de acta + titular`. Los registros duplicados se guardan para trazabilidad, quedan marcados como potencial duplicado y no deben generar un nuevo numero de expediente hasta que Asignacion confirme/asocie el caso.
+- En la bandeja de Registro / Recepcion, la columna `Dias` debe mostrar dias restantes de atencion, calculados desde `fecha_solicitud/fecha_recepcion` y `fecha_vencimiento`, no dias transcurridos.
 
 ## 4.1 Estado actual de modulos SDRERC V2
 

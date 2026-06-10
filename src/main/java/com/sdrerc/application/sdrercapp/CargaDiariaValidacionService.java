@@ -85,9 +85,7 @@ public class CargaDiariaValidacionService {
             Integer cantidadActaTitular = hasText(claveActaTitular) ? actaTitular.get(claveActaTitular) : null;
             if (cantidadActaTitular != null && cantidadActaTitular > 1) {
                 Integer primeraFila = primeraFilaActaTitular.get(claveActaTitular);
-                if (primeraFila != null && item.getFila() == primeraFila) {
-                    motivosDuplicado.add("Existen filas repetidas con la misma acta y titular.");
-                } else {
+                if (primeraFila == null || item.getFila() != primeraFila) {
                     motivosDuplicado.add("Acta y titular repetidos en el archivo. Ya existe una primera ocurrencia en la fila " + primeraFila + ".");
                 }
             }
@@ -102,7 +100,11 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje(item.getMotivoDuplicado());
             }
 
-            item.setNumeroExpedienteGenerado(correlativoExpedienteService.generarPreliminar(indiceValido++));
+            if (item.isPosibleDuplicado()) {
+                item.setNumeroExpedienteGenerado(null);
+            } else {
+                item.setNumeroExpedienteGenerado(correlativoExpedienteService.generarPreliminar(indiceValido++));
+            }
             item.setListoParaRegistrar(true);
             if (item.isPosibleDuplicado()) {
                 item.setEstadoValidacion("Duplicado");
