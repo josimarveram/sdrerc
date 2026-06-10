@@ -82,10 +82,13 @@ public class JPanelAsignacionV2 extends JPanel {
             table,
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
+    private final JPanel panelOperativo = new JPanel(new BorderLayout(14, 14));
     private final List<AsignacionExpedienteDTO> expedientes = new ArrayList<>();
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "REGISTRO / REGISTRADO", AppV2Theme.INFO);
     private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
     private final MetricCardV2 cardRelacionados = new MetricCardV2("Alertas", "0", "Posibles relacionados", AppV2Theme.WARNING);
+    private JPanel panelAsignacion;
+    private boolean panelAsignacionVisible;
 
     private boolean cargandoCombos;
     private boolean actualizandoSeleccion;
@@ -122,12 +125,11 @@ public class JPanelAsignacionV2 extends JPanel {
         centro.setOpaque(false);
         centro.add(crearBuscador(), BorderLayout.NORTH);
 
-        JPanel operativo = new JPanel(new BorderLayout(14, 14));
-        operativo.setOpaque(false);
-        operativo.add(crearBandeja(), BorderLayout.CENTER);
-        operativo.add(crearPanelAsignacion(), BorderLayout.EAST);
+        panelOperativo.setOpaque(false);
+        panelOperativo.add(crearBandeja(), BorderLayout.CENTER);
+        panelAsignacion = crearPanelAsignacion();
 
-        centro.add(operativo, BorderLayout.CENTER);
+        centro.add(panelOperativo, BorderLayout.CENTER);
         return centro;
     }
 
@@ -384,6 +386,7 @@ public class JPanelAsignacionV2 extends JPanel {
         expedientes.clear();
         expedientes.addAll(items);
         tableModel.setRowCount(0);
+        table.clearSelection();
         int alertas = 0;
         for (AsignacionExpedienteDTO item : expedientes) {
             if (item.getPosiblesRelacionados() > 0) {
@@ -439,6 +442,7 @@ public class JPanelAsignacionV2 extends JPanel {
         spnLimite.setValue(200);
         expedientes.clear();
         tableModel.setRowCount(0);
+        table.clearSelection();
         tablePanel.setEmpty(true);
         txtComentario.setText("");
         cardPendientes.setValue("0");
@@ -469,6 +473,7 @@ public class JPanelAsignacionV2 extends JPanel {
             tableModel.setValueAt(Boolean.FALSE, i, 0);
         }
         actualizandoSeleccion = false;
+        table.clearSelection();
         actualizarPanelSeleccion();
     }
 
@@ -616,36 +621,68 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void actualizarPanelSeleccion() {
-        int seleccionados = contarSeleccionados();
-        String seleccionadosText = seleccionados + " expedientes seleccionados";
-        lblSeleccionados.setText(seleccionadosText);
-        lblSeleccionadosPanel.setText(seleccionadosText);
-        cardSeleccionados.setValue(String.valueOf(seleccionados));
-
+        int marcados = contarSeleccionados();
         int modelRow = obtenerModelRowSeleccionada();
-        if (modelRow >= 0 && modelRow < expedientes.size()) {
-            AsignacionExpedienteDTO item = expedientes.get(modelRow);
+        boolean filaSeleccionada = modelRow >= 0 && modelRow < expedientes.size();
+        int seleccionados = marcados > 0 ? marcados : (filaSeleccionada ? 1 : 0);
+        String seleccionadosText = seleccionados == 0
+                ? "Seleccione uno o más expedientes para habilitar el panel de asignación."
+                : seleccionados + " expediente(s) seleccionados";
+        lblSeleccionados.setText(seleccionadosText);
+        lblSeleccionadosPanel.setText(seleccionados + " expediente(s) seleccionados");
+        cardSeleccionados.setValue(String.valueOf(seleccionados));
+        actualizarVisibilidadPanelAsignacion(seleccionados > 0);
+
+        AsignacionExpedienteDTO item = itemParaPanel(modelRow, marcados);
+        if (item != null) {
             lblExpedienteSeleccionado.setText(item.getNumeroExpediente());
             lblIngreso.setText(item.getAlertaIngreso());
             lblIngreso.setToolTipText(item.getObservacionSolicitud().isEmpty() ? item.getAlertaIngreso() : item.getObservacionSolicitud());
             lblRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? item.getPosiblesRelacionados() + " posibles relacionados por misma acta y titular."
                     : "Sin alerta de relacionados.");
+        } else if (marcados > 1) {
+            lblExpedienteSeleccionado.setText("Selección múltiple");
+            lblIngreso.setText("Múltiple");
+            lblIngreso.setToolTipText("Asignación múltiple de expedientes marcados.");
+            lblRelacionados.setText("Revise relacionados antes de asignar selección múltiple.");
         } else {
-            lblExpedienteSeleccionado.setText(seleccionados == 1 ? expedienteSeleccionadoMarcado() : "-");
-            lblIngreso.setText("Normal");
-            lblIngreso.setToolTipText(null);
-            lblRelacionados.setText("Sin alerta de relacionados.");
+            limpiarPanelAsignacion();
         }
     }
 
-    private String expedienteSeleccionadoMarcado() {
+    private AsignacionExpedienteDTO itemParaPanel(int modelRow, int marcados) {
+        if (marcados > 1) {
+            return null;
+        }
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0))) {
-                return expedientes.get(i).getNumeroExpediente();
+                return expedientes.get(i);
             }
         }
-        return "-";
+        return modelRow >= 0 && modelRow < expedientes.size() ? expedientes.get(modelRow) : null;
+    }
+
+    private void limpiarPanelAsignacion() {
+        lblExpedienteSeleccionado.setText("-");
+        lblIngreso.setText("Normal");
+        lblIngreso.setToolTipText(null);
+        lblRelacionados.setText("Sin alerta de relacionados.");
+        txtComentario.setText("");
+    }
+
+    private void actualizarVisibilidadPanelAsignacion(boolean mostrar) {
+        if (panelAsignacion == null || panelAsignacionVisible == mostrar) {
+            return;
+        }
+        panelAsignacionVisible = mostrar;
+        if (mostrar) {
+            panelOperativo.add(panelAsignacion, BorderLayout.EAST);
+        } else {
+            panelOperativo.remove(panelAsignacion);
+        }
+        panelOperativo.revalidate();
+        panelOperativo.repaint();
     }
 
     private int contarSeleccionados() {
