@@ -26,6 +26,8 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -62,13 +64,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JButton btnVerRelacionados = new JButton("Ver relacionados");
     private final JButton btnSeleccionarVisibles = new JButton("Seleccionar visibles");
     private final JButton btnLimpiarSeleccion = new JButton("Limpiar selección");
-    private final JButton btnAbrirPanelAsignacion = new JButton("Abrir panel de asignación");
-    private final JButton btnLimpiarSeleccionContextual = new JButton("Limpiar selección");
     private final JButton btnAsignarSeleccionado = new JButton("Asignar expediente");
     private final JButton btnAsignarSeleccionados = new JButton("Asignar seleccionados");
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes pendientes.");
     private final JLabel lblSeleccionados = new JLabel("0 expedientes seleccionados");
-    private final JLabel lblSeleccionContextual = new JLabel("0 expediente(s) seleccionados");
     private final JLabel lblSeleccionadosPanel = new JLabel("0 expedientes seleccionados");
     private final JLabel lblExpedienteSeleccionado = new JLabel("-");
     private final JLabel lblOrigen = new JLabel("Registro / Registrado");
@@ -90,7 +89,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "REGISTRO / REGISTRADO", AppV2Theme.INFO);
     private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
     private final MetricCardV2 cardRelacionados = new MetricCardV2("Alertas", "0", "Posibles relacionados", AppV2Theme.WARNING);
-    private JPanel barraSeleccionActiva;
     private JPanel panelAsignacion;
     private boolean panelAsignacionVisible;
     private boolean panelAsignacionCerradoPorUsuario;
@@ -165,9 +163,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblSeleccionadosPanel.setForeground(AppV2Theme.PRIMARY);
 
         AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablePanel);
-        barraSeleccionActiva = crearBarraSeleccionActiva();
         section.setActions(seleccion);
-        section.setContext(barraSeleccionActiva);
         section.setStatus(lblEstado);
         return section;
     }
@@ -184,24 +180,6 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.addSection(crearDestinoAsignacion());
         panel.addSection(crearComentarioAsignacion());
         panel.setFooter(crearAccionesAsignacion());
-        return panel;
-    }
-
-    private JPanel crearBarraSeleccionActiva() {
-        JPanel panel = new JPanel(new BorderLayout(10, 0));
-        panel.setBackground(AppV2Theme.SOFT_BLUE);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppV2Theme.BORDER),
-                BorderFactory.createEmptyBorder(6, 10, 6, 10)));
-        lblSeleccionContextual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lblSeleccionContextual.setForeground(AppV2Theme.PRIMARY);
-
-        JPanel acciones = AppV2ActionPanel.right();
-        acciones.add(btnAbrirPanelAsignacion);
-        acciones.add(btnLimpiarSeleccionContextual);
-        panel.add(lblSeleccionContextual, BorderLayout.CENTER);
-        panel.add(acciones, BorderLayout.EAST);
-        panel.setVisible(false);
         return panel;
     }
 
@@ -265,8 +243,6 @@ public class JPanelAsignacionV2 extends JPanel {
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnAbrirPanelAsignacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        btnLimpiarSeleccionContextual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         btnAsignarSeleccionado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnAsignarSeleccionados.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
     }
@@ -304,8 +280,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnVerRelacionados.addActionListener(e -> abrirRelacionadosSeleccionado());
         btnSeleccionarVisibles.addActionListener(e -> seleccionarVisibles());
         btnLimpiarSeleccion.addActionListener(e -> limpiarSeleccion());
-        btnAbrirPanelAsignacion.addActionListener(e -> abrirPanelAsignacion());
-        btnLimpiarSeleccionContextual.addActionListener(e -> limpiarSeleccion());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
         cmbEquipo.addActionListener(e -> {
@@ -322,6 +296,12 @@ public class JPanelAsignacionV2 extends JPanel {
         tableModel.addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 0 && !actualizandoSeleccion) {
                 actualizarPanelSeleccion();
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                reabrirPanelSiCorresponde(e);
             }
         });
     }
@@ -665,14 +645,12 @@ public class JPanelAsignacionV2 extends JPanel {
                 ? "Seleccione uno o más expedientes para habilitar el panel de asignación."
                 : seleccionados + " expediente(s) seleccionados";
         lblSeleccionados.setText(seleccionadosText);
-        lblSeleccionContextual.setText(seleccionados + " expediente(s) seleccionados");
         lblSeleccionadosPanel.setText(seleccionados + " expediente(s) seleccionados");
         cardSeleccionados.setValue(String.valueOf(seleccionados));
         if (seleccionados == 0) {
             panelAsignacionCerradoPorUsuario = false;
         }
         actualizarVisibilidadPanelAsignacion(seleccionados > 0 && !panelAsignacionCerradoPorUsuario);
-        actualizarBarraSeleccionActiva(seleccionados > 0 && panelAsignacionCerradoPorUsuario);
 
         AsignacionExpedienteDTO item = itemParaPanel(modelRow, marcados);
         if (item != null) {
@@ -718,7 +696,6 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         panelAsignacionCerradoPorUsuario = true;
         actualizarVisibilidadPanelAsignacion(false);
-        actualizarBarraSeleccionActiva(true);
     }
 
     private void abrirPanelAsignacion() {
@@ -727,7 +704,14 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         panelAsignacionCerradoPorUsuario = false;
         actualizarVisibilidadPanelAsignacion(true);
-        actualizarBarraSeleccionActiva(false);
+        actualizarPanelSeleccion();
+    }
+
+    private void reabrirPanelSiCorresponde(MouseEvent event) {
+        if (!panelAsignacionCerradoPorUsuario || table.rowAtPoint(event.getPoint()) < 0) {
+            return;
+        }
+        abrirPanelAsignacion();
     }
 
     private void actualizarVisibilidadPanelAsignacion(boolean mostrar) {
@@ -742,15 +726,6 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         panelOperativo.revalidate();
         panelOperativo.repaint();
-    }
-
-    private void actualizarBarraSeleccionActiva(boolean mostrar) {
-        if (barraSeleccionActiva == null) {
-            return;
-        }
-        barraSeleccionActiva.setVisible(mostrar);
-        barraSeleccionActiva.revalidate();
-        barraSeleccionActiva.repaint();
     }
 
     private int contarSeleccionOperativa() {
