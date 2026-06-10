@@ -27,8 +27,8 @@ public class AppV2SideActionPanel extends JPanel {
     public AppV2SideActionPanel(String title, final Runnable onClose) {
         super(new BorderLayout(0, 14));
         setPreferredSize(new Dimension(420, 0));
-        setMinimumSize(new Dimension(390, 0));
-        setMaximumSize(new Dimension(460, Integer.MAX_VALUE));
+        setMinimumSize(new Dimension(380, 0));
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         setBackground(AppV2Theme.SURFACE);
         setBorder(AppV2Theme.sectionBorder());
 

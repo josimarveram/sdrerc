@@ -7,6 +7,7 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
@@ -90,6 +91,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
     private final MetricCardV2 cardRelacionados = new MetricCardV2("Alertas", "0", "Posibles relacionados", AppV2Theme.WARNING);
     private JPanel panelAsignacion;
+    private AppV2OperationalSplitPanel splitOperativo;
     private boolean panelAsignacionVisible;
     private boolean panelAsignacionCerradoPorUsuario;
 
@@ -129,8 +131,10 @@ public class JPanelAsignacionV2 extends JPanel {
         centro.add(crearBuscador(), BorderLayout.NORTH);
 
         panelOperativo.setOpaque(false);
-        panelOperativo.add(crearBandeja(), BorderLayout.CENTER);
+        JPanel bandeja = crearBandeja();
         panelAsignacion = crearPanelAsignacion();
+        splitOperativo = new AppV2OperationalSplitPanel(bandeja, panelAsignacion, 600, 380, 430);
+        panelOperativo.add(splitOperativo, BorderLayout.CENTER);
 
         centro.add(panelOperativo, BorderLayout.CENTER);
         return centro;
@@ -715,15 +719,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void actualizarVisibilidadPanelAsignacion(boolean mostrar) {
-        if (panelAsignacion == null || panelAsignacionVisible == mostrar) {
+        if (panelAsignacion == null || splitOperativo == null || panelAsignacionVisible == mostrar) {
             return;
         }
         panelAsignacionVisible = mostrar;
-        if (mostrar) {
-            panelOperativo.add(panelAsignacion, BorderLayout.EAST);
-        } else {
-            panelOperativo.remove(panelAsignacion);
-        }
+        splitOperativo.setSideVisible(mostrar);
         panelOperativo.revalidate();
         panelOperativo.repaint();
     }
