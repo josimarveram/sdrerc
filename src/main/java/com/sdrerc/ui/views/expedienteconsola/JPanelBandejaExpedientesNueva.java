@@ -49,6 +49,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final String subtituloBandeja;
     private final boolean etapaBloqueada;
     private final boolean mostrarEncabezado;
+    private final boolean perfilRegistroRecepcion;
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular o responsable", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
@@ -57,30 +58,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JLabel lblResultado = new JLabel("Seleccione un expediente y presione Ver detalle para abrir la consola.");
-    private final DefaultTableModel tableModel = new DefaultTableModel(
-            new Object[]{
-                "Días",
-                "Expediente",
-                "Trámite",
-                "Etapa",
-                "Estado",
-                "Registro",
-                "Vencimiento",
-                "Publicación",
-                "Digital",
-                "_ID"
-            },
-            0) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
-    };
-    private final JTable table = new AppV2Table(tableModel);
-    private final AppV2TablePanel tablePanel = new AppV2TablePanel(
-            table,
-            "Sin expedientes para mostrar",
-            "Seleccione filtros y presione Buscar.");
+    private final DefaultTableModel tableModel;
+    private final JTable table;
+    private final AppV2TablePanel tablePanel;
 
     public JPanelBandejaExpedientesNueva() {
         this(new ExpedienteConsultaService());
@@ -120,10 +100,51 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         this.subtituloBandeja = textoConDefault(subtituloBandeja, "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención");
         this.etapaBloqueada = etapaBloqueada && this.etapaInicial != null;
         this.mostrarEncabezado = mostrarEncabezado;
+        this.perfilRegistroRecepcion = this.etapaBloqueada && "REGISTRO".equals(this.etapaInicial);
+        this.tableModel = crearTableModel(this.perfilRegistroRecepcion);
+        this.table = new AppV2Table(tableModel);
+        this.tablePanel = new AppV2TablePanel(
+                table,
+                "Sin expedientes para mostrar",
+                "Seleccione filtros y presione Buscar.");
         configurarLayout();
         configurarTabla();
         aplicarConfiguracionInicial();
         configurarEventos();
+    }
+
+    private static DefaultTableModel crearTableModel(boolean perfilRegistroRecepcion) {
+        Object[] columnas = perfilRegistroRecepcion
+                ? new Object[]{
+                    "Dias",
+                    "Nro. Expediente",
+                    "Canal",
+                    "Fecha Solicitud",
+                    "Proc. Registral",
+                    "Tipo Acta",
+                    "Nro Acta",
+                    "Grupo Familiar",
+                    "Titular",
+                    "_ID"
+                }
+                : new Object[]{
+                    "Días",
+                    "Expediente",
+                    "Trámite",
+                    "Etapa",
+                    "Estado",
+                    "Registro",
+                    "Vencimiento",
+                    "Publicación",
+                    "Digital",
+                    "_ID"
+                };
+        return new DefaultTableModel(columnas, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
     }
 
     private void configurarLayout() {
@@ -235,13 +256,20 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setIntercellSpacing(new java.awt.Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new BandejaCellRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        table.getColumnModel().getColumn(0).setMaxWidth(90);
-        table.getColumnModel().getColumn(1).setMinWidth(150);
-        table.getColumnModel().getColumn(2).setMinWidth(130);
-        table.getColumnModel().getColumn(3).setMinWidth(130);
-        table.getColumnModel().getColumn(4).setMinWidth(150);
-        table.getColumnModel().getColumn(7).setMaxWidth(125);
-        table.getColumnModel().getColumn(8).setMaxWidth(120);
+        if (perfilRegistroRecepcion) {
+            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 155, 240, 0);
+            table.getColumnModel().getColumn(0).setMaxWidth(90);
+            table.getColumnModel().getColumn(7).setMinWidth(145);
+            table.getColumnModel().getColumn(8).setMinWidth(220);
+        } else {
+            table.getColumnModel().getColumn(0).setMaxWidth(90);
+            table.getColumnModel().getColumn(1).setMinWidth(150);
+            table.getColumnModel().getColumn(2).setMinWidth(130);
+            table.getColumnModel().getColumn(3).setMinWidth(130);
+            table.getColumnModel().getColumn(4).setMinWidth(150);
+            table.getColumnModel().getColumn(7).setMaxWidth(125);
+            table.getColumnModel().getColumn(8).setMaxWidth(120);
+        }
     }
 
     private JLabel crearLabelFiltro(String text) {
@@ -347,18 +375,33 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
         for (ExpedienteBandejaDTO item : expedientes) {
-            tableModel.addRow(new Object[]{
-                item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
-                item.getNumeroExpediente(),
-                item.getNumeroTramiteDocumentario(),
-                DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
-                DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                formatDateTime(item.getFechaRegistro()),
-                item.getFechaVencimiento() == null ? "" : DATE_FORMAT.format(item.getFechaVencimiento()),
-                item.isRequierePublicacion() ? "Requiere" : "No",
-                item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente",
-                item.getIdExpediente()
-            });
+            if (perfilRegistroRecepcion) {
+                tableModel.addRow(new Object[]{
+                    item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
+                    item.getNumeroExpediente(),
+                    item.getCanal(),
+                    formatFechaSolicitud(item),
+                    item.getProcedimiento(),
+                    item.getTipoActa(),
+                    item.getNumeroActa(),
+                    item.getGrupoFamiliar(),
+                    item.getTitular(),
+                    item.getIdExpediente()
+                });
+            } else {
+                tableModel.addRow(new Object[]{
+                    item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
+                    item.getNumeroExpediente(),
+                    item.getNumeroTramiteDocumentario(),
+                    DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
+                    DisplayNameMapperV2.estado(item.getEstadoCodigo()),
+                    formatDateTime(item.getFechaRegistro()),
+                    item.getFechaVencimiento() == null ? "" : DATE_FORMAT.format(item.getFechaVencimiento()),
+                    item.isRequierePublicacion() ? "Requiere" : "No",
+                    item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente",
+                    item.getIdExpediente()
+                });
+            }
         }
         tablePanel.setEmpty(expedientes.isEmpty());
         if (expedientes.isEmpty()) {
@@ -507,7 +550,17 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return dateTime == null ? "" : DATE_TIME_FORMAT.format(dateTime);
     }
 
-    private static class BandejaCellRenderer extends DefaultTableCellRenderer {
+    private static String formatFechaSolicitud(ExpedienteBandejaDTO item) {
+        if (item.getFechaRecepcion() != null) {
+            return DATE_FORMAT.format(item.getFechaRecepcion());
+        }
+        if (item.getFechaRegistro() != null) {
+            return DATE_FORMAT.format(item.getFechaRegistro().toLocalDate());
+        }
+        return "";
+    }
+
+    private class BandejaCellRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
                 JTable table,
@@ -519,6 +572,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             int modelColumn = table.convertColumnIndexToModel(column);
             if (!isSelected && modelColumn == 0) {
                 return StatusBadgeV2.forDias(value);
+            }
+            if (perfilRegistroRecepcion) {
+                if (!isSelected && modelColumn == 7) {
+                    String text = value == null ? "" : value.toString();
+                    if (text.toLowerCase().contains("asociado")) {
+                        return new BadgeV2(text, AppV2Theme.SOFT_BLUE, AppV2Theme.PRIMARY);
+                    }
+                    return new BadgeV2(text.isEmpty() ? "Sin grupo" : text, AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY);
+                }
+                return defaultComponent(table, value, isSelected, hasFocus, row, column);
             }
             if (!isSelected && modelColumn == 3) {
                 return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
@@ -541,6 +604,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 return new BadgeV2("Pendiente", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY);
             }
 
+            return defaultComponent(table, value, isSelected, hasFocus, row, column);
+        }
+
+        private Component defaultComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
             setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));

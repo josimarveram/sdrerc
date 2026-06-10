@@ -20,6 +20,12 @@ public class ExpedienteBandejaDTO {
     private final LocalDate fechaVencimiento;
     private final boolean requierePublicacion;
     private final boolean expedienteDigitalCompleto;
+    private final String canal;
+    private final String procedimiento;
+    private final String tipoActa;
+    private final String numeroActa;
+    private final String grupoFamiliar;
+    private final String titular;
 
     public ExpedienteBandejaDTO(
             Long idExpediente,
@@ -36,6 +42,50 @@ public class ExpedienteBandejaDTO {
             LocalDate fechaVencimiento,
             boolean requierePublicacion,
             boolean expedienteDigitalCompleto) {
+        this(
+                idExpediente,
+                numeroExpediente,
+                numeroTramiteDocumentario,
+                etapaCodigo,
+                estadoCodigo,
+                abogadoInicial,
+                responsableActual,
+                equipoActual,
+                fechaRecepcion,
+                fechaRegistro,
+                fechaUltimoMovimiento,
+                fechaVencimiento,
+                requierePublicacion,
+                expedienteDigitalCompleto,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "");
+    }
+
+    public ExpedienteBandejaDTO(
+            Long idExpediente,
+            String numeroExpediente,
+            String numeroTramiteDocumentario,
+            String etapaCodigo,
+            String estadoCodigo,
+            String abogadoInicial,
+            String responsableActual,
+            String equipoActual,
+            LocalDate fechaRecepcion,
+            LocalDateTime fechaRegistro,
+            LocalDateTime fechaUltimoMovimiento,
+            LocalDate fechaVencimiento,
+            boolean requierePublicacion,
+            boolean expedienteDigitalCompleto,
+            String canal,
+            String procedimiento,
+            String tipoActa,
+            String numeroActa,
+            String grupoFamiliar,
+            String titular) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
@@ -50,6 +100,12 @@ public class ExpedienteBandejaDTO {
         this.fechaVencimiento = fechaVencimiento;
         this.requierePublicacion = requierePublicacion;
         this.expedienteDigitalCompleto = expedienteDigitalCompleto;
+        this.canal = safe(canal);
+        this.procedimiento = safe(procedimiento);
+        this.tipoActa = safe(tipoActa);
+        this.numeroActa = safe(numeroActa);
+        this.grupoFamiliar = safe(grupoFamiliar);
+        this.titular = safe(titular);
     }
 
     public Long getIdExpediente() {
@@ -106,6 +162,30 @@ public class ExpedienteBandejaDTO {
 
     public boolean isExpedienteDigitalCompleto() {
         return expedienteDigitalCompleto;
+    }
+
+    public String getCanal() {
+        return canal;
+    }
+
+    public String getProcedimiento() {
+        return procedimiento;
+    }
+
+    public String getTipoActa() {
+        return tipoActa;
+    }
+
+    public String getNumeroActa() {
+        return numeroActa;
+    }
+
+    public String getGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public String getTitular() {
+        return titular;
     }
 
     public Long getDiasRestantes() {

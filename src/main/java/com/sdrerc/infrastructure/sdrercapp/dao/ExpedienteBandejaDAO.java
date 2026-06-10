@@ -42,6 +42,22 @@ public class ExpedienteBandejaDAO {
         sql.append("etapa_codigo, estado_codigo, abogado_inicial, responsable_actual, equipo_actual, ");
         sql.append("(SELECT fecha_recepcion FROM (SELECT s.fecha_recepcion FROM expediente_solicitud s ");
         sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS fecha_recepcion, ");
+        sql.append("(SELECT canal FROM (SELECT cr.nombre AS canal FROM expediente_solicitud s ");
+        sql.append("LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = s.id_canal_recepcion ");
+        sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS canal, ");
+        sql.append("(SELECT procedimiento FROM (SELECT s.asunto AS procedimiento FROM expediente_solicitud s ");
+        sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS procedimiento, ");
+        sql.append("(SELECT tipo_acta FROM (SELECT ta.nombre AS tipo_acta FROM expediente_acta a ");
+        sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = a.id_tipo_acta ");
+        sql.append("WHERE a.id_expediente = b.id_expediente AND a.activo = 1 ORDER BY a.creado_en DESC) WHERE ROWNUM = 1) AS tipo_acta, ");
+        sql.append("(SELECT numero_acta FROM (SELECT a.numero_acta FROM expediente_acta a ");
+        sql.append("WHERE a.id_expediente = b.id_expediente AND a.activo = 1 ORDER BY a.creado_en DESC) WHERE ROWNUM = 1) AS numero_acta, ");
+        sql.append("(SELECT titular FROM (SELECT ").append(nombrePersona("p")).append(" AS titular ");
+        sql.append("FROM expediente_persona ep JOIN persona p ON p.id_persona = ep.id_persona ");
+        sql.append("WHERE ep.id_expediente = b.id_expediente AND ep.tipo_relacion_persona = 'TITULAR' AND ep.activo = 1 ");
+        sql.append("ORDER BY ep.creado_en DESC) WHERE ROWNUM = 1) AS titular, ");
+        sql.append("(SELECT COUNT(1) FROM expediente_relacion er WHERE er.activo = 1 ");
+        sql.append("AND (er.id_expediente_principal = b.id_expediente OR er.id_expediente_relacionado = b.id_expediente)) AS cantidad_relaciones, ");
         sql.append("fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, ");
         sql.append("requiere_publicacion, expediente_digital_completo ");
         sql.append("FROM vw_expediente_bandeja b WHERE 1 = 1 ");
@@ -106,8 +122,25 @@ public class ExpedienteBandejaDAO {
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 toLocalDate(rs.getDate("fecha_vencimiento")),
                 getBooleanFromNumber(rs, "requiere_publicacion"),
-                getBooleanFromNumber(rs, "expediente_digital_completo")
+                getBooleanFromNumber(rs, "expediente_digital_completo"),
+                rs.getString("canal"),
+                rs.getString("procedimiento"),
+                rs.getString("tipo_acta"),
+                rs.getString("numero_acta"),
+                grupoFamiliar(rs.getInt("cantidad_relaciones")),
+                rs.getString("titular")
         );
+    }
+
+    private static String grupoFamiliar(int cantidadRelaciones) {
+        if (cantidadRelaciones <= 0) {
+            return "Sin grupo";
+        }
+        return cantidadRelaciones == 1 ? "1 asociado" : cantidadRelaciones + " asociados";
+    }
+
+    private static String nombrePersona(String alias) {
+        return "TRIM(NVL(" + alias + ".razon_social, TRIM(NVL(" + alias + ".nombres, '') || ' ' || NVL(" + alias + ".apellidos, ''))))";
     }
 
     private static boolean hasText(String value) {
