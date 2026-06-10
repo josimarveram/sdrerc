@@ -35,6 +35,10 @@ public final class AppV2TableColumnSizer {
         for (int i = 0; i < model.getColumnCount(); i++) {
             TableColumn column = model.getColumn(i);
             String header = String.valueOf(column.getHeaderValue()).toLowerCase(Locale.ROOT);
+            if (isTechnical(header)) {
+                hide(column);
+                continue;
+            }
             int width = preferredWidth(header);
             if (width > 0 && column.getPreferredWidth() < width) {
                 column.setPreferredWidth(width);
@@ -47,30 +51,43 @@ public final class AppV2TableColumnSizer {
         }
     }
 
+    private static boolean isTechnical(String header) {
+        return header.startsWith("_");
+    }
+
+    private static void hide(TableColumn column) {
+        column.setMinWidth(0);
+        column.setPreferredWidth(0);
+        column.setMaxWidth(0);
+        column.setResizable(false);
+    }
+
     private static boolean isCompact(String header) {
-        return "id".equals(header)
-                || header.startsWith("sel")
+        return header.startsWith("sel")
                 || header.contains("dias")
                 || header.contains("días")
                 || header.contains("fila");
     }
 
     private static int preferredWidth(String header) {
-        if ("id".equals(header) || header.startsWith("sel") || header.contains("fila")) {
+        if (header.startsWith("sel") || header.contains("fila")) {
             return 64;
         }
+        if (header.contains("dias") || header.contains("días")) {
+            return 88;
+        }
         if (header.contains("expediente")) {
-            return 150;
+            return 165;
         }
         if (header.contains("trámite") || header.contains("tramite")) {
-            return 150;
+            return 145;
         }
         if (header.contains("procedimiento")) {
-            return 190;
+            return 220;
         }
         if (header.contains("titular") || header.contains("remitente") || header.contains("responsable")
                 || header.contains("abogado") || header.contains("usuario")) {
-            return 190;
+            return 220;
         }
         if (header.contains("documento") || header.contains("resolución") || header.contains("resolucion")) {
             return 180;
@@ -89,9 +106,11 @@ public final class AppV2TableColumnSizer {
                 || header.contains("motivo") || header.contains("descripción") || header.contains("descripcion")) {
             return 240;
         }
-        if (header.contains("relacion") || header.contains("asociado") || header.contains("publicación")
-                || header.contains("publicacion") || header.contains("digital")) {
-            return 140;
+        if (header.contains("alerta") || header.contains("relacion") || header.contains("asociado")) {
+            return 160;
+        }
+        if (header.contains("publicación") || header.contains("publicacion") || header.contains("digital")) {
+            return 120;
         }
         return 0;
     }

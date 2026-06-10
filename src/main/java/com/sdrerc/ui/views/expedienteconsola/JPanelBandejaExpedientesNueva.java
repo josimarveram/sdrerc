@@ -8,6 +8,7 @@ import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
+import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -58,20 +59,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JLabel lblResultado = new JLabel("Seleccione un expediente y presione Ver detalle para abrir la consola.");
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[]{
-                "ID",
+                "Días",
                 "Expediente",
                 "Trámite",
                 "Etapa",
                 "Estado",
-                "Abogado inicial",
-                "Responsable",
-                "Equipo",
                 "Registro",
-                "Último mov.",
                 "Vencimiento",
-                "Días",
                 "Publicación",
-                "Digital"
+                "Digital",
+                "_ID"
             },
             0) {
         @Override
@@ -237,11 +234,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new java.awt.Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new BandejaCellRenderer());
-        table.getColumnModel().getColumn(0).setMaxWidth(72);
-        table.getColumnModel().getColumn(3).setMinWidth(120);
-        table.getColumnModel().getColumn(4).setMinWidth(130);
-        table.getColumnModel().getColumn(11).setMaxWidth(80);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.getColumnModel().getColumn(0).setMaxWidth(90);
+        table.getColumnModel().getColumn(1).setMinWidth(150);
+        table.getColumnModel().getColumn(2).setMinWidth(130);
+        table.getColumnModel().getColumn(3).setMinWidth(130);
+        table.getColumnModel().getColumn(4).setMinWidth(150);
+        table.getColumnModel().getColumn(7).setMaxWidth(125);
+        table.getColumnModel().getColumn(8).setMaxWidth(120);
     }
 
     private JLabel crearLabelFiltro(String text) {
@@ -348,20 +348,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         btnVerDetalle.setEnabled(false);
         for (ExpedienteBandejaDTO item : expedientes) {
             tableModel.addRow(new Object[]{
-                item.getIdExpediente(),
+                item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
                 item.getNumeroExpediente(),
                 item.getNumeroTramiteDocumentario(),
                 DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                item.getAbogadoInicial(),
-                item.getResponsableActual(),
-                item.getEquipoActual(),
                 formatDateTime(item.getFechaRegistro()),
-                formatDateTime(item.getFechaUltimoMovimiento()),
                 item.getFechaVencimiento() == null ? "" : DATE_FORMAT.format(item.getFechaVencimiento()),
-                item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
-                item.isRequierePublicacion() ? "Si" : "No",
-                item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente"
+                item.isRequierePublicacion() ? "Requiere" : "No",
+                item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente",
+                item.getIdExpediente()
             });
         }
         tablePanel.setEmpty(expedientes.isEmpty());
@@ -394,7 +390,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return null;
         }
         int modelRow = table.convertRowIndexToModel(selectedRow);
-        Object value = tableModel.getValueAt(modelRow, 0);
+        Object value = tableModel.getValueAt(modelRow, tableModel.getColumnCount() - 1);
         if (value instanceof Number) {
             return ((Number) value).longValue();
         }
@@ -521,14 +517,28 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
+            if (!isSelected && modelColumn == 0) {
+                return StatusBadgeV2.forDias(value);
+            }
             if (!isSelected && modelColumn == 3) {
                 return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
             }
             if (!isSelected && modelColumn == 4) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 11) {
-                return StatusBadgeV2.forDias(value);
+            if (!isSelected && modelColumn == 7) {
+                String text = value == null ? "" : value.toString();
+                if ("Requiere".equalsIgnoreCase(text)) {
+                    return new BadgeV2("Requiere", AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
+                }
+                return new BadgeV2("No", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY);
+            }
+            if (!isSelected && modelColumn == 8) {
+                String text = value == null ? "" : value.toString();
+                if ("Completo".equalsIgnoreCase(text)) {
+                    return new BadgeV2("Completo", AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS);
+                }
+                return new BadgeV2("Pendiente", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY);
             }
 
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);

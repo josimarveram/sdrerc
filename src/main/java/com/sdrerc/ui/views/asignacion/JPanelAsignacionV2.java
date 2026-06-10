@@ -344,12 +344,15 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
-        table.getColumnModel().getColumn(0).setMaxWidth(52);
-        table.getColumnModel().getColumn(1).setMaxWidth(70);
-        table.getColumnModel().getColumn(10).setPreferredWidth(120);
-        table.getColumnModel().getColumn(11).setPreferredWidth(150);
-        table.getColumnModel().getColumn(12).setPreferredWidth(150);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.getColumnModel().getColumn(0).setMaxWidth(52);
+        table.getColumnModel().getColumn(1).setMaxWidth(90);
+        table.getColumnModel().getColumn(2).setMinWidth(150);
+        table.getColumnModel().getColumn(4).setMinWidth(220);
+        table.getColumnModel().getColumn(7).setMinWidth(150);
+        table.getColumnModel().getColumn(8).setPreferredWidth(150);
+        table.getColumnModel().getColumn(9).setPreferredWidth(150);
+        table.getColumnModel().getColumn(10).setPreferredWidth(160);
     }
 
     private void configurarEventos() {
@@ -482,18 +485,17 @@ public class JPanelAsignacionV2 extends JPanel {
             }
             tableModel.addRow(new Object[]{
                 Boolean.FALSE,
-                item.getIdExpediente(),
+                item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
                 item.getNumeroExpediente(),
                 documentoTramite(item),
                 item.getProcedimiento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
                 item.getTitular(),
-                item.getFechaRegistro() == null ? "" : DATE_TIME_FORMAT.format(item.getFechaRegistro()),
-                item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
                 item.getAlertaIngreso(),
-                item.getPosiblesRelacionados() > 0 ? item.getPosiblesRelacionados() + " relacionados" : "Sin alerta"
+                item.getPosiblesRelacionados() > 0 ? item.getPosiblesRelacionados() + " relacionados" : "Sin alerta",
+                item.getIdExpediente()
             });
         }
         cardPendientes.setValue(String.valueOf(items.size()));
@@ -770,18 +772,17 @@ public class JPanelAsignacionV2 extends JPanel {
         private AsignacionTableModel() {
             super(new Object[]{
                 "Sel.",
-                "ID",
+                "Días",
                 "Número expediente",
                 "Documento / trámite",
                 "Procedimiento",
                 "Tipo acta",
                 "Nro. acta",
                 "Titular",
-                "Fecha registro",
-                "Días",
                 "Estado",
                 "Ingreso",
-                "Relacionados"
+                "Relacionados",
+                "_ID"
             }, 0);
         }
 
@@ -809,16 +810,19 @@ public class JPanelAsignacionV2 extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
-            if (!isSelected && modelColumn == 10) {
+            if (!isSelected && modelColumn == 1) {
+                return StatusBadgeV2.forDias(value);
+            }
+            if (!isSelected && modelColumn == 8) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 11) {
+            if (!isSelected && modelColumn == 9) {
                 String text = value == null ? "" : value.toString();
                 if (!"Normal".equalsIgnoreCase(text)) {
                     return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
                 }
             }
-            if (!isSelected && modelColumn == 12) {
+            if (!isSelected && modelColumn == 10) {
                 String text = value == null ? "" : value.toString();
                 if (!text.startsWith("Sin")) {
                     return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);

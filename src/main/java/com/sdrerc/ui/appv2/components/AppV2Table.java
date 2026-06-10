@@ -46,10 +46,13 @@ public class AppV2Table extends JTable {
         setShowVerticalLines(false);
         setGridColor(AppV2Theme.BORDER);
         setIntercellSpacing(new java.awt.Dimension(0, 1));
+        setSelectionBackground(new java.awt.Color(215, 232, 247));
+        setSelectionForeground(AppV2Theme.TEXT_PRIMARY);
         getTableHeader().setReorderingAllowed(false);
         getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
         getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        getTableHeader().setPreferredSize(new java.awt.Dimension(0, 38));
         setDefaultRenderer(Object.class, new FriendlyCellRenderer());
         addComponentListener(new ComponentAdapter() {
             @Override

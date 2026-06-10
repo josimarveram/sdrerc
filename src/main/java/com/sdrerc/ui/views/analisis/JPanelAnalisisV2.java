@@ -422,11 +422,16 @@ public class JPanelAnalisisV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new AnalisisRenderer());
-        table.getColumnModel().getColumn(0).setMaxWidth(70);
+        AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.getColumnModel().getColumn(0).setMaxWidth(90);
+        table.getColumnModel().getColumn(1).setMinWidth(150);
+        table.getColumnModel().getColumn(2).setMinWidth(130);
+        table.getColumnModel().getColumn(3).setMinWidth(220);
+        table.getColumnModel().getColumn(4).setMinWidth(220);
         table.getColumnModel().getColumn(9).setPreferredWidth(150);
         table.getColumnModel().getColumn(10).setPreferredWidth(150);
-        table.getColumnModel().getColumn(11).setMaxWidth(92);
-        AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.getColumnModel().getColumn(11).setPreferredWidth(150);
+        table.getColumnModel().getColumn(12).setPreferredWidth(150);
     }
 
     private void configurarDocumentoTabla() {
@@ -577,21 +582,20 @@ public class JPanelAnalisisV2 extends JPanel {
                 especiales++;
             }
             tableModel.addRow(new Object[]{
-                item.getIdExpediente(),
+                item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
                 item.getNumeroExpediente(),
                 item.getNumeroTramiteDocumentario(),
+                item.getTitular(),
                 item.getProcedimiento(),
                 item.getTipoDocumento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
-                item.getTitular(),
                 formatDate(item.getFechaRecepcion()),
-                item.getResponsable(),
                 DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
                 item.isTieneObservacionPendiente() ? "Con observación" : "Sin observación",
-                item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociados" : "Sin asociados"
+                item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociados" : "Sin asociados",
+                item.getIdExpediente()
             });
         }
         cardPorRecibir.setValue(String.valueOf(porRecibir));
@@ -992,21 +996,20 @@ public class JPanelAnalisisV2 extends JPanel {
     private class AnalisisTableModel extends DefaultTableModel {
         private AnalisisTableModel() {
             super(new Object[]{
-                "ID",
+                "Días",
                 "Expediente",
                 "Trámite",
+                "Titular",
                 "Procedimiento",
                 "Tipo doc.",
                 "Tipo acta",
                 "Nro. acta",
-                "Titular",
                 "Recepción",
-                "Responsable",
                 "Etapa",
                 "Estado",
-                "Días",
                 "Observación",
-                "Asociados"
+                "Asociados",
+                "_ID"
             }, 0);
         }
 
@@ -1026,16 +1029,19 @@ public class JPanelAnalisisV2 extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
-            if (!isSelected && modelColumn == 10) {
+            if (!isSelected && modelColumn == 0) {
+                return StatusBadgeV2.forDias(value);
+            }
+            if (!isSelected && modelColumn == 9) {
                 return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 11) {
+            if (!isSelected && modelColumn == 10) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 13 && value != null && value.toString().startsWith("Con")) {
+            if (!isSelected && modelColumn == 11 && value != null && value.toString().startsWith("Con")) {
                 return new BadgeV2(value.toString(), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
             }
-            if (!isSelected && modelColumn == 14 && value != null && !value.toString().startsWith("Sin")) {
+            if (!isSelected && modelColumn == 12 && value != null && !value.toString().startsWith("Sin")) {
                 return new BadgeV2(value.toString(), AppV2Theme.SOFT_BLUE, AppV2Theme.INFO);
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
