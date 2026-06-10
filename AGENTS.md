@@ -207,6 +207,15 @@ Toda escritura V2 autorizada debe:
 - Las autorizaciones de flujo por rol/equipo deben resolverse por codigo en `flujo_transicion_rol` y `flujo_transicion_equipo`, sin IDs hardcodeados.
 - Si el BPMN introduce tareas mas detalladas que el modelo actual no representa como modulo propio, mapearlas primero a la macroetapa existente y reportar cualquier brecha antes de crear tablas, etapas o pantallas nuevas.
 
+## 4.7 Empaquetado y despliegue SDRERC V2
+
+- El artefacto distribuible oficial de SDRERC V2 debe generarse desde Maven como `SDRERC-V2.jar`.
+- El manifest del JAR distribuible debe apuntar a `com.sdrerc.appv2.MainV2`.
+- `UserManagementApp-1.0.0.jar` no es el artefacto final de SDRERC V2 y no debe usarse para despliegues nuevos.
+- `run-v2.ps1` queda como launcher de desarrollo; no debe ser requisito para PCs cliente.
+- El despliegue LAN debe vivir en `deploy/SDRERC-V2/` con rutas relativas, sin depender de `.m2/repository`, IntelliJ IDEA ni `target/classes`.
+- La configuracion de conexion SDRERC_APP para despliegue debe externalizarse en `config/sdrerc-app.properties` o variables de entorno; no documentar passwords reales.
+
 ## 5. Reglas de SQL y BD
 
 - No ejecutar SQL sin autorizacion explicita.

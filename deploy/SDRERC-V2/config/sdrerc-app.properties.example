@@ -1,0 +1,5 @@
+db.url=jdbc:oracle:thin:@192.168.1.50:1521/XEPDB1
+db.user=SDRERC_APP
+db.password=CAMBIAR_PASSWORD
+app.mode=LAN
+app.name=SDRERC
