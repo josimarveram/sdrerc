@@ -13,7 +13,9 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ExpedienteRelacionadoDAO {
 
@@ -53,7 +55,7 @@ public class ExpedienteRelacionadoDAO {
                 + "? AS motivo_coincidencia "
                 + "FROM base b "
                 + "JOIN expediente_acta ea ON UPPER(TRIM(ea.numero_acta)) = b.numero_acta_norm "
-                + " AND NVL(ea.id_tipo_acta, -1) = NVL(b.id_tipo_acta, -1) AND ea.activo = 1 "
+                + " AND ea.activo = 1 "
                 + "JOIN expediente e ON e.id_expediente = ea.id_expediente AND e.activo = 1 AND e.id_expediente <> b.id_expediente "
                 + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
                 + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
@@ -64,6 +66,12 @@ public class ExpedienteRelacionadoDAO {
                 + "WHERE b.numero_acta_norm IS NOT NULL "
                 + "AND b.titular_norm IS NOT NULL "
                 + "AND " + normalizarPersona("p") + " = b.titular_norm "
+                + "AND NOT EXISTS ("
+                + "SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND ("
+                + "(r.id_expediente_principal = b.id_expediente AND r.id_expediente_relacionado = e.id_expediente) "
+                + "OR (r.id_expediente_principal = e.id_expediente AND r.id_expediente_relacionado = b.id_expediente)"
+                + ")) "
                 + "ORDER BY e.numero_expediente";
 
         try (Connection conn = SdrercAppConnection.getConnection();
@@ -96,13 +104,19 @@ public class ExpedienteRelacionadoDAO {
                 + "SELECT DISTINCT e.id_expediente "
                 + "FROM base b "
                 + "JOIN expediente_acta ea ON UPPER(TRIM(ea.numero_acta)) = b.numero_acta_norm "
-                + " AND NVL(ea.id_tipo_acta, -1) = NVL(b.id_tipo_acta, -1) AND ea.activo = 1 "
+                + " AND ea.activo = 1 "
                 + "JOIN expediente e ON e.id_expediente = ea.id_expediente AND e.activo = 1 AND e.id_expediente <> b.id_expediente "
                 + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
                 + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
                 + "WHERE b.numero_acta_norm IS NOT NULL "
                 + "AND b.titular_norm IS NOT NULL "
-                + "AND " + normalizarPersona("p") + " = b.titular_norm"
+                + "AND " + normalizarPersona("p") + " = b.titular_norm "
+                + "AND NOT EXISTS ("
+                + "SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND ("
+                + "(r.id_expediente_principal = b.id_expediente AND r.id_expediente_relacionado = e.id_expediente) "
+                + "OR (r.id_expediente_principal = e.id_expediente AND r.id_expediente_relacionado = b.id_expediente)"
+                + "))"
                 + ")";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
@@ -165,30 +179,69 @@ public class ExpedienteRelacionadoDAO {
         }
 
         int asociados = 0;
+        int yaAsociados = 0;
         int omitidos = 0;
+        Set<Long> idsUnicos = new LinkedHashSet<>(idsRelacionados);
         try (Connection conn = SdrercAppConnection.getConnection()) {
             boolean previousAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             try {
                 Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, MOVIMIENTO_ASOCIACION_DUPLICADO);
-                Date fechaVencimientoPrincipal = resolverFechaVencimientoPrincipal(conn, idExpedientePrincipal, idUsuarioCreador);
-                for (Long idRelacionado : idsRelacionados) {
-                    if (idRelacionado == null || idRelacionado.equals(idExpedientePrincipal)) {
+                for (Long idSeleccionado : idsUnicos) {
+                    if (idSeleccionado == null || idSeleccionado.equals(idExpedientePrincipal)) {
                         omitidos++;
                         continue;
                     }
-                    if (!existeExpedienteActivo(conn, idExpedientePrincipal) || !existeExpedienteActivo(conn, idRelacionado)) {
+                    if (!existeExpedienteActivo(conn, idExpedientePrincipal) || !existeExpedienteActivo(conn, idSeleccionado)) {
                         throw new SQLException("Uno de los expedientes seleccionados ya no existe o no está activo.");
                     }
-                    if (existeRelacionActiva(conn, idExpedientePrincipal, idRelacionado)) {
+                    if (!coincidenPorActaYTitular(conn, idExpedientePrincipal, idSeleccionado)) {
                         omitidos++;
                         continue;
                     }
-                    Long idRelacion = insertarRelacion(conn, idExpedientePrincipal, idRelacionado, idUsuarioCreador, descripcion);
-                    sincronizarFechaVencimientoRelacionado(conn, idRelacionado, fechaVencimientoPrincipal, idUsuarioCreador);
+                    OrientacionRelacion orientacion = resolverOrientacionRelacion(
+                            conn,
+                            idExpedientePrincipal,
+                            idSeleccionado);
+                    Date fechaVencimientoPrincipal = resolverFechaVencimientoPrincipal(
+                            conn,
+                            orientacion.idPrincipal,
+                            idUsuarioCreador);
+                    if (existeRelacionActiva(conn, orientacion.idPrincipal, orientacion.idRelacionado)) {
+                        sincronizarFechaVencimientoRelacionado(
+                                conn,
+                                orientacion.idRelacionado,
+                                fechaVencimientoPrincipal,
+                                idUsuarioCreador);
+                        yaAsociados++;
+                        continue;
+                    }
+                    Long idRelacion = insertarRelacion(
+                            conn,
+                            orientacion.idPrincipal,
+                            orientacion.idRelacionado,
+                            idUsuarioCreador,
+                            descripcion);
+                    sincronizarFechaVencimientoRelacionado(
+                            conn,
+                            orientacion.idRelacionado,
+                            fechaVencimientoPrincipal,
+                            idUsuarioCreador);
                     if (idMovimiento != null) {
-                        insertarHistorialRelacion(conn, idExpedientePrincipal, idMovimiento, idUsuarioCreador, idRelacion, descripcion);
-                        insertarHistorialRelacion(conn, idRelacionado, idMovimiento, idUsuarioCreador, idRelacion, descripcion);
+                        insertarHistorialRelacion(
+                                conn,
+                                orientacion.idPrincipal,
+                                idMovimiento,
+                                idUsuarioCreador,
+                                idRelacion,
+                                descripcion);
+                        insertarHistorialRelacion(
+                                conn,
+                                orientacion.idRelacionado,
+                                idMovimiento,
+                                idUsuarioCreador,
+                                idRelacion,
+                                descripcion);
                     }
                     asociados++;
                 }
@@ -204,10 +257,80 @@ public class ExpedienteRelacionadoDAO {
             }
         }
         String mensaje = asociados + " relación(es) confirmada(s).";
-        if (omitidos > 0) {
-            mensaje += " " + omitidos + " expediente(s) omitido(s) por duplicado o selección inválida.";
+        if (yaAsociados > 0) {
+            mensaje += " " + yaAsociados + " expediente(s) ya se encontraban asociados.";
         }
-        return new ExpedienteRelacionResultadoDTO(idsRelacionados.size(), asociados, omitidos, mensaje);
+        if (omitidos > 0) {
+            mensaje += " " + omitidos + " expediente(s) omitido(s) porque no coinciden por número de acta y titular o la selección no es válida.";
+        }
+        return new ExpedienteRelacionResultadoDTO(
+                idsRelacionados.size(),
+                asociados,
+                yaAsociados,
+                omitidos,
+                mensaje);
+    }
+
+    private boolean coincidenPorActaYTitular(Connection conn, Long idExpedienteA, Long idExpedienteB) throws SQLException {
+        String sql = "SELECT 1 "
+                + "FROM expediente_acta a1 "
+                + "JOIN expediente_persona ep1 ON ep1.id_expediente = a1.id_expediente "
+                + " AND ep1.activo = 1 AND UPPER(ep1.tipo_relacion_persona) = 'TITULAR' "
+                + "JOIN persona p1 ON p1.id_persona = ep1.id_persona AND p1.activo = 1 "
+                + "JOIN expediente_acta a2 ON UPPER(TRIM(a2.numero_acta)) = UPPER(TRIM(a1.numero_acta)) "
+                + " AND a2.activo = 1 "
+                + "JOIN expediente_persona ep2 ON ep2.id_expediente = a2.id_expediente "
+                + " AND ep2.activo = 1 AND UPPER(ep2.tipo_relacion_persona) = 'TITULAR' "
+                + "JOIN persona p2 ON p2.id_persona = ep2.id_persona AND p2.activo = 1 "
+                + "WHERE a1.id_expediente = ? AND a1.activo = 1 "
+                + "AND a2.id_expediente = ? "
+                + "AND TRIM(a1.numero_acta) IS NOT NULL "
+                + "AND " + normalizarPersona("p1") + " IS NOT NULL "
+                + "AND " + normalizarPersona("p1") + " = " + normalizarPersona("p2") + " "
+                + "AND ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpedienteA);
+            ps.setLong(2, idExpedienteB);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private OrientacionRelacion resolverOrientacionRelacion(
+            Connection conn,
+            Long idExpedienteA,
+            Long idExpedienteB) throws SQLException {
+        ExpedienteReferencia referenciaA = obtenerReferenciaExpediente(conn, idExpedienteA);
+        ExpedienteReferencia referenciaB = obtenerReferenciaExpediente(conn, idExpedienteB);
+
+        if (referenciaA.tieneNumero() != referenciaB.tieneNumero()) {
+            return referenciaA.tieneNumero()
+                    ? new OrientacionRelacion(idExpedienteA, idExpedienteB)
+                    : new OrientacionRelacion(idExpedienteB, idExpedienteA);
+        }
+        int comparacionFecha = referenciaA.fechaRegistro.compareTo(referenciaB.fechaRegistro);
+        if (comparacionFecha < 0 || (comparacionFecha == 0 && idExpedienteA < idExpedienteB)) {
+            return new OrientacionRelacion(idExpedienteA, idExpedienteB);
+        }
+        return new OrientacionRelacion(idExpedienteB, idExpedienteA);
+    }
+
+    private ExpedienteReferencia obtenerReferenciaExpediente(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT numero_expediente, fecha_registro "
+                + "FROM expediente WHERE id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("El expediente seleccionado ya no está disponible.");
+                }
+                Timestamp fechaRegistro = rs.getTimestamp("fecha_registro");
+                return new ExpedienteReferencia(
+                        rs.getString("numero_expediente"),
+                        fechaRegistro == null ? LocalDateTime.MAX : fechaRegistro.toLocalDateTime());
+            }
+        }
     }
 
     private Long insertarRelacion(
@@ -412,6 +535,30 @@ public class ExpedienteRelacionadoDAO {
             conn.rollback();
         } catch (SQLException ignored) {
             // El error original se reporta al usuario; el rollback fallido no debe ocultarlo.
+        }
+    }
+
+    private static final class OrientacionRelacion {
+        private final Long idPrincipal;
+        private final Long idRelacionado;
+
+        private OrientacionRelacion(Long idPrincipal, Long idRelacionado) {
+            this.idPrincipal = idPrincipal;
+            this.idRelacionado = idRelacionado;
+        }
+    }
+
+    private static final class ExpedienteReferencia {
+        private final String numeroExpediente;
+        private final LocalDateTime fechaRegistro;
+
+        private ExpedienteReferencia(String numeroExpediente, LocalDateTime fechaRegistro) {
+            this.numeroExpediente = numeroExpediente;
+            this.fechaRegistro = fechaRegistro;
+        }
+
+        private boolean tieneNumero() {
+            return numeroExpediente != null && !numeroExpediente.trim().isEmpty();
         }
     }
 }

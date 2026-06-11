@@ -205,7 +205,7 @@ public class DlgExpedientesRelacionadosV2 extends JDialog {
             });
         }
         if (items.isEmpty()) {
-            lblEstado.setText("No se encontraron posibles relacionados por misma acta y titular.");
+            lblEstado.setText("No hay nuevas coincidencias pendientes. Revise las relaciones confirmadas en la consola.");
             table.setFillsViewportHeight(true);
         } else {
             lblEstado.setText(items.size() + " posible(s) relacionado(s). Revise antes de asociar.");
