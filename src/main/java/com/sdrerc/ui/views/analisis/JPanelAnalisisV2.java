@@ -294,6 +294,16 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private JPanel crearDocumentosPanel() {
         JPanel panel = section("Documentos analizados");
+        JTextArea ayuda = new JTextArea(
+                "Los documentos duplicados asociados quedan disponibles en la consola del expediente. "
+                        + "Agréguelos aquí solo cuando el abogado confirme que corresponde analizarlos.");
+        ayuda.setEditable(false);
+        ayuda.setFocusable(false);
+        ayuda.setOpaque(false);
+        ayuda.setLineWrap(true);
+        ayuda.setWrapStyleWord(true);
+        ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         int row = 0;
@@ -309,7 +319,12 @@ public class JPanelAnalisisV2 extends JPanel {
         scroll.setPreferredSize(new Dimension(360, 140));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
 
-        panel.add(form, BorderLayout.NORTH);
+        JPanel top = new JPanel(new BorderLayout(0, 8));
+        top.setOpaque(false);
+        top.add(ayuda, BorderLayout.NORTH);
+        top.add(form, BorderLayout.CENTER);
+
+        panel.add(top, BorderLayout.NORTH);
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }

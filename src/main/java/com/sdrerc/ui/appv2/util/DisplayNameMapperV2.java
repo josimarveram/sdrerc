@@ -116,6 +116,14 @@ public final class DisplayNameMapperV2 {
                 return "Recepción de documento";
             case "ASIGNACION_ABOGADO":
                 return "Asignación de abogado";
+            case "ASOCIACION_DUPLICADO":
+                return "Asociación de duplicado";
+            case "ASOCIACION_DOCUMENTO_EXPEDIENTE":
+                return "Asociación de documento al expediente";
+            case "DOCUMENTO_DUPLICADO_ASOCIADO":
+                return "Documento duplicado asociado";
+            case "MISMA_ACTA_TITULAR":
+                return "Misma acta y titular";
             case "RECEPCION_ASIGNACION":
                 return "Recepción de asignación";
             case "REGISTRO_RESULTADO_ANALISIS":

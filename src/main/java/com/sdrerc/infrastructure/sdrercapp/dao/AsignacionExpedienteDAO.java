@@ -29,6 +29,8 @@ public class AsignacionExpedienteDAO {
     private static final String CODIGO_ETAPA_DESTINO = "ASIGNACION";
     private static final String CODIGO_ESTADO_DESTINO = "ASIGNADO";
     private static final String CODIGO_MOVIMIENTO = "ASIGNACION_ABOGADO";
+    private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
+    private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final ExpedienteRelacionadoDAO expedienteRelacionadoDAO;
@@ -78,6 +80,14 @@ public class AsignacionExpedienteDAO {
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
         sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
         sql.append("WHERE e.activo = 1 ");
+        sql.append("AND NOT EXISTS (");
+        sql.append("SELECT 1 FROM expediente_relacion r ");
+        sql.append("WHERE r.activo = 1 ");
+        sql.append("AND r.id_expediente_relacionado = e.id_expediente ");
+        sql.append("AND UPPER(r.tipo_relacion) IN (?, ?)");
+        sql.append(") ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND est.codigo = ? ");
@@ -173,6 +183,9 @@ public class AsignacionExpedienteDAO {
                     }
                     if (tieneAsignacionActiva(conn, idExpediente)) {
                         throw new SQLException("El expediente ya se encuentra asignado.");
+                    }
+                    if (esDocumentoDuplicadoAsociado(conn, idExpediente)) {
+                        throw new SQLException("Este registro está asociado al expediente principal y no requiere asignación independiente.");
                     }
 
                     Long idAsignacion = insertarAsignacion(
@@ -333,6 +346,21 @@ public class AsignacionExpedienteDAO {
         String sql = "SELECT 1 FROM expediente_asignacion WHERE id_expediente = ? AND activa = 1 AND activo = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private boolean esDocumentoDuplicadoAsociado(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT 1 FROM expediente_relacion "
+                + "WHERE activo = 1 "
+                + "AND id_expediente_relacionado = ? "
+                + "AND UPPER(tipo_relacion) IN (?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
+            ps.setString(3, TIPO_RELACION_MISMA_ACTA_TITULAR);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }

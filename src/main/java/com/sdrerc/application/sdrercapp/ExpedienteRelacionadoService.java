@@ -27,6 +27,10 @@ public class ExpedienteRelacionadoService {
         return expedienteRelacionadoDAO.listarAsociadosConfirmados(idExpediente);
     }
 
+    public ExpedienteRelacionadoDTO obtenerExpedientePrincipalAsociado(Long idExpediente) throws SQLException {
+        return expedienteRelacionadoDAO.obtenerExpedientePrincipalAsociado(idExpediente);
+    }
+
     public ExpedienteRelacionResultadoDTO asociarRelacionados(
             Long idExpedientePrincipal,
             List<Long> idsRelacionados,

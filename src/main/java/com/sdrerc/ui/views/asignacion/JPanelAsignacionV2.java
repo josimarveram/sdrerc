@@ -767,12 +767,13 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         String detalle = seleccion.esSeleccionMultiple()
-                ? "Se asociarán los " + seleccion.totalSeleccionados + " expedientes marcados si comparten el mismo número de acta y titular.\n"
-                : "Se asociarán los expedientes pendientes que tengan el mismo número de acta y titular.\n";
+                ? "Se asociarán los " + seleccion.totalSeleccionados + " registros marcados como documentos duplicados del expediente principal si comparten el mismo número de acta y titular.\n"
+                : "Se asociarán las coincidencias pendientes como documentos duplicados del expediente principal.\n";
         int confirm = JOptionPane.showConfirmDialog(
                 this,
                 detalle
                         + "Si un relacionado no tiene número de expediente, tomará el número del expediente principal.\n"
+                        + "No se registrará como documento analizado; esa decisión corresponde al módulo Análisis.\n"
                         + "¿Desea continuar?",
                 "Confirmar asociación rápida",
                 JOptionPane.YES_NO_OPTION,
@@ -806,7 +807,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 return relacionadoService.asociarRelacionados(
                         seleccion.idPrincipal,
                         ids,
-                        "Relación confirmada por misma acta y titular.");
+                        "Documento duplicado asociado al expediente principal por misma acta y titular.");
             }
 
             @Override

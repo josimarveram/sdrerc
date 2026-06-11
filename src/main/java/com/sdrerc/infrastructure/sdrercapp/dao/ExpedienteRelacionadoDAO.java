@@ -19,9 +19,11 @@ import java.util.Set;
 
 public class ExpedienteRelacionadoDAO {
 
+    private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
     private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
     private static final String MOVIMIENTO_ASOCIACION_DUPLICADO = "ASOCIACION_DUPLICADO";
     private static final String MOTIVO_MISMA_ACTA_TITULAR = "Misma acta y titular";
+    private static final String MOTIVO_DOCUMENTO_DUPLICADO = "Documento duplicado asociado al expediente principal por misma acta y titular";
     private static final int DIAS_PLAZO_INICIAL = 30;
 
     private final CatalogoLookupDAO catalogoLookupDAO;
@@ -166,6 +168,44 @@ public class ExpedienteRelacionadoDAO {
         return asociados;
     }
 
+    public ExpedienteRelacionadoDTO obtenerExpedientePrincipalAsociado(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return null;
+        }
+
+        String sql = "SELECT e.id_expediente, e.numero_expediente, ta.nombre AS tipo_acta, ea.numero_acta, "
+                + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
+                + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
+                + "FROM expediente_relacion r "
+                + "JOIN expediente e ON e.id_expediente = r.id_expediente_principal AND e.activo = 1 "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente est ON est.id_estado = e.id_estado_actual "
+                + "LEFT JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 "
+                + "LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta "
+                + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                + "LEFT JOIN usuario u ON u.id_usuario = r.creado_por "
+                + "WHERE r.activo = 1 "
+                + "AND r.id_expediente_relacionado = ? "
+                + "AND UPPER(r.tipo_relacion) IN (?, ?) "
+                + "ORDER BY r.creado_en DESC";
+
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
+            ps.setString(3, TIPO_RELACION_MISMA_ACTA_TITULAR);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapAsociado(rs);
+                }
+            }
+        }
+        return null;
+    }
+
     public ExpedienteRelacionResultadoDTO asociarRelacionados(
             Long idExpedientePrincipal,
             List<Long> idsRelacionados,
@@ -261,9 +301,9 @@ public class ExpedienteRelacionadoDAO {
                 throw new SQLException(ex.getMessage(), ex);
             }
         }
-        String mensaje = asociados + " relación(es) confirmada(s).";
+        String mensaje = asociados + " documento(s) duplicado(s) asociado(s) al expediente principal.";
         if (yaAsociados > 0) {
-            mensaje += " " + yaAsociados + " expediente(s) ya se encontraban asociados.";
+            mensaje += " " + yaAsociados + " documento(s) ya se encontraban asociados al expediente principal.";
         }
         if (omitidos > 0) {
             mensaje += " " + omitidos + " expediente(s) omitido(s) porque no coinciden por número de acta y titular o la selección no es válida.";
@@ -350,8 +390,8 @@ public class ExpedienteRelacionadoDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_RELACION"})) {
             ps.setLong(1, idPrincipal);
             ps.setLong(2, idRelacionado);
-            ps.setString(3, TIPO_RELACION_MISMA_ACTA_TITULAR);
-            ps.setString(4, descripcion == null || descripcion.trim().isEmpty() ? MOTIVO_MISMA_ACTA_TITULAR : descripcion.trim());
+            ps.setString(3, TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
+            ps.setString(4, descripcion == null || descripcion.trim().isEmpty() ? MOTIVO_DOCUMENTO_DUPLICADO : descripcion.trim());
             setLongOrNull(ps, 5, idUsuarioCreador);
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente_relacion");
@@ -375,9 +415,9 @@ public class ExpedienteRelacionadoDAO {
             setLongOrNull(ps, 3, idUsuarioCreador);
             ps.setLong(4, idRelacion);
             ps.setString(5, descripcion == null || descripcion.trim().isEmpty()
-                    ? "Relación confirmada por misma acta y titular."
+                    ? "Documento duplicado asociado al expediente principal. Será evaluado en Análisis si corresponde."
                     : descripcion.trim());
-            ps.setString(6, TIPO_RELACION_MISMA_ACTA_TITULAR);
+            ps.setString(6, TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
             setLongOrNull(ps, 7, idUsuarioCreador);
             ps.executeUpdate();
         }

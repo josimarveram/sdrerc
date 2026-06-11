@@ -113,7 +113,7 @@ public class DlgExpedientesRelacionadosV2 extends JDialog {
         title.setFont(AppV2Theme.fontBold(22));
         title.setForeground(AppV2Theme.TEXT_PRIMARY);
 
-        JTextArea subtitle = new JTextArea("Revise coincidencias por misma acta y titular. La asociación solo se registra cuando confirma la selección.");
+        JTextArea subtitle = new JTextArea("Revise coincidencias por misma acta y titular. Al confirmar, quedarán como documentos duplicados asociados al expediente principal; Análisis decidirá si se marcan como analizados.");
         subtitle.setEditable(false);
         subtitle.setFocusable(false);
         subtitle.setOpaque(false);
@@ -128,7 +128,7 @@ public class DlgExpedientesRelacionadosV2 extends JDialog {
         text.add(subtitle, BorderLayout.CENTER);
 
         header.add(text, BorderLayout.CENTER);
-        header.add(new BadgeV2("Relación confirmada", AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING), BorderLayout.EAST);
+        header.add(new BadgeV2("Documento asociado", AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING), BorderLayout.EAST);
         return header;
     }
 
@@ -234,7 +234,9 @@ public class DlgExpedientesRelacionadosV2 extends JDialog {
         }
         int confirm = JOptionPane.showConfirmDialog(
                 this,
-                "Se asociarán " + seleccionados.size() + " expediente(s) como relación confirmada por misma acta y titular. ¿Desea continuar?",
+                "Se asociarán " + seleccionados.size() + " registro(s) como documento duplicado del expediente principal.\n"
+                        + "No se registrarán como documentos analizados hasta que el abogado lo confirme en Análisis.\n"
+                        + "¿Desea continuar?",
                 "Confirmar asociación",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
@@ -249,7 +251,7 @@ public class DlgExpedientesRelacionadosV2 extends JDialog {
                 return relacionadoService.asociarRelacionados(
                         idExpediente,
                         seleccionados,
-                        "Relación confirmada por misma acta y titular.");
+                        "Documento duplicado asociado al expediente principal por misma acta y titular.");
             }
 
             @Override

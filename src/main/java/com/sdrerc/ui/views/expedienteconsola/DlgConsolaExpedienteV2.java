@@ -56,7 +56,9 @@ public class DlgConsolaExpedienteV2 extends JDialog {
     private final JLabel lblTitulo = new JLabel("Consola de expediente");
     private final JLabel lblSubtitulo = new JLabel("Cargando datos del expediente...");
     private final JLabel lblAsociadosEstado = new JLabel("Cargando expedientes asociados...");
+    private final JLabel lblAvisoAsociado = new JLabel();
     private final JButton btnAbrirAsociado = new JButton("Abrir expediente asociado");
+    private final JButton btnAbrirPrincipal = new JButton("Abrir expediente principal");
     private final JPanel panelBadges = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JPanel panelEtapas = new JPanel(new BorderLayout());
     private final JPanel headerDatos = new JPanel(new GridLayout(1, 5, 10, 0));
@@ -64,6 +66,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
     private final JPanel documentosPanel = new JPanel(new GridLayout(0, 2, 12, 12));
     private final JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
     private final JPanel sideContainer = new JPanel(new BorderLayout());
+    private final JPanel avisoAsociadoPanel = new JPanel(new BorderLayout(10, 0));
     private final DefaultTableModel timelineModel = new DefaultTableModel(
             new Object[]{"Fecha", "Acción / Movimiento", "Usuario", "Origen -> Destino", "Comentario / Motivo"},
             0) {
@@ -82,6 +85,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         }
     };
     private final JTable asociadosTable = new AppV2Table(asociadosModel);
+    private Long idExpedientePrincipalAsociado;
 
     public DlgConsolaExpedienteV2(Window owner, Long idExpediente) {
         this(owner, idExpediente, new ExpedienteDetalleService());
@@ -146,7 +150,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         tabs.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         tabs.addTab("Detalles", crearDetallesTab());
         tabs.addTab("Documentos", crearDocumentosTab());
-        tabs.addTab("Expedientes asociados", crearAsociadosTab());
+        tabs.addTab("Documentos asociados", crearAsociadosTab());
         tabs.addTab("Timeline / Historial", crearTimelineTab());
         tabs.addTab("Acciones disponibles", crearAccionesTab());
 
@@ -203,9 +207,21 @@ public class DlgConsolaExpedienteV2 extends JDialog {
 
         btnAbrirAsociado.setEnabled(false);
         btnAbrirAsociado.addActionListener(e -> abrirExpedienteAsociado());
+        btnAbrirPrincipal.setEnabled(false);
+        btnAbrirPrincipal.addActionListener(e -> abrirExpedientePrincipal());
 
         lblAsociadosEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblAsociadosEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+        lblAvisoAsociado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblAvisoAsociado.setForeground(AppV2Theme.WARNING);
+
+        avisoAsociadoPanel.setBackground(AppV2Theme.SOFT_ORANGE);
+        avisoAsociadoPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.WARNING),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        avisoAsociadoPanel.add(lblAvisoAsociado, BorderLayout.CENTER);
+        avisoAsociadoPanel.add(btnAbrirPrincipal, BorderLayout.EAST);
+        avisoAsociadoPanel.setVisible(false);
 
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
@@ -215,6 +231,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         acciones.add(btnAbrirAsociado);
         footer.add(acciones, BorderLayout.EAST);
 
+        panel.add(avisoAsociadoPanel, BorderLayout.NORTH);
         panel.add(new JScrollPane(asociadosTable), BorderLayout.CENTER);
         panel.add(footer, BorderLayout.SOUTH);
         return panel;
@@ -266,7 +283,8 @@ public class DlgConsolaExpedienteV2 extends JDialog {
                 List<ExpedienteTimelineDTO> timeline = detalleService.listarTimeline(idExpediente);
                 List<AccionPermitidaDTO> acciones = detalleService.listarAccionesPermitidas(idExpediente);
                 List<ExpedienteRelacionadoDTO> asociados = relacionadoService.listarAsociadosConfirmados(idExpediente);
-                return new DetalleCarga(consola, timeline, acciones, asociados);
+                ExpedienteRelacionadoDTO principalAsociado = relacionadoService.obtenerExpedientePrincipalAsociado(idExpediente);
+                return new DetalleCarga(consola, timeline, acciones, asociados, principalAsociado);
             }
 
             @Override
@@ -291,6 +309,9 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         documentosPanel.removeAll();
         accionesPanel.removeAll();
         asociadosModel.setRowCount(0);
+        idExpedientePrincipalAsociado = null;
+        avisoAsociadoPanel.setVisible(false);
+        btnAbrirPrincipal.setEnabled(false);
         btnAbrirAsociado.setEnabled(false);
         timelineModel.setRowCount(0);
     }
@@ -312,11 +333,11 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         cargarBadges(expediente);
         cargarEtapas(expediente);
         cargarDatosGenerales(expediente);
-        cargarDocumentos(expediente);
-        cargarAsociados(carga.asociados);
+        cargarDocumentos(expediente, carga.asociados, carga.principalAsociado);
+        cargarAsociados(carga.asociados, carga.principalAsociado);
         cargarAcciones(carga.acciones);
         cargarTimeline(carga.timeline);
-        cargarPanelLateral(expediente, carga.timeline, carga.acciones);
+        cargarPanelLateral(expediente, carga.timeline, carga.acciones, carga.asociados, carga.principalAsociado);
     }
 
     private void cargarBadges(ExpedienteConsolaDTO expediente) {
@@ -481,9 +502,18 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         return wrapper;
     }
 
-    private void cargarDocumentos(ExpedienteConsolaDTO expediente) {
+    private void cargarDocumentos(
+            ExpedienteConsolaDTO expediente,
+            List<ExpedienteRelacionadoDTO> asociados,
+            ExpedienteRelacionadoDTO principalAsociado) {
         documentosPanel.removeAll();
         documentosPanel.add(crearInfoCard("Documentos", value(expediente.getTotalDocumentos()), "Total en expediente"));
+        documentosPanel.add(crearInfoCard(
+                "Documentos duplicados",
+                value(asociados == null ? 0 : asociados.size()),
+                principalAsociado == null
+                        ? "Asociados al expediente principal"
+                        : "Este registro pertenece al expediente principal"));
         documentosPanel.add(crearInfoCard("Observaciones", value(expediente.getObservacionesPendientes()), "Pendientes de subsanación"));
         documentosPanel.add(crearInfoCard("Notificaciones", value(expediente.getTotalNotificaciones()), "Registros asociados"));
         documentosPanel.add(crearInfoCard("Cargos de acuse", value(expediente.getTotalCargos()), "Registros asociados"));
@@ -493,7 +523,17 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         documentosPanel.repaint();
     }
 
-    private void cargarAsociados(List<ExpedienteRelacionadoDTO> asociados) {
+    private void cargarAsociados(List<ExpedienteRelacionadoDTO> asociados, ExpedienteRelacionadoDTO principalAsociado) {
+        idExpedientePrincipalAsociado = principalAsociado == null ? null : principalAsociado.getIdExpediente();
+        if (principalAsociado == null) {
+            avisoAsociadoPanel.setVisible(false);
+            btnAbrirPrincipal.setEnabled(false);
+        } else {
+            lblAvisoAsociado.setText("Este registro/documento está asociado al expediente principal "
+                    + safe(principalAsociado.getNumeroExpediente()) + ".");
+            avisoAsociadoPanel.setVisible(true);
+            btnAbrirPrincipal.setEnabled(idExpedientePrincipalAsociado != null);
+        }
         asociadosModel.setRowCount(0);
         for (ExpedienteRelacionadoDTO item : asociados) {
             asociadosModel.addRow(new Object[]{
@@ -508,11 +548,15 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             });
         }
         if (asociados.isEmpty()) {
-            lblAsociadosEstado.setText("No existen expedientes asociados para este expediente.");
+            lblAsociadosEstado.setText(principalAsociado == null
+                    ? "No existen documentos duplicados asociados para este expediente."
+                    : "Este registro está asociado a un expediente principal. No tiene otros asociados confirmados.");
         } else {
-            lblAsociadosEstado.setText(asociados.size() + " expediente(s) asociado(s) confirmados.");
+            lblAsociadosEstado.setText(asociados.size() + " documento(s) duplicado(s) asociado(s) confirmados.");
         }
         btnAbrirAsociado.setEnabled(false);
+        avisoAsociadoPanel.revalidate();
+        avisoAsociadoPanel.repaint();
     }
 
     private void abrirExpedienteAsociado() {
@@ -520,8 +564,8 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         if (selectedRow < 0) {
             JOptionPane.showMessageDialog(
                     this,
-                    "Seleccione un expediente asociado para abrirlo.",
-                    "Expedientes asociados",
+                    "Seleccione un documento o expediente asociado para abrirlo.",
+                    "Documentos asociados",
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -532,6 +576,20 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         }
         Long idAsociado = ((Number) value).longValue();
         DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(getOwner(), idAsociado);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void abrirExpedientePrincipal() {
+        if (idExpedientePrincipalAsociado == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se encontró expediente principal asociado.",
+                    "Documento asociado",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(getOwner(), idExpedientePrincipalAsociado);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
@@ -636,12 +694,19 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         }
     }
 
-    private void cargarPanelLateral(ExpedienteConsolaDTO expediente, List<ExpedienteTimelineDTO> timeline, List<AccionPermitidaDTO> acciones) {
+    private void cargarPanelLateral(
+            ExpedienteConsolaDTO expediente,
+            List<ExpedienteTimelineDTO> timeline,
+            List<AccionPermitidaDTO> acciones,
+            List<ExpedienteRelacionadoDTO> asociados,
+            ExpedienteRelacionadoDTO principalAsociado) {
         sideContainer.removeAll();
         SideInfoPanelV2 side = new SideInfoPanelV2("Resumen del expediente");
         side.addItem("Responsable actual", expediente.getResponsableActual(), expediente.getEquipoActual());
         side.addItem("Última acción", timeline.isEmpty() ? "Sin historial" : DisplayNameMapperV2.accion(timeline.get(0).getMovimiento()), timeline.isEmpty() ? "" : formatDateTime(timeline.get(0).getFechaMovimiento()));
         side.addItem("Documentos", value(expediente.getTotalDocumentos()), "Total asociado al expediente");
+        side.addItem("Documentos duplicados", value(asociados == null ? 0 : asociados.size()),
+                principalAsociado == null ? "Asociados confirmados" : "Asociado a principal");
         side.addItem("Observaciones", value(expediente.getObservacionesPendientes()), "Pendientes de subsanación");
         side.addItem("Notificación / cargo", expediente.getTotalNotificaciones() + " / " + expediente.getTotalCargos(), "Notificaciones y cargos registrados");
         side.addItem("Publicación", expediente.isRequierePublicacion() ? "Requiere publicación" : "Sin pendiente", "Indicador de publicación");
@@ -716,16 +781,19 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         private final List<ExpedienteTimelineDTO> timeline;
         private final List<AccionPermitidaDTO> acciones;
         private final List<ExpedienteRelacionadoDTO> asociados;
+        private final ExpedienteRelacionadoDTO principalAsociado;
 
         private DetalleCarga(
                 ExpedienteConsolaDTO consola,
                 List<ExpedienteTimelineDTO> timeline,
                 List<AccionPermitidaDTO> acciones,
-                List<ExpedienteRelacionadoDTO> asociados) {
+                List<ExpedienteRelacionadoDTO> asociados,
+                ExpedienteRelacionadoDTO principalAsociado) {
             this.consola = consola;
             this.timeline = timeline == null ? new ArrayList<ExpedienteTimelineDTO>() : timeline;
             this.acciones = acciones == null ? new ArrayList<AccionPermitidaDTO>() : acciones;
             this.asociados = asociados == null ? new ArrayList<ExpedienteRelacionadoDTO>() : asociados;
+            this.principalAsociado = principalAsociado;
         }
     }
 
