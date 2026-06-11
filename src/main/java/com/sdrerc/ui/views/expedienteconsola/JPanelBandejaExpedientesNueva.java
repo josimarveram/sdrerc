@@ -123,7 +123,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     "Proc. Registral",
                     "Tipo Acta",
                     "Nro Acta",
-                    "Grupo Familiar",
                     "Titular",
                     "_ID"
                 }
@@ -257,10 +256,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setDefaultRenderer(Object.class, new BandejaCellRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
-            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 155, 240, 0);
+            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 0);
             table.getColumnModel().getColumn(0).setMaxWidth(90);
-            table.getColumnModel().getColumn(7).setMinWidth(145);
-            table.getColumnModel().getColumn(8).setMinWidth(220);
+            table.getColumnModel().getColumn(7).setMinWidth(220);
         } else {
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(1).setMinWidth(150);
@@ -384,7 +382,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     item.getProcedimiento(),
                     item.getTipoActa(),
                     item.getNumeroActa(),
-                    item.getGrupoFamiliar(),
                     item.getTitular(),
                     item.getIdExpediente()
                 });
@@ -574,13 +571,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 return StatusBadgeV2.forDias(value);
             }
             if (perfilRegistroRecepcion) {
-                if (!isSelected && modelColumn == 7) {
-                    String text = value == null ? "" : value.toString();
-                    if (text.toLowerCase().contains("asociado")) {
-                        return new BadgeV2(text, AppV2Theme.SOFT_BLUE, AppV2Theme.PRIMARY);
-                    }
-                    return new BadgeV2(text.isEmpty() ? "Sin grupo" : text, AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY);
-                }
                 return defaultComponent(table, value, isSelected, hasFocus, row, column);
             }
             if (!isSelected && modelColumn == 3) {
