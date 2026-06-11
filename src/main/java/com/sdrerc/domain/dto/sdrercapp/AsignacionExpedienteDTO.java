@@ -13,6 +13,7 @@ public class AsignacionExpedienteDTO {
     private final String tipoActa;
     private final String numeroActa;
     private final String titular;
+    private final String solicitante;
     private final String numeroDocumentoTitular;
     private final LocalDate fechaRecepcion;
     private final LocalDateTime fechaRegistro;
@@ -31,6 +32,7 @@ public class AsignacionExpedienteDTO {
             String tipoActa,
             String numeroActa,
             String titular,
+            String solicitante,
             String numeroDocumentoTitular,
             LocalDate fechaRecepcion,
             LocalDateTime fechaRegistro,
@@ -47,6 +49,7 @@ public class AsignacionExpedienteDTO {
         this.tipoActa = safe(tipoActa);
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
+        this.solicitante = safe(solicitante);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
         this.fechaRecepcion = fechaRecepcion;
         this.fechaRegistro = fechaRegistro;
@@ -84,6 +87,10 @@ public class AsignacionExpedienteDTO {
 
     public String getTitular() {
         return titular;
+    }
+
+    public String getSolicitante() {
+        return solicitante;
     }
 
     public String getNumeroDocumentoTitular() {

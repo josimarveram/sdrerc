@@ -199,7 +199,7 @@ Toda escritura V2 autorizada debe:
 - Si el usuario cierra manualmente un panel derecho contextual con seleccion activa, no limpiar la seleccion; el panel debe reabrirse cuando el usuario vuelva a interactuar con la fila o la seleccion operativa.
 - En modulos operativos con panel derecho contextual, el panel puede implementarse como redimensionable mediante divisor horizontal cuando el formulario requiera mas espacio; no imponer porcentajes maximos fijos si el usuario necesita ampliar el panel hasta el ancho disponible, y evitar superposiciones o scroll horizontal innecesario.
 - El panel derecho contextual redimensionable debe expandir internamente combos, textareas, secciones y acciones segun el ancho disponible, manteniendo comportamiento responsive desktop para distintas resoluciones.
-- En modulos operativos con panel derecho contextual, puede usarse un chip premium de encabezado para alternar vista normal/ampliada; cuando exista expediente en foco, el chip, el acento del panel y la fila seleccionada deben compartir una identidad visual sobria y legible.
+- En modulos operativos con panel derecho contextual, puede usarse un chip premium de encabezado para alternar vista normal/ampliada; debe sentirse como adhesivo/indicador visual integrado al panel, no como boton textual tosco, y cuando exista expediente en foco, el chip, el acento del panel y la fila seleccionada deben compartir una identidad visual sobria y legible.
 - Antes de duplicar layout manual en un modulo operativo, preferir componentes reutilizables `AppV2SearchToolbar`, `AppV2TableSectionPanel`, `AppV2SideActionPanel` y `AppV2SideSectionPanel` cuando apliquen.
 
 ## 4.6 Alineamiento BPMN TO BE V2

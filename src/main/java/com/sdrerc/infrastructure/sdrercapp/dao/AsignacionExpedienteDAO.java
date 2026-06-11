@@ -47,7 +47,8 @@ public class AsignacionExpedienteDAO {
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
-        sql.append(nombrePersona("p")).append(" AS titular, p.numero_documento AS numero_documento_titular, ");
+        sql.append(nombrePersona("p")).append(" AS titular, ");
+        sql.append(nombrePersona("ps")).append(" AS solicitante, p.numero_documento AS numero_documento_titular, ");
         sql.append("esol.fecha_recepcion, esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
@@ -60,6 +61,7 @@ public class AsignacionExpedienteDAO {
         sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
+        sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
         sql.append("WHERE e.activo = 1 ");
         sql.append("AND et.codigo = ? ");
         sql.append("AND est.codigo = ? ");
@@ -73,11 +75,12 @@ public class AsignacionExpedienteDAO {
             sql.append("OR UPPER(NVL(esol.asunto, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(ea.numero_acta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(").append(nombrePersona("ps")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.observacion, '')) LIKE ? ");
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase(Locale.ROOT) + "%";
-            for (int i = 0; i < 7; i++) {
+            for (int i = 0; i < 8; i++) {
                 params.add(pattern);
             }
         }
@@ -202,6 +205,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
+                rs.getString("solicitante"),
                 rs.getString("numero_documento_titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),

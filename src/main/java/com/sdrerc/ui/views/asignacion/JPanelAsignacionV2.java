@@ -31,12 +31,13 @@ import java.awt.GridLayout;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -47,15 +48,19 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 
 public class JPanelAsignacionV2 extends JPanel {
 
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Color[] FOCUS_ACCENTS = new Color[]{
         AppV2Theme.TEAL,
         AppV2Theme.INFO,
@@ -117,6 +122,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private String contextoChip = "Panel de asignación";
     private boolean panelAsignacionVisible;
     private boolean panelAsignacionCerradoPorUsuario;
+    private boolean todasVisiblesSeleccionadas;
 
     private boolean cargandoCombos;
     private boolean actualizandoSeleccion;
@@ -281,8 +287,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private void configurarTabla() {
         table.setRowHeight(34);
         table.setAutoCreateRowSorter(true);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setResizingAllowed(true);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         table.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
         table.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
@@ -290,18 +298,27 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
+        tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        table.getColumnModel().getColumn(0).setMaxWidth(52);
-        table.getColumnModel().getColumn(1).setMinWidth(160);
-        table.getColumnModel().getColumn(2).setMinWidth(140);
-        table.getColumnModel().getColumn(3).setMinWidth(190);
-        table.getColumnModel().getColumn(4).setPreferredWidth(120);
-        table.getColumnModel().getColumn(5).setPreferredWidth(130);
-        table.getColumnModel().getColumn(6).setMinWidth(220);
-        table.getColumnModel().getColumn(7).setPreferredWidth(130);
-        table.getColumnModel().getColumn(8).setMaxWidth(88);
-        table.getColumnModel().getColumn(9).setPreferredWidth(130);
-        table.getColumnModel().getColumn(10).setPreferredWidth(150);
+        AppV2TableColumnSizer.applyWidths(table, 54, 84, 185, 135, 230, 135, 130, 260, 240, 155, 170, 0);
+        configurarColumna(table.getColumnModel().getColumn(0), 54, 54, 58);
+        configurarColumna(table.getColumnModel().getColumn(1), 84, 78, 92);
+        configurarColumna(table.getColumnModel().getColumn(2), 185, 165, 260);
+        configurarColumna(table.getColumnModel().getColumn(3), 135, 128, 170);
+        configurarColumna(table.getColumnModel().getColumn(4), 230, 210, 320);
+        configurarColumna(table.getColumnModel().getColumn(5), 135, 128, 190);
+        configurarColumna(table.getColumnModel().getColumn(6), 130, 120, 180);
+        configurarColumna(table.getColumnModel().getColumn(7), 260, 230, 380);
+        configurarColumna(table.getColumnModel().getColumn(8), 240, 210, 360);
+        configurarColumna(table.getColumnModel().getColumn(9), 155, 145, 220);
+        configurarColumna(table.getColumnModel().getColumn(10), 170, 150, 240);
+        table.getColumnModel().getColumn(0).setHeaderRenderer(new SelectAllHeaderRenderer());
+    }
+
+    private void configurarColumna(TableColumn column, int preferred, int min, int max) {
+        column.setPreferredWidth(preferred);
+        column.setMinWidth(min);
+        column.setMaxWidth(max);
     }
 
     private void configurarEventos() {
@@ -333,6 +350,15 @@ public class JPanelAsignacionV2 extends JPanel {
             @Override
             public void mouseReleased(MouseEvent e) {
                 reabrirPanelSiCorresponde(e);
+            }
+        });
+        table.getTableHeader().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int column = table.columnAtPoint(e.getPoint());
+                if (column >= 0 && table.convertColumnIndexToModel(column) == 0) {
+                    alternarSeleccionVisibleDesdeHeader();
+                }
             }
         });
     }
@@ -441,14 +467,14 @@ public class JPanelAsignacionV2 extends JPanel {
             }
             tableModel.addRow(new Object[]{
                 Boolean.FALSE,
+                item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
                 item.getNumeroExpediente(),
-                documentoTramite(item),
+                formatDate(item.getFechaRecepcion()),
                 item.getProcedimiento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
                 item.getTitular(),
-                formatDateTime(item.getFechaRegistro()),
-                item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
+                item.getSolicitante(),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
                 alertaAsignacion(item),
                 item.getIdExpediente()
@@ -463,13 +489,6 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarPanelSeleccion();
     }
 
-    private String documentoTramite(AsignacionExpedienteDTO item) {
-        if (item.getNumeroDocumentoTitular() != null && !item.getNumeroDocumentoTitular().isEmpty()) {
-            return item.getNumeroDocumentoTitular();
-        }
-        return item.getNumeroTramiteDocumentario();
-    }
-
     private String alertaAsignacion(AsignacionExpedienteDTO item) {
         if (item.getPosiblesRelacionados() > 0) {
             return item.getPosiblesRelacionados() + " relacionados";
@@ -478,8 +497,8 @@ public class JPanelAsignacionV2 extends JPanel {
         return "Normal".equalsIgnoreCase(alerta) ? "Sin alerta" : alerta;
     }
 
-    private static String formatDateTime(LocalDateTime value) {
-        return value == null ? "" : DATE_TIME_FORMAT.format(value);
+    private static String formatDate(LocalDate value) {
+        return value == null ? "" : DATE_FORMAT.format(value);
     }
 
     private void limpiar() {
@@ -510,6 +529,25 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         actualizandoSeleccion = false;
         panelAsignacionCerradoPorUsuario = false;
+        actualizarPanelSeleccion();
+    }
+
+    private void alternarSeleccionVisibleDesdeHeader() {
+        if (tableModel.getRowCount() == 0 || table.getRowCount() == 0) {
+            return;
+        }
+        boolean seleccionar = !todasVisiblesSeleccionadas;
+        actualizandoSeleccion = true;
+        for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
+            int modelRow = table.convertRowIndexToModel(viewRow);
+            if (modelRow >= 0 && modelRow < expedientes.size() && expedientes.get(modelRow).isAsignable()) {
+                tableModel.setValueAt(Boolean.valueOf(seleccionar), modelRow, 0);
+            }
+        }
+        actualizandoSeleccion = false;
+        if (seleccionar) {
+            panelAsignacionCerradoPorUsuario = false;
+        }
         actualizarPanelSeleccion();
     }
 
@@ -678,6 +716,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblSeleccionados.setText(seleccionadosText);
         lblSeleccionadosPanel.setText(seleccionados + " expediente(s) seleccionados");
         cardSeleccionados.setValue(String.valueOf(seleccionados));
+        actualizarEstadoHeaderSeleccion();
         if (seleccionados == 0) {
             panelAsignacionCerradoPorUsuario = false;
         }
@@ -843,6 +882,25 @@ public class JPanelAsignacionV2 extends JPanel {
         return total;
     }
 
+    private void actualizarEstadoHeaderSeleccion() {
+        int visiblesAsignables = 0;
+        int visiblesSeleccionados = 0;
+        for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
+            int modelRow = table.convertRowIndexToModel(viewRow);
+            if (modelRow >= 0 && modelRow < expedientes.size() && expedientes.get(modelRow).isAsignable()) {
+                visiblesAsignables++;
+                if (Boolean.TRUE.equals(tableModel.getValueAt(modelRow, 0))) {
+                    visiblesSeleccionados++;
+                }
+            }
+        }
+        todasVisiblesSeleccionadas = visiblesAsignables > 0 && visiblesAsignables == visiblesSeleccionados;
+        JTableHeader header = table.getTableHeader();
+        if (header != null) {
+            header.repaint();
+        }
+    }
+
     private void setTrabajando(boolean trabajando, String mensaje) {
         btnBuscar.setEnabled(!trabajando);
         btnLimpiar.setEnabled(!trabajando);
@@ -878,15 +936,15 @@ public class JPanelAsignacionV2 extends JPanel {
 
         private AsignacionTableModel() {
             super(new Object[]{
-                "Sel.",
-                "Número expediente",
-                "Documento / trámite",
-                "Procedimiento",
-                "Tipo acta",
-                "Nro. acta",
-                "Titular",
-                "Fecha registro",
+                "",
                 "Días",
+                "Nro. Expediente",
+                "Fecha Solicitud",
+                "Proc. Registral",
+                "Tipo Acta",
+                "Nro. Acta",
+                "Titular",
+                "Solicitante",
                 "Estado",
                 "Relacionados",
                 "_ID"
@@ -907,6 +965,29 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
+    private class SelectAllHeaderRenderer extends JCheckBox implements TableCellRenderer {
+
+        private SelectAllHeaderRenderer() {
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setOpaque(true);
+            setBackground(AppV2Theme.SURFACE_ALT);
+            setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, AppV2Theme.BORDER));
+            setToolTipText("Seleccionar o desmarcar todos los expedientes filtrados.");
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setSelected(todasVisiblesSeleccionadas);
+            return this;
+        }
+    }
+
     private class AsignacionRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
@@ -919,7 +1000,7 @@ public class JPanelAsignacionV2 extends JPanel {
             int modelColumn = table.convertColumnIndexToModel(column);
             int modelRow = table.convertRowIndexToModel(row);
             boolean filaEnFoco = modelRow == filaModeloEnFoco;
-            if (!isSelected && !filaEnFoco && modelColumn == 8) {
+            if (!isSelected && !filaEnFoco && modelColumn == 1) {
                 return StatusBadgeV2.forDias(value);
             }
             if (!isSelected && !filaEnFoco && modelColumn == 9) {
@@ -936,7 +1017,7 @@ public class JPanelAsignacionV2 extends JPanel {
             if (isSelected || filaEnFoco) {
                 c.setBackground(fondoSeleccion);
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
-                setBorder(modelColumn == 1
+                setBorder(modelColumn == 2
                         ? BorderFactory.createCompoundBorder(
                                 BorderFactory.createMatteBorder(0, 4, 0, 0, acentoSeleccion),
                                 BorderFactory.createEmptyBorder(0, 4, 0, 8))
