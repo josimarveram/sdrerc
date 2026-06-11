@@ -140,8 +140,7 @@ public final class DateRangePickerSupport {
 
     public static Date defaultSearchFromDate() {
         Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.YEAR, 2026);
-        cal.set(Calendar.MONTH, Calendar.JANUARY);
+        cal.add(Calendar.MONTH, -5);
         cal.set(Calendar.DAY_OF_MONTH, 1);
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);

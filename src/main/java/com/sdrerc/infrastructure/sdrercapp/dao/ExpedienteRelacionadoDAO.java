@@ -51,7 +51,9 @@ public class ExpedienteRelacionadoDAO {
                 + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
                 + "WHERE e.id_expediente = ? AND e.activo = 1 "
                 + ") "
-                + "SELECT DISTINCT e.id_expediente, e.numero_expediente, ta.nombre AS tipo_acta, ea.numero_acta, "
+                + "SELECT DISTINCT e.id_expediente, e.numero_expediente, "
+                + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
+                + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "? AS motivo_coincidencia "
@@ -134,7 +136,9 @@ public class ExpedienteRelacionadoDAO {
             return asociados;
         }
 
-        String sql = "SELECT e.id_expediente, e.numero_expediente, ta.nombre AS tipo_acta, ea.numero_acta, "
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
+                + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
@@ -173,7 +177,9 @@ public class ExpedienteRelacionadoDAO {
             return null;
         }
 
-        String sql = "SELECT e.id_expediente, e.numero_expediente, ta.nombre AS tipo_acta, ea.numero_acta, "
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
+                + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
@@ -535,6 +541,7 @@ public class ExpedienteRelacionadoDAO {
         return new ExpedienteRelacionadoDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_documento"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
@@ -553,6 +560,7 @@ public class ExpedienteRelacionadoDAO {
         return new ExpedienteRelacionadoDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_documento"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
@@ -575,6 +583,15 @@ public class ExpedienteRelacionadoDAO {
 
     private static String nombrePersona(String alias) {
         return "TRIM(NVL(" + alias + ".razon_social, TRIM(NVL(" + alias + ".nombres, '') || ' ' || NVL(" + alias + ".apellidos, ''))))";
+    }
+
+    private static String numeroDocumentoRelacionadoSql(String expedienteAlias) {
+        return "NVL((SELECT MIN(ed.numero_documento) "
+                + "FROM expediente_documento ed "
+                + "WHERE ed.id_expediente = " + expedienteAlias + ".id_expediente "
+                + "AND ed.activo = 1 "
+                + "AND TRIM(ed.numero_documento) IS NOT NULL), "
+                + expedienteAlias + ".numero_tramite_documentario)";
     }
 
     private Long obtenerGeneratedKey(PreparedStatement ps, String entidad) throws SQLException {

@@ -15,6 +15,7 @@ import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
+import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -553,16 +554,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void restaurarFechasRegistro() {
-        Date hoy = fechaComoDate(LocalDate.now());
-        fechaSolicitudDesde.setDate(hoy);
-        fechaSolicitudHasta.setDate(hoy);
-    }
-
-    private static Date fechaComoDate(LocalDate date) {
-        if (date == null) {
-            return null;
-        }
-        return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 
     private void seleccionarEtapaInicial() {

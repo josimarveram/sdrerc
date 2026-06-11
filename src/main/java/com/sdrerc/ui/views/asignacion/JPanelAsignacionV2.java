@@ -30,6 +30,7 @@ import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
+import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -42,8 +43,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -115,6 +118,14 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblIngreso = new JLabel("Normal");
     private final JLabel lblSupervisor = new JLabel("-");
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
+    private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
+            new Object[]{"N° documento", ""}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return column == 1;
+        }
+    };
+    private final JTable documentosRelacionadosTable = new AppV2Table(documentosRelacionadosModel);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
     private final JTextArea txtComentario = new JTextArea(3, 18);
@@ -127,6 +138,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "Seleccione filtros y presione Buscar.");
     private final JPanel panelOperativo = new JPanel(new BorderLayout(14, 14));
     private final List<AsignacionExpedienteDTO> expedientes = new ArrayList<>();
+    private final List<ExpedienteRelacionadoDTO> documentosRelacionadosPanel = new ArrayList<>();
     private final MetricCardV2 cardPendientes = new MetricCardV2("Resultados", "0", "Según filtros", AppV2Theme.INFO);
     private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
     private final MetricCardV2 cardRelacionados = new MetricCardV2("Alertas", "0", "Posibles relacionados", AppV2Theme.WARNING);
@@ -140,6 +152,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean panelAsignacionCerradoPorUsuario;
     private boolean todasVisiblesSeleccionadas;
     private boolean busquedaInicialEjecutada;
+    private Long idExpedienteDocumentosRelacionados;
 
     private boolean cargandoCombos;
     private boolean actualizandoSeleccion;
@@ -157,6 +170,7 @@ public class JPanelAsignacionV2 extends JPanel {
         add(crearHeader(), BorderLayout.NORTH);
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
+        configurarTablaDocumentosRelacionados();
         configurarEventos();
         restaurarFechasBusqueda();
         cargarEstados();
@@ -247,8 +261,25 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Expediente seleccionado");
         section.addRow("Seleccionados", lblSeleccionadosPanel);
         section.addRow("Expediente", lblExpedienteSeleccionado);
-        section.addRow("Relacionados", lblRelacionados);
+        section.addRow("Alertas", crearPanelDocumentosRelacionados());
         return section;
+    }
+
+    private JPanel crearPanelDocumentosRelacionados() {
+        JPanel panel = new JPanel(new BorderLayout(6, 6));
+        panel.setOpaque(false);
+        lblRelacionados.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblRelacionados.setForeground(AppV2Theme.TEXT_SECONDARY);
+        panel.add(lblRelacionados, BorderLayout.NORTH);
+
+        JScrollPane scroll = new JScrollPane(documentosRelacionadosTable);
+        scroll.setPreferredSize(new Dimension(270, 104));
+        scroll.setMinimumSize(new Dimension(240, 84));
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        panel.add(scroll, BorderLayout.CENTER);
+        return panel;
     }
 
     private JPanel crearAccionesRelacionados() {
@@ -354,6 +385,29 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarColumna(table.getColumnModel().getColumn(10), 155, 145, 220);
         configurarColumna(table.getColumnModel().getColumn(11), 170, 150, 240);
         table.getColumnModel().getColumn(0).setHeaderRenderer(new SelectAllHeaderRenderer());
+    }
+
+    private void configurarTablaDocumentosRelacionados() {
+        documentosRelacionadosTable.setRowHeight(30);
+        documentosRelacionadosTable.setAutoCreateRowSorter(false);
+        documentosRelacionadosTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        documentosRelacionadosTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        documentosRelacionadosTable.getTableHeader().setReorderingAllowed(false);
+        documentosRelacionadosTable.getTableHeader().setResizingAllowed(false);
+        documentosRelacionadosTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        documentosRelacionadosTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        documentosRelacionadosTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        documentosRelacionadosTable.setGridColor(AppV2Theme.BORDER);
+        documentosRelacionadosTable.setShowVerticalLines(false);
+        documentosRelacionadosTable.setIntercellSpacing(new Dimension(0, 1));
+        documentosRelacionadosTable.setDefaultRenderer(Object.class, new DocumentoRelacionadoRenderer());
+        documentosRelacionadosTable.getColumnModel().getColumn(0).setPreferredWidth(190);
+        documentosRelacionadosTable.getColumnModel().getColumn(0).setMinWidth(150);
+        documentosRelacionadosTable.getColumnModel().getColumn(1).setPreferredWidth(58);
+        documentosRelacionadosTable.getColumnModel().getColumn(1).setMinWidth(54);
+        documentosRelacionadosTable.getColumnModel().getColumn(1).setMaxWidth(64);
+        documentosRelacionadosTable.getColumnModel().getColumn(1).setCellRenderer(new RecibirDocumentoRenderer());
+        documentosRelacionadosTable.getColumnModel().getColumn(1).setCellEditor(new RecibirDocumentoEditor());
     }
 
     private void configurarColumna(TableColumn column, int preferred, int min, int max) {
@@ -584,13 +638,8 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void restaurarFechasBusqueda() {
-        Date hoy = fechaComoDate(LocalDate.now());
-        fechaSolicitudDesde.setDate(hoy);
-        fechaSolicitudHasta.setDate(hoy);
-    }
-
-    private static Date fechaComoDate(LocalDate date) {
-        return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 
     private void limpiar() {
@@ -977,6 +1026,7 @@ public class JPanelAsignacionV2 extends JPanel {
             lblRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? item.getPosiblesRelacionados() + " posibles relacionados por misma acta y titular."
                     : "Sin alerta de relacionados.");
+            cargarDocumentosRelacionadosPanel(item);
             btnAsociarRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? "Asociar " + item.getPosiblesRelacionados() + " relacionado(s)"
                     : "Sin relacionados pendientes");
@@ -986,13 +1036,139 @@ public class JPanelAsignacionV2 extends JPanel {
             lblExpedienteSeleccionado.setText("Selección múltiple");
             lblIngreso.setText("Múltiple");
             lblIngreso.setToolTipText("Selección múltiple de expedientes marcados.");
-            lblRelacionados.setText("Puede asociar la selección si comparte número de acta y titular.");
+            limpiarDocumentosRelacionadosPanel("Puede asociar la selección si comparte número de acta y titular.");
             btnAsociarRelacionados.setText("Asociar selección relacionada");
             btnAsociarRelacionados.setEnabled(true);
         } else {
             aplicarIdentidadVisual(null, false);
             limpiarPanelAsignacion();
         }
+    }
+
+    private void cargarDocumentosRelacionadosPanel(AsignacionExpedienteDTO item) {
+        if (item == null || item.getIdExpediente() == null || item.getPosiblesRelacionados() <= 0) {
+            limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
+            return;
+        }
+        Long idExpediente = item.getIdExpediente();
+        if (idExpediente.equals(idExpedienteDocumentosRelacionados)
+                && documentosRelacionadosModel.getRowCount() > 0) {
+            return;
+        }
+        idExpedienteDocumentosRelacionados = idExpediente;
+        documentosRelacionadosPanel.clear();
+        documentosRelacionadosModel.setRowCount(0);
+        lblRelacionados.setText("Buscando documentos relacionados...");
+
+        SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker = new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {
+            @Override
+            protected List<ExpedienteRelacionadoDTO> doInBackground() throws Exception {
+                return relacionadoDeteccionService.listarPosiblesRelacionados(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (!idExpediente.equals(idExpedienteDocumentosRelacionados)) {
+                    return;
+                }
+                try {
+                    List<ExpedienteRelacionadoDTO> relacionados = get();
+                    documentosRelacionadosPanel.clear();
+                    documentosRelacionadosModel.setRowCount(0);
+                    for (ExpedienteRelacionadoDTO relacionado : relacionados) {
+                        documentosRelacionadosPanel.add(relacionado);
+                        documentosRelacionadosModel.addRow(new Object[]{
+                            textoDocumentoRelacionado(relacionado),
+                            "Recibir"
+                        });
+                    }
+                    lblRelacionados.setText(relacionados.isEmpty()
+                            ? "Sin documentos relacionados pendientes."
+                            : relacionados.size() + " documento(s) relacionado(s) pendiente(s).");
+                } catch (Exception ex) {
+                    limpiarDocumentosRelacionadosPanel("No se pudo consultar documentos relacionados.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void limpiarDocumentosRelacionadosPanel(String mensaje) {
+        idExpedienteDocumentosRelacionados = null;
+        documentosRelacionadosPanel.clear();
+        documentosRelacionadosModel.setRowCount(0);
+        lblRelacionados.setText(mensaje == null || mensaje.trim().isEmpty()
+                ? "Sin alerta de relacionados."
+                : mensaje);
+    }
+
+    private String textoDocumentoRelacionado(ExpedienteRelacionadoDTO relacionado) {
+        if (relacionado == null) {
+            return "-";
+        }
+        if (!relacionado.getNumeroDocumento().isEmpty()) {
+            return relacionado.getNumeroDocumento();
+        }
+        if (!relacionado.getNumeroExpediente().isEmpty()) {
+            return relacionado.getNumeroExpediente();
+        }
+        if (!relacionado.getNumeroActa().isEmpty()) {
+            return "Acta " + relacionado.getNumeroActa();
+        }
+        return "Documento sin número";
+    }
+
+    private void recibirDocumentoRelacionado(int modelRow) {
+        if (modelRow < 0 || modelRow >= documentosRelacionadosPanel.size()) {
+            return;
+        }
+        Long idPrincipal = idExpedienteDocumentosRelacionados;
+        ExpedienteRelacionadoDTO relacionado = documentosRelacionadosPanel.get(modelRow);
+        if (idPrincipal == null || relacionado == null || relacionado.getIdExpediente() == null) {
+            mostrarInfo("Seleccione un documento relacionado válido para recibir.");
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se recibirá el documento " + textoDocumentoRelacionado(relacionado)
+                        + " como documento duplicado asociado al expediente principal.\n"
+                        + "La evidencia quedará registrada en la relación e historial del expediente.\n"
+                        + "¿Desea continuar?",
+                "Recibir documento relacionado",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        setTrabajando(true, "Recibiendo documento relacionado...");
+        SwingWorker<ExpedienteRelacionResultadoDTO, Void> worker = new SwingWorker<ExpedienteRelacionResultadoDTO, Void>() {
+            @Override
+            protected ExpedienteRelacionResultadoDTO doInBackground() throws Exception {
+                return relacionadoService.asociarRelacionados(
+                        idPrincipal,
+                        Collections.singletonList(relacionado.getIdExpediente()),
+                        "Documento recibido y asociado al expediente principal desde Asignación.");
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ExpedienteRelacionResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            resultado.getMensaje(),
+                            "Documento recibido",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo recibir el documento relacionado.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private AsignacionExpedienteDTO itemParaPanel(int modelRow, int marcados) {
@@ -1064,7 +1240,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblExpedienteSeleccionado.setText("-");
         lblIngreso.setText("Normal");
         lblIngreso.setToolTipText(null);
-        lblRelacionados.setText("Sin alerta de relacionados.");
+        limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
         btnAsociarRelacionados.setText("Sin relacionados pendientes");
         btnAsociarRelacionados.setEnabled(false);
         txtComentario.setText("");
@@ -1165,6 +1341,7 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiarSeleccion.setEnabled(!trabajando);
         btnAsignarSeleccionado.setEnabled(!trabajando);
         btnAsignarSeleccionados.setEnabled(!trabajando);
+        documentosRelacionadosTable.setEnabled(!trabajando);
         if (mensaje != null) {
             lblEstado.setText(mensaje);
         }
@@ -1303,6 +1480,87 @@ public class JPanelAsignacionV2 extends JPanel {
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
             }
             return c;
+        }
+    }
+
+    private class DocumentoRelacionadoRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            c.setBackground(isSelected ? fondoSeleccion : AppV2Theme.SURFACE);
+            c.setForeground(AppV2Theme.TEXT_PRIMARY);
+            String text = value == null ? "" : value.toString();
+            setToolTipText(text);
+            return c;
+        }
+    }
+
+    private class RecibirDocumentoRenderer extends JButton implements TableCellRenderer {
+
+        private RecibirDocumentoRenderer() {
+            setText("✓");
+            setFont(AppV2Theme.fontBold(13));
+            setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+            setFocusPainted(false);
+            setOpaque(true);
+            setToolTipText("Recibir documento y asociarlo al expediente principal.");
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setBackground(AppV2Theme.SOFT_GREEN);
+            setForeground(AppV2Theme.SUCCESS);
+            return this;
+        }
+    }
+
+    private class RecibirDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
+
+        private final JButton button = new JButton("✓");
+        private int modelRow = -1;
+
+        private RecibirDocumentoEditor() {
+            button.setFont(AppV2Theme.fontBold(13));
+            button.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+            button.setFocusPainted(false);
+            button.setBackground(AppV2Theme.SOFT_GREEN);
+            button.setForeground(AppV2Theme.SUCCESS);
+            button.setToolTipText("Recibir documento y asociarlo al expediente principal.");
+            button.addActionListener(e -> {
+                int row = modelRow;
+                fireEditingStopped();
+                recibirDocumentoRelacionado(row);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Recibir";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            modelRow = table.convertRowIndexToModel(row);
+            return button;
         }
     }
 
