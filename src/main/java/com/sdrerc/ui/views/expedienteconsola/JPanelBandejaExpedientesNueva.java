@@ -275,6 +275,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setRowHeight(34);
         table.setAutoCreateRowSorter(true);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setAutoResizeMode(perfilRegistroRecepcion ? JTable.AUTO_RESIZE_OFF : JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         table.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
@@ -288,6 +289,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 0);
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(7).setMinWidth(220);
+            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         } else {
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(1).setMinWidth(150);

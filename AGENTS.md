@@ -202,6 +202,9 @@ Toda escritura V2 autorizada debe:
 - El panel derecho contextual redimensionable debe expandir internamente combos, textareas, secciones y acciones segun el ancho disponible, manteniendo comportamiento responsive desktop para distintas resoluciones.
 - En modulos operativos con panel derecho contextual, puede usarse un chip premium de encabezado para alternar vista normal/ampliada; debe sentirse como adhesivo/indicador visual integrado al panel, no como boton textual tosco, y cuando exista expediente en foco, el chip, el acento del panel y la fila seleccionada deben compartir una identidad visual sobria y legible.
 - Antes de duplicar layout manual en un modulo operativo, preferir componentes reutilizables `AppV2SearchToolbar`, `AppV2TableSectionPanel`, `AppV2SideActionPanel` y `AppV2SideSectionPanel` cuando apliquen.
+- Las grillas avanzadas V2 deben encapsular librerias externas en componentes `appv2` reutilizables; no usar SwingX, GlazedLists u otra libreria directamente dentro de cada `JPanel`.
+- `Registro / Recepcion` puede funcionar como piloto controlado de mejoras de grilla; si una libreria externa no resuelve de forma confiable en Maven, deploy LAN o instalador, priorizar `AppV2Table`, `AppV2TablePanel` y `AppV2TableColumnSizer` mejorados antes de incorporar dependencia.
+- No incorporar GlazedLists u otra capa de filtrado/listas en modulos V2 si el beneficio no supera el riesgo de complejidad; la busqueda principal debe seguir en Service/DAO y cualquier filtro local debe diferenciarse visualmente.
 
 ## 4.6 Alineamiento BPMN TO BE V2
 

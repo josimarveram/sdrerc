@@ -11,6 +11,8 @@ import javax.swing.BorderFactory;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 
 public class AppV2Table extends JTable {
@@ -18,6 +20,11 @@ public class AppV2Table extends JTable {
     public AppV2Table(TableModel model) {
         super(model);
         configurarBase();
+    }
+
+    @Override
+    protected JTableHeader createDefaultTableHeader() {
+        return new ToolTipTableHeader(getColumnModel());
     }
 
     @Override
@@ -52,7 +59,7 @@ public class AppV2Table extends JTable {
         getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
         getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
-        getTableHeader().setPreferredSize(new java.awt.Dimension(0, 38));
+        getTableHeader().setPreferredSize(new java.awt.Dimension(0, 42));
         setDefaultRenderer(Object.class, new FriendlyCellRenderer());
         addComponentListener(new ComponentAdapter() {
             @Override
@@ -86,6 +93,23 @@ public class AppV2Table extends JTable {
 
         private static boolean isNumeric(String value) {
             return value != null && value.matches("-?\\d+(\\.\\d+)?");
+        }
+    }
+
+    private static class ToolTipTableHeader extends JTableHeader {
+
+        private ToolTipTableHeader(TableColumnModel model) {
+            super(model);
+        }
+
+        @Override
+        public String getToolTipText(MouseEvent event) {
+            int viewColumn = columnAtPoint(event.getPoint());
+            if (viewColumn < 0) {
+                return null;
+            }
+            Object value = getColumnModel().getColumn(viewColumn).getHeaderValue();
+            return value == null ? null : value.toString();
         }
     }
 

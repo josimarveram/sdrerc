@@ -23,6 +23,9 @@ public class AppV2TablePanel extends JPanel {
 
         scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(24);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(24);
 
         JPanel emptyWrapper = new JPanel(new BorderLayout());
         emptyWrapper.setBackground(AppV2Theme.SURFACE);
