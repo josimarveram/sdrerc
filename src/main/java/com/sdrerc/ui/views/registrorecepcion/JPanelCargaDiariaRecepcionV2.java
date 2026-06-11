@@ -61,23 +61,21 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[]{
-                "Fila",
-                "N° TRÁMITE WEB",
-                "CANAL RECEPCIÓN",
-                "N° DOCUMENTO",
-                "PROCEDIMIENTO REGISTRAL",
                 "TIPO DE SOLICITUD",
-                "TIPO DOCUMENTO",
-                "TIPO DE ACTA",
-                "N° ACTA",
-                "Titular",
-                "TIPO DOCUMENTO IDENTIDAD TITULAR",
-                "N° DOCUMENTO IDENTIDAD TITULAR",
+                "FECHA DE SOLICITUD",
                 "SOLICITADO POR",
                 "TIPO DOCUMENTO IDENTIDAD SOLICITANTE",
                 "N° DOCUMENTO IDENTIDAD SOLICITANTE",
-                "FECHA DE SOLICITUD",
-                "ESTADO VALIDACIÓN",
+                "N° TRÁMITE WEB",
+                "TIPO DOCUMENTO",
+                "N° DOCUMENTO",
+                "PROCEDIMIENTO REGISTRAL",
+                "TIPO DE ACTA",
+                "N° ACTA",
+                "TITULAR",
+                "TIPO DOCUMENTO IDENTIDAD TITULAR",
+                "N° DOCUMENTO IDENTIDAD TITULAR",
+                "ESTADO VALIDACION",
                 "POSIBLE DUPLICADO",
                 "NÚMERO EXPEDIENTE GENERADO",
                 "OBSERVACIÓN"
@@ -175,22 +173,20 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         AppV2TableColumnSizer.applyWidths(
                 table,
-                70,
                 180,
-                170,
                 180,
-                260,
-                180,
-                190,
-                160,
-                150,
-                280,
-                320,
-                300,
                 280,
                 360,
                 340,
                 180,
+                190,
+                180,
+                260,
+                160,
+                150,
+                280,
+                340,
+                320,
                 190,
                 190,
                 280,
@@ -432,22 +428,20 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         tableModel.setRowCount(0);
         for (CargaDiariaPreviewDTO item : items) {
             tableModel.addRow(new Object[]{
-                item.getFila(),
+                safe(item.getTipoSolicitud()),
+                item.getFechaRecepcion() == null ? safe(item.getFechaRecepcionTexto()) : DATE_FORMAT.format(item.getFechaRecepcion()),
+                safe(item.getRemitente()),
+                safe(item.getTipoDocumentoIdentidadSolicitante()),
+                documentoVisual(item.getNumeroDocumentoIdentidadSolicitante()),
                 safe(item.getNumeroTramite()),
-                canalVisual(item.getCanalRecepcion()),
+                safe(item.getTipoDocumento()),
                 safe(item.getNumeroDocumento()),
                 safe(item.getTipoProcedimiento()),
-                safe(item.getTipoSolicitud()),
-                safe(item.getTipoDocumento()),
                 safe(item.getTipoActa()),
                 safe(item.getNumeroActa()),
                 safe(item.getTitular()),
                 safe(item.getTipoDocumentoIdentidadTitular()),
                 documentoVisual(item.getNumeroDocumentoIdentidadTitular()),
-                safe(item.getRemitente()),
-                safe(item.getTipoDocumentoIdentidadSolicitante()),
-                documentoVisual(item.getNumeroDocumentoIdentidadSolicitante()),
-                item.getFechaRecepcion() == null ? safe(item.getFechaRecepcionTexto()) : DATE_FORMAT.format(item.getFechaRecepcion()),
                 safe(item.getEstadoValidacion()),
                 item.isPosibleDuplicado() ? "Sí" : "No",
                 safeOrPending(item.getNumeroExpedienteGenerado()),
@@ -535,25 +529,6 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String documentoVisual(String value) {
         return value == null || value.trim().isEmpty() || "SIN DNI".equalsIgnoreCase(value.trim()) ? "" : value.trim();
-    }
-
-    private static String canalVisual(String value) {
-        if (value == null) {
-            return "";
-        }
-        if ("MESA_PARTES_VIRTUAL".equalsIgnoreCase(value)) {
-            return "MPV";
-        }
-        if ("MESA_PARTES_PRESENCIAL".equalsIgnoreCase(value)) {
-            return "MP presencial";
-        }
-        if ("OR_PRESENCIAL".equalsIgnoreCase(value)) {
-            return "OR";
-        }
-        if ("INTERNO".equalsIgnoreCase(value)) {
-            return "Interno";
-        }
-        return value;
     }
 
     private static File asegurarExtensionXlsx(File file) {
