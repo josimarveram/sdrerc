@@ -2,11 +2,13 @@ package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.AsignacionExpedienteDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 
 public class AsignacionExpedienteService {
@@ -30,6 +32,24 @@ public class AsignacionExpedienteService {
 
     public List<AsignacionExpedienteDTO> buscarPendientes(String textoLibre, int limite) throws SQLException {
         return asignacionExpedienteDAO.buscarPendientes(textoLibre, limite);
+    }
+
+    public List<AsignacionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite) throws SQLException {
+        return asignacionExpedienteDAO.buscarExpedientes(
+                textoLibre,
+                estadoCodigo,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                limite);
+    }
+
+    public List<CatalogoItemDTO> listarEstadosExpediente() throws SQLException {
+        return asignacionExpedienteDAO.listarEstadosExpediente();
     }
 
     public AsignacionResultadoDTO asignar(

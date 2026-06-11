@@ -2,6 +2,7 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
 import java.sql.Date;
@@ -42,6 +43,15 @@ public class AsignacionExpedienteDAO {
     }
 
     public List<AsignacionExpedienteDTO> buscarPendientes(String textoLibre, int limite) throws SQLException {
+        return buscarExpedientes(textoLibre, CODIGO_ESTADO_ORIGEN, null, null, limite);
+    }
+
+    public List<AsignacionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
@@ -63,10 +73,21 @@ public class AsignacionExpedienteDAO {
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
         sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
         sql.append("WHERE e.activo = 1 ");
-        sql.append("AND et.codigo = ? ");
-        sql.append("AND est.codigo = ? ");
-        params.add(CODIGO_ETAPA_ORIGEN);
-        params.add(CODIGO_ESTADO_ORIGEN);
+
+        if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
+            sql.append("AND est.codigo = ? ");
+            params.add(estadoCodigo.trim().toUpperCase(Locale.ROOT));
+        }
+
+        if (fechaSolicitudDesde != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) >= ? ");
+            params.add(Date.valueOf(fechaSolicitudDesde));
+        }
+
+        if (fechaSolicitudHasta != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) <= ? ");
+            params.add(Date.valueOf(fechaSolicitudHasta));
+        }
 
         if (hasText(textoLibre)) {
             sql.append("AND (");
@@ -102,6 +123,10 @@ public class AsignacionExpedienteDAO {
                 return expedientes;
             }
         }
+    }
+
+    public List<CatalogoItemDTO> listarEstadosExpediente() throws SQLException {
+        return catalogoLookupDAO.listarEstadosExpediente();
     }
 
     public AsignacionResultadoDTO asignarExpedientes(

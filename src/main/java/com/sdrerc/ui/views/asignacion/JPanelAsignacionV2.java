@@ -4,6 +4,7 @@ import com.sdrerc.application.sdrercapp.AsignacionExpedienteService;
 import com.sdrerc.application.sdrercapp.UsuarioAsignacionService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
@@ -19,7 +20,9 @@ import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
@@ -32,8 +35,10 @@ import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -81,6 +86,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o documento", 28);
+    private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
+    private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
@@ -90,7 +98,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JButton btnLimpiarSeleccion = new JButton("Limpiar selección");
     private final JButton btnAsignarSeleccionado = new JButton("Asignar expediente");
     private final JButton btnAsignarSeleccionados = new JButton("Asignar seleccionados");
-    private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes pendientes.");
+    private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes.");
     private final JLabel lblSeleccionados = new JLabel("0 expedientes seleccionados");
     private final JLabel lblSeleccionadosPanel = new JLabel("0 expedientes seleccionados");
     private final JLabel lblExpedienteSeleccionado = new JLabel("-");
@@ -111,7 +119,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "Seleccione filtros y presione Buscar.");
     private final JPanel panelOperativo = new JPanel(new BorderLayout(14, 14));
     private final List<AsignacionExpedienteDTO> expedientes = new ArrayList<>();
-    private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "REGISTRO / REGISTRADO", AppV2Theme.INFO);
+    private final MetricCardV2 cardPendientes = new MetricCardV2("Resultados", "0", "Según filtros", AppV2Theme.INFO);
     private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
     private final MetricCardV2 cardRelacionados = new MetricCardV2("Alertas", "0", "Posibles relacionados", AppV2Theme.WARNING);
     private AppV2SideActionPanel panelAsignacion;
@@ -141,6 +149,7 @@ public class JPanelAsignacionV2 extends JPanel {
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarEventos();
+        cargarEstados();
         cargarEquipos();
         actualizarPanelSeleccion();
     }
@@ -178,6 +187,9 @@ public class JPanelAsignacionV2 extends JPanel {
         acciones.add(btnVerDetalle);
         acciones.add(btnVerRelacionados);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, acciones);
+        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
+        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
+        toolbar.addFilter("Estado", cmbEstado);
         toolbar.addFilter("Mostrar", spnLimite);
         return toolbar;
     }
@@ -273,10 +285,18 @@ public class JPanelAsignacionV2 extends JPanel {
     private void configurarControles() {
         txtBusqueda.setPreferredSize(new Dimension(720, 36));
         txtBusqueda.setMinimumSize(new Dimension(360, 36));
+        Dimension fechaSize = new Dimension(170, 40);
+        fechaSolicitudDesde.setPreferredSize(fechaSize);
+        fechaSolicitudDesde.setMinimumSize(new Dimension(150, 40));
+        fechaSolicitudHasta.setPreferredSize(fechaSize);
+        fechaSolicitudHasta.setMinimumSize(new Dimension(150, 40));
+        cmbEstado.setPreferredSize(new Dimension(240, 34));
+        cmbEstado.setMinimumSize(new Dimension(190, 34));
         spnLimite.setPreferredSize(new Dimension(88, 34));
         cmbEquipo.setPreferredSize(new Dimension(230, 34));
         cmbAbogado.setPreferredSize(new Dimension(230, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -363,6 +383,31 @@ public class JPanelAsignacionV2 extends JPanel {
         });
     }
 
+    private void cargarEstados() {
+        cmbEstado.removeAllItems();
+        cmbEstado.addItem(new FiltroCatalogoItemV2(null, "Todos los estados"));
+        SwingWorker<List<CatalogoItemDTO>, Void> worker = new SwingWorker<List<CatalogoItemDTO>, Void>() {
+            @Override
+            protected List<CatalogoItemDTO> doInBackground() throws Exception {
+                return asignacionService.listarEstadosExpediente();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    for (CatalogoItemDTO item : get()) {
+                        if (item != null && item.hasCodigo()) {
+                            cmbEstado.addItem(new FiltroCatalogoItemV2(item.getCodigo(), nombreEstado(item)));
+                        }
+                    }
+                } catch (Exception ex) {
+                    lblEstado.setText("No se pudieron cargar los estados. Se mantiene filtro Todos.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void cargarEquipos() {
         cargandoCombos = true;
         cmbEquipo.removeAllItems();
@@ -430,13 +475,20 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void buscar() {
         limpiarSeleccion();
-        setTrabajando(true, "Consultando expedientes REGISTRO / REGISTRADO...");
+        LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
+        LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
+        if (desde != null && hasta != null && hasta.isBefore(desde)) {
+            mostrarInfo("La fecha hasta no puede ser menor que la fecha desde.");
+            return;
+        }
+        setTrabajando(true, "Consultando expedientes según filtros...");
         String texto = txtBusqueda.getText();
+        String estado = codigoSeleccionado(cmbEstado);
         int limite = ((Number) spnLimite.getValue()).intValue();
         SwingWorker<List<AsignacionExpedienteDTO>, Void> worker = new SwingWorker<List<AsignacionExpedienteDTO>, Void>() {
             @Override
             protected List<AsignacionExpedienteDTO> doInBackground() throws Exception {
-                return asignacionService.buscarPendientes(texto, limite);
+                return asignacionService.buscarExpedientes(texto, estado, desde, hasta, limite);
             }
 
             @Override
@@ -483,8 +535,8 @@ public class JPanelAsignacionV2 extends JPanel {
         cardPendientes.setValue(String.valueOf(items.size()));
         cardRelacionados.setValue(String.valueOf(alertas));
         lblEstado.setText(items.isEmpty()
-                ? "No se encontraron expedientes pendientes de asignación."
-                : items.size() + " expediente(s) pendiente(s) encontrados.");
+                ? "No se encontraron expedientes con los filtros ingresados."
+                : items.size() + " expediente(s) encontrado(s). Solo REGISTRO / REGISTRADO queda habilitado para asignar.");
         tablePanel.setEmpty(items.isEmpty());
         actualizarPanelSeleccion();
     }
@@ -501,8 +553,38 @@ public class JPanelAsignacionV2 extends JPanel {
         return value == null ? "" : DATE_FORMAT.format(value);
     }
 
+    private static LocalDate fechaSeleccionada(PremiumDateFieldV2 field) {
+        if (field == null || field.getDate() == null) {
+            return null;
+        }
+        Date date = field.getDate();
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private static String codigoSeleccionado(JComboBox<FiltroCatalogoItemV2> combo) {
+        Object selected = combo.getSelectedItem();
+        if (selected instanceof FiltroCatalogoItemV2) {
+            FiltroCatalogoItemV2 item = (FiltroCatalogoItemV2) selected;
+            return item.hasCodigo() ? item.getCodigo() : null;
+        }
+        return null;
+    }
+
+    private static String nombreEstado(CatalogoItemDTO item) {
+        String mapped = DisplayNameMapperV2.estado(item.getCodigo());
+        if (mapped != null && !mapped.trim().isEmpty() && !mapped.equals(item.getCodigo())) {
+            return mapped;
+        }
+        return item.getNombre() == null || item.getNombre().trim().isEmpty()
+                ? item.getCodigo()
+                : item.getNombre();
+    }
+
     private void limpiar() {
         txtBusqueda.setText("");
+        fechaSolicitudDesde.setDate(null);
+        fechaSolicitudHasta.setDate(null);
+        cmbEstado.setSelectedIndex(0);
         spnLimite.setValue(200);
         expedientes.clear();
         tableModel.setRowCount(0);
@@ -511,7 +593,7 @@ public class JPanelAsignacionV2 extends JPanel {
         txtComentario.setText("");
         cardPendientes.setValue("0");
         cardRelacionados.setValue("0");
-        lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes pendientes.");
+        lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes.");
         actualizarPanelSeleccion();
     }
 

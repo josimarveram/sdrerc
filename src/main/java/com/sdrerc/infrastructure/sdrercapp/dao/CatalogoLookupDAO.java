@@ -107,6 +107,10 @@ public class CatalogoLookupDAO {
         return listarCatalogo("estado_documento");
     }
 
+    public List<CatalogoItemDTO> listarEstadosExpediente() throws SQLException {
+        return listarCatalogo("estado_expediente");
+    }
+
     public List<CatalogoItemDTO> listarTiposObservacion() throws SQLException {
         return listarCatalogo("tipo_observacion");
     }
