@@ -62,6 +62,7 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Si el modelo aun no separa canal de ingreso y modalidad, usar opciones compuestas amigables en la UI y dejar documentada la separacion futura como mejora de arquitectura.
 - En Registro / Recepcion, la carga diaria y el registro manual deben detectar duplicidad solo por la combinacion `numero de acta + titular`. Los registros duplicados se guardan para trazabilidad, quedan marcados como potencial duplicado y no deben generar un nuevo numero de expediente hasta que Asignacion confirme/asocie el caso.
 - En la bandeja de Registro / Recepcion, la columna `Dias` debe mostrar dias restantes de atencion, calculados desde `fecha_solicitud/fecha_recepcion` y `fecha_vencimiento`, no dias transcurridos.
+- La carga diaria de Registro / Recepcion debe ofrecer descarga de una plantilla oficial `.xlsx` con encabezados compatibles con el parser V2. La importacion debe poder previsualizar y confirmar el mismo archivo de plantilla cuando el usuario complete la hoja de carga.
 
 ## 4.1 Estado actual de modulos SDRERC V2
 

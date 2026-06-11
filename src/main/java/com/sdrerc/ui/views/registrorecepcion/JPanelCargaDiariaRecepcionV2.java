@@ -1,6 +1,7 @@
 package com.sdrerc.ui.views.registrorecepcion;
 
 import com.sdrerc.application.sdrercapp.CargaDiariaArchivoParserService;
+import com.sdrerc.application.sdrercapp.CargaDiariaPlantillaService;
 import com.sdrerc.application.sdrercapp.CargaDiariaRegistroService;
 import com.sdrerc.application.sdrercapp.CargaDiariaValidacionService;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
@@ -37,10 +38,12 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final CargaDiariaArchivoParserService parserService = new CargaDiariaArchivoParserService();
+    private final CargaDiariaPlantillaService plantillaService = new CargaDiariaPlantillaService();
     private final CargaDiariaValidacionService validacionService = new CargaDiariaValidacionService();
     private final CargaDiariaRegistroService registroService = new CargaDiariaRegistroService();
     private final Runnable onCargaConfirmada;
 
+    private final JButton btnDescargarPlantilla = new JButton("Descargar plantilla");
     private final JButton btnArchivo = new JButton("Seleccionar archivo");
     private final JButton btnPrevisualizar = new JButton("Previsualizar");
     private final JButton btnValidar = new JButton("Validar");
@@ -113,6 +116,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         acciones.setOpaque(false);
+        acciones.add(btnDescargarPlantilla);
         acciones.add(btnArchivo);
         acciones.add(btnPrevisualizar);
         acciones.add(btnValidar);
@@ -125,7 +129,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         toolbar.add(acciones, BorderLayout.WEST);
         toolbar.add(lblArchivo, BorderLayout.EAST);
 
-        JLabel ayuda = new JLabel("<html>La carga diaria genera número de expediente al confirmar los registros válidos. Revise la previsualización antes de registrar.</html>");
+        JLabel ayuda = new JLabel("<html>Descargue la plantilla oficial, complete la hoja CARGA_DIARIA y luego use Seleccionar archivo para previsualizar e importar.</html>");
         ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
 
@@ -215,6 +219,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private void configurarEventos() {
+        btnDescargarPlantilla.addActionListener(e -> descargarPlantilla());
         btnArchivo.addActionListener(e -> seleccionarArchivo());
         btnPrevisualizar.addActionListener(e -> previsualizar());
         btnValidar.addActionListener(e -> validar());
@@ -224,16 +229,57 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private void seleccionarArchivo() {
         JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Seleccionar plantilla o archivo de carga diaria");
         chooser.setFileFilter(new FileNameExtensionFilter("Archivos de carga diaria (.xlsx, .csv)", "xlsx", "csv"));
         int result = chooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             archivoSeleccionado = chooser.getSelectedFile();
             lblArchivo.setText(archivoSeleccionado.getName());
-            lblEstado.setText("Archivo seleccionado correctamente. Presione Previsualizar para revisar los registros.");
+            lblEstado.setText("Archivo seleccionado correctamente. Presione Previsualizar para revisar los registros de la plantilla.");
             registros = new ArrayList<>();
             cargarPrevisualizacion(registros);
             actualizarResumen();
             actualizarBotones();
+        }
+    }
+
+    private void descargarPlantilla() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Guardar plantilla de carga diaria");
+        chooser.setFileFilter(new FileNameExtensionFilter("Archivos Excel (*.xlsx)", "xlsx"));
+        chooser.setSelectedFile(new File(CargaDiariaPlantillaService.NOMBRE_ARCHIVO));
+
+        int result = chooser.showSaveDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File destino = asegurarExtensionXlsx(chooser.getSelectedFile());
+        if (destino.exists()) {
+            int confirmar = JOptionPane.showConfirmDialog(
+                    this,
+                    "El archivo ya existe. ¿Desea reemplazarlo?",
+                    "Confirmar reemplazo",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (confirmar != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            plantillaService.generarPlantilla(destino);
+            if (!destino.exists() || destino.length() == 0) {
+                throw new IllegalStateException("El archivo no se generó en la ruta seleccionada.");
+            }
+            lblEstado.setText("Plantilla generada correctamente. Complete la hoja CARGA_DIARIA y luego selecciónela para previsualizar.");
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Plantilla generada correctamente:\n" + destino.getAbsolutePath(),
+                    "Plantilla de carga diaria",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            mostrarError("No se pudo generar la plantilla de carga diaria.", ex);
         }
     }
 
@@ -401,6 +447,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         btnPrevisualizar.setEnabled(!trabajando && archivoSeleccionado != null);
         btnValidar.setEnabled(!trabajando && !registros.isEmpty());
         btnConfirmar.setEnabled(!trabajando && resumen.getListosParaRegistrar() > 0);
+        btnDescargarPlantilla.setEnabled(!trabajando);
         btnArchivo.setEnabled(!trabajando);
         btnLimpiar.setEnabled(!trabajando && (archivoSeleccionado != null || !registros.isEmpty()));
     }
@@ -459,6 +506,14 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String safeOrPending(String value) {
         return value == null || value.trim().isEmpty() ? "Pendiente" : value;
+    }
+
+    private static File asegurarExtensionXlsx(File file) {
+        String path = file.getAbsolutePath();
+        if (path.toLowerCase().endsWith(".xlsx")) {
+            return file;
+        }
+        return new File(path + ".xlsx");
     }
 
     private static class ResumenCard extends JPanel {
