@@ -17,10 +17,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
-import java.net.URL;
 import java.util.Date;
 import java.util.Locale;
-import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -64,12 +62,15 @@ public class PremiumDateFieldV2 extends JPanel {
         if (chooser.getCalendarButton() != null) {
             JButton button = chooser.getCalendarButton();
             button.setIcon(calendarIcon());
+            button.setText("");
+            button.setIconTextGap(0);
             button.setToolTipText("Abrir calendario");
             button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             button.setBorder(BorderFactory.createEmptyBorder());
             button.setContentAreaFilled(false);
             button.setFocusPainted(false);
             button.setOpaque(false);
+            button.setHorizontalAlignment(JButton.CENTER);
             button.setPreferredSize(new Dimension(38, PREFERRED.height - 4));
             button.setMinimumSize(new Dimension(38, PREFERRED.height - 4));
             button.setMaximumSize(new Dimension(38, PREFERRED.height - 4));
@@ -123,7 +124,7 @@ public class PremiumDateFieldV2 extends JPanel {
     private void conectarEventos() {
         MouseAdapter mouseAdapter = new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 abrirCalendario();
             }
 
@@ -139,6 +140,7 @@ public class PremiumDateFieldV2 extends JPanel {
         };
 
         addMouseListener(mouseAdapter);
+        chooser.addMouseListener(mouseAdapter);
 
         if (chooser.getDateEditor() != null && chooser.getDateEditor().getUiComponent() != null) {
             chooser.getDateEditor().getUiComponent().addMouseListener(mouseAdapter);
@@ -156,6 +158,7 @@ public class PremiumDateFieldV2 extends JPanel {
         }
 
         if (chooser.getCalendarButton() != null) {
+            chooser.getCalendarButton().setIcon(calendarIcon());
             chooser.getCalendarButton().addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent e) {
@@ -244,7 +247,14 @@ public class PremiumDateFieldV2 extends JPanel {
         if (!isEnabled() || chooser.getCalendarButton() == null) {
             return;
         }
-        SwingUtilities.invokeLater(() -> chooser.getCalendarButton().doClick());
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if (chooser.getCalendarButton() != null) {
+                    chooser.getCalendarButton().doClick();
+                }
+            }
+        });
     }
 
     private void setHover(boolean hover) {
@@ -264,17 +274,22 @@ public class PremiumDateFieldV2 extends JPanel {
     }
 
     private static ImageIcon calendarIcon() {
-        URL url = PremiumDateFieldV2.class.getResource("/com/sdrerc/ui/iconos/icono_calendar-plus.png");
-        if (url != null) {
-            try {
-                BufferedImage image = ImageIO.read(url);
-                if (image != null) {
-                    return new ImageIcon(image.getScaledInstance(16, 16, java.awt.Image.SCALE_SMOOTH));
-                }
-            } catch (Exception ignored) {
-            }
-            return new ImageIcon(url);
+        BufferedImage image = new BufferedImage(18, 18, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = image.createGraphics();
+        try {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setStroke(new BasicStroke(1.7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.setColor(AppV2Theme.INPUT_ICON);
+            g2.drawRoundRect(2, 3, 14, 13, 3, 3);
+            g2.drawLine(2, 7, 16, 7);
+            g2.drawLine(6, 2, 6, 5);
+            g2.drawLine(12, 2, 12, 5);
+            g2.setColor(AppV2Theme.PRIMARY);
+            g2.drawLine(9, 10, 9, 14);
+            g2.drawLine(7, 12, 11, 12);
+        } finally {
+            g2.dispose();
         }
-        return null;
+        return new ImageIcon(image);
     }
 }

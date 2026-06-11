@@ -262,6 +262,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void aplicarConfiguracionInicial() {
         seleccionarEtapaInicial();
+        if (perfilRegistroRecepcion) {
+            restaurarFechasRegistro();
+        }
         if (etapaBloqueada) {
             cmbEtapa.setEnabled(false);
             cmbEtapa.setToolTipText("Bandeja filtrada por etapa " + DisplayNameMapperV2.etapa(etapaInicial));
@@ -406,8 +409,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             cmbEtapa.setSelectedIndex(0);
         }
         cmbEstado.setSelectedIndex(0);
-        fechaSolicitudDesde.setDate(null);
-        fechaSolicitudHasta.setDate(null);
+        if (perfilRegistroRecepcion) {
+            restaurarFechasRegistro();
+        } else {
+            fechaSolicitudDesde.setDate(null);
+            fechaSolicitudHasta.setDate(null);
+        }
         spnLimite.setValue(200);
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
@@ -529,6 +536,19 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return null;
         }
         return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private void restaurarFechasRegistro() {
+        Date hoy = fechaComoDate(LocalDate.now());
+        fechaSolicitudDesde.setDate(hoy);
+        fechaSolicitudHasta.setDate(hoy);
+    }
+
+    private static Date fechaComoDate(LocalDate date) {
+        if (date == null) {
+            return null;
+        }
+        return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }
 
     private void seleccionarEtapaInicial() {
