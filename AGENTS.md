@@ -62,6 +62,10 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Si el modelo aun no separa canal de ingreso y modalidad, usar opciones compuestas amigables en la UI y dejar documentada la separacion futura como mejora de arquitectura.
 - En Registro / Recepcion, la carga diaria y el registro manual deben detectar duplicidad solo por la combinacion `numero de acta + titular`. Los registros duplicados se guardan para trazabilidad, quedan marcados como potencial duplicado y no deben generar un nuevo numero de expediente hasta que Asignacion confirme/asocie el caso.
 - En la bandeja de Registro / Recepcion, la columna `Dias` debe mostrar dias restantes de atencion, calculados desde `fecha_solicitud/fecha_recepcion` y `fecha_vencimiento`, no dias transcurridos.
+- La plantilla oficial de carga diaria debe usar `TIPO DOCUMENTO IDENTIDAD SOLICITANTE`, `N° DOCUMENTO IDENTIDAD SOLICITANTE`, `TIPO DOCUMENTO IDENTIDAD TITULAR` y `N° DOCUMENTO IDENTIDAD TITULAR`; `DNI SOLICITANTE` queda solo como alias de compatibilidad de importacion, no como columna oficial visible.
+- En carga diaria, si `TITULAR` coincide con `SOLICITADO POR`, el importador debe completar el documento de identidad del titular con el documento del solicitante cuando falte; si el documento del solicitante es `SIN DNI`, debe persistirse como vacio.
+- En carga diaria, el canal de recepcion se deriva por reglas de plantilla: tramite web con numeros -> MPV, `SIN TRAMITE` con documento de solicitante numerico -> MP presencial, y `SIN TRAMITE` sin documento -> OR o Interno segun el origen RENIEC informado en `SOLICITADO POR`.
+- La plantilla de carga diaria debe mantener listas desplegables para tipo de documento de identidad, procedimiento registral, tipo de acta, tipo documento y tipo de solicitud; las reglas de identidad son DNI 8 numeros, RUC 11 numeros, CE/Pasaporte hasta 12 alfanumericos.
 - La carga diaria de Registro / Recepcion debe ofrecer descarga de una plantilla oficial `.xlsx` con encabezados compatibles con el parser V2. La importacion debe poder previsualizar y confirmar el mismo archivo de plantilla cuando el usuario complete la hoja de carga.
 
 ## 4.1 Estado actual de modulos SDRERC V2

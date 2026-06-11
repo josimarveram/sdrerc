@@ -99,9 +99,17 @@ public class ExpedienteRegistroDAO {
                                 "Acta y titular ya existen en " + duplicadoActaTitular.descripcion()));
                     }
 
-                    Long idTitular = insertarPersona(conn, item.getTitular());
+                    Long idTitular = insertarPersona(
+                            conn,
+                            item.getTitular(),
+                            item.getTipoDocumentoIdentidadTitular(),
+                            item.getNumeroDocumentoIdentidadTitular());
                     Long idRemitente = hasText(item.getRemitente()) && !equalsIgnoreCase(item.getRemitente(), item.getTitular())
-                            ? insertarPersona(conn, item.getRemitente())
+                            ? insertarPersona(
+                                    conn,
+                                    item.getRemitente(),
+                                    item.getTipoDocumentoIdentidadSolicitante(),
+                                    item.getNumeroDocumentoIdentidadSolicitante())
                             : null;
                     Long idSolicitante = idRemitente == null ? idTitular : idRemitente;
 
@@ -258,10 +266,12 @@ public class ExpedienteRegistroDAO {
         }
     }
 
-    private Long insertarPersona(Connection conn, String nombre) throws SQLException {
-        String sql = "INSERT INTO persona (razon_social, activo) VALUES (?, 1)";
+    private Long insertarPersona(Connection conn, String nombre, String tipoDocumento, String numeroDocumento) throws SQLException {
+        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, activo) VALUES (?, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
-            ps.setString(1, nombre);
+            ps.setString(1, tipoDocumento);
+            ps.setString(2, normalizarDocumentoIdentidadParaBd(numeroDocumento));
+            ps.setString(3, nombre);
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "persona");
         }
@@ -296,18 +306,24 @@ public class ExpedienteRegistroDAO {
     }
 
     private void insertarSolicitud(Connection conn, CargaDiariaPreviewDTO item, Long idExpediente, Long idPersonaSolicitante) throws SQLException {
+        Long idCanal = null;
+        if (hasText(item.getCanalRecepcion())) {
+            String codigoCanal = resolverCodigoCanalRecepcion(item.getCanalRecepcion());
+            idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, codigoCanal), "canal " + nombreVisualCanal(codigoCanal));
+        }
         String sql = "INSERT INTO expediente_solicitud ("
-                + "id_expediente, id_persona_solicitante, numero_tramite_documentario, fecha_recepcion, "
+                + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, fecha_recepcion, "
                 + "asunto, observacion, es_tramite_virtual, potencial_duplicado, activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, 0, ?, 1)";
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
-            setLongOrNull(ps, 2, idPersonaSolicitante);
-            ps.setString(3, item.getNumeroTramite());
-            ps.setDate(4, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
-            ps.setString(5, item.getTipoProcedimiento());
-            ps.setString(6, limitar(observacionSolicitud(item), 1000));
-            ps.setInt(7, item.isPosibleDuplicado() ? 1 : 0);
+            setLongOrNull(ps, 2, idCanal);
+            setLongOrNull(ps, 3, idPersonaSolicitante);
+            ps.setString(4, item.getNumeroTramite());
+            ps.setDate(5, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
+            ps.setString(6, item.getTipoProcedimiento());
+            ps.setString(7, limitar(observacionSolicitud(item), 1000));
+            ps.setInt(8, item.isPosibleDuplicado() ? 1 : 0);
             ps.executeUpdate();
         }
     }
@@ -532,6 +548,11 @@ public class ExpedienteRegistroDAO {
         StringBuilder sb = new StringBuilder();
         append(sb, "Tipo de solicitud", item.getTipoSolicitud());
         append(sb, "Tipo de acta informado", item.getTipoActa());
+        append(sb, "Canal recepción derivado", nombreVisualCanal(item.getCanalRecepcion()));
+        append(sb, "Tipo documento identidad solicitante", item.getTipoDocumentoIdentidadSolicitante());
+        append(sb, "Documento identidad solicitante", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadSolicitante()));
+        append(sb, "Tipo documento identidad titular", item.getTipoDocumentoIdentidadTitular());
+        append(sb, "Documento identidad titular", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadTitular()));
         append(sb, "Observación inicial", item.getObservacionInicial());
         if (!"Válido".equalsIgnoreCase(item.getEstadoValidacion())) {
             append(sb, "Advertencias de validación", item.getMensajeValidacion());
@@ -588,6 +609,60 @@ public class ExpedienteRegistroDAO {
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    private String normalizarDocumentoIdentidadParaBd(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if ("SIN DNI".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private String resolverCodigoCanalRecepcion(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT)
+                .replace("Á", "A")
+                .replace("É", "E")
+                .replace("Í", "I")
+                .replace("Ó", "O")
+                .replace("Ú", "U")
+                .replaceAll("\\s+", " ");
+        if ("MPV".equals(normalized) || "MESA PARTES VIRTUAL".equals(normalized)) {
+            return "MESA_PARTES_VIRTUAL";
+        }
+        if ("MP PRESENCIAL".equals(normalized) || "MESA PARTES PRESENCIAL".equals(normalized)) {
+            return "MESA_PARTES_PRESENCIAL";
+        }
+        if ("OR".equals(normalized) || "OR PRESENCIAL".equals(normalized)) {
+            return "OR_PRESENCIAL";
+        }
+        return normalized.replace(' ', '_');
+    }
+
+    private String nombreVisualCanal(String codigo) {
+        if (!hasText(codigo)) {
+            return null;
+        }
+        String normalized = resolverCodigoCanalRecepcion(codigo);
+        if ("MESA_PARTES_VIRTUAL".equals(normalized)) {
+            return "MPV";
+        }
+        if ("MESA_PARTES_PRESENCIAL".equals(normalized)) {
+            return "MP presencial";
+        }
+        if ("OR_PRESENCIAL".equals(normalized)) {
+            return "OR";
+        }
+        if ("INTERNO".equals(normalized)) {
+            return "Interno";
+        }
+        return codigo;
     }
 
     private String unirMotivoDuplicado(String actual, String nuevo) {

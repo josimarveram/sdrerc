@@ -97,12 +97,17 @@ public class CargaDiariaArchivoParserService {
                 dto.setTipoProcedimiento(valorExcel(row, columnas.get("tipoProcedimiento"), formatter));
                 dto.setTipoSolicitud(valorExcel(row, columnas.get("tipoSolicitud"), formatter));
                 dto.setTipoDocumento(valorExcel(row, columnas.get("tipoDocumento"), formatter));
+                dto.setTipoDocumentoIdentidadSolicitante(valorExcel(row, columnas.get("tipoDocumentoIdentidadSolicitante"), formatter));
+                dto.setNumeroDocumentoIdentidadSolicitante(valorExcel(row, columnas.get("numeroDocumentoIdentidadSolicitante"), formatter));
+                dto.setTipoDocumentoIdentidadTitular(valorExcel(row, columnas.get("tipoDocumentoIdentidadTitular"), formatter));
+                dto.setNumeroDocumentoIdentidadTitular(valorExcel(row, columnas.get("numeroDocumentoIdentidadTitular"), formatter));
                 dto.setTipoActa(valorExcel(row, columnas.get("tipoActa"), formatter));
                 dto.setNumeroActa(valorExcel(row, columnas.get("numeroActa"), formatter));
                 dto.setTitular(valorExcel(row, columnas.get("titular"), formatter));
                 dto.setRemitente(valorExcel(row, columnas.get("remitente"), formatter));
                 asignarFechaExcel(dto, row, columnas.get("fechaRecepcion"), formatter);
                 dto.setObservacionInicial(valorExcel(row, columnas.get("observacionInicial"), formatter));
+                aplicarReglasDerivadas(dto);
                 dto.reiniciarValidacion();
                 registros.add(dto);
             }
@@ -146,12 +151,17 @@ public class CargaDiariaArchivoParserService {
                 dto.setTipoProcedimiento(valorCsv(valores, columnas.get("tipoProcedimiento")));
                 dto.setTipoSolicitud(valorCsv(valores, columnas.get("tipoSolicitud")));
                 dto.setTipoDocumento(valorCsv(valores, columnas.get("tipoDocumento")));
+                dto.setTipoDocumentoIdentidadSolicitante(valorCsv(valores, columnas.get("tipoDocumentoIdentidadSolicitante")));
+                dto.setNumeroDocumentoIdentidadSolicitante(valorCsv(valores, columnas.get("numeroDocumentoIdentidadSolicitante")));
+                dto.setTipoDocumentoIdentidadTitular(valorCsv(valores, columnas.get("tipoDocumentoIdentidadTitular")));
+                dto.setNumeroDocumentoIdentidadTitular(valorCsv(valores, columnas.get("numeroDocumentoIdentidadTitular")));
                 dto.setTipoActa(valorCsv(valores, columnas.get("tipoActa")));
                 dto.setNumeroActa(valorCsv(valores, columnas.get("numeroActa")));
                 dto.setTitular(valorCsv(valores, columnas.get("titular")));
                 dto.setRemitente(valorCsv(valores, columnas.get("remitente")));
                 asignarFechaTexto(dto, valorCsv(valores, columnas.get("fechaRecepcion")));
                 dto.setObservacionInicial(valorCsv(valores, columnas.get("observacionInicial")));
+                aplicarReglasDerivadas(dto);
                 dto.reiniciarValidacion();
                 registros.add(dto);
             }
@@ -309,6 +319,96 @@ public class CargaDiariaArchivoParserService {
         }
     }
 
+    private void aplicarReglasDerivadas(CargaDiariaPreviewDTO dto) {
+        if (dto == null) {
+            return;
+        }
+        if (equalsNormalizado(dto.getTitular(), dto.getRemitente())) {
+            if (!hasText(dto.getNumeroDocumentoIdentidadTitular())) {
+                dto.setNumeroDocumentoIdentidadTitular(dto.getNumeroDocumentoIdentidadSolicitante());
+            }
+            if (!hasText(dto.getTipoDocumentoIdentidadTitular())) {
+                String tipoSolicitante = dto.getTipoDocumentoIdentidadSolicitante();
+                dto.setTipoDocumentoIdentidadTitular("RUC".equalsIgnoreCase(tipoSolicitante) ? null : tipoSolicitante);
+            }
+        }
+        dto.setCanalRecepcion(resolverCanalRecepcion(dto));
+    }
+
+    private String resolverCanalRecepcion(CargaDiariaPreviewDTO dto) {
+        String tramite = dto.getNumeroTramite();
+        if (!esSinTramite(tramite) && contieneNumero(tramite)) {
+            return "MESA_PARTES_VIRTUAL";
+        }
+        if (esSinTramite(tramite)) {
+            String documentoSolicitante = dto.getNumeroDocumentoIdentidadSolicitante();
+            if (contieneNumero(documentoSolicitante)) {
+                return "MESA_PARTES_PRESENCIAL";
+            }
+            String solicitadoPor = normalizarTextoLibre(dto.getRemitente());
+            if (solicitadoPor.startsWith("OR") || solicitadoPor.contains("OFICINA REGISTRAL")) {
+                return "OR_PRESENCIAL";
+            }
+            if (esOrigenInternoReniec(solicitadoPor)) {
+                return "INTERNO";
+            }
+            return "MESA_PARTES_PRESENCIAL";
+        }
+        return null;
+    }
+
+    private boolean esOrigenInternoReniec(String solicitadoPor) {
+        if (!hasText(solicitadoPor)) {
+            return false;
+        }
+        return solicitadoPor.startsWith("SUB DIRECCION")
+                || solicitadoPor.startsWith("SUBDIRECCION")
+                || solicitadoPor.startsWith("OFICINA")
+                || solicitadoPor.startsWith("DIRECCION")
+                || solicitadoPor.startsWith("GERENCIA")
+                || solicitadoPor.startsWith("JEFATURA")
+                || solicitadoPor.startsWith("UNIDAD")
+                || solicitadoPor.startsWith("AREA")
+                || solicitadoPor.contains("RENIEC")
+                || solicitadoPor.contains("REGISTRO NACIONAL DE IDENTIFICACION");
+    }
+
+    private boolean esSinTramite(String value) {
+        String normalized = normalizarTextoLibre(value);
+        return !hasText(normalized) || "SIN TRAMITE".equals(normalized);
+    }
+
+    private boolean contieneNumero(String value) {
+        if (!hasText(value)) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.isDigit(value.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean equalsNormalizado(String a, String b) {
+        String left = normalizar(a);
+        String right = normalizar(b);
+        return !left.isEmpty() && left.equals(right);
+    }
+
+    private String normalizarTextoLibre(String value) {
+        String cleaned = limpiarBom(value);
+        if (cleaned == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(cleaned.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toUpperCase(Locale.ROOT)
+                .replace('_', ' ')
+                .replaceAll("\\s+", " ");
+        return normalized.trim();
+    }
+
     private char detectarSeparador(String header) {
         int semicolon = contar(header, ';');
         int comma = contar(header, ',');
@@ -377,6 +477,20 @@ public class CargaDiariaArchivoParserService {
                 "NÚMERO DE DOCUMENTO",
                 "DOCUMENTO NUMERO",
                 "DOCUMENTO NRO"));
+        aliases.put("tipoDocumentoIdentidadSolicitante", normalizarLista(
+                "TIPO DOCUMENTO IDENTIDAD SOLICITANTE",
+                "TIPO_DOC_IDENTIDAD_SOLICITANTE",
+                "TIPO DOCUMENTO SOLICITANTE",
+                "TIPO DOC SOLICITANTE",
+                "TIPO DNI SOLICITANTE"));
+        aliases.put("numeroDocumentoIdentidadSolicitante", normalizarLista(
+                "N° DOCUMENTO IDENTIDAD SOLICITANTE",
+                "N DOCUMENTO IDENTIDAD SOLICITANTE",
+                "NUMERO DOCUMENTO IDENTIDAD SOLICITANTE",
+                "NUMERO DE DOCUMENTO IDENTIDAD SOLICITANTE",
+                "DOCUMENTO IDENTIDAD SOLICITANTE",
+                "DNI SOLICITANTE",
+                "DNI_SOLICITANTE"));
         aliases.put("tipoProcedimiento", normalizarLista(
                 "TIPO_PROCEDIMIENTO",
                 "TIPO DE PROCEDIMIENTO",
@@ -420,6 +534,20 @@ public class CargaDiariaArchivoParserService {
                 "APELLIDOS Y NOMBRES",
                 "NOMBRES",
                 "PERSONA"));
+        aliases.put("tipoDocumentoIdentidadTitular", normalizarLista(
+                "TIPO DOCUMENTO IDENTIDAD TITULAR",
+                "TIPO_DOC_IDENTIDAD_TITULAR",
+                "TIPO DOCUMENTO TITULAR",
+                "TIPO DOC TITULAR",
+                "TIPO DNI TITULAR"));
+        aliases.put("numeroDocumentoIdentidadTitular", normalizarLista(
+                "N° DOCUMENTO IDENTIDAD TITULAR",
+                "N DOCUMENTO IDENTIDAD TITULAR",
+                "NUMERO DOCUMENTO IDENTIDAD TITULAR",
+                "NUMERO DE DOCUMENTO IDENTIDAD TITULAR",
+                "DOCUMENTO IDENTIDAD TITULAR",
+                "DNI TITULAR",
+                "DNI_TITULAR"));
         aliases.put("remitente", normalizarLista(
                 "REMITENTE",
                 "ENTIDAD REMITENTE",
@@ -458,6 +586,10 @@ public class CargaDiariaArchivoParserService {
         nombres.put("remitente", "Remitente");
         nombres.put("fechaRecepcion", "Fecha recepción");
         return nombres;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private static String describirHeaders(List<String> headers) {

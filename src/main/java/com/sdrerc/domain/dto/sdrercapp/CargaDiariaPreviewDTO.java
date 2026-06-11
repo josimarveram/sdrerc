@@ -15,6 +15,11 @@ public class CargaDiariaPreviewDTO {
     private String acta;
     private String titular;
     private String remitente;
+    private String canalRecepcion;
+    private String tipoDocumentoIdentidadSolicitante;
+    private String numeroDocumentoIdentidadSolicitante;
+    private String tipoDocumentoIdentidadTitular;
+    private String numeroDocumentoIdentidadTitular;
     private LocalDate fechaRecepcion;
     private String fechaRecepcionTexto;
     private String observacionInicial;
@@ -114,6 +119,46 @@ public class CargaDiariaPreviewDTO {
 
     public void setRemitente(String remitente) {
         this.remitente = trimToNull(remitente);
+    }
+
+    public String getCanalRecepcion() {
+        return canalRecepcion;
+    }
+
+    public void setCanalRecepcion(String canalRecepcion) {
+        this.canalRecepcion = trimToNull(canalRecepcion);
+    }
+
+    public String getTipoDocumentoIdentidadSolicitante() {
+        return tipoDocumentoIdentidadSolicitante;
+    }
+
+    public void setTipoDocumentoIdentidadSolicitante(String tipoDocumentoIdentidadSolicitante) {
+        this.tipoDocumentoIdentidadSolicitante = normalizarTipoDocumentoIdentidad(tipoDocumentoIdentidadSolicitante);
+    }
+
+    public String getNumeroDocumentoIdentidadSolicitante() {
+        return numeroDocumentoIdentidadSolicitante;
+    }
+
+    public void setNumeroDocumentoIdentidadSolicitante(String numeroDocumentoIdentidadSolicitante) {
+        this.numeroDocumentoIdentidadSolicitante = normalizarNumeroIdentidad(numeroDocumentoIdentidadSolicitante);
+    }
+
+    public String getTipoDocumentoIdentidadTitular() {
+        return tipoDocumentoIdentidadTitular;
+    }
+
+    public void setTipoDocumentoIdentidadTitular(String tipoDocumentoIdentidadTitular) {
+        this.tipoDocumentoIdentidadTitular = normalizarTipoDocumentoIdentidad(tipoDocumentoIdentidadTitular);
+    }
+
+    public String getNumeroDocumentoIdentidadTitular() {
+        return numeroDocumentoIdentidadTitular;
+    }
+
+    public void setNumeroDocumentoIdentidadTitular(String numeroDocumentoIdentidadTitular) {
+        this.numeroDocumentoIdentidadTitular = normalizarNumeroIdentidad(numeroDocumentoIdentidadTitular);
     }
 
     public LocalDate getFechaRecepcion() {
@@ -246,5 +291,28 @@ public class CargaDiariaPreviewDTO {
             return "Oficio";
         }
         return trimmed;
+    }
+
+    private static String normalizarTipoDocumentoIdentidad(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+        String upper = trimmed.toUpperCase();
+        if ("CARNET DE EXTRANJERIA".equals(upper) || "CARNÉ DE EXTRANJERÍA".equals(upper)) {
+            return "CE";
+        }
+        if ("PASAPORTE".equals(upper)) {
+            return "PASAPORTE";
+        }
+        return upper;
+    }
+
+    private static String normalizarNumeroIdentidad(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+        return trimmed.toUpperCase();
     }
 }

@@ -67,6 +67,10 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje("Tipo de documento obligatorio.");
                 error = true;
             }
+            if (!hasText(item.getTipoActa())) {
+                item.agregarMensaje("Tipo de acta obligatorio.");
+                error = true;
+            }
             if (!hasText(item.getNumeroActa())) {
                 item.agregarMensaje("Número de acta obligatorio.");
                 error = true;
@@ -77,6 +81,18 @@ public class CargaDiariaValidacionService {
             }
             if (item.getFechaRecepcion() == null) {
                 item.agregarMensaje("Fecha recepción inválida u obligatoria.");
+                error = true;
+            }
+            if (!hasText(item.getCanalRecepcion())) {
+                item.agregarMensaje("No se pudo determinar canal de recepción con las reglas de la plantilla.");
+                error = true;
+            }
+
+            List<String> erroresIdentidad = validarIdentidad(item);
+            if (!erroresIdentidad.isEmpty()) {
+                for (String mensaje : erroresIdentidad) {
+                    item.agregarMensaje(mensaje);
+                }
                 error = true;
             }
 
@@ -117,6 +133,65 @@ public class CargaDiariaValidacionService {
         }
 
         return registros;
+    }
+
+    private List<String> validarIdentidad(CargaDiariaPreviewDTO item) {
+        List<String> errores = new ArrayList<>();
+        validarDocumento(
+                errores,
+                "solicitante",
+                item.getTipoDocumentoIdentidadSolicitante(),
+                item.getNumeroDocumentoIdentidadSolicitante(),
+                true);
+        validarDocumento(
+                errores,
+                "titular",
+                item.getTipoDocumentoIdentidadTitular(),
+                item.getNumeroDocumentoIdentidadTitular(),
+                false);
+        return errores;
+    }
+
+    private void validarDocumento(List<String> errores, String etiqueta, String tipo, String numero, boolean permiteRuc) {
+        if (!hasText(tipo) && !hasText(numero)) {
+            return;
+        }
+        if ("SIN DNI".equalsIgnoreCase(numero == null ? "" : numero.trim())) {
+            return;
+        }
+        if (!hasText(tipo)) {
+            errores.add("Tipo de documento de identidad del " + etiqueta + " obligatorio si informa número.");
+            return;
+        }
+        String tipoNormalizado = tipo.trim().toUpperCase(Locale.ROOT);
+        if ("RUC".equals(tipoNormalizado) && !permiteRuc) {
+            errores.add("El titular no permite RUC como tipo de documento de identidad.");
+            return;
+        }
+        if (!hasText(numero)) {
+            errores.add("Número de documento de identidad del " + etiqueta + " obligatorio para tipo " + tipoNormalizado + ".");
+            return;
+        }
+        String numeroNormalizado = numero.trim().toUpperCase(Locale.ROOT);
+        if ("DNI".equals(tipoNormalizado)) {
+            if (!numeroNormalizado.matches("\\d{8}")) {
+                errores.add("DNI del " + etiqueta + " debe tener 8 caracteres numéricos.");
+            }
+            return;
+        }
+        if ("RUC".equals(tipoNormalizado)) {
+            if (!numeroNormalizado.matches("\\d{11}")) {
+                errores.add("RUC del " + etiqueta + " debe tener 11 caracteres numéricos.");
+            }
+            return;
+        }
+        if ("CE".equals(tipoNormalizado) || "PASAPORTE".equals(tipoNormalizado)) {
+            if (!numeroNormalizado.matches("[A-Z0-9]{1,12}")) {
+                errores.add(tipoNormalizado + " del " + etiqueta + " debe ser alfanumérico de hasta 12 caracteres.");
+            }
+            return;
+        }
+        errores.add("Tipo de documento de identidad del " + etiqueta + " no reconocido: " + tipo + ".");
     }
 
     private void sumarClave(Map<String, Integer> contador, String key) {

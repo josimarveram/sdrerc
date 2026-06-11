@@ -63,6 +63,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             new Object[]{
                 "Fila",
                 "Número trámite",
+                "Canal recepción",
                 "N° documento",
                 "Tipo procedimiento",
                 "Tipo solicitud",
@@ -70,7 +71,11 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 "Tipo acta",
                 "Número acta",
                 "Titular",
+                "Tipo doc. titular",
+                "N° doc. titular",
                 "Remitente",
+                "Tipo doc. solicitante",
+                "N° doc. solicitante",
                 "Fecha recepción",
                 "Estado validación",
                 "Posible duplicado",
@@ -168,14 +173,16 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         table.setIntercellSpacing(new Dimension(0, 1));
         table.getColumnModel().getColumn(0).setMaxWidth(60);
         table.getColumnModel().getColumn(1).setPreferredWidth(140);
-        table.getColumnModel().getColumn(2).setPreferredWidth(150);
-        table.getColumnModel().getColumn(3).setPreferredWidth(160);
-        table.getColumnModel().getColumn(4).setPreferredWidth(120);
-        table.getColumnModel().getColumn(5).setPreferredWidth(140);
-        table.getColumnModel().getColumn(6).setPreferredWidth(120);
-        table.getColumnModel().getColumn(8).setPreferredWidth(180);
-        table.getColumnModel().getColumn(13).setPreferredWidth(190);
-        table.getColumnModel().getColumn(14).setPreferredWidth(260);
+        table.getColumnModel().getColumn(2).setPreferredWidth(130);
+        table.getColumnModel().getColumn(3).setPreferredWidth(150);
+        table.getColumnModel().getColumn(4).setPreferredWidth(170);
+        table.getColumnModel().getColumn(5).setPreferredWidth(120);
+        table.getColumnModel().getColumn(6).setPreferredWidth(140);
+        table.getColumnModel().getColumn(7).setPreferredWidth(120);
+        table.getColumnModel().getColumn(9).setPreferredWidth(190);
+        table.getColumnModel().getColumn(12).setPreferredWidth(190);
+        table.getColumnModel().getColumn(18).setPreferredWidth(190);
+        table.getColumnModel().getColumn(19).setPreferredWidth(260);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
 
         JScrollPane scroll = new JScrollPane(table);
@@ -414,6 +421,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             tableModel.addRow(new Object[]{
                 item.getFila(),
                 safe(item.getNumeroTramite()),
+                canalVisual(item.getCanalRecepcion()),
                 safe(item.getNumeroDocumento()),
                 safe(item.getTipoProcedimiento()),
                 safe(item.getTipoSolicitud()),
@@ -421,7 +429,11 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 safe(item.getTipoActa()),
                 safe(item.getNumeroActa()),
                 safe(item.getTitular()),
+                safe(item.getTipoDocumentoIdentidadTitular()),
+                documentoVisual(item.getNumeroDocumentoIdentidadTitular()),
                 safe(item.getRemitente()),
+                safe(item.getTipoDocumentoIdentidadSolicitante()),
+                documentoVisual(item.getNumeroDocumentoIdentidadSolicitante()),
                 item.getFechaRecepcion() == null ? safe(item.getFechaRecepcionTexto()) : DATE_FORMAT.format(item.getFechaRecepcion()),
                 safe(item.getEstadoValidacion()),
                 item.isPosibleDuplicado() ? "Sí" : "No",
@@ -506,6 +518,29 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String safeOrPending(String value) {
         return value == null || value.trim().isEmpty() ? "Pendiente" : value;
+    }
+
+    private static String documentoVisual(String value) {
+        return value == null || value.trim().isEmpty() || "SIN DNI".equalsIgnoreCase(value.trim()) ? "" : value.trim();
+    }
+
+    private static String canalVisual(String value) {
+        if (value == null) {
+            return "";
+        }
+        if ("MESA_PARTES_VIRTUAL".equalsIgnoreCase(value)) {
+            return "MPV";
+        }
+        if ("MESA_PARTES_PRESENCIAL".equalsIgnoreCase(value)) {
+            return "MP presencial";
+        }
+        if ("OR_PRESENCIAL".equalsIgnoreCase(value)) {
+            return "OR";
+        }
+        if ("INTERNO".equalsIgnoreCase(value)) {
+            return "Interno";
+        }
+        return value;
     }
 
     private static File asegurarExtensionXlsx(File file) {
