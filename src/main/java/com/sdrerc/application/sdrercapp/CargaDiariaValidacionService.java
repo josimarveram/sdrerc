@@ -164,6 +164,12 @@ public class CargaDiariaValidacionService {
             return;
         }
         String tipoNormalizado = tipo.trim().toUpperCase(Locale.ROOT);
+        if ("SIN DNI".equals(tipoNormalizado)) {
+            if (hasText(numero) && !"SIN DNI".equalsIgnoreCase(numero.trim())) {
+                errores.add("Si el tipo de documento del " + etiqueta + " es SIN DNI, el número debe quedar vacío.");
+            }
+            return;
+        }
         if ("RUC".equals(tipoNormalizado) && !permiteRuc) {
             errores.add("El titular no permite RUC como tipo de documento de identidad.");
             return;

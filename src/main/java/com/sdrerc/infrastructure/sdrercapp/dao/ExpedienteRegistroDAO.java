@@ -269,7 +269,7 @@ public class ExpedienteRegistroDAO {
     private Long insertarPersona(Connection conn, String nombre, String tipoDocumento, String numeroDocumento) throws SQLException {
         String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, activo) VALUES (?, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
-            ps.setString(1, tipoDocumento);
+            ps.setString(1, normalizarTipoDocumentoIdentidadParaBd(tipoDocumento));
             ps.setString(2, normalizarDocumentoIdentidadParaBd(numeroDocumento));
             ps.setString(3, nombre);
             ps.executeUpdate();
@@ -609,6 +609,17 @@ public class ExpedienteRegistroDAO {
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    private String normalizarTipoDocumentoIdentidadParaBd(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if ("SIN DNI".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
     }
 
     private String normalizarDocumentoIdentidadParaBd(String value) {

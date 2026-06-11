@@ -73,13 +73,13 @@ public class CargaDiariaPlantillaService {
     };
 
     private static final String[] CATALOGO_TIPO_SOLICITUD = {"PARTE", "OFICIO"};
-    private static final String[] CATALOGO_IDENTIDAD_SOLICITANTE = {"DNI", "RUC", "CE", "PASAPORTE"};
-    private static final String[] CATALOGO_IDENTIDAD_TITULAR = {"DNI", "CE", "PASAPORTE"};
+    private static final String[] CATALOGO_IDENTIDAD_SOLICITANTE = {"SIN DNI", "DNI", "RUC", "CE", "PASAPORTE"};
+    private static final String[] CATALOGO_IDENTIDAD_TITULAR = {"SIN DNI", "DNI", "CE", "PASAPORTE"};
     private static final String[] CATALOGO_PROCEDIMIENTO = {
-        "Reconsideración",
         "Rectificación administrativa",
         "Título de Nacionalidad",
         "Cancelación",
+        "Reconsideración",
         "Reconstitución",
         "Apelación",
         "Actualización de datos"
@@ -219,7 +219,7 @@ public class CargaDiariaPlantillaService {
         validation.setShowErrorBox(true);
         validation.createPromptBox(
                 "Documento de identidad",
-                "DNI: 8 números. RUC: 11 números. CE/Pasaporte: hasta 12 caracteres alfanuméricos.");
+                "SIN DNI: deje vacío. DNI: 8 números. RUC: 11 números. CE/Pasaporte: hasta 12 caracteres alfanuméricos.");
         validation.createErrorBox(
                 "Documento no válido",
                 "Revise el tipo de documento y el número ingresado. Use texto para conservar ceros a la izquierda.");
@@ -264,11 +264,11 @@ public class CargaDiariaPlantillaService {
             "No cambie los nombres de las columnas.",
             "No elimine columnas. Puede dejar OBSERVACION INICIAL vacia si no aplica.",
             "FECHA DE SOLICITUD debe ingresarse en formato dd/MM/yyyy.",
-            "TIPO DOCUMENTO IDENTIDAD SOLICITANTE permite DNI, RUC, CE o PASAPORTE.",
+            "TIPO DOCUMENTO IDENTIDAD SOLICITANTE permite SIN DNI, DNI, RUC, CE o PASAPORTE.",
             "N° DOCUMENTO IDENTIDAD SOLICITANTE reemplaza al campo DNI SOLICITANTE. Si no existe DNI, puede usar SIN DNI y el importador lo guardara vacio.",
-            "TIPO DOCUMENTO IDENTIDAD TITULAR permite DNI, CE o PASAPORTE.",
+            "TIPO DOCUMENTO IDENTIDAD TITULAR permite SIN DNI, DNI, CE o PASAPORTE.",
             "N° DOCUMENTO IDENTIDAD TITULAR debe completarse si se conoce. Si TITULAR es igual a SOLICITADO POR, el importador copia el documento del solicitante cuando falte.",
-            "Reglas de identidad: DNI = 8 numeros, RUC = 11 numeros, CE = hasta 12 alfanumericos, PASAPORTE = hasta 12 alfanumericos.",
+            "Reglas de identidad: SIN DNI = dejar numero vacio, DNI = 8 numeros, RUC = 11 numeros, CE = hasta 12 alfanumericos, PASAPORTE = hasta 12 alfanumericos.",
             "Las columnas de numeros, tramites, actas y documentos se generan como texto para conservar ceros a la izquierda.",
             "La plantilla valida en la celda el numero de documento de identidad segun el tipo seleccionado.",
             "N° TRAMITE WEB puede quedar como SIN TRAMITE si no existe referencia web.",
