@@ -59,6 +59,9 @@ public class AsignacionExpedienteDAO {
         sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
         sql.append(nombrePersona("p")).append(" AS titular, ");
         sql.append(nombrePersona("ps")).append(" AS solicitante, p.numero_documento AS numero_documento_titular, ");
+        sql.append("(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa ");
+        sql.append(" JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado ");
+        sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, ");
         sql.append("esol.fecha_recepcion, esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
@@ -231,6 +234,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 rs.getString("solicitante"),
+                rs.getString("abogado_asignado"),
                 rs.getString("numero_documento_titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),

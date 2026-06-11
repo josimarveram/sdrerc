@@ -4,7 +4,6 @@ import com.sdrerc.application.sdrercapp.AsignacionExpedienteService;
 import com.sdrerc.application.sdrercapp.UsuarioAsignacionService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
-import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
@@ -131,6 +130,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean panelAsignacionVisible;
     private boolean panelAsignacionCerradoPorUsuario;
     private boolean todasVisiblesSeleccionadas;
+    private boolean busquedaInicialEjecutada;
 
     private boolean cargandoCombos;
     private boolean actualizandoSeleccion;
@@ -149,6 +149,7 @@ public class JPanelAsignacionV2 extends JPanel {
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarEventos();
+        restaurarFechasBusqueda();
         cargarEstados();
         cargarEquipos();
         actualizarPanelSeleccion();
@@ -320,7 +321,7 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 54, 84, 185, 135, 230, 135, 130, 260, 240, 155, 170, 0);
+        AppV2TableColumnSizer.applyWidths(table, 54, 84, 185, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
         configurarColumna(table.getColumnModel().getColumn(0), 54, 54, 58);
         configurarColumna(table.getColumnModel().getColumn(1), 84, 78, 92);
         configurarColumna(table.getColumnModel().getColumn(2), 185, 165, 260);
@@ -330,8 +331,9 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarColumna(table.getColumnModel().getColumn(6), 130, 120, 180);
         configurarColumna(table.getColumnModel().getColumn(7), 260, 230, 380);
         configurarColumna(table.getColumnModel().getColumn(8), 240, 210, 360);
-        configurarColumna(table.getColumnModel().getColumn(9), 155, 145, 220);
-        configurarColumna(table.getColumnModel().getColumn(10), 170, 150, 240);
+        configurarColumna(table.getColumnModel().getColumn(9), 220, 190, 320);
+        configurarColumna(table.getColumnModel().getColumn(10), 155, 145, 220);
+        configurarColumna(table.getColumnModel().getColumn(11), 170, 150, 240);
         table.getColumnModel().getColumn(0).setHeaderRenderer(new SelectAllHeaderRenderer());
     }
 
@@ -385,27 +387,9 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void cargarEstados() {
         cmbEstado.removeAllItems();
-        cmbEstado.addItem(new FiltroCatalogoItemV2(null, "Todos los estados"));
-        SwingWorker<List<CatalogoItemDTO>, Void> worker = new SwingWorker<List<CatalogoItemDTO>, Void>() {
-            @Override
-            protected List<CatalogoItemDTO> doInBackground() throws Exception {
-                return asignacionService.listarEstadosExpediente();
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    for (CatalogoItemDTO item : get()) {
-                        if (item != null && item.hasCodigo()) {
-                            cmbEstado.addItem(new FiltroCatalogoItemV2(item.getCodigo(), nombreEstado(item)));
-                        }
-                    }
-                } catch (Exception ex) {
-                    lblEstado.setText("No se pudieron cargar los estados. Se mantiene filtro Todos.");
-                }
-            }
-        };
-        worker.execute();
+        for (FiltroCatalogoItemV2 item : crearItemsEstado()) {
+            cmbEstado.addItem(item);
+        }
     }
 
     private void cargarEquipos() {
@@ -431,7 +415,11 @@ public class JPanelAsignacionV2 extends JPanel {
                     mostrarError("No se pudieron cargar los equipos de asignación.", ex);
                 } finally {
                     cargandoCombos = false;
-                    setTrabajando(false, "Seleccione filtros y presione Buscar.");
+                    setTrabajando(false, null);
+                    if (!busquedaInicialEjecutada) {
+                        busquedaInicialEjecutada = true;
+                        buscar();
+                    }
                 }
             }
         };
@@ -474,6 +462,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void buscar() {
+        busquedaInicialEjecutada = true;
         limpiarSeleccion();
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
@@ -527,6 +516,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 item.getNumeroActa(),
                 item.getTitular(),
                 item.getSolicitante(),
+                item.getAbogadoAsignado(),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
                 alertaAsignacion(item),
                 item.getIdExpediente()
@@ -570,20 +560,50 @@ public class JPanelAsignacionV2 extends JPanel {
         return null;
     }
 
-    private static String nombreEstado(CatalogoItemDTO item) {
-        String mapped = DisplayNameMapperV2.estado(item.getCodigo());
-        if (mapped != null && !mapped.trim().isEmpty() && !mapped.equals(item.getCodigo())) {
-            return mapped;
-        }
-        return item.getNombre() == null || item.getNombre().trim().isEmpty()
-                ? item.getCodigo()
-                : item.getNombre();
+    private void restaurarFechasBusqueda() {
+        Date hoy = fechaComoDate(LocalDate.now());
+        fechaSolicitudDesde.setDate(hoy);
+        fechaSolicitudHasta.setDate(hoy);
+    }
+
+    private static Date fechaComoDate(LocalDate date) {
+        return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    }
+
+    private static FiltroCatalogoItemV2[] crearItemsEstado() {
+        return new FiltroCatalogoItemV2[]{
+            new FiltroCatalogoItemV2(null, "Todos"),
+            new FiltroCatalogoItemV2("REGISTRADO", "Registrado"),
+            new FiltroCatalogoItemV2("ASIGNADO", "Asignado"),
+            new FiltroCatalogoItemV2("RECIBIDO_POR_ABOGADO", "Recibido por abogado"),
+            new FiltroCatalogoItemV2("ATENDIDO", "Atendido"),
+            new FiltroCatalogoItemV2("OBSERVADO", "Observado"),
+            new FiltroCatalogoItemV2("SUBSANADO", "Subsanado"),
+            new FiltroCatalogoItemV2("EN_VERIFICACION", "En verificación"),
+            new FiltroCatalogoItemV2("REQUIERE_CORRECCION", "Requiere corrección"),
+            new FiltroCatalogoItemV2("DOCUMENTO_INCONSISTENTE", "Documento inconsistente"),
+            new FiltroCatalogoItemV2("VERIFICADO", "Verificado"),
+            new FiltroCatalogoItemV2("PARA_FIRMA", "Para firma"),
+            new FiltroCatalogoItemV2("FIRMADO", "Firmado"),
+            new FiltroCatalogoItemV2("EMITIDO", "Emitido"),
+            new FiltroCatalogoItemV2("RESOLUCION_NUMERADA", "Resolución numerada"),
+            new FiltroCatalogoItemV2("EN_EJECUCION", "En ejecución"),
+            new FiltroCatalogoItemV2("EJECUTADO", "Ejecutado"),
+            new FiltroCatalogoItemV2("EN_NOTIFICACION", "En notificación"),
+            new FiltroCatalogoItemV2("CARGO_PENDIENTE", "Cargo pendiente"),
+            new FiltroCatalogoItemV2("CARGO_RECIBIDO", "Cargo recibido"),
+            new FiltroCatalogoItemV2("NOTIFICADO", "Notificado"),
+            new FiltroCatalogoItemV2("REQUIERE_PUBLICACION", "Requiere publicación"),
+            new FiltroCatalogoItemV2("PENDIENTE_PUBLICACION", "Pendiente publicación"),
+            new FiltroCatalogoItemV2("PUBLICACION_REGISTRADA", "Publicación registrada"),
+            new FiltroCatalogoItemV2("CERRADO", "Cerrado"),
+            new FiltroCatalogoItemV2("ARCHIVADO", "Archivado")
+        };
     }
 
     private void limpiar() {
         txtBusqueda.setText("");
-        fechaSolicitudDesde.setDate(null);
-        fechaSolicitudHasta.setDate(null);
+        restaurarFechasBusqueda();
         cmbEstado.setSelectedIndex(0);
         spnLimite.setValue(200);
         expedientes.clear();
@@ -1027,6 +1047,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Nro. Acta",
                 "Titular",
                 "Solicitante",
+                "Abogado asignado",
                 "Estado",
                 "Relacionados",
                 "_ID"
@@ -1085,10 +1106,10 @@ public class JPanelAsignacionV2 extends JPanel {
             if (!isSelected && !filaEnFoco && modelColumn == 1) {
                 return StatusBadgeV2.forDias(value);
             }
-            if (!isSelected && !filaEnFoco && modelColumn == 9) {
+            if (!isSelected && !filaEnFoco && modelColumn == 10) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && !filaEnFoco && modelColumn == 10) {
+            if (!isSelected && !filaEnFoco && modelColumn == 11) {
                 String text = value == null ? "" : value.toString();
                 if (!text.startsWith("Sin")) {
                     return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
