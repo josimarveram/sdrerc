@@ -183,16 +183,66 @@ public class CargaDiariaPlantillaService {
         aplicarLista(sheet, helper, COL_PROCEDIMIENTO, "CAT_PROCEDIMIENTO");
         aplicarLista(sheet, helper, COL_TIPO_ACTA, "CAT_TIPO_ACTA");
         aplicarLista(sheet, helper, COL_TIPO_DOC_TITULAR, "CAT_IDENTIDAD_TITULAR");
+        aplicarValidacionIdentidad(sheet, helper, COL_TIPO_DOC_SOLICITANTE, COL_NUM_DOC_SOLICITANTE, true);
+        aplicarValidacionIdentidad(sheet, helper, COL_TIPO_DOC_TITULAR, COL_NUM_DOC_TITULAR, false);
     }
 
     private void aplicarLista(Sheet sheet, DataValidationHelper helper, int column, String nombreRango) {
         DataValidationConstraint constraint = helper.createFormulaListConstraint(nombreRango);
         CellRangeAddressList rango = new CellRangeAddressList(1, ULTIMA_FILA_VALIDACION, column, column);
         DataValidation validation = helper.createValidation(constraint, rango);
-        validation.setSuppressDropDownArrow(true);
+        validation.setSuppressDropDownArrow(false);
+        validation.setEmptyCellAllowed(true);
+        validation.setShowPromptBox(true);
         validation.setShowErrorBox(true);
+        validation.createPromptBox("Seleccione una opción", "Use la lista desplegable de esta celda.");
         validation.createErrorBox("Valor no permitido", "Seleccione una opción válida de la lista.");
         sheet.addValidationData(validation);
+    }
+
+    private void aplicarValidacionIdentidad(
+            Sheet sheet,
+            DataValidationHelper helper,
+            int columnTipoDocumento,
+            int columnNumeroDocumento,
+            boolean permiteRuc) {
+        DataValidationConstraint constraint = helper.createCustomConstraint(
+                formulaDocumentoIdentidad(columnTipoDocumento, columnNumeroDocumento, permiteRuc));
+        CellRangeAddressList rango = new CellRangeAddressList(
+                1,
+                ULTIMA_FILA_VALIDACION,
+                columnNumeroDocumento,
+                columnNumeroDocumento);
+        DataValidation validation = helper.createValidation(constraint, rango);
+        validation.setEmptyCellAllowed(true);
+        validation.setShowPromptBox(true);
+        validation.setShowErrorBox(true);
+        validation.createPromptBox(
+                "Documento de identidad",
+                "DNI: 8 números. RUC: 11 números. CE/Pasaporte: hasta 12 caracteres alfanuméricos.");
+        validation.createErrorBox(
+                "Documento no válido",
+                "Revise el tipo de documento y el número ingresado. Use texto para conservar ceros a la izquierda.");
+        sheet.addValidationData(validation);
+    }
+
+    private String formulaDocumentoIdentidad(int columnTipoDocumento, int columnNumeroDocumento, boolean permiteRuc) {
+        String tipo = "$" + CellReference.convertNumToColString(columnTipoDocumento) + "2";
+        String numero = CellReference.convertNumToColString(columnNumeroDocumento) + "2";
+        String rangoCaracteres = "ROW(INDIRECT(\"1:\"&MAX(1,LEN(" + numero + "))))";
+        String alfanumerico = "SUMPRODUCT(--ISNUMBER(FIND(MID(UPPER(" + numero + ")," + rangoCaracteres
+                + ",1),\"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\")))=LEN(" + numero + ")";
+        String ruc = permiteRuc
+                ? ",AND(" + tipo + "=\"RUC\",LEN(" + numero + ")=11,ISNUMBER(VALUE(" + numero + ")))"
+                : "";
+        return "OR("
+                + numero + "=\"\","
+                + "UPPER(" + numero + ")=\"SIN DNI\","
+                + "AND(" + tipo + "=\"DNI\",LEN(" + numero + ")=8,ISNUMBER(VALUE(" + numero + ")))"
+                + ruc + ","
+                + "AND(OR(" + tipo + "=\"CE\"," + tipo + "=\"PASAPORTE\"),"
+                + "LEN(" + numero + ")<=12,LEN(" + numero + ")>0," + alfanumerico + ")"
+                + ")";
     }
 
     private void crearHojaInstrucciones(Workbook workbook, CellStyle titleStyle, CellStyle textStyle) {
@@ -219,6 +269,8 @@ public class CargaDiariaPlantillaService {
             "TIPO DOCUMENTO IDENTIDAD TITULAR permite DNI, CE o PASAPORTE.",
             "N° DOCUMENTO IDENTIDAD TITULAR debe completarse si se conoce. Si TITULAR es igual a SOLICITADO POR, el importador copia el documento del solicitante cuando falte.",
             "Reglas de identidad: DNI = 8 numeros, RUC = 11 numeros, CE = hasta 12 alfanumericos, PASAPORTE = hasta 12 alfanumericos.",
+            "Las columnas de numeros, tramites, actas y documentos se generan como texto para conservar ceros a la izquierda.",
+            "La plantilla valida en la celda el numero de documento de identidad segun el tipo seleccionado.",
             "N° TRAMITE WEB puede quedar como SIN TRAMITE si no existe referencia web.",
             "Si N° TRAMITE WEB contiene numeros, el canal se deriva como MPV.",
             "Si N° TRAMITE WEB es SIN TRAMITE y el documento del solicitante contiene numeros, el canal se deriva como MP PRESENCIAL.",
@@ -270,6 +322,7 @@ public class CargaDiariaPlantillaService {
         style.setBorderLeft(BorderStyle.THIN);
         style.setBorderRight(BorderStyle.THIN);
         style.setWrapText(true);
+        style.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("@"));
         return style;
     }
 

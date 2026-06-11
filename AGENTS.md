@@ -66,6 +66,7 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - En carga diaria, si `TITULAR` coincide con `SOLICITADO POR`, el importador debe completar el documento de identidad del titular con el documento del solicitante cuando falte; si el documento del solicitante es `SIN DNI`, debe persistirse como vacio.
 - En carga diaria, el canal de recepcion se deriva por reglas de plantilla: tramite web con numeros -> MPV, `SIN TRAMITE` con documento de solicitante numerico -> MP presencial, y `SIN TRAMITE` sin documento -> OR o Interno segun el origen RENIEC informado en `SOLICITADO POR`.
 - La plantilla de carga diaria debe mantener listas desplegables para tipo de documento de identidad, procedimiento registral, tipo de acta, tipo documento y tipo de solicitud; las reglas de identidad son DNI 8 numeros, RUC 11 numeros, CE/Pasaporte hasta 12 alfanumericos.
+- La plantilla de carga diaria debe generar las columnas de numeros/documentos/tramites/actas como texto y aplicar validacion de datos en Excel para el numero de identidad segun el tipo seleccionado, ademas de la validacion del importador.
 - La carga diaria de Registro / Recepcion debe ofrecer descarga de una plantilla oficial `.xlsx` con encabezados compatibles con el parser V2. La importacion debe poder previsualizar y confirmar el mismo archivo de plantilla cuando el usuario complete la hoja de carga.
 
 ## 4.1 Estado actual de modulos SDRERC V2
