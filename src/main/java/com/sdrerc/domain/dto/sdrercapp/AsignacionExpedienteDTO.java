@@ -2,7 +2,6 @@ package com.sdrerc.domain.dto.sdrercapp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 public class AsignacionExpedienteDTO {
 
@@ -17,6 +16,7 @@ public class AsignacionExpedienteDTO {
     private final String abogadoAsignado;
     private final String numeroDocumentoTitular;
     private final LocalDate fechaRecepcion;
+    private final Long diasRestantes;
     private final LocalDateTime fechaRegistro;
     private final String etapaCodigo;
     private final String estadoCodigo;
@@ -37,6 +37,7 @@ public class AsignacionExpedienteDTO {
             String abogadoAsignado,
             String numeroDocumentoTitular,
             LocalDate fechaRecepcion,
+            Long diasRestantes,
             LocalDateTime fechaRegistro,
             String etapaCodigo,
             String estadoCodigo,
@@ -55,6 +56,7 @@ public class AsignacionExpedienteDTO {
         this.abogadoAsignado = safe(abogadoAsignado);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
         this.fechaRecepcion = fechaRecepcion;
+        this.diasRestantes = diasRestantes;
         this.fechaRegistro = fechaRegistro;
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
@@ -108,6 +110,10 @@ public class AsignacionExpedienteDTO {
         return fechaRecepcion;
     }
 
+    public Long getDiasRestantes() {
+        return diasRestantes;
+    }
+
     public LocalDateTime getFechaRegistro() {
         return fechaRegistro;
     }
@@ -153,14 +159,7 @@ public class AsignacionExpedienteDTO {
     }
 
     public Long getDiasDesdeRegistro() {
-        LocalDate base = fechaRecepcion;
-        if (base == null && fechaRegistro != null) {
-            base = fechaRegistro.toLocalDate();
-        }
-        if (base == null) {
-            return null;
-        }
-        return ChronoUnit.DAYS.between(base, LocalDate.now());
+        return diasRestantes;
     }
 
     public boolean isAsignable() {

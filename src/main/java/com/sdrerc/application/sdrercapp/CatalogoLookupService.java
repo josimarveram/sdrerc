@@ -32,4 +32,11 @@ public class CatalogoLookupService {
     public List<CatalogoItemDTO> listarTiposActa() throws SQLException {
         return catalogoLookupDAO.listarTiposActa();
     }
+
+    public List<CatalogoItemDTO> listarEstadosExpedientePorEtapa(String etapaCodigo) throws SQLException {
+        if (etapaCodigo == null || etapaCodigo.trim().isEmpty()) {
+            throw new IllegalArgumentException("La etapa es obligatoria para consultar sus estados.");
+        }
+        return catalogoLookupDAO.listarEstadosExpedientePorEtapa(etapaCodigo);
+    }
 }

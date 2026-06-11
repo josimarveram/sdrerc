@@ -17,6 +17,7 @@ import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
@@ -471,16 +472,10 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void cargarFiltrosBase() {
-        cmbEstadoFiltro.removeAllItems();
-        cmbEstadoFiltro.addItem(new SimpleItem("TODOS", "Todos"));
-        cmbEstadoFiltro.addItem(new SimpleItem("ASIGNADO", "Asignado"));
-        cmbEstadoFiltro.addItem(new SimpleItem("RECIBIDO_POR_ABOGADO", "Recibido por abogado"));
-        cmbEstadoFiltro.addItem(new SimpleItem("ATENDIDO", "Atendido"));
-        cmbEstadoFiltro.addItem(new SimpleItem("OBSERVADO", "Observado"));
-        cmbEstadoFiltro.addItem(new SimpleItem("SUBSANADO", "Subsanado"));
-        cmbEstadoFiltro.addItem(new SimpleItem("NO_CORRESPONDE", "No corresponde"));
-        cmbEstadoFiltro.addItem(new SimpleItem("EN_ABANDONO", "En abandono"));
-        cmbEstadoFiltro.addItem(new SimpleItem("OBSERVACION_ADMINISTRATIVA", "Observación administrativa"));
+        EstadoExpedienteComboSupportV2.cargar(
+                cmbEstadoFiltro, "ANALISIS", new SimpleItem("TODOS", "Todos los estados"),
+                (codigo, nombre) -> new SimpleItem(codigo, nombre),
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Análisis."));
         cmbIncorporado.removeAllItems();
         cmbIncorporado.addItem(new SimpleItem("", "Seleccione"));
         cmbIncorporado.addItem(new SimpleItem("SI", "Sí"));

@@ -111,6 +111,25 @@ public class CatalogoLookupDAO {
         return listarCatalogo("estado_expediente");
     }
 
+    public List<CatalogoItemDTO> listarEstadosExpedientePorEtapa(String etapaCodigo) throws SQLException {
+        String sql = "SELECT est.codigo, est.nombre "
+                + "FROM estado_expediente est "
+                + "JOIN etapa_expediente et ON et.id_etapa = est.id_etapa "
+                + "WHERE est.activo = 1 AND et.activo = 1 AND UPPER(et.codigo) = ? "
+                + "ORDER BY est.id_estado";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, etapaCodigo == null ? "" : etapaCodigo.trim().toUpperCase());
+            try (ResultSet rs = ps.executeQuery()) {
+                List<CatalogoItemDTO> items = new ArrayList<>();
+                while (rs.next()) {
+                    items.add(new CatalogoItemDTO(rs.getString("codigo"), rs.getString("nombre")));
+                }
+                return items;
+            }
+        }
+    }
+
     public List<CatalogoItemDTO> listarTiposObservacion() throws SQLException {
         return listarCatalogo("tipo_observacion");
     }

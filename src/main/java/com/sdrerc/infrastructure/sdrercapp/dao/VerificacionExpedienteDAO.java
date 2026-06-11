@@ -61,7 +61,9 @@ public class VerificacionExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append("esol.fecha_recepcion, e.fecha_ultimo_movimiento, ");
+        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
+        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
         sql.append("JOIN tipo_movimiento tm ON tm.id_tipo_movimiento = h.id_tipo_movimiento ");
         sql.append("WHERE h.id_expediente = e.id_expediente AND h.activo = 1 ");
@@ -94,11 +96,6 @@ public class VerificacionExpedienteDAO {
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
         sql.append("WHERE e.activo = 1 AND et.codigo = ? ");
         params.add(ETAPA_VERIFICACION);
-        sql.append("AND est.codigo IN (?, ?, ?, ?) ");
-        params.add(ESTADO_EN_VERIFICACION);
-        params.add(ESTADO_REQUIERE_CORRECCION);
-        params.add(ESTADO_DOCUMENTO_INCONSISTENTE);
-        params.add(ESTADO_VERIFICADO);
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
@@ -403,6 +400,7 @@ public class VerificacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                getLongOrNull(rs, "dias_restantes"),
                 toLocalDateTime(rs.getTimestamp("fecha_envio_verificacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 rs.getString("responsable"),

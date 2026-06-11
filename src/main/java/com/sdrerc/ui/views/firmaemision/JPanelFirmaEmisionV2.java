@@ -12,6 +12,7 @@ import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
@@ -402,12 +403,10 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     }
 
     private void cargarFiltrosBase() {
-        cmbEstadoFiltro.removeAllItems();
-        cmbEstadoFiltro.addItem(new SimpleItem("TODOS", "Todos"));
-        cmbEstadoFiltro.addItem(new SimpleItem("PARA_FIRMA", "Para firma"));
-        cmbEstadoFiltro.addItem(new SimpleItem("FIRMADO", "Firmado"));
-        cmbEstadoFiltro.addItem(new SimpleItem("EMITIDO", "Emitido"));
-        cmbEstadoFiltro.addItem(new SimpleItem("RESOLUCION_NUMERADA", "Resolución numerada"));
+        EstadoExpedienteComboSupportV2.cargar(
+                cmbEstadoFiltro, "FIRMA_EMISION", new SimpleItem("TODOS", "Todos los estados"),
+                (codigo, nombre) -> new SimpleItem(codigo, nombre),
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Firma / Emisión."));
     }
 
     private void cargarTiposResolucion() {

@@ -70,7 +70,9 @@ public class AnalisisExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append("esol.fecha_recepcion, e.fecha_registro, asig.fecha_asignacion, e.fecha_ultimo_movimiento, ");
+        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
+        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("e.fecha_registro, asig.fecha_asignacion, e.fecha_ultimo_movimiento, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
         sql.append("et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.subsanada = 0 AND o.activo = 1) AS observaciones_pendientes, ");
@@ -95,15 +97,8 @@ public class AnalisisExpedienteDAO {
         sql.append("(et.codigo = ? AND est.codigo = ?) ");
         params.add(ETAPA_ASIGNACION);
         params.add(ESTADO_ASIGNADO);
-        sql.append("OR (et.codigo = ? AND est.codigo IN (?, ?, ?, ?, ?, ?, ?))");
+        sql.append("OR et.codigo = ?");
         params.add(ETAPA_ANALISIS);
-        params.add(ESTADO_RECIBIDO);
-        params.add(ESTADO_ATENDIDO);
-        params.add(ESTADO_OBSERVADO);
-        params.add(ESTADO_SUBSANADO);
-        params.add(ESTADO_NO_CORRESPONDE);
-        params.add(ESTADO_EN_ABANDONO);
-        params.add(ESTADO_OBSERVACION_ADMINISTRATIVA);
         sql.append(") ");
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
@@ -375,6 +370,7 @@ public class AnalisisExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                getLongOrNull(rs, "dias_restantes"),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 toLocalDateTime(rs.getTimestamp("fecha_asignacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),

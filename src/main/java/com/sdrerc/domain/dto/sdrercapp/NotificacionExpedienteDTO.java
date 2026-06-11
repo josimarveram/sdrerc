@@ -2,7 +2,6 @@ package com.sdrerc.domain.dto.sdrercapp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
@@ -19,6 +18,7 @@ public class NotificacionExpedienteDTO {
     private final String numeroActa;
     private final String titular;
     private final LocalDate fechaRecepcion;
+    private final Long diasRestantes;
     private final LocalDateTime fechaIngresoNotificacion;
     private final LocalDateTime fechaUltimoMovimiento;
     private final String responsable;
@@ -58,6 +58,7 @@ public class NotificacionExpedienteDTO {
             String numeroActa,
             String titular,
             LocalDate fechaRecepcion,
+            Long diasRestantes,
             LocalDateTime fechaIngresoNotificacion,
             LocalDateTime fechaUltimoMovimiento,
             String responsable,
@@ -95,6 +96,7 @@ public class NotificacionExpedienteDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.fechaRecepcion = fechaRecepcion;
+        this.diasRestantes = diasRestantes;
         this.fechaIngresoNotificacion = fechaIngresoNotificacion;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.responsable = safe(responsable);
@@ -274,11 +276,7 @@ public class NotificacionExpedienteDTO {
     }
 
     public Long getDiasEnEtapa() {
-        LocalDate base = fechaRecepcion;
-        if (base == null && fechaUltimoMovimiento != null) {
-            base = fechaUltimoMovimiento.toLocalDate();
-        }
-        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
+        return diasRestantes;
     }
 
     public boolean hasAccion(String codigoAccion) {

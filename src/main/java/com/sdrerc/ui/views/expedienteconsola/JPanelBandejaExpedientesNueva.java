@@ -11,6 +11,7 @@ import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
@@ -209,8 +210,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             gbc.fill = GridBagConstraints.NONE;
 
             gbc.gridx = 4;
-            filtros.add(crearLabelFiltro("Mostrar"), gbc);
+            filtros.add(crearLabelFiltro("Estado"), gbc);
             gbc.gridx = 5;
+            filtros.add(cmbEstado, gbc);
+
+            gbc.gridx = 6;
+            filtros.add(crearLabelFiltro("Mostrar"), gbc);
+            gbc.gridx = 7;
             filtros.add(spnLimite, gbc);
         } else {
             filtros.add(crearLabelFiltro("Etapa"), gbc);
@@ -264,6 +270,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         seleccionarEtapaInicial();
         if (perfilRegistroRecepcion) {
             restaurarFechasRegistro();
+            EstadoExpedienteComboSupportV2.cargar(
+                    cmbEstado,
+                    "REGISTRO",
+                    new FiltroCatalogoItemV2(null, "Todos los estados"),
+                    (codigo, nombre) -> new FiltroCatalogoItemV2(codigo, nombre),
+                    ex -> lblResultado.setText("No se pudieron cargar los estados de Registro / Recepción."));
         }
         if (etapaBloqueada) {
             cmbEtapa.setEnabled(false);
@@ -368,7 +380,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private void buscar() {
         String texto = txtBusqueda.getText();
         String etapa = perfilRegistroRecepcion ? "REGISTRO" : codigoSeleccionado(cmbEtapa);
-        String estado = perfilRegistroRecepcion ? "REGISTRADO" : codigoSeleccionado(cmbEstado);
+        String estado = codigoSeleccionado(cmbEstado);
         LocalDate fechaDesde = perfilRegistroRecepcion ? fechaSeleccionada(fechaSolicitudDesde) : null;
         LocalDate fechaHasta = perfilRegistroRecepcion ? fechaSeleccionada(fechaSolicitudHasta) : null;
         int limite = ((Number) spnLimite.getValue()).intValue();
@@ -422,7 +434,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         btnVerDetalle.setEnabled(false);
         tablePanel.setEmpty(true);
         lblResultado.setText(etapaBloqueada
-                ? "Filtros limpiados. La bandeja permanece filtrada por Registro / Registrado."
+                ? "Filtros limpiados. La bandeja permanece filtrada por la etapa seleccionada."
                 : "Filtros limpiados. Presione Buscar para cargar expedientes.");
     }
 
@@ -444,7 +456,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 });
             } else {
                 tableModel.addRow(new Object[]{
-                    item.getDiasDesdeSolicitud() == null ? "" : item.getDiasDesdeSolicitud(),
+                    item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
                     item.getNumeroExpediente(),
                     item.getNumeroTramiteDocumentario(),
                     DisplayNameMapperV2.etapa(item.getEtapaCodigo()),

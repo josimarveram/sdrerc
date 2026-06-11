@@ -12,6 +12,7 @@ import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
@@ -403,10 +404,10 @@ public class JPanelPublicacionV2 extends JPanel {
     }
 
     private void cargarFiltrosBase() {
-        cmbEstadoFiltro.removeAllItems();
-        cmbEstadoFiltro.addItem(new SimpleItem("TODOS", "Todos"));
-        cmbEstadoFiltro.addItem(new SimpleItem("PENDIENTE_PUBLICACION", "Pendiente de publicación"));
-        cmbEstadoFiltro.addItem(new SimpleItem("PUBLICACION_REGISTRADA", "Publicación registrada"));
+        EstadoExpedienteComboSupportV2.cargar(
+                cmbEstadoFiltro, "PUBLICACION_CONDICIONAL", new SimpleItem("TODOS", "Todos los estados"),
+                (codigo, nombre) -> new SimpleItem(codigo, nombre),
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Publicación."));
     }
 
     private void inicializarFormulario() {

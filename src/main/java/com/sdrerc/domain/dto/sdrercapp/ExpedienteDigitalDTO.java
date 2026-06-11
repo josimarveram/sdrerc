@@ -2,7 +2,6 @@ package com.sdrerc.domain.dto.sdrercapp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
@@ -19,6 +18,7 @@ public class ExpedienteDigitalDTO {
     private final String numeroActa;
     private final String titular;
     private final LocalDate fechaRecepcion;
+    private final Long diasRestantes;
     private final LocalDateTime fechaIngresoDigital;
     private final LocalDateTime fechaUltimoMovimiento;
     private final String responsable;
@@ -59,6 +59,7 @@ public class ExpedienteDigitalDTO {
             String numeroActa,
             String titular,
             LocalDate fechaRecepcion,
+            Long diasRestantes,
             LocalDateTime fechaIngresoDigital,
             LocalDateTime fechaUltimoMovimiento,
             String responsable,
@@ -97,6 +98,7 @@ public class ExpedienteDigitalDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.fechaRecepcion = fechaRecepcion;
+        this.diasRestantes = diasRestantes;
         this.fechaIngresoDigital = fechaIngresoDigital;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.responsable = safe(responsable);
@@ -281,11 +283,7 @@ public class ExpedienteDigitalDTO {
     }
 
     public Long getDiasEnEtapa() {
-        LocalDate base = fechaRecepcion;
-        if (base == null && fechaUltimoMovimiento != null) {
-            base = fechaUltimoMovimiento.toLocalDate();
-        }
-        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
+        return diasRestantes;
     }
 
     public int getTotalDocumentosMetadata() {

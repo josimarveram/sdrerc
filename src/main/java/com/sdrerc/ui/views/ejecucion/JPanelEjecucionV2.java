@@ -13,6 +13,7 @@ import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
@@ -414,13 +415,10 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private void cargarFiltrosBase() {
-        cmbEstadoFiltro.removeAllItems();
-        cmbEstadoFiltro.addItem(new SimpleItem("TODOS", "Todos"));
-        cmbEstadoFiltro.addItem(new SimpleItem("EN_EJECUCION", "En ejecución"));
-        cmbEstadoFiltro.addItem(new SimpleItem("INDAGATORIO", "Indagatorio"));
-        cmbEstadoFiltro.addItem(new SimpleItem("EJECUTADO", "Ejecutado"));
-        cmbEstadoFiltro.addItem(new SimpleItem("REQUIERE_CORRECCION", "Requiere corrección"));
-        cmbEstadoFiltro.addItem(new SimpleItem("DOCUMENTO_INCONSISTENTE", "Documento inconsistente"));
+        EstadoExpedienteComboSupportV2.cargar(
+                cmbEstadoFiltro, "EJECUCION", new SimpleItem("TODOS", "Todos los estados"),
+                (codigo, nombre) -> new SimpleItem(codigo, nombre),
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Ejecución."));
     }
 
     private void cargarCatalogos() {

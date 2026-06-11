@@ -6,8 +6,6 @@ import java.time.temporal.ChronoUnit;
 
 public class ExpedienteBandejaDTO {
 
-    private static final int DIAS_PLAZO_INICIAL = 30;
-
     private final Long idExpediente;
     private final String numeroExpediente;
     private final String numeroTramiteDocumentario;
@@ -191,14 +189,10 @@ public class ExpedienteBandejaDTO {
     }
 
     public Long getDiasRestantes() {
-        LocalDate fechaLimite = fechaVencimiento;
-        if (fechaLimite == null && fechaRecepcion != null) {
-            fechaLimite = fechaRecepcion.plusDays(DIAS_PLAZO_INICIAL);
-        }
-        if (fechaLimite == null) {
+        if (fechaVencimiento == null) {
             return null;
         }
-        return ChronoUnit.DAYS.between(LocalDate.now(), fechaLimite);
+        return ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
     }
 
     public Long getDiasDesdeSolicitud() {

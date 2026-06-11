@@ -62,7 +62,9 @@ public class AsignacionExpedienteDAO {
         sql.append("(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa ");
         sql.append(" JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado ");
         sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, ");
-        sql.append("esol.fecha_recepcion, esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
+        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
+        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
         sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa ");
@@ -237,6 +239,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("abogado_asignado"),
                 rs.getString("numero_documento_titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                getLongOrNull(rs, "dias_restantes"),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),

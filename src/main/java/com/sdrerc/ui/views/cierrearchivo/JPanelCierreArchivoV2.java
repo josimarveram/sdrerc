@@ -13,6 +13,7 @@ import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
@@ -384,13 +385,10 @@ public class JPanelCierreArchivoV2 extends JPanel {
     }
 
     private void cargarFiltrosBase() {
-        cmbEstadoFiltro.removeAllItems();
-        cmbEstadoFiltro.addItem(new SimpleItem("TODOS", "Todos"));
-        cmbEstadoFiltro.addItem(new SimpleItem("CANDIDATOS_CIERRE", "Pendientes de cierre"));
-        cmbEstadoFiltro.addItem(new SimpleItem("CANDIDATOS_ARCHIVO", "Pendientes de archivo"));
-        cmbEstadoFiltro.addItem(new SimpleItem("CERRADO", "Cerrados"));
-        cmbEstadoFiltro.addItem(new SimpleItem("ARCHIVADO", "Archivados"));
-        cmbEstadoFiltro.addItem(new SimpleItem("DERIVACION_EXTERNA_PENDIENTE", "Derivación externa pendiente"));
+        EstadoExpedienteComboSupportV2.cargar(
+                cmbEstadoFiltro, "CIERRE_ARCHIVO", new SimpleItem("TODOS", "Todos los estados"),
+                (codigo, nombre) -> new SimpleItem(codigo, nombre),
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Cierre / Archivo."));
     }
 
     private void buscar() {

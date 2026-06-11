@@ -49,7 +49,9 @@ public class CierreArchivoDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append("esol.fecha_recepcion, e.fecha_ultimo_movimiento, ");
+        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
+        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
         sql.append("JOIN tipo_movimiento tm ON tm.id_tipo_movimiento = h.id_tipo_movimiento ");
         sql.append("WHERE h.id_expediente = e.id_expediente AND h.activo = 1 AND tm.codigo = 'CIERRE') AS fecha_cierre, ");
@@ -454,6 +456,7 @@ public class CierreArchivoDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                getLongOrNull(rs, "dias_restantes"),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_cierre")),
                 toLocalDateTime(rs.getTimestamp("fecha_archivo")),

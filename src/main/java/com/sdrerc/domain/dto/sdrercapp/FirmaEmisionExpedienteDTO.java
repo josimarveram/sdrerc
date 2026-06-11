@@ -2,7 +2,6 @@ package com.sdrerc.domain.dto.sdrercapp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 public class FirmaEmisionExpedienteDTO {
 
@@ -15,6 +14,7 @@ public class FirmaEmisionExpedienteDTO {
     private final String numeroActa;
     private final String titular;
     private final LocalDate fechaRecepcion;
+    private final Long diasRestantes;
     private final LocalDateTime fechaEnvioFirma;
     private final LocalDateTime fechaUltimoMovimiento;
     private final String etapaCodigo;
@@ -41,6 +41,7 @@ public class FirmaEmisionExpedienteDTO {
             String numeroActa,
             String titular,
             LocalDate fechaRecepcion,
+            Long diasRestantes,
             LocalDateTime fechaEnvioFirma,
             LocalDateTime fechaUltimoMovimiento,
             String etapaCodigo,
@@ -65,6 +66,7 @@ public class FirmaEmisionExpedienteDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.fechaRecepcion = fechaRecepcion;
+        this.diasRestantes = diasRestantes;
         this.fechaEnvioFirma = fechaEnvioFirma;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.etapaCodigo = safe(etapaCodigo);
@@ -179,11 +181,7 @@ public class FirmaEmisionExpedienteDTO {
     }
 
     public Long getDiasEnEtapa() {
-        LocalDate base = fechaRecepcion;
-        if (base == null && fechaUltimoMovimiento != null) {
-            base = fechaUltimoMovimiento.toLocalDate();
-        }
-        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
+        return diasRestantes;
     }
 
     public boolean isFirmable() {

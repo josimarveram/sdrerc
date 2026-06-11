@@ -21,6 +21,7 @@ import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
@@ -386,10 +387,12 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void cargarEstados() {
-        cmbEstado.removeAllItems();
-        for (FiltroCatalogoItemV2 item : crearItemsEstado()) {
-            cmbEstado.addItem(item);
-        }
+        EstadoExpedienteComboSupportV2.cargar(
+                cmbEstado,
+                "ASIGNACION",
+                new FiltroCatalogoItemV2(null, "Todos los estados"),
+                (codigo, nombre) -> new FiltroCatalogoItemV2(codigo, nombre),
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Asignación."));
     }
 
     private void cargarEquipos() {
@@ -508,7 +511,7 @@ public class JPanelAsignacionV2 extends JPanel {
             }
             tableModel.addRow(new Object[]{
                 Boolean.FALSE,
-                item.getDiasDesdeRegistro() == null ? "" : item.getDiasDesdeRegistro(),
+                item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
                 item.getNumeroExpediente(),
                 formatDate(item.getFechaRecepcion()),
                 item.getProcedimiento(),
@@ -568,37 +571,6 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private static Date fechaComoDate(LocalDate date) {
         return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
-    }
-
-    private static FiltroCatalogoItemV2[] crearItemsEstado() {
-        return new FiltroCatalogoItemV2[]{
-            new FiltroCatalogoItemV2(null, "Todos"),
-            new FiltroCatalogoItemV2("REGISTRADO", "Registrado"),
-            new FiltroCatalogoItemV2("ASIGNADO", "Asignado"),
-            new FiltroCatalogoItemV2("RECIBIDO_POR_ABOGADO", "Recibido por abogado"),
-            new FiltroCatalogoItemV2("ATENDIDO", "Atendido"),
-            new FiltroCatalogoItemV2("OBSERVADO", "Observado"),
-            new FiltroCatalogoItemV2("SUBSANADO", "Subsanado"),
-            new FiltroCatalogoItemV2("EN_VERIFICACION", "En verificación"),
-            new FiltroCatalogoItemV2("REQUIERE_CORRECCION", "Requiere corrección"),
-            new FiltroCatalogoItemV2("DOCUMENTO_INCONSISTENTE", "Documento inconsistente"),
-            new FiltroCatalogoItemV2("VERIFICADO", "Verificado"),
-            new FiltroCatalogoItemV2("PARA_FIRMA", "Para firma"),
-            new FiltroCatalogoItemV2("FIRMADO", "Firmado"),
-            new FiltroCatalogoItemV2("EMITIDO", "Emitido"),
-            new FiltroCatalogoItemV2("RESOLUCION_NUMERADA", "Resolución numerada"),
-            new FiltroCatalogoItemV2("EN_EJECUCION", "En ejecución"),
-            new FiltroCatalogoItemV2("EJECUTADO", "Ejecutado"),
-            new FiltroCatalogoItemV2("EN_NOTIFICACION", "En notificación"),
-            new FiltroCatalogoItemV2("CARGO_PENDIENTE", "Cargo pendiente"),
-            new FiltroCatalogoItemV2("CARGO_RECIBIDO", "Cargo recibido"),
-            new FiltroCatalogoItemV2("NOTIFICADO", "Notificado"),
-            new FiltroCatalogoItemV2("REQUIERE_PUBLICACION", "Requiere publicación"),
-            new FiltroCatalogoItemV2("PENDIENTE_PUBLICACION", "Pendiente publicación"),
-            new FiltroCatalogoItemV2("PUBLICACION_REGISTRADA", "Publicación registrada"),
-            new FiltroCatalogoItemV2("CERRADO", "Cerrado"),
-            new FiltroCatalogoItemV2("ARCHIVADO", "Archivado")
-        };
     }
 
     private void limpiar() {

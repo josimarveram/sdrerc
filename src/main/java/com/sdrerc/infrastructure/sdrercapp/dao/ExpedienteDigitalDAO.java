@@ -47,7 +47,9 @@ public class ExpedienteDigitalDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append("esol.fecha_recepcion, e.fecha_ultimo_movimiento, ");
+        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
+        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
         sql.append("JOIN etapa_expediente edh ON edh.id_etapa = h.id_etapa_destino ");
         sql.append("WHERE h.id_expediente = e.id_expediente AND h.activo = 1 AND edh.codigo = 'EXPEDIENTE_DIGITAL') AS fecha_ingreso_digital, ");
@@ -92,10 +94,6 @@ public class ExpedienteDigitalDAO {
         sql.append("LEFT JOIN usuario udc ON udc.id_usuario = dig.id_usuario_custodio ");
         sql.append("WHERE e.activo = 1 AND et.codigo = ? ");
         params.add(ETAPA_DIGITAL);
-        sql.append("AND est.codigo IN (?, ?, ?) ");
-        params.add(ESTADO_CARPETA_CREADA);
-        params.add(ESTADO_LINK_REGISTRADO);
-        params.add(ESTADO_COMPLETO);
 
         if (filtro != null && hasText(filtro.getEstadoCodigo()) && !"TODOS".equalsIgnoreCase(filtro.getEstadoCodigo())) {
             sql.append("AND UPPER(est.codigo) = ? ");
@@ -558,6 +556,7 @@ public class ExpedienteDigitalDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                getLongOrNull(rs, "dias_restantes"),
                 toLocalDateTime(rs.getTimestamp("fecha_ingreso_digital")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 rs.getString("responsable"),

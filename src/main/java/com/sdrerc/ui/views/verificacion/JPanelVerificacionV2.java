@@ -14,6 +14,7 @@ import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
+import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
@@ -402,12 +403,10 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private void cargarFiltrosBase() {
-        cmbEstadoFiltro.removeAllItems();
-        cmbEstadoFiltro.addItem(new SimpleItem("TODOS", "Todos"));
-        cmbEstadoFiltro.addItem(new SimpleItem("EN_VERIFICACION", "En verificación"));
-        cmbEstadoFiltro.addItem(new SimpleItem("REQUIERE_CORRECCION", "Requiere corrección"));
-        cmbEstadoFiltro.addItem(new SimpleItem("DOCUMENTO_INCONSISTENTE", "Documento inconsistente"));
-        cmbEstadoFiltro.addItem(new SimpleItem("VERIFICADO", "Verificado"));
+        EstadoExpedienteComboSupportV2.cargar(
+                cmbEstadoFiltro, "VERIFICACION", new SimpleItem("TODOS", "Todos los estados"),
+                (codigo, nombre) -> new SimpleItem(codigo, nombre),
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Verificación."));
     }
 
     private void cargarCatalogos() {

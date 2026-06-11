@@ -2,7 +2,6 @@ package com.sdrerc.domain.dto.sdrercapp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 public class AnalisisExpedienteDTO {
 
@@ -16,6 +15,7 @@ public class AnalisisExpedienteDTO {
     private final String numeroActa;
     private final String titular;
     private final LocalDate fechaRecepcion;
+    private final Long diasRestantes;
     private final LocalDateTime fechaRegistro;
     private final LocalDateTime fechaAsignacion;
     private final LocalDateTime fechaUltimoMovimiento;
@@ -39,6 +39,7 @@ public class AnalisisExpedienteDTO {
             String numeroActa,
             String titular,
             LocalDate fechaRecepcion,
+            Long diasRestantes,
             LocalDateTime fechaRegistro,
             LocalDateTime fechaAsignacion,
             LocalDateTime fechaUltimoMovimiento,
@@ -60,6 +61,7 @@ public class AnalisisExpedienteDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.fechaRecepcion = fechaRecepcion;
+        this.diasRestantes = diasRestantes;
         this.fechaRegistro = fechaRegistro;
         this.fechaAsignacion = fechaAsignacion;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
@@ -158,17 +160,7 @@ public class AnalisisExpedienteDTO {
     }
 
     public Long getDiasEnEtapa() {
-        LocalDate base = fechaRecepcion;
-        if (base == null && fechaUltimoMovimiento != null) {
-            base = fechaUltimoMovimiento.toLocalDate();
-        }
-        if (base == null && fechaAsignacion != null) {
-            base = fechaAsignacion.toLocalDate();
-        }
-        if (base == null && fechaRegistro != null) {
-            base = fechaRegistro.toLocalDate();
-        }
-        return base == null ? null : ChronoUnit.DAYS.between(base, LocalDate.now());
+        return diasRestantes;
     }
 
     public boolean isRecibible() {
