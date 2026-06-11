@@ -289,7 +289,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 0);
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(7).setMinWidth(220);
-            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
         } else {
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(1).setMinWidth(150);
