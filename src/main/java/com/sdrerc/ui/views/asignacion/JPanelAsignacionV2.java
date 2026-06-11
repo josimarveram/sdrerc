@@ -757,18 +757,21 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void asociarRelacionadosRapido() {
         finalizarEdicionTabla();
-        AsignacionExpedienteDTO expediente = obtenerExpedienteParaRelacionados();
-        if (expediente == null) {
-            mostrarInfo("Seleccione un solo expediente con posibles relacionados.");
+        AsociacionRapidaSeleccion seleccion = obtenerSeleccionAsociacionRapida();
+        if (seleccion == null) {
+            mostrarInfo("Seleccione un expediente con posibles relacionados o marque dos expedientes con la misma acta y titular.");
             return;
         }
-        if (expediente.getPosiblesRelacionados() <= 0) {
+        if (!seleccion.esSeleccionMultiple() && seleccion.expedienteFoco.getPosiblesRelacionados() <= 0) {
             mostrarInfo("El expediente seleccionado no tiene coincidencias pendientes por misma acta y titular.");
             return;
         }
+        String detalle = seleccion.esSeleccionMultiple()
+                ? "Se asociarán los " + seleccion.totalSeleccionados + " expedientes marcados si comparten el mismo número de acta y titular.\n"
+                : "Se asociarán los expedientes pendientes que tengan el mismo número de acta y titular.\n";
         int confirm = JOptionPane.showConfirmDialog(
                 this,
-                "Se asociarán los expedientes pendientes que tengan el mismo número de acta y titular.\n"
+                detalle
                         + "Si un relacionado no tiene número de expediente, tomará el número del expediente principal.\n"
                         + "¿Desea continuar?",
                 "Confirmar asociación rápida",
@@ -782,11 +785,14 @@ public class JPanelAsignacionV2 extends JPanel {
         SwingWorker<ExpedienteRelacionResultadoDTO, Void> worker = new SwingWorker<ExpedienteRelacionResultadoDTO, Void>() {
             @Override
             protected ExpedienteRelacionResultadoDTO doInBackground() throws Exception {
-                List<ExpedienteRelacionadoDTO> relacionados = relacionadoDeteccionService.listarPosiblesRelacionados(expediente.getIdExpediente());
-                List<Long> ids = new ArrayList<>();
-                for (ExpedienteRelacionadoDTO relacionado : relacionados) {
-                    if (relacionado.getIdExpediente() != null) {
-                        ids.add(relacionado.getIdExpediente());
+                List<Long> ids = new ArrayList<>(seleccion.idsRelacionados);
+                if (!seleccion.esSeleccionMultiple()) {
+                    ids.clear();
+                    List<ExpedienteRelacionadoDTO> relacionados = relacionadoDeteccionService.listarPosiblesRelacionados(seleccion.expedienteFoco.getIdExpediente());
+                    for (ExpedienteRelacionadoDTO relacionado : relacionados) {
+                        if (relacionado.getIdExpediente() != null) {
+                            ids.add(relacionado.getIdExpediente());
+                        }
                     }
                 }
                 if (ids.isEmpty()) {
@@ -798,7 +804,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             "No hay coincidencias pendientes para asociar.");
                 }
                 return relacionadoService.asociarRelacionados(
-                        expediente.getIdExpediente(),
+                        seleccion.idPrincipal,
                         ids,
                         "Relación confirmada por misma acta y titular.");
             }
@@ -853,6 +859,63 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         int modelRow = obtenerModelRowSeleccionada();
         return modelRow >= 0 && modelRow < expedientes.size() ? expedientes.get(modelRow) : null;
+    }
+
+    private AsociacionRapidaSeleccion obtenerSeleccionAsociacionRapida() {
+        List<AsignacionExpedienteDTO> marcados = obtenerExpedientesMarcados();
+        if (marcados.size() >= 2) {
+            AsignacionExpedienteDTO principal = elegirPrincipalAsociacion(marcados);
+            List<Long> relacionados = new ArrayList<>();
+            for (AsignacionExpedienteDTO item : marcados) {
+                if (!item.getIdExpediente().equals(principal.getIdExpediente())) {
+                    relacionados.add(item.getIdExpediente());
+                }
+            }
+            return new AsociacionRapidaSeleccion(principal, principal.getIdExpediente(), relacionados, marcados.size());
+        }
+        AsignacionExpedienteDTO foco = obtenerExpedienteParaRelacionados();
+        if (foco == null) {
+            return null;
+        }
+        return new AsociacionRapidaSeleccion(foco, foco.getIdExpediente(), new ArrayList<Long>(), 1);
+    }
+
+    private List<AsignacionExpedienteDTO> obtenerExpedientesMarcados() {
+        List<AsignacionExpedienteDTO> marcados = new ArrayList<>();
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0)) && i >= 0 && i < expedientes.size()) {
+                marcados.add(expedientes.get(i));
+            }
+        }
+        return marcados;
+    }
+
+    private AsignacionExpedienteDTO elegirPrincipalAsociacion(List<AsignacionExpedienteDTO> items) {
+        AsignacionExpedienteDTO principal = null;
+        for (AsignacionExpedienteDTO item : items) {
+            if (principal == null) {
+                principal = item;
+                continue;
+            }
+            boolean itemTieneNumero = tieneNumeroExpediente(item);
+            boolean principalTieneNumero = tieneNumeroExpediente(principal);
+            if (itemTieneNumero && !principalTieneNumero) {
+                principal = item;
+                continue;
+            }
+            if (itemTieneNumero == principalTieneNumero
+                    && item.getFechaRegistro() != null
+                    && (principal.getFechaRegistro() == null || item.getFechaRegistro().isBefore(principal.getFechaRegistro()))) {
+                principal = item;
+            }
+        }
+        return principal == null ? items.get(0) : principal;
+    }
+
+    private boolean tieneNumeroExpediente(AsignacionExpedienteDTO item) {
+        return item != null
+                && item.getNumeroExpediente() != null
+                && !item.getNumeroExpediente().trim().isEmpty();
     }
 
     private Long obtenerIdFilaSeleccionada() {
@@ -920,10 +983,10 @@ public class JPanelAsignacionV2 extends JPanel {
             aplicarIdentidadVisual(null, true);
             lblExpedienteSeleccionado.setText("Selección múltiple");
             lblIngreso.setText("Múltiple");
-            lblIngreso.setToolTipText("Asignación múltiple de expedientes marcados.");
-            lblRelacionados.setText("Revise relacionados antes de asignar selección múltiple.");
-            btnAsociarRelacionados.setText("Seleccione uno para asociar");
-            btnAsociarRelacionados.setEnabled(false);
+            lblIngreso.setToolTipText("Selección múltiple de expedientes marcados.");
+            lblRelacionados.setText("Puede asociar la selección si comparte número de acta y titular.");
+            btnAsociarRelacionados.setText("Asociar selección relacionada");
+            btnAsociarRelacionados.setEnabled(true);
         } else {
             aplicarIdentidadVisual(null, false);
             limpiarPanelAsignacion();
@@ -1095,8 +1158,7 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiar.setEnabled(!trabajando);
         btnVerDetalle.setEnabled(!trabajando);
         btnVerRelacionados.setEnabled(!trabajando);
-        btnAsociarRelacionados.setEnabled(!trabajando && obtenerExpedienteParaRelacionados() != null
-                && obtenerExpedienteParaRelacionados().getPosiblesRelacionados() > 0);
+        btnAsociarRelacionados.setEnabled(!trabajando && puedeAsociarRelacionados());
         btnSeleccionarVisibles.setEnabled(!trabajando);
         btnLimpiarSeleccion.setEnabled(!trabajando);
         btnAsignarSeleccionado.setEnabled(!trabajando);
@@ -1118,6 +1180,15 @@ public class JPanelAsignacionV2 extends JPanel {
         if (editor != null) {
             editor.stopCellEditing();
         }
+    }
+
+    private boolean puedeAsociarRelacionados() {
+        int marcados = contarSeleccionados();
+        if (marcados >= 2) {
+            return true;
+        }
+        AsignacionExpedienteDTO expediente = obtenerExpedienteParaRelacionados();
+        return expediente != null && expediente.getPosiblesRelacionados() > 0;
     }
 
     private void mostrarError(String context, Exception ex) {
@@ -1280,6 +1351,28 @@ public class JPanelAsignacionV2 extends JPanel {
         @Override
         public String toString() {
             return label;
+        }
+    }
+
+    private static final class AsociacionRapidaSeleccion {
+        private final AsignacionExpedienteDTO expedienteFoco;
+        private final Long idPrincipal;
+        private final List<Long> idsRelacionados;
+        private final int totalSeleccionados;
+
+        private AsociacionRapidaSeleccion(
+                AsignacionExpedienteDTO expedienteFoco,
+                Long idPrincipal,
+                List<Long> idsRelacionados,
+                int totalSeleccionados) {
+            this.expedienteFoco = expedienteFoco;
+            this.idPrincipal = idPrincipal;
+            this.idsRelacionados = idsRelacionados;
+            this.totalSeleccionados = totalSeleccionados;
+        }
+
+        private boolean esSeleccionMultiple() {
+            return totalSeleccionados >= 2;
         }
     }
 }
