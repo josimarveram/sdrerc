@@ -62,25 +62,25 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[]{
                 "Fila",
-                "Número trámite",
-                "Canal recepción",
-                "N° documento",
-                "Tipo procedimiento",
-                "Tipo solicitud",
-                "Tipo documento",
-                "Tipo acta",
-                "Número acta",
+                "N° TRÁMITE WEB",
+                "CANAL RECEPCIÓN",
+                "N° DOCUMENTO",
+                "PROCEDIMIENTO REGISTRAL",
+                "TIPO DE SOLICITUD",
+                "TIPO DOCUMENTO",
+                "TIPO DE ACTA",
+                "N° ACTA",
                 "Titular",
-                "Tipo doc. titular",
-                "N° doc. titular",
-                "Remitente",
-                "Tipo doc. solicitante",
-                "N° doc. solicitante",
-                "Fecha recepción",
-                "Estado validación",
-                "Posible duplicado",
-                "Número expediente generado",
-                "Observación"
+                "TIPO DOCUMENTO IDENTIDAD TITULAR",
+                "N° DOCUMENTO IDENTIDAD TITULAR",
+                "SOLICITADO POR",
+                "TIPO DOCUMENTO IDENTIDAD SOLICITANTE",
+                "N° DOCUMENTO IDENTIDAD SOLICITANTE",
+                "FECHA DE SOLICITUD",
+                "ESTADO VALIDACIÓN",
+                "POSIBLE DUPLICADO",
+                "NÚMERO EXPEDIENTE GENERADO",
+                "OBSERVACIÓN"
             },
             0) {
         @Override
@@ -171,21 +171,34 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setGridColor(AppV2Theme.BORDER);
         table.setIntercellSpacing(new Dimension(0, 1));
-        table.getColumnModel().getColumn(0).setMaxWidth(60);
-        table.getColumnModel().getColumn(1).setPreferredWidth(140);
-        table.getColumnModel().getColumn(2).setPreferredWidth(130);
-        table.getColumnModel().getColumn(3).setPreferredWidth(150);
-        table.getColumnModel().getColumn(4).setPreferredWidth(170);
-        table.getColumnModel().getColumn(5).setPreferredWidth(120);
-        table.getColumnModel().getColumn(6).setPreferredWidth(140);
-        table.getColumnModel().getColumn(7).setPreferredWidth(120);
-        table.getColumnModel().getColumn(9).setPreferredWidth(190);
-        table.getColumnModel().getColumn(12).setPreferredWidth(190);
-        table.getColumnModel().getColumn(18).setPreferredWidth(190);
-        table.getColumnModel().getColumn(19).setPreferredWidth(260);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        AppV2TableColumnSizer.applyWidths(
+                table,
+                70,
+                180,
+                170,
+                180,
+                260,
+                180,
+                190,
+                160,
+                150,
+                280,
+                320,
+                300,
+                280,
+                360,
+                340,
+                180,
+                190,
+                190,
+                280,
+                380);
 
         JScrollPane scroll = new JScrollPane(table);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         return scroll;
     }
