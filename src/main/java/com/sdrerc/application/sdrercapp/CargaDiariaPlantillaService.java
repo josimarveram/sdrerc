@@ -191,7 +191,7 @@ public class CargaDiariaPlantillaService {
         DataValidationConstraint constraint = helper.createFormulaListConstraint(nombreRango);
         CellRangeAddressList rango = new CellRangeAddressList(1, ULTIMA_FILA_VALIDACION, column, column);
         DataValidation validation = helper.createValidation(constraint, rango);
-        validation.setSuppressDropDownArrow(false);
+        validation.setSuppressDropDownArrow(true);
         validation.setEmptyCellAllowed(true);
         validation.setShowPromptBox(true);
         validation.setShowErrorBox(true);
