@@ -9,6 +9,7 @@ import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -21,7 +22,10 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -53,6 +57,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular o responsable", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
+    private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
@@ -188,19 +194,39 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         gbc.gridy = 1;
         gbc.gridx = 0;
-        filtros.add(crearLabelFiltro("Etapa"), gbc);
-        gbc.gridx = 1;
-        filtros.add(cmbEtapa, gbc);
+        if (perfilRegistroRecepcion) {
+            filtros.add(crearLabelFiltro("Fecha solicitud desde"), gbc);
+            gbc.gridx = 1;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            filtros.add(fechaSolicitudDesde, gbc);
+            gbc.fill = GridBagConstraints.NONE;
 
-        gbc.gridx = 2;
-        filtros.add(crearLabelFiltro("Estado"), gbc);
-        gbc.gridx = 3;
-        filtros.add(cmbEstado, gbc);
+            gbc.gridx = 2;
+            filtros.add(crearLabelFiltro("Fecha solicitud hasta"), gbc);
+            gbc.gridx = 3;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            filtros.add(fechaSolicitudHasta, gbc);
+            gbc.fill = GridBagConstraints.NONE;
 
-        gbc.gridx = 4;
-        filtros.add(crearLabelFiltro("Mostrar"), gbc);
-        gbc.gridx = 5;
-        filtros.add(spnLimite, gbc);
+            gbc.gridx = 4;
+            filtros.add(crearLabelFiltro("Mostrar"), gbc);
+            gbc.gridx = 5;
+            filtros.add(spnLimite, gbc);
+        } else {
+            filtros.add(crearLabelFiltro("Etapa"), gbc);
+            gbc.gridx = 1;
+            filtros.add(cmbEtapa, gbc);
+
+            gbc.gridx = 2;
+            filtros.add(crearLabelFiltro("Estado"), gbc);
+            gbc.gridx = 3;
+            filtros.add(cmbEstado, gbc);
+
+            gbc.gridx = 4;
+            filtros.add(crearLabelFiltro("Mostrar"), gbc);
+            gbc.gridx = 5;
+            filtros.add(spnLimite, gbc);
+        }
 
         btnVerDetalle.setEnabled(false);
         btnVerDetalle.setToolTipText("Seleccione un expediente para abrir la consola de expediente");
@@ -278,14 +304,23 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void configurarControlesFiltro() {
+        if (perfilRegistroRecepcion) {
+            txtBusqueda.setPlaceholder("Buscar expediente, trámite, titular o documento");
+        }
         txtBusqueda.setColumns(34);
-        txtBusqueda.setPreferredSize(new Dimension(360, 34));
-        txtBusqueda.setMinimumSize(new Dimension(280, 34));
+        txtBusqueda.setPreferredSize(new Dimension(perfilRegistroRecepcion ? 460 : 360, 34));
+        txtBusqueda.setMinimumSize(new Dimension(perfilRegistroRecepcion ? 340 : 280, 34));
 
         cmbEtapa.setPreferredSize(new Dimension(190, 34));
         cmbEtapa.setMinimumSize(new Dimension(180, 34));
         cmbEstado.setPreferredSize(new Dimension(240, 34));
         cmbEstado.setMinimumSize(new Dimension(220, 34));
+
+        Dimension fechaSize = new Dimension(180, 40);
+        fechaSolicitudDesde.setPreferredSize(fechaSize);
+        fechaSolicitudDesde.setMinimumSize(new Dimension(165, 40));
+        fechaSolicitudHasta.setPreferredSize(fechaSize);
+        fechaSolicitudHasta.setMinimumSize(new Dimension(165, 40));
 
         Dimension limiteSize = new Dimension(86, 34);
         spnLimite.setPreferredSize(limiteSize);
@@ -326,16 +361,27 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void buscar() {
-        setBuscando(true);
         String texto = txtBusqueda.getText();
-        String etapa = codigoSeleccionado(cmbEtapa);
-        String estado = codigoSeleccionado(cmbEstado);
+        String etapa = perfilRegistroRecepcion ? "REGISTRO" : codigoSeleccionado(cmbEtapa);
+        String estado = perfilRegistroRecepcion ? "REGISTRADO" : codigoSeleccionado(cmbEstado);
+        LocalDate fechaDesde = perfilRegistroRecepcion ? fechaSeleccionada(fechaSolicitudDesde) : null;
+        LocalDate fechaHasta = perfilRegistroRecepcion ? fechaSeleccionada(fechaSolicitudHasta) : null;
         int limite = ((Number) spnLimite.getValue()).intValue();
 
+        if (fechaDesde != null && fechaHasta != null && fechaHasta.isBefore(fechaDesde)) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "La fecha solicitud hasta no puede ser menor que la fecha solicitud desde.",
+                    "Filtros de Registro / Recepción",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        setBuscando(true);
         SwingWorker<List<ExpedienteBandejaDTO>, Void> worker = new SwingWorker<List<ExpedienteBandejaDTO>, Void>() {
             @Override
             protected List<ExpedienteBandejaDTO> doInBackground() throws Exception {
-                return consultaService.buscarBandeja(texto, etapa, estado, limite);
+                return consultaService.buscarBandeja(texto, etapa, estado, fechaDesde, fechaHasta, limite);
             }
 
             @Override
@@ -360,12 +406,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             cmbEtapa.setSelectedIndex(0);
         }
         cmbEstado.setSelectedIndex(0);
+        fechaSolicitudDesde.setDate(null);
+        fechaSolicitudHasta.setDate(null);
         spnLimite.setValue(200);
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
         tablePanel.setEmpty(true);
         lblResultado.setText(etapaBloqueada
-                ? "Filtros limpiados. La bandeja permanece filtrada por Registro."
+                ? "Filtros limpiados. La bandeja permanece filtrada por Registro / Registrado."
                 : "Filtros limpiados. Presione Buscar para cargar expedientes.");
     }
 
@@ -470,6 +518,17 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return item.hasCodigo() ? item.getCodigo() : null;
         }
         return null;
+    }
+
+    private static LocalDate fechaSeleccionada(PremiumDateFieldV2 field) {
+        if (field == null) {
+            return null;
+        }
+        Date date = field.getDate();
+        if (date == null) {
+            return null;
+        }
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
     private void seleccionarEtapaInicial() {

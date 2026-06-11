@@ -35,6 +35,16 @@ public class ExpedienteBandejaDAO {
     }
 
     public List<ExpedienteBandejaDTO> buscar(String textoLibre, String etapaCodigo, String estadoCodigo, int limite) throws SQLException {
+        return buscar(textoLibre, etapaCodigo, estadoCodigo, null, null, limite);
+    }
+
+    public List<ExpedienteBandejaDTO> buscar(
+            String textoLibre,
+            String etapaCodigo,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
@@ -86,6 +96,20 @@ public class ExpedienteBandejaDAO {
         if (hasText(estadoCodigo)) {
             sql.append("AND UPPER(estado_codigo) = ? ");
             params.add(estadoCodigo.trim().toUpperCase());
+        }
+
+        if (fechaSolicitudDesde != null) {
+            sql.append("AND EXISTS (SELECT 1 FROM expediente_solicitud sf ");
+            sql.append("WHERE sf.id_expediente = b.id_expediente AND sf.activo = 1 ");
+            sql.append("AND TRUNC(sf.fecha_recepcion) >= ?) ");
+            params.add(Date.valueOf(fechaSolicitudDesde));
+        }
+
+        if (fechaSolicitudHasta != null) {
+            sql.append("AND EXISTS (SELECT 1 FROM expediente_solicitud sf ");
+            sql.append("WHERE sf.id_expediente = b.id_expediente AND sf.activo = 1 ");
+            sql.append("AND TRUNC(sf.fecha_recepcion) <= ?) ");
+            params.add(Date.valueOf(fechaSolicitudHasta));
         }
 
         sql.append("ORDER BY fecha_ultimo_movimiento DESC NULLS LAST, id_expediente DESC");
