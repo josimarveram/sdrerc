@@ -44,7 +44,7 @@ public class CargaDiariaValidacionService {
 
         Map<Integer, String> duplicadosBase = expedienteRegistroDAO.detectarDuplicadosContraBase(registros);
 
-        int indiceValido = 1;
+        int siguienteCorrelativo = expedienteRegistroDAO.obtenerSiguienteCorrelativoExpediente(correlativoExpedienteService.anioActual());
         for (CargaDiariaPreviewDTO item : registros) {
             boolean error = false;
             if (!hasText(item.getNumeroTramite())) {
@@ -119,7 +119,7 @@ public class CargaDiariaValidacionService {
             if (item.isPosibleDuplicado()) {
                 item.setNumeroExpedienteGenerado(null);
             } else {
-                item.setNumeroExpedienteGenerado(correlativoExpedienteService.generarPreliminar(indiceValido++));
+                item.setNumeroExpedienteGenerado(correlativoExpedienteService.generarPreliminar(siguienteCorrelativo++));
             }
             item.setListoParaRegistrar(true);
             if (item.isPosibleDuplicado()) {

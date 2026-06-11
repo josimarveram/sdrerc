@@ -61,6 +61,12 @@ public class ExpedienteRegistroDAO {
         return duplicados;
     }
 
+    public int obtenerSiguienteCorrelativoExpediente(int anio) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return obtenerUltimoCorrelativoExpediente(conn, anio) + 1;
+        }
+    }
+
     public CargaDiariaResultadoDTO registrarCarga(
             List<CargaDiariaPreviewDTO> registros,
             CorrelativoExpedienteService correlativoService) throws SQLException {
@@ -89,6 +95,8 @@ public class ExpedienteRegistroDAO {
                 Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
                 Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_CARGA_DIARIA), "movimiento IMPORTACION_CARGA_DIARIA");
+                int anioCorrelativo = correlativoService.anioActual();
+                int siguienteCorrelativo = obtenerUltimoCorrelativoExpediente(conn, anioCorrelativo) + 1;
 
                 for (CargaDiariaPreviewDTO item : candidatos) {
                     DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(conn, item.getNumeroActa(), item.getTitular());
@@ -116,7 +124,7 @@ public class ExpedienteRegistroDAO {
                     Long idExpediente = insertarExpediente(conn, item, idEtapaRegistro, idEstadoRegistrado);
                     String numeroExpediente = null;
                     if (duplicadoActaTitular == null) {
-                        numeroExpediente = correlativoService.generarDesdeId(idExpediente);
+                        numeroExpediente = correlativoService.generar(anioCorrelativo, siguienteCorrelativo++);
                         actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
                     }
 
@@ -199,7 +207,9 @@ public class ExpedienteRegistroDAO {
                 Long idExpediente = insertarExpedienteManual(conn, registro.getSolicitud(), idEtapaRegistro, idEstadoRegistrado);
                 String numeroExpediente = null;
                 if (duplicadoActaTitular == null) {
-                    numeroExpediente = correlativoService.generarDesdeId(idExpediente);
+                    int anioCorrelativo = correlativoService.anioActual();
+                    int siguienteCorrelativo = obtenerUltimoCorrelativoExpediente(conn, anioCorrelativo) + 1;
+                    numeroExpediente = correlativoService.generar(anioCorrelativo, siguienteCorrelativo);
                     actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
                 }
 
@@ -237,6 +247,25 @@ public class ExpedienteRegistroDAO {
     private String buscarPorActaYTitular(Connection conn, String acta, String titular) throws SQLException {
         DuplicadoRegistro duplicado = buscarRegistroPorActaYTitular(conn, acta, titular);
         return duplicado == null ? null : duplicado.descripcion();
+    }
+
+    private int obtenerUltimoCorrelativoExpediente(Connection conn, int anio) throws SQLException {
+        String sql = "SELECT NVL(MAX(TO_NUMBER(SUBSTR(numero_expediente, -6))), 0) AS correlativo "
+                + "FROM expediente "
+                + "WHERE numero_expediente IS NOT NULL "
+                + "AND activo = 1 "
+                + "AND (numero_expediente LIKE ? OR numero_expediente LIKE ?) "
+                + "AND REGEXP_LIKE(numero_expediente, '^SDRERC[-_]EXP[-_][0-9]{4}[-_][0-9]{6}$')";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, "SDRERC-EXP-" + anio + "-%");
+            ps.setString(2, "SDRERC_EXP_" + anio + "_%");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("correlativo");
+                }
+            }
+        }
+        return 0;
     }
 
     private DuplicadoRegistro buscarRegistroPorActaYTitular(Connection conn, String acta, String titular) throws SQLException {
