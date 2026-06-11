@@ -207,6 +207,11 @@ public class ExpedienteRelacionadoDAO {
                             conn,
                             orientacion.idPrincipal,
                             idUsuarioCreador);
+                    sincronizarNumeroExpedienteRelacionado(
+                            conn,
+                            orientacion.idPrincipal,
+                            orientacion.idRelacionado,
+                            idUsuarioCreador);
                     if (existeRelacionActiva(conn, orientacion.idPrincipal, orientacion.idRelacionado)) {
                         sincronizarFechaVencimientoRelacionado(
                                 conn,
@@ -424,6 +429,39 @@ public class ExpedienteRelacionadoDAO {
             if (updated != 1) {
                 throw new SQLException("No se pudo actualizar la fecha de vencimiento del expediente relacionado.");
             }
+        }
+    }
+
+    private void sincronizarNumeroExpedienteRelacionado(
+            Connection conn,
+            Long idPrincipal,
+            Long idRelacionado,
+            Long idUsuarioModificador) throws SQLException {
+        if (idPrincipal == null || idRelacionado == null) {
+            return;
+        }
+        String sqlPrincipal = "SELECT numero_expediente FROM expediente WHERE id_expediente = ? AND activo = 1";
+        String numeroPrincipal = null;
+        try (PreparedStatement ps = conn.prepareStatement(sqlPrincipal)) {
+            ps.setLong(1, idPrincipal);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    numeroPrincipal = rs.getString("numero_expediente");
+                }
+            }
+        }
+        if (numeroPrincipal == null || numeroPrincipal.trim().isEmpty()) {
+            return;
+        }
+        String sqlUpdate = "UPDATE expediente "
+                + "SET numero_expediente = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activo = 1 "
+                + "AND (numero_expediente IS NULL OR TRIM(numero_expediente) IS NULL)";
+        try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
+            ps.setString(1, numeroPrincipal.trim());
+            setLongOrNull(ps, 2, idUsuarioModificador);
+            ps.setLong(3, idRelacionado);
+            ps.executeUpdate();
         }
     }
 

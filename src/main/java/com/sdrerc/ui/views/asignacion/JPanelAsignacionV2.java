@@ -1,10 +1,14 @@
 package com.sdrerc.ui.views.asignacion;
 
 import com.sdrerc.application.sdrercapp.AsignacionExpedienteService;
+import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoDeteccionService;
+import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.application.sdrercapp.UsuarioAsignacionService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
+import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ContextChip;
@@ -60,6 +64,7 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 
@@ -85,6 +90,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
+    private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
+    private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o documento", 28);
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
     private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
@@ -94,6 +101,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnVerRelacionados = new JButton("Ver relacionados");
+    private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
     private final JButton btnSeleccionarVisibles = new JButton("Seleccionar visibles");
     private final JButton btnLimpiarSeleccion = new JButton("Limpiar selección");
     private final JButton btnAsignarSeleccionado = new JButton("Asignar expediente");
@@ -227,6 +235,7 @@ public class JPanelAsignacionV2 extends JPanel {
         chipPanelAsignacion.addActionListener(e -> alternarExpansionPanelAsignacion());
         panel.setHeaderLeadingComponent(chipPanelAsignacion);
         panel.addSection(crearResumenAsignacion());
+        panel.addSection(crearAccionesRelacionados());
         panel.addSection(crearFlujoAsignacion());
         panel.addSection(crearDestinoAsignacion());
         panel.addSection(crearComentarioAsignacion());
@@ -239,6 +248,15 @@ public class JPanelAsignacionV2 extends JPanel {
         section.addRow("Seleccionados", lblSeleccionadosPanel);
         section.addRow("Expediente", lblExpedienteSeleccionado);
         section.addRow("Relacionados", lblRelacionados);
+        return section;
+    }
+
+    private JPanel crearAccionesRelacionados() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Asociación rápida");
+        btnAsociarRelacionados.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnAsociarRelacionados.setEnabled(false);
+        btnAsociarRelacionados.setToolTipText("Asociar expedientes con el mismo número de acta y titular.");
+        section.addRow("Acción", btnAsociarRelacionados);
         return section;
     }
 
@@ -349,6 +367,7 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiar.addActionListener(e -> limpiar());
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
         btnVerRelacionados.addActionListener(e -> abrirRelacionadosSeleccionado());
+        btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
         btnSeleccionarVisibles.addActionListener(e -> seleccionarVisibles());
         btnLimpiarSeleccion.addActionListener(e -> limpiarSeleccion());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
@@ -637,6 +656,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void asignarFilaSeleccionada() {
+        finalizarEdicionTabla();
         Long id = obtenerIdFilaSeleccionada();
         if (id == null) {
             mostrarInfo("Seleccione un expediente para asignar.");
@@ -653,6 +673,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void asignarMarcados() {
+        finalizarEdicionTabla();
         List<Long> ids = obtenerIdsMarcados();
         if (ids.isEmpty()) {
             mostrarInfo("Seleccione uno o más expedientes para asignar.");
@@ -721,19 +742,89 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void abrirRelacionadosSeleccionado() {
-        Long idExpediente = obtenerIdFilaSeleccionada();
-        if (idExpediente == null) {
-            mostrarInfo("Seleccione un expediente para revisar relacionados.");
+        finalizarEdicionTabla();
+        AsignacionExpedienteDTO expediente = obtenerExpedienteParaRelacionados();
+        if (expediente == null) {
+            mostrarInfo("Seleccione un solo expediente para revisar relacionados.");
             return;
         }
         Window owner = SwingUtilities.getWindowAncestor(this);
-        DlgExpedientesRelacionadosV2 dialog = new DlgExpedientesRelacionadosV2(owner, idExpediente);
+        DlgExpedientesRelacionadosV2 dialog = new DlgExpedientesRelacionadosV2(owner, expediente.getIdExpediente());
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
         buscar();
     }
 
+    private void asociarRelacionadosRapido() {
+        finalizarEdicionTabla();
+        AsignacionExpedienteDTO expediente = obtenerExpedienteParaRelacionados();
+        if (expediente == null) {
+            mostrarInfo("Seleccione un solo expediente con posibles relacionados.");
+            return;
+        }
+        if (expediente.getPosiblesRelacionados() <= 0) {
+            mostrarInfo("El expediente seleccionado no tiene coincidencias pendientes por misma acta y titular.");
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se asociarán los expedientes pendientes que tengan el mismo número de acta y titular.\n"
+                        + "Si un relacionado no tiene número de expediente, tomará el número del expediente principal.\n"
+                        + "¿Desea continuar?",
+                "Confirmar asociación rápida",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        setTrabajando(true, "Asociando expedientes por misma acta y titular...");
+        SwingWorker<ExpedienteRelacionResultadoDTO, Void> worker = new SwingWorker<ExpedienteRelacionResultadoDTO, Void>() {
+            @Override
+            protected ExpedienteRelacionResultadoDTO doInBackground() throws Exception {
+                List<ExpedienteRelacionadoDTO> relacionados = relacionadoDeteccionService.listarPosiblesRelacionados(expediente.getIdExpediente());
+                List<Long> ids = new ArrayList<>();
+                for (ExpedienteRelacionadoDTO relacionado : relacionados) {
+                    if (relacionado.getIdExpediente() != null) {
+                        ids.add(relacionado.getIdExpediente());
+                    }
+                }
+                if (ids.isEmpty()) {
+                    return new ExpedienteRelacionResultadoDTO(
+                            0,
+                            0,
+                            0,
+                            0,
+                            "No hay coincidencias pendientes para asociar.");
+                }
+                return relacionadoService.asociarRelacionados(
+                        expediente.getIdExpediente(),
+                        ids,
+                        "Relación confirmada por misma acta y titular.");
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ExpedienteRelacionResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            resultado.getMensaje(),
+                            "Asociación de expedientes",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo completar la asociación de expedientes.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private List<Long> obtenerIdsMarcados() {
+        finalizarEdicionTabla();
         List<Long> ids = new ArrayList<>();
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0))) {
@@ -746,6 +837,22 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
         return ids;
+    }
+
+    private AsignacionExpedienteDTO obtenerExpedienteParaRelacionados() {
+        int marcados = contarSeleccionados();
+        if (marcados > 1) {
+            return null;
+        }
+        if (marcados == 1) {
+            for (int i = 0; i < tableModel.getRowCount(); i++) {
+                if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0))) {
+                    return i >= 0 && i < expedientes.size() ? expedientes.get(i) : null;
+                }
+            }
+        }
+        int modelRow = obtenerModelRowSeleccionada();
+        return modelRow >= 0 && modelRow < expedientes.size() ? expedientes.get(modelRow) : null;
     }
 
     private Long obtenerIdFilaSeleccionada() {
@@ -805,12 +912,18 @@ public class JPanelAsignacionV2 extends JPanel {
             lblRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? item.getPosiblesRelacionados() + " posibles relacionados por misma acta y titular."
                     : "Sin alerta de relacionados.");
+            btnAsociarRelacionados.setText(item.getPosiblesRelacionados() > 0
+                    ? "Asociar " + item.getPosiblesRelacionados() + " relacionado(s)"
+                    : "Sin relacionados pendientes");
+            btnAsociarRelacionados.setEnabled(item.getPosiblesRelacionados() > 0);
         } else if (marcados > 1) {
             aplicarIdentidadVisual(null, true);
             lblExpedienteSeleccionado.setText("Selección múltiple");
             lblIngreso.setText("Múltiple");
             lblIngreso.setToolTipText("Asignación múltiple de expedientes marcados.");
             lblRelacionados.setText("Revise relacionados antes de asignar selección múltiple.");
+            btnAsociarRelacionados.setText("Seleccione uno para asociar");
+            btnAsociarRelacionados.setEnabled(false);
         } else {
             aplicarIdentidadVisual(null, false);
             limpiarPanelAsignacion();
@@ -887,6 +1000,8 @@ public class JPanelAsignacionV2 extends JPanel {
         lblIngreso.setText("Normal");
         lblIngreso.setToolTipText(null);
         lblRelacionados.setText("Sin alerta de relacionados.");
+        btnAsociarRelacionados.setText("Sin relacionados pendientes");
+        btnAsociarRelacionados.setEnabled(false);
         txtComentario.setText("");
     }
 
@@ -980,6 +1095,8 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiar.setEnabled(!trabajando);
         btnVerDetalle.setEnabled(!trabajando);
         btnVerRelacionados.setEnabled(!trabajando);
+        btnAsociarRelacionados.setEnabled(!trabajando && obtenerExpedienteParaRelacionados() != null
+                && obtenerExpedienteParaRelacionados().getPosiblesRelacionados() > 0);
         btnSeleccionarVisibles.setEnabled(!trabajando);
         btnLimpiarSeleccion.setEnabled(!trabajando);
         btnAsignarSeleccionado.setEnabled(!trabajando);
@@ -991,6 +1108,16 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void mostrarInfo(String message) {
         JOptionPane.showMessageDialog(this, message, "Asignación", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void finalizarEdicionTabla() {
+        if (!table.isEditing()) {
+            return;
+        }
+        TableCellEditor editor = table.getCellEditor();
+        if (editor != null) {
+            editor.stopCellEditing();
+        }
     }
 
     private void mostrarError(String context, Exception ex) {

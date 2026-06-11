@@ -27,6 +27,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
@@ -225,6 +226,7 @@ public class DlgExpedientesRelacionadosV2 extends JDialog {
     }
 
     private void asociarSeleccionados() {
+        finalizarEdicionTabla();
         List<Long> seleccionados = obtenerIdsMarcados();
         if (seleccionados.isEmpty()) {
             mostrarInfo("Seleccione uno o más expedientes relacionados para asociar.");
@@ -268,6 +270,16 @@ public class DlgExpedientesRelacionadosV2 extends JDialog {
             }
         };
         worker.execute();
+    }
+
+    private void finalizarEdicionTabla() {
+        if (!table.isEditing()) {
+            return;
+        }
+        TableCellEditor editor = table.getCellEditor();
+        if (editor != null) {
+            editor.stopCellEditing();
+        }
     }
 
     private List<Long> obtenerIdsMarcados() {
