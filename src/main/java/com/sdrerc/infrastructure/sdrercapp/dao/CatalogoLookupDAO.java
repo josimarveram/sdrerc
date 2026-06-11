@@ -7,7 +7,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class CatalogoLookupDAO {
 
@@ -128,6 +130,36 @@ public class CatalogoLookupDAO {
                 return items;
             }
         }
+    }
+
+    public List<CatalogoItemDTO> listarEstadosExpedientePorCodigos(List<String> codigos) throws SQLException {
+        List<CatalogoItemDTO> items = new ArrayList<>();
+        if (codigos == null || codigos.isEmpty()) {
+            return items;
+        }
+        String sql = "SELECT codigo, nombre "
+                + "FROM estado_expediente "
+                + "WHERE activo = 1 AND UPPER(codigo) = ? "
+                + "ORDER BY id_estado";
+        Set<String> agregados = new LinkedHashSet<>();
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            for (String codigo : codigos) {
+                String normalized = codigo == null ? "" : codigo.trim().toUpperCase();
+                if (normalized.isEmpty() || agregados.contains(normalized)) {
+                    continue;
+                }
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, normalized);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            items.add(new CatalogoItemDTO(rs.getString("codigo"), rs.getString("nombre")));
+                            agregados.add(normalized);
+                        }
+                    }
+                }
+            }
+        }
+        return items;
     }
 
     public List<CatalogoItemDTO> listarTiposObservacion() throws SQLException {

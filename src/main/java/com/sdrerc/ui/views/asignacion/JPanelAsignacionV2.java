@@ -406,12 +406,13 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void cargarEstados() {
-        EstadoExpedienteComboSupportV2.cargar(
+        EstadoExpedienteComboSupportV2.cargarPorCodigos(
                 cmbEstado,
-                "ASIGNACION",
                 new FiltroCatalogoItemV2(null, "Todos los estados"),
                 (codigo, nombre) -> new FiltroCatalogoItemV2(codigo, nombre),
-                ex -> lblEstado.setText("No se pudieron cargar los estados de Asignación."));
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Asignación."),
+                "REGISTRADO",
+                "ASIGNADO");
     }
 
     private void cargarEquipos() {

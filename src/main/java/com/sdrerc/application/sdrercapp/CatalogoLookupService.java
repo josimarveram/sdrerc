@@ -39,4 +39,11 @@ public class CatalogoLookupService {
         }
         return catalogoLookupDAO.listarEstadosExpedientePorEtapa(etapaCodigo);
     }
+
+    public List<CatalogoItemDTO> listarEstadosExpedientePorCodigos(List<String> codigos) throws SQLException {
+        if (codigos == null || codigos.isEmpty()) {
+            throw new IllegalArgumentException("Los códigos de estado son obligatorios.");
+        }
+        return catalogoLookupDAO.listarEstadosExpedientePorCodigos(codigos);
+    }
 }
