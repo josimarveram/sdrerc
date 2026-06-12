@@ -58,6 +58,10 @@ public class AsignacionExpedienteDAO {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
+        sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed ");
+        sql.append(" WHERE ed.id_expediente = e.id_expediente AND ed.activo = 1 ");
+        sql.append(" AND TRIM(ed.numero_documento) IS NOT NULL) AS numero_documento, ");
         sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
         sql.append(nombrePersona("p")).append(" AS titular, ");
         sql.append(nombrePersona("ps")).append(" AS solicitante, p.numero_documento AS numero_documento_titular, ");
@@ -251,6 +255,7 @@ public class AsignacionExpedienteDAO {
                 idExpediente,
                 rs.getString("numero_expediente"),
                 rs.getString("numero_tramite_documentario"),
+                rs.getString("numero_documento"),
                 rs.getString("procedimiento"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),

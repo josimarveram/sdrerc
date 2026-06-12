@@ -129,7 +129,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblSeleccionados = new JLabel("0 expedientes seleccionados");
     private final JLabel lblSeleccionadosPanel = new JLabel("0 expedientes seleccionados");
     private final JLabel lblExpedienteSeleccionado = new JLabel("-");
-    private final JLabel lblDocumentoSeleccionado = new JLabel("-");
+    private final JLabel lblTramiteWebSeleccionado = new JLabel("-");
+    private final JLabel lblNumeroDocumentoSeleccionado = new JLabel("-");
     private final JLabel lblRecepcionAbogado = new JLabel("-");
     private final JLabel lblOrigen = new JLabel("Registro / Registrado");
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
@@ -285,7 +286,8 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Expediente seleccionado");
         section.addRow("Seleccionados", lblSeleccionadosPanel);
         section.addRow("Expediente", lblExpedienteSeleccionado);
-        section.addRow("Documento", lblDocumentoSeleccionado);
+        section.addRow("Trámite Web", lblTramiteWebSeleccionado);
+        section.addRow("N° Documento", lblNumeroDocumentoSeleccionado);
         section.addRow("Recepción", lblRecepcionAbogado);
         section.addRow("Alertas", crearPanelDocumentosRelacionados());
         return section;
@@ -376,7 +378,8 @@ public class JPanelAsignacionV2 extends JPanel {
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        lblDocumentoSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblTramiteWebSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblNumeroDocumentoSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnAsignarSeleccionado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -1301,8 +1304,10 @@ public class JPanelAsignacionV2 extends JPanel {
             AsignacionExpedienteDTO item = filaPanel.principal;
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(item.getNumeroExpediente());
-            lblDocumentoSeleccionado.setText(documentoPrincipalTexto(item));
-            lblDocumentoSeleccionado.setToolTipText(detalleDocumentoPrincipal(item));
+            actualizarIdentificacionDocumento(
+                    item.getNumeroTramiteDocumentario(),
+                    item.getNumeroDocumento(),
+                    detalleDocumentoPrincipal(item));
             aplicarEstadoRecepcion(lblRecepcionAbogado, estadoRecepcionPrincipal(item));
             lblOrigen.setText("Registro / Registrado");
             lblDestino.setText("Asignación / Asignado");
@@ -1321,8 +1326,10 @@ public class JPanelAsignacionV2 extends JPanel {
         } else if (filaPanel != null && filaPanel.esAsociada()) {
             aplicarIdentidadVisual(filaPanel.principal, false);
             lblExpedienteSeleccionado.setText("Expediente principal: " + filaPanel.numeroExpedientePrincipal());
-            lblDocumentoSeleccionado.setText("Documento asociado: " + textoDocumentoRelacionado(filaPanel.asociado));
-            lblDocumentoSeleccionado.setToolTipText(detalleDocumentoAsociado(filaPanel));
+            actualizarIdentificacionDocumento(
+                    filaPanel.asociado.getNumeroTramiteDocumentario(),
+                    filaPanel.asociado.getNumeroDocumento(),
+                    detalleDocumentoAsociado(filaPanel));
             aplicarEstadoRecepcion(lblRecepcionAbogado, estadoRecepcionAsociado(filaPanel));
             lblOrigen.setText("Expediente principal");
             lblDestino.setText(filaPanel.numeroExpedientePrincipal());
@@ -1334,8 +1341,7 @@ public class JPanelAsignacionV2 extends JPanel {
         } else if (marcados > 1) {
             aplicarIdentidadVisual(null, true);
             lblExpedienteSeleccionado.setText("Selección múltiple");
-            lblDocumentoSeleccionado.setText("-");
-            lblDocumentoSeleccionado.setToolTipText(null);
+            actualizarIdentificacionDocumento(null, null, null);
             aplicarEstadoRecepcion(lblRecepcionAbogado, "No aplica");
             lblOrigen.setText("Registro / Registrado");
             lblDestino.setText("Asignación / Asignado");
@@ -1413,40 +1419,27 @@ public class JPanelAsignacionV2 extends JPanel {
         if (relacionado == null) {
             return "-";
         }
-        if (!relacionado.getNumeroDocumento().isEmpty() && !pareceIdentificadorTecnico(relacionado.getNumeroDocumento())) {
-            return relacionado.getNumeroDocumento();
-        }
-        if (!relacionado.getNumeroExpediente().isEmpty()) {
-            return relacionado.getNumeroExpediente();
-        }
-        if (!relacionado.getNumeroActa().isEmpty()) {
-            return "Acta " + relacionado.getNumeroActa();
-        }
-        return "Documento sin número";
+        return valorUi(relacionado.getNumeroDocumento());
     }
 
     private static boolean pareceIdentificadorTecnico(String value) {
         return value != null && value.trim().matches("\\d{1,4}");
     }
 
-    private String documentoPrincipalTexto(AsignacionExpedienteDTO item) {
-        if (item == null) {
-            return "-";
-        }
-        if (item.getNumeroTramiteDocumentario() != null && !item.getNumeroTramiteDocumentario().trim().isEmpty()) {
-            return item.getNumeroTramiteDocumentario();
-        }
-        if (item.getNumeroActa() != null && !item.getNumeroActa().trim().isEmpty()) {
-            return "Acta " + item.getNumeroActa();
-        }
-        return "Documento principal";
+    private void actualizarIdentificacionDocumento(String tramiteWeb, String numeroDocumento, String tooltip) {
+        lblTramiteWebSeleccionado.setText(valorUi(tramiteWeb));
+        lblNumeroDocumentoSeleccionado.setText(valorUi(numeroDocumento));
+        lblTramiteWebSeleccionado.setToolTipText(tooltip);
+        lblNumeroDocumentoSeleccionado.setToolTipText(tooltip);
     }
 
     private String detalleDocumentoPrincipal(AsignacionExpedienteDTO item) {
         if (item == null) {
             return null;
         }
-        return "Procedimiento: " + valorUi(item.getProcedimiento())
+        return "Trámite Web: " + valorUi(item.getNumeroTramiteDocumentario())
+                + " | N° Documento: " + valorUi(item.getNumeroDocumento())
+                + " | Procedimiento: " + valorUi(item.getProcedimiento())
                 + " | Tipo acta: " + valorUi(item.getTipoActa())
                 + " | N° acta: " + valorUi(item.getNumeroActa())
                 + " | Titular: " + valorUi(item.getTitular())
@@ -1459,7 +1452,8 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         ExpedienteRelacionadoDTO asociado = row.asociado;
         return "Expediente principal: " + row.numeroExpedientePrincipal()
-                + " | Documento: " + textoDocumentoRelacionado(asociado)
+                + " | Trámite Web: " + valorUi(asociado.getNumeroTramiteDocumentario())
+                + " | N° Documento: " + valorUi(asociado.getNumeroDocumento())
                 + " | Procedimiento: " + procedimientoAsociado(asociado)
                 + " | Tipo acta: " + valorUi(asociado.getTipoActa())
                 + " | N° acta: " + valorUi(asociado.getNumeroActa())
@@ -1667,8 +1661,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void limpiarPanelAsignacion() {
         lblExpedienteSeleccionado.setText("-");
-        lblDocumentoSeleccionado.setText("-");
-        lblDocumentoSeleccionado.setToolTipText(null);
+        actualizarIdentificacionDocumento(null, null, null);
         aplicarEstadoRecepcion(lblRecepcionAbogado, "-");
         lblOrigen.setText("Registro / Registrado");
         lblDestino.setText("Asignación / Asignado");

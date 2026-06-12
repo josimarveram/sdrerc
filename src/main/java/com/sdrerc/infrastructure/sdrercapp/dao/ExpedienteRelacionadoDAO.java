@@ -51,7 +51,7 @@ public class ExpedienteRelacionadoDAO {
                 + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
                 + "WHERE e.id_expediente = ? AND e.activo = 1 "
                 + ") "
-                + "SELECT DISTINCT e.id_expediente, e.numero_expediente, "
+                + "SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, "
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
@@ -142,7 +142,7 @@ public class ExpedienteRelacionadoDAO {
             return asociados;
         }
 
-        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+        String sql = "SELECT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, "
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
@@ -189,7 +189,7 @@ public class ExpedienteRelacionadoDAO {
             return null;
         }
 
-        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+        String sql = "SELECT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, "
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
@@ -559,6 +559,7 @@ public class ExpedienteRelacionadoDAO {
         return new ExpedienteRelacionadoDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_tramite_documentario"),
                 rs.getString("numero_documento"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
@@ -581,6 +582,7 @@ public class ExpedienteRelacionadoDAO {
         return new ExpedienteRelacionadoDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_tramite_documentario"),
                 rs.getString("numero_documento"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
@@ -610,12 +612,11 @@ public class ExpedienteRelacionadoDAO {
     }
 
     private static String numeroDocumentoRelacionadoSql(String expedienteAlias) {
-        return "NVL((SELECT MIN(ed.numero_documento) "
+        return "(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) "
                 + "FROM expediente_documento ed "
                 + "WHERE ed.id_expediente = " + expedienteAlias + ".id_expediente "
                 + "AND ed.activo = 1 "
-                + "AND TRIM(ed.numero_documento) IS NOT NULL), "
-                + expedienteAlias + ".numero_tramite_documentario)";
+                + "AND TRIM(ed.numero_documento) IS NOT NULL)";
     }
 
     private Long obtenerGeneratedKey(PreparedStatement ps, String entidad) throws SQLException {

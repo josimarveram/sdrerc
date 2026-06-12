@@ -215,6 +215,7 @@ Toda escritura V2 autorizada debe:
 - Si un documento asociado no es operativo, no debe permitirse asignacion independiente; su seleccion debe actualizar el panel contextual con datos del asociado y referencia al expediente principal.
 - Los controles de expandir/contraer en grillas anidadas V2 deben renderizarse con componentes o dibujo estable, no con caracteres Unicode que puedan fallar visualmente en Windows/Swing.
 - Las filas asociadas nunca deben usar IDs internos como reemplazo visual de datos funcionales; si procedimiento, solicitante, abogado, documento u otro dato no existe, mostrar `-` o un texto amigable y diagnosticar la brecha.
+- En paneles y detalles V2, `Tramite Web` debe mostrar `EXPEDIENTE.NUMERO_TRAMITE_DOCUMENTARIO` y `N° Documento` debe mostrar `EXPEDIENTE_DOCUMENTO.NUMERO_DOCUMENTO`; no mezclar ambos valores ni usar uno como fallback del otro, tanto para expedientes principales como para documentos asociados.
 - El estado `Recibido por abogado` o `Pendiente de recibir` para documentos asociados debe mostrarse como informacion controlada; una accion de recepcion solo debe habilitarse para el abogado responsable y no debe poblar automaticamente `EXPEDIENTE_DOCUMENTO_ANALIZADO`.
 - Al buscar, limpiar o refrescar grillas anidadas V2, limpiar expansiones/cache de asociados para evitar datos visuales de resultados anteriores.
 - Antes de duplicar layout manual en un modulo operativo, preferir componentes reutilizables `AppV2SearchToolbar`, `AppV2TableSectionPanel`, `AppV2SideActionPanel` y `AppV2SideSectionPanel` cuando apliquen.
