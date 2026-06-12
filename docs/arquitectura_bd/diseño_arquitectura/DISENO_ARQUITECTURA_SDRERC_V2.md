@@ -6,7 +6,7 @@
 |---|---|
 | Sistema | Sistema de Gestión de Expedientes SDRERC |
 | Componente | Aplicación SDRERC V2 |
-| Versión documental | 1.0 |
+| Versión documental | 1.1 |
 | Fecha de línea base | 12/06/2026 |
 | Estado | Línea base para revisión de Ingeniería de Software, Infraestructura y Soporte Tecnológico |
 | Tecnología principal | Java 8, Swing, FlatLaf, JDBC, Oracle |
@@ -55,7 +55,10 @@ La línea base fue elaborada mediante revisión estática de:
 |---|---|
 | `AGENTS.md` | Reglas persistentes, restricciones, módulos y decisiones vigentes |
 | `docs/arquitectura_bd/TO BE V2.bpmn` | Actores, tareas, decisiones y flujo funcional objetivo |
-| `docs/arquitectura_bd/Acta_Reunion_013_2026_DRC.docx` | Acuerdos funcionales del 22/05/2026 |
+| `docs/arquitectura_bd/Acta_Reunión_011-2026-DRC.md` | Primera revisión funcional del 06/05/2026 |
+| `docs/arquitectura_bd/Acta_Reunión_012-2026-DRC.md` | Segunda revisión y adecuaciones del 14/05/2026 |
+| `docs/arquitectura_bd/Acta_Reunión_013-2026-DRC.md` | Consolidación del flujo revisado el 22/05/2026 |
+| `docs/arquitectura_bd/Acta_Reunion_013_2026_DRC.docx` | Fuente original equivalente al Acta 013 en Markdown |
 | `docs/arquitectura_app/INFORME_REESTRUCTURACION_APP_SDRERC.md` | Diagnóstico y estrategia de migración paralela |
 | `src/main/java` | Arquitectura implementada, componentes y comportamiento |
 | `db/sdrerc_app/scripts` | Modelo físico, flujo, vistas y validaciones |
@@ -63,6 +66,22 @@ La línea base fue elaborada mediante revisión estática de:
 | `deploy/` | Estructura de distribución LAN e instalador |
 
 La base Oracle no fue consultada ni se ejecutó SQL para elaborar este documento. El estado físico se infiere de scripts y código fuente y debe contrastarse con el diccionario de datos del ambiente correspondiente.
+
+### 3.1 Precedencia y evolución de acuerdos
+
+Las actas representan decisiones incrementales. Ante contradicción se aplica el acuerdo más reciente:
+
+| Tema | Evolución | Criterio vigente |
+|---|---|---|
+| Duplicidad | Acta 011 propone acta + DNI; Acta 012 define acta + nombre del titular | Número de acta + titular normalizado |
+| Momento de numeración | Acta 011 propone Análisis; Acta 012 dispone numeración durante carga | Numeración en Registro, excepto duplicados potenciales, que no reciben número ni consumen correlativo |
+| Asignación en Ejecución | Acta 012 menciona asignación masiva en Ejecución | Acta 013 elimina la nueva asignación y conserva al abogado inicial |
+| Asignación en Notificación | Acta 012 solicita selección múltiple | No existe una definición posterior suficiente; queda como decisión funcional pendiente |
+| Estado “En abandono” | Acta 012 lo menciona en Notificación | Acta 013 lo consolida como resultado de Análisis con derivación directa a Notificación |
+| Archivo por no corresponde | Acta 012 ubica una acción en Verificación | Acta 013 permite al abogado archivar o derivar desde Análisis cuando el flujo activo lo soporte |
+| Expediente digital | Actas 012 y 013 dejan pendiente una asignación específica | No se exige nueva asignación por defecto; se conserva responsable/custodio |
+
+Los requisitos no reemplazados de las actas 011 y 012 continúan como parte del alcance objetivo.
 
 ## 4. Resumen ejecutivo
 
@@ -219,6 +238,39 @@ flowchart TB
 | Administración | Roles | Roles y permisos |
 
 La consola `DlgConsolaExpedienteV2` es el detalle único compartido. No deben crearse consolas paralelas por módulo.
+
+Requisitos transversales derivados de las primeras revisiones:
+
+- Registro / Recepción debe admitir dos titulares para actas de matrimonio.
+- La carga diaria es interoperabilidad por archivo Excel proveniente del proceso SITD; no constituye integración directa.
+- Las bandejas deben evolucionar a paginación real en Service/DAO. El control “Mostrar” limita resultados, pero no es paginación.
+- Los módulos requieren exportación Excel por etapa con una matriz de columnas aprobada.
+- Los plazos deben ser configurables por tipo documental o etapa.
+- Las descripciones breves por tipo documental deben provenir de catálogo mantenible.
+- La actualización masiva de Ejecución y Notificación queda pendiente de la matriz funcional correspondiente.
+- La opción “Asignación de respuesta” permanece sin definición funcional y no autoriza nuevos objetos o módulos.
+
+### 9.1 Trazabilidad de requisitos de las actas
+
+| Acta | Requisito | Estado observado al 12/06/2026 |
+|---|---|---|
+| 011 | Datos mínimos en Recepción y datos de notificación no obligatorios | Alineado con la separación funcional de Registro y Notificación |
+| 011 | Dos titulares para actas de matrimonio | Pendiente de cobertura V2 de extremo a extremo |
+| 011 | Carga diaria mediante Excel originado en SITD | Implementada como importación XLSX; sin integración directa |
+| 011 | Número y estado de documentos generados | Modelado e incorporado en módulos operativos |
+| 011 | Reportes Excel por etapa | Parcial/no uniforme |
+| 011 | Descripciones breves por tipo documental | Pendiente de catálogo mantenible |
+| 011 | Plazo máximo configurable por tipo documental | Modelo disponible; integración de Registro pendiente |
+| 012 | Tipos de identidad para remitente y titular | Implementado mediante catálogos/reglas V2, con política vigente específica para RUC |
+| 012 | Duplicados informativos y no restrictivos | Implementado; se guardan sin número hasta confirmación |
+| 012 | Asignación múltiple | Implementada en Asignación; anulada en Ejecución; pendiente en Notificación |
+| 012 | Paginación de listas y bandejas | Pendiente; existe limitación de cantidad |
+| 012 | Actualización masiva de Ejecución/Notificación | Pendiente de matriz y autorización |
+| 013 | Mismo abogado para Análisis y Ejecución | Modelado e implementado como regla vigente |
+| 013 | Resultados especiales hacia Notificación | Modelado en evaluación y flujo |
+| 013 | Verificación, reversión y número de resolución | Implementado mediante servicios/DAOs controlados |
+| 013 | Un intento virtual, dos presenciales y publicación | Modelado e implementado en flujo controlado |
+| 013 | Expediente digital sin asignación obligatoria | Modelado e implementado como metadata/custodia |
 
 ## 10. Flujo funcional de alto nivel
 
@@ -477,7 +529,7 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 | Usabilidad | Consola única, nombres amigables, badges y componentes reutilizables |
 | Compatibilidad | Java 8, JAR ejecutable, rutas relativas y despliegue LAN |
 | Seguridad | BCrypt, RBAC modelado, configuración externa y mínimo privilegio objetivo |
-| Rendimiento | Índices, límites de bandeja y consultas específicas |
+| Rendimiento | Índices, límites de bandeja y consultas específicas; paginación real pendiente |
 | Concurrencia | Bloqueo `FOR UPDATE` y validación de estado |
 | Evolución | Flujo y catálogos configurables por código |
 | Interoperabilidad | JDBC y archivos XLSX; integraciones externas aún no implementadas |
@@ -513,6 +565,12 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 | Empaquetado e instalador LAN | Implementado |
 | Autenticación V2 integrada al arranque | Pendiente |
 | Autorización uniforme de menú y casos de uso | Parcial |
+| Dos titulares para actas de matrimonio en V2 | Soportado conceptualmente por el modelo N:M; cobertura UI/persistencia debe verificarse |
+| Plazo configurable por tipo documental | Modelo disponible; Registro aún usa un plazo fijo transitorio |
+| Paginación real en todas las bandejas | Pendiente; existe límite de cantidad |
+| Exportación Excel por etapa | Parcial/no uniforme |
+| Actualización masiva Excel en Ejecución/Notificación | Pendiente de matriz y autorización |
+| Descripciones preconfiguradas por tipo documental | Pendiente de diseño de catálogo |
 | Pruebas automatizadas | No detectadas |
 | CI/CD | No detectado |
 | Logging operativo central | No detectado |
@@ -536,6 +594,11 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 | ARQ-R10 | Integraciones BPMN representadas solo como gestión manual/metadata | Medio | Mantenerlas como alcance futuro hasta contar con contratos autorizados |
 | ARQ-R11 | Mezcla de código legacy y V2 en un mismo artefacto fuente | Medio | Mantener límites de paquetes y evaluar modularización posterior |
 | ARQ-R12 | Instalador requiere privilegios administrativos | Medio | Validar modelo de distribución con Soporte y políticas de endpoint |
+| ARQ-R13 | Las bandejas limitan filas sin paginación real | Medio | Implementar paginación server-side reutilizable |
+| ARQ-R14 | Registro calcula vencimiento con un plazo fijo de 30 días | Alto | Resolver `PLAZO_CONFIGURACION` por tipo documental/etapa |
+| ARQ-R15 | Dos titulares de matrimonio no tienen cobertura V2 confirmada de extremo a extremo | Alto | Probar UI, DTO, DAO, consola e importador con dos relaciones TITULAR |
+| ARQ-R16 | Reportes y cargas masivas no tienen matrices definitivas | Medio | Aprobar contratos Excel antes de implementar escrituras |
+| ARQ-R17 | La asignación específica de Notificación no está definida | Medio | Acordar responsable, bandeja, transición y asignación masiva antes de implementar |
 
 Se detectó además una credencial escrita en texto claro dentro de un script de creación de esquema. No se reproduce en este documento. Debe reemplazarse mediante un cambio SQL autorizado y rotarse si fue utilizada.
 
@@ -562,6 +625,11 @@ Antes de declarar un pase productivo:
 |---|---|
 | Abogado único en análisis y ejecución | `EXPEDIENTE.ID_USUARIO_ABOGADO_INICIAL` y asignación principal |
 | Duplicados se importan y asocian en Asignación | Registro V2, `EXPEDIENTE_RELACION`, servicio transaccional |
+| Dos titulares para acta de matrimonio | Múltiples relaciones `EXPEDIENTE_PERSONA` con tipo `TITULAR` |
+| Carga diaria originada en SITD | Importación XLSX controlada, sin integración directa |
+| Plazo máximo por tipo documental | `PLAZO_CONFIGURACION` y fecha de vencimiento |
+| Reportes Excel por etapa | Servicios de exportación pendientes de matriz aprobada |
+| Paginación en listas y bandejas | Requisito transversal pendiente de implementación real |
 | Sin etapa visual VALIDACION | Macroetapas y acciones configuradas |
 | 1 notificación virtual + 2 presenciales | Servicio/DAO de Notificación y constraints del modelo |
 | Publicación posterior a notificación fallida | Módulo Publicación y transición configurada |
@@ -585,3 +653,7 @@ Requieren validación de las áreas competentes:
 8. contratos de integración con sistemas externos;
 9. estrategia de pruebas, CI/CD y control de versiones de base de datos;
 10. retiro o convivencia de largo plazo con la aplicación legacy.
+11. matrices de exportación e importación Excel para cada etapa;
+12. definición de “Asignación de respuesta”;
+13. responsabilidad final sobre estados de documentos y descripciones preconfiguradas.
+14. necesidad y reglas de asignación específica o masiva en Notificación.

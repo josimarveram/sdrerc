@@ -6,11 +6,11 @@
 |---|---|
 | Sistema | Sistema de Gestión de Expedientes SDRERC |
 | Modelo | Esquema Oracle `SDRERC_APP` |
-| Versión documental | 1.0 |
+| Versión documental | 1.1 |
 | Fecha de línea base | 12/06/2026 |
 | Estado | Línea base lógica y física para revisión |
 | Motor objetivo | Oracle XE / Oracle compatible con JDBC 8 |
-| Fuentes | Scripts `01` a `20`, DAOs V2, BPMN TO BE V2, Acta 013-2026-DRC y `AGENTS.md` |
+| Fuentes | Scripts `01` a `20`, DAOs V2, BPMN TO BE V2, Actas 011, 012 y 013-2026-DRC y `AGENTS.md` |
 
 ## 1. Propósito
 
@@ -27,6 +27,16 @@ Este documento describe el diseño conceptual, lógico y físico del esquema `SD
 - clasificación, calidad, migración y riesgos.
 
 No se ejecutó SQL ni se consultó el diccionario de una base Oracle. El documento representa el modelo definido en los scripts y consumido por el código al 12/06/2026. La existencia y versión de cada objeto debe verificarse en el ambiente antes de una aprobación física definitiva.
+
+### 1.1 Evolución funcional de las actas
+
+El diseño aplica precedencia cronológica:
+
+- Acta 011, 06/05/2026: define datos mínimos de recepción, dos titulares para matrimonio, carga diaria, reportes, plazos configurables y descripciones documentales.
+- Acta 012, 14/05/2026: precisa tipos de identidad, duplicidad por acta y nombre del titular, importación no restrictiva, numeración anual y paginación.
+- Acta 013, 22/05/2026: consolida el flujo, elimina la reasignación ordinaria en Ejecución y define análisis, notificación, cargos, publicación y expediente digital.
+
+Cuando un acuerdo cambia, se conserva el criterio más reciente. Los requisitos anteriores no contradichos siguen vigentes.
 
 ## 2. Objetivos del modelo
 
@@ -248,6 +258,21 @@ El flujo vigente se identifica por el código `SDRERC_TO_BE`.
 
 Los detalles de personas, actas, solicitudes, documentos, notificación y publicación no deben volver a incorporarse como columnas masivas de esta tabla.
 
+Para actas de matrimonio, los dos titulares se representan como dos filas activas de `EXPEDIENTE_PERSONA` con `TIPO_RELACION_PERSONA = 'TITULAR'`. No se requieren columnas `TITULAR_2` en `EXPEDIENTE`. Si el negocio necesita distinguir orden o rol conyugal, debe aprobarse un atributo de orden/rol antes de modificar el modelo físico.
+
+### 7.1 Frontera de captura en Registro / Recepción
+
+Las actas 011 y 012 establecen como núcleo de recepción:
+
+- tipo y número de acta;
+- tipo de solicitud;
+- canal de ingreso;
+- tipo y número de identidad del titular;
+- nombre del titular;
+- segundo titular cuando el acta de matrimonio lo requiera.
+
+Grupo familiar y datos propios de notificación no son obligatorios en esta etapa. La política V2 vigente usa `SIN DNI` con número vacío para ausencia de documento, excluye RUC para titular y lo permite para remitente cuando corresponda. Esta política operativa prevalece sobre la lista preliminar de opciones del Acta 012.
+
 ## 8. Etapas y estados
 
 Macroetapas:
@@ -273,6 +298,8 @@ Macroetapas:
 - validaciones en servicios y DAOs.
 
 Cada estado pertenece a una etapa mediante `ESTADO_EXPEDIENTE.ID_ETAPA`. El código de estado es único globalmente, por lo que un mismo código no debe duplicarse para dos etapas.
+
+`EN_ABANDONO` se modela como estado/resultado de Análisis y su transición conduce a Notificación. No debe duplicarse como un segundo estado global de Notificación.
 
 ## 9. Transiciones y acciones
 
@@ -383,6 +410,8 @@ Riesgo: `MAX + 1` sin objeto de serialización ni constraint único puede produc
 3. agregar unique constraint sobre `NUMERO_EXPEDIENTE`;
 4. reintentar de forma controlada ante conflicto.
 
+Esta regla reemplaza la propuesta inicial del Acta 011 de numerar recién en Análisis. La numeración ocurre en Registro/carga, excepto para potenciales duplicados, que esperan la confirmación de Asignación.
+
 ## 13. Asignación y responsabilidad
 
 `EXPEDIENTE_ASIGNACION` conserva:
@@ -403,6 +432,8 @@ Regla del Acta 013-2026-DRC:
 - análisis y ejecución conservan al mismo abogado principal;
 - ejecución no crea una nueva asignación ordinaria;
 - una reasignación excepcional debe desactivar la anterior, crear una nueva asignación y registrar historial.
+
+La selección múltiple es válida para la asignación inicial. La propuesta del Acta 012 de reasignar en Ejecución queda reemplazada por el Acta 013. Aunque `EXPEDIENTE_ASIGNACION` podría registrar otras etapas, una asignación específica en Notificación no está definida y no debe persistirse hasta aprobar responsable, transición y reglas de vigencia.
 
 ## 14. Evaluación, observación y documentos
 
@@ -434,6 +465,8 @@ Regla del Acta 013-2026-DRC:
 - estado del documento.
 
 Los estados documentales deben provenir de catálogo, no de texto libre en UI.
+
+El Acta 011 requiere descripciones breves preconfiguradas por tipo de documento. El modelo actual no contiene un catálogo específico para esa relación. Se recomienda diseñar, previa validación funcional, una entidad mantenible que vincule tipo documental con descripción sugerida, vigencia y orden de presentación; no debe resolverse con listas hardcodeadas.
 
 ## 15. Resolución y firma
 
@@ -587,6 +620,8 @@ Recomendaciones:
 - evitar índices redundantes con constraints únicos;
 - recopilar estadísticas después de carga o migración.
 
+La paginación requerida por el Acta 012 debe ejecutarse en Service/DAO con consultas ordenadas y estables. Un `ROWNUM <= límite` sin offset, cursor o clave de continuidad únicamente limita filas y no constituye paginación.
+
 ## 22. Vistas de lectura
 
 ### 22.1 Bandejas
@@ -648,6 +683,9 @@ Controles existentes o previstos:
 - verificación de intentos de notificación mayores a tres;
 - validación de expedientes sin abogado en etapas jurídicas;
 - revisión de rutas de flujo faltantes o duplicadas.
+- validación de uno o dos titulares según tipo de acta;
+- trazabilidad del origen de carga Excel;
+- coherencia entre plazo configurado y fecha de vencimiento.
 
 Se recomienda automatizar un reporte periódico de calidad con:
 
@@ -720,6 +758,12 @@ Como mínimo, Infraestructura debe definir:
 | DAT-R12 | Scripts base no son uniformemente idempotentes | Medio | Versionar migraciones y ejecutar una sola vez por ambiente |
 | DAT-R13 | Estados con código único global limitan reutilización | Medio | Mantener códigos diferenciados y resolver siempre por transición |
 | DAT-R14 | Retención y purga lógica no definidas | Medio | Aprobar política institucional |
+| DAT-R15 | El registro usa 30 días fijos en lugar de `PLAZO_CONFIGURACION` | Alto | Resolver plazo por tipo documental/etapa y conservar la regla aplicada |
+| DAT-R16 | No existe catálogo de descripciones preconfiguradas por tipo documental | Medio | Diseñar entidad mantenible después de validar valores y cardinalidad |
+| DAT-R17 | Dos titulares de matrimonio no tienen orden/rol explícito | Medio | Validar si basta la relación múltiple o se requiere orden funcional |
+| DAT-R18 | Cargas masivas de Ejecución/Notificación carecen de contrato de datos | Alto | Aprobar matriz, validaciones, idempotencia y trazabilidad antes de escribir |
+| DAT-R19 | Las consultas con límite no implementan paginación estable | Medio | Definir estrategia por offset o clave de continuidad |
+| DAT-R20 | No está definido si Notificación requiere asignación propia | Medio | Acordar modelo operativo antes de usar `EXPEDIENTE_ASIGNACION` para esa etapa |
 
 La credencial detectada no se reproduce en este documento y el script no fue modificado porque la tarea no autorizó cambios SQL.
 
@@ -755,6 +799,8 @@ El script `11_validaciones.sql` contiene consultas funcionales de apoyo, pero no
 - Cada transición funcional deja historial.
 - No existe etapa visual `VALIDACION`.
 - Los duplicados no consumen correlativo.
+- Las actas de matrimonio pueden relacionar dos titulares sin columnas duplicadas en `EXPEDIENTE`.
+- La fecha de vencimiento proviene de configuración de plazo, no de una constante Java.
 - El abogado inicial se conserva durante análisis y ejecución.
 - Los intentos de notificación respetan 1 virtual y 2 presenciales.
 - La publicación solo procede mediante transición activa.

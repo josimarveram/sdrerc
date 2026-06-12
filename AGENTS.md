@@ -20,6 +20,8 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 
 - Usar `AGENTS.md` como fuente principal de reglas del proyecto.
 - Usar `docs/arquitectura_app/*.md`, prompts e informes como contexto tecnico cuando aplique.
+- Usar como fuentes funcionales historicas las actas `docs/arquitectura_bd/Acta_Reunión_011-2026-DRC.md`, `Acta_Reunión_012-2026-DRC.md` y `Acta_Reunión_013-2026-DRC.md`.
+- Interpretar las actas de forma cronologica: ante contradiccion, el acuerdo posterior reemplaza al anterior; el Acta 013 del 22/05/2026 consolida el flujo revisado. Los requisitos anteriores no contradichos siguen vigentes.
 - Usar `/resume`, `/compact` y `/review` cuando ayuden a conservar continuidad y ahorrar contexto/tokens.
 - No repetir contexto largo salvo que sea necesario para decidir, validar o explicar un bloqueo.
 - Antes de pedir contexto al usuario, revisar archivos locales relevantes del proyecto.
@@ -73,6 +75,15 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - La plantilla de carga diaria debe mantener listas desplegables para tipo de documento de identidad, procedimiento registral, tipo de acta, tipo documento y tipo de solicitud; las reglas de identidad son SIN DNI con numero vacio, DNI 8 numeros, RUC 11 numeros, CE/Pasaporte hasta 12 alfanumericos.
 - La plantilla de carga diaria debe generar las columnas de numeros/documentos/tramites/actas como texto y aplicar validacion de datos en Excel para el numero de identidad segun el tipo seleccionado, ademas de la validacion del importador.
 - La carga diaria de Registro / Recepcion debe ofrecer descarga de una plantilla oficial `.xlsx` con encabezados compatibles con el parser V2. La importacion debe poder previsualizar y confirmar el mismo archivo de plantilla cuando el usuario complete la hoja de carga.
+- La carga diaria mediante Excel representa el canal de interoperabilidad controlada con los archivos originados en SITD; no asumir integracion directa con SITD sin contrato y autorizacion.
+- Para actas de matrimonio, el modelo y la UI V2 deben permitir dos titulares. La persistencia debe usar multiples relaciones `EXPEDIENTE_PERSONA` de tipo `TITULAR`; no agregar columnas especificas de segundo titular en la cabecera V2.
+- Los datos de grupo familiar y de notificacion no son obligatorios en Registro / Recepcion. Los datos de notificacion se gestionan en su modulo.
+- El plazo de atencion debe tender a resolverse mediante `PLAZO_CONFIGURACION` por tipo de documento o etapa. Un plazo fijo en Java es transitorio y debe quedar identificado como deuda tecnica.
+- La exportacion de reportes Excel por etapa es un requerimiento funcional. Debe implementarse mediante Service/DAO, con nombres amigables y sin SQL en formularios, una vez validada la matriz de columnas de cada reporte.
+- La actualizacion masiva por Excel para Ejecucion y Notificacion es un requerimiento pendiente de definicion de matriz. No implementarla ni efectuar escrituras parciales hasta contar con estructura, reglas de validacion y autorizacion explicita.
+- El mantenimiento de descripciones breves preconfiguradas por tipo de documento es un requerimiento pendiente de diseno de catalogo; no resolverlo con listas hardcodeadas.
+- La opcion funcional `Asignacion de respuesta` permanece pendiente de definicion; no inventar etapa, estado, tabla ni accion hasta contar con acuerdo funcional.
+- La seleccion multiple para asignacion masiva sigue vigente en el modulo Asignacion. El Acta 013 reemplaza la propuesta de nueva asignacion en Ejecucion porque debe mantenerse el abogado inicial. Una asignacion especifica o masiva en Notificacion permanece pendiente de definicion y no debe asumirse.
 
 ## 4.1 Estado actual de modulos SDRERC V2
 
@@ -222,6 +233,7 @@ Toda escritura V2 autorizada debe:
 - Las grillas avanzadas V2 deben encapsular librerias externas en componentes `appv2` reutilizables; no usar SwingX, GlazedLists u otra libreria directamente dentro de cada `JPanel`.
 - `Registro / Recepcion` puede funcionar como piloto controlado de mejoras de grilla; si una libreria externa no resuelve de forma confiable en Maven, deploy LAN o instalador, priorizar `AppV2Table`, `AppV2TablePanel` y `AppV2TableColumnSizer` mejorados antes de incorporar dependencia.
 - No incorporar GlazedLists u otra capa de filtrado/listas en modulos V2 si el beneficio no supera el riesgo de complejidad; la busqueda principal debe seguir en Service/DAO y cualquier filtro local debe diferenciarse visualmente.
+- Las listas y bandejas V2 deben evolucionar a paginacion real desde Service/DAO. El selector `Mostrar` o un limite maximo de filas no sustituye la paginacion requerida por el Acta 012-2026-DRC.
 
 ## 4.6 Alineamiento BPMN TO BE V2
 
