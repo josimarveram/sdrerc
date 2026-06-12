@@ -69,7 +69,13 @@ public class AsignacionExpedienteDAO {
         sql.append("esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
-        sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa ");
+        sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa, ");
+        sql.append("(SELECT COUNT(*) FROM expediente_relacion rc ");
+        sql.append(" WHERE rc.activo = 1 ");
+        sql.append(" AND rc.id_expediente_principal = e.id_expediente ");
+        sql.append(" AND UPPER(rc.tipo_relacion) IN (?, ?)) AS asociados_confirmados ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
         sql.append("FROM expediente e ");
         sql.append("JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual ");
         sql.append("JOIN estado_expediente est ON est.id_estado = e.id_estado_actual ");
@@ -258,6 +264,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("estado_codigo"),
                 rs.getInt("asignacion_activa") > 0,
                 expedienteRelacionadoDAO.contarPosiblesRelacionados(conn, idExpediente),
+                rs.getInt("asociados_confirmados"),
                 rs.getInt("potencial_duplicado") > 0,
                 rs.getString("observacion_solicitud"));
     }

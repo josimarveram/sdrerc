@@ -22,6 +22,7 @@ public class AsignacionExpedienteDTO {
     private final String estadoCodigo;
     private final boolean asignacionActiva;
     private final int posiblesRelacionados;
+    private final int asociadosConfirmados;
     private final boolean potencialDuplicado;
     private final String observacionSolicitud;
 
@@ -43,6 +44,7 @@ public class AsignacionExpedienteDTO {
             String estadoCodigo,
             boolean asignacionActiva,
             int posiblesRelacionados,
+            int asociadosConfirmados,
             boolean potencialDuplicado,
             String observacionSolicitud) {
         this.idExpediente = idExpediente;
@@ -62,6 +64,7 @@ public class AsignacionExpedienteDTO {
         this.estadoCodigo = safe(estadoCodigo);
         this.asignacionActiva = asignacionActiva;
         this.posiblesRelacionados = posiblesRelacionados;
+        this.asociadosConfirmados = asociadosConfirmados;
         this.potencialDuplicado = potencialDuplicado;
         this.observacionSolicitud = safe(observacionSolicitud);
     }
@@ -132,6 +135,10 @@ public class AsignacionExpedienteDTO {
 
     public int getPosiblesRelacionados() {
         return posiblesRelacionados;
+    }
+
+    public int getAsociadosConfirmados() {
+        return asociadosConfirmados;
     }
 
     public boolean isPotencialDuplicado() {

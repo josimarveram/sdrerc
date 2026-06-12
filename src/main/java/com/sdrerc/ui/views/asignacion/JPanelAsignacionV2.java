@@ -45,7 +45,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -73,6 +77,13 @@ import javax.swing.table.TableColumn;
 
 public class JPanelAsignacionV2 extends JPanel {
 
+    private static final int COL_EXPANDIR = 0;
+    private static final int COL_SELECCION = 1;
+    private static final int COL_DIAS = 2;
+    private static final int COL_EXPEDIENTE = 3;
+    private static final int COL_ESTADO = 11;
+    private static final int COL_RELACIONADOS = 12;
+    private static final int COL_ID = 13;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Color[] FOCUS_ACCENTS = new Color[]{
         AppV2Theme.TEAL,
@@ -138,6 +149,10 @@ public class JPanelAsignacionV2 extends JPanel {
             "Seleccione filtros y presione Buscar.");
     private final JPanel panelOperativo = new JPanel(new BorderLayout(14, 14));
     private final List<AsignacionExpedienteDTO> expedientes = new ArrayList<>();
+    private final List<AsignacionTableRow> filasTabla = new ArrayList<>();
+    private final Map<Long, List<ExpedienteRelacionadoDTO>> asociadosCache = new HashMap<>();
+    private final Set<Long> principalesExpandidos = new HashSet<>();
+    private final Set<Long> principalesCargando = new HashSet<>();
     private final List<ExpedienteRelacionadoDTO> documentosRelacionadosPanel = new ArrayList<>();
     private final MetricCardV2 cardPendientes = new MetricCardV2("Resultados", "0", "Según filtros", AppV2Theme.INFO);
     private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
@@ -146,7 +161,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2OperationalSplitPanel splitOperativo;
     private Color acentoSeleccion = AppV2Theme.TEAL;
     private Color fondoSeleccion = AppV2Theme.SOFT_BLUE;
-    private int filaModeloEnFoco = -1;
+    private Long idExpedienteGrupoEnFoco;
     private String contextoChip = "Panel de asignación";
     private boolean panelAsignacionVisible;
     private boolean panelAsignacionCerradoPorUsuario;
@@ -357,7 +372,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void configurarTabla() {
         table.setRowHeight(34);
-        table.setAutoCreateRowSorter(true);
+        table.setAutoCreateRowSorter(false);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
@@ -371,20 +386,23 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 54, 84, 185, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
-        configurarColumna(table.getColumnModel().getColumn(0), 54, 54, 58);
-        configurarColumna(table.getColumnModel().getColumn(1), 84, 78, 92);
-        configurarColumna(table.getColumnModel().getColumn(2), 185, 165, 260);
-        configurarColumna(table.getColumnModel().getColumn(3), 135, 128, 170);
-        configurarColumna(table.getColumnModel().getColumn(4), 230, 210, 320);
-        configurarColumna(table.getColumnModel().getColumn(5), 135, 128, 190);
-        configurarColumna(table.getColumnModel().getColumn(6), 130, 120, 180);
-        configurarColumna(table.getColumnModel().getColumn(7), 260, 230, 380);
-        configurarColumna(table.getColumnModel().getColumn(8), 240, 210, 360);
-        configurarColumna(table.getColumnModel().getColumn(9), 220, 190, 320);
-        configurarColumna(table.getColumnModel().getColumn(10), 155, 145, 220);
-        configurarColumna(table.getColumnModel().getColumn(11), 170, 150, 240);
-        table.getColumnModel().getColumn(0).setHeaderRenderer(new SelectAllHeaderRenderer());
+        AppV2TableColumnSizer.applyWidths(table, 46, 54, 84, 185, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
+        configurarColumna(table.getColumnModel().getColumn(COL_EXPANDIR), 46, 42, 48);
+        configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 54, 54, 58);
+        configurarColumna(table.getColumnModel().getColumn(COL_DIAS), 84, 78, 92);
+        configurarColumna(table.getColumnModel().getColumn(3), 185, 165, 260);
+        configurarColumna(table.getColumnModel().getColumn(4), 135, 128, 170);
+        configurarColumna(table.getColumnModel().getColumn(5), 230, 210, 320);
+        configurarColumna(table.getColumnModel().getColumn(6), 135, 128, 190);
+        configurarColumna(table.getColumnModel().getColumn(7), 130, 120, 180);
+        configurarColumna(table.getColumnModel().getColumn(8), 260, 230, 380);
+        configurarColumna(table.getColumnModel().getColumn(9), 240, 210, 360);
+        configurarColumna(table.getColumnModel().getColumn(10), 220, 190, 320);
+        configurarColumna(table.getColumnModel().getColumn(COL_ESTADO), 155, 145, 220);
+        configurarColumna(table.getColumnModel().getColumn(COL_RELACIONADOS), 170, 150, 240);
+        table.getColumnModel().getColumn(COL_EXPANDIR).setCellRenderer(new ExpandirRenderer());
+        table.getColumnModel().getColumn(COL_SELECCION).setHeaderRenderer(new SelectAllHeaderRenderer());
+        table.getColumnModel().getColumn(COL_SELECCION).setCellRenderer(new SeleccionRenderer());
     }
 
     private void configurarTablaDocumentosRelacionados() {
@@ -438,11 +456,22 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         });
         tableModel.addTableModelListener(e -> {
-            if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 0 && !actualizandoSeleccion) {
+            if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == COL_SELECCION && !actualizandoSeleccion) {
                 actualizarPanelSeleccion();
             }
         });
         table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int viewColumn = table.columnAtPoint(e.getPoint());
+                int viewRow = table.rowAtPoint(e.getPoint());
+                if (viewRow >= 0
+                        && viewColumn >= 0
+                        && table.convertColumnIndexToModel(viewColumn) == COL_EXPANDIR) {
+                    alternarExpansionFila(table.convertRowIndexToModel(viewRow));
+                }
+            }
+
             @Override
             public void mouseReleased(MouseEvent e) {
                 reabrirPanelSiCorresponde(e);
@@ -452,7 +481,7 @@ public class JPanelAsignacionV2 extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int column = table.columnAtPoint(e.getPoint());
-                if (column >= 0 && table.convertColumnIndexToModel(column) == 0) {
+                if (column >= 0 && table.convertColumnIndexToModel(column) == COL_SELECCION) {
                     alternarSeleccionVisibleDesdeHeader();
                 }
             }
@@ -574,30 +603,20 @@ public class JPanelAsignacionV2 extends JPanel {
     private void cargarTabla(List<AsignacionExpedienteDTO> items) {
         expedientes.clear();
         expedientes.addAll(items);
+        filasTabla.clear();
+        asociadosCache.clear();
+        principalesExpandidos.clear();
+        principalesCargando.clear();
         tableModel.setRowCount(0);
         table.clearSelection();
         int alertas = 0;
         for (AsignacionExpedienteDTO item : expedientes) {
-            if (item.getPosiblesRelacionados() > 0) {
+            if (item.getPosiblesRelacionados() > 0 || item.getAsociadosConfirmados() > 0) {
                 alertas++;
             } else if (!"Normal".equalsIgnoreCase(item.getAlertaIngreso())) {
                 alertas++;
             }
-            tableModel.addRow(new Object[]{
-                Boolean.FALSE,
-                item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
-                item.getNumeroExpediente(),
-                formatDate(item.getFechaRecepcion()),
-                item.getProcedimiento(),
-                item.getTipoActa(),
-                item.getNumeroActa(),
-                item.getTitular(),
-                item.getSolicitante(),
-                item.getAbogadoAsignado(),
-                DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                alertaAsignacion(item),
-                item.getIdExpediente()
-            });
+            agregarFilaPrincipal(item);
         }
         cardPendientes.setValue(String.valueOf(items.size()));
         cardRelacionados.setValue(String.valueOf(alertas));
@@ -608,7 +627,89 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarPanelSeleccion();
     }
 
+    private void agregarFilaPrincipal(AsignacionExpedienteDTO item) {
+        AsignacionTableRow row = AsignacionTableRow.principal(item);
+        filasTabla.add(row);
+        tableModel.addRow(new Object[]{
+            iconoExpansion(item),
+            Boolean.FALSE,
+            item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
+            item.getNumeroExpediente(),
+            formatDate(item.getFechaRecepcion()),
+            item.getProcedimiento(),
+            item.getTipoActa(),
+            item.getNumeroActa(),
+            item.getTitular(),
+            item.getSolicitante(),
+            item.getAbogadoAsignado(),
+            DisplayNameMapperV2.estado(item.getEstadoCodigo()),
+            alertaAsignacion(item),
+            item.getIdExpediente()
+        });
+    }
+
+    private void agregarFilaAsociada(AsignacionExpedienteDTO principal, ExpedienteRelacionadoDTO asociado, int index) {
+        AsignacionTableRow row = AsignacionTableRow.asociada(principal, asociado);
+        filasTabla.add(index, row);
+        tableModel.insertRow(index, new Object[]{
+            "",
+            null,
+            "",
+            "",
+            formatDate(asociado.getFechaRecepcion()),
+            textoDocumentoRelacionado(asociado).isEmpty() ? asociado.getProcedimiento() : textoDocumentoRelacionado(asociado),
+            asociado.getTipoActa(),
+            asociado.getNumeroActa(),
+            asociado.getTitular(),
+            "",
+            "",
+            DisplayNameMapperV2.estado(asociado.getEstadoCodigo()),
+            textoRelacionAsociada(asociado),
+            asociado.getIdExpediente()
+        });
+    }
+
+    private String iconoExpansion(AsignacionExpedienteDTO item) {
+        if (item == null || item.getIdExpediente() == null || item.getAsociadosConfirmados() <= 0) {
+            return "";
+        }
+        if (principalesCargando.contains(item.getIdExpediente())) {
+            return "...";
+        }
+        return principalesExpandidos.contains(item.getIdExpediente()) ? "−" : "+";
+    }
+
+    private String textoRelacionAsociada(ExpedienteRelacionadoDTO asociado) {
+        if (asociado == null) {
+            return "Documento asociado";
+        }
+        if (!asociado.getTipoRelacion().isEmpty()) {
+            return "Duplicado confirmado";
+        }
+        if (!asociado.getDescripcionRelacion().isEmpty()) {
+            return "Relación confirmada";
+        }
+        return "Documento asociado";
+    }
+
+    private void refrescarIconoExpansion(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size()) {
+            return;
+        }
+        AsignacionTableRow row = filasTabla.get(modelRow);
+        if (!row.esPrincipal()) {
+            return;
+        }
+        tableModel.setValueAt(iconoExpansion(row.principal), modelRow, COL_EXPANDIR);
+    }
+
     private String alertaAsignacion(AsignacionExpedienteDTO item) {
+        if (item.getAsociadosConfirmados() > 0 && item.getPosiblesRelacionados() > 0) {
+            return item.getAsociadosConfirmados() + " asociados / " + item.getPosiblesRelacionados() + " pendientes";
+        }
+        if (item.getAsociadosConfirmados() > 0) {
+            return item.getAsociadosConfirmados() + " documento(s) asociado(s)";
+        }
         if (item.getPosiblesRelacionados() > 0) {
             return item.getPosiblesRelacionados() + " relacionados";
         }
@@ -648,6 +749,10 @@ public class JPanelAsignacionV2 extends JPanel {
         cmbEstado.setSelectedIndex(0);
         spnLimite.setValue(200);
         expedientes.clear();
+        filasTabla.clear();
+        asociadosCache.clear();
+        principalesExpandidos.clear();
+        principalesCargando.clear();
         tableModel.setRowCount(0);
         table.clearSelection();
         tablePanel.setEmpty(true);
@@ -658,6 +763,110 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarPanelSeleccion();
     }
 
+    private void alternarExpansionFila(int modelRow) {
+        finalizarEdicionTabla();
+        if (modelRow < 0 || modelRow >= filasTabla.size()) {
+            return;
+        }
+        AsignacionTableRow row = filasTabla.get(modelRow);
+        if (!row.esPrincipal()
+                || row.principal.getIdExpediente() == null
+                || row.principal.getAsociadosConfirmados() <= 0) {
+            return;
+        }
+        Long idPrincipal = row.principal.getIdExpediente();
+        if (principalesExpandidos.contains(idPrincipal)) {
+            contraerAsociados(idPrincipal);
+            return;
+        }
+        List<ExpedienteRelacionadoDTO> cache = asociadosCache.get(idPrincipal);
+        if (cache != null) {
+            insertarAsociados(modelRow, row.principal, cache);
+            return;
+        }
+        if (principalesCargando.contains(idPrincipal)) {
+            return;
+        }
+        principalesCargando.add(idPrincipal);
+        refrescarIconoExpansion(modelRow);
+        SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker = new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {
+            @Override
+            protected List<ExpedienteRelacionadoDTO> doInBackground() throws Exception {
+                return relacionadoService.listarAsociadosConfirmados(idPrincipal);
+            }
+
+            @Override
+            protected void done() {
+                principalesCargando.remove(idPrincipal);
+                int principalRow = indiceFilaPrincipal(idPrincipal);
+                if (principalRow < 0) {
+                    return;
+                }
+                try {
+                    List<ExpedienteRelacionadoDTO> asociados = get();
+                    asociadosCache.put(idPrincipal, asociados);
+                    insertarAsociados(principalRow, filasTabla.get(principalRow).principal, asociados);
+                } catch (Exception ex) {
+                    refrescarIconoExpansion(principalRow);
+                    mostrarError("No se pudieron cargar los documentos asociados.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void insertarAsociados(int principalRow, AsignacionExpedienteDTO principal, List<ExpedienteRelacionadoDTO> asociados) {
+        if (principal == null || principal.getIdExpediente() == null || principalesExpandidos.contains(principal.getIdExpediente())) {
+            return;
+        }
+        principalesExpandidos.add(principal.getIdExpediente());
+        int insertAt = principalRow + 1;
+        if (asociados != null) {
+            for (ExpedienteRelacionadoDTO asociado : asociados) {
+                agregarFilaAsociada(principal, asociado, insertAt);
+                insertAt++;
+            }
+        }
+        refrescarIconoExpansion(principalRow);
+        table.revalidate();
+        table.repaint();
+    }
+
+    private void contraerAsociados(Long idPrincipal) {
+        if (idPrincipal == null) {
+            return;
+        }
+        int principalRow = indiceFilaPrincipal(idPrincipal);
+        if (principalRow < 0) {
+            return;
+        }
+        for (int i = filasTabla.size() - 1; i > principalRow; i--) {
+            AsignacionTableRow row = filasTabla.get(i);
+            if (row.esAsociada() && idPrincipal.equals(row.idExpedientePrincipal)) {
+                filasTabla.remove(i);
+                tableModel.removeRow(i);
+            }
+        }
+        principalesExpandidos.remove(idPrincipal);
+        refrescarIconoExpansion(principalRow);
+        table.revalidate();
+        table.repaint();
+        actualizarPanelSeleccion();
+    }
+
+    private int indiceFilaPrincipal(Long idPrincipal) {
+        if (idPrincipal == null) {
+            return -1;
+        }
+        for (int i = 0; i < filasTabla.size(); i++) {
+            AsignacionTableRow row = filasTabla.get(i);
+            if (row.esPrincipal() && idPrincipal.equals(row.principal.getIdExpediente())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private void seleccionarVisibles() {
         if (tableModel.getRowCount() == 0) {
             mostrarInfo("No hay expedientes visibles para seleccionar.");
@@ -666,8 +875,9 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizandoSeleccion = true;
         for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
             int modelRow = table.convertRowIndexToModel(viewRow);
-            if (modelRow >= 0 && modelRow < expedientes.size() && expedientes.get(modelRow).isAsignable()) {
-                tableModel.setValueAt(Boolean.TRUE, modelRow, 0);
+            AsignacionTableRow row = filaTabla(modelRow);
+            if (row != null && row.esAsignable()) {
+                tableModel.setValueAt(Boolean.TRUE, modelRow, COL_SELECCION);
             }
         }
         actualizandoSeleccion = false;
@@ -683,8 +893,9 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizandoSeleccion = true;
         for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
             int modelRow = table.convertRowIndexToModel(viewRow);
-            if (modelRow >= 0 && modelRow < expedientes.size() && expedientes.get(modelRow).isAsignable()) {
-                tableModel.setValueAt(Boolean.valueOf(seleccionar), modelRow, 0);
+            AsignacionTableRow row = filaTabla(modelRow);
+            if (row != null && row.esAsignable()) {
+                tableModel.setValueAt(Boolean.valueOf(seleccionar), modelRow, COL_SELECCION);
             }
         }
         actualizandoSeleccion = false;
@@ -697,7 +908,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private void limpiarSeleccion() {
         actualizandoSeleccion = true;
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            tableModel.setValueAt(Boolean.FALSE, i, 0);
+            tableModel.setValueAt(Boolean.FALSE, i, COL_SELECCION);
         }
         actualizandoSeleccion = false;
         table.clearSelection();
@@ -713,8 +924,13 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         int modelRow = obtenerModelRowSeleccionada();
-        if (modelRow < 0 || !expedientes.get(modelRow).isAsignable()) {
-            mostrarInfo("El expediente ya se encuentra asignado.");
+        AsignacionTableRow row = filaTabla(modelRow);
+        if (row != null && row.esAsociada()) {
+            mostrarInfo("Este documento está asociado al expediente principal y no requiere asignación independiente.");
+            return;
+        }
+        if (row == null || !row.esAsignable()) {
+            mostrarInfo("El expediente ya se encuentra asignado o no está habilitado para asignación.");
             return;
         }
         List<Long> ids = new ArrayList<>();
@@ -884,10 +1100,15 @@ public class JPanelAsignacionV2 extends JPanel {
         finalizarEdicionTabla();
         List<Long> ids = new ArrayList<>();
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0))) {
-                AsignacionExpedienteDTO item = expedientes.get(i);
+            if (Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
+                AsignacionTableRow row = filaTabla(i);
+                if (row == null || row.esAsociada()) {
+                    mostrarInfo("La selección contiene documentos asociados que no requieren asignación independiente.");
+                    return new ArrayList<Long>();
+                }
+                AsignacionExpedienteDTO item = row.principal;
                 if (!item.isAsignable()) {
-                    mostrarInfo("El expediente ya se encuentra asignado.");
+                    mostrarInfo("El expediente ya se encuentra asignado o no está habilitado para asignación.");
                     return new ArrayList<Long>();
                 }
                 ids.add(item.getIdExpediente());
@@ -903,13 +1124,18 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         if (marcados == 1) {
             for (int i = 0; i < tableModel.getRowCount(); i++) {
-                if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0))) {
-                    return i >= 0 && i < expedientes.size() ? expedientes.get(i) : null;
+                if (Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
+                    AsignacionTableRow row = filaTabla(i);
+                    return row == null || !row.esPrincipal() ? null : row.principal;
                 }
             }
         }
         int modelRow = obtenerModelRowSeleccionada();
-        return modelRow >= 0 && modelRow < expedientes.size() ? expedientes.get(modelRow) : null;
+        AsignacionTableRow row = filaTabla(modelRow);
+        if (row == null) {
+            return null;
+        }
+        return row.principal;
     }
 
     private AsociacionRapidaSeleccion obtenerSeleccionAsociacionRapida() {
@@ -934,8 +1160,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private List<AsignacionExpedienteDTO> obtenerExpedientesMarcados() {
         List<AsignacionExpedienteDTO> marcados = new ArrayList<>();
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0)) && i >= 0 && i < expedientes.size()) {
-                marcados.add(expedientes.get(i));
+            if (Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
+                AsignacionTableRow row = filaTabla(i);
+                if (row != null && row.esPrincipal()) {
+                    marcados.add(row.principal);
+                }
             }
         }
         return marcados;
@@ -971,10 +1200,11 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private Long obtenerIdFilaSeleccionada() {
         int modelRow = obtenerModelRowSeleccionada();
-        if (modelRow < 0 || modelRow >= expedientes.size()) {
+        AsignacionTableRow row = filaTabla(modelRow);
+        if (row == null) {
             return null;
         }
-        return expedientes.get(modelRow).getIdExpediente();
+        return row.getIdExpediente();
     }
 
     private int obtenerModelRowSeleccionada() {
@@ -983,6 +1213,10 @@ public class JPanelAsignacionV2 extends JPanel {
             return -1;
         }
         return table.convertRowIndexToModel(selected);
+    }
+
+    private AsignacionTableRow filaTabla(int modelRow) {
+        return modelRow >= 0 && modelRow < filasTabla.size() ? filasTabla.get(modelRow) : null;
     }
 
     private EquipoAsignacionDTO obtenerEquipoSeleccionado() {
@@ -1003,8 +1237,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private void actualizarPanelSeleccion() {
         int marcados = contarSeleccionados();
         int modelRow = obtenerModelRowSeleccionada();
-        boolean filaSeleccionada = modelRow >= 0 && modelRow < expedientes.size();
-        int seleccionados = marcados > 0 ? marcados : (filaSeleccionada ? 1 : 0);
+        AsignacionTableRow filaSeleccionada = filaTabla(modelRow);
+        int seleccionados = marcados > 0 ? marcados : (filaSeleccionada != null ? 1 : 0);
         String seleccionadosText = seleccionados == 0
                 ? "Seleccione uno o más expedientes para habilitar el panel de asignación."
                 : seleccionados + " expediente(s) seleccionados";
@@ -1017,23 +1251,40 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         actualizarVisibilidadPanelAsignacion(seleccionados > 0 && !panelAsignacionCerradoPorUsuario);
 
-        AsignacionExpedienteDTO item = itemParaPanel(modelRow, marcados);
-        if (item != null) {
+        AsignacionTableRow filaPanel = filaParaPanel(modelRow, marcados);
+        if (filaPanel != null && filaPanel.esPrincipal()) {
+            AsignacionExpedienteDTO item = filaPanel.principal;
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(item.getNumeroExpediente());
+            lblOrigen.setText("Registro / Registrado");
+            lblDestino.setText("Asignación / Asignado");
             lblIngreso.setText(item.getAlertaIngreso());
             lblIngreso.setToolTipText(item.getObservacionSolicitud().isEmpty() ? item.getAlertaIngreso() : item.getObservacionSolicitud());
             lblRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? item.getPosiblesRelacionados() + " posibles relacionados por misma acta y titular."
-                    : "Sin alerta de relacionados.");
+                    : (item.getAsociadosConfirmados() > 0
+                            ? item.getAsociadosConfirmados() + " documento(s) asociado(s) confirmado(s)."
+                            : "Sin alerta de relacionados."));
             cargarDocumentosRelacionadosPanel(item);
             btnAsociarRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? "Asociar " + item.getPosiblesRelacionados() + " relacionado(s)"
                     : "Sin relacionados pendientes");
             btnAsociarRelacionados.setEnabled(item.getPosiblesRelacionados() > 0);
+        } else if (filaPanel != null && filaPanel.esAsociada()) {
+            aplicarIdentidadVisual(filaPanel.principal, false);
+            lblExpedienteSeleccionado.setText("Documento asociado: " + textoDocumentoRelacionado(filaPanel.asociado));
+            lblOrigen.setText("Expediente principal");
+            lblDestino.setText(filaPanel.numeroExpedientePrincipal());
+            lblIngreso.setText("Duplicado confirmado");
+            lblIngreso.setToolTipText("Este documento está asociado al expediente principal y no requiere asignación independiente.");
+            limpiarDocumentosRelacionadosPanel("Asociado a expediente principal " + filaPanel.numeroExpedientePrincipal() + ".");
+            btnAsociarRelacionados.setText("Relación confirmada");
+            btnAsociarRelacionados.setEnabled(false);
         } else if (marcados > 1) {
             aplicarIdentidadVisual(null, true);
             lblExpedienteSeleccionado.setText("Selección múltiple");
+            lblOrigen.setText("Registro / Registrado");
+            lblDestino.setText("Asignación / Asignado");
             lblIngreso.setText("Múltiple");
             lblIngreso.setToolTipText("Selección múltiple de expedientes marcados.");
             limpiarDocumentosRelacionadosPanel("Puede asociar la selección si comparte número de acta y titular.");
@@ -1047,7 +1298,9 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void cargarDocumentosRelacionadosPanel(AsignacionExpedienteDTO item) {
         if (item == null || item.getIdExpediente() == null || item.getPosiblesRelacionados() <= 0) {
-            limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
+            limpiarDocumentosRelacionadosPanel(item != null && item.getAsociadosConfirmados() > 0
+                    ? item.getAsociadosConfirmados() + " documento(s) asociado(s) confirmado(s)."
+                    : "Sin alerta de relacionados.");
             return;
         }
         Long idExpediente = item.getIdExpediente();
@@ -1171,16 +1424,16 @@ public class JPanelAsignacionV2 extends JPanel {
         worker.execute();
     }
 
-    private AsignacionExpedienteDTO itemParaPanel(int modelRow, int marcados) {
+    private AsignacionTableRow filaParaPanel(int modelRow, int marcados) {
         if (marcados > 1) {
             return null;
         }
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0))) {
-                return expedientes.get(i);
+            if (Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
+                return filaTabla(i);
             }
         }
-        return modelRow >= 0 && modelRow < expedientes.size() ? expedientes.get(modelRow) : null;
+        return filaTabla(modelRow);
     }
 
     private void aplicarIdentidadVisual(AsignacionExpedienteDTO item, boolean multiple) {
@@ -1188,17 +1441,17 @@ public class JPanelAsignacionV2 extends JPanel {
             int paletteIndex = indicePaleta(item.getIdExpediente());
             acentoSeleccion = FOCUS_ACCENTS[paletteIndex];
             fondoSeleccion = FOCUS_BACKGROUNDS[paletteIndex];
-            filaModeloEnFoco = indiceExpediente(item.getIdExpediente());
+            idExpedienteGrupoEnFoco = item.getIdExpediente();
             contextoChip = "Expediente en foco: " + item.getNumeroExpediente();
         } else if (multiple) {
             acentoSeleccion = AppV2Theme.INDIGO;
             fondoSeleccion = new Color(238, 240, 250);
-            filaModeloEnFoco = -1;
+            idExpedienteGrupoEnFoco = null;
             contextoChip = "Selección múltiple";
         } else {
             acentoSeleccion = AppV2Theme.TEAL;
             fondoSeleccion = AppV2Theme.SOFT_BLUE;
-            filaModeloEnFoco = -1;
+            idExpedienteGrupoEnFoco = null;
             contextoChip = "Panel de asignación";
         }
         chipPanelAsignacion.setAccent(acentoSeleccion, fondoSeleccion);
@@ -1224,20 +1477,18 @@ public class JPanelAsignacionV2 extends JPanel {
         return (int) Math.abs(value % FOCUS_ACCENTS.length);
     }
 
-    private int indiceExpediente(Long idExpediente) {
-        if (idExpediente == null) {
-            return -1;
-        }
-        for (int i = 0; i < expedientes.size(); i++) {
-            if (idExpediente.equals(expedientes.get(i).getIdExpediente())) {
-                return i;
-            }
-        }
-        return -1;
+    private Color acentoGrupo(Long idExpedientePrincipal) {
+        return FOCUS_ACCENTS[indicePaleta(idExpedientePrincipal)];
+    }
+
+    private Color fondoGrupo(Long idExpedientePrincipal) {
+        return FOCUS_BACKGROUNDS[indicePaleta(idExpedientePrincipal)];
     }
 
     private void limpiarPanelAsignacion() {
         lblExpedienteSeleccionado.setText("-");
+        lblOrigen.setText("Registro / Registrado");
+        lblDestino.setText("Asignación / Asignado");
         lblIngreso.setText("Normal");
         lblIngreso.setToolTipText(null);
         limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
@@ -1299,13 +1550,13 @@ public class JPanelAsignacionV2 extends JPanel {
             return marcados;
         }
         int modelRow = obtenerModelRowSeleccionada();
-        return modelRow >= 0 && modelRow < expedientes.size() ? 1 : 0;
+        return filaTabla(modelRow) != null ? 1 : 0;
     }
 
     private int contarSeleccionados() {
         int total = 0;
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            if (Boolean.TRUE.equals(tableModel.getValueAt(i, 0))) {
+            if (Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
                 total++;
             }
         }
@@ -1317,9 +1568,10 @@ public class JPanelAsignacionV2 extends JPanel {
         int visiblesSeleccionados = 0;
         for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
             int modelRow = table.convertRowIndexToModel(viewRow);
-            if (modelRow >= 0 && modelRow < expedientes.size() && expedientes.get(modelRow).isAsignable()) {
+            AsignacionTableRow row = filaTabla(modelRow);
+            if (row != null && row.esAsignable()) {
                 visiblesAsignables++;
-                if (Boolean.TRUE.equals(tableModel.getValueAt(modelRow, 0))) {
+                if (Boolean.TRUE.equals(tableModel.getValueAt(modelRow, COL_SELECCION))) {
                     visiblesSeleccionados++;
                 }
             }
@@ -1366,6 +1618,10 @@ public class JPanelAsignacionV2 extends JPanel {
         if (marcados >= 2) {
             return true;
         }
+        AsignacionTableRow fila = filaTabla(obtenerModelRowSeleccionada());
+        if (fila != null && fila.esAsociada()) {
+            return false;
+        }
         AsignacionExpedienteDTO expediente = obtenerExpedienteParaRelacionados();
         return expediente != null && expediente.getPosiblesRelacionados() > 0;
     }
@@ -1388,6 +1644,7 @@ public class JPanelAsignacionV2 extends JPanel {
         private AsignacionTableModel() {
             super(new Object[]{
                 "",
+                "",
                 "Días",
                 "Nro. Expediente",
                 "Fecha Solicitud",
@@ -1405,15 +1662,15 @@ public class JPanelAsignacionV2 extends JPanel {
 
         @Override
         public boolean isCellEditable(int row, int column) {
-            return column == 0
+            return column == COL_SELECCION
                     && row >= 0
-                    && row < expedientes.size()
-                    && expedientes.get(row).isAsignable();
+                    && row < filasTabla.size()
+                    && filasTabla.get(row).esAsignable();
         }
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            return columnIndex == 0 ? Boolean.class : Object.class;
+            return columnIndex == COL_SELECCION ? Boolean.class : Object.class;
         }
     }
 
@@ -1440,6 +1697,71 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
+    private class ExpandirRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            int modelRow = table.convertRowIndexToModel(row);
+            AsignacionTableRow fila = filaTabla(modelRow);
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+            label.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+            label.setOpaque(true);
+            if (fila != null && fila.esAsociada()) {
+                label.setText("└");
+                label.setForeground(acentoGrupo(fila.idExpedientePrincipal));
+                label.setBackground(fondoGrupo(fila.idExpedientePrincipal));
+                label.setToolTipText("Documento asociado al expediente principal.");
+                return label;
+            }
+            String text = value == null ? "" : value.toString();
+            label.setText(text);
+            label.setForeground(text.isEmpty() ? AppV2Theme.TEXT_SECONDARY : acentoGrupo(fila == null ? null : fila.getIdPrincipal()));
+            label.setBackground(isSelected ? fondoSeleccion : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            label.setToolTipText(text.isEmpty() ? null : "Mostrar u ocultar documentos asociados.");
+            return label;
+        }
+    }
+
+    private class SeleccionRenderer extends JCheckBox implements TableCellRenderer {
+
+        private SeleccionRenderer() {
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setOpaque(true);
+            setBorder(BorderFactory.createEmptyBorder());
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            int modelRow = table.convertRowIndexToModel(row);
+            AsignacionTableRow fila = filaTabla(modelRow);
+            if (fila != null && fila.esAsociada()) {
+                JLabel empty = new JLabel("");
+                empty.setOpaque(true);
+                empty.setBackground(fondoGrupo(fila.idExpedientePrincipal));
+                empty.setBorder(BorderFactory.createEmptyBorder());
+                return empty;
+            }
+            setSelected(Boolean.TRUE.equals(value));
+            setEnabled(fila != null && fila.esAsignable());
+            setBackground(isSelected ? fondoSeleccion : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            setToolTipText("Seleccionar expediente principal.");
+            return this;
+        }
+    }
+
     private class AsignacionRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
@@ -1451,29 +1773,43 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
             int modelRow = table.convertRowIndexToModel(row);
-            boolean filaEnFoco = modelRow == filaModeloEnFoco;
-            if (!isSelected && !filaEnFoco && modelColumn == 1) {
+            AsignacionTableRow fila = filaTabla(modelRow);
+            boolean filaAsociada = fila != null && fila.esAsociada();
+            boolean filaEnFoco = fila != null
+                    && idExpedienteGrupoEnFoco != null
+                    && idExpedienteGrupoEnFoco.equals(fila.idExpedientePrincipal);
+            if (!filaAsociada && !isSelected && !filaEnFoco && modelColumn == COL_DIAS) {
                 return StatusBadgeV2.forDias(value);
             }
-            if (!isSelected && !filaEnFoco && modelColumn == 10) {
+            if (!isSelected && !filaEnFoco && modelColumn == COL_ESTADO) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && !filaEnFoco && modelColumn == 11) {
+            if (!isSelected && !filaEnFoco && modelColumn == COL_RELACIONADOS) {
                 String text = value == null ? "" : value.toString();
                 if (!text.startsWith("Sin")) {
-                    return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
+                    Color bg = filaAsociada ? fondoGrupo(fila.idExpedientePrincipal) : AppV2Theme.SOFT_ORANGE;
+                    Color fg = filaAsociada ? acentoGrupo(fila.idExpedientePrincipal) : AppV2Theme.WARNING;
+                    return new BadgeV2(text, bg, fg);
                 }
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            setFont(filaAsociada
+                    ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL)
+                    : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            String text = value == null ? "" : value.toString();
+            setToolTipText(text.isEmpty() ? null : text);
             if (isSelected || filaEnFoco) {
-                c.setBackground(fondoSeleccion);
+                c.setBackground(filaAsociada ? fondoGrupo(fila.idExpedientePrincipal) : fondoSeleccion);
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
-                setBorder(modelColumn == 2
+                setBorder(modelColumn == COL_EXPEDIENTE
                         ? BorderFactory.createCompoundBorder(
-                                BorderFactory.createMatteBorder(0, 4, 0, 0, acentoSeleccion),
-                                BorderFactory.createEmptyBorder(0, 4, 0, 8))
+                                BorderFactory.createMatteBorder(0, 4, 0, 0, filaAsociada ? acentoGrupo(fila.idExpedientePrincipal) : acentoSeleccion),
+                                BorderFactory.createEmptyBorder(0, filaAsociada ? 20 : 4, 0, 8))
                         : BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            } else if (filaAsociada) {
+                setBorder(BorderFactory.createEmptyBorder(0, modelColumn == COL_EXPEDIENTE ? 20 : 8, 0, 8));
+                c.setBackground(fondoGrupo(fila.idExpedientePrincipal));
+                c.setForeground(AppV2Theme.TEXT_SECONDARY);
             } else {
                 setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
                 c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
@@ -1561,6 +1897,53 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             modelRow = table.convertRowIndexToModel(row);
             return button;
+        }
+    }
+
+    private static final class AsignacionTableRow {
+
+        private final AsignacionExpedienteDTO principal;
+        private final ExpedienteRelacionadoDTO asociado;
+        private final Long idExpedientePrincipal;
+
+        private AsignacionTableRow(AsignacionExpedienteDTO principal, ExpedienteRelacionadoDTO asociado) {
+            this.principal = principal;
+            this.asociado = asociado;
+            this.idExpedientePrincipal = principal == null ? null : principal.getIdExpediente();
+        }
+
+        private static AsignacionTableRow principal(AsignacionExpedienteDTO principal) {
+            return new AsignacionTableRow(principal, null);
+        }
+
+        private static AsignacionTableRow asociada(AsignacionExpedienteDTO principal, ExpedienteRelacionadoDTO asociado) {
+            return new AsignacionTableRow(principal, asociado);
+        }
+
+        private boolean esPrincipal() {
+            return asociado == null && principal != null;
+        }
+
+        private boolean esAsociada() {
+            return asociado != null;
+        }
+
+        private boolean esAsignable() {
+            return esPrincipal() && principal.isAsignable();
+        }
+
+        private Long getIdExpediente() {
+            return esAsociada() ? asociado.getIdExpediente() : principal.getIdExpediente();
+        }
+
+        private Long getIdPrincipal() {
+            return idExpedientePrincipal;
+        }
+
+        private String numeroExpedientePrincipal() {
+            return principal == null || principal.getNumeroExpediente().isEmpty()
+                    ? "-"
+                    : principal.getNumeroExpediente();
         }
     }
 
