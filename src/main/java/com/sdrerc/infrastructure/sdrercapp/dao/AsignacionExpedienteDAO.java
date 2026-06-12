@@ -64,6 +64,7 @@ public class AsignacionExpedienteDAO {
         sql.append("(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa ");
         sql.append(" JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado ");
         sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, ");
+        sql.append("e.id_usuario_responsable_actual AS id_abogado_responsable, ");
         sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
         sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
         sql.append("esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
@@ -256,6 +257,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("titular"),
                 rs.getString("solicitante"),
                 rs.getString("abogado_asignado"),
+                getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("numero_documento_titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 getLongOrNull(rs, "dias_restantes"),

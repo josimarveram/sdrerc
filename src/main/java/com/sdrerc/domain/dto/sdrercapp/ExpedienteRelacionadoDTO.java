@@ -12,6 +12,9 @@ public class ExpedienteRelacionadoDTO {
     private final String numeroActa;
     private final String titular;
     private final String procedimiento;
+    private final String solicitante;
+    private final String abogadoAsignado;
+    private final Long idAbogadoResponsable;
     private final String etapaCodigo;
     private final String estadoCodigo;
     private final LocalDate fechaRecepcion;
@@ -29,6 +32,9 @@ public class ExpedienteRelacionadoDTO {
             String numeroActa,
             String titular,
             String procedimiento,
+            String solicitante,
+            String abogadoAsignado,
+            Long idAbogadoResponsable,
             String etapaCodigo,
             String estadoCodigo,
             LocalDate fechaRecepcion,
@@ -44,6 +50,9 @@ public class ExpedienteRelacionadoDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.procedimiento = safe(procedimiento);
+        this.solicitante = safe(solicitante);
+        this.abogadoAsignado = safe(abogadoAsignado);
+        this.idAbogadoResponsable = idAbogadoResponsable;
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
         this.fechaRecepcion = fechaRecepcion;
@@ -82,6 +91,18 @@ public class ExpedienteRelacionadoDTO {
         return procedimiento;
     }
 
+    public String getSolicitante() {
+        return solicitante;
+    }
+
+    public String getAbogadoAsignado() {
+        return abogadoAsignado;
+    }
+
+    public Long getIdAbogadoResponsable() {
+        return idAbogadoResponsable;
+    }
+
     public String getEtapaCodigo() {
         return etapaCodigo;
     }
@@ -112,6 +133,10 @@ public class ExpedienteRelacionadoDTO {
 
     public String getUsuarioRelacion() {
         return usuarioRelacion;
+    }
+
+    public boolean isRecibidoPorAbogado() {
+        return "RECIBIDO_POR_ABOGADO".equalsIgnoreCase(estadoCodigo);
     }
 
     private static String safe(String value) {

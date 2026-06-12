@@ -55,6 +55,11 @@ public class ExpedienteRelacionadoDAO {
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
+                + nombrePersona("ps") + " AS solicitante, "
+                + "(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
+                + " JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado "
+                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, "
+                + "e.id_usuario_responsable_actual AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "? AS motivo_coincidencia "
                 + "FROM base b "
@@ -67,6 +72,7 @@ public class ExpedienteRelacionadoDAO {
                 + "JOIN estado_expediente est ON est.id_estado = e.id_estado_actual "
                 + "LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta "
                 + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                + "LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 "
                 + "WHERE b.numero_acta_norm IS NOT NULL "
                 + "AND b.titular_norm IS NOT NULL "
                 + "AND " + normalizarPersona("p") + " = b.titular_norm "
@@ -140,6 +146,11 @@ public class ExpedienteRelacionadoDAO {
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
+                + nombrePersona("ps") + " AS solicitante, "
+                + "(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
+                + " JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado "
+                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, "
+                + "e.id_usuario_responsable_actual AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
@@ -153,6 +164,7 @@ public class ExpedienteRelacionadoDAO {
                 + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
                 + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
                 + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                + "LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 "
                 + "LEFT JOIN usuario u ON u.id_usuario = r.creado_por "
                 + "WHERE r.activo = 1 "
                 + "AND (r.id_expediente_principal = ? OR r.id_expediente_relacionado = ?) "
@@ -181,6 +193,11 @@ public class ExpedienteRelacionadoDAO {
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
+                + nombrePersona("ps") + " AS solicitante, "
+                + "(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
+                + " JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado "
+                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, "
+                + "e.id_usuario_responsable_actual AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
@@ -192,6 +209,7 @@ public class ExpedienteRelacionadoDAO {
                 + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
                 + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
                 + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                + "LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 "
                 + "LEFT JOIN usuario u ON u.id_usuario = r.creado_por "
                 + "WHERE r.activo = 1 "
                 + "AND r.id_expediente_relacionado = ? "
@@ -546,6 +564,9 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 rs.getString("procedimiento"),
+                rs.getString("solicitante"),
+                rs.getString("abogado_asignado"),
+                getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
@@ -565,6 +586,9 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 rs.getString("procedimiento"),
+                rs.getString("solicitante"),
+                rs.getString("abogado_asignado"),
+                getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
