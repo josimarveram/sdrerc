@@ -119,7 +119,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
-    private final JButton btnVerRelacionados = new JButton("Ver relacionados");
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
     private final JButton btnSeleccionarVisibles = new JButton("Seleccionar visibles");
     private final JButton btnLimpiarSeleccion = new JButton("Limpiar selección");
@@ -150,7 +149,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
     private final JTextArea txtComentario = new JTextArea(3, 18);
-    private final AppV2ContextChip chipPanelAsignacion = new AppV2ContextChip("Expandir");
+    private final AppV2ContextChip chipPanelAsignacion = new AppV2ContextChip("Ampliar");
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
     private final AppV2TablePanel tablePanel = new AppV2TablePanel(
@@ -239,7 +238,6 @@ public class JPanelAsignacionV2 extends JPanel {
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
         acciones.add(btnVerDetalle);
-        acciones.add(btnVerRelacionados);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, acciones);
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
         toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
@@ -344,7 +342,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private JPanel crearComentarioAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Comentario");
-        section.addRow("Comentario", scrollComentario());
+        section.addContent(scrollComentario());
         return section;
     }
 
@@ -463,7 +461,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
-        btnVerRelacionados.addActionListener(e -> abrirRelacionadosSeleccionado());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
         btnSeleccionarVisibles.addActionListener(e -> seleccionarVisibles());
         btnLimpiarSeleccion.addActionListener(e -> limpiarSeleccion());
@@ -1170,20 +1167,6 @@ public class JPanelAsignacionV2 extends JPanel {
         DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(owner, idExpediente);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
-    }
-
-    private void abrirRelacionadosSeleccionado() {
-        finalizarEdicionTabla();
-        AsignacionExpedienteDTO expediente = obtenerExpedienteParaRelacionados();
-        if (expediente == null) {
-            mostrarInfo("Seleccione un solo expediente para revisar relacionados.");
-            return;
-        }
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        DlgExpedientesRelacionadosV2 dialog = new DlgExpedientesRelacionadosV2(owner, expediente.getIdExpediente());
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-        buscar();
     }
 
     private void asociarRelacionadosRapido() {
@@ -1895,7 +1878,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnBuscar.setEnabled(!trabajando);
         btnLimpiar.setEnabled(!trabajando);
         btnVerDetalle.setEnabled(!trabajando);
-        btnVerRelacionados.setEnabled(!trabajando);
         btnAsociarRelacionados.setEnabled(!trabajando && puedeAsociarRelacionados());
         btnSeleccionarVisibles.setEnabled(!trabajando);
         btnLimpiarSeleccion.setEnabled(!trabajando);
