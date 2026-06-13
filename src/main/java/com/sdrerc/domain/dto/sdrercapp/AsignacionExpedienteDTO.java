@@ -14,6 +14,8 @@ public class AsignacionExpedienteDTO {
     private final String numeroActa;
     private final String titular;
     private final String solicitante;
+    private final String equipoAsignado;
+    private final Long idEquipoResponsable;
     private final String abogadoAsignado;
     private final Long idAbogadoResponsable;
     private final String numeroDocumentoTitular;
@@ -38,6 +40,8 @@ public class AsignacionExpedienteDTO {
             String numeroActa,
             String titular,
             String solicitante,
+            String equipoAsignado,
+            Long idEquipoResponsable,
             String abogadoAsignado,
             Long idAbogadoResponsable,
             String numeroDocumentoTitular,
@@ -60,6 +64,8 @@ public class AsignacionExpedienteDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.solicitante = safe(solicitante);
+        this.equipoAsignado = safe(equipoAsignado);
+        this.idEquipoResponsable = idEquipoResponsable;
         this.abogadoAsignado = safe(abogadoAsignado);
         this.idAbogadoResponsable = idAbogadoResponsable;
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
@@ -109,6 +115,14 @@ public class AsignacionExpedienteDTO {
 
     public String getSolicitante() {
         return solicitante;
+    }
+
+    public String getEquipoAsignado() {
+        return equipoAsignado;
+    }
+
+    public Long getIdEquipoResponsable() {
+        return idEquipoResponsable;
     }
 
     public String getAbogadoAsignado() {

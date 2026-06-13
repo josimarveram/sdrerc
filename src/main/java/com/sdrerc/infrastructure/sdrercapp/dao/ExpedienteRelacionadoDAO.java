@@ -22,6 +22,7 @@ public class ExpedienteRelacionadoDAO {
     private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
     private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
     private static final String MOVIMIENTO_ASOCIACION_DUPLICADO = "ASOCIACION_DUPLICADO";
+    private static final String MOVIMIENTO_ASIGNACION_ABOGADO = "ASIGNACION_ABOGADO";
     private static final String MOTIVO_MISMA_ACTA_TITULAR = "Misma acta y titular";
     private static final String MOTIVO_DOCUMENTO_DUPLICADO = "Documento duplicado asociado al expediente principal por misma acta y titular";
     private static final int DIAS_PLAZO_INICIAL = 30;
@@ -56,9 +57,10 @@ public class ExpedienteRelacionadoDAO {
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
                 + nombrePersona("ps") + " AS solicitante, "
-                + "(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
+                + "eqr.nombre AS equipo_asignado, e.id_equipo_responsable_actual AS id_equipo_responsable, "
+                + "NVL(ur.nombre_completo, (SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
                 + " JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado "
-                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, "
+                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1)) AS abogado_asignado, "
                 + "e.id_usuario_responsable_actual AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "? AS motivo_coincidencia "
@@ -73,6 +75,8 @@ public class ExpedienteRelacionadoDAO {
                 + "LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta "
                 + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
                 + "LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 "
+                + "LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual "
+                + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
                 + "WHERE b.numero_acta_norm IS NOT NULL "
                 + "AND b.titular_norm IS NOT NULL "
                 + "AND " + normalizarPersona("p") + " = b.titular_norm "
@@ -147,9 +151,10 @@ public class ExpedienteRelacionadoDAO {
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
                 + nombrePersona("ps") + " AS solicitante, "
-                + "(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
+                + "eqr.nombre AS equipo_asignado, e.id_equipo_responsable_actual AS id_equipo_responsable, "
+                + "NVL(ur.nombre_completo, (SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
                 + " JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado "
-                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, "
+                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1)) AS abogado_asignado, "
                 + "e.id_usuario_responsable_actual AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
@@ -166,6 +171,8 @@ public class ExpedienteRelacionadoDAO {
                 + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
                 + "LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 "
                 + "LEFT JOIN usuario u ON u.id_usuario = r.creado_por "
+                + "LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual "
+                + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
                 + "WHERE r.activo = 1 "
                 + "AND (r.id_expediente_principal = ? OR r.id_expediente_relacionado = ?) "
                 + "ORDER BY r.creado_en DESC";
@@ -194,9 +201,10 @@ public class ExpedienteRelacionadoDAO {
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
                 + nombrePersona("ps") + " AS solicitante, "
-                + "(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
+                + "eqr.nombre AS equipo_asignado, e.id_equipo_responsable_actual AS id_equipo_responsable, "
+                + "NVL(ur.nombre_completo, (SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
                 + " JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado "
-                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, "
+                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1)) AS abogado_asignado, "
                 + "e.id_usuario_responsable_actual AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
@@ -211,6 +219,8 @@ public class ExpedienteRelacionadoDAO {
                 + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
                 + "LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 "
                 + "LEFT JOIN usuario u ON u.id_usuario = r.creado_por "
+                + "LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual "
+                + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
                 + "WHERE r.activo = 1 "
                 + "AND r.id_expediente_relacionado = ? "
                 + "AND UPPER(r.tipo_relacion) IN (?, ?) "
@@ -251,6 +261,9 @@ public class ExpedienteRelacionadoDAO {
             conn.setAutoCommit(false);
             try {
                 Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, MOVIMIENTO_ASOCIACION_DUPLICADO);
+                Long idMovimientoAsignacion = catalogoLookupDAO.obtenerTipoMovimientoId(
+                        conn,
+                        MOVIMIENTO_ASIGNACION_ABOGADO);
                 for (Long idSeleccionado : idsUnicos) {
                     if (idSeleccionado == null || idSeleccionado.equals(idExpedientePrincipal)) {
                         omitidos++;
@@ -282,6 +295,12 @@ public class ExpedienteRelacionadoDAO {
                                 orientacion.idRelacionado,
                                 fechaVencimientoPrincipal,
                                 idUsuarioCreador);
+                        sincronizarAsignacionDesdePrincipal(
+                                conn,
+                                orientacion.idPrincipal,
+                                orientacion.idRelacionado,
+                                idUsuarioCreador,
+                                idMovimientoAsignacion);
                         yaAsociados++;
                         continue;
                     }
@@ -296,6 +315,12 @@ public class ExpedienteRelacionadoDAO {
                             orientacion.idRelacionado,
                             fechaVencimientoPrincipal,
                             idUsuarioCreador);
+                    sincronizarAsignacionDesdePrincipal(
+                            conn,
+                            orientacion.idPrincipal,
+                            orientacion.idRelacionado,
+                            idUsuarioCreador,
+                            idMovimientoAsignacion);
                     if (idMovimiento != null) {
                         insertarHistorialRelacion(
                                 conn,
@@ -338,6 +363,202 @@ public class ExpedienteRelacionadoDAO {
                 yaAsociados,
                 omitidos,
                 mensaje);
+    }
+
+    public int sincronizarAsignacionAsociados(
+            Connection conn,
+            Long idExpedientePrincipal,
+            Long idUsuarioModificador) throws SQLException {
+        if (conn == null || idExpedientePrincipal == null) {
+            return 0;
+        }
+        Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, MOVIMIENTO_ASIGNACION_ABOGADO);
+        String sql = "SELECT id_expediente_relacionado "
+                + "FROM expediente_relacion "
+                + "WHERE id_expediente_principal = ? AND activo = 1 "
+                + "AND UPPER(tipo_relacion) IN (?, ?)";
+        int sincronizados = 0;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpedientePrincipal);
+            ps.setString(2, TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
+            ps.setString(3, TIPO_RELACION_MISMA_ACTA_TITULAR);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    if (sincronizarAsignacionDesdePrincipal(
+                            conn,
+                            idExpedientePrincipal,
+                            getLongOrNull(rs, "id_expediente_relacionado"),
+                            idUsuarioModificador,
+                            idMovimiento)) {
+                        sincronizados++;
+                    }
+                }
+            }
+        }
+        return sincronizados;
+    }
+
+    private boolean sincronizarAsignacionDesdePrincipal(
+            Connection conn,
+            Long idPrincipal,
+            Long idRelacionado,
+            Long idUsuarioModificador,
+            Long idMovimiento) throws SQLException {
+        if (idPrincipal == null || idRelacionado == null) {
+            return false;
+        }
+        AsignacionActual asignacionPrincipal = obtenerAsignacionActual(conn, idPrincipal);
+        if (asignacionPrincipal == null) {
+            return false;
+        }
+        if (tieneAsignacionCoincidente(conn, idRelacionado, asignacionPrincipal)) {
+            actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador);
+            return false;
+        }
+        if (idMovimiento == null) {
+            throw new SQLException("No se encontró el movimiento ASIGNACION_ABOGADO para registrar la sincronización.");
+        }
+
+        desactivarAsignacionesActuales(conn, idRelacionado, idUsuarioModificador);
+        Long idAsignacion = insertarAsignacionAsociada(
+                conn,
+                idRelacionado,
+                asignacionPrincipal,
+                idUsuarioModificador);
+        actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador);
+        insertarHistorialAsignacionAsociada(
+                conn,
+                idRelacionado,
+                asignacionPrincipal,
+                idMovimiento,
+                idAsignacion,
+                idUsuarioModificador);
+        return true;
+    }
+
+    private AsignacionActual obtenerAsignacionActual(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT id_usuario_asignado, id_equipo_asignado, id_etapa "
+                + "FROM (SELECT id_usuario_asignado, id_equipo_asignado, id_etapa "
+                + "FROM expediente_asignacion "
+                + "WHERE id_expediente = ? AND activa = 1 AND activo = 1 "
+                + "ORDER BY fecha_asignacion DESC, id_expediente_asignacion DESC) "
+                + "WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return new AsignacionActual(
+                        getLongOrNull(rs, "id_usuario_asignado"),
+                        getLongOrNull(rs, "id_equipo_asignado"),
+                        getLongOrNull(rs, "id_etapa"));
+            }
+        }
+    }
+
+    private boolean tieneAsignacionCoincidente(
+            Connection conn,
+            Long idExpediente,
+            AsignacionActual asignacion) throws SQLException {
+        String sql = "SELECT 1 FROM expediente_asignacion "
+                + "WHERE id_expediente = ? AND activa = 1 AND activo = 1 "
+                + "AND id_usuario_asignado = ? "
+                + "AND NVL(id_equipo_asignado, -1) = NVL(?, -1) "
+                + "AND id_etapa = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, asignacion.idUsuario);
+            setLongOrNull(ps, 3, asignacion.idEquipo);
+            ps.setLong(4, asignacion.idEtapa);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private void desactivarAsignacionesActuales(
+            Connection conn,
+            Long idExpediente,
+            Long idUsuarioModificador) throws SQLException {
+        String sql = "UPDATE expediente_asignacion "
+                + "SET activa = 0, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activa = 1 AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setLongOrNull(ps, 1, idUsuarioModificador);
+            ps.setLong(2, idExpediente);
+            ps.executeUpdate();
+        }
+    }
+
+    private Long insertarAsignacionAsociada(
+            Connection conn,
+            Long idExpediente,
+            AsignacionActual asignacion,
+            Long idUsuarioModificador) throws SQLException {
+        String sql = "INSERT INTO expediente_asignacion ("
+                + "id_expediente, id_usuario_asignado, id_equipo_asignado, id_etapa, fecha_asignacion, "
+                + "activa, es_abogado_principal, es_reasignacion_excepcional, motivo, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, ?, ?, SYSTIMESTAMP, 1, 0, 0, ?, 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_ASIGNACION"})) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, asignacion.idUsuario);
+            setLongOrNull(ps, 3, asignacion.idEquipo);
+            ps.setLong(4, asignacion.idEtapa);
+            ps.setString(5, "Asignación sincronizada desde el expediente principal asociado.");
+            setLongOrNull(ps, 6, idUsuarioModificador);
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "expediente_asignacion");
+        }
+    }
+
+    private void actualizarResponsablesRelacionado(
+            Connection conn,
+            Long idExpediente,
+            AsignacionActual asignacion,
+            Long idUsuarioModificador) throws SQLException {
+        String sql = "UPDATE expediente SET "
+                + "id_usuario_responsable_actual = ?, "
+                + "id_usuario_abogado_inicial = NVL(id_usuario_abogado_inicial, ?), "
+                + "id_equipo_responsable_actual = ?, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, asignacion.idUsuario);
+            ps.setLong(2, asignacion.idUsuario);
+            setLongOrNull(ps, 3, asignacion.idEquipo);
+            setLongOrNull(ps, 4, idUsuarioModificador);
+            ps.setLong(5, idExpediente);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("No se pudo sincronizar el equipo y abogado del documento asociado.");
+            }
+        }
+    }
+
+    private void insertarHistorialAsignacionAsociada(
+            Connection conn,
+            Long idExpediente,
+            AsignacionActual asignacion,
+            Long idMovimiento,
+            Long idAsignacion,
+            Long idUsuarioModificador) throws SQLException {
+        String sql = "INSERT INTO expediente_historial ("
+                + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_usuario_origen, "
+                + "id_usuario_destino, id_equipo_destino, tabla_relacionada, id_registro_relacionado, "
+                + "comentario, motivo, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, ?, 'EXPEDIENTE_ASIGNACION', ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idMovimiento);
+            setLongOrNull(ps, 3, idUsuarioModificador);
+            ps.setLong(4, asignacion.idUsuario);
+            setLongOrNull(ps, 5, asignacion.idEquipo);
+            ps.setLong(6, idAsignacion);
+            ps.setString(7, "Equipo y abogado sincronizados desde el expediente principal asociado.");
+            ps.setString(8, MOVIMIENTO_ASIGNACION_ABOGADO);
+            setLongOrNull(ps, 9, idUsuarioModificador);
+            ps.executeUpdate();
+        }
     }
 
     private boolean coincidenPorActaYTitular(Connection conn, Long idExpedienteA, Long idExpedienteB) throws SQLException {
@@ -566,6 +787,8 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("titular"),
                 rs.getString("procedimiento"),
                 rs.getString("solicitante"),
+                rs.getString("equipo_asignado"),
+                getLongOrNull(rs, "id_equipo_responsable"),
                 rs.getString("abogado_asignado"),
                 getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("etapa_codigo"),
@@ -589,6 +812,8 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("titular"),
                 rs.getString("procedimiento"),
                 rs.getString("solicitante"),
+                rs.getString("equipo_asignado"),
+                getLongOrNull(rs, "id_equipo_responsable"),
                 rs.getString("abogado_asignado"),
                 getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("etapa_codigo"),
@@ -679,6 +904,21 @@ public class ExpedienteRelacionadoDAO {
 
         private boolean tieneNumero() {
             return numeroExpediente != null && !numeroExpediente.trim().isEmpty();
+        }
+    }
+
+    private static final class AsignacionActual {
+        private final Long idUsuario;
+        private final Long idEquipo;
+        private final Long idEtapa;
+
+        private AsignacionActual(Long idUsuario, Long idEquipo, Long idEtapa) throws SQLException {
+            if (idUsuario == null || idEtapa == null) {
+                throw new SQLException("La asignación vigente del expediente principal está incompleta.");
+            }
+            this.idUsuario = idUsuario;
+            this.idEquipo = idEquipo;
+            this.idEtapa = idEtapa;
         }
     }
 }

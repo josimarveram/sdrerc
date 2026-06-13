@@ -65,9 +65,10 @@ public class AsignacionExpedienteDAO {
         sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
         sql.append(nombrePersona("p")).append(" AS titular, ");
         sql.append(nombrePersona("ps")).append(" AS solicitante, p.numero_documento AS numero_documento_titular, ");
-        sql.append("(SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa ");
+        sql.append("eqr.nombre AS equipo_asignado, e.id_equipo_responsable_actual AS id_equipo_responsable, ");
+        sql.append("NVL(ur.nombre_completo, (SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa ");
         sql.append(" JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado ");
-        sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS abogado_asignado, ");
+        sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1)) AS abogado_asignado, ");
         sql.append("e.id_usuario_responsable_actual AS id_abogado_responsable, ");
         sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
         sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
@@ -90,6 +91,8 @@ public class AsignacionExpedienteDAO {
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
         sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
+        sql.append("LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual ");
+        sql.append("LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ");
         sql.append("WHERE e.activo = 1 ");
         sql.append("AND NOT EXISTS (");
         sql.append("SELECT 1 FROM expediente_relacion r ");
@@ -228,6 +231,10 @@ public class AsignacionExpedienteDAO {
                             idEquipoDestino,
                             idAsignacion,
                             comentario);
+                    expedienteRelacionadoDAO.sincronizarAsignacionAsociados(
+                            conn,
+                            idExpediente,
+                            idUsuarioAsignador);
                     detalles.add(expediente.numeroExpediente + " asignado.");
                 }
 
@@ -261,6 +268,8 @@ public class AsignacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 rs.getString("solicitante"),
+                rs.getString("equipo_asignado"),
+                getLongOrNull(rs, "id_equipo_responsable"),
                 rs.getString("abogado_asignado"),
                 getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("numero_documento_titular"),

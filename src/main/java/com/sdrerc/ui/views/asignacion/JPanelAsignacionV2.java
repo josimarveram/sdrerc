@@ -136,6 +136,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
     private final JLabel lblIngreso = new JLabel("Normal");
     private final JLabel lblSupervisor = new JLabel("-");
+    private final JLabel lblEquipoActual = new JLabel("-");
+    private final JLabel lblAbogadoActual = new JLabel("-");
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
     private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
             new Object[]{"N° documento", ""}, 0) {
@@ -181,6 +183,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean actualizandoSeleccion;
     private boolean usuarioActualResuelto;
     private Long idUsuarioActualSdrercApp;
+    private Long idEquipoPendienteSeleccion;
+    private Long idAbogadoPendienteSeleccion;
+    private long secuenciaCargaAbogados;
 
     public JPanelAsignacionV2() {
         this(new AsignacionExpedienteService(), new UsuarioAsignacionService());
@@ -329,6 +334,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private JPanel crearDestinoAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Destino operativo");
+        section.addRow("Equipo actual", lblEquipoActual);
+        section.addRow("Abogado actual", lblAbogadoActual);
         section.addRow("Equipo destino", cmbEquipo);
         section.addRow("Abogado responsable", cmbAbogado);
         section.addRow("Supervisor", lblSupervisor);
@@ -381,6 +388,8 @@ public class JPanelAsignacionV2 extends JPanel {
         lblTramiteWebSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblNumeroDocumentoSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblEquipoActual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblAbogadoActual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnAsignarSeleccionado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnAsignarSeleccionados.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -462,6 +471,8 @@ public class JPanelAsignacionV2 extends JPanel {
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
         cmbEquipo.addActionListener(e -> {
             if (!cargandoCombos) {
+                idEquipoPendienteSeleccion = null;
+                idAbogadoPendienteSeleccion = null;
                 cargarAbogados();
             }
         });
@@ -537,6 +548,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     mostrarError("No se pudieron cargar los equipos de asignación.", ex);
                 } finally {
                     cargandoCombos = false;
+                    aplicarAsignacionPendienteEnCombos();
                     setTrabajando(false, null);
                     if (!busquedaInicialEjecutada) {
                         busquedaInicialEjecutada = true;
@@ -550,37 +562,142 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void cargarAbogados() {
         EquipoAsignacionDTO equipo = obtenerEquipoSeleccionado();
+        final long solicitud = ++secuenciaCargaAbogados;
+        final Long idAbogadoObjetivo = idAbogadoPendienteSeleccion;
+        idAbogadoPendienteSeleccion = null;
         cmbAbogado.removeAllItems();
         cmbAbogado.addItem(UsuarioItem.placeholder("Seleccione abogado"));
         lblSupervisor.setText("-");
         if (equipo == null) {
+            setTrabajando(false, null);
             return;
         }
+        final Long idEquipoSolicitado = equipo.getIdEquipo();
         setTrabajando(true, "Cargando abogados del equipo destino...");
         SwingWorker<List<UsuarioAsignableDTO>, Void> worker = new SwingWorker<List<UsuarioAsignableDTO>, Void>() {
             @Override
             protected List<UsuarioAsignableDTO> doInBackground() throws Exception {
-                return usuarioService.listarAbogadosAsignables(equipo.getIdEquipo());
+                return usuarioService.listarAbogadosAsignables(idEquipoSolicitado);
             }
 
             @Override
             protected void done() {
+                EquipoAsignacionDTO equipoActual = obtenerEquipoSeleccionado();
+                if (solicitud != secuenciaCargaAbogados
+                        || equipoActual == null
+                        || !idEquipoSolicitado.equals(equipoActual.getIdEquipo())) {
+                    return;
+                }
                 try {
                     List<UsuarioAsignableDTO> abogados = get();
+                    cargandoCombos = true;
                     for (UsuarioAsignableDTO abogado : abogados) {
                         cmbAbogado.addItem(new UsuarioItem(abogado));
                     }
+                    seleccionarAbogadoPorId(idAbogadoObjetivo);
                     if (abogados.isEmpty()) {
                         lblEstado.setText("No hay abogados activos asociados al equipo seleccionado.");
                     }
                 } catch (Exception ex) {
                     mostrarError("No se pudieron cargar los abogados responsables.", ex);
                 } finally {
+                    cargandoCombos = false;
+                    actualizarSupervisor();
                     setTrabajando(false, null);
                 }
             }
         };
         worker.execute();
+    }
+
+    private void mostrarAsignacionActual(
+            String equipoNombre,
+            Long idEquipo,
+            String abogadoNombre,
+            Long idAbogado) {
+        lblEquipoActual.setText(textoAsignacion(equipoNombre));
+        lblEquipoActual.setToolTipText(textoAsignacion(equipoNombre));
+        lblAbogadoActual.setText(textoAsignacion(abogadoNombre));
+        lblAbogadoActual.setToolTipText(textoAsignacion(abogadoNombre));
+        idEquipoPendienteSeleccion = idEquipo;
+        idAbogadoPendienteSeleccion = idAbogado;
+        aplicarAsignacionPendienteEnCombos();
+    }
+
+    private void aplicarAsignacionPendienteEnCombos() {
+        if (cargandoCombos) {
+            return;
+        }
+        Long idEquipo = idEquipoPendienteSeleccion;
+        Long idAbogado = idAbogadoPendienteSeleccion;
+        idEquipoPendienteSeleccion = null;
+        if (idEquipo == null) {
+            cargandoCombos = true;
+            try {
+                if (cmbEquipo.getItemCount() > 0) {
+                    cmbEquipo.setSelectedIndex(0);
+                }
+                cmbAbogado.removeAllItems();
+                cmbAbogado.addItem(UsuarioItem.placeholder("Seleccione abogado"));
+                lblSupervisor.setText("-");
+            } finally {
+                cargandoCombos = false;
+            }
+            idAbogadoPendienteSeleccion = null;
+            return;
+        }
+        EquipoAsignacionDTO equipoActual = obtenerEquipoSeleccionado();
+        if (equipoActual != null && idEquipo.equals(equipoActual.getIdEquipo())) {
+            idAbogadoPendienteSeleccion = null;
+            if (idAbogado == null || seleccionarAbogadoPorId(idAbogado)) {
+                actualizarSupervisor();
+                return;
+            }
+        }
+        if (!seleccionarEquipoPorId(idEquipo)) {
+            idAbogadoPendienteSeleccion = null;
+            return;
+        }
+        idAbogadoPendienteSeleccion = idAbogado;
+        cargarAbogados();
+    }
+
+    private boolean seleccionarEquipoPorId(Long idEquipo) {
+        for (int i = 0; i < cmbEquipo.getItemCount(); i++) {
+            EquipoItem item = cmbEquipo.getItemAt(i);
+            if (item != null
+                    && item.equipo != null
+                    && idEquipo.equals(item.equipo.getIdEquipo())) {
+                cargandoCombos = true;
+                try {
+                    cmbEquipo.setSelectedIndex(i);
+                } finally {
+                    cargandoCombos = false;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean seleccionarAbogadoPorId(Long idAbogado) {
+        if (idAbogado == null) {
+            return false;
+        }
+        for (int i = 0; i < cmbAbogado.getItemCount(); i++) {
+            UsuarioItem item = cmbAbogado.getItemAt(i);
+            if (item != null
+                    && item.usuario != null
+                    && idAbogado.equals(item.usuario.getIdUsuario())) {
+                cmbAbogado.setSelectedIndex(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String textoAsignacion(String value) {
+        return value == null || value.trim().isEmpty() ? "Sin asignación" : value.trim();
     }
 
     private void buscar() {
@@ -1308,6 +1425,11 @@ public class JPanelAsignacionV2 extends JPanel {
                     item.getNumeroTramiteDocumentario(),
                     item.getNumeroDocumento(),
                     detalleDocumentoPrincipal(item));
+            mostrarAsignacionActual(
+                    item.getEquipoAsignado(),
+                    item.getIdEquipoResponsable(),
+                    item.getAbogadoAsignado(),
+                    item.getIdAbogadoResponsable());
             aplicarEstadoRecepcion(lblRecepcionAbogado, estadoRecepcionPrincipal(item));
             lblOrigen.setText("Registro / Registrado");
             lblDestino.setText("Asignación / Asignado");
@@ -1330,6 +1452,11 @@ public class JPanelAsignacionV2 extends JPanel {
                     filaPanel.asociado.getNumeroTramiteDocumentario(),
                     filaPanel.asociado.getNumeroDocumento(),
                     detalleDocumentoAsociado(filaPanel));
+            mostrarAsignacionActual(
+                    filaPanel.asociado.getEquipoAsignado(),
+                    filaPanel.asociado.getIdEquipoResponsable(),
+                    filaPanel.asociado.getAbogadoAsignado(),
+                    filaPanel.asociado.getIdAbogadoResponsable());
             aplicarEstadoRecepcion(lblRecepcionAbogado, estadoRecepcionAsociado(filaPanel));
             lblOrigen.setText("Expediente principal");
             lblDestino.setText(filaPanel.numeroExpedientePrincipal());
@@ -1342,6 +1469,10 @@ public class JPanelAsignacionV2 extends JPanel {
             aplicarIdentidadVisual(null, true);
             lblExpedienteSeleccionado.setText("Selección múltiple");
             actualizarIdentificacionDocumento(null, null, null);
+            lblEquipoActual.setText("Selección múltiple");
+            lblEquipoActual.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
+            lblAbogadoActual.setText("Selección múltiple");
+            lblAbogadoActual.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
             aplicarEstadoRecepcion(lblRecepcionAbogado, "No aplica");
             lblOrigen.setText("Registro / Registrado");
             lblDestino.setText("Asignación / Asignado");
@@ -1662,6 +1793,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private void limpiarPanelAsignacion() {
         lblExpedienteSeleccionado.setText("-");
         actualizarIdentificacionDocumento(null, null, null);
+        mostrarAsignacionActual(null, null, null, null);
         aplicarEstadoRecepcion(lblRecepcionAbogado, "-");
         lblOrigen.setText("Registro / Registrado");
         lblDestino.setText("Asignación / Asignado");
