@@ -102,6 +102,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final Color ASSOCIATED_ROW_BACKGROUND = EXPANDED_ASSOCIATED_BACKGROUND;
     private static final Color ASSOCIATED_BLOCK_BORDER = new Color(224, 233, 240);
     private static final Color PANEL_ASSIGNMENT_ACCENT = new Color(10, 118, 145);
+    private static final Color GRID_ACTION_ICON_BLUE = AppV2Theme.PRIMARY;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Color[] GROUP_STRIPE_COLORS = new Color[]{
         new Color(30, 59, 97),
@@ -2173,7 +2174,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     BorderFactory.createEmptyBorder(0, 4, 0, 4)));
             if (fila != null && fila.esAsociada()) {
                 setBackground(background);
-                glyph.configure(ExpandGlyph.NONE, acentoGrupo(fila.idExpedientePrincipal), background);
+                glyph.configure(ExpandGlyph.NONE, GRID_ACTION_ICON_BLUE, background);
                 setToolTipText("Documento asociado al expediente principal.");
                 return this;
             }
@@ -2186,7 +2187,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 int state = principalesCargando.contains(idPrincipal)
                         ? ExpandGlyph.LOADING
                         : (principalesExpandidos.contains(idPrincipal) ? ExpandGlyph.COLLAPSE : ExpandGlyph.EXPAND);
-                glyph.configure(state, acentoGrupo(idPrincipal), background);
+                glyph.configure(state, GRID_ACTION_ICON_BLUE, background);
                 setToolTipText(state == ExpandGlyph.COLLAPSE
                         ? "Ocultar documentos asociados"
                         : "Ver documentos asociados");
@@ -2284,7 +2285,7 @@ public class JPanelAsignacionV2 extends JPanel {
             AsignacionTableRow fila = filaTabla(modelRow);
             if (fila != null && fila.esAsociada()) {
                 documentoAsociadoCell.configure(
-                        acentoGrupo(fila.idExpedientePrincipal),
+                        GRID_ACTION_ICON_BLUE,
                         colorFondoFila(row, fila, isSelected),
                         bordeContenidoAsociado(modelRow, 8, 8));
                 documentoAsociadoCell.setToolTipText("Documento asociado al expediente principal; no requiere asignación independiente.");
