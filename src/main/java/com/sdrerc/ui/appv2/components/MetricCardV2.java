@@ -3,6 +3,7 @@ package com.sdrerc.ui.appv2.components;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -12,18 +13,22 @@ public class MetricCardV2 extends JPanel {
     private final JLabel lblValue;
 
     public MetricCardV2(String title, String value, String caption, Color accent) {
-        super(new BorderLayout(8, 6));
+        super(new BorderLayout(6, 3));
         setBackground(AppV2Theme.SURFACE);
+        setPreferredSize(new Dimension(0, 76));
+        setMinimumSize(new Dimension(0, 68));
         setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 4, 0, 0, accent),
-                AppV2Theme.cardBorder()));
+                BorderFactory.createMatteBorder(0, 3, 0, 0, accent),
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                        BorderFactory.createEmptyBorder(7, 10, 7, 10))));
 
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblTitle.setForeground(AppV2Theme.TEXT_SECONDARY);
 
         lblValue = new JLabel(value);
-        lblValue.setFont(AppV2Theme.fontBold(28));
+        lblValue.setFont(AppV2Theme.fontBold(22));
         lblValue.setForeground(AppV2Theme.TEXT_PRIMARY);
 
         JLabel lblCaption = new JLabel(caption);
