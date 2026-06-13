@@ -100,7 +100,21 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2Theme.INDIGO,
         AppV2Theme.SUCCESS,
         AppV2Theme.WARNING,
-        new Color(112, 96, 160)
+        new Color(112, 96, 160),
+        new Color(190, 87, 112),
+        new Color(42, 132, 108),
+        new Color(128, 93, 61),
+        new Color(49, 119, 143),
+        new Color(150, 91, 38),
+        new Color(92, 111, 153),
+        new Color(164, 78, 78),
+        new Color(84, 138, 64),
+        new Color(126, 86, 139),
+        new Color(63, 130, 168),
+        new Color(177, 119, 34),
+        new Color(47, 128, 128),
+        new Color(142, 104, 56),
+        new Color(101, 119, 73)
     };
     private static final Color[] FOCUS_BACKGROUNDS = new Color[]{
         new Color(228, 246, 246),
@@ -108,7 +122,21 @@ public class JPanelAsignacionV2 extends JPanel {
         new Color(238, 240, 250),
         AppV2Theme.SOFT_GREEN,
         AppV2Theme.SOFT_ORANGE,
-        new Color(243, 240, 249)
+        new Color(243, 240, 249),
+        new Color(252, 237, 242),
+        new Color(229, 244, 239),
+        new Color(247, 239, 232),
+        new Color(229, 242, 247),
+        new Color(250, 240, 231),
+        new Color(236, 240, 248),
+        new Color(251, 236, 236),
+        new Color(235, 246, 230),
+        new Color(244, 237, 247),
+        new Color(229, 243, 250),
+        new Color(252, 244, 230),
+        new Color(229, 244, 244),
+        new Color(248, 241, 232),
+        new Color(240, 244, 233)
     };
 
     private final AsignacionExpedienteService asignacionService;
