@@ -118,7 +118,7 @@ public class AppV2SideActionPanel extends JPanel {
         Border outline = BorderFactory.createLineBorder(AppV2Theme.BORDER);
         if (accent != null) {
             outline = BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(4, 0, 0, 0, accent),
+                    BorderFactory.createMatteBorder(4, 4, 0, 0, accent),
                     outline);
         }
         setBorder(BorderFactory.createCompoundBorder(
