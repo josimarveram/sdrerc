@@ -11,7 +11,7 @@ import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
-import com.sdrerc.ui.appv2.components.AppV2ContextChip;
+import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
@@ -89,6 +89,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int COL_ESTADO = 11;
     private static final int COL_RELACIONADOS = 12;
     private static final int COL_ID = 13;
+    private static final int PANEL_ASIGNACION_ANCHO_MINIMO = 380;
+    private static final int PANEL_ASIGNACION_ANCHO_NORMAL = 430;
+    private static final int PANEL_ASIGNACION_TAB_OVERHANG = 18;
+    private static final int PANEL_ASIGNACION_TAB_TOP = 18;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Color[] FOCUS_ACCENTS = new Color[]{
         AppV2Theme.TEAL,
@@ -149,7 +153,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
     private final JTextArea txtComentario = new JTextArea(3, 18);
-    private final AppV2ContextChip chipPanelAsignacion = new AppV2ContextChip("Ampliar");
+    private final AppV2NotebookToggleTab tabPanelAsignacion = new AppV2NotebookToggleTab();
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
     private final AppV2TablePanel tablePanel = new AppV2TablePanel(
@@ -224,7 +228,13 @@ public class JPanelAsignacionV2 extends JPanel {
         panelOperativo.setOpaque(false);
         JPanel bandeja = crearBandeja();
         panelAsignacion = crearPanelAsignacion();
-        splitOperativo = new AppV2OperationalSplitPanel(bandeja, panelAsignacion, 0, 380, 430);
+        JPanel panelAsignacionConTab = crearPanelAsignacionConTab(panelAsignacion);
+        splitOperativo = new AppV2OperationalSplitPanel(
+                bandeja,
+                panelAsignacionConTab,
+                0,
+                PANEL_ASIGNACION_ANCHO_MINIMO + PANEL_ASIGNACION_TAB_OVERHANG,
+                PANEL_ASIGNACION_ANCHO_NORMAL + PANEL_ASIGNACION_TAB_OVERHANG);
         panelOperativo.add(splitOperativo, BorderLayout.CENTER);
 
         centro.add(panelOperativo, BorderLayout.CENTER);
@@ -272,10 +282,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 cerrarPanelAsignacion();
             }
         });
-        chipPanelAsignacion.setExpanded(false);
-        chipPanelAsignacion.setToolTipText("Ampliar el Panel de asignación");
-        chipPanelAsignacion.addActionListener(e -> alternarExpansionPanelAsignacion());
-        panel.setHeaderLeadingComponent(chipPanelAsignacion);
+        tabPanelAsignacion.setExpanded(false);
+        tabPanelAsignacion.setToolTipText("Expandir panel de asignación");
+        tabPanelAsignacion.addActionListener(e -> alternarExpansionPanelAsignacion());
         panel.addSection(crearResumenAsignacion());
         panel.addSection(crearAccionesRelacionados());
         panel.addSection(crearFlujoAsignacion());
@@ -283,6 +292,34 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.addSection(crearComentarioAsignacion());
         panel.setFooter(crearAccionesAsignacion());
         return panel;
+    }
+
+    private JPanel crearPanelAsignacionConTab(final AppV2SideActionPanel panel) {
+        JPanel wrapper = new JPanel(null) {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                int panelX = PANEL_ASIGNACION_TAB_OVERHANG;
+                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int tabY = Math.min(PANEL_ASIGNACION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
+                tabPanelAsignacion.setBounds(
+                        0,
+                        tabY,
+                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
+                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+            }
+        };
+        wrapper.setOpaque(false);
+        wrapper.add(panel);
+        wrapper.add(tabPanelAsignacion);
+        wrapper.setMinimumSize(new Dimension(
+                PANEL_ASIGNACION_ANCHO_MINIMO + PANEL_ASIGNACION_TAB_OVERHANG,
+                0));
+        wrapper.setPreferredSize(new Dimension(
+                PANEL_ASIGNACION_ANCHO_NORMAL + PANEL_ASIGNACION_TAB_OVERHANG,
+                0));
+        return wrapper;
     }
 
     private JPanel crearResumenAsignacion() {
@@ -1742,8 +1779,8 @@ public class JPanelAsignacionV2 extends JPanel {
             idExpedienteGrupoEnFoco = null;
             contextoChip = "Panel de asignación";
         }
-        chipPanelAsignacion.setAccent(acentoSeleccion, fondoSeleccion);
-        actualizarTooltipChip();
+        tabPanelAsignacion.setAccent(acentoSeleccion, fondoSeleccion);
+        actualizarTooltipTabPanel();
         if (panelAsignacion != null) {
             panelAsignacion.setAccentColor(acentoSeleccion);
         }
@@ -1752,12 +1789,12 @@ public class JPanelAsignacionV2 extends JPanel {
         table.repaint();
     }
 
-    private void actualizarTooltipChip() {
+    private void actualizarTooltipTabPanel() {
         boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
         String accion = expandido
-                ? "Restaurar el ancho del Panel de asignación"
-                : "Ampliar el Panel de asignación";
-        chipPanelAsignacion.setToolTipText(accion + " · " + contextoChip);
+                ? "Restaurar panel de asignación"
+                : "Expandir panel de asignación";
+        tabPanelAsignacion.setToolTipText(accion + " · " + contextoChip);
     }
 
     private int indicePaleta(Long idExpediente) {
@@ -1810,8 +1847,8 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         boolean expandido = splitOperativo.toggleSideExpanded();
-        chipPanelAsignacion.setExpanded(expandido);
-        actualizarTooltipChip();
+        tabPanelAsignacion.setExpanded(expandido);
+        actualizarTooltipTabPanel();
         panelOperativo.revalidate();
         panelOperativo.repaint();
     }
@@ -1829,8 +1866,8 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         panelAsignacionVisible = mostrar;
         splitOperativo.setSideVisible(mostrar);
-        chipPanelAsignacion.setExpanded(splitOperativo.isSideExpanded());
-        actualizarTooltipChip();
+        tabPanelAsignacion.setExpanded(splitOperativo.isSideExpanded());
+        actualizarTooltipTabPanel();
         panelOperativo.revalidate();
         panelOperativo.repaint();
     }
