@@ -2239,8 +2239,9 @@ public class JPanelAsignacionV2 extends JPanel {
             boolean filaEnFoco = fila != null
                     && idExpedienteGrupoEnFoco != null
                     && idExpedienteGrupoEnFoco.equals(fila.idExpedientePrincipal);
-            if (!filaAsociada && !isSelected && !filaEnFoco && modelColumn == COL_DIAS) {
-                return StatusBadgeV2.forDias(value);
+            Color cellBackground = colorFondoCelda(row, fila, filaAsociada, isSelected, filaEnFoco);
+            if (modelColumn == COL_DIAS) {
+                return StatusBadgeV2.forDias(value, cellBackground);
             }
             if (!isSelected && !filaEnFoco && modelColumn == COL_ESTADO) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
@@ -2277,6 +2278,21 @@ public class JPanelAsignacionV2 extends JPanel {
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
             }
             return c;
+        }
+
+        private Color colorFondoCelda(
+                int row,
+                AsignacionTableRow fila,
+                boolean filaAsociada,
+                boolean isSelected,
+                boolean filaEnFoco) {
+            if (isSelected || filaEnFoco) {
+                return filaAsociada ? fondoGrupo(fila.idExpedientePrincipal) : fondoSeleccion;
+            }
+            if (filaAsociada) {
+                return fondoGrupo(fila.idExpedientePrincipal);
+            }
+            return row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
         }
     }
 
