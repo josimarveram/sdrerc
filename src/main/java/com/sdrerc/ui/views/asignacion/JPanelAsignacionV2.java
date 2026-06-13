@@ -93,8 +93,17 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int PANEL_ASIGNACION_ANCHO_NORMAL = 430;
     private static final int PANEL_ASIGNACION_TAB_OVERHANG = 18;
     private static final int PANEL_ASIGNACION_TAB_TOP = 18;
+    private static final int GROUP_STRIPE_WIDTH = 5;
+    private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
+    private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
+    private static final Color EXPANDED_PARENT_BACKGROUND = new Color(205, 236, 244);
+    private static final Color EXPANDED_ASSOCIATED_BACKGROUND = new Color(238, 250, 252);
+    private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;
+    private static final Color ASSOCIATED_ROW_BACKGROUND = EXPANDED_ASSOCIATED_BACKGROUND;
+    private static final Color ASSOCIATED_BLOCK_BORDER = new Color(224, 233, 240);
+    private static final Color PANEL_ASSIGNMENT_ACCENT = new Color(10, 118, 145);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final Color[] FOCUS_ACCENTS = new Color[]{
+    private static final Color[] GROUP_STRIPE_COLORS = new Color[]{
         new Color(30, 59, 97),
         new Color(56, 88, 128),
         new Color(77, 132, 164),
@@ -115,28 +124,6 @@ public class JPanelAsignacionV2 extends JPanel {
         new Color(100, 117, 126),
         new Color(13, 28, 56),
         new Color(36, 53, 68)
-    };
-    private static final Color[] FOCUS_BACKGROUNDS = new Color[]{
-        new Color(229, 235, 242),
-        new Color(231, 238, 246),
-        new Color(230, 240, 245),
-        new Color(229, 242, 247),
-        new Color(234, 243, 248),
-        new Color(225, 244, 248),
-        new Color(225, 245, 246),
-        new Color(226, 246, 248),
-        new Color(231, 238, 246),
-        new Color(236, 240, 248),
-        new Color(231, 240, 251),
-        new Color(236, 238, 250),
-        new Color(241, 237, 250),
-        new Color(239, 234, 251),
-        new Color(242, 237, 248),
-        new Color(244, 238, 246),
-        new Color(239, 238, 243),
-        new Color(232, 238, 240),
-        new Color(232, 237, 245),
-        new Color(232, 237, 241)
     };
 
     private final AsignacionExpedienteService asignacionService;
@@ -200,9 +187,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardRelacionados = new MetricCardV2("Alertas", "0", "Posibles relacionados", AppV2Theme.WARNING);
     private AppV2SideActionPanel panelAsignacion;
     private AppV2OperationalSplitPanel splitOperativo;
-    private Color acentoSeleccion = AppV2Theme.TEAL;
-    private Color fondoSeleccion = AppV2Theme.SOFT_BLUE;
-    private Long idExpedienteGrupoEnFoco;
+    private Color acentoSeleccion = GROUP_STRIPE_COLORS[0];
+    private Color fondoSeleccion = TABLE_SELECTION_BACKGROUND;
+    private Long idExpedienteExpansionActiva;
     private String contextoChip = "Panel de asignación";
     private boolean panelAsignacionVisible;
     private boolean panelAsignacionCerradoPorUsuario;
@@ -802,6 +789,7 @@ public class JPanelAsignacionV2 extends JPanel {
         asociadosCache.clear();
         principalesExpandidos.clear();
         principalesCargando.clear();
+        idExpedienteExpansionActiva = null;
         tableModel.setRowCount(0);
         table.clearSelection();
         int alertas = 0;
@@ -850,7 +838,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "",
             null,
             "",
-            "",
+            principal == null ? "" : principal.getNumeroExpediente(),
             formatDate(asociado.getFechaRecepcion()),
             procedimientoAsociado(asociado),
             valorUi(asociado.getTipoActa()),
@@ -980,6 +968,7 @@ public class JPanelAsignacionV2 extends JPanel {
         asociadosCache.clear();
         principalesExpandidos.clear();
         principalesCargando.clear();
+        idExpedienteExpansionActiva = null;
         tableModel.setRowCount(0);
         table.clearSelection();
         tablePanel.setEmpty(true);
@@ -1002,10 +991,16 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         Long idPrincipal = row.principal.getIdExpediente();
-        if (principalesExpandidos.contains(idPrincipal)) {
+        if (principalesExpandidos.contains(idPrincipal)
+                || (idPrincipal.equals(idExpedienteExpansionActiva) && principalesCargando.contains(idPrincipal))) {
             contraerAsociados(idPrincipal);
+            principalesCargando.remove(idPrincipal);
+            idExpedienteExpansionActiva = null;
+            refrescarIconoExpansion(indiceFilaPrincipal(idPrincipal));
             return;
         }
+        contraerTodosExcepto(idPrincipal);
+        idExpedienteExpansionActiva = idPrincipal;
         List<ExpedienteRelacionadoDTO> cache = asociadosCache.get(idPrincipal);
         if (cache != null) {
             insertarAsociados(modelRow, row.principal, cache);
@@ -1029,6 +1024,10 @@ public class JPanelAsignacionV2 extends JPanel {
                 if (principalRow < 0) {
                     return;
                 }
+                if (!idPrincipal.equals(idExpedienteExpansionActiva)) {
+                    refrescarIconoExpansion(principalRow);
+                    return;
+                }
                 try {
                     List<ExpedienteRelacionadoDTO> asociados = get();
                     asociadosCache.put(idPrincipal, asociados);
@@ -1046,7 +1045,16 @@ public class JPanelAsignacionV2 extends JPanel {
         if (principal == null || principal.getIdExpediente() == null || principalesExpandidos.contains(principal.getIdExpediente())) {
             return;
         }
-        principalesExpandidos.add(principal.getIdExpediente());
+        Long idPrincipal = principal.getIdExpediente();
+        if (!idPrincipal.equals(idExpedienteExpansionActiva)) {
+            return;
+        }
+        contraerTodosExcepto(idPrincipal);
+        principalRow = indiceFilaPrincipal(idPrincipal);
+        if (principalRow < 0) {
+            return;
+        }
+        principalesExpandidos.add(idPrincipal);
         int insertAt = principalRow + 1;
         if (asociados != null) {
             for (ExpedienteRelacionadoDTO asociado : asociados) {
@@ -1059,13 +1067,39 @@ public class JPanelAsignacionV2 extends JPanel {
         table.repaint();
     }
 
+    private void contraerTodosExcepto(Long idPermitido) {
+        List<Long> expandidos = new ArrayList<>(principalesExpandidos);
+        for (Long id : expandidos) {
+            if (id != null && !id.equals(idPermitido)) {
+                contraerAsociados(id);
+            }
+        }
+        List<Long> cargando = new ArrayList<>(principalesCargando);
+        for (Long id : cargando) {
+            if (id != null && !id.equals(idPermitido)) {
+                principalesCargando.remove(id);
+                refrescarIconoExpansion(indiceFilaPrincipal(id));
+            }
+        }
+    }
+
     private void contraerAsociados(Long idPrincipal) {
         if (idPrincipal == null) {
             return;
         }
         int principalRow = indiceFilaPrincipal(idPrincipal);
         if (principalRow < 0) {
+            principalesExpandidos.remove(idPrincipal);
+            if (idPrincipal.equals(idExpedienteExpansionActiva)) {
+                idExpedienteExpansionActiva = null;
+            }
             return;
+        }
+        int selectedRow = obtenerModelRowSeleccionada();
+        boolean seleccionarPrincipal = false;
+        AsignacionTableRow selected = filaTabla(selectedRow);
+        if (selected != null && selected.esAsociada() && idPrincipal.equals(selected.idExpedientePrincipal)) {
+            seleccionarPrincipal = true;
         }
         for (int i = filasTabla.size() - 1; i > principalRow; i--) {
             AsignacionTableRow row = filasTabla.get(i);
@@ -1075,7 +1109,16 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
         principalesExpandidos.remove(idPrincipal);
+        if (idPrincipal.equals(idExpedienteExpansionActiva)) {
+            idExpedienteExpansionActiva = null;
+        }
         refrescarIconoExpansion(principalRow);
+        if (seleccionarPrincipal && principalRow >= 0 && principalRow < tableModel.getRowCount()) {
+            int viewRow = table.convertRowIndexToView(principalRow);
+            if (viewRow >= 0 && viewRow < table.getRowCount()) {
+                table.setRowSelectionInterval(viewRow, viewRow);
+            }
+        }
         table.revalidate();
         table.repaint();
         actualizarPanelSeleccion();
@@ -1315,15 +1358,11 @@ public class JPanelAsignacionV2 extends JPanel {
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             if (Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
                 AsignacionTableRow row = filaTabla(i);
-                if (row == null || row.esAsociada()) {
-                    mostrarInfo("La selección contiene documentos asociados que no requieren asignación independiente.");
-                    return new ArrayList<Long>();
-                }
-                AsignacionExpedienteDTO item = row.principal;
-                if (!item.isAsignable()) {
+                if (row == null || !row.esAsignable()) {
                     mostrarInfo("El expediente ya se encuentra asignado o no está habilitado para asignación.");
                     return new ArrayList<Long>();
                 }
+                AsignacionExpedienteDTO item = row.principal;
                 ids.add(item.getIdExpediente());
             }
         }
@@ -1791,20 +1830,16 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void aplicarIdentidadVisual(AsignacionExpedienteDTO item, boolean multiple) {
         if (item != null) {
-            int paletteIndex = indicePaleta(item.getIdExpediente());
-            acentoSeleccion = FOCUS_ACCENTS[paletteIndex];
-            fondoSeleccion = FOCUS_BACKGROUNDS[paletteIndex];
-            idExpedienteGrupoEnFoco = item.getIdExpediente();
+            acentoSeleccion = PANEL_ASSIGNMENT_ACCENT;
+            fondoSeleccion = TABLE_SELECTION_BACKGROUND;
             contextoChip = "Expediente en foco: " + item.getNumeroExpediente();
         } else if (multiple) {
-            acentoSeleccion = AppV2Theme.INDIGO;
-            fondoSeleccion = new Color(238, 240, 250);
-            idExpedienteGrupoEnFoco = null;
+            acentoSeleccion = PANEL_ASSIGNMENT_ACCENT;
+            fondoSeleccion = TABLE_SELECTION_BACKGROUND;
             contextoChip = "Selección múltiple";
         } else {
-            acentoSeleccion = AppV2Theme.TEAL;
-            fondoSeleccion = AppV2Theme.SOFT_BLUE;
-            idExpedienteGrupoEnFoco = null;
+            acentoSeleccion = PANEL_ASSIGNMENT_ACCENT;
+            fondoSeleccion = TABLE_SELECTION_BACKGROUND;
             contextoChip = "Panel de asignación";
         }
         tabPanelAsignacion.setAccent(acentoSeleccion, fondoSeleccion);
@@ -1812,8 +1847,8 @@ public class JPanelAsignacionV2 extends JPanel {
         if (panelAsignacion != null) {
             panelAsignacion.setAccentColor(acentoSeleccion);
         }
-        table.setSelectionBackground(fondoSeleccion);
-        table.setSelectionForeground(AppV2Theme.TEXT_PRIMARY);
+        table.setSelectionBackground(TABLE_SELECTION_BACKGROUND);
+        table.setSelectionForeground(TABLE_SELECTION_FOREGROUND);
         table.repaint();
     }
 
@@ -1827,15 +1862,65 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private int indicePaleta(Long idExpediente) {
         long value = idExpediente == null ? 0L : idExpediente.longValue();
-        return (int) Math.abs(value % FOCUS_ACCENTS.length);
+        return (int) Math.abs(value % GROUP_STRIPE_COLORS.length);
     }
 
     private Color acentoGrupo(Long idExpedientePrincipal) {
-        return FOCUS_ACCENTS[indicePaleta(idExpedientePrincipal)];
+        return GROUP_STRIPE_COLORS[indicePaleta(idExpedientePrincipal)];
     }
 
-    private Color fondoGrupo(Long idExpedientePrincipal) {
-        return FOCUS_BACKGROUNDS[indicePaleta(idExpedientePrincipal)];
+    private Color colorFondoFila(int row, AsignacionTableRow fila, boolean isSelected) {
+        if (fila != null && fila.esAsociada()) {
+            return isSelected ? TABLE_SELECTION_BACKGROUND : EXPANDED_ASSOCIATED_BACKGROUND;
+        }
+        if (fila != null
+                && fila.esPrincipal()
+                && fila.principal.getIdExpediente() != null
+                && principalesExpandidos.contains(fila.principal.getIdExpediente())) {
+            return EXPANDED_PARENT_BACKGROUND;
+        }
+        if (isSelected) {
+            return TABLE_SELECTION_BACKGROUND;
+        }
+        return row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
+    }
+
+    private boolean debeMostrarBarraGrupo(AsignacionTableRow fila) {
+        if (fila == null || fila.getIdPrincipal() == null) {
+            return false;
+        }
+        if (fila.esAsociada()) {
+            return true;
+        }
+        return fila.esPrincipal()
+                && fila.principal.getIdExpediente() != null
+                && fila.principal.getAsociadosConfirmados() > 0
+                && principalesExpandidos.contains(fila.principal.getIdExpediente());
+    }
+
+    private boolean esPrimerAsociado(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size() || !filasTabla.get(modelRow).esAsociada()) {
+            return false;
+        }
+        return modelRow == 0 || !filasTabla.get(modelRow - 1).esAsociada();
+    }
+
+    private boolean esUltimoAsociado(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size() || !filasTabla.get(modelRow).esAsociada()) {
+            return false;
+        }
+        return modelRow == filasTabla.size() - 1 || !filasTabla.get(modelRow + 1).esAsociada();
+    }
+
+    private javax.swing.border.Border bordeContenidoAsociado(int modelRow, int left, int right) {
+        return BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(
+                        esPrimerAsociado(modelRow) ? 1 : 0,
+                        0,
+                        esUltimoAsociado(modelRow) ? 1 : 0,
+                        0,
+                        ASSOCIATED_BLOCK_BORDER),
+                BorderFactory.createEmptyBorder(0, left, 0, right));
     }
 
     private void limpiarPanelAsignacion() {
@@ -1912,7 +1997,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private int contarSeleccionados() {
         int total = 0;
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            if (Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
+            AsignacionTableRow row = filaTabla(i);
+            if (row != null
+                    && row.esAsignable()
+                    && Boolean.TRUE.equals(tableModel.getValueAt(i, COL_SELECCION))) {
                 total++;
             }
         }
@@ -2077,11 +2165,15 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             int modelRow = table.convertRowIndexToModel(row);
             AsignacionTableRow fila = filaTabla(modelRow);
-            Color background = isSelected ? fondoSeleccion : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            Color background = colorFondoFila(row, fila, isSelected);
+            setBorder(BorderFactory.createCompoundBorder(
+                    debeMostrarBarraGrupo(fila)
+                            ? BorderFactory.createMatteBorder(0, GROUP_STRIPE_WIDTH, 0, 0, acentoGrupo(fila.getIdPrincipal()))
+                            : BorderFactory.createEmptyBorder(0, GROUP_STRIPE_WIDTH, 0, 0),
+                    BorderFactory.createEmptyBorder(0, 4, 0, 4)));
             if (fila != null && fila.esAsociada()) {
-                background = fondoGrupo(fila.idExpedientePrincipal);
                 setBackground(background);
-                glyph.configure(ExpandGlyph.ASSOCIATED, acentoGrupo(fila.idExpedientePrincipal), background);
+                glyph.configure(ExpandGlyph.NONE, acentoGrupo(fila.idExpedientePrincipal), background);
                 setToolTipText("Documento asociado al expediente principal.");
                 return this;
             }
@@ -2112,8 +2204,6 @@ public class JPanelAsignacionV2 extends JPanel {
         private static final int EXPAND = 1;
         private static final int COLLAPSE = 2;
         private static final int LOADING = 3;
-        private static final int ASSOCIATED = 4;
-
         private int state = NONE;
         private Color accent = AppV2Theme.TEAL;
 
@@ -2140,10 +2230,6 @@ public class JPanelAsignacionV2 extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 int cx = getWidth() / 2;
                 int cy = getHeight() / 2;
-                if (state == ASSOCIATED) {
-                    pintarDocumento(g2, cx, cy);
-                    return;
-                }
                 if (state == LOADING) {
                     pintarLoading(g2, cx, cy);
                     return;
@@ -2167,20 +2253,6 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
 
-        private void pintarDocumento(Graphics2D g2, int cx, int cy) {
-            int w = 14;
-            int h = 17;
-            int x = cx - w / 2;
-            int y = cy - h / 2;
-            g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 24));
-            g2.fillRoundRect(x, y, w, h, 4, 4);
-            g2.setColor(accent);
-            g2.setStroke(new BasicStroke(1.3f));
-            g2.drawRoundRect(x, y, w, h, 4, 4);
-            g2.drawLine(x + 4, y + 6, x + w - 4, y + 6);
-            g2.drawLine(x + 4, y + 10, x + w - 4, y + 10);
-        }
-
         private void pintarLoading(Graphics2D g2, int cx, int cy) {
             g2.setColor(accent);
             int start = cx - 8;
@@ -2191,6 +2263,8 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private class SeleccionRenderer extends JCheckBox implements TableCellRenderer {
+
+        private final DocumentoAsociadoCell documentoAsociadoCell = new DocumentoAsociadoCell();
 
         private SeleccionRenderer() {
             setHorizontalAlignment(SwingConstants.CENTER);
@@ -2209,17 +2283,62 @@ public class JPanelAsignacionV2 extends JPanel {
             int modelRow = table.convertRowIndexToModel(row);
             AsignacionTableRow fila = filaTabla(modelRow);
             if (fila != null && fila.esAsociada()) {
-                JLabel empty = new JLabel("");
-                empty.setOpaque(true);
-                empty.setBackground(fondoGrupo(fila.idExpedientePrincipal));
-                empty.setBorder(BorderFactory.createEmptyBorder());
-                return empty;
+                documentoAsociadoCell.configure(
+                        acentoGrupo(fila.idExpedientePrincipal),
+                        colorFondoFila(row, fila, isSelected),
+                        bordeContenidoAsociado(modelRow, 8, 8));
+                documentoAsociadoCell.setToolTipText("Documento asociado al expediente principal; no requiere asignación independiente.");
+                return documentoAsociadoCell;
             }
             setSelected(Boolean.TRUE.equals(value));
             setEnabled(fila != null && fila.esAsignable());
-            setBackground(isSelected ? fondoSeleccion : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            setBackground(colorFondoFila(row, fila, isSelected));
             setToolTipText("Seleccionar expediente principal.");
             return this;
+        }
+    }
+
+    private static final class DocumentoAsociadoCell extends JPanel {
+
+        private Color accent = AppV2Theme.TEAL;
+
+        private DocumentoAsociadoCell() {
+            setOpaque(true);
+            setPreferredSize(new Dimension(30, 28));
+        }
+
+        private void configure(Color accent, Color background, javax.swing.border.Border border) {
+            this.accent = accent == null ? AppV2Theme.TEAL : accent;
+            setBackground(background == null ? ASSOCIATED_ROW_BACKGROUND : background);
+            setBorder(border);
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = 15;
+                int h = 18;
+                int x = (getWidth() - w) / 2;
+                int y = (getHeight() - h) / 2;
+                Color fill = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 22);
+                Color line = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 150);
+                g2.setColor(fill);
+                g2.fillRoundRect(x, y, w, h, 4, 4);
+                g2.setColor(line);
+                g2.setStroke(new BasicStroke(1.2f));
+                g2.drawRoundRect(x, y, w, h, 4, 4);
+                int fold = 5;
+                g2.drawLine(x + w - fold, y, x + w - 1, y + fold);
+                g2.drawLine(x + w - fold, y, x + w - fold, y + fold);
+                g2.drawLine(x + 4, y + 8, x + w - 4, y + 8);
+                g2.drawLine(x + 4, y + 12, x + w - 5, y + 12);
+            } finally {
+                g2.dispose();
+            }
         }
     }
 
@@ -2236,63 +2355,51 @@ public class JPanelAsignacionV2 extends JPanel {
             int modelRow = table.convertRowIndexToModel(row);
             AsignacionTableRow fila = filaTabla(modelRow);
             boolean filaAsociada = fila != null && fila.esAsociada();
-            boolean filaEnFoco = fila != null
-                    && idExpedienteGrupoEnFoco != null
-                    && idExpedienteGrupoEnFoco.equals(fila.idExpedientePrincipal);
-            Color cellBackground = colorFondoCelda(row, fila, filaAsociada, isSelected, filaEnFoco);
+            Color cellBackground = colorFondoFila(row, fila, isSelected);
             if (modelColumn == COL_DIAS) {
+                if (filaAsociada) {
+                    Component c = super.getTableCellRendererComponent(table, "", isSelected, hasFocus, row, column);
+                    c.setBackground(cellBackground);
+                    c.setForeground(AppV2Theme.TEXT_SECONDARY);
+                    setBorder(bordeContenidoAsociado(modelRow, 8, 8));
+                    setToolTipText("La alerta de días aplica al expediente principal.");
+                    return c;
+                }
                 return StatusBadgeV2.forDias(value, cellBackground);
             }
-            if (!isSelected && !filaEnFoco && modelColumn == COL_ESTADO) {
+            if (!isSelected && modelColumn == COL_ESTADO) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && !filaEnFoco && modelColumn == COL_RELACIONADOS) {
+            if (!isSelected && modelColumn == COL_RELACIONADOS) {
                 String text = value == null ? "" : value.toString();
                 if (!text.startsWith("Sin")) {
-                    Color bg = filaAsociada ? fondoGrupo(fila.idExpedientePrincipal) : AppV2Theme.SOFT_ORANGE;
-                    Color fg = filaAsociada ? acentoGrupo(fila.idExpedientePrincipal) : AppV2Theme.WARNING;
+                    Color bg = filaAsociada ? ASSOCIATED_ROW_BACKGROUND : AppV2Theme.SOFT_ORANGE;
+                    Color fg = filaAsociada ? AppV2Theme.TEXT_SECONDARY : AppV2Theme.WARNING;
                     return new BadgeV2(text, bg, fg);
                 }
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            setFont(filaAsociada
+            setFont(filaAsociada && modelColumn != COL_EXPEDIENTE
                     ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL)
                     : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
             String text = value == null ? "" : value.toString();
             setToolTipText(text.isEmpty() ? null : text);
-            if (isSelected || filaEnFoco) {
-                c.setBackground(filaAsociada ? fondoGrupo(fila.idExpedientePrincipal) : fondoSeleccion);
-                c.setForeground(AppV2Theme.TEXT_PRIMARY);
-                setBorder(modelColumn == COL_EXPEDIENTE
-                        ? BorderFactory.createCompoundBorder(
-                                BorderFactory.createMatteBorder(0, 4, 0, 0, filaAsociada ? acentoGrupo(fila.idExpedientePrincipal) : acentoSeleccion),
-                                BorderFactory.createEmptyBorder(0, filaAsociada ? 20 : 4, 0, 8))
+            if (isSelected) {
+                c.setBackground(cellBackground);
+                c.setForeground(TABLE_SELECTION_FOREGROUND);
+                setBorder(filaAsociada
+                        ? bordeContenidoAsociado(modelRow, modelColumn == COL_EXPEDIENTE ? ASSOCIATED_EXPEDIENTE_INDENT : 8, 8)
                         : BorderFactory.createEmptyBorder(0, 8, 0, 8));
             } else if (filaAsociada) {
-                setBorder(BorderFactory.createEmptyBorder(0, modelColumn == COL_EXPEDIENTE ? 20 : 8, 0, 8));
-                c.setBackground(fondoGrupo(fila.idExpedientePrincipal));
-                c.setForeground(AppV2Theme.TEXT_SECONDARY);
+                setBorder(bordeContenidoAsociado(modelRow, modelColumn == COL_EXPEDIENTE ? ASSOCIATED_EXPEDIENTE_INDENT : 8, 8));
+                c.setBackground(ASSOCIATED_ROW_BACKGROUND);
+                c.setForeground(modelColumn == COL_EXPEDIENTE ? AppV2Theme.TEXT_PRIMARY : AppV2Theme.TEXT_SECONDARY);
             } else {
                 setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-                c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+                c.setBackground(cellBackground);
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
             }
             return c;
-        }
-
-        private Color colorFondoCelda(
-                int row,
-                AsignacionTableRow fila,
-                boolean filaAsociada,
-                boolean isSelected,
-                boolean filaEnFoco) {
-            if (isSelected || filaEnFoco) {
-                return filaAsociada ? fondoGrupo(fila.idExpedientePrincipal) : fondoSeleccion;
-            }
-            if (filaAsociada) {
-                return fondoGrupo(fila.idExpedientePrincipal);
-            }
-            return row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
         }
     }
 
@@ -2308,7 +2415,7 @@ public class JPanelAsignacionV2 extends JPanel {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
             setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-            c.setBackground(isSelected ? fondoSeleccion : AppV2Theme.SURFACE);
+            c.setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE);
             c.setForeground(AppV2Theme.TEXT_PRIMARY);
             String text = value == null ? "" : value.toString();
             setToolTipText(text);
