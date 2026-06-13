@@ -23,6 +23,8 @@ public class ExpedienteRelacionadoDAO {
     private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
     private static final String MOVIMIENTO_ASOCIACION_DUPLICADO = "ASOCIACION_DUPLICADO";
     private static final String MOVIMIENTO_ASIGNACION_ABOGADO = "ASIGNACION_ABOGADO";
+    private static final String CODIGO_ETAPA_ASIGNACION = "ASIGNACION";
+    private static final String CODIGO_ESTADO_ASIGNADO = "ASIGNADO";
     private static final String MOTIVO_MISMA_ACTA_TITULAR = "Misma acta y titular";
     private static final String MOTIVO_DOCUMENTO_DUPLICADO = "Documento duplicado asociado al expediente principal por misma acta y titular";
     private static final int DIAS_PLAZO_INICIAL = 30;
@@ -300,7 +302,8 @@ public class ExpedienteRelacionadoDAO {
                                 orientacion.idPrincipal,
                                 orientacion.idRelacionado,
                                 idUsuarioCreador,
-                                idMovimientoAsignacion);
+                                idMovimientoAsignacion,
+                                true);
                         yaAsociados++;
                         continue;
                     }
@@ -320,7 +323,8 @@ public class ExpedienteRelacionadoDAO {
                             orientacion.idPrincipal,
                             orientacion.idRelacionado,
                             idUsuarioCreador,
-                            idMovimientoAsignacion);
+                            idMovimientoAsignacion,
+                            true);
                     if (idMovimiento != null) {
                         insertarHistorialRelacion(
                                 conn,
@@ -389,7 +393,8 @@ public class ExpedienteRelacionadoDAO {
                             idExpedientePrincipal,
                             getLongOrNull(rs, "id_expediente_relacionado"),
                             idUsuarioModificador,
-                            idMovimiento)) {
+                            idMovimiento,
+                            false)) {
                         sincronizados++;
                     }
                 }
@@ -403,7 +408,8 @@ public class ExpedienteRelacionadoDAO {
             Long idPrincipal,
             Long idRelacionado,
             Long idUsuarioModificador,
-            Long idMovimiento) throws SQLException {
+            Long idMovimiento,
+            boolean sincronizarEstadoOperativo) throws SQLException {
         if (idPrincipal == null || idRelacionado == null) {
             return false;
         }
@@ -411,8 +417,9 @@ public class ExpedienteRelacionadoDAO {
         if (asignacionPrincipal == null) {
             return false;
         }
+        boolean actualizarEstado = sincronizarEstadoOperativo && asignacionPrincipal.esAsignado();
         if (tieneAsignacionCoincidente(conn, idRelacionado, asignacionPrincipal)) {
-            actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador);
+            actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador, actualizarEstado);
             return false;
         }
         if (idMovimiento == null) {
@@ -425,7 +432,7 @@ public class ExpedienteRelacionadoDAO {
                 idRelacionado,
                 asignacionPrincipal,
                 idUsuarioModificador);
-        actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador);
+        actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador, actualizarEstado);
         insertarHistorialAsignacionAsociada(
                 conn,
                 idRelacionado,
@@ -449,10 +456,36 @@ public class ExpedienteRelacionadoDAO {
                 if (!rs.next()) {
                     return null;
                 }
+                ExpedienteEstadoActual estadoActual = obtenerEstadoActual(conn, idExpediente);
                 return new AsignacionActual(
                         getLongOrNull(rs, "id_usuario_asignado"),
                         getLongOrNull(rs, "id_equipo_asignado"),
-                        getLongOrNull(rs, "id_etapa"));
+                        getLongOrNull(rs, "id_etapa"),
+                        estadoActual.idEtapa,
+                        estadoActual.idEstado,
+                        estadoActual.etapaCodigo,
+                        estadoActual.estadoCodigo);
+            }
+        }
+    }
+
+    private ExpedienteEstadoActual obtenerEstadoActual(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT e.id_etapa_actual, e.id_estado_actual, et.codigo AS etapa_codigo, est.codigo AS estado_codigo "
+                + "FROM expediente e "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente est ON est.id_estado = e.id_estado_actual "
+                + "WHERE e.id_expediente = ? AND e.activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("El expediente principal seleccionado ya no está disponible.");
+                }
+                return new ExpedienteEstadoActual(
+                        getLongOrNull(rs, "id_etapa_actual"),
+                        getLongOrNull(rs, "id_estado_actual"),
+                        rs.getString("etapa_codigo"),
+                        rs.getString("estado_codigo"));
             }
         }
     }
@@ -516,19 +549,26 @@ public class ExpedienteRelacionadoDAO {
             Connection conn,
             Long idExpediente,
             AsignacionActual asignacion,
-            Long idUsuarioModificador) throws SQLException {
+            Long idUsuarioModificador,
+            boolean actualizarEstadoOperativo) throws SQLException {
         String sql = "UPDATE expediente SET "
                 + "id_usuario_responsable_actual = ?, "
                 + "id_usuario_abogado_inicial = NVL(id_usuario_abogado_inicial, ?), "
                 + "id_equipo_responsable_actual = ?, "
+                + (actualizarEstadoOperativo ? "id_etapa_actual = ?, id_estado_actual = ?, fecha_ultimo_movimiento = SYSTIMESTAMP, " : "")
                 + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente = ? AND activo = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, asignacion.idUsuario);
             ps.setLong(2, asignacion.idUsuario);
             setLongOrNull(ps, 3, asignacion.idEquipo);
-            setLongOrNull(ps, 4, idUsuarioModificador);
-            ps.setLong(5, idExpediente);
+            int index = 4;
+            if (actualizarEstadoOperativo) {
+                ps.setLong(index++, asignacion.idEtapaExpediente);
+                ps.setLong(index++, asignacion.idEstadoExpediente);
+            }
+            setLongOrNull(ps, index++, idUsuarioModificador);
+            ps.setLong(index, idExpediente);
             if (ps.executeUpdate() != 1) {
                 throw new SQLException("No se pudo sincronizar el equipo y abogado del documento asociado.");
             }
@@ -911,14 +951,50 @@ public class ExpedienteRelacionadoDAO {
         private final Long idUsuario;
         private final Long idEquipo;
         private final Long idEtapa;
+        private final Long idEtapaExpediente;
+        private final Long idEstadoExpediente;
+        private final String etapaCodigo;
+        private final String estadoCodigo;
 
-        private AsignacionActual(Long idUsuario, Long idEquipo, Long idEtapa) throws SQLException {
+        private AsignacionActual(
+                Long idUsuario,
+                Long idEquipo,
+                Long idEtapa,
+                Long idEtapaExpediente,
+                Long idEstadoExpediente,
+                String etapaCodigo,
+                String estadoCodigo) throws SQLException {
             if (idUsuario == null || idEtapa == null) {
                 throw new SQLException("La asignación vigente del expediente principal está incompleta.");
             }
             this.idUsuario = idUsuario;
             this.idEquipo = idEquipo;
             this.idEtapa = idEtapa;
+            this.idEtapaExpediente = idEtapaExpediente;
+            this.idEstadoExpediente = idEstadoExpediente;
+            this.etapaCodigo = etapaCodigo == null ? "" : etapaCodigo;
+            this.estadoCodigo = estadoCodigo == null ? "" : estadoCodigo;
+        }
+
+        private boolean esAsignado() {
+            return CODIGO_ETAPA_ASIGNACION.equalsIgnoreCase(etapaCodigo)
+                    && CODIGO_ESTADO_ASIGNADO.equalsIgnoreCase(estadoCodigo)
+                    && idEtapaExpediente != null
+                    && idEstadoExpediente != null;
+        }
+    }
+
+    private static final class ExpedienteEstadoActual {
+        private final Long idEtapa;
+        private final Long idEstado;
+        private final String etapaCodigo;
+        private final String estadoCodigo;
+
+        private ExpedienteEstadoActual(Long idEtapa, Long idEstado, String etapaCodigo, String estadoCodigo) {
+            this.idEtapa = idEtapa;
+            this.idEstado = idEstado;
+            this.etapaCodigo = etapaCodigo;
+            this.estadoCodigo = estadoCodigo;
         }
     }
 }
