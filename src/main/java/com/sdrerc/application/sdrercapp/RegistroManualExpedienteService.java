@@ -4,6 +4,7 @@ import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.ExpedienteRegistroDAO;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class RegistroManualExpedienteService {
@@ -29,11 +30,36 @@ public class RegistroManualExpedienteService {
         return validacionService.validar(registro);
     }
 
+    public List<String> validarConDuplicados(RegistroManualExpedienteDTO registro) throws SQLException {
+        List<String> mensajes = new ArrayList<String>(validar(registro));
+        if (registro == null) {
+            return mensajes;
+        }
+        registro.setPosibleDuplicado(false);
+        registro.setMotivoDuplicado(null);
+
+        String numeroActa = registro.getActa().getNumeroActa();
+        String titular = registro.getTitular().getNombreCompleto();
+        if (!hasText(numeroActa) || !hasText(titular)) {
+            return mensajes;
+        }
+
+        String duplicado = expedienteRegistroDAO.detectarDuplicadoPorActaYTitular(numeroActa, titular);
+        if (hasText(duplicado)) {
+            String motivo = "Acta y titular ya existen en " + duplicado;
+            registro.setPosibleDuplicado(true);
+            registro.setMotivoDuplicado(motivo);
+            mensajes.add("Documento duplicado: " + motivo
+                    + ". Se guardará sin número de expediente y quedará marcado para Asignación.");
+        }
+        return mensajes;
+    }
+
     public RegistroManualResultadoDTO registrar(RegistroManualExpedienteDTO registro) throws SQLException {
         if (registro == null) {
             throw new IllegalArgumentException("Complete los datos del formulario antes de registrar.");
         }
-        List<String> errores = validar(registro);
+        List<String> errores = validarConDuplicados(registro);
         if (!errores.isEmpty()) {
             registro.setObservacionesGenerales(unirObservaciones(
                     registro.getObservacionesGenerales(),
@@ -53,5 +79,9 @@ public class RegistroManualExpedienteService {
             return actual;
         }
         return actual.trim() + " | " + nueva.trim();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

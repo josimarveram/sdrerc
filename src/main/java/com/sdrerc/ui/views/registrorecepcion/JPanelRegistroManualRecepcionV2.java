@@ -453,9 +453,34 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private void validarFormulario() {
         RegistroManualExpedienteDTO dto = construirRegistro();
-        List<String> errores = registroService.validar(dto);
+        setTrabajando(true, "Validando formulario y duplicidad por acta y titular en SDRERC_APP...");
+        SwingWorker<ValidacionManualResultado, Void> worker = new SwingWorker<ValidacionManualResultado, Void>() {
+            @Override
+            protected ValidacionManualResultado doInBackground() throws Exception {
+                return new ValidacionManualResultado(dto, registroService.validarConDuplicados(dto));
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ValidacionManualResultado resultado = get();
+                    aplicarValidacion(resultado.dto, resultado.mensajes);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo validar el registro manual. No se registró ningún dato.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void aplicarValidacion(RegistroManualExpedienteDTO dto, List<String> errores) {
+        String numeroPreview = dto.isPosibleDuplicado()
+                ? "Sin número por duplicado al guardar"
+                : "Pendiente de generación al guardar";
         if (errores.isEmpty()) {
-            dto.setNumeroExpedienteVistaPrevia("Pendiente de generación al guardar");
+            dto.setNumeroExpedienteVistaPrevia(numeroPreview);
             validado = true;
             registroValidado = dto;
             txtErrores.setBackground(AppV2Theme.SOFT_GREEN);
@@ -465,7 +490,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             lblEstado.setText("Formulario validado. Revise el resumen y registre el expediente.");
             btnRegistrar.setEnabled(!trabajando);
         } else {
-            dto.setNumeroExpedienteVistaPrevia("Pendiente de generación al guardar");
+            dto.setNumeroExpedienteVistaPrevia(numeroPreview);
             dto.setObservacionesGenerales("Advertencias de validación: " + String.join(" | ", errores));
             validado = true;
             registroValidado = dto;
@@ -473,7 +498,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             txtErrores.setText(String.join("\n", errores));
             txtResumen.setText(resumen(dto));
             lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
-            lblEstado.setText("Se encontraron observaciones. Puede registrar el expediente y quedará marcado para revisión.");
+            lblEstado.setText(dto.isPosibleDuplicado()
+                    ? "Documento duplicado detectado. Puede registrarlo y quedará marcado para Asignación."
+                    : "Se encontraron observaciones. Puede registrar el expediente y quedará marcado para revisión.");
             btnRegistrar.setEnabled(!trabajando);
         }
     }
@@ -481,16 +508,16 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private void registrarExpediente() {
         if (!validado || registroValidado == null) {
             validarFormulario();
-            if (!validado || registroValidado == null) {
-                return;
-            }
+            return;
         }
         boolean conObservaciones = registroValidado.getObservacionesGenerales() != null
                 && !registroValidado.getObservacionesGenerales().trim().isEmpty();
+        boolean duplicado = registroValidado.isPosibleDuplicado();
         int option = JOptionPane.showConfirmDialog(
                 this,
                 "Se registrará un expediente en SDRERC_APP"
                         + (conObservaciones ? " con observaciones" : "")
+                        + (duplicado ? " y alerta de documento duplicado" : "")
                         + ".\n\n" + resumen(registroValidado) + "\n¿Desea continuar?",
                 "Confirmar registro manual",
                 JOptionPane.YES_NO_OPTION,
@@ -588,6 +615,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         }
         if (dto.getObservacionesGenerales() != null && !dto.getObservacionesGenerales().trim().isEmpty()) {
             sb.append("Observaciones: ").append(dto.getObservacionesGenerales()).append("\n");
+        }
+        if (dto.isPosibleDuplicado()) {
+            sb.append("Alerta duplicado: ").append(safe(dto.getMotivoDuplicado())).append("\n");
         }
         sb.append("Número expediente: ").append(safe(dto.getNumeroExpedienteVistaPrevia()));
         return sb.toString();
@@ -802,6 +832,17 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             this.procedimientos = procedimientos;
             this.tiposDocumento = tiposDocumento;
             this.tiposActa = tiposActa;
+        }
+    }
+
+    private static class ValidacionManualResultado {
+
+        private final RegistroManualExpedienteDTO dto;
+        private final List<String> mensajes;
+
+        private ValidacionManualResultado(RegistroManualExpedienteDTO dto, List<String> mensajes) {
+            this.dto = dto;
+            this.mensajes = mensajes == null ? new ArrayList<String>() : mensajes;
         }
     }
 }

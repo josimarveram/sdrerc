@@ -61,6 +61,12 @@ public class ExpedienteRegistroDAO {
         return duplicados;
     }
 
+    public String detectarDuplicadoPorActaYTitular(String numeroActa, String titular) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return buscarPorActaYTitular(conn, numeroActa, titular);
+        }
+    }
+
     public int obtenerSiguienteCorrelativoExpediente(int anio) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             return obtenerUltimoCorrelativoExpediente(conn, anio) + 1;
