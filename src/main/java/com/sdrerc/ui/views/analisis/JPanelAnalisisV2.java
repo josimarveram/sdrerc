@@ -1544,12 +1544,6 @@ public class JPanelAnalisisV2 extends JPanel {
         txtNumeroDocumentoProveido.setEnabled(noCorresponde);
         cmbIncorporado.setEnabled(!noCorresponde);
         if (noCorresponde) {
-            if (cmbIncorporado.getItemCount() > 0) {
-                cmbIncorporado.setSelectedIndex(0);
-            }
-            chkReconstitucion.setSelected(false);
-            chkLegitimidad.setSelected(false);
-            chkMediosProbatorios.setSelected(false);
             chkReconstitucion.setEnabled(false);
             chkLegitimidad.setEnabled(false);
             chkMediosProbatorios.setEnabled(false);
@@ -1585,9 +1579,6 @@ public class JPanelAnalisisV2 extends JPanel {
         btnQuitarDocumento.setEnabled(habilitar);
         chkRegistrarObservacion.setEnabled(habilitar);
         txtComentarioMovimiento.setEnabled(habilitar);
-        if (noCorresponde) {
-            chkRegistrarObservacion.setSelected(false);
-        }
     }
 
     private boolean resultadoRequiereObservacion(ResultadoItem resultado) {
