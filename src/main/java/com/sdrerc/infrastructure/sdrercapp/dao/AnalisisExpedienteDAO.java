@@ -140,7 +140,7 @@ public class AnalisisExpedienteDAO {
             }
         }
 
-        sql.append("ORDER BY e.fecha_ultimo_movimiento ASC NULLS LAST, e.id_expediente ASC");
+        sql.append("ORDER BY esol.fecha_recepcion ASC NULLS LAST, e.id_expediente ASC");
         sql.append(") WHERE ROWNUM <= ?");
         params.add(normalizarLimite(limite));
 
