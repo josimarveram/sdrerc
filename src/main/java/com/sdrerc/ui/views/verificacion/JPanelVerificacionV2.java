@@ -2,10 +2,13 @@ package com.sdrerc.ui.views.verificacion;
 
 import com.sdrerc.application.sdrercapp.DocumentoVerificacionService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
+import com.sdrerc.application.sdrercapp.FirmaEmisionExpedienteService;
 import com.sdrerc.application.sdrercapp.VerificacionExpedienteService;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoVerificacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.FirmaEmisionRegistroDTO;
+import com.sdrerc.domain.dto.sdrercapp.FirmaEmisionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ObservacionVerificacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionRegistroDTO;
@@ -47,6 +50,7 @@ import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -65,6 +69,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -91,6 +96,12 @@ public class JPanelVerificacionV2 extends JPanel {
     private static final int PANEL_VERIFICACION_TAB_OVERHANG = 18;
     private static final int PANEL_VERIFICACION_TAB_TOP = 18;
     private static final int GROUP_STRIPE_WIDTH = 5;
+    private static final String ETAPA_VERIFICACION = "VERIFICACION";
+    private static final String ETAPA_FIRMA_EMISION = "FIRMA_EMISION";
+    private static final String ESTADO_PARA_FIRMA = "PARA_FIRMA";
+    private static final String ESTADO_FIRMADO = "FIRMADO";
+    private static final String ESTADO_EMITIDO = "EMITIDO";
+    private static final String ESTADO_RESOLUCION_NUMERADA = "RESOLUCION_NUMERADA";
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
     private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;
     private static final Color ASSOCIATED_ROW_BACKGROUND = new Color(238, 250, 252);
@@ -112,6 +123,7 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private final VerificacionExpedienteService verificacionService;
     private final DocumentoVerificacionService documentoService;
+    private final FirmaEmisionExpedienteService firmaEmisionService;
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
 
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o resultado", 28);
@@ -125,12 +137,16 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarVerificacion = new JButton("Registrar verificación");
     private final JButton btnAprobar = new JButton("Aprobar verificación");
-    private final JButton btnEnviarFirma = new JButton("Enviar a firma");
+    private final JButton btnEnviarFirma = new JButton("Enviar a firma / emisión");
     private final JButton btnObservar = new JButton("Requiere corrección");
     private final JButton btnDocumentoInconsistente = new JButton("Documento inconsistente");
     private final JButton btnDevolverAnalisis = new JButton("Devolver a análisis");
+    private final JButton btnRegistrarFirma = new JButton("Registrar firma");
+    private final JButton btnRegistrarEmision = new JButton("Registrar emisión");
+    private final JButton btnRegistrarNumero = new JButton("Registrar número");
+    private final JButton btnEnviarEjecucion = new JButton("Enviar a ejecución");
 
-    private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes en verificación.");
+    private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes en Verificación y Firma / Emisión.");
     private final JLabel lblExpediente = new JLabel("-");
     private final JLabel lblTitular = new JLabel("-");
     private final JLabel lblActa = new JLabel("-");
@@ -148,6 +164,12 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JTextArea txtComentario = new JTextArea(4, 22);
     private final JTextArea txtObservacion = new JTextArea(4, 22);
     private final JTextArea txtFundamentoAnalisis = new JTextArea(4, 22);
+    private final JComboBox<SimpleItem> cmbTipoResolucion = new JComboBox<SimpleItem>();
+    private final JTextField txtNumeroResolucion = new JTextField(12);
+    private final JTextField txtFechaFirma = new JTextField(10);
+    private final JTextField txtFechaEmision = new JTextField(10);
+    private final JTextField txtFechaResolucion = new JTextField(10);
+    private final JTextArea txtComentarioFirma = new JTextArea(3, 22);
     private final AppV2NotebookToggleTab tabPanelVerificacion = new AppV2NotebookToggleTab();
 
     private final VerificacionTableModel tableModel = new VerificacionTableModel();
@@ -184,14 +206,22 @@ public class JPanelVerificacionV2 extends JPanel {
     private boolean busquedaInicialEjecutada;
 
     public JPanelVerificacionV2() {
-        this(new VerificacionExpedienteService(), new DocumentoVerificacionService());
+        this(new VerificacionExpedienteService(), new DocumentoVerificacionService(), new FirmaEmisionExpedienteService());
     }
 
     public JPanelVerificacionV2(
             VerificacionExpedienteService verificacionService,
             DocumentoVerificacionService documentoService) {
+        this(verificacionService, documentoService, new FirmaEmisionExpedienteService());
+    }
+
+    public JPanelVerificacionV2(
+            VerificacionExpedienteService verificacionService,
+            DocumentoVerificacionService documentoService,
+            FirmaEmisionExpedienteService firmaEmisionService) {
         this.verificacionService = verificacionService;
         this.documentoService = documentoService;
+        this.firmaEmisionService = firmaEmisionService;
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
@@ -277,6 +307,7 @@ public class JPanelVerificacionV2 extends JPanel {
         panel.addSection(crearAnalisisPrevio());
         panel.addSection(crearDocumentosPanel());
         panel.addSection(crearFormularioVerificacion());
+        panel.addSection(crearFormularioFirmaEmision());
         panel.setFooter(crearAccionesPanelVerificacion());
         return panel;
     }
@@ -318,6 +349,10 @@ public class JPanelVerificacionV2 extends JPanel {
         panel.add(btnObservar);
         panel.add(btnDocumentoInconsistente);
         panel.add(btnDevolverAnalisis);
+        panel.add(btnRegistrarFirma);
+        panel.add(btnRegistrarEmision);
+        panel.add(btnRegistrarNumero);
+        panel.add(btnEnviarEjecucion);
         return panel;
     }
 
@@ -391,6 +426,21 @@ public class JPanelVerificacionV2 extends JPanel {
         return panel;
     }
 
+    private JPanel crearFormularioFirmaEmision() {
+        JPanel panel = section("Firma / emisión integrada");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Tipo documento", cmbTipoResolucion);
+        addRow(grid, row++, "N° resolución", txtNumeroResolucion);
+        addRow(grid, row++, "Fecha firma", txtFechaFirma);
+        addRow(grid, row++, "Fecha emisión", txtFechaEmision);
+        addRow(grid, row++, "Fecha resolución", txtFechaResolucion);
+        addRow(grid, row, "Comentario", scrollText(txtComentarioFirma, 76));
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
     private JPanel section(String title) {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBackground(AppV2Theme.SURFACE);
@@ -445,6 +495,11 @@ public class JPanelVerificacionV2 extends JPanel {
         cmbResultado.setPreferredSize(new Dimension(235, 34));
         cmbTipoObservacion.setPreferredSize(new Dimension(235, 34));
         cmbMotivoCorreccion.setPreferredSize(new Dimension(235, 34));
+        cmbTipoResolucion.setPreferredSize(new Dimension(235, 34));
+        txtNumeroResolucion.setPreferredSize(new Dimension(235, 34));
+        txtFechaFirma.setPreferredSize(new Dimension(235, 34));
+        txtFechaEmision.setPreferredSize(new Dimension(235, 34));
+        txtFechaResolucion.setPreferredSize(new Dimension(235, 34));
         spnLimite.setPreferredSize(new Dimension(86, 34));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRegistrarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -453,6 +508,10 @@ public class JPanelVerificacionV2 extends JPanel {
         btnObservar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnDocumentoInconsistente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnDevolverAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnRegistrarFirma.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnRegistrarEmision.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnRegistrarNumero.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnEnviarEjecucion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
     }
 
     private void configurarTabla() {
@@ -513,6 +572,10 @@ public class JPanelVerificacionV2 extends JPanel {
         btnObservar.addActionListener(e -> accionRapida("REGISTRO_OBSERVACION_VERIFICACION"));
         btnDocumentoInconsistente.addActionListener(e -> accionRapida("REVERSION_ESTADO_DOCUMENTO"));
         btnDevolverAnalisis.addActionListener(e -> devolverAnalisis());
+        btnRegistrarFirma.addActionListener(e -> registrarFirma());
+        btnRegistrarEmision.addActionListener(e -> registrarEmision());
+        btnRegistrarNumero.addActionListener(e -> registrarNumeroResolucion());
+        btnEnviarEjecucion.addActionListener(e -> enviarEjecucion());
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -540,15 +603,17 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private void cargarFiltrosBase() {
-        EstadoExpedienteComboSupportV2.cargar(
-                cmbEstadoFiltro, "VERIFICACION", new SimpleItem("TODOS", "Todos los estados"),
+        EstadoExpedienteComboSupportV2.cargarPorEtapas(
+                cmbEstadoFiltro, new SimpleItem("TODOS", "Todos los estados"),
                 (codigo, nombre) -> new SimpleItem(codigo, nombre),
-                ex -> lblEstado.setText("No se pudieron cargar los estados de Verificación."));
+                ex -> lblEstado.setText("No se pudieron cargar los estados de Verificación y Firma / Emisión."),
+                ETAPA_VERIFICACION,
+                ETAPA_FIRMA_EMISION);
     }
 
     private void cargarCatalogos() {
         cargandoCatalogos = true;
-        setTrabajando(true, "Cargando catálogos de verificación...");
+        setTrabajando(true, "Cargando catálogos de Verificación y Firma / Emisión...");
         SwingWorker<CatalogosCarga, Void> worker = new SwingWorker<CatalogosCarga, Void>() {
             @Override
             protected CatalogosCarga doInBackground() throws Exception {
@@ -556,7 +621,8 @@ public class JPanelVerificacionV2 extends JPanel {
                         verificacionService.listarResultadosVerificacion(),
                         verificacionService.listarTiposObservacion(),
                         verificacionService.listarMotivosCorreccion(),
-                        documentoService.listarEstadosDocumento());
+                        documentoService.listarEstadosDocumento(),
+                        firmaEmisionService.listarTiposResolucion());
             }
 
             @Override
@@ -564,7 +630,7 @@ public class JPanelVerificacionV2 extends JPanel {
                 try {
                     cargarCatalogosVista(get());
                 } catch (Exception ex) {
-                    mostrarError("No se pudieron cargar los catálogos de verificación.", ex);
+                    mostrarError("No se pudieron cargar los catálogos de Verificación y Firma / Emisión.", ex);
                 } finally {
                     cargandoCatalogos = false;
                     setTrabajando(false, null);
@@ -587,6 +653,7 @@ public class JPanelVerificacionV2 extends JPanel {
         }
         cargarSimpleItems(cmbTipoObservacion, carga.tiposObservacion, "Seleccione tipo");
         cargarSimpleItems(cmbMotivoCorreccion, carga.motivosCorreccion, "Seleccione motivo");
+        cargarSimpleItems(cmbTipoResolucion, carga.tiposResolucion, "Seleccione tipo");
         estadosDocumento.clear();
         for (CatalogoItemDTO item : carga.estadosDocumento) {
             estadosDocumento.add(new SimpleItem(item.getCodigo(), item.getNombre()));
@@ -609,7 +676,7 @@ public class JPanelVerificacionV2 extends JPanel {
             mostrarInfo("Fecha desde no puede ser mayor que Fecha hasta.");
             return;
         }
-        setTrabajando(true, "Consultando expedientes en verificación...");
+        setTrabajando(true, "Consultando expedientes en Verificación y Firma / Emisión...");
         String texto = txtBusqueda.getText();
         String estado = obtenerCodigo(cmbEstadoFiltro);
         int limite = ((Number) spnLimite.getValue()).intValue();
@@ -645,7 +712,7 @@ public class JPanelVerificacionV2 extends JPanel {
         table.clearSelection();
         int enVerificacion = 0;
         int correccion = 0;
-        int verificados = 0;
+        int verificadosOFirma = 0;
         for (VerificacionExpedienteDTO item : expedientes) {
             if (item.isRegistrableVerificacion()) {
                 enVerificacion++;
@@ -653,16 +720,16 @@ public class JPanelVerificacionV2 extends JPanel {
             if (item.isDevolvibleAnalisis()) {
                 correccion++;
             }
-            if (item.isEnviableFirma()) {
-                verificados++;
+            if (item.isEnviableFirma() || esEnFirmaEmision(item)) {
+                verificadosOFirma++;
             }
             agregarFilaPrincipal(item);
         }
         cardEnVerificacion.setValue(String.valueOf(enVerificacion));
         cardCorreccion.setValue(String.valueOf(correccion));
-        cardVerificados.setValue(String.valueOf(verificados));
+        cardVerificados.setValue(String.valueOf(verificadosOFirma));
         lblEstado.setText(items.isEmpty()
-                ? "No se encontraron expedientes en verificación."
+                ? "No se encontraron expedientes en Verificación o Firma / Emisión."
                 : items.size() + " expediente(s) encontrados.");
         tablePanel.setEmpty(items.isEmpty());
         actualizarSeleccion();
@@ -938,7 +1005,7 @@ public class JPanelVerificacionV2 extends JPanel {
         cardEnVerificacion.setValue("0");
         cardCorreccion.setValue("0");
         cardVerificados.setValue("0");
-        lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes en verificación.");
+        lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes en Verificación y Firma / Emisión.");
         panelVerificacionCerradoPorUsuario = false;
         actualizarSeleccion();
     }
@@ -955,6 +1022,7 @@ public class JPanelVerificacionV2 extends JPanel {
         btnDocumentoInconsistente.setEnabled(has && !asociado && item.isRegistrableVerificacion());
         btnEnviarFirma.setEnabled(has && !asociado && item.isEnviableFirma());
         btnDevolverAnalisis.setEnabled(has && !asociado && item.isDevolvibleAnalisis());
+        actualizarAccionesFirmaEmision(item, asociado, has);
         actualizarVisibilidadPanelVerificacion();
         if (!has) {
             lblExpediente.setText("-");
@@ -968,6 +1036,7 @@ public class JPanelVerificacionV2 extends JPanel {
             lblAlertas.setText("Sin alertas.");
             txtFundamentoAnalisis.setText("");
             documentosModel.setRowCount(0);
+            limpiarFormularioFirma();
             return;
         }
         if (asociado) {
@@ -986,6 +1055,7 @@ public class JPanelVerificacionV2 extends JPanel {
             txtComentario.setText("");
             txtObservacion.setText("");
             documentosModel.setRowCount(0);
+            limpiarFormularioFirma();
             return;
         }
         lblExpediente.setText(item.getNumeroExpediente());
@@ -1050,6 +1120,33 @@ public class JPanelVerificacionV2 extends JPanel {
             alertas.add(item.getTotalDocumentosAnalizados() + " documento(s) analizado(s)");
         }
         return alertas.isEmpty() ? "Sin alertas." : String.join(" · ", alertas);
+    }
+
+    private boolean esEnFirmaEmision(VerificacionExpedienteDTO item) {
+        return item != null && ETAPA_FIRMA_EMISION.equalsIgnoreCase(item.getEtapaCodigo());
+    }
+
+    private boolean esFirmable(VerificacionExpedienteDTO item) {
+        return esEnFirmaEmision(item) && ESTADO_PARA_FIRMA.equalsIgnoreCase(item.getEstadoCodigo());
+    }
+
+    private boolean esEmitible(VerificacionExpedienteDTO item) {
+        return esEnFirmaEmision(item) && ESTADO_FIRMADO.equalsIgnoreCase(item.getEstadoCodigo());
+    }
+
+    private boolean esNumerable(VerificacionExpedienteDTO item) {
+        return esEnFirmaEmision(item) && ESTADO_EMITIDO.equalsIgnoreCase(item.getEstadoCodigo());
+    }
+
+    private boolean esEnviableEjecucion(VerificacionExpedienteDTO item) {
+        return esEnFirmaEmision(item) && ESTADO_RESOLUCION_NUMERADA.equalsIgnoreCase(item.getEstadoCodigo());
+    }
+
+    private void actualizarAccionesFirmaEmision(VerificacionExpedienteDTO item, boolean asociado, boolean disponible) {
+        btnRegistrarFirma.setEnabled(disponible && !asociado && esFirmable(item));
+        btnRegistrarEmision.setEnabled(disponible && !asociado && esEmitible(item));
+        btnRegistrarNumero.setEnabled(disponible && !asociado && esNumerable(item));
+        btnEnviarEjecucion.setEnabled(disponible && !asociado && esEnviableEjecucion(item));
     }
 
     private void cargarDocumentos(VerificacionExpedienteDTO item) {
@@ -1244,6 +1341,54 @@ public class JPanelVerificacionV2 extends JPanel {
                 () -> verificacionService.devolverAnalisis(registro));
     }
 
+    private void registrarFirma() {
+        VerificacionExpedienteDTO item = requerirSeleccionFirma("Seleccione un expediente en Firma / Emisión para registrar firma.");
+        if (item == null) {
+            return;
+        }
+        confirmarYEjecutarFirma(
+                "Registrar firma",
+                "Se registrará la firma del expediente " + item.getNumeroExpediente() + ". ¿Desea continuar?",
+                "Registrando firma...",
+                () -> firmaEmisionService.registrarFirma(crearRegistroFirma(FirmaEmisionExpedienteService.ACCION_FIRMA_DOCUMENTO)));
+    }
+
+    private void registrarEmision() {
+        VerificacionExpedienteDTO item = requerirSeleccionFirma("Seleccione un expediente firmado para registrar emisión.");
+        if (item == null) {
+            return;
+        }
+        confirmarYEjecutarFirma(
+                "Registrar emisión",
+                "Se registrará la emisión del documento del expediente " + item.getNumeroExpediente() + ". ¿Desea continuar?",
+                "Registrando emisión...",
+                () -> firmaEmisionService.registrarEmision(crearRegistroFirma(FirmaEmisionExpedienteService.ACCION_FIRMA_DOCUMENTO)));
+    }
+
+    private void registrarNumeroResolucion() {
+        VerificacionExpedienteDTO item = requerirSeleccionFirma("Seleccione un expediente emitido para registrar número.");
+        if (item == null) {
+            return;
+        }
+        confirmarYEjecutarFirma(
+                "Registrar número",
+                "Se registrará el número de resolución del expediente " + item.getNumeroExpediente() + ". ¿Desea continuar?",
+                "Registrando número de resolución...",
+                () -> firmaEmisionService.registrarNumeroResolucion(crearRegistroFirma(FirmaEmisionExpedienteService.ACCION_REGISTRO_NUMERO)));
+    }
+
+    private void enviarEjecucion() {
+        VerificacionExpedienteDTO item = requerirSeleccionFirma("Seleccione un expediente con resolución numerada para enviar a Ejecución.");
+        if (item == null) {
+            return;
+        }
+        confirmarYEjecutarFirma(
+                "Enviar a ejecución",
+                "El expediente " + item.getNumeroExpediente() + " será enviado a Ejecución. ¿Desea continuar?",
+                "Enviando expediente a Ejecución...",
+                () -> firmaEmisionService.enviarEjecucion(crearRegistroFirma(FirmaEmisionExpedienteService.ACCION_REGISTRO_NUMERO)));
+    }
+
     private VerificacionRegistroDTO construirRegistro(VerificacionExpedienteDTO item, String accionOverride) {
         ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
         SimpleItem tipoObservacion = (SimpleItem) cmbTipoObservacion.getSelectedItem();
@@ -1257,6 +1402,36 @@ public class JPanelVerificacionV2 extends JPanel {
                 motivoCorreccion == null ? "" : motivoCorreccion.nombre,
                 txtObservacion.getText());
         return new VerificacionRegistroDTO(item.getIdExpediente(), accion, nombre, txtComentario.getText(), observacion);
+    }
+
+    private FirmaEmisionRegistroDTO crearRegistroFirma(String accionCodigo) {
+        VerificacionExpedienteDTO item = requerirSeleccionFirma("Seleccione un expediente en Firma / Emisión.");
+        if (item == null) {
+            throw new IllegalArgumentException("Seleccione un expediente en Firma / Emisión.");
+        }
+        SimpleItem tipo = (SimpleItem) cmbTipoResolucion.getSelectedItem();
+        return new FirmaEmisionRegistroDTO(
+                item.getIdExpediente(),
+                accionCodigo,
+                tipo == null ? "" : tipo.codigo,
+                tipo == null ? "" : tipo.nombre,
+                txtNumeroResolucion.getText(),
+                parseFechaFirma(txtFechaFirma, "fecha de firma"),
+                parseFechaFirma(txtFechaEmision, "fecha de emisión"),
+                parseFechaFirma(txtFechaResolucion, "fecha de resolución"),
+                txtComentarioFirma.getText());
+    }
+
+    private LocalDate parseFechaFirma(JTextField field, String label) {
+        String value = field.getText() == null ? "" : field.getText().trim();
+        if (value.isEmpty()) {
+            return LocalDate.now();
+        }
+        try {
+            return LocalDate.parse(value, DATE_FORMAT);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Ingrese una " + label + " válida con formato dd/MM/yyyy.");
+        }
     }
 
     private void confirmarYEjecutar(String titulo, String mensaje, OperacionVerificacion operacion) {
@@ -1292,6 +1467,43 @@ public class JPanelVerificacionV2 extends JPanel {
         worker.execute();
     }
 
+    private void confirmarYEjecutarFirma(
+            String titulo,
+            String mensaje,
+            String mensajeTrabajo,
+            OperacionFirmaEmision operacion) {
+        int confirm = JOptionPane.showConfirmDialog(this, mensaje, titulo, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        setTrabajando(true, mensajeTrabajo);
+        SwingWorker<FirmaEmisionResultadoDTO, Void> worker = new SwingWorker<FirmaEmisionResultadoDTO, Void>() {
+            @Override
+            protected FirmaEmisionResultadoDTO doInBackground() throws Exception {
+                return operacion.ejecutar();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    FirmaEmisionResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelVerificacionV2.this,
+                            resultado.getMensaje(),
+                            "Firma / Emisión",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    limpiarFormularioFirma();
+                    buscar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo completar la operación de Firma / Emisión.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void abrirDetalle() {
         VerificacionTableRow fila = obtenerFilaSeleccionada();
         if (fila == null || fila.getIdExpediente() == null) {
@@ -1313,6 +1525,18 @@ public class JPanelVerificacionV2 extends JPanel {
         VerificacionExpedienteDTO item = fila == null ? null : fila.principal;
         if (item == null) {
             mostrarInfo(mensaje);
+        }
+        return item;
+    }
+
+    private VerificacionExpedienteDTO requerirSeleccionFirma(String mensaje) {
+        VerificacionExpedienteDTO item = requerirSeleccion(mensaje);
+        if (item == null) {
+            return null;
+        }
+        if (!esEnFirmaEmision(item)) {
+            mostrarInfo("Seleccione un expediente que ya se encuentre en Firma / Emisión.");
+            return null;
         }
         return item;
     }
@@ -1390,6 +1614,7 @@ public class JPanelVerificacionV2 extends JPanel {
         txtComentario.setText("");
         txtObservacion.setText("");
         documentosModel.setRowCount(0);
+        limpiarFormularioFirma();
         actualizarResultadoSeleccionado();
     }
 
@@ -1406,6 +1631,7 @@ public class JPanelVerificacionV2 extends JPanel {
         btnDocumentoInconsistente.setEnabled(!trabajando && item != null && item.isRegistrableVerificacion());
         btnEnviarFirma.setEnabled(!trabajando && item != null && item.isEnviableFirma());
         btnDevolverAnalisis.setEnabled(!trabajando && item != null && item.isDevolvibleAnalisis());
+        actualizarAccionesFirmaEmision(item, false, !trabajando && item != null);
         if (mensaje != null) {
             lblEstado.setText(mensaje);
         }
@@ -1419,6 +1645,23 @@ public class JPanelVerificacionV2 extends JPanel {
     private void restaurarFechasBusqueda() {
         fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
         fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
+        inicializarFechasFirma();
+    }
+
+    private void limpiarFormularioFirma() {
+        if (cmbTipoResolucion.getItemCount() > 0) {
+            cmbTipoResolucion.setSelectedIndex(0);
+        }
+        txtNumeroResolucion.setText("");
+        txtComentarioFirma.setText("");
+        inicializarFechasFirma();
+    }
+
+    private void inicializarFechasFirma() {
+        String hoy = DATE_FORMAT.format(LocalDate.now());
+        txtFechaFirma.setText(hoy);
+        txtFechaEmision.setText(hoy);
+        txtFechaResolucion.setText(hoy);
     }
 
     private static LocalDate fechaSeleccionada(PremiumDateFieldV2 field) {
@@ -1456,6 +1699,10 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private interface OperacionVerificacion {
         VerificacionResultadoDTO ejecutar() throws Exception;
+    }
+
+    private interface OperacionFirmaEmision {
+        FirmaEmisionResultadoDTO ejecutar() throws Exception;
     }
 
     private class VerificacionTableModel extends DefaultTableModel {
@@ -1833,16 +2080,19 @@ public class JPanelVerificacionV2 extends JPanel {
         private final List<CatalogoItemDTO> tiposObservacion;
         private final List<CatalogoItemDTO> motivosCorreccion;
         private final List<CatalogoItemDTO> estadosDocumento;
+        private final List<CatalogoItemDTO> tiposResolucion;
 
         private CatalogosCarga(
                 List<CatalogoItemDTO> resultados,
                 List<CatalogoItemDTO> tiposObservacion,
                 List<CatalogoItemDTO> motivosCorreccion,
-                List<CatalogoItemDTO> estadosDocumento) {
+                List<CatalogoItemDTO> estadosDocumento,
+                List<CatalogoItemDTO> tiposResolucion) {
             this.resultados = resultados == null ? new ArrayList<CatalogoItemDTO>() : resultados;
             this.tiposObservacion = tiposObservacion == null ? new ArrayList<CatalogoItemDTO>() : tiposObservacion;
             this.motivosCorreccion = motivosCorreccion == null ? new ArrayList<CatalogoItemDTO>() : motivosCorreccion;
             this.estadosDocumento = estadosDocumento == null ? new ArrayList<CatalogoItemDTO>() : estadosDocumento;
+            this.tiposResolucion = tiposResolucion == null ? new ArrayList<CatalogoItemDTO>() : tiposResolucion;
         }
     }
 }

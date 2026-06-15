@@ -103,8 +103,9 @@ public class VerificacionExpedienteDAO {
         sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
-        sql.append("WHERE e.activo = 1 AND et.codigo = ? ");
+        sql.append("WHERE e.activo = 1 AND et.codigo IN (?, ?) ");
         params.add(ETAPA_VERIFICACION);
+        params.add(ETAPA_FIRMA);
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");

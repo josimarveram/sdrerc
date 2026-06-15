@@ -95,7 +95,7 @@ Modulos V2 ya incorporados o en uso dentro de la app nueva:
 - Asignacion.
 - Analisis.
 - Verificacion.
-- Firma / Emision.
+- Firma / Emision integrada dentro de Verificacion, sin entrada independiente en el menu lateral.
 - Ejecucion.
 - Notificacion.
 - Publicacion.
@@ -108,11 +108,12 @@ Modulos V2 ya incorporados o en uso dentro de la app nueva:
 Reglas por modulo:
 
 - `MenuPrincipalV2` es el punto de integracion visual de modulos V2; no usar el menu legacy para nuevas entradas.
+- `Firma / Emision` no debe exponerse como modulo lateral independiente en V2; sus acciones visuales se gestionan dentro de `Verificacion`, reutilizando los Services/DAOs transaccionales de Firma/Emision y las etapas/estados reales del flujo.
 - La Bandeja de Expedientes no debe mostrar `V2` en el titulo ni en el nombre visual del modulo.
 - `Ver detalle` en bandejas operativas debe abrir la consola unica `DlgConsolaExpedienteV2`, no crear consolas paralelas.
 - Los modulos administrativos `Roles`, `Usuarios` y `Equipo Juridico` no deben mostrar columnas `Creado` ni `Modificado` en sus listados principales, salvo que el usuario lo pida explicitamente.
 - Los modulos V2 deben evitar bloques de cabecera duplicados dentro del panel cuando `MenuPrincipalV2` ya muestra titulo y subtitulo. Si el panel interno necesita un bloque superior, debe aportar contexto operativo nuevo y no repetir titulo/subtitulo.
-- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Firma / Emision`, `Ejecucion`, `Notificacion`, `Publicacion`, `Expediente digital`, `Cierre / Archivo` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
+- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Ejecucion`, `Notificacion`, `Publicacion`, `Expediente digital`, `Cierre / Archivo` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
 
 ## 4.2 Escritura controlada ya autorizada en V2
 
@@ -134,6 +135,7 @@ Por defecto V2 sigue siendo lectura/consulta. Las escrituras reales solo son val
 - `Analisis`: al recibir un expediente principal, recibir en la misma transaccion los documentos asociados que ya se encuentren en `ASIGNACION / ASIGNADO`. Si un documento se asocia despues de la recepcion del principal, debe quedar pendiente y solo el abogado responsable puede recibirlo individualmente desde la seccion `Documentos asociados`; esta accion no lo convierte automaticamente en documento analizado.
 - `Analisis`: la derivacion externa requiere entidad destino, tipo de derivacion y datos documentales; si esa estructura funcional no esta completa en el modulo, debe mostrarse como accion preparada/bloqueada con diagnostico, sin escritura parcial.
 - `Verificacion`: consultar expedientes en `VERIFICACION`, revisar analisis y documentos, aprobar verificacion, observar, marcar documento inconsistente, devolver a Analisis y enviar a `FIRMA_EMISION / PARA_FIRMA` si el flujo `SDRERC_TO_BE` lo permite.
+- `Verificacion`: desde la UI V2 tambien concentra los controles de firma, emision, numeracion y envio a Ejecucion para expedientes en `FIRMA_EMISION`, sin crear rutas paralelas ni cambiar las transiciones reales.
 - `Verificacion`: no crear tabla paralela de verificacion si el modelo no la define; usar `EXPEDIENTE`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_OBSERVACION`, `EXPEDIENTE_EVALUACION` y `EXPEDIENTE_DOCUMENTO_ANALIZADO` segun corresponda.
 - `Verificacion`: las acciones autorizadas deben resolver transiciones reales por codigo, como `APROBACION_VERIFICACION`, `ENVIO_FIRMA`, `REGISTRO_OBSERVACION_VERIFICACION`, `REVERSION_ESTADO_DOCUMENTO` y `DEVOLUCION_A_ANALISIS`; si falta una transicion, catalogo, evaluacion o documento requerido, bloquear con diagnostico sin escritura parcial.
 - `Firma / Emision`: consultar expedientes en `FIRMA_EMISION`, revisar analisis, verificacion, documentos y observaciones, registrar firma, registrar emision, registrar numero de resolucion/documento y enviar a `EJECUCION / EN_EJECUCION` si el flujo `SDRERC_TO_BE` lo permite.

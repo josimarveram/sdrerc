@@ -12,7 +12,6 @@ import com.sdrerc.ui.views.cierrearchivo.JPanelCierreArchivoV2;
 import com.sdrerc.ui.views.ejecucion.JPanelEjecucionV2;
 import com.sdrerc.ui.views.expedientedigital.JPanelExpedienteDigitalV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
-import com.sdrerc.ui.views.firmaemision.JPanelFirmaEmisionV2;
 import com.sdrerc.ui.views.notificacion.JPanelNotificacionV2;
 import com.sdrerc.ui.views.publicacion.JPanelPublicacionV2;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
@@ -59,7 +58,6 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnAsignacion;
     private JButton btnAnalisis;
     private JButton btnVerificacion;
-    private JButton btnFirmaEmision;
     private JButton btnEjecucion;
     private JButton btnNotificacion;
     private JButton btnPublicacion;
@@ -138,9 +136,6 @@ public class MenuPrincipalV2 extends JFrame {
         btnVerificacion = crearBotonMenu("Verificación", AppV2IconProvider.VERIFICACION);
         btnVerificacion.addActionListener(e -> mostrarVerificacion(btnVerificacion));
         opciones.add(btnVerificacion);
-        btnFirmaEmision = crearBotonMenu("Firma / Emisión", AppV2IconProvider.FIRMA_EMISION);
-        btnFirmaEmision.addActionListener(e -> mostrarFirmaEmision(btnFirmaEmision));
-        opciones.add(btnFirmaEmision);
         btnEjecucion = crearBotonMenu("Ejecución", AppV2IconProvider.EJECUCION);
         btnEjecucion.addActionListener(e -> mostrarEjecucion(btnEjecucion));
         opciones.add(btnEjecucion);
@@ -377,15 +372,8 @@ public class MenuPrincipalV2 extends JFrame {
 
     private void mostrarVerificacion(JButton boton) {
         lblTitulo.setText("Verificación");
-        lblSubtitulo.setText("Revisión de expedientes enviados desde análisis para aprobación u observación");
+        lblSubtitulo.setText("Revisión, firma y emisión de expedientes aprobados por análisis");
         cambiarContenido(new JPanelVerificacionV2());
-        aplicarEstadoActivo(boton);
-    }
-
-    private void mostrarFirmaEmision(JButton boton) {
-        lblTitulo.setText("Firma / Emisión");
-        lblSubtitulo.setText("Expedientes aprobados para firma, emisión y numeración del documento resolutivo");
-        cambiarContenido(new JPanelFirmaEmisionV2());
         aplicarEstadoActivo(boton);
     }
 
