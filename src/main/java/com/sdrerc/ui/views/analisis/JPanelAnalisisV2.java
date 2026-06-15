@@ -210,7 +210,6 @@ public class JPanelAnalisisV2 extends JPanel {
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
-        add(crearHeader(), BorderLayout.NORTH);
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarDocumentoTabla();
@@ -232,19 +231,25 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
-        JPanel centro = new JPanel(new BorderLayout(14, 14));
-        centro.setOpaque(false);
-        centro.add(crearBuscador(), BorderLayout.NORTH);
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        contenidoPrincipal.setOpaque(false);
+        contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
+
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        contenidoOperativo.setOpaque(false);
+        contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
+        contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
+        contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
+
         panelAnalisis = crearPanelAnalisis();
         JPanel panelAnalisisConTab = crearPanelAnalisisConTab(panelAnalisis);
         splitOperativo = new AppV2OperationalSplitPanel(
-                crearBandeja(),
+                contenidoPrincipal,
                 panelAnalisisConTab,
                 0,
                 PANEL_ANALISIS_ANCHO_MINIMO + PANEL_ANALISIS_TAB_OVERHANG,
                 PANEL_ANALISIS_ANCHO_NORMAL + PANEL_ANALISIS_TAB_OVERHANG);
-        centro.add(splitOperativo, BorderLayout.CENTER);
-        return centro;
+        return splitOperativo;
     }
 
     private JPanel crearBuscador() {

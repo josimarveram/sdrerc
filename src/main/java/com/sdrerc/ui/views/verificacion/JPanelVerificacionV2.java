@@ -187,7 +187,6 @@ public class JPanelVerificacionV2 extends JPanel {
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
-        add(crearHeader(), BorderLayout.NORTH);
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarDocumentosTabla();
@@ -208,19 +207,25 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
-        JPanel centro = new JPanel(new BorderLayout(14, 14));
-        centro.setOpaque(false);
-        centro.add(crearBuscador(), BorderLayout.NORTH);
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        contenidoPrincipal.setOpaque(false);
+        contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
+
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        contenidoOperativo.setOpaque(false);
+        contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
+        contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
+        contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
+
         panelVerificacion = crearPanelVerificacion();
         JPanel panelVerificacionConTab = crearPanelVerificacionConTab(panelVerificacion);
         splitOperativo = new AppV2OperationalSplitPanel(
-                crearBandeja(),
+                contenidoPrincipal,
                 panelVerificacionConTab,
                 0,
                 PANEL_VERIFICACION_ANCHO_MINIMO + PANEL_VERIFICACION_TAB_OVERHANG,
                 PANEL_VERIFICACION_ANCHO_NORMAL + PANEL_VERIFICACION_TAB_OVERHANG);
-        centro.add(splitOperativo, BorderLayout.CENTER);
-        return centro;
+        return splitOperativo;
     }
 
     private JPanel crearBuscador() {
