@@ -518,7 +518,7 @@ public class JPanelAnalisisV2 extends JPanel {
         cmbMotivoNoCorresponde.setEnabled(false);
         txtNumeroDocumentoProveido.setPreferredSize(new Dimension(260, 34));
         txtNumeroDocumentoProveido.setToolTipText("Ingrese el número del proveído.");
-        txtNumeroDocumentoProveido.setEnabled(false);
+        txtNumeroDocumentoProveido.setEnabled(true);
         cmbTipoDocumento.setPreferredSize(new Dimension(260, 34));
         cmbEstadoDocumento.setPreferredSize(new Dimension(260, 34));
         cmbTipoObservacion.setPreferredSize(new Dimension(260, 34));
@@ -1541,14 +1541,13 @@ public class JPanelAnalisisV2 extends JPanel {
         ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
         boolean noCorresponde = esResultadoNoCorresponde(resultado);
         cmbMotivoNoCorresponde.setEnabled(noCorresponde);
-        txtNumeroDocumentoProveido.setEnabled(noCorresponde);
+        txtNumeroDocumentoProveido.setEnabled(true);
         cmbIncorporado.setEnabled(!noCorresponde);
         if (noCorresponde) {
             chkReconstitucion.setEnabled(false);
             chkLegitimidad.setEnabled(false);
             chkMediosProbatorios.setEnabled(false);
         } else {
-            txtNumeroDocumentoProveido.setText("");
             actualizarChecksIncorporado();
         }
         actualizarBloquesComplementarios(noCorresponde);

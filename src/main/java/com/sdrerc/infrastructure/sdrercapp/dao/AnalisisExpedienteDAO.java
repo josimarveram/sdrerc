@@ -320,7 +320,7 @@ public class AnalisisExpedienteDAO {
                         : null;
 
                 Long idEvaluacion = guardarEvaluacion(conn, registro, idResultado, idMotivoNoCorresponde, idUsuario);
-                registrarProveidoSiCorresponde(conn, registro, idUsuario);
+                registrarProveidoSiInformado(conn, registro, idUsuario);
                 for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
                     documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documento, idUsuario);
                 }
@@ -732,12 +732,11 @@ public class AnalisisExpedienteDAO {
         }
     }
 
-    private void registrarProveidoSiCorresponde(
+    private void registrarProveidoSiInformado(
             Connection conn,
             AnalisisRegistroDTO registro,
             Long idUsuario) throws SQLException {
-        if (!ESTADO_NO_CORRESPONDE.equalsIgnoreCase(registro.getResultadoCodigo())
-                || !hasText(registro.getNumeroDocumentoProveido())) {
+        if (!hasText(registro.getNumeroDocumentoProveido())) {
             return;
         }
         Long idTipoDocumento = requerirId(

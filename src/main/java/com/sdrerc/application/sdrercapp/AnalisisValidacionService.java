@@ -49,9 +49,10 @@ public class AnalisisValidacionService {
             }
             if (!hasText(registro.getNumeroDocumentoProveido())) {
                 errores.add("Ingrese el N° Documento (Proveído).");
-            } else if (registro.getNumeroDocumentoProveido().length() > 100) {
-                errores.add("El N° Documento (Proveído) no debe exceder 100 caracteres.");
             }
+        }
+        if (registro.getNumeroDocumentoProveido().length() > 100) {
+            errores.add("El N° Documento (Proveído) no debe exceder 100 caracteres.");
         }
         String resultado = registro.getResultadoCodigo();
         if (("OBSERVADO".equalsIgnoreCase(resultado)
