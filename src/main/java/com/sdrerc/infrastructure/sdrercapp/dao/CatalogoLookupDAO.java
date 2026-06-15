@@ -105,6 +105,20 @@ public class CatalogoLookupDAO {
         return listarCatalogo("tipo_documento_adjunto");
     }
 
+    public List<CatalogoItemDTO> listarTiposDocumentoAdjuntoAnalisis() throws SQLException {
+        String sql = "SELECT codigo, nombre FROM tipo_documento_adjunto "
+                + "WHERE activo = 1 AND codigo LIKE 'ANALISIS_%' ORDER BY codigo";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            List<CatalogoItemDTO> items = new ArrayList<>();
+            while (rs.next()) {
+                items.add(new CatalogoItemDTO(rs.getString("codigo"), rs.getString("nombre")));
+            }
+            return items;
+        }
+    }
+
     public List<CatalogoItemDTO> listarEstadosDocumento() throws SQLException {
         return listarCatalogo("estado_documento");
     }

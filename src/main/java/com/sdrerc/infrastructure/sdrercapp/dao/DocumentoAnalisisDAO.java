@@ -25,7 +25,7 @@ public class DocumentoAnalisisDAO {
     }
 
     public List<CatalogoItemDTO> listarTiposDocumentoAnalizado() throws SQLException {
-        return catalogoLookupDAO.listarTiposDocumentoAdjunto();
+        return catalogoLookupDAO.listarTiposDocumentoAdjuntoAnalisis();
     }
 
     public List<CatalogoItemDTO> listarEstadosDocumento() throws SQLException {
