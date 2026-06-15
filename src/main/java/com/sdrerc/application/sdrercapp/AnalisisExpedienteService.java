@@ -1,5 +1,6 @@
 package com.sdrerc.application.sdrercapp;
 
+import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
@@ -77,6 +78,11 @@ public class AnalisisExpedienteService {
 
     public List<CatalogoItemDTO> listarMotivosNoCorresponde() throws SQLException {
         return catalogoLookupDAO.listarMotivosNoCorresponde();
+    }
+
+    public AnalisisDetalleDTO obtenerAnalisisRegistrado(Long idExpediente) throws SQLException {
+        validacionService.validarExpedienteSeleccionado(idExpediente);
+        return analisisExpedienteDAO.obtenerAnalisisRegistrado(idExpediente);
     }
 
     public AnalisisResultadoDTO recibirExpediente(Long idExpediente, String comentario) throws SQLException {

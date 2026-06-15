@@ -33,8 +33,17 @@ public class DocumentoAnalisisDAO {
     }
 
     public List<DocumentoAnalizadoDTO> listarPorExpediente(Long idExpediente) throws SQLException {
-        List<DocumentoAnalizadoDTO> documentos = new ArrayList<>();
         if (idExpediente == null) {
+            return new ArrayList<DocumentoAnalizadoDTO>();
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return listarPorExpediente(conn, idExpediente);
+        }
+    }
+
+    public List<DocumentoAnalizadoDTO> listarPorExpediente(Connection conn, Long idExpediente) throws SQLException {
+        List<DocumentoAnalizadoDTO> documentos = new ArrayList<>();
+        if (conn == null || idExpediente == null) {
             return documentos;
         }
         String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
@@ -46,8 +55,7 @@ public class DocumentoAnalisisDAO {
                 + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                 + "WHERE da.id_expediente = ? AND da.activo = 1 "
                 + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
-        try (Connection conn = SdrercAppConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -109,6 +117,34 @@ public class DocumentoAnalisisDAO {
                 ps.setLong(6, idUsuarioCreador);
             }
             ps.executeUpdate();
+        }
+    }
+
+    public void actualizarEstadoDocumentoAnalizado(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idUsuarioModificador) throws SQLException {
+        Long idEstadoDocumento = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, documento.getEstadoDocumentoCodigo());
+        if (idEstadoDocumento == null) {
+            throw new SQLException("No se encontró el estado de documento: " + documento.getEstadoDocumentoCodigo() + ".");
+        }
+        String sql = "UPDATE expediente_documento_analizado SET "
+                + "id_estado_documento = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idEstadoDocumento);
+            if (idUsuarioModificador == null) {
+                ps.setNull(2, java.sql.Types.NUMERIC);
+            } else {
+                ps.setLong(2, idUsuarioModificador);
+            }
+            ps.setLong(3, documento.getIdDocumentoAnalizado());
+            ps.setLong(4, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar el estado del documento analizado.");
+            }
         }
     }
 

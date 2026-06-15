@@ -1,9 +1,11 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
 import java.sql.Date;
@@ -68,6 +70,41 @@ public class AnalisisExpedienteDAO {
 
     public List<AnalisisExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
         return buscarExpedientes(textoLibre, estadoCodigo, null, null, limite);
+    }
+
+    public AnalisisDetalleDTO obtenerAnalisisRegistrado(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return analisisVacio();
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            EvaluacionRegistrada evaluacion = obtenerEvaluacionRegistrada(conn, idExpediente);
+            List<DocumentoAnalizadoDTO> documentos = documentoAnalisisDAO.listarPorExpediente(conn, idExpediente);
+            ObservacionAnalisisDTO observacion = obtenerUltimaObservacionAnalisis(conn, idExpediente);
+            String numeroProveido = obtenerUltimoNumeroProveido(conn, idExpediente);
+            if (evaluacion == null) {
+                return new AnalisisDetalleDTO(
+                        false, "", "", null, null, false, false, false, "",
+                        "", "", numeroProveido, null, observacion, documentos);
+            }
+            String resultadoCodigo = resolverResultadoRegistrado(evaluacion);
+            String resultadoNombre = resolverNombreResultadoRegistrado(evaluacion, resultadoCodigo);
+            return new AnalisisDetalleDTO(
+                    true,
+                    resultadoCodigo,
+                    resultadoNombre,
+                    evaluacion.corresponde,
+                    evaluacion.incorporado,
+                    evaluacion.requiereReconstitucion,
+                    evaluacion.tieneLegitimidad,
+                    evaluacion.cumpleMediosProbatorios,
+                    evaluacion.fundamento,
+                    evaluacion.motivoNoCorrespondeCodigo,
+                    evaluacion.motivoNoCorrespondeNombre,
+                    numeroProveido,
+                    evaluacion.fechaEvaluacion,
+                    observacion,
+                    documentos);
+        }
     }
 
     public List<AnalisisExpedienteDTO> buscarExpedientes(
@@ -322,7 +359,15 @@ public class AnalisisExpedienteDAO {
                 Long idEvaluacion = guardarEvaluacion(conn, registro, idResultado, idMotivoNoCorresponde, idUsuario);
                 registrarProveidoSiInformado(conn, registro, idUsuario);
                 for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
-                    documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documento, idUsuario);
+                    if (documento.getIdDocumentoAnalizado() == null) {
+                        documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documento, idUsuario);
+                    } else {
+                        documentoAnalisisDAO.actualizarEstadoDocumentoAnalizado(
+                                conn,
+                                registro.getIdExpediente(),
+                                documento,
+                                idUsuario);
+                    }
                 }
                 observacionExpedienteDAO.insertarObservacion(conn, registro.getIdExpediente(), registro.getObservacion(), idUsuario);
                 actualizarExpediente(conn, registro.getIdExpediente(), transicion.idEtapaDestino, transicion.idEstadoDestino, null, null, idUsuario, false);
@@ -642,6 +687,136 @@ public class AnalisisExpedienteDAO {
             return new ResultadoDestino(ESTADO_OBSERVADO, false);
         }
         return new ResultadoDestino(ESTADO_ATENDIDO, true);
+    }
+
+    private EvaluacionRegistrada obtenerEvaluacionRegistrada(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT * FROM ("
+                + "SELECT ev.corresponde, ev.incorporado, ev.requiere_reconstitucion, "
+                + "ev.tiene_legitimidad, ev.cumple_medios_probatorios, ev.fundamento, "
+                + "NVL(ev.fecha_evaluacion, ev.creado_en) AS fecha_evaluacion, "
+                + "tre.codigo AS resultado_codigo, tre.nombre AS resultado_nombre, "
+                + "mnc.codigo AS motivo_codigo, mnc.nombre AS motivo_nombre, est.codigo AS estado_codigo, "
+                + "(SELECT MAX(h.motivo) KEEP (DENSE_RANK LAST ORDER BY h.fecha_movimiento, h.id_expediente_historial) "
+                + "FROM expediente_historial h "
+                + "WHERE h.id_expediente = ev.id_expediente AND h.activo = 1 "
+                + "AND UPPER(h.tabla_relacionada) = 'EXPEDIENTE_EVALUACION' "
+                + "AND h.id_registro_relacionado = ev.id_expediente_evaluacion) AS historial_resultado "
+                + "FROM expediente_evaluacion ev "
+                + "JOIN expediente e ON e.id_expediente = ev.id_expediente "
+                + "JOIN estado_expediente est ON est.id_estado = e.id_estado_actual "
+                + "LEFT JOIN tipo_resultado_evaluacion tre "
+                + "ON tre.id_tipo_resultado_evaluacion = ev.id_tipo_resultado_evaluacion "
+                + "LEFT JOIN motivo_no_corresponde mnc "
+                + "ON mnc.id_motivo_no_corresponde = ev.id_motivo_no_corresponde "
+                + "WHERE ev.id_expediente = ? AND ev.activo = 1 "
+                + "ORDER BY NVL(ev.modificado_en, ev.creado_en) DESC, ev.id_expediente_evaluacion DESC"
+                + ") WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                Timestamp fecha = rs.getTimestamp("fecha_evaluacion");
+                return new EvaluacionRegistrada(
+                        getBooleanOrNull(rs, "corresponde"),
+                        getBooleanOrNull(rs, "incorporado"),
+                        rs.getInt("requiere_reconstitucion") == 1,
+                        rs.getInt("tiene_legitimidad") == 1,
+                        rs.getInt("cumple_medios_probatorios") == 1,
+                        rs.getString("fundamento"),
+                        rs.getString("resultado_codigo"),
+                        rs.getString("resultado_nombre"),
+                        rs.getString("motivo_codigo"),
+                        rs.getString("motivo_nombre"),
+                        rs.getString("estado_codigo"),
+                        rs.getString("historial_resultado"),
+                        fecha == null ? null : fecha.toLocalDateTime().toLocalDate());
+            }
+        }
+    }
+
+    private ObservacionAnalisisDTO obtenerUltimaObservacionAnalisis(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT * FROM ("
+                + "SELECT tob.codigo AS tipo_codigo, tob.nombre AS tipo_nombre, o.descripcion "
+                + "FROM expediente_observacion o "
+                + "LEFT JOIN tipo_observacion tob ON tob.id_tipo_observacion = o.id_tipo_observacion "
+                + "WHERE o.id_expediente = ? AND o.activo = 1 AND UPPER(o.origen_observacion) = 'ANALISIS' "
+                + "ORDER BY NVL(o.modificado_en, o.creado_en) DESC, o.id_expediente_observacion DESC"
+                + ") WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return new ObservacionAnalisisDTO(
+                        rs.getString("tipo_codigo"),
+                        rs.getString("tipo_nombre"),
+                        rs.getString("descripcion"));
+            }
+        }
+    }
+
+    private String obtenerUltimoNumeroProveido(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT numero_documento FROM ("
+                + "SELECT d.numero_documento "
+                + "FROM expediente_documento d "
+                + "JOIN tipo_documento_adjunto td "
+                + "ON td.id_tipo_documento_adjunto = d.id_tipo_documento_adjunto "
+                + "WHERE d.id_expediente = ? AND d.activo = 1 AND UPPER(td.codigo) = ? "
+                + "ORDER BY NVL(d.modificado_en, d.creado_en) DESC, d.id_expediente_documento DESC"
+                + ") WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, TIPO_DOCUMENTO_PROVEIDO);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("numero_documento") : "";
+            }
+        }
+    }
+
+    private static String resolverResultadoRegistrado(EvaluacionRegistrada evaluacion) {
+        if (hasText(evaluacion.resultadoCodigo)) {
+            return evaluacion.resultadoCodigo;
+        }
+        if (hasText(evaluacion.resultadoHistorial)) {
+            return evaluacion.resultadoHistorial;
+        }
+        if (Boolean.FALSE.equals(evaluacion.corresponde)
+                || ESTADO_NO_CORRESPONDE.equalsIgnoreCase(evaluacion.estadoCodigo)) {
+            return ESTADO_NO_CORRESPONDE;
+        }
+        if (ESTADO_OBSERVADO.equalsIgnoreCase(evaluacion.estadoCodigo)) {
+            return ESTADO_OBSERVADO;
+        }
+        return evaluacion.estadoCodigo;
+    }
+
+    private static String resolverNombreResultadoRegistrado(
+            EvaluacionRegistrada evaluacion,
+            String resultadoCodigo) {
+        if (hasText(evaluacion.resultadoNombre)) {
+            return evaluacion.resultadoNombre;
+        }
+        if (ESTADO_NO_CORRESPONDE.equalsIgnoreCase(resultadoCodigo)) {
+            return "No corresponde a SDRERC";
+        }
+        if (ESTADO_OBSERVADO.equalsIgnoreCase(resultadoCodigo)) {
+            return "Observado / requiere subsanación";
+        }
+        return resultadoCodigo;
+    }
+
+    private static AnalisisDetalleDTO analisisVacio() {
+        return new AnalisisDetalleDTO(
+                false, "", "", null, null, false, false, false, "",
+                "", "", "", null, null, new ArrayList<DocumentoAnalizadoDTO>());
+    }
+
+    private static Boolean getBooleanOrNull(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value == 1;
     }
 
     private Long guardarEvaluacion(
@@ -1083,6 +1258,52 @@ public class AnalisisExpedienteDAO {
             conn.rollback();
         } catch (SQLException ignored) {
             // El error original se reporta al usuario; el rollback fallido no debe ocultarlo.
+        }
+    }
+
+    private static class EvaluacionRegistrada {
+
+        private final Boolean corresponde;
+        private final Boolean incorporado;
+        private final boolean requiereReconstitucion;
+        private final boolean tieneLegitimidad;
+        private final boolean cumpleMediosProbatorios;
+        private final String fundamento;
+        private final String resultadoCodigo;
+        private final String resultadoNombre;
+        private final String motivoNoCorrespondeCodigo;
+        private final String motivoNoCorrespondeNombre;
+        private final String estadoCodigo;
+        private final String resultadoHistorial;
+        private final LocalDate fechaEvaluacion;
+
+        private EvaluacionRegistrada(
+                Boolean corresponde,
+                Boolean incorporado,
+                boolean requiereReconstitucion,
+                boolean tieneLegitimidad,
+                boolean cumpleMediosProbatorios,
+                String fundamento,
+                String resultadoCodigo,
+                String resultadoNombre,
+                String motivoNoCorrespondeCodigo,
+                String motivoNoCorrespondeNombre,
+                String estadoCodigo,
+                String resultadoHistorial,
+                LocalDate fechaEvaluacion) {
+            this.corresponde = corresponde;
+            this.incorporado = incorporado;
+            this.requiereReconstitucion = requiereReconstitucion;
+            this.tieneLegitimidad = tieneLegitimidad;
+            this.cumpleMediosProbatorios = cumpleMediosProbatorios;
+            this.fundamento = fundamento == null ? "" : fundamento;
+            this.resultadoCodigo = resultadoCodigo == null ? "" : resultadoCodigo;
+            this.resultadoNombre = resultadoNombre == null ? "" : resultadoNombre;
+            this.motivoNoCorrespondeCodigo = motivoNoCorrespondeCodigo == null ? "" : motivoNoCorrespondeCodigo;
+            this.motivoNoCorrespondeNombre = motivoNoCorrespondeNombre == null ? "" : motivoNoCorrespondeNombre;
+            this.estadoCodigo = estadoCodigo == null ? "" : estadoCodigo;
+            this.resultadoHistorial = resultadoHistorial == null ? "" : resultadoHistorial;
+            this.fechaEvaluacion = fechaEvaluacion;
         }
     }
 

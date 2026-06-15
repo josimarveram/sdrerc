@@ -3,6 +3,7 @@ package com.sdrerc.ui.views.analisis;
 import com.sdrerc.application.sdrercapp.AnalisisExpedienteService;
 import com.sdrerc.application.sdrercapp.DocumentoAnalisisService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
+import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
@@ -88,6 +89,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_DOCUMENTO_ACCION = 4;
     private static final int COL_DOCUMENTO_TIPO_CODIGO = 5;
     private static final int COL_DOCUMENTO_ESTADO_CODIGO = 6;
+    private static final int COL_DOCUMENTO_ID = 7;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 18;
@@ -170,7 +172,7 @@ public class JPanelAnalisisV2 extends JPanel {
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
     private final DefaultTableModel documentoModel = new DefaultTableModel(
-            new Object[]{"Tipo", "Estado", "Fecha", "Descripción", "", "tipo_codigo", "estado_codigo"},
+            new Object[]{"Tipo", "Estado", "Fecha", "Descripción", "", "tipo_codigo", "estado_codigo", "_id_documento"},
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -200,8 +202,11 @@ public class JPanelAnalisisV2 extends JPanel {
     private boolean panelAnalisisCerradoPorUsuario;
     private Long idExpedienteExpansionActiva;
     private Long idExpedienteDocumentosAsociados;
+    private Long idExpedienteDetalleSolicitado;
+    private Long idExpedienteDetalleCargado;
 
     private boolean cargandoCatalogos;
+    private boolean cargandoDetalleAnalisis;
     private boolean busquedaInicialEjecutada;
 
     public JPanelAnalisisV2() {
@@ -593,6 +598,8 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMaxWidth(0);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMinWidth(0);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMaxWidth(0);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMinWidth(0);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMaxWidth(0);
     }
 
     private void configurarDocumentosAsociadosTabla() {
@@ -1081,6 +1088,8 @@ public class JPanelAnalisisV2 extends JPanel {
         btnDerivarExterna.setEnabled(has && !asociado && item.isArchivableNoCorresponde());
         actualizarVisibilidadPanelAnalisis();
         if (!has) {
+            idExpedienteDetalleSolicitado = null;
+            idExpedienteDetalleCargado = null;
             lblExpediente.setText("-");
             lblTitular.setText("-");
             lblActa.setText("-");
@@ -1089,9 +1098,13 @@ public class JPanelAnalisisV2 extends JPanel {
             lblEtapaEstado.setText("-");
             lblAlertas.setText("Sin alertas.");
             limpiarDocumentosAsociadosPanel("Sin documentos asociados.");
+            limpiarFormulario();
             return;
         }
         if (asociado) {
+            idExpedienteDetalleSolicitado = null;
+            idExpedienteDetalleCargado = null;
+            limpiarFormulario();
             ExpedienteRelacionadoDTO relacionado = fila.asociado;
             lblExpediente.setText("Documento asociado seleccionado");
             lblTitular.setText(valorUi(relacionado.getTitular()));
@@ -1113,8 +1126,145 @@ public class JPanelAnalisisV2 extends JPanel {
         lblAlertas.setText(alertas(item));
         txtComentarioMovimiento.setText("");
         cargarDocumentosAsociadosPanel(item);
-        if (item.isRegistrable() && documentoModel.getRowCount() == 0 && cmbEstadoDocumento.getItemCount() > 1) {
+        cargarAnalisisRegistrado(item);
+    }
+
+    private void cargarAnalisisRegistrado(AnalisisExpedienteDTO item) {
+        if (item == null || item.getIdExpediente() == null) {
+            limpiarFormulario();
+            return;
+        }
+        Long idExpediente = item.getIdExpediente();
+        if (idExpediente.equals(idExpedienteDetalleCargado)
+                || idExpediente.equals(idExpedienteDetalleSolicitado)) {
+            return;
+        }
+        idExpedienteDetalleSolicitado = idExpediente;
+        limpiarFormulario();
+        lblFechaAnalisis.setText("Cargando...");
+        SwingWorker<AnalisisDetalleDTO, Void> worker = new SwingWorker<AnalisisDetalleDTO, Void>() {
+            @Override
+            protected AnalisisDetalleDTO doInBackground() throws Exception {
+                return analisisService.obtenerAnalisisRegistrado(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (!idExpediente.equals(idExpedienteDetalleSolicitado)
+                        || !esExpedientePrincipalSeleccionado(idExpediente)) {
+                    return;
+                }
+                try {
+                    aplicarAnalisisRegistrado(get());
+                    idExpedienteDetalleCargado = idExpediente;
+                } catch (Exception ex) {
+                    limpiarFormulario();
+                    mostrarError("No se pudo cargar el análisis registrado.", ex);
+                } finally {
+                    if (idExpediente.equals(idExpedienteDetalleSolicitado)) {
+                        idExpedienteDetalleSolicitado = null;
+                    }
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private boolean esExpedientePrincipalSeleccionado(Long idExpediente) {
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        return fila != null
+                && fila.esPrincipal()
+                && fila.principal != null
+                && idExpediente.equals(fila.principal.getIdExpediente());
+    }
+
+    private void aplicarAnalisisRegistrado(AnalisisDetalleDTO detalle) {
+        limpiarFormulario();
+        if (detalle == null) {
+            return;
+        }
+        cargandoDetalleAnalisis = true;
+        try {
+            seleccionarResultado(detalle.getResultadoCodigo());
+            seleccionarSimpleItem(
+                    cmbIncorporado,
+                    detalle.getIncorporado() == null
+                            ? ""
+                            : Boolean.TRUE.equals(detalle.getIncorporado()) ? "SI" : "NO");
+            seleccionarSimpleItem(cmbMotivoNoCorresponde, detalle.getMotivoNoCorrespondeCodigo());
+            txtFundamento.setText(detalle.getFundamento());
+            txtNumeroDocumentoProveido.setText(detalle.getNumeroDocumentoProveido());
+            chkReconstitucion.setSelected(detalle.isRequiereReconstitucion());
+            chkLegitimidad.setSelected(detalle.isTieneLegitimidad());
+            chkMediosProbatorios.setSelected(detalle.isCumpleMediosProbatorios());
+            lblFechaAnalisis.setText(detalle.getFechaEvaluacion() == null
+                    ? DATE_FORMAT.format(LocalDate.now())
+                    : DATE_FORMAT.format(detalle.getFechaEvaluacion()));
+            cargarDocumentosAnalizados(detalle.getDocumentosAnalizados());
+        } finally {
+            cargandoDetalleAnalisis = false;
+        }
+        actualizarResultadoSeleccionado();
+        ObservacionAnalisisDTO observacion = detalle.getObservacion();
+        boolean tieneObservacion = observacion != null && observacion.hasDescripcion();
+        chkRegistrarObservacion.setSelected(tieneObservacion || resultadoRequiereObservacion(
+                (ResultadoItem) cmbResultado.getSelectedItem()));
+        if (observacion != null) {
+            seleccionarSimpleItem(cmbTipoObservacion, observacion.getTipoObservacionCodigo());
+            txtObservacion.setText(observacion.getDescripcion());
+        }
+        if (!detalle.isRegistrado()
+                && documentoModel.getRowCount() == 0
+                && cmbEstadoDocumento.getItemCount() > 1) {
             cmbEstadoDocumento.setSelectedIndex(1);
+        }
+        actualizarObservacionHabilitada();
+    }
+
+    private void cargarDocumentosAnalizados(List<DocumentoAnalizadoDTO> documentos) {
+        documentoModel.setRowCount(0);
+        if (documentos == null) {
+            return;
+        }
+        for (DocumentoAnalizadoDTO documento : documentos) {
+            documentoModel.addRow(new Object[]{
+                documento.getTipoDocumentoNombre(),
+                documento.getEstadoDocumentoNombre(),
+                documento.getFechaDocumento() == null ? "-" : DATE_FORMAT.format(documento.getFechaDocumento()),
+                documento.getDescripcion(),
+                "",
+                documento.getTipoDocumentoCodigo(),
+                documento.getEstadoDocumentoCodigo(),
+                documento.getIdDocumentoAnalizado()
+            });
+        }
+    }
+
+    private void seleccionarResultado(String codigo) {
+        String value = codigo == null ? "" : codigo.trim();
+        for (int i = 0; i < cmbResultado.getItemCount(); i++) {
+            ResultadoItem item = cmbResultado.getItemAt(i);
+            if (item != null && item.codigo.equalsIgnoreCase(value)) {
+                cmbResultado.setSelectedIndex(i);
+                return;
+            }
+        }
+        if (cmbResultado.getItemCount() > 0) {
+            cmbResultado.setSelectedIndex(0);
+        }
+    }
+
+    private void seleccionarSimpleItem(JComboBox<SimpleItem> combo, String codigo) {
+        String value = codigo == null ? "" : codigo.trim();
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            SimpleItem item = combo.getItemAt(i);
+            if (item != null && item.codigo.equalsIgnoreCase(value)) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+        if (combo.getItemCount() > 0) {
+            combo.setSelectedIndex(0);
         }
     }
 
@@ -1445,12 +1595,14 @@ public class JPanelAnalisisV2 extends JPanel {
     private List<DocumentoAnalizadoDTO> obtenerDocumentosFormulario() {
         List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
         for (int i = 0; i < documentoModel.getRowCount(); i++) {
-            documentos.add(DocumentoAnalizadoDTO.nuevo(
+            documentos.add(new DocumentoAnalizadoDTO(
+                    longValue(documentoModel.getValueAt(i, COL_DOCUMENTO_ID)),
+                    null,
                     value(documentoModel.getValueAt(i, COL_DOCUMENTO_TIPO_CODIGO)),
                     value(documentoModel.getValueAt(i, 0)),
                     value(documentoModel.getValueAt(i, COL_DOCUMENTO_ESTADO_CODIGO)),
                     value(documentoModel.getValueAt(i, 1)),
-                    LocalDate.now(),
+                    localDateValue(documentoModel.getValueAt(i, 2)),
                     value(documentoModel.getValueAt(i, 3))));
         }
         return documentos;
@@ -1479,7 +1631,8 @@ public class JPanelAnalisisV2 extends JPanel {
             descripcion,
             "",
             tipo.codigo,
-            estado.codigo
+            estado.codigo,
+            null
         });
         txtDescripcionDocumento.setText("");
     }
@@ -1603,7 +1756,7 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void actualizarResultadoSeleccionado() {
-        if (cargandoCatalogos) {
+        if (cargandoCatalogos || cargandoDetalleAnalisis) {
             return;
         }
         ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
@@ -1673,11 +1826,24 @@ public class JPanelAnalisisV2 extends JPanel {
         if (cmbMotivoNoCorresponde.getItemCount() > 0) {
             cmbMotivoNoCorresponde.setSelectedIndex(0);
         }
+        if (cmbTipoDocumento.getItemCount() > 0) {
+            cmbTipoDocumento.setSelectedIndex(0);
+        }
+        if (cmbEstadoDocumento.getItemCount() > 0) {
+            cmbEstadoDocumento.setSelectedIndex(0);
+        }
+        if (cmbTipoObservacion.getItemCount() > 0) {
+            cmbTipoObservacion.setSelectedIndex(0);
+        }
         txtFundamento.setText("");
         txtNumeroDocumentoProveido.setText("");
         txtComentarioMovimiento.setText("");
         txtDescripcionDocumento.setText("");
         txtObservacion.setText("");
+        lblFechaAnalisis.setText(DATE_FORMAT.format(LocalDate.now()));
+        chkReconstitucion.setSelected(false);
+        chkLegitimidad.setSelected(false);
+        chkMediosProbatorios.setSelected(false);
         chkRegistrarObservacion.setSelected(false);
         documentoModel.setRowCount(0);
         actualizarResultadoSeleccionado();
@@ -1727,6 +1893,32 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private static String value(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private static Long longValue(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value == null || value.toString().trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.toString().trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static LocalDate localDateValue(Object value) {
+        String text = value(value).trim();
+        if (text.isEmpty() || "-".equals(text)) {
+            return LocalDate.now();
+        }
+        try {
+            return LocalDate.parse(text, DATE_FORMAT);
+        } catch (Exception ex) {
+            return LocalDate.now();
+        }
     }
 
     private void mostrarInfo(String message) {
