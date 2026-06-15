@@ -52,7 +52,7 @@ public class AppV2SideActionPanel extends JPanel {
         if (onClose != null) {
             JButton btnClose = new JButton("X");
             btnClose.setFocusable(false);
-            btnClose.setToolTipText("Cerrar panel");
+            btnClose.setToolTipText("Ocultar panel");
             btnClose.setHorizontalAlignment(SwingConstants.CENTER);
             btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             btnClose.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));

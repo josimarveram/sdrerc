@@ -33,7 +33,7 @@ public class AppV2NotebookToggleTab extends JComponent {
         setPreferredSize(new Dimension(DEFAULT_WIDTH, DEFAULT_HEIGHT));
         setMinimumSize(new Dimension(28, 90));
         setMaximumSize(new Dimension(40, 130));
-        setName("Pestaña del panel de asignación");
+        setName("Pestaña del panel contextual");
         MouseAdapter mouse = new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {

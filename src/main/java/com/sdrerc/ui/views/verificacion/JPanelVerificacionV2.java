@@ -9,6 +9,7 @@ import com.sdrerc.domain.dto.sdrercapp.VerificacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
@@ -63,6 +64,8 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private static final int PANEL_VERIFICACION_ANCHO_MINIMO = 380;
     private static final int PANEL_VERIFICACION_ANCHO_NORMAL = 430;
+    private static final int PANEL_VERIFICACION_TAB_OVERHANG = 18;
+    private static final int PANEL_VERIFICACION_TAB_TOP = 18;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -103,6 +106,7 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JTextArea txtComentario = new JTextArea(4, 22);
     private final JTextArea txtObservacion = new JTextArea(4, 22);
     private final JTextArea txtFundamentoAnalisis = new JTextArea(4, 22);
+    private final AppV2NotebookToggleTab tabPanelVerificacion = new AppV2NotebookToggleTab();
 
     private final VerificacionTableModel tableModel = new VerificacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -167,12 +171,13 @@ public class JPanelVerificacionV2 extends JPanel {
         centro.setOpaque(false);
         centro.add(crearBuscador(), BorderLayout.NORTH);
         panelVerificacion = crearPanelVerificacion();
+        JPanel panelVerificacionConTab = crearPanelVerificacionConTab(panelVerificacion);
         splitOperativo = new AppV2OperationalSplitPanel(
                 crearBandeja(),
-                panelVerificacion,
+                panelVerificacionConTab,
                 0,
-                PANEL_VERIFICACION_ANCHO_MINIMO,
-                PANEL_VERIFICACION_ANCHO_NORMAL);
+                PANEL_VERIFICACION_ANCHO_MINIMO + PANEL_VERIFICACION_TAB_OVERHANG,
+                PANEL_VERIFICACION_ANCHO_NORMAL + PANEL_VERIFICACION_TAB_OVERHANG);
         centro.add(splitOperativo, BorderLayout.CENTER);
         return centro;
     }
@@ -209,12 +214,45 @@ public class JPanelVerificacionV2 extends JPanel {
                 cerrarPanelVerificacion();
             }
         });
+        panel.setAccentColor(AppV2Theme.PRIMARY);
+        tabPanelVerificacion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
+        tabPanelVerificacion.setExpanded(false);
+        tabPanelVerificacion.setToolTipText("Ampliar panel de verificación");
+        tabPanelVerificacion.addActionListener(e -> alternarExpansionPanelVerificacion());
         panel.addSection(crearResumenSeleccion());
         panel.addSection(crearAnalisisPrevio());
         panel.addSection(crearDocumentosPanel());
         panel.addSection(crearFormularioVerificacion());
         panel.setFooter(crearAccionesPanelVerificacion());
         return panel;
+    }
+
+    private JPanel crearPanelVerificacionConTab(final AppV2SideActionPanel panel) {
+        JPanel wrapper = new JPanel(null) {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                int panelX = PANEL_VERIFICACION_TAB_OVERHANG;
+                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int tabY = Math.min(PANEL_VERIFICACION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
+                tabPanelVerificacion.setBounds(
+                        0,
+                        tabY,
+                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
+                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+            }
+        };
+        wrapper.setOpaque(false);
+        wrapper.add(panel);
+        wrapper.add(tabPanelVerificacion);
+        wrapper.setMinimumSize(new Dimension(
+                PANEL_VERIFICACION_ANCHO_MINIMO + PANEL_VERIFICACION_TAB_OVERHANG,
+                0));
+        wrapper.setPreferredSize(new Dimension(
+                PANEL_VERIFICACION_ANCHO_NORMAL + PANEL_VERIFICACION_TAB_OVERHANG,
+                0));
+        return wrapper;
     }
 
     private JPanel crearAccionesPanelVerificacion() {
@@ -592,6 +630,8 @@ public class JPanelVerificacionV2 extends JPanel {
         if (splitOperativo != null) {
             splitOperativo.setSideVisible(false);
         }
+        tabPanelVerificacion.setExpanded(false);
+        actualizarTooltipTabPanelVerificacion();
     }
 
     private void actualizarVisibilidadPanelVerificacion() {
@@ -599,6 +639,24 @@ public class JPanelVerificacionV2 extends JPanel {
             return;
         }
         splitOperativo.setSideVisible(obtenerSeleccionado() != null && !panelVerificacionCerradoPorUsuario);
+        tabPanelVerificacion.setExpanded(splitOperativo.isSideExpanded());
+        actualizarTooltipTabPanelVerificacion();
+    }
+
+    private void alternarExpansionPanelVerificacion() {
+        if (splitOperativo == null || !splitOperativo.isSideVisible()) {
+            return;
+        }
+        boolean expandido = splitOperativo.toggleSideExpanded();
+        tabPanelVerificacion.setExpanded(expandido);
+        actualizarTooltipTabPanelVerificacion();
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTooltipTabPanelVerificacion() {
+        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
+        tabPanelVerificacion.setToolTipText(expandido ? "Restaurar panel de verificación" : "Ampliar panel de verificación");
     }
 
     private String alertas(VerificacionExpedienteDTO item) {

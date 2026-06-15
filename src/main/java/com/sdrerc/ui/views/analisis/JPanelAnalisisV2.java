@@ -9,6 +9,7 @@ import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
@@ -65,6 +66,8 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
+    private static final int PANEL_ANALISIS_TAB_OVERHANG = 18;
+    private static final int PANEL_ANALISIS_TAB_TOP = 18;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -113,6 +116,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JTextArea txtDescripcionDocumento = new JTextArea(2, 20);
     private final JTextArea txtObservacion = new JTextArea(3, 22);
     private final JTextArea txtComentarioMovimiento = new JTextArea(3, 22);
+    private final AppV2NotebookToggleTab tabPanelAnalisis = new AppV2NotebookToggleTab();
 
     private final AnalisisTableModel tableModel = new AnalisisTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -174,12 +178,13 @@ public class JPanelAnalisisV2 extends JPanel {
         centro.setOpaque(false);
         centro.add(crearBuscador(), BorderLayout.NORTH);
         panelAnalisis = crearPanelAnalisis();
+        JPanel panelAnalisisConTab = crearPanelAnalisisConTab(panelAnalisis);
         splitOperativo = new AppV2OperationalSplitPanel(
                 crearBandeja(),
-                panelAnalisis,
+                panelAnalisisConTab,
                 0,
-                PANEL_ANALISIS_ANCHO_MINIMO,
-                PANEL_ANALISIS_ANCHO_NORMAL);
+                PANEL_ANALISIS_ANCHO_MINIMO + PANEL_ANALISIS_TAB_OVERHANG,
+                PANEL_ANALISIS_ANCHO_NORMAL + PANEL_ANALISIS_TAB_OVERHANG);
         centro.add(splitOperativo, BorderLayout.CENTER);
         return centro;
     }
@@ -216,6 +221,11 @@ public class JPanelAnalisisV2 extends JPanel {
                 cerrarPanelAnalisis();
             }
         });
+        panel.setAccentColor(AppV2Theme.PRIMARY);
+        tabPanelAnalisis.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
+        tabPanelAnalisis.setExpanded(false);
+        tabPanelAnalisis.setToolTipText("Ampliar panel de análisis");
+        tabPanelAnalisis.addActionListener(e -> alternarExpansionPanelAnalisis());
         panel.addSection(crearResumenSeleccion());
         panel.addSection(crearFormularioAnalisis());
         panel.addSection(crearDocumentosPanel());
@@ -223,6 +233,34 @@ public class JPanelAnalisisV2 extends JPanel {
         panel.addSection(crearComentarioMovimientoPanel());
         panel.setFooter(crearAccionesPanelAnalisis());
         return panel;
+    }
+
+    private JPanel crearPanelAnalisisConTab(final AppV2SideActionPanel panel) {
+        JPanel wrapper = new JPanel(null) {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                int panelX = PANEL_ANALISIS_TAB_OVERHANG;
+                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int tabY = Math.min(PANEL_ANALISIS_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
+                tabPanelAnalisis.setBounds(
+                        0,
+                        tabY,
+                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
+                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+            }
+        };
+        wrapper.setOpaque(false);
+        wrapper.add(panel);
+        wrapper.add(tabPanelAnalisis);
+        wrapper.setMinimumSize(new Dimension(
+                PANEL_ANALISIS_ANCHO_MINIMO + PANEL_ANALISIS_TAB_OVERHANG,
+                0));
+        wrapper.setPreferredSize(new Dimension(
+                PANEL_ANALISIS_ANCHO_NORMAL + PANEL_ANALISIS_TAB_OVERHANG,
+                0));
+        return wrapper;
     }
 
     private JPanel crearAccionesPanelAnalisis() {
@@ -663,6 +701,8 @@ public class JPanelAnalisisV2 extends JPanel {
         if (splitOperativo != null) {
             splitOperativo.setSideVisible(false);
         }
+        tabPanelAnalisis.setExpanded(false);
+        actualizarTooltipTabPanelAnalisis();
     }
 
     private void actualizarVisibilidadPanelAnalisis() {
@@ -670,6 +710,24 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         splitOperativo.setSideVisible(obtenerSeleccionado() != null && !panelAnalisisCerradoPorUsuario);
+        tabPanelAnalisis.setExpanded(splitOperativo.isSideExpanded());
+        actualizarTooltipTabPanelAnalisis();
+    }
+
+    private void alternarExpansionPanelAnalisis() {
+        if (splitOperativo == null || !splitOperativo.isSideVisible()) {
+            return;
+        }
+        boolean expandido = splitOperativo.toggleSideExpanded();
+        tabPanelAnalisis.setExpanded(expandido);
+        actualizarTooltipTabPanelAnalisis();
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTooltipTabPanelAnalisis() {
+        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
+        tabPanelAnalisis.setToolTipText(expandido ? "Restaurar panel de análisis" : "Ampliar panel de análisis");
     }
 
     private String alertas(AnalisisExpedienteDTO item) {
