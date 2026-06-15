@@ -19,13 +19,14 @@ public class AnalisisValidacionService {
         if (!hasText(registro.getResultadoCodigo())) {
             errores.add("Seleccione el resultado del análisis.");
         }
-        if (registro.getIncorporado() == null) {
+        boolean noCorresponde = "NO_CORRESPONDE".equalsIgnoreCase(registro.getResultadoCodigo());
+        if (!noCorresponde && registro.getIncorporado() == null) {
             errores.add("Seleccione si el acta está incorporada.");
         }
         if (!hasText(registro.getFundamento())) {
             errores.add("Ingrese el sustento o conclusión del análisis.");
         }
-        if (registro.getDocumentosAnalizados().isEmpty()) {
+        if (!noCorresponde && registro.getDocumentosAnalizados().isEmpty()) {
             errores.add("Agregue al menos un documento analizado.");
         }
         for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
@@ -40,6 +41,16 @@ public class AnalisisValidacionService {
             if (!hasText(documento.getDescripcion())) {
                 errores.add("Ingrese la descripción de cada documento analizado.");
                 break;
+            }
+        }
+        if (noCorresponde) {
+            if (!hasText(registro.getMotivoNoCorrespondeCodigo())) {
+                errores.add("Seleccione el motivo por el que no corresponde a SDRERC.");
+            }
+            if (!hasText(registro.getNumeroDocumentoProveido())) {
+                errores.add("Ingrese el N° Documento (Proveído).");
+            } else if (registro.getNumeroDocumentoProveido().length() > 100) {
+                errores.add("El N° Documento (Proveído) no debe exceder 100 caracteres.");
             }
         }
         String resultado = registro.getResultadoCodigo();

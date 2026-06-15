@@ -66,6 +66,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -147,6 +148,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JComboBox<SimpleItem> cmbEstadoDocumento = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbTipoObservacion = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbMotivoNoCorresponde = new JComboBox<SimpleItem>();
+    private final JTextField txtNumeroDocumentoProveido = new JTextField();
     private final JCheckBox chkReconstitucion = new JCheckBox("Reconstitución");
     private final JCheckBox chkLegitimidad = new JCheckBox("Legitimidad");
     private final JCheckBox chkMediosProbatorios = new JCheckBox("Medios probatorios");
@@ -356,6 +358,7 @@ public class JPanelAnalisisV2 extends JPanel {
         addRow(grid, row++, "Resultado", cmbResultado);
         addRow(grid, row++, "¿Acta incorporada?", cmbIncorporado);
         addRow(grid, row++, "Motivo no corresponde", cmbMotivoNoCorresponde);
+        addRow(grid, row++, "N° Documento (Proveído)", txtNumeroDocumentoProveido);
 
         JPanel checks = new JPanel(new GridLayout(0, 1, 4, 4));
         checks.setOpaque(false);
@@ -507,6 +510,10 @@ public class JPanelAnalisisV2 extends JPanel {
         cmbResultado.setPreferredSize(new Dimension(260, 34));
         cmbIncorporado.setPreferredSize(new Dimension(260, 34));
         cmbMotivoNoCorresponde.setPreferredSize(new Dimension(260, 34));
+        cmbMotivoNoCorresponde.setEnabled(false);
+        txtNumeroDocumentoProveido.setPreferredSize(new Dimension(260, 34));
+        txtNumeroDocumentoProveido.setToolTipText("Ingrese el número del proveído.");
+        txtNumeroDocumentoProveido.setEnabled(false);
         cmbTipoDocumento.setPreferredSize(new Dimension(260, 34));
         cmbEstadoDocumento.setPreferredSize(new Dimension(260, 34));
         cmbTipoObservacion.setPreferredSize(new Dimension(260, 34));
@@ -1383,17 +1390,21 @@ public class JPanelAnalisisV2 extends JPanel {
                     txtObservacion.getText());
         }
         SimpleItem motivo = (SimpleItem) cmbMotivoNoCorresponde.getSelectedItem();
+        boolean noCorresponde = resultado != null && "NO_CORRESPONDE".equalsIgnoreCase(resultado.codigo);
         return new AnalisisRegistroDTO(
                 item.getIdExpediente(),
                 resultado == null ? "" : resultado.codigo,
                 resultado == null ? "" : resultado.nombre,
-                resultado == null || resultado.codigo.isEmpty() ? null : !"NO_CORRESPONDE".equalsIgnoreCase(resultado.codigo),
-                incorporado == null || incorporado.codigo.isEmpty() ? null : "SI".equalsIgnoreCase(incorporado.codigo),
-                chkReconstitucion.isSelected(),
-                chkLegitimidad.isSelected(),
-                chkMediosProbatorios.isSelected(),
+                resultado == null || resultado.codigo.isEmpty() ? null : !noCorresponde,
+                noCorresponde || incorporado == null || incorporado.codigo.isEmpty()
+                        ? null
+                        : "SI".equalsIgnoreCase(incorporado.codigo),
+                !noCorresponde && chkReconstitucion.isSelected(),
+                !noCorresponde && chkLegitimidad.isSelected(),
+                !noCorresponde && chkMediosProbatorios.isSelected(),
                 txtFundamento.getText(),
                 motivo == null ? "" : motivo.codigo,
+                txtNumeroDocumentoProveido.getText(),
                 observacion,
                 obtenerDocumentosFormulario());
     }
@@ -1522,6 +1533,22 @@ public class JPanelAnalisisV2 extends JPanel {
         ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
         boolean noCorresponde = resultado != null && "NO_CORRESPONDE".equalsIgnoreCase(resultado.codigo);
         cmbMotivoNoCorresponde.setEnabled(noCorresponde);
+        txtNumeroDocumentoProveido.setEnabled(noCorresponde);
+        cmbIncorporado.setEnabled(!noCorresponde);
+        if (noCorresponde) {
+            if (cmbIncorporado.getItemCount() > 0) {
+                cmbIncorporado.setSelectedIndex(0);
+            }
+            chkReconstitucion.setSelected(false);
+            chkLegitimidad.setSelected(false);
+            chkMediosProbatorios.setSelected(false);
+            chkReconstitucion.setEnabled(false);
+            chkLegitimidad.setEnabled(false);
+            chkMediosProbatorios.setEnabled(false);
+        } else {
+            txtNumeroDocumentoProveido.setText("");
+            actualizarChecksIncorporado();
+        }
         if (!noCorresponde && cmbMotivoNoCorresponde.getItemCount() > 0) {
             cmbMotivoNoCorresponde.setSelectedIndex(0);
         }
@@ -1556,12 +1583,13 @@ public class JPanelAnalisisV2 extends JPanel {
             cmbMotivoNoCorresponde.setSelectedIndex(0);
         }
         txtFundamento.setText("");
+        txtNumeroDocumentoProveido.setText("");
         txtComentarioMovimiento.setText("");
         txtDescripcionDocumento.setText("");
         txtObservacion.setText("");
         chkRegistrarObservacion.setSelected(false);
         documentoModel.setRowCount(0);
-        actualizarChecksIncorporado();
+        actualizarResultadoSeleccionado();
         actualizarObservacionHabilitada();
     }
 

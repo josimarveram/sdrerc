@@ -16,6 +16,7 @@ public class AnalisisRegistroDTO {
     private final boolean cumpleMediosProbatorios;
     private final String fundamento;
     private final String motivoNoCorrespondeCodigo;
+    private final String numeroDocumentoProveido;
     private final ObservacionAnalisisDTO observacion;
     private final List<DocumentoAnalizadoDTO> documentosAnalizados;
 
@@ -30,6 +31,7 @@ public class AnalisisRegistroDTO {
             boolean cumpleMediosProbatorios,
             String fundamento,
             String motivoNoCorrespondeCodigo,
+            String numeroDocumentoProveido,
             ObservacionAnalisisDTO observacion,
             List<DocumentoAnalizadoDTO> documentosAnalizados) {
         this.idExpediente = idExpediente;
@@ -42,6 +44,7 @@ public class AnalisisRegistroDTO {
         this.cumpleMediosProbatorios = cumpleMediosProbatorios;
         this.fundamento = safe(fundamento);
         this.motivoNoCorrespondeCodigo = safe(motivoNoCorrespondeCodigo);
+        this.numeroDocumentoProveido = safe(numeroDocumentoProveido);
         this.observacion = observacion;
         this.documentosAnalizados = documentosAnalizados == null
                 ? Collections.<DocumentoAnalizadoDTO>emptyList()
@@ -86,6 +89,10 @@ public class AnalisisRegistroDTO {
 
     public String getMotivoNoCorrespondeCodigo() {
         return motivoNoCorrespondeCodigo;
+    }
+
+    public String getNumeroDocumentoProveido() {
+        return numeroDocumentoProveido;
     }
 
     public ObservacionAnalisisDTO getObservacion() {

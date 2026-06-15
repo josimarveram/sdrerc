@@ -45,6 +45,7 @@ public class AnalisisExpedienteDAO {
     private static final String ACCION_REENVIO_VERIFICACION = "REENVIO_VERIFICACION";
     private static final String ACCION_DERIVACION_NOTIFICACION = "DERIVACION_A_NOTIFICACION";
     private static final String ACCION_ARCHIVO = "ARCHIVO";
+    private static final String TIPO_DOCUMENTO_PROVEIDO = "PROVEIDO";
     private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
     private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
 
@@ -319,6 +320,7 @@ public class AnalisisExpedienteDAO {
                         : null;
 
                 Long idEvaluacion = guardarEvaluacion(conn, registro, idResultado, idMotivoNoCorresponde, idUsuario);
+                registrarProveidoSiCorresponde(conn, registro, idUsuario);
                 for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
                     documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documento, idUsuario);
                 }
@@ -730,6 +732,53 @@ public class AnalisisExpedienteDAO {
         }
     }
 
+    private void registrarProveidoSiCorresponde(
+            Connection conn,
+            AnalisisRegistroDTO registro,
+            Long idUsuario) throws SQLException {
+        if (!ESTADO_NO_CORRESPONDE.equalsIgnoreCase(registro.getResultadoCodigo())
+                || !hasText(registro.getNumeroDocumentoProveido())) {
+            return;
+        }
+        Long idTipoDocumento = requerirId(
+                catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, TIPO_DOCUMENTO_PROVEIDO),
+                "tipo de documento PROVEIDO");
+        if (existeProveido(conn, registro.getIdExpediente(), idTipoDocumento, registro.getNumeroDocumentoProveido())) {
+            return;
+        }
+        String sql = "INSERT INTO expediente_documento ("
+                + "id_expediente, id_tipo_documento_adjunto, nombre_documento, numero_documento, "
+                + "fecha_documento, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, registro.getIdExpediente());
+            ps.setLong(2, idTipoDocumento);
+            ps.setString(3, "Proveído");
+            ps.setString(4, limitar(registro.getNumeroDocumentoProveido(), 100));
+            ps.setDate(5, Date.valueOf(LocalDate.now()));
+            setLongOrNull(ps, 6, idUsuario);
+            ps.executeUpdate();
+        }
+    }
+
+    private boolean existeProveido(
+            Connection conn,
+            Long idExpediente,
+            Long idTipoDocumento,
+            String numeroDocumento) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM expediente_documento "
+                + "WHERE id_expediente = ? AND id_tipo_documento_adjunto = ? "
+                + "AND UPPER(TRIM(numero_documento)) = UPPER(TRIM(?)) AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idTipoDocumento);
+            ps.setString(3, numeroDocumento);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
     private boolean tieneEvaluacionActiva(Connection conn, Long idExpediente) throws SQLException {
         return obtenerEvaluacionActiva(conn, idExpediente) != null;
     }
@@ -954,9 +1003,13 @@ public class AnalisisExpedienteDAO {
         String base = hasText(registro.getFundamento())
                 ? registro.getFundamento()
                 : "Registro de resultado de análisis.";
-        return registro.getResultadoNombre().isEmpty()
+        String comentario = registro.getResultadoNombre().isEmpty()
                 ? base
                 : registro.getResultadoNombre() + ": " + base;
+        if (hasText(registro.getNumeroDocumentoProveido())) {
+            comentario += " Proveído: " + registro.getNumeroDocumentoProveido() + ".";
+        }
+        return comentario;
     }
 
     private static String mensajeMovimiento(String accionCodigo) {
