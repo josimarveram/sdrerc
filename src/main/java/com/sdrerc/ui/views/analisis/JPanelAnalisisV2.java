@@ -1380,9 +1380,11 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private AnalisisRegistroDTO construirRegistro(AnalisisExpedienteDTO item) {
         ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
+        boolean noCorresponde = esResultadoNoCorresponde(resultado);
         SimpleItem incorporado = (SimpleItem) cmbIncorporado.getSelectedItem();
         ObservacionAnalisisDTO observacion = null;
-        if (chkRegistrarObservacion.isSelected() || resultadoRequiereObservacion(resultado)) {
+        if (!noCorresponde
+                && (chkRegistrarObservacion.isSelected() || resultadoRequiereObservacion(resultado))) {
             SimpleItem tipoObservacion = (SimpleItem) cmbTipoObservacion.getSelectedItem();
             observacion = new ObservacionAnalisisDTO(
                     tipoObservacion == null ? "" : tipoObservacion.codigo,
@@ -1390,7 +1392,6 @@ public class JPanelAnalisisV2 extends JPanel {
                     txtObservacion.getText());
         }
         SimpleItem motivo = (SimpleItem) cmbMotivoNoCorresponde.getSelectedItem();
-        boolean noCorresponde = resultado != null && "NO_CORRESPONDE".equalsIgnoreCase(resultado.codigo);
         return new AnalisisRegistroDTO(
                 item.getIdExpediente(),
                 resultado == null ? "" : resultado.codigo,
@@ -1406,7 +1407,9 @@ public class JPanelAnalisisV2 extends JPanel {
                 motivo == null ? "" : motivo.codigo,
                 txtNumeroDocumentoProveido.getText(),
                 observacion,
-                obtenerDocumentosFormulario());
+                noCorresponde
+                        ? new ArrayList<DocumentoAnalizadoDTO>()
+                        : obtenerDocumentosFormulario());
     }
 
     private List<DocumentoAnalizadoDTO> obtenerDocumentosFormulario() {
@@ -1531,7 +1534,7 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
-        boolean noCorresponde = resultado != null && "NO_CORRESPONDE".equalsIgnoreCase(resultado.codigo);
+        boolean noCorresponde = esResultadoNoCorresponde(resultado);
         cmbMotivoNoCorresponde.setEnabled(noCorresponde);
         txtNumeroDocumentoProveido.setEnabled(noCorresponde);
         cmbIncorporado.setEnabled(!noCorresponde);
@@ -1549,6 +1552,7 @@ public class JPanelAnalisisV2 extends JPanel {
             txtNumeroDocumentoProveido.setText("");
             actualizarChecksIncorporado();
         }
+        actualizarBloquesComplementarios(noCorresponde);
         if (!noCorresponde && cmbMotivoNoCorresponde.getItemCount() > 0) {
             cmbMotivoNoCorresponde.setSelectedIndex(0);
         }
@@ -1556,6 +1560,29 @@ public class JPanelAnalisisV2 extends JPanel {
             chkRegistrarObservacion.setSelected(true);
         }
         actualizarObservacionHabilitada();
+    }
+
+    private boolean esResultadoNoCorresponde(ResultadoItem resultado) {
+        return resultado != null && "NO_CORRESPONDE".equalsIgnoreCase(resultado.codigo);
+    }
+
+    private boolean esResultadoNoCorrespondeSeleccionado() {
+        return esResultadoNoCorresponde((ResultadoItem) cmbResultado.getSelectedItem());
+    }
+
+    private void actualizarBloquesComplementarios(boolean noCorresponde) {
+        boolean habilitar = !noCorresponde;
+        cmbTipoDocumento.setEnabled(habilitar);
+        cmbEstadoDocumento.setEnabled(habilitar);
+        txtDescripcionDocumento.setEnabled(habilitar);
+        documentosTable.setEnabled(habilitar);
+        btnAgregarDocumento.setEnabled(habilitar);
+        btnQuitarDocumento.setEnabled(habilitar);
+        chkRegistrarObservacion.setEnabled(habilitar);
+        txtComentarioMovimiento.setEnabled(habilitar);
+        if (noCorresponde) {
+            chkRegistrarObservacion.setSelected(false);
+        }
     }
 
     private boolean resultadoRequiereObservacion(ResultadoItem resultado) {
@@ -1567,7 +1594,8 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void actualizarObservacionHabilitada() {
-        boolean habilitar = chkRegistrarObservacion.isSelected();
+        boolean habilitar = !esResultadoNoCorrespondeSeleccionado()
+                && chkRegistrarObservacion.isSelected();
         cmbTipoObservacion.setEnabled(habilitar);
         txtObservacion.setEnabled(habilitar);
     }

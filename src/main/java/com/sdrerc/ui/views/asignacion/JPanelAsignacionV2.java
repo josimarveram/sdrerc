@@ -214,7 +214,6 @@ public class JPanelAsignacionV2 extends JPanel {
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
-        add(crearHeader(), BorderLayout.NORTH);
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarTablaDocumentosRelacionados();
@@ -235,24 +234,29 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
-        JPanel centro = new JPanel(new BorderLayout(14, 14));
-        centro.setOpaque(false);
-        centro.add(crearBuscador(), BorderLayout.NORTH);
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        contenidoPrincipal.setOpaque(false);
+        contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
 
-        panelOperativo.setOpaque(false);
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        contenidoOperativo.setOpaque(false);
+        contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
         JPanel bandeja = crearBandeja();
+        contenidoOperativo.add(bandeja, BorderLayout.CENTER);
+        contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
+
         panelAsignacion = crearPanelAsignacion();
         JPanel panelAsignacionConTab = crearPanelAsignacionConTab(panelAsignacion);
         splitOperativo = new AppV2OperationalSplitPanel(
-                bandeja,
+                contenidoPrincipal,
                 panelAsignacionConTab,
                 0,
                 PANEL_ASIGNACION_ANCHO_MINIMO + PANEL_ASIGNACION_TAB_OVERHANG,
                 PANEL_ASIGNACION_ANCHO_NORMAL + PANEL_ASIGNACION_TAB_OVERHANG);
-        panelOperativo.add(splitOperativo, BorderLayout.CENTER);
 
-        centro.add(panelOperativo, BorderLayout.CENTER);
-        return centro;
+        panelOperativo.setOpaque(false);
+        panelOperativo.add(splitOperativo, BorderLayout.CENTER);
+        return panelOperativo;
     }
 
     private JPanel crearBuscador() {
