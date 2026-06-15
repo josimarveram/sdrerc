@@ -10,9 +10,16 @@ import com.sdrerc.domain.dto.sdrercapp.NotificacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionRequeridaDTO;
+import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
+import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
+import com.sdrerc.ui.appv2.components.AppV2TablePanel;
+import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
@@ -58,6 +65,10 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final int PANEL_NOTIFICACION_ANCHO_MINIMO = 380;
+    private static final int PANEL_NOTIFICACION_ANCHO_NORMAL = 430;
+    private static final int PANEL_NOTIFICACION_TAB_OVERHANG = 18;
+    private static final int PANEL_NOTIFICACION_TAB_TOP = 18;
 
     private final NotificacionExpedienteService notificacionService;
     private final DocumentoEjecucionService documentoService;
@@ -100,9 +111,14 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JTextArea txtComentario = new JTextArea(4, 22);
     private final JTextArea txtMotivoPublicacion = new JTextArea(3, 22);
     private final JTextArea txtObservacion = new JTextArea(3, 22);
+    private final AppV2NotebookToggleTab tabPanelNotificacion = new AppV2NotebookToggleTab();
 
     private final NotificacionTableModel tableModel = new NotificacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
+    private final AppV2TablePanel tablePanel = new AppV2TablePanel(
+            table,
+            "Sin expedientes para mostrar",
+            "Seleccione filtros y presione Buscar.");
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -117,6 +133,9 @@ public class JPanelNotificacionV2 extends JPanel {
     private final MetricCardV2 cardEnNotificacion = new MetricCardV2("En notificación", "0", "Pendientes de registro", AppV2Theme.INFO);
     private final MetricCardV2 cardCargo = new MetricCardV2("Cargo", "0", "Pendiente o recibido", AppV2Theme.WARNING);
     private final MetricCardV2 cardNotificados = new MetricCardV2("Notificados", "0", "Listos para cierre", AppV2Theme.SUCCESS);
+    private AppV2OperationalSplitPanel splitOperativo;
+    private AppV2SideActionPanel panelNotificacion;
+    private boolean panelNotificacionCerradoPorUsuario;
 
     public JPanelNotificacionV2() {
         this(new NotificacionExpedienteService(), new DocumentoEjecucionService());
@@ -130,7 +149,6 @@ public class JPanelNotificacionV2 extends JPanel {
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
-        add(crearHeader(), BorderLayout.NORTH);
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarDocumentosTabla();
@@ -151,98 +169,101 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
-        JPanel centro = new JPanel(new BorderLayout(14, 14));
-        centro.setOpaque(false);
-        centro.add(crearBandeja(), BorderLayout.CENTER);
-        centro.add(crearPanelNotificacion(), BorderLayout.EAST);
-        return centro;
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        contenidoPrincipal.setOpaque(false);
+        contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
+
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        contenidoOperativo.setOpaque(false);
+        contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
+        contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
+        contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
+
+        panelNotificacion = crearPanelNotificacion();
+        JPanel panelConTab = crearPanelNotificacionConTab(panelNotificacion);
+        splitOperativo = new AppV2OperationalSplitPanel(
+                contenidoPrincipal,
+                panelConTab,
+                0,
+                PANEL_NOTIFICACION_ANCHO_MINIMO + PANEL_NOTIFICACION_TAB_OVERHANG,
+                PANEL_NOTIFICACION_ANCHO_NORMAL + PANEL_NOTIFICACION_TAB_OVERHANG);
+        return splitOperativo;
+    }
+
+    private JPanel crearBuscador() {
+        configurarControles();
+        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
+        JPanel accionesFiltro = AppV2ActionPanel.right();
+        accionesFiltro.add(btnBuscar);
+        accionesFiltro.add(btnLimpiar);
+        accionesFiltro.add(btnVerDetalle);
+        accionesFiltro.add(btnRefrescar);
+        toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
+        toolbar.addFilter("Estado", cmbEstadoFiltro);
+        toolbar.addFilter("Mostrar", spnLimite);
+        return toolbar;
     }
 
     private JPanel crearBandeja() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setOpaque(false);
-
-        JPanel filtros = new JPanel(new GridBagLayout());
-        filtros.setBackground(AppV2Theme.SURFACE);
-        filtros.setBorder(AppV2Theme.toolbarBorder());
-        configurarControles();
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 6, 4, 6);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.gridy = 0;
-        gbc.gridx = 0;
-        filtros.add(label("Búsqueda"), gbc);
-        gbc.gridx = 1;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(txtBusqueda, gbc);
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.gridx = 2;
-        filtros.add(label("Estado"), gbc);
-        gbc.gridx = 3;
-        filtros.add(cmbEstadoFiltro, gbc);
-        gbc.gridx = 4;
-        filtros.add(label("Mostrar"), gbc);
-        gbc.gridx = 5;
-        filtros.add(spnLimite, gbc);
-
-        JPanel accionesFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        accionesFiltro.setOpaque(false);
-        accionesFiltro.add(btnBuscar);
-        accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnRefrescar);
-        accionesFiltro.add(btnVerDetalle);
-        gbc.gridx = 6;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(accionesFiltro, gbc);
-
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        acciones.setOpaque(false);
-        acciones.add(btnRegistrarNotificacion);
-        acciones.add(btnRegistrarCargo);
-        acciones.add(btnMarcarNotificado);
-        acciones.add(btnRequierePublicacion);
-        acciones.add(btnCerrarExpediente);
-
-        JPanel superior = new JPanel(new BorderLayout(8, 8));
-        superior.setOpaque(false);
-        superior.add(filtros, BorderLayout.NORTH);
-        superior.add(acciones, BorderLayout.CENTER);
-        superior.add(lblEstado, BorderLayout.SOUTH);
         lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablePanel);
+        section.setStatus(lblEstado);
+        return section;
+    }
 
-        panel.add(superior, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+    private AppV2SideActionPanel crearPanelNotificacion() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de notificación", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelNotificacion();
+            }
+        });
+        panel.setAccentColor(AppV2Theme.PRIMARY);
+        tabPanelNotificacion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
+        tabPanelNotificacion.setExpanded(false);
+        tabPanelNotificacion.setToolTipText("Ampliar panel de notificación");
+        tabPanelNotificacion.addActionListener(e -> alternarExpansionPanelNotificacion());
+        panel.addSection(crearResumenSeleccion());
+        panel.addSection(crearAntecedentes());
+        panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearFormularioNotificacion());
+        panel.setFooter(crearAccionesPanelNotificacion());
         return panel;
     }
 
-    private JPanel crearPanelNotificacion() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(440, 0));
-        panel.setBackground(AppV2Theme.SURFACE);
-        panel.setBorder(AppV2Theme.sectionBorder());
+    private JPanel crearPanelNotificacionConTab(final AppV2SideActionPanel panel) {
+        JPanel wrapper = new JPanel(null) {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                int panelX = PANEL_NOTIFICACION_TAB_OVERHANG;
+                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int tabY = Math.min(PANEL_NOTIFICACION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
+                tabPanelNotificacion.setBounds(
+                        0,
+                        tabY,
+                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
+                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+            }
+        };
+        wrapper.setOpaque(false);
+        wrapper.add(panel);
+        wrapper.add(tabPanelNotificacion);
+        wrapper.setMinimumSize(new Dimension(PANEL_NOTIFICACION_ANCHO_MINIMO + PANEL_NOTIFICACION_TAB_OVERHANG, 0));
+        wrapper.setPreferredSize(new Dimension(PANEL_NOTIFICACION_ANCHO_NORMAL + PANEL_NOTIFICACION_TAB_OVERHANG, 0));
+        return wrapper;
+    }
 
-        JLabel title = new JLabel("Panel de notificación");
-        title.setFont(AppV2Theme.fontBold(18));
-        title.setForeground(AppV2Theme.TEXT_PRIMARY);
-
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
-        content.add(crearResumenSeleccion());
-        content.add(crearAntecedentes());
-        content.add(crearDocumentosPanel());
-        content.add(crearFormularioNotificacion());
-
-        JScrollPane scroll = new JScrollPane(content);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
+    private JPanel crearAccionesPanelNotificacion() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
+        panel.setOpaque(false);
+        panel.add(btnRegistrarNotificacion);
+        panel.add(btnRegistrarCargo);
+        panel.add(btnMarcarNotificado);
+        panel.add(btnRequierePublicacion);
+        panel.add(btnCerrarExpediente);
         return panel;
     }
 
@@ -377,6 +398,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private void configurarTabla() {
         table.setRowHeight(34);
         table.setAutoCreateRowSorter(true);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -386,13 +408,16 @@ public class JPanelNotificacionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new NotificacionRenderer());
-        table.getColumnModel().getColumn(0).setMaxWidth(70);
         table.getColumnModel().getColumn(10).setPreferredWidth(145);
         table.getColumnModel().getColumn(11).setPreferredWidth(160);
         table.getColumnModel().getColumn(12).setMaxWidth(92);
         table.getColumnModel().getColumn(15).setMaxWidth(92);
         table.getColumnModel().getColumn(16).setMaxWidth(92);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     }
 
     private void configurarDocumentosTabla() {
@@ -416,6 +441,7 @@ public class JPanelNotificacionV2 extends JPanel {
         btnCerrarExpediente.addActionListener(e -> cerrarExpediente());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
+                panelNotificacionCerradoPorUsuario = false;
                 actualizarSeleccion();
             }
         });
@@ -498,10 +524,12 @@ public class JPanelNotificacionV2 extends JPanel {
                     expedientes.clear();
                     expedientes.addAll(get());
                     tableModel.fireTableDataChanged();
+                    table.clearSelection();
+                    tablePanel.setEmpty(expedientes.isEmpty());
                     actualizarMetricas();
                     lblEstado.setText(expedientes.size() + " expediente(s) en Notificación encontrados.");
-                    if (!expedientes.isEmpty()) {
-                        table.setRowSelectionInterval(0, 0);
+                    if (expedientes.isEmpty()) {
+                        actualizarSeleccion();
                     } else {
                         actualizarSeleccion();
                     }
@@ -520,9 +548,12 @@ public class JPanelNotificacionV2 extends JPanel {
         cmbEstadoFiltro.setSelectedIndex(0);
         expedientes.clear();
         tableModel.fireTableDataChanged();
+        table.clearSelection();
+        tablePanel.setEmpty(true);
         actualizarMetricas();
         actualizarSeleccion();
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar Notificación.");
+        panelNotificacionCerradoPorUsuario = false;
     }
 
     private void actualizarMetricas() {
@@ -547,6 +578,7 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void actualizarSeleccion() {
         NotificacionExpedienteDTO expediente = seleccionado();
+        actualizarVisibilidadPanelNotificacion();
         if (expediente == null) {
             limpiarResumen();
             return;
@@ -908,6 +940,42 @@ public class JPanelNotificacionV2 extends JPanel {
     private String obtenerCodigo(JComboBox<SimpleItem> combo) {
         SimpleItem item = (SimpleItem) combo.getSelectedItem();
         return item == null ? "" : item.getCodigo();
+    }
+
+    private void cerrarPanelNotificacion() {
+        panelNotificacionCerradoPorUsuario = true;
+        if (splitOperativo != null) {
+            splitOperativo.setSideVisible(false);
+        }
+        tabPanelNotificacion.setExpanded(false);
+        actualizarTooltipTabPanelNotificacion();
+    }
+
+    private void actualizarVisibilidadPanelNotificacion() {
+        if (splitOperativo == null) {
+            return;
+        }
+        splitOperativo.setSideVisible(seleccionado() != null && !panelNotificacionCerradoPorUsuario);
+        tabPanelNotificacion.setExpanded(splitOperativo.isSideExpanded());
+        actualizarTooltipTabPanelNotificacion();
+    }
+
+    private void alternarExpansionPanelNotificacion() {
+        if (splitOperativo == null || !splitOperativo.isSideVisible()) {
+            return;
+        }
+        boolean expandido = splitOperativo.toggleSideExpanded();
+        tabPanelNotificacion.setExpanded(expandido);
+        actualizarTooltipTabPanelNotificacion();
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTooltipTabPanelNotificacion() {
+        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
+        tabPanelNotificacion.setToolTipText(expandido
+                ? "Restaurar panel de notificación"
+                : "Ampliar panel de notificación");
     }
 
     private String alertasTexto(NotificacionExpedienteDTO expediente) {

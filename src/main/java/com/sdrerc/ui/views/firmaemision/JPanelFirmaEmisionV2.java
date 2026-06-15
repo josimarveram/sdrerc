@@ -7,9 +7,16 @@ import com.sdrerc.domain.dto.sdrercapp.DocumentoFirmaDTO;
 import com.sdrerc.domain.dto.sdrercapp.FirmaEmisionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.FirmaEmisionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.FirmaEmisionResultadoDTO;
+import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
+import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
+import com.sdrerc.ui.appv2.components.AppV2TablePanel;
+import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
@@ -55,6 +62,10 @@ public class JPanelFirmaEmisionV2 extends JPanel {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final int PANEL_FIRMA_ANCHO_MINIMO = 380;
+    private static final int PANEL_FIRMA_ANCHO_NORMAL = 430;
+    private static final int PANEL_FIRMA_TAB_OVERHANG = 18;
+    private static final int PANEL_FIRMA_TAB_TOP = 18;
 
     private final FirmaEmisionExpedienteService firmaEmisionService;
     private final DocumentoFirmaService documentoFirmaService;
@@ -90,9 +101,14 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     private final JTextArea txtComentario = new JTextArea(4, 22);
     private final JTextArea txtFundamentoAnalisis = new JTextArea(4, 22);
     private final JTextArea txtObservacion = new JTextArea(3, 22);
+    private final AppV2NotebookToggleTab tabPanelFirma = new AppV2NotebookToggleTab();
 
     private final FirmaEmisionTableModel tableModel = new FirmaEmisionTableModel();
     private final JTable table = new AppV2Table(tableModel);
+    private final AppV2TablePanel tablePanel = new AppV2TablePanel(
+            table,
+            "Sin expedientes para mostrar",
+            "Seleccione filtros y presione Buscar.");
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -107,6 +123,9 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     private final MetricCardV2 cardParaFirma = new MetricCardV2("Para firma", "0", "Pendientes de firma", AppV2Theme.INFO);
     private final MetricCardV2 cardEnEmision = new MetricCardV2("En emisión", "0", "Firmados o emitidos", AppV2Theme.WARNING);
     private final MetricCardV2 cardNumerados = new MetricCardV2("Numerados", "0", "Listos para Ejecución", AppV2Theme.SUCCESS);
+    private AppV2OperationalSplitPanel splitOperativo;
+    private AppV2SideActionPanel panelFirmaEmision;
+    private boolean panelFirmaCerradoPorUsuario;
 
     public JPanelFirmaEmisionV2() {
         this(new FirmaEmisionExpedienteService(), new DocumentoFirmaService());
@@ -120,7 +139,6 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         setLayout(new BorderLayout(14, 14));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
-        add(crearHeader(), BorderLayout.NORTH);
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarDocumentosTabla();
@@ -141,97 +159,100 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
-        JPanel centro = new JPanel(new BorderLayout(14, 14));
-        centro.setOpaque(false);
-        centro.add(crearBandeja(), BorderLayout.CENTER);
-        centro.add(crearPanelFirmaEmision(), BorderLayout.EAST);
-        return centro;
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        contenidoPrincipal.setOpaque(false);
+        contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
+
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        contenidoOperativo.setOpaque(false);
+        contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
+        contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
+        contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
+
+        panelFirmaEmision = crearPanelFirmaEmision();
+        JPanel panelConTab = crearPanelFirmaEmisionConTab(panelFirmaEmision);
+        splitOperativo = new AppV2OperationalSplitPanel(
+                contenidoPrincipal,
+                panelConTab,
+                0,
+                PANEL_FIRMA_ANCHO_MINIMO + PANEL_FIRMA_TAB_OVERHANG,
+                PANEL_FIRMA_ANCHO_NORMAL + PANEL_FIRMA_TAB_OVERHANG);
+        return splitOperativo;
+    }
+
+    private JPanel crearBuscador() {
+        configurarControles();
+        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
+        JPanel accionesFiltro = AppV2ActionPanel.right();
+        accionesFiltro.add(btnBuscar);
+        accionesFiltro.add(btnLimpiar);
+        accionesFiltro.add(btnVerDetalle);
+        accionesFiltro.add(btnRefrescar);
+        toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
+        toolbar.addFilter("Estado", cmbEstadoFiltro);
+        toolbar.addFilter("Mostrar", spnLimite);
+        return toolbar;
     }
 
     private JPanel crearBandeja() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setOpaque(false);
-
-        JPanel filtros = new JPanel(new GridBagLayout());
-        filtros.setBackground(AppV2Theme.SURFACE);
-        filtros.setBorder(AppV2Theme.toolbarBorder());
-        configurarControles();
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 6, 4, 6);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.gridy = 0;
-        gbc.gridx = 0;
-        filtros.add(label("Búsqueda"), gbc);
-        gbc.gridx = 1;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(txtBusqueda, gbc);
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.gridx = 2;
-        filtros.add(label("Estado"), gbc);
-        gbc.gridx = 3;
-        filtros.add(cmbEstadoFiltro, gbc);
-        gbc.gridx = 4;
-        filtros.add(label("Mostrar"), gbc);
-        gbc.gridx = 5;
-        filtros.add(spnLimite, gbc);
-
-        JPanel accionesFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        accionesFiltro.setOpaque(false);
-        accionesFiltro.add(btnBuscar);
-        accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnRefrescar);
-        accionesFiltro.add(btnVerDetalle);
-        gbc.gridx = 6;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(accionesFiltro, gbc);
-
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        acciones.setOpaque(false);
-        acciones.add(btnRegistrarFirma);
-        acciones.add(btnRegistrarEmision);
-        acciones.add(btnRegistrarNumero);
-        acciones.add(btnEnviarEjecucion);
-
-        JPanel superior = new JPanel(new BorderLayout(8, 8));
-        superior.setOpaque(false);
-        superior.add(filtros, BorderLayout.NORTH);
-        superior.add(acciones, BorderLayout.CENTER);
-        superior.add(lblEstado, BorderLayout.SOUTH);
         lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablePanel);
+        section.setStatus(lblEstado);
+        return section;
+    }
 
-        panel.add(superior, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+    private AppV2SideActionPanel crearPanelFirmaEmision() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de firma y emisión", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelFirma();
+            }
+        });
+        panel.setAccentColor(AppV2Theme.PRIMARY);
+        tabPanelFirma.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
+        tabPanelFirma.setExpanded(false);
+        tabPanelFirma.setToolTipText("Ampliar panel de firma y emisión");
+        tabPanelFirma.addActionListener(e -> alternarExpansionPanelFirma());
+        panel.addSection(crearResumenSeleccion());
+        panel.addSection(crearRevisionPrevia());
+        panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearFormularioFirmaEmision());
+        panel.setFooter(crearAccionesPanelFirma());
         return panel;
     }
 
-    private JPanel crearPanelFirmaEmision() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(420, 0));
-        panel.setBackground(AppV2Theme.SURFACE);
-        panel.setBorder(AppV2Theme.sectionBorder());
+    private JPanel crearPanelFirmaEmisionConTab(final AppV2SideActionPanel panel) {
+        JPanel wrapper = new JPanel(null) {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                int panelX = PANEL_FIRMA_TAB_OVERHANG;
+                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int tabY = Math.min(PANEL_FIRMA_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
+                tabPanelFirma.setBounds(
+                        0,
+                        tabY,
+                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
+                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+            }
+        };
+        wrapper.setOpaque(false);
+        wrapper.add(panel);
+        wrapper.add(tabPanelFirma);
+        wrapper.setMinimumSize(new Dimension(PANEL_FIRMA_ANCHO_MINIMO + PANEL_FIRMA_TAB_OVERHANG, 0));
+        wrapper.setPreferredSize(new Dimension(PANEL_FIRMA_ANCHO_NORMAL + PANEL_FIRMA_TAB_OVERHANG, 0));
+        return wrapper;
+    }
 
-        JLabel title = new JLabel("Panel de firma y emisión");
-        title.setFont(AppV2Theme.fontBold(18));
-        title.setForeground(AppV2Theme.TEXT_PRIMARY);
-
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
-        content.add(crearResumenSeleccion());
-        content.add(crearRevisionPrevia());
-        content.add(crearDocumentosPanel());
-        content.add(crearFormularioFirmaEmision());
-
-        JScrollPane scroll = new JScrollPane(content);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
+    private JPanel crearAccionesPanelFirma() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
+        panel.setOpaque(false);
+        panel.add(btnRegistrarFirma);
+        panel.add(btnRegistrarEmision);
+        panel.add(btnRegistrarNumero);
+        panel.add(btnEnviarEjecucion);
         return panel;
     }
 
@@ -359,6 +380,7 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     private void configurarTabla() {
         table.setRowHeight(34);
         table.setAutoCreateRowSorter(true);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -368,13 +390,16 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new FirmaEmisionRenderer());
-        table.getColumnModel().getColumn(0).setMaxWidth(70);
         table.getColumnModel().getColumn(10).setPreferredWidth(145);
         table.getColumnModel().getColumn(11).setPreferredWidth(160);
         table.getColumnModel().getColumn(12).setMaxWidth(92);
         table.getColumnModel().getColumn(14).setMaxWidth(92);
         table.getColumnModel().getColumn(15).setMaxWidth(92);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     }
 
     private void configurarDocumentosTabla() {
@@ -397,6 +422,7 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         btnEnviarEjecucion.addActionListener(e -> enviarEjecucion());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
+                panelFirmaCerradoPorUsuario = false;
                 actualizarSeleccion();
             }
         });
@@ -480,11 +506,13 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         expedientes.clear();
         expedientes.addAll(items);
         tableModel.fireTableDataChanged();
+        table.clearSelection();
+        tablePanel.setEmpty(items.isEmpty());
         actualizarMetricas();
-        if (!items.isEmpty()) {
-            table.setRowSelectionInterval(0, 0);
-        } else {
+        if (items.isEmpty()) {
             limpiarDetalle();
+        } else {
+            actualizarSeleccion();
         }
         lblEstado.setText(items.size() + " expediente(s) en Firma / Emisión.");
     }
@@ -514,13 +542,17 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         spnLimite.setValue(200);
         expedientes.clear();
         tableModel.fireTableDataChanged();
+        table.clearSelection();
+        tablePanel.setEmpty(true);
         actualizarMetricas();
         limpiarDetalle();
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes.");
+        panelFirmaCerradoPorUsuario = false;
     }
 
     private void actualizarSeleccion() {
         FirmaEmisionExpedienteDTO expediente = seleccionado();
+        actualizarVisibilidadPanelFirma();
         if (expediente == null) {
             limpiarDetalle();
             return;
@@ -794,6 +826,42 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     private String obtenerCodigo(JComboBox<SimpleItem> combo) {
         SimpleItem item = (SimpleItem) combo.getSelectedItem();
         return item == null ? "" : item.getCodigo();
+    }
+
+    private void cerrarPanelFirma() {
+        panelFirmaCerradoPorUsuario = true;
+        if (splitOperativo != null) {
+            splitOperativo.setSideVisible(false);
+        }
+        tabPanelFirma.setExpanded(false);
+        actualizarTooltipTabPanelFirma();
+    }
+
+    private void actualizarVisibilidadPanelFirma() {
+        if (splitOperativo == null) {
+            return;
+        }
+        splitOperativo.setSideVisible(seleccionado() != null && !panelFirmaCerradoPorUsuario);
+        tabPanelFirma.setExpanded(splitOperativo.isSideExpanded());
+        actualizarTooltipTabPanelFirma();
+    }
+
+    private void alternarExpansionPanelFirma() {
+        if (splitOperativo == null || !splitOperativo.isSideVisible()) {
+            return;
+        }
+        boolean expandido = splitOperativo.toggleSideExpanded();
+        tabPanelFirma.setExpanded(expandido);
+        actualizarTooltipTabPanelFirma();
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTooltipTabPanelFirma() {
+        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
+        tabPanelFirma.setToolTipText(expandido
+                ? "Restaurar panel de firma y emisión"
+                : "Ampliar panel de firma y emisión");
     }
 
     private String alertasTexto(FirmaEmisionExpedienteDTO expediente) {
