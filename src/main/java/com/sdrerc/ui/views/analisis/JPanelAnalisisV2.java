@@ -9,18 +9,24 @@ import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
-import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
+import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
+import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
+import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -29,9 +35,13 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -53,13 +63,17 @@ import javax.swing.table.DefaultTableModel;
 
 public class JPanelAnalisisV2 extends JPanel {
 
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
+    private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final AnalisisExpedienteService analisisService;
     private final DocumentoAnalisisService documentoService;
 
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o responsable", 28);
+    private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
@@ -119,6 +133,9 @@ public class JPanelAnalisisV2 extends JPanel {
     private final MetricCardV2 cardPorRecibir = new MetricCardV2("Por recibir", "0", "Asignación / Asignado", AppV2Theme.INFO);
     private final MetricCardV2 cardEnAnalisis = new MetricCardV2("En análisis", "0", "Recibidos y observados", AppV2Theme.TEAL);
     private final MetricCardV2 cardEspeciales = new MetricCardV2("Rutas especiales", "0", "No corresponde / notificación", AppV2Theme.WARNING);
+    private AppV2OperationalSplitPanel splitOperativo;
+    private AppV2SideActionPanel panelAnalisis;
+    private boolean panelAnalisisCerradoPorUsuario;
 
     private boolean cargandoCatalogos;
 
@@ -137,6 +154,7 @@ public class JPanelAnalisisV2 extends JPanel {
         configurarTabla();
         configurarDocumentoTabla();
         configurarEventos();
+        restaurarFechasBusqueda();
         cargarFiltrosBase();
         cargarCatalogos();
         actualizarSeleccion();
@@ -154,104 +172,68 @@ public class JPanelAnalisisV2 extends JPanel {
     private JPanel crearCentro() {
         JPanel centro = new JPanel(new BorderLayout(14, 14));
         centro.setOpaque(false);
-        centro.add(crearBandeja(), BorderLayout.CENTER);
-        centro.add(crearPanelAnalisis(), BorderLayout.EAST);
+        centro.add(crearBuscador(), BorderLayout.NORTH);
+        panelAnalisis = crearPanelAnalisis();
+        splitOperativo = new AppV2OperationalSplitPanel(
+                crearBandeja(),
+                panelAnalisis,
+                0,
+                PANEL_ANALISIS_ANCHO_MINIMO,
+                PANEL_ANALISIS_ANCHO_NORMAL);
+        centro.add(splitOperativo, BorderLayout.CENTER);
         return centro;
     }
 
-    private JPanel crearBandeja() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setOpaque(false);
-
-        JPanel filtros = new AppV2FilterPanel();
+    private JPanel crearBuscador() {
         configurarControles();
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 6, 4, 6);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.gridy = 0;
-        gbc.gridx = 0;
-        filtros.add(label("Búsqueda"), gbc);
-        gbc.gridx = 1;
-        gbc.gridwidth = 3;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(txtBusqueda, gbc);
-        gbc.gridwidth = 1;
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
-
+        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
         accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
-        gbc.gridx = 4;
-        gbc.gridwidth = 4;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(accionesFiltro, gbc);
-        gbc.gridwidth = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.NONE;
+        toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
+        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
+        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
+        toolbar.addFilter("Estado", cmbEstadoFiltro);
+        toolbar.addFilter("Mostrar", spnLimite);
+        return toolbar;
+    }
 
-        gbc.gridy = 1;
-        gbc.gridx = 0;
-        filtros.add(label("Estado"), gbc);
-        gbc.gridx = 1;
-        filtros.add(cmbEstadoFiltro, gbc);
-        gbc.gridx = 2;
-        filtros.add(label("Mostrar"), gbc);
-        gbc.gridx = 3;
-        filtros.add(spnLimite, gbc);
-
-        JPanel acciones = AppV2ActionPanel.left();
-        acciones.add(btnRecibir);
-        acciones.add(btnRegistrarAnalisis);
-        acciones.add(btnEnviarVerificacion);
-        acciones.add(btnDerivarNotificacion);
-        acciones.add(btnArchivarNoCorresponde);
-        acciones.add(btnDerivarExterna);
-
-        JPanel superior = new JPanel(new BorderLayout(8, 8));
-        superior.setOpaque(false);
-        superior.add(filtros, BorderLayout.NORTH);
-        superior.add(acciones, BorderLayout.CENTER);
-        superior.add(lblEstado, BorderLayout.SOUTH);
+    private JPanel crearBandeja() {
         lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        panel.add(superior, BorderLayout.NORTH);
-        panel.add(tablePanel, BorderLayout.CENTER);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablePanel);
+        section.setStatus(lblEstado);
+        return section;
+    }
+
+    private AppV2SideActionPanel crearPanelAnalisis() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de análisis", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAnalisis();
+            }
+        });
+        panel.addSection(crearResumenSeleccion());
+        panel.addSection(crearFormularioAnalisis());
+        panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearObservacionPanel());
+        panel.addSection(crearComentarioMovimientoPanel());
+        panel.setFooter(crearAccionesPanelAnalisis());
         return panel;
     }
 
-    private JPanel crearPanelAnalisis() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(420, 0));
-        panel.setBackground(AppV2Theme.SURFACE);
-        panel.setBorder(AppV2Theme.sectionBorder());
-
-        JLabel title = new JLabel("Panel de análisis");
-        title.setFont(AppV2Theme.fontBold(18));
-        title.setForeground(AppV2Theme.TEXT_PRIMARY);
-
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
-        content.add(crearResumenSeleccion());
-        content.add(crearFormularioAnalisis());
-        content.add(crearDocumentosPanel());
-        content.add(crearObservacionPanel());
-
-        JScrollPane scroll = new JScrollPane(content);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
-        panel.add(crearComentarioMovimientoPanel(), BorderLayout.SOUTH);
+    private JPanel crearAccionesPanelAnalisis() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
+        panel.setOpaque(false);
+        panel.add(btnRecibir);
+        panel.add(btnRegistrarAnalisis);
+        panel.add(btnEnviarVerificacion);
+        panel.add(btnDerivarNotificacion);
+        panel.add(btnArchivarNoCorresponde);
+        panel.add(btnDerivarExterna);
         return panel;
     }
 
@@ -429,6 +411,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private void configurarTabla() {
         table.setRowHeight(34);
         table.setAutoCreateRowSorter(true);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -439,15 +422,7 @@ public class JPanelAnalisisV2 extends JPanel {
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new AnalisisRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        table.getColumnModel().getColumn(0).setMaxWidth(90);
-        table.getColumnModel().getColumn(1).setMinWidth(150);
-        table.getColumnModel().getColumn(2).setMinWidth(130);
-        table.getColumnModel().getColumn(3).setMinWidth(220);
-        table.getColumnModel().getColumn(4).setMinWidth(220);
-        table.getColumnModel().getColumn(9).setPreferredWidth(150);
-        table.getColumnModel().getColumn(10).setPreferredWidth(150);
-        table.getColumnModel().getColumn(11).setPreferredWidth(150);
-        table.getColumnModel().getColumn(12).setPreferredWidth(150);
+        AppV2TableColumnSizer.applyWidths(table, 88, 185, 170, 145, 230, 130, 130, 260, 155, 190, 160, 0);
     }
 
     private void configurarDocumentoTabla() {
@@ -481,7 +456,17 @@ public class JPanelAnalisisV2 extends JPanel {
         chkRegistrarObservacion.addActionListener(e -> actualizarObservacionHabilitada());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
+                panelAnalisisCerradoPorUsuario = false;
                 actualizarSeleccion();
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (table.rowAtPoint(e.getPoint()) >= 0) {
+                    panelAnalisisCerradoPorUsuario = false;
+                    actualizarVisibilidadPanelAnalisis();
+                }
             }
         });
     }
@@ -550,6 +535,12 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void buscar() {
+        LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
+        LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            mostrarInfo("Fecha desde no puede ser mayor que Fecha hasta.");
+            return;
+        }
         setTrabajando(true, "Consultando expedientes asignados para análisis...");
         String texto = txtBusqueda.getText();
         String estado = obtenerCodigo(cmbEstadoFiltro);
@@ -557,7 +548,7 @@ public class JPanelAnalisisV2 extends JPanel {
         SwingWorker<List<AnalisisExpedienteDTO>, Void> worker = new SwingWorker<List<AnalisisExpedienteDTO>, Void>() {
             @Override
             protected List<AnalisisExpedienteDTO> doInBackground() throws Exception {
-                return analisisService.buscarExpedientes(texto, estado, limite);
+                return analisisService.buscarExpedientes(texto, estado, desde, hasta, limite);
             }
 
             @Override
@@ -595,13 +586,11 @@ public class JPanelAnalisisV2 extends JPanel {
                 item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
                 item.getNumeroExpediente(),
                 item.getNumeroTramiteDocumentario(),
-                item.getTitular(),
+                formatDate(item.getFechaRecepcion()),
                 item.getProcedimiento(),
-                item.getTipoDocumento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
-                formatDate(item.getFechaRecepcion()),
-                DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
+                item.getTitular(),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
                 item.isTieneObservacionPendiente() ? "Con observación" : "Sin observación",
                 item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociados" : "Sin asociados",
@@ -622,6 +611,7 @@ public class JPanelAnalisisV2 extends JPanel {
         txtBusqueda.setText("");
         cmbEstadoFiltro.setSelectedIndex(0);
         spnLimite.setValue(200);
+        restaurarFechasBusqueda();
         expedientes.clear();
         tableModel.setRowCount(0);
         tablePanel.setEmpty(true);
@@ -630,6 +620,7 @@ public class JPanelAnalisisV2 extends JPanel {
         cardEnAnalisis.setValue("0");
         cardEspeciales.setValue("0");
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes de análisis.");
+        panelAnalisisCerradoPorUsuario = false;
         actualizarSeleccion();
     }
 
@@ -643,6 +634,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnDerivarNotificacion.setEnabled(has && item.isDerivableNotificacionEspecial());
         btnArchivarNoCorresponde.setEnabled(has && item.isArchivableNoCorresponde());
         btnDerivarExterna.setEnabled(has && item.isArchivableNoCorresponde());
+        actualizarVisibilidadPanelAnalisis();
         if (!has) {
             lblExpediente.setText("-");
             lblTitular.setText("-");
@@ -664,6 +656,20 @@ public class JPanelAnalisisV2 extends JPanel {
         if (item.isRegistrable() && documentoModel.getRowCount() == 0 && cmbEstadoDocumento.getItemCount() > 1) {
             cmbEstadoDocumento.setSelectedIndex(1);
         }
+    }
+
+    private void cerrarPanelAnalisis() {
+        panelAnalisisCerradoPorUsuario = true;
+        if (splitOperativo != null) {
+            splitOperativo.setSideVisible(false);
+        }
+    }
+
+    private void actualizarVisibilidadPanelAnalisis() {
+        if (splitOperativo == null) {
+            return;
+        }
+        splitOperativo.setSideVisible(obtenerSeleccionado() != null && !panelAnalisisCerradoPorUsuario);
     }
 
     private String alertas(AnalisisExpedienteDTO item) {
@@ -974,6 +980,19 @@ public class JPanelAnalisisV2 extends JPanel {
         return selected instanceof SimpleItem ? ((SimpleItem) selected).codigo : "";
     }
 
+    private void restaurarFechasBusqueda() {
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
+    }
+
+    private static LocalDate fechaSeleccionada(PremiumDateFieldV2 field) {
+        if (field == null || field.getDate() == null) {
+            return null;
+        }
+        Date date = field.getDate();
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
     private static String formatDate(LocalDate value) {
         return value == null ? "" : DATE_FORMAT.format(value);
     }
@@ -1008,16 +1027,14 @@ public class JPanelAnalisisV2 extends JPanel {
             super(new Object[]{
                 "Días",
                 "Expediente",
-                "Trámite",
-                "Titular",
+                "Trámite / Documento",
+                "Fecha solicitud",
                 "Procedimiento",
-                "Tipo doc.",
                 "Tipo acta",
                 "Nro. acta",
-                "Recepción",
-                "Etapa",
+                "Titular",
                 "Estado",
-                "Observación",
+                "Observación / Alertas",
                 "Asociados",
                 "_ID"
             }, 0);
@@ -1042,16 +1059,13 @@ public class JPanelAnalisisV2 extends JPanel {
             if (!isSelected && modelColumn == 0) {
                 return StatusBadgeV2.forDias(value);
             }
-            if (!isSelected && modelColumn == 9) {
-                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
-            }
-            if (!isSelected && modelColumn == 10) {
+            if (!isSelected && modelColumn == 8) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 11 && value != null && value.toString().startsWith("Con")) {
+            if (!isSelected && modelColumn == 9 && value != null && value.toString().startsWith("Con")) {
                 return new BadgeV2(value.toString(), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
             }
-            if (!isSelected && modelColumn == 12 && value != null && !value.toString().startsWith("Sin")) {
+            if (!isSelected && modelColumn == 10 && value != null && !value.toString().startsWith("Sin")) {
                 return new BadgeV2(value.toString(), AppV2Theme.SOFT_BLUE, AppV2Theme.INFO);
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);

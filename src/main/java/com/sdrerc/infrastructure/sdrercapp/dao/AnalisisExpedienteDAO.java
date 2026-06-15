@@ -64,6 +64,15 @@ public class AnalisisExpedienteDAO {
     }
 
     public List<AnalisisExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
+        return buscarExpedientes(textoLibre, estadoCodigo, null, null, limite);
+    }
+
+    public List<AnalisisExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
@@ -104,6 +113,16 @@ public class AnalisisExpedienteDAO {
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
             params.add(estadoCodigo.trim().toUpperCase(Locale.ROOT));
+        }
+
+        if (fechaSolicitudDesde != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) >= ? ");
+            params.add(Date.valueOf(fechaSolicitudDesde));
+        }
+
+        if (fechaSolicitudHasta != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) <= ? ");
+            params.add(Date.valueOf(fechaSolicitudHasta));
         }
 
         if (hasText(textoLibre)) {

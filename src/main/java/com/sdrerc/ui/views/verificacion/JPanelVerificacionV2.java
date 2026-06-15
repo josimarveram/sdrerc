@@ -8,28 +8,39 @@ import com.sdrerc.domain.dto.sdrercapp.ObservacionVerificacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionResultadoDTO;
+import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
+import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
+import com.sdrerc.ui.appv2.components.AppV2TablePanel;
+import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
+import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -41,7 +52,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -51,13 +61,17 @@ import javax.swing.table.DefaultTableModel;
 
 public class JPanelVerificacionV2 extends JPanel {
 
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final int PANEL_VERIFICACION_ANCHO_MINIMO = 380;
+    private static final int PANEL_VERIFICACION_ANCHO_NORMAL = 430;
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final VerificacionExpedienteService verificacionService;
     private final DocumentoVerificacionService documentoService;
 
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o resultado", 28);
+    private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
@@ -92,6 +106,10 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private final VerificacionTableModel tableModel = new VerificacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
+    private final AppV2TablePanel tablePanel = new AppV2TablePanel(
+            table,
+            "Sin expedientes para mostrar",
+            "Seleccione filtros y presione Buscar.");
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Fecha", "Descripción"},
             0) {
@@ -106,6 +124,9 @@ public class JPanelVerificacionV2 extends JPanel {
     private final MetricCardV2 cardEnVerificacion = new MetricCardV2("En verificación", "0", "Pendientes de revisión", AppV2Theme.INFO);
     private final MetricCardV2 cardCorreccion = new MetricCardV2("Con corrección", "0", "Observados o inconsistentes", AppV2Theme.WARNING);
     private final MetricCardV2 cardVerificados = new MetricCardV2("Verificados", "0", "Listos para firma", AppV2Theme.SUCCESS);
+    private AppV2OperationalSplitPanel splitOperativo;
+    private AppV2SideActionPanel panelVerificacion;
+    private boolean panelVerificacionCerradoPorUsuario;
 
     private boolean cargandoCatalogos;
 
@@ -126,6 +147,7 @@ public class JPanelVerificacionV2 extends JPanel {
         configurarTabla();
         configurarDocumentosTabla();
         configurarEventos();
+        restaurarFechasBusqueda();
         cargarFiltrosBase();
         cargarCatalogos();
         actualizarSeleccion();
@@ -143,97 +165,67 @@ public class JPanelVerificacionV2 extends JPanel {
     private JPanel crearCentro() {
         JPanel centro = new JPanel(new BorderLayout(14, 14));
         centro.setOpaque(false);
-        centro.add(crearBandeja(), BorderLayout.CENTER);
-        centro.add(crearPanelVerificacion(), BorderLayout.EAST);
+        centro.add(crearBuscador(), BorderLayout.NORTH);
+        panelVerificacion = crearPanelVerificacion();
+        splitOperativo = new AppV2OperationalSplitPanel(
+                crearBandeja(),
+                panelVerificacion,
+                0,
+                PANEL_VERIFICACION_ANCHO_MINIMO,
+                PANEL_VERIFICACION_ANCHO_NORMAL);
+        centro.add(splitOperativo, BorderLayout.CENTER);
         return centro;
     }
 
-    private JPanel crearBandeja() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setOpaque(false);
-
-        JPanel filtros = new JPanel(new GridBagLayout());
-        filtros.setBackground(AppV2Theme.SURFACE);
-        filtros.setBorder(AppV2Theme.toolbarBorder());
+    private JPanel crearBuscador() {
         configurarControles();
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 6, 4, 6);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.gridy = 0;
-        gbc.gridx = 0;
-        filtros.add(label("Búsqueda"), gbc);
-        gbc.gridx = 1;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(txtBusqueda, gbc);
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.gridx = 2;
-        filtros.add(label("Estado"), gbc);
-        gbc.gridx = 3;
-        filtros.add(cmbEstadoFiltro, gbc);
-        gbc.gridx = 4;
-        filtros.add(label("Mostrar"), gbc);
-        gbc.gridx = 5;
-        filtros.add(spnLimite, gbc);
-
-        JPanel accionesFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        accionesFiltro.setOpaque(false);
+        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
+        JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnRefrescar);
         accionesFiltro.add(btnVerDetalle);
-        gbc.gridx = 6;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(accionesFiltro, gbc);
+        accionesFiltro.add(btnRefrescar);
+        toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
+        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
+        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
+        toolbar.addFilter("Estado", cmbEstadoFiltro);
+        toolbar.addFilter("Mostrar", spnLimite);
+        return toolbar;
+    }
 
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        acciones.setOpaque(false);
-        acciones.add(btnRegistrarVerificacion);
-        acciones.add(btnAprobar);
-        acciones.add(btnEnviarFirma);
-        acciones.add(btnObservar);
-        acciones.add(btnDocumentoInconsistente);
-        acciones.add(btnDevolverAnalisis);
-
-        JPanel superior = new JPanel(new BorderLayout(8, 8));
-        superior.setOpaque(false);
-        superior.add(filtros, BorderLayout.NORTH);
-        superior.add(acciones, BorderLayout.CENTER);
-        superior.add(lblEstado, BorderLayout.SOUTH);
+    private JPanel crearBandeja() {
         lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        panel.add(superior, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablePanel);
+        section.setStatus(lblEstado);
+        return section;
+    }
+
+    private AppV2SideActionPanel crearPanelVerificacion() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de verificación", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelVerificacion();
+            }
+        });
+        panel.addSection(crearResumenSeleccion());
+        panel.addSection(crearAnalisisPrevio());
+        panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearFormularioVerificacion());
+        panel.setFooter(crearAccionesPanelVerificacion());
         return panel;
     }
 
-    private JPanel crearPanelVerificacion() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(405, 0));
-        panel.setBackground(AppV2Theme.SURFACE);
-        panel.setBorder(AppV2Theme.sectionBorder());
-
-        JLabel title = new JLabel("Panel de verificación");
-        title.setFont(AppV2Theme.fontBold(18));
-        title.setForeground(AppV2Theme.TEXT_PRIMARY);
-
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
-        content.add(crearResumenSeleccion());
-        content.add(crearAnalisisPrevio());
-        content.add(crearDocumentosPanel());
-        content.add(crearFormularioVerificacion());
-
-        JScrollPane scroll = new JScrollPane(content);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
+    private JPanel crearAccionesPanelVerificacion() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
+        panel.setOpaque(false);
+        panel.add(btnRegistrarVerificacion);
+        panel.add(btnAprobar);
+        panel.add(btnEnviarFirma);
+        panel.add(btnObservar);
+        panel.add(btnDocumentoInconsistente);
+        panel.add(btnDevolverAnalisis);
         return panel;
     }
 
@@ -358,6 +350,7 @@ public class JPanelVerificacionV2 extends JPanel {
     private void configurarTabla() {
         table.setRowHeight(34);
         table.setAutoCreateRowSorter(true);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -367,11 +360,8 @@ public class JPanelVerificacionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new VerificacionRenderer());
-        table.getColumnModel().getColumn(0).setMaxWidth(70);
-        table.getColumnModel().getColumn(10).setPreferredWidth(150);
-        table.getColumnModel().getColumn(11).setPreferredWidth(160);
-        table.getColumnModel().getColumn(12).setMaxWidth(92);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        AppV2TableColumnSizer.applyWidths(table, 88, 185, 170, 145, 230, 130, 130, 260, 155, 190, 190, 0);
     }
 
     private void configurarDocumentosTabla() {
@@ -397,7 +387,17 @@ public class JPanelVerificacionV2 extends JPanel {
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
+                panelVerificacionCerradoPorUsuario = false;
                 actualizarSeleccion();
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (table.rowAtPoint(e.getPoint()) >= 0) {
+                    panelVerificacionCerradoPorUsuario = false;
+                    actualizarVisibilidadPanelVerificacion();
+                }
             }
         });
     }
@@ -456,6 +456,12 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private void buscar() {
+        LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
+        LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            mostrarInfo("Fecha desde no puede ser mayor que Fecha hasta.");
+            return;
+        }
         setTrabajando(true, "Consultando expedientes en verificación...");
         String texto = txtBusqueda.getText();
         String estado = obtenerCodigo(cmbEstadoFiltro);
@@ -463,7 +469,7 @@ public class JPanelVerificacionV2 extends JPanel {
         SwingWorker<List<VerificacionExpedienteDTO>, Void> worker = new SwingWorker<List<VerificacionExpedienteDTO>, Void>() {
             @Override
             protected List<VerificacionExpedienteDTO> doInBackground() throws Exception {
-                return verificacionService.buscarExpedientes(texto, estado, limite);
+                return verificacionService.buscarExpedientes(texto, estado, desde, hasta, limite);
             }
 
             @Override
@@ -498,22 +504,18 @@ public class JPanelVerificacionV2 extends JPanel {
                 verificados++;
             }
             tableModel.addRow(new Object[]{
-                item.getIdExpediente(),
+                item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
                 item.getNumeroExpediente(),
                 item.getNumeroTramiteDocumentario(),
+                formatDate(item.getFechaRecepcion()),
                 item.getProcedimiento(),
-                item.getTipoDocumento(),
                 item.getTipoActa(),
                 item.getNumeroActa(),
                 item.getTitular(),
-                formatDate(item.getFechaRecepcion()),
-                formatDateTime(item.getFechaEnvioVerificacion()),
-                item.getResponsableAnalisis().isEmpty() ? item.getResponsable() : item.getResponsableAnalisis(),
-                DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
                 DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
+                item.getUltimoResultadoAnalisis().isEmpty() ? "Sin resultado" : item.getUltimoResultadoAnalisis(),
                 item.isTieneObservacionPendiente() ? "Con observación" : "Sin observación",
-                item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociados" : "Sin asociados"
+                item.getIdExpediente()
             });
         }
         cardEnVerificacion.setValue(String.valueOf(enVerificacion));
@@ -522,6 +524,7 @@ public class JPanelVerificacionV2 extends JPanel {
         lblEstado.setText(items.isEmpty()
                 ? "No se encontraron expedientes en verificación."
                 : items.size() + " expediente(s) encontrados.");
+        tablePanel.setEmpty(items.isEmpty());
         actualizarSeleccion();
     }
 
@@ -529,14 +532,17 @@ public class JPanelVerificacionV2 extends JPanel {
         txtBusqueda.setText("");
         cmbEstadoFiltro.setSelectedIndex(0);
         spnLimite.setValue(200);
+        restaurarFechasBusqueda();
         expedientes.clear();
         tableModel.setRowCount(0);
+        tablePanel.setEmpty(true);
         documentosModel.setRowCount(0);
         limpiarFormulario();
         cardEnVerificacion.setValue("0");
         cardCorreccion.setValue("0");
         cardVerificados.setValue("0");
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes en verificación.");
+        panelVerificacionCerradoPorUsuario = false;
         actualizarSeleccion();
     }
 
@@ -550,6 +556,7 @@ public class JPanelVerificacionV2 extends JPanel {
         btnDocumentoInconsistente.setEnabled(has && item.isRegistrableVerificacion());
         btnEnviarFirma.setEnabled(has && item.isEnviableFirma());
         btnDevolverAnalisis.setEnabled(has && item.isDevolvibleAnalisis());
+        actualizarVisibilidadPanelVerificacion();
         if (!has) {
             lblExpediente.setText("-");
             lblTitular.setText("-");
@@ -578,6 +585,20 @@ public class JPanelVerificacionV2 extends JPanel {
         txtComentario.setText("");
         txtObservacion.setText(item.getUltimaObservacionVerificacion());
         cargarDocumentos(item);
+    }
+
+    private void cerrarPanelVerificacion() {
+        panelVerificacionCerradoPorUsuario = true;
+        if (splitOperativo != null) {
+            splitOperativo.setSideVisible(false);
+        }
+    }
+
+    private void actualizarVisibilidadPanelVerificacion() {
+        if (splitOperativo == null) {
+            return;
+        }
+        splitOperativo.setSideVisible(obtenerSeleccionado() != null && !panelVerificacionCerradoPorUsuario);
     }
 
     private String alertas(VerificacionExpedienteDTO item) {
@@ -821,6 +842,19 @@ public class JPanelVerificacionV2 extends JPanel {
         return selected instanceof SimpleItem ? ((SimpleItem) selected).codigo : "";
     }
 
+    private void restaurarFechasBusqueda() {
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
+    }
+
+    private static LocalDate fechaSeleccionada(PremiumDateFieldV2 field) {
+        if (field == null || field.getDate() == null) {
+            return null;
+        }
+        Date date = field.getDate();
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
     private static String formatDate(LocalDate value) {
         return value == null ? "" : DATE_FORMAT.format(value);
     }
@@ -853,22 +887,18 @@ public class JPanelVerificacionV2 extends JPanel {
     private class VerificacionTableModel extends DefaultTableModel {
         private VerificacionTableModel() {
             super(new Object[]{
-                "ID",
+                "Días",
                 "Expediente",
-                "Trámite",
+                "Trámite / Documento",
+                "Fecha solicitud",
                 "Procedimiento",
-                "Tipo doc.",
                 "Tipo acta",
                 "Nro. acta",
                 "Titular",
-                "Recepción",
-                "Envío verificación",
-                "Responsable análisis",
-                "Etapa",
                 "Estado",
-                "Días",
-                "Observación",
-                "Asociados"
+                "Resultado análisis",
+                "Alertas / Observaciones",
+                "_ID"
             }, 0);
         }
 
@@ -888,17 +918,14 @@ public class JPanelVerificacionV2 extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
-            if (!isSelected && modelColumn == 11) {
-                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
+            if (!isSelected && modelColumn == 0) {
+                return StatusBadgeV2.forDias(value);
             }
-            if (!isSelected && modelColumn == 12) {
+            if (!isSelected && modelColumn == 8) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 14 && value != null && value.toString().startsWith("Con")) {
+            if (!isSelected && modelColumn == 10 && value != null && value.toString().startsWith("Con")) {
                 return new BadgeV2(value.toString(), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
-            }
-            if (!isSelected && modelColumn == 15 && value != null && !value.toString().startsWith("Sin")) {
-                return new BadgeV2(value.toString(), AppV2Theme.SOFT_BLUE, AppV2Theme.INFO);
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));

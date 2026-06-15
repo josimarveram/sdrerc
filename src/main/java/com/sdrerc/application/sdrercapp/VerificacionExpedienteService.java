@@ -9,6 +9,7 @@ import com.sdrerc.infrastructure.sdrercapp.dao.ObservacionExpedienteDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.VerificacionExpedienteDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,7 +50,21 @@ public class VerificacionExpedienteService {
     }
 
     public List<VerificacionExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
-        return verificacionExpedienteDAO.buscarExpedientes(textoLibre, estadoCodigo, limite);
+        return buscarExpedientes(textoLibre, estadoCodigo, null, null, limite);
+    }
+
+    public List<VerificacionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite) throws SQLException {
+        return verificacionExpedienteDAO.buscarExpedientes(
+                textoLibre,
+                estadoCodigo,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                limite);
     }
 
     public List<CatalogoItemDTO> listarResultadosVerificacion() {
