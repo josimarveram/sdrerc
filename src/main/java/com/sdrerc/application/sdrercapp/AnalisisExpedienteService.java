@@ -20,6 +20,8 @@ public class AnalisisExpedienteService {
     private final UsuarioAsignacionService usuarioAsignacionService;
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final ObservacionExpedienteDAO observacionExpedienteDAO;
+    private boolean usuarioActualResuelto;
+    private Long idUsuarioActualSdrercApp;
 
     public AnalisisExpedienteService() {
         this(
@@ -82,6 +84,27 @@ public class AnalisisExpedienteService {
         return analisisExpedienteDAO.recibirExpediente(idExpediente, comentario, resolverUsuarioActualSdrercApp());
     }
 
+    public AnalisisResultadoDTO recibirDocumentoAsociado(
+            Long idExpedientePrincipal,
+            Long idExpedienteAsociado,
+            String comentario) throws SQLException {
+        validacionService.validarExpedienteSeleccionado(idExpedientePrincipal);
+        validacionService.validarExpedienteSeleccionado(idExpedienteAsociado);
+        return analisisExpedienteDAO.recibirDocumentoAsociado(
+                idExpedientePrincipal,
+                idExpedienteAsociado,
+                comentario,
+                resolverUsuarioActualSdrercApp());
+    }
+
+    public boolean usuarioActualEsResponsable(Long idUsuarioResponsable) {
+        if (idUsuarioResponsable == null) {
+            return false;
+        }
+        Long idUsuarioActual = resolverUsuarioActualSdrercApp();
+        return idUsuarioActual != null && idUsuarioActual.equals(idUsuarioResponsable);
+    }
+
     public AnalisisResultadoDTO registrarAnalisis(AnalisisRegistroDTO registro) throws SQLException {
         List<String> errores = validacionService.validarRegistroAnalisis(registro);
         if (!errores.isEmpty()) {
@@ -109,11 +132,16 @@ public class AnalisisExpedienteService {
     }
 
     private Long resolverUsuarioActualSdrercApp() {
+        if (usuarioActualResuelto) {
+            return idUsuarioActualSdrercApp;
+        }
+        usuarioActualResuelto = true;
         try {
             String username = SessionContext.getUsername();
-            return usuarioAsignacionService.obtenerIdUsuarioActivoPorUsername(username);
+            idUsuarioActualSdrercApp = usuarioAsignacionService.obtenerIdUsuarioActivoPorUsername(username);
         } catch (Exception ex) {
-            return null;
+            idUsuarioActualSdrercApp = null;
         }
+        return idUsuarioActualSdrercApp;
     }
 }

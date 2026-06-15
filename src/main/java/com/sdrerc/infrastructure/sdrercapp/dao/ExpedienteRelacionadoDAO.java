@@ -24,6 +24,7 @@ public class ExpedienteRelacionadoDAO {
     private static final String MOVIMIENTO_ASOCIACION_DUPLICADO = "ASOCIACION_DUPLICADO";
     private static final String MOVIMIENTO_ASIGNACION_ABOGADO = "ASIGNACION_ABOGADO";
     private static final String CODIGO_ETAPA_ASIGNACION = "ASIGNACION";
+    private static final String CODIGO_ETAPA_ANALISIS = "ANALISIS";
     private static final String CODIGO_ESTADO_ASIGNADO = "ASIGNADO";
     private static final String MOTIVO_MISMA_ACTA_TITULAR = "Misma acta y titular";
     private static final String MOTIVO_DOCUMENTO_DUPLICADO = "Documento duplicado asociado al expediente principal por misma acta y titular";
@@ -417,9 +418,16 @@ public class ExpedienteRelacionadoDAO {
         if (asignacionPrincipal == null) {
             return false;
         }
-        boolean actualizarEstado = sincronizarEstadoOperativo && asignacionPrincipal.esAsignado();
+        AsignacionActual asignacionDestino = prepararAsignacionDestino(
+                conn,
+                asignacionPrincipal,
+                sincronizarEstadoOperativo);
+        boolean actualizarEstado = asignacionDestino != asignacionPrincipal;
+        if (sincronizarEstadoOperativo && asignacionPrincipal.esAsignado()) {
+            actualizarEstado = true;
+        }
         if (tieneAsignacionCoincidente(conn, idRelacionado, asignacionPrincipal)) {
-            actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador, actualizarEstado);
+            actualizarResponsablesRelacionado(conn, idRelacionado, asignacionDestino, idUsuarioModificador, actualizarEstado);
             return false;
         }
         if (idMovimiento == null) {
@@ -432,7 +440,7 @@ public class ExpedienteRelacionadoDAO {
                 idRelacionado,
                 asignacionPrincipal,
                 idUsuarioModificador);
-        actualizarResponsablesRelacionado(conn, idRelacionado, asignacionPrincipal, idUsuarioModificador, actualizarEstado);
+        actualizarResponsablesRelacionado(conn, idRelacionado, asignacionDestino, idUsuarioModificador, actualizarEstado);
         insertarHistorialAsignacionAsociada(
                 conn,
                 idRelacionado,
@@ -441,6 +449,30 @@ public class ExpedienteRelacionadoDAO {
                 idAsignacion,
                 idUsuarioModificador);
         return true;
+    }
+
+    private AsignacionActual prepararAsignacionDestino(
+            Connection conn,
+            AsignacionActual asignacionPrincipal,
+            boolean sincronizarEstadoOperativo) throws SQLException {
+        if (!sincronizarEstadoOperativo
+                || asignacionPrincipal.esAsignado()
+                || !CODIGO_ETAPA_ANALISIS.equalsIgnoreCase(asignacionPrincipal.etapaCodigo)) {
+            return asignacionPrincipal;
+        }
+        Long idEtapaAsignacion = catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_ASIGNACION);
+        Long idEstadoAsignado = catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_ASIGNADO);
+        if (idEtapaAsignacion == null || idEstadoAsignado == null) {
+            throw new SQLException("No se encontró la etapa/estado requerida para preparar el documento asociado.");
+        }
+        return new AsignacionActual(
+                asignacionPrincipal.idUsuario,
+                asignacionPrincipal.idEquipo,
+                asignacionPrincipal.idEtapa,
+                idEtapaAsignacion,
+                idEstadoAsignado,
+                CODIGO_ETAPA_ASIGNACION,
+                CODIGO_ESTADO_ASIGNADO);
     }
 
     private AsignacionActual obtenerAsignacionActual(Connection conn, Long idExpediente) throws SQLException {

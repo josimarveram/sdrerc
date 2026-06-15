@@ -13,6 +13,7 @@ import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2AssociatedDocumentIconCell;
 import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
+import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -54,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.swing.BorderFactory;
+import javax.swing.AbstractCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -70,6 +72,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 
 public class JPanelAnalisisV2 extends JPanel {
@@ -136,6 +139,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JLabel lblResponsable = new JLabel("-");
     private final JLabel lblEtapaEstado = new JLabel("-");
     private final JLabel lblAlertas = new JLabel("Sin alertas.");
+    private final JLabel lblDocumentosAsociados = new JLabel("Sin documentos asociados.");
     private final JLabel lblFechaAnalisis = new JLabel(DATE_FORMAT.format(LocalDate.now()));
 
     private final JComboBox<ResultadoItem> cmbResultado = new JComboBox<ResultadoItem>();
@@ -169,11 +173,20 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     };
     private final JTable documentosTable = new AppV2Table(documentoModel);
+    private final DefaultTableModel documentosAsociadosModel = new DefaultTableModel(
+            new Object[]{"N° documento", "Estado", ""}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return column == 2 && puedeRecibirDocumentoAsociado(row);
+        }
+    };
+    private final JTable documentosAsociadosTable = new AppV2Table(documentosAsociadosModel);
     private final List<AnalisisExpedienteDTO> expedientes = new ArrayList<AnalisisExpedienteDTO>();
     private final List<AnalisisTableRow> filasTabla = new ArrayList<AnalisisTableRow>();
     private final Map<Long, List<ExpedienteRelacionadoDTO>> asociadosCache = new HashMap<Long, List<ExpedienteRelacionadoDTO>>();
     private final Set<Long> principalesExpandidos = new HashSet<Long>();
     private final Set<Long> principalesCargando = new HashSet<Long>();
+    private final List<ExpedienteRelacionadoDTO> documentosAsociadosPanel = new ArrayList<ExpedienteRelacionadoDTO>();
     private final MetricCardV2 cardPorRecibir = new MetricCardV2("Por recibir", "0", "Asignación / Asignado", AppV2Theme.INFO);
     private final MetricCardV2 cardEnAnalisis = new MetricCardV2("En análisis", "0", "Recibidos y observados", AppV2Theme.TEAL);
     private final MetricCardV2 cardEspeciales = new MetricCardV2("Rutas especiales", "0", "No corresponde / notificación", AppV2Theme.WARNING);
@@ -181,6 +194,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private AppV2SideActionPanel panelAnalisis;
     private boolean panelAnalisisCerradoPorUsuario;
     private Long idExpedienteExpansionActiva;
+    private Long idExpedienteDocumentosAsociados;
 
     private boolean cargandoCatalogos;
     private boolean busquedaInicialEjecutada;
@@ -199,6 +213,7 @@ public class JPanelAnalisisV2 extends JPanel {
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarDocumentoTabla();
+        configurarDocumentosAsociadosTabla();
         configurarEventos();
         restaurarFechasBusqueda();
         cargarFiltrosBase();
@@ -269,6 +284,7 @@ public class JPanelAnalisisV2 extends JPanel {
         tabPanelAnalisis.setToolTipText("Ampliar panel de análisis");
         tabPanelAnalisis.addActionListener(e -> alternarExpansionPanelAnalisis());
         panel.addSection(crearResumenSeleccion());
+        panel.addSection(crearDocumentosAsociadosPanel());
         panel.addSection(crearFormularioAnalisis());
         panel.addSection(crearDocumentosPanel());
         panel.addSection(crearObservacionPanel());
@@ -388,6 +404,26 @@ public class JPanelAnalisisV2 extends JPanel {
 
         panel.add(top, BorderLayout.NORTH);
         panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearDocumentosAsociadosPanel() {
+        JPanel panel = section("Documentos asociados");
+        lblDocumentosAsociados.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblDocumentosAsociados.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JScrollPane scroll = new JScrollPane(documentosAsociadosTable);
+        scroll.setPreferredSize(new Dimension(300, 112));
+        scroll.setMinimumSize(new Dimension(250, 88));
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        JPanel content = new JPanel(new BorderLayout(0, 6));
+        content.setOpaque(false);
+        content.add(lblDocumentosAsociados, BorderLayout.NORTH);
+        content.add(scroll, BorderLayout.CENTER);
+        panel.add(content, BorderLayout.CENTER);
         return panel;
     }
 
@@ -521,6 +557,31 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosTable.getColumnModel().getColumn(4).setMaxWidth(0);
         documentosTable.getColumnModel().getColumn(5).setMinWidth(0);
         documentosTable.getColumnModel().getColumn(5).setMaxWidth(0);
+    }
+
+    private void configurarDocumentosAsociadosTabla() {
+        documentosAsociadosTable.setRowHeight(30);
+        documentosAsociadosTable.setAutoCreateRowSorter(false);
+        documentosAsociadosTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        documentosAsociadosTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        documentosAsociadosTable.getTableHeader().setReorderingAllowed(false);
+        documentosAsociadosTable.getTableHeader().setResizingAllowed(false);
+        documentosAsociadosTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        documentosAsociadosTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        documentosAsociadosTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        documentosAsociadosTable.setGridColor(AppV2Theme.BORDER);
+        documentosAsociadosTable.setShowVerticalLines(false);
+        documentosAsociadosTable.setIntercellSpacing(new Dimension(0, 1));
+        documentosAsociadosTable.setDefaultRenderer(Object.class, new DocumentoAsociadoPanelRenderer());
+        documentosAsociadosTable.getColumnModel().getColumn(0).setPreferredWidth(145);
+        documentosAsociadosTable.getColumnModel().getColumn(0).setMinWidth(110);
+        documentosAsociadosTable.getColumnModel().getColumn(1).setPreferredWidth(125);
+        documentosAsociadosTable.getColumnModel().getColumn(1).setMinWidth(105);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setPreferredWidth(42);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setMinWidth(42);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setMaxWidth(48);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setCellRenderer(new RecibirAsociadoRenderer());
+        documentosAsociadosTable.getColumnModel().getColumn(2).setCellEditor(new RecibirAsociadoEditor());
     }
 
     private void configurarEventos() {
@@ -993,6 +1054,7 @@ public class JPanelAnalisisV2 extends JPanel {
             lblResponsable.setText("-");
             lblEtapaEstado.setText("-");
             lblAlertas.setText("Sin alertas.");
+            limpiarDocumentosAsociadosPanel("Sin documentos asociados.");
             return;
         }
         if (asociado) {
@@ -1005,6 +1067,7 @@ public class JPanelAnalisisV2 extends JPanel {
             lblEtapaEstado.setText("Expediente principal: " + fila.numeroExpedientePrincipal());
             lblAlertas.setText(textoRelacionAsociada(relacionado) + " · Disponible para análisis");
             txtComentarioMovimiento.setText("Este documento está asociado al expediente principal y se muestra como contexto del caso.");
+            cargarDocumentosAsociadosPanel(fila.principal);
             return;
         }
         lblExpediente.setText(item.getNumeroExpediente());
@@ -1015,6 +1078,7 @@ public class JPanelAnalisisV2 extends JPanel {
         lblEtapaEstado.setText(DisplayNameMapperV2.etapa(item.getEtapaCodigo()) + " / " + DisplayNameMapperV2.estado(item.getEstadoCodigo()));
         lblAlertas.setText(alertas(item));
         txtComentarioMovimiento.setText("");
+        cargarDocumentosAsociadosPanel(item);
         if (item.isRegistrable() && documentoModel.getRowCount() == 0 && cmbEstadoDocumento.getItemCount() > 1) {
             cmbEstadoDocumento.setSelectedIndex(1);
         }
@@ -1066,6 +1130,146 @@ public class JPanelAnalisisV2 extends JPanel {
             alertas.add(item.getTotalDocumentosAnalizados() + " documento(s) analizado(s)");
         }
         return alertas.isEmpty() ? "Sin alertas." : String.join(" · ", alertas);
+    }
+
+    private void cargarDocumentosAsociadosPanel(AnalisisExpedienteDTO principal) {
+        if (principal == null || principal.getIdExpediente() == null || principal.getTotalRelacionados() <= 0) {
+            limpiarDocumentosAsociadosPanel("Sin documentos asociados.");
+            return;
+        }
+        Long idPrincipal = principal.getIdExpediente();
+        List<ExpedienteRelacionadoDTO> cache = asociadosCache.get(idPrincipal);
+        if (cache != null) {
+            actualizarDocumentosAsociadosPanel(idPrincipal, cache);
+            return;
+        }
+        if (idPrincipal.equals(idExpedienteDocumentosAsociados)) {
+            return;
+        }
+        idExpedienteDocumentosAsociados = idPrincipal;
+        documentosAsociadosPanel.clear();
+        documentosAsociadosModel.setRowCount(0);
+        lblDocumentosAsociados.setForeground(AppV2Theme.TEXT_SECONDARY);
+        lblDocumentosAsociados.setText("Consultando documentos asociados...");
+
+        SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker =
+                new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {
+            @Override
+            protected List<ExpedienteRelacionadoDTO> doInBackground() throws Exception {
+                return relacionadoService.listarAsociadosConfirmados(idPrincipal);
+            }
+
+            @Override
+            protected void done() {
+                if (!idPrincipal.equals(idExpedienteDocumentosAsociados)) {
+                    return;
+                }
+                try {
+                    List<ExpedienteRelacionadoDTO> asociados = get();
+                    asociadosCache.put(idPrincipal, asociados);
+                    actualizarDocumentosAsociadosPanel(idPrincipal, asociados);
+                } catch (Exception ex) {
+                    limpiarDocumentosAsociadosPanel("No se pudieron consultar los documentos asociados.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void actualizarDocumentosAsociadosPanel(
+            Long idPrincipal,
+            List<ExpedienteRelacionadoDTO> asociados) {
+        idExpedienteDocumentosAsociados = idPrincipal;
+        documentosAsociadosPanel.clear();
+        documentosAsociadosModel.setRowCount(0);
+        int pendientes = 0;
+        if (asociados != null) {
+            for (ExpedienteRelacionadoDTO asociado : asociados) {
+                documentosAsociadosPanel.add(asociado);
+                boolean recibido = asociado.isRecibidoPorAbogado();
+                if (!recibido) {
+                    pendientes++;
+                }
+                documentosAsociadosModel.addRow(new Object[]{
+                    valorUi(asociado.getNumeroDocumento()),
+                    recibido ? "Recibido" : "Pendiente de recibir",
+                    recibido ? "Recibido" : "Recibir"
+                });
+            }
+        }
+        if (documentosAsociadosPanel.isEmpty()) {
+            lblDocumentosAsociados.setForeground(AppV2Theme.TEXT_SECONDARY);
+            lblDocumentosAsociados.setText("Sin documentos asociados.");
+        } else if (pendientes > 0) {
+            lblDocumentosAsociados.setForeground(AppV2Theme.WARNING);
+            lblDocumentosAsociados.setText(
+                    pendientes + " documento(s) asociado(s) pendiente(s) de recibir.");
+        } else {
+            lblDocumentosAsociados.setForeground(AppV2Theme.SUCCESS);
+            lblDocumentosAsociados.setText("Todos los documentos asociados fueron recibidos.");
+        }
+        actualizarAlertaRecepcionAsociados(idPrincipal, pendientes);
+        documentosAsociadosTable.revalidate();
+        documentosAsociadosTable.repaint();
+    }
+
+    private void actualizarAlertaRecepcionAsociados(Long idPrincipal, int pendientes) {
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        if (fila == null || fila.getIdPrincipal() == null || !fila.getIdPrincipal().equals(idPrincipal)) {
+            return;
+        }
+        String base = fila.esAsociada()
+                ? textoRelacionAsociada(fila.asociado) + " · Disponible para análisis"
+                : alertas(fila.principal);
+        if (pendientes > 0) {
+            base += " · " + pendientes + " documento(s) asociado(s) pendiente(s) de recibir";
+        }
+        lblAlertas.setText(base);
+    }
+
+    private void limpiarDocumentosAsociadosPanel(String mensaje) {
+        idExpedienteDocumentosAsociados = null;
+        documentosAsociadosPanel.clear();
+        documentosAsociadosModel.setRowCount(0);
+        lblDocumentosAsociados.setForeground(AppV2Theme.TEXT_SECONDARY);
+        lblDocumentosAsociados.setText(mensaje == null || mensaje.trim().isEmpty()
+                ? "Sin documentos asociados."
+                : mensaje);
+    }
+
+    private boolean puedeRecibirDocumentoAsociado(int modelRow) {
+        if (modelRow < 0 || modelRow >= documentosAsociadosPanel.size()) {
+            return false;
+        }
+        ExpedienteRelacionadoDTO asociado = documentosAsociadosPanel.get(modelRow);
+        return !asociado.isRecibidoPorAbogado()
+                && "ASIGNACION".equalsIgnoreCase(asociado.getEtapaCodigo())
+                && "ASIGNADO".equalsIgnoreCase(asociado.getEstadoCodigo())
+                && analisisService.usuarioActualEsResponsable(asociado.getIdAbogadoResponsable());
+    }
+
+    private void recibirDocumentoAsociado(int modelRow) {
+        if (modelRow < 0 || modelRow >= documentosAsociadosPanel.size()) {
+            return;
+        }
+        Long idPrincipal = idExpedienteDocumentosAsociados;
+        ExpedienteRelacionadoDTO asociado = documentosAsociadosPanel.get(modelRow);
+        if (idPrincipal == null || asociado == null || asociado.getIdExpediente() == null) {
+            mostrarInfo("Seleccione un documento asociado válido para recibir.");
+            return;
+        }
+        if (!puedeRecibirDocumentoAsociado(modelRow)) {
+            mostrarInfo("Solo el abogado responsable puede registrar la recepción.");
+            return;
+        }
+        confirmarYEjecutar(
+                "Recibir documento asociado",
+                "Se recibirá el documento " + valorUi(asociado.getNumeroDocumento())
+                        + " para análisis. ¿Desea continuar?",
+                () -> analisisService.recibirDocumentoAsociado(
+                        idPrincipal,
+                        asociado.getIdExpediente(),
+                        txtComentarioMovimiento.getText()));
     }
 
     private void recibir() {
@@ -1377,6 +1581,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnDerivarNotificacion.setEnabled(!trabajando && item != null && item.isDerivableNotificacionEspecial());
         btnArchivarNoCorresponde.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
         btnDerivarExterna.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
+        documentosAsociadosTable.setEnabled(!trabajando);
         if (mensaje != null) {
             lblEstado.setText(mensaje);
         }
@@ -1572,6 +1777,110 @@ public class JPanelAnalisisV2 extends JPanel {
                 c.setForeground(modelColumn == COL_EXPEDIENTE ? AppV2Theme.PRIMARY : AppV2Theme.TEXT_PRIMARY);
             }
             return c;
+        }
+    }
+
+    private class DocumentoAsociadoPanelRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            int modelColumn = table.convertColumnIndexToModel(column);
+            String text = value == null ? "" : value.toString();
+            if (modelColumn == 1 && !isSelected) {
+                boolean recibido = "Recibido".equalsIgnoreCase(text);
+                return new BadgeV2(
+                        text,
+                        recibido ? AppV2Theme.SOFT_GREEN : AppV2Theme.SOFT_ORANGE,
+                        recibido ? AppV2Theme.SUCCESS : AppV2Theme.WARNING);
+            }
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            c.setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE);
+            c.setForeground(AppV2Theme.TEXT_PRIMARY);
+            setToolTipText(text.isEmpty() ? null : text);
+            return c;
+        }
+    }
+
+    private class RecibirAsociadoRenderer extends JButton implements TableCellRenderer {
+        private RecibirAsociadoRenderer() {
+            setText("");
+            setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
+            setFocusPainted(false);
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            int modelRow = table.convertRowIndexToModel(row);
+            ExpedienteRelacionadoDTO asociado = modelRow >= 0 && modelRow < documentosAsociadosPanel.size()
+                    ? documentosAsociadosPanel.get(modelRow)
+                    : null;
+            boolean recibido = asociado != null && asociado.isRecibidoPorAbogado();
+            boolean permitido = puedeRecibirDocumentoAsociado(modelRow);
+            setIcon(AppV2IconProvider.action(
+                    recibido ? AppV2IconProvider.VERIFICACION : AppV2IconProvider.BANDEJA));
+            setEnabled(permitido);
+            setBackground(recibido
+                    ? AppV2Theme.SOFT_GREEN
+                    : permitido ? AppV2Theme.SOFT_BLUE : AppV2Theme.SURFACE_ALT);
+            setToolTipText(recibido
+                    ? "Documento recibido por el abogado."
+                    : permitido
+                            ? "Recibir documento asociado."
+                            : "Solo el abogado responsable puede registrar la recepción.");
+            return this;
+        }
+    }
+
+    private class RecibirAsociadoEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JButton button = new JButton();
+        private int modelRow = -1;
+
+        private RecibirAsociadoEditor() {
+            button.setText("");
+            button.setIcon(AppV2IconProvider.action(AppV2IconProvider.BANDEJA));
+            button.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
+            button.setFocusPainted(false);
+            button.addActionListener(e -> {
+                int row = modelRow;
+                fireEditingStopped();
+                recibirDocumentoAsociado(row);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Recibir";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            modelRow = table.convertRowIndexToModel(row);
+            boolean permitido = puedeRecibirDocumentoAsociado(modelRow);
+            button.setEnabled(permitido);
+            button.setBackground(permitido ? AppV2Theme.SOFT_BLUE : AppV2Theme.SURFACE_ALT);
+            button.setToolTipText(permitido
+                    ? "Recibir documento asociado."
+                    : "Solo el abogado responsable puede registrar la recepción.");
+            return button;
         }
     }
 

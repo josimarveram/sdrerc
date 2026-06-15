@@ -45,6 +45,8 @@ public class AnalisisExpedienteDAO {
     private static final String ACCION_REENVIO_VERIFICACION = "REENVIO_VERIFICACION";
     private static final String ACCION_DERIVACION_NOTIFICACION = "DERIVACION_A_NOTIFICACION";
     private static final String ACCION_ARCHIVO = "ARCHIVO";
+    private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
+    private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final DocumentoAnalisisDAO documentoAnalisisDAO;
@@ -160,17 +162,131 @@ public class AnalisisExpedienteDAO {
     }
 
     public AnalisisResultadoDTO recibirExpediente(Long idExpediente, String comentario, Long idUsuario) throws SQLException {
-        return moverExpediente(
-                idExpediente,
-                ACCION_RECEPCION,
-                ETAPA_ASIGNACION,
-                ESTADO_ASIGNADO,
-                ETAPA_ANALISIS,
-                ESTADO_RECIBIDO,
-                comentario,
-                idUsuario,
-                true,
-                false);
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteBloqueado principal = bloquearExpediente(conn, idExpediente);
+                validarPendienteRecepcion(principal);
+                Transicion transicion = requerirTransicionRecepcion(conn);
+                Long idMovimiento = requerirId(
+                        catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_RECEPCION),
+                        "movimiento " + ACCION_RECEPCION);
+
+                recibirExpedienteAsignado(
+                        conn,
+                        principal,
+                        transicion,
+                        idMovimiento,
+                        comentarioMovimiento(ACCION_RECEPCION, comentario),
+                        idUsuario);
+
+                int asociadosRecibidos = 0;
+                for (Long idAsociado : listarIdsAsociadosConfirmados(conn, idExpediente)) {
+                    ExpedienteBloqueado asociado = bloquearExpediente(conn, idAsociado);
+                    if (estaRecibidoEnAnalisis(asociado)) {
+                        continue;
+                    }
+                    if (!estaPendienteRecepcion(asociado)) {
+                        continue;
+                    }
+                    recibirExpedienteAsignado(
+                            conn,
+                            asociado,
+                            transicion,
+                            idMovimiento,
+                            "Recepción automática junto con el expediente principal "
+                                    + principal.numeroExpediente + ".",
+                            idUsuario);
+                    asociadosRecibidos++;
+                }
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                String mensaje = "El expediente fue recibido para análisis.";
+                if (asociadosRecibidos > 0) {
+                    mensaje += " " + asociadosRecibidos
+                            + " documento(s) asociado(s) también fueron recibidos.";
+                }
+                return new AnalisisResultadoDTO(
+                        idExpediente,
+                        principal.numeroExpediente,
+                        ACCION_RECEPCION,
+                        ETAPA_ANALISIS,
+                        ESTADO_RECIBIDO,
+                        mensaje);
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    public AnalisisResultadoDTO recibirDocumentoAsociado(
+            Long idExpedientePrincipal,
+            Long idExpedienteAsociado,
+            String comentario,
+            Long idUsuario) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteBloqueado principal = bloquearExpediente(conn, idExpedientePrincipal);
+                if (!ETAPA_ANALISIS.equalsIgnoreCase(principal.etapaCodigo)) {
+                    throw new SQLException("El expediente principal debe encontrarse en la etapa Análisis.");
+                }
+                if (!existeRelacionConfirmada(conn, idExpedientePrincipal, idExpedienteAsociado)) {
+                    throw new SQLException("El documento seleccionado ya no está asociado al expediente principal.");
+                }
+
+                ExpedienteBloqueado asociado = bloquearExpediente(conn, idExpedienteAsociado);
+                if (estaRecibidoEnAnalisis(asociado)) {
+                    throw new SQLException("El documento asociado ya fue recibido por el abogado.");
+                }
+                validarPendienteRecepcion(asociado);
+                if (idUsuario == null
+                        || asociado.idUsuarioResponsable == null
+                        || !idUsuario.equals(asociado.idUsuarioResponsable)) {
+                    throw new SQLException("Solo el abogado responsable puede registrar la recepción.");
+                }
+
+                Transicion transicion = requerirTransicionRecepcion(conn);
+                Long idMovimiento = requerirId(
+                        catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_RECEPCION),
+                        "movimiento " + ACCION_RECEPCION);
+                recibirExpedienteAsignado(
+                        conn,
+                        asociado,
+                        transicion,
+                        idMovimiento,
+                        hasText(comentario)
+                                ? comentario.trim()
+                                : "Recepción de documento asociado al expediente principal "
+                                        + principal.numeroExpediente + ".",
+                        idUsuario);
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return new AnalisisResultadoDTO(
+                        idExpedienteAsociado,
+                        asociado.numeroExpediente,
+                        ACCION_RECEPCION,
+                        ETAPA_ANALISIS,
+                        ESTADO_RECIBIDO,
+                        "El documento asociado fue recibido para análisis.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
     }
 
     public AnalisisResultadoDTO registrarAnalisis(AnalisisRegistroDTO registro, Long idUsuario) throws SQLException {
@@ -373,6 +489,112 @@ public class AnalisisExpedienteDAO {
                     throw (SQLException) ex;
                 }
                 throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    private void recibirExpedienteAsignado(
+            Connection conn,
+            ExpedienteBloqueado expediente,
+            Transicion transicion,
+            Long idMovimiento,
+            String comentario,
+            Long idUsuario) throws SQLException {
+        actualizarFechaRecepcionAsignacion(conn, expediente.idExpediente, idUsuario);
+        actualizarExpediente(
+                conn,
+                expediente.idExpediente,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                null,
+                null,
+                idUsuario,
+                false);
+        insertarHistorial(
+                conn,
+                expediente.idExpediente,
+                idMovimiento,
+                expediente.idEtapa,
+                expediente.idEstado,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                idUsuario,
+                expediente.idUsuarioResponsable,
+                expediente.idEquipoResponsable,
+                null,
+                null,
+                comentario,
+                ACCION_RECEPCION);
+    }
+
+    private Transicion requerirTransicionRecepcion(Connection conn) throws SQLException {
+        return requerirTransicion(
+                conn,
+                ACCION_RECEPCION,
+                ETAPA_ASIGNACION,
+                ESTADO_ASIGNADO,
+                ETAPA_ANALISIS,
+                ESTADO_RECIBIDO);
+    }
+
+    private void validarPendienteRecepcion(ExpedienteBloqueado expediente) throws SQLException {
+        if (!estaPendienteRecepcion(expediente)) {
+            throw new SQLException("El expediente ya no se encuentra en "
+                    + ETAPA_ASIGNACION + " / " + ESTADO_ASIGNADO + ".");
+        }
+    }
+
+    private boolean estaPendienteRecepcion(ExpedienteBloqueado expediente) {
+        return expediente != null
+                && ETAPA_ASIGNACION.equalsIgnoreCase(expediente.etapaCodigo)
+                && ESTADO_ASIGNADO.equalsIgnoreCase(expediente.estadoCodigo);
+    }
+
+    private boolean estaRecibidoEnAnalisis(ExpedienteBloqueado expediente) {
+        return expediente != null
+                && ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
+                && ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo);
+    }
+
+    private List<Long> listarIdsAsociadosConfirmados(Connection conn, Long idExpedientePrincipal) throws SQLException {
+        List<Long> ids = new ArrayList<Long>();
+        String sql = "SELECT DISTINCT id_expediente_relacionado "
+                + "FROM expediente_relacion "
+                + "WHERE id_expediente_principal = ? AND activo = 1 "
+                + "AND UPPER(tipo_relacion) IN (?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpedientePrincipal);
+            ps.setString(2, TIPO_RELACION_DOCUMENTO_DUPLICADO);
+            ps.setString(3, TIPO_RELACION_MISMA_ACTA_TITULAR);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Long id = getLongOrNull(rs, "id_expediente_relacionado");
+                    if (id != null) {
+                        ids.add(id);
+                    }
+                }
+            }
+        }
+        return ids;
+    }
+
+    private boolean existeRelacionConfirmada(
+            Connection conn,
+            Long idExpedientePrincipal,
+            Long idExpedienteAsociado) throws SQLException {
+        String sql = "SELECT 1 FROM expediente_relacion "
+                + "WHERE id_expediente_principal = ? "
+                + "AND id_expediente_relacionado = ? "
+                + "AND activo = 1 "
+                + "AND UPPER(tipo_relacion) IN (?, ?) "
+                + "AND ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpedientePrincipal);
+            ps.setLong(2, idExpedienteAsociado);
+            ps.setString(3, TIPO_RELACION_DOCUMENTO_DUPLICADO);
+            ps.setString(4, TIPO_RELACION_MISMA_ACTA_TITULAR);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
             }
         }
     }
