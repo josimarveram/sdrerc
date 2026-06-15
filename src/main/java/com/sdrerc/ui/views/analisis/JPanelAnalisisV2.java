@@ -81,9 +81,8 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_DIAS = 1;
     private static final int COL_EXPEDIENTE = 2;
     private static final int COL_ESTADO = 9;
-    private static final int COL_OBSERVACION = 10;
-    private static final int COL_ASOCIADOS = 11;
-    private static final int COL_ID = 12;
+    private static final int COL_ASOCIADOS = 10;
+    private static final int COL_ID = 11;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 18;
@@ -538,7 +537,7 @@ public class JPanelAnalisisV2 extends JPanel {
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new AnalisisRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 46, 88, 185, 170, 145, 230, 130, 130, 260, 155, 190, 160, 0);
+        AppV2TableColumnSizer.applyWidths(table, 46, 88, 185, 145, 230, 130, 130, 260, 210, 155, 160, 0);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMinWidth(42);
         table.getColumnModel().getColumn(COL_EXPANDIR).setPreferredWidth(46);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMaxWidth(48);
@@ -789,14 +788,13 @@ public class JPanelAnalisisV2 extends JPanel {
             iconoExpansion(item),
             item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
             item.getNumeroExpediente(),
-            item.getNumeroTramiteDocumentario(),
             formatDate(item.getFechaRecepcion()),
             item.getProcedimiento(),
             item.getTipoActa(),
             item.getNumeroActa(),
             item.getTitular(),
+            valorUi(item.getResponsable()),
             DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-            item.isTieneObservacionPendiente() ? "Con observación" : "Sin observación",
             item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociados" : "Sin asociados",
             item.getIdExpediente()
         });
@@ -809,16 +807,15 @@ public class JPanelAnalisisV2 extends JPanel {
             "",
             "",
             valorUi(principal.getNumeroExpediente()),
-            valorUi(asociado.getNumeroDocumento().isEmpty()
-                    ? asociado.getNumeroTramiteDocumentario()
-                    : asociado.getNumeroDocumento()),
             formatDate(asociado.getFechaRecepcion()),
             procedimientoAsociado(asociado),
             valorUi(asociado.getTipoActa()),
             valorUi(asociado.getNumeroActa()),
             valorUi(asociado.getTitular()),
+            valorUi(asociado.getAbogadoAsignado().isEmpty()
+                    ? principal.getResponsable()
+                    : asociado.getAbogadoAsignado()),
             estadoAsociado(asociado),
-            "Disponible para análisis",
             textoRelacionAsociada(asociado),
             asociado.getIdExpediente()
         });
@@ -1640,14 +1637,13 @@ public class JPanelAnalisisV2 extends JPanel {
                 "",
                 "Días",
                 "Expediente",
-                "Trámite / Documento",
                 "Fecha solicitud",
                 "Procedimiento",
                 "Tipo acta",
                 "Nro. acta",
                 "Titular",
+                "Abogado designado",
                 "Estado",
-                "Observación / Alertas",
                 "Asociados",
                 "_ID"
             }, 0);
@@ -1744,9 +1740,6 @@ public class JPanelAnalisisV2 extends JPanel {
             }
             if (!isSelected && modelColumn == COL_ESTADO) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
-            }
-            if (!isSelected && modelColumn == COL_OBSERVACION && value != null && value.toString().startsWith("Con")) {
-                return new BadgeV2(value.toString(), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
             }
             if (!isSelected && modelColumn == COL_ASOCIADOS && value != null && !value.toString().startsWith("Sin")) {
                 Color bg = filaAsociada ? ASSOCIATED_ROW_BACKGROUND : AppV2Theme.SOFT_BLUE;
