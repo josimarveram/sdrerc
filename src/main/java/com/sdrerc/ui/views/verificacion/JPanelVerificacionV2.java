@@ -13,6 +13,7 @@ import com.sdrerc.domain.dto.sdrercapp.VerificacionResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2AssociatedDocumentIconCell;
 import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
+import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -34,6 +35,7 @@ import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -52,6 +54,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -68,6 +71,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 
 public class JPanelVerificacionV2 extends JPanel {
@@ -79,6 +83,9 @@ public class JPanelVerificacionV2 extends JPanel {
     private static final int COL_RESULTADO = 10;
     private static final int COL_ALERTAS = 11;
     private static final int COL_ID = 12;
+    private static final int COL_DOCUMENTO_ACCION = 4;
+    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 5;
+    private static final int COL_DOCUMENTO_ID = 6;
     private static final int PANEL_VERIFICACION_ANCHO_MINIMO = 380;
     private static final int PANEL_VERIFICACION_ANCHO_NORMAL = 430;
     private static final int PANEL_VERIFICACION_TAB_OVERHANG = 18;
@@ -150,14 +157,15 @@ public class JPanelVerificacionV2 extends JPanel {
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
     private final DefaultTableModel documentosModel = new DefaultTableModel(
-            new Object[]{"Tipo", "Estado", "Fecha", "Descripción"},
+            new Object[]{"Tipo", "Estado", "Fecha", "Descripción", "", "_ESTADO_CODIGO", "_ID_DOCUMENTO"},
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return false;
+            return column == COL_DOCUMENTO_ACCION;
         }
     };
     private final JTable documentosTable = new JTable(documentosModel);
+    private final List<SimpleItem> estadosDocumento = new ArrayList<SimpleItem>();
     private final List<VerificacionExpedienteDTO> expedientes = new ArrayList<VerificacionExpedienteDTO>();
     private final List<VerificacionTableRow> filasTabla = new ArrayList<VerificacionTableRow>();
     private final Map<Long, List<ExpedienteRelacionadoDTO>> asociadosCache = new HashMap<Long, List<ExpedienteRelacionadoDTO>>();
@@ -346,10 +354,26 @@ public class JPanelVerificacionV2 extends JPanel {
     private JPanel crearDocumentosPanel() {
         JPanel panel = section("Documentos revisados en análisis");
         JScrollPane scroll = new JScrollPane(documentosTable);
-        scroll.setPreferredSize(new Dimension(340, 145));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        documentosModel.addTableModelListener(e -> actualizarAlturaDocumentosVerificacion(scroll));
+        actualizarAlturaDocumentosVerificacion(scroll);
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
+    }
+
+    private void actualizarAlturaDocumentosVerificacion(JScrollPane scroll) {
+        int headerHeight = documentosTable.getTableHeader().getPreferredSize().height;
+        int rowCount = Math.max(1, documentosModel.getRowCount());
+        int rowsHeight = rowCount * documentosTable.getRowHeight();
+        int horizontalBarHeight = scroll.getHorizontalScrollBar().getPreferredSize().height;
+        int height = headerHeight + rowsHeight + horizontalBarHeight + 4;
+        Dimension size = new Dimension(340, height);
+        scroll.setPreferredSize(size);
+        scroll.setMinimumSize(new Dimension(280, height));
+        scroll.revalidate();
+        scroll.repaint();
     }
 
     private JPanel crearFormularioVerificacion() {
@@ -455,11 +479,27 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private void configurarDocumentosTabla() {
         documentosTable.setRowHeight(30);
+        documentosTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         documentosTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         documentosTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
         documentosTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
         documentosTable.setGridColor(AppV2Theme.BORDER);
         documentosTable.setShowVerticalLines(false);
+        documentosTable.setDefaultRenderer(Object.class, new DocumentoVerificacionRenderer());
+        AppV2TableColumnSizer.applyWidths(documentosTable, 130, 120, 92, 210, 42, 0, 0);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMinWidth(38);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setPreferredWidth(42);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMaxWidth(46);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new EditarEstadoDocumentoRenderer());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new EditarEstadoDocumentoEditor());
+        ocultarColumna(documentosTable, COL_DOCUMENTO_ESTADO_CODIGO);
+        ocultarColumna(documentosTable, COL_DOCUMENTO_ID);
+    }
+
+    private void ocultarColumna(JTable target, int column) {
+        target.getColumnModel().getColumn(column).setMinWidth(0);
+        target.getColumnModel().getColumn(column).setPreferredWidth(0);
+        target.getColumnModel().getColumn(column).setMaxWidth(0);
     }
 
     private void configurarEventos() {
@@ -515,7 +555,8 @@ public class JPanelVerificacionV2 extends JPanel {
                 return new CatalogosCarga(
                         verificacionService.listarResultadosVerificacion(),
                         verificacionService.listarTiposObservacion(),
-                        verificacionService.listarMotivosCorreccion());
+                        verificacionService.listarMotivosCorreccion(),
+                        documentoService.listarEstadosDocumento());
             }
 
             @Override
@@ -546,6 +587,10 @@ public class JPanelVerificacionV2 extends JPanel {
         }
         cargarSimpleItems(cmbTipoObservacion, carga.tiposObservacion, "Seleccione tipo");
         cargarSimpleItems(cmbMotivoCorreccion, carga.motivosCorreccion, "Seleccione motivo");
+        estadosDocumento.clear();
+        for (CatalogoItemDTO item : carga.estadosDocumento) {
+            estadosDocumento.add(new SimpleItem(item.getCodigo(), item.getNombre()));
+        }
     }
 
     private void cargarSimpleItems(JComboBox<SimpleItem> combo, List<CatalogoItemDTO> items, String placeholder) {
@@ -1009,21 +1054,32 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private void cargarDocumentos(VerificacionExpedienteDTO item) {
         documentosModel.setRowCount(0);
+        if (item == null || item.getIdExpediente() == null) {
+            return;
+        }
+        final Long idExpediente = item.getIdExpediente();
         SwingWorker<List<DocumentoVerificacionDTO>, Void> worker = new SwingWorker<List<DocumentoVerificacionDTO>, Void>() {
             @Override
             protected List<DocumentoVerificacionDTO> doInBackground() throws Exception {
-                return documentoService.listarDocumentosAnalizados(item.getIdExpediente());
+                return documentoService.listarDocumentosAnalizados(idExpediente);
             }
 
             @Override
             protected void done() {
                 try {
+                    VerificacionExpedienteDTO seleccionado = obtenerSeleccionado();
+                    if (seleccionado == null || !idExpediente.equals(seleccionado.getIdExpediente())) {
+                        return;
+                    }
                     for (DocumentoVerificacionDTO documento : get()) {
                         documentosModel.addRow(new Object[]{
                             documento.getTipoDocumento(),
                             documento.getEstadoDocumento(),
                             formatDate(documento.getFechaDocumento()),
-                            documento.getDescripcion()
+                            documento.getDescripcion(),
+                            "",
+                            documento.getEstadoDocumentoCodigo(),
+                            documento.getIdDocumentoAnalizado()
                         });
                     }
                 } catch (Exception ex) {
@@ -1032,6 +1088,107 @@ public class JPanelVerificacionV2 extends JPanel {
             }
         };
         worker.execute();
+    }
+
+    private void editarEstadoDocumento(int modelRow) {
+        if (modelRow < 0 || modelRow >= documentosModel.getRowCount()) {
+            return;
+        }
+        VerificacionExpedienteDTO item = obtenerSeleccionado();
+        if (item == null || item.getIdExpediente() == null) {
+            mostrarInfo("Seleccione un expediente principal para editar el estado del documento.");
+            return;
+        }
+        Long idDocumento = asLong(documentosModel.getValueAt(modelRow, COL_DOCUMENTO_ID));
+        if (idDocumento == null) {
+            mostrarInfo("Documento analizado no identificado.");
+            return;
+        }
+        if (estadosDocumento.isEmpty()) {
+            mostrarInfo("No hay estados de documento disponibles.");
+            return;
+        }
+
+        JComboBox<SimpleItem> estados = new JComboBox<SimpleItem>();
+        String codigoActual = value(documentosModel.getValueAt(modelRow, COL_DOCUMENTO_ESTADO_CODIGO));
+        int indiceActual = -1;
+        for (SimpleItem estado : estadosDocumento) {
+            if (estado == null || estado.codigo.isEmpty()) {
+                continue;
+            }
+            estados.addItem(estado);
+            if (estado.codigo.equalsIgnoreCase(codigoActual)) {
+                indiceActual = estados.getItemCount() - 1;
+            }
+        }
+        if (estados.getItemCount() == 0) {
+            mostrarInfo("No hay estados de documento disponibles.");
+            return;
+        }
+        if (indiceActual >= 0) {
+            estados.setSelectedIndex(indiceActual);
+        }
+        estados.setPreferredSize(new Dimension(280, 34));
+        int opcion = JOptionPane.showConfirmDialog(
+                this,
+                estados,
+                "Editar estado del documento revisado",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+        if (opcion != JOptionPane.OK_OPTION) {
+            return;
+        }
+        SimpleItem seleccionado = (SimpleItem) estados.getSelectedItem();
+        if (seleccionado == null || seleccionado.codigo.isEmpty()
+                || seleccionado.codigo.equalsIgnoreCase(codigoActual)) {
+            return;
+        }
+
+        final Long idExpediente = item.getIdExpediente();
+        final Long idDocumentoAnalizado = idDocumento;
+        final String estadoCodigo = seleccionado.codigo;
+        final String estadoNombre = seleccionado.nombre;
+        documentosTable.setEnabled(false);
+        setTrabajando(true, "Actualizando estado del documento revisado...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoService.actualizarEstadoDocumentoAnalizado(idExpediente, idDocumentoAnalizado, estadoCodigo);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    int row = indiceFilaDocumento(idDocumentoAnalizado);
+                    if (row >= 0) {
+                        documentosModel.setValueAt(estadoNombre, row, 1);
+                        documentosModel.setValueAt(estadoCodigo, row, COL_DOCUMENTO_ESTADO_CODIGO);
+                    }
+                    lblEstado.setText("Estado del documento revisado actualizado.");
+                } catch (Exception ex) {
+                    mostrarError("No se pudo actualizar el estado del documento revisado.", ex);
+                } finally {
+                    documentosTable.setEnabled(true);
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private int indiceFilaDocumento(Long idDocumentoAnalizado) {
+        if (idDocumentoAnalizado == null) {
+            return -1;
+        }
+        for (int row = 0; row < documentosModel.getRowCount(); row++) {
+            Long id = asLong(documentosModel.getValueAt(row, COL_DOCUMENTO_ID));
+            if (idDocumentoAnalizado.equals(id)) {
+                return row;
+            }
+        }
+        return -1;
     }
 
     private void registrarVerificacion() {
@@ -1232,6 +1389,7 @@ public class JPanelVerificacionV2 extends JPanel {
         }
         txtComentario.setText("");
         txtObservacion.setText("");
+        documentosModel.setRowCount(0);
         actualizarResultadoSeleccionado();
     }
 
@@ -1322,6 +1480,93 @@ public class JPanelVerificacionV2 extends JPanel {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
+        }
+    }
+
+    private class DocumentoVerificacionRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String text = value == null ? "" : value.toString();
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            setToolTipText(text.isEmpty() ? null : text);
+            if (isSelected) {
+                c.setBackground(TABLE_SELECTION_BACKGROUND);
+                c.setForeground(TABLE_SELECTION_FOREGROUND);
+            } else {
+                c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+                c.setForeground(AppV2Theme.TEXT_PRIMARY);
+            }
+            return c;
+        }
+    }
+
+    private class EditarEstadoDocumentoRenderer extends JButton implements TableCellRenderer {
+        private EditarEstadoDocumentoRenderer() {
+            setText("");
+            setIcon(AppV2IconProvider.action(AppV2IconProvider.PENCIL));
+            setToolTipText("Editar estado del documento revisado");
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setFocusPainted(false);
+            setBorderPainted(false);
+            setContentAreaFilled(false);
+            setOpaque(false);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setEnabled(table.isEnabled());
+            return this;
+        }
+    }
+
+    private class EditarEstadoDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JButton button = new JButton();
+        private int modelRow = -1;
+
+        private EditarEstadoDocumentoEditor() {
+            button.setText("");
+            button.setIcon(AppV2IconProvider.action(AppV2IconProvider.PENCIL));
+            button.setToolTipText("Editar estado del documento revisado");
+            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            button.setFocusPainted(false);
+            button.setBorderPainted(false);
+            button.setContentAreaFilled(false);
+            button.addActionListener(e -> {
+                int row = modelRow;
+                fireEditingStopped();
+                editarEstadoDocumento(row);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            modelRow = table.convertRowIndexToModel(row);
+            button.setEnabled(table.isEnabled());
+            return button;
         }
     }
 
@@ -1479,6 +1724,24 @@ public class JPanelVerificacionV2 extends JPanel {
         return value == null || value.trim().isEmpty() ? "-" : value.trim();
     }
 
+    private static String value(Object value) {
+        return value == null ? "" : value.toString();
+    }
+
+    private static Long asLong(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value == null || value.toString().trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.toString().trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
     private static boolean pareceIdentificadorTecnico(String value) {
         return value != null && value.trim().matches("\\d+");
     }
@@ -1569,14 +1832,17 @@ public class JPanelVerificacionV2 extends JPanel {
         private final List<CatalogoItemDTO> resultados;
         private final List<CatalogoItemDTO> tiposObservacion;
         private final List<CatalogoItemDTO> motivosCorreccion;
+        private final List<CatalogoItemDTO> estadosDocumento;
 
         private CatalogosCarga(
                 List<CatalogoItemDTO> resultados,
                 List<CatalogoItemDTO> tiposObservacion,
-                List<CatalogoItemDTO> motivosCorreccion) {
+                List<CatalogoItemDTO> motivosCorreccion,
+                List<CatalogoItemDTO> estadosDocumento) {
             this.resultados = resultados == null ? new ArrayList<CatalogoItemDTO>() : resultados;
             this.tiposObservacion = tiposObservacion == null ? new ArrayList<CatalogoItemDTO>() : tiposObservacion;
             this.motivosCorreccion = motivosCorreccion == null ? new ArrayList<CatalogoItemDTO>() : motivosCorreccion;
+            this.estadosDocumento = estadosDocumento == null ? new ArrayList<CatalogoItemDTO>() : estadosDocumento;
         }
     }
 }
