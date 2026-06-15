@@ -140,8 +140,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
-    private final JButton btnSeleccionarVisibles = new JButton("Seleccionar visibles");
-    private final JButton btnLimpiarSeleccion = new JButton("Limpiar selección");
     private final JButton btnAsignarSeleccionado = new JButton("Asignar expediente");
     private final JButton btnAsignarSeleccionados = new JButton("Asignar seleccionados");
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes.");
@@ -274,8 +272,6 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private JPanel crearBandeja() {
         JPanel seleccion = AppV2ActionPanel.left();
-        seleccion.add(btnSeleccionarVisibles);
-        seleccion.add(btnLimpiarSeleccion);
         seleccion.add(lblSeleccionados);
 
         lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -515,8 +511,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiar.addActionListener(e -> limpiar());
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
-        btnSeleccionarVisibles.addActionListener(e -> seleccionarVisibles());
-        btnLimpiarSeleccion.addActionListener(e -> limpiarSeleccion());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
         cmbEquipo.addActionListener(e -> {
@@ -806,7 +800,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardRelacionados.setValue(String.valueOf(alertas));
         lblEstado.setText(items.isEmpty()
                 ? "No se encontraron expedientes con los filtros ingresados."
-                : items.size() + " expediente(s) encontrado(s). Solo REGISTRO / REGISTRADO queda habilitado para asignar.");
+                : items.size() + " expediente(s) encontrado(s).");
         tablePanel.setEmpty(items.isEmpty());
         actualizarPanelSeleccion();
     }
@@ -1493,7 +1487,7 @@ public class JPanelAsignacionV2 extends JPanel {
         AsignacionTableRow filaSeleccionada = filaTabla(modelRow);
         int seleccionados = marcados > 0 ? marcados : (filaSeleccionada != null ? 1 : 0);
         String seleccionadosText = seleccionados == 0
-                ? "Seleccione uno o más expedientes para habilitar el panel de asignación."
+                ? "0 expediente(s) seleccionados"
                 : seleccionados + " expediente(s) seleccionados";
         lblSeleccionados.setText(seleccionadosText);
         lblSeleccionadosPanel.setText(seleccionados + " expediente(s) seleccionados");
@@ -2033,8 +2027,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiar.setEnabled(!trabajando);
         btnVerDetalle.setEnabled(!trabajando);
         btnAsociarRelacionados.setEnabled(!trabajando && puedeAsociarRelacionados());
-        btnSeleccionarVisibles.setEnabled(!trabajando);
-        btnLimpiarSeleccion.setEnabled(!trabajando);
         btnAsignarSeleccionado.setEnabled(!trabajando);
         btnAsignarSeleccionados.setEnabled(!trabajando);
         documentosRelacionadosTable.setEnabled(!trabajando);
