@@ -2,13 +2,17 @@ package com.sdrerc.ui.views.analisis;
 
 import com.sdrerc.application.sdrercapp.AnalisisExpedienteService;
 import com.sdrerc.application.sdrercapp.DocumentoAnalisisService;
+import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2AssociatedDocumentIconCell;
+import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -29,6 +33,7 @@ import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -43,7 +48,11 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -61,18 +70,45 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 
 public class JPanelAnalisisV2 extends JPanel {
 
+    private static final int COL_EXPANDIR = 0;
+    private static final int COL_DIAS = 1;
+    private static final int COL_EXPEDIENTE = 2;
+    private static final int COL_ESTADO = 9;
+    private static final int COL_OBSERVACION = 10;
+    private static final int COL_ASOCIADOS = 11;
+    private static final int COL_ID = 12;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 18;
     private static final int PANEL_ANALISIS_TAB_TOP = 18;
+    private static final int GROUP_STRIPE_WIDTH = 5;
+    private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
+    private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
+    private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;
+    private static final Color ASSOCIATED_ROW_BACKGROUND = new Color(238, 250, 252);
+    private static final Color GRID_ACTION_ICON_BLUE = AppV2Theme.PRIMARY;
+    private static final Color[] GROUP_STRIPE_COLORS = new Color[]{
+        new Color(30, 59, 97),
+        new Color(56, 88, 128),
+        new Color(77, 132, 164),
+        new Color(94, 154, 183),
+        new Color(10, 118, 145),
+        new Color(65, 164, 181),
+        new Color(83, 101, 169),
+        new Color(116, 95, 180),
+        new Color(100, 117, 126),
+        new Color(36, 53, 68)
+    };
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final AnalisisExpedienteService analisisService;
     private final DocumentoAnalisisService documentoService;
+    private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
 
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o responsable", 28);
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
@@ -134,12 +170,17 @@ public class JPanelAnalisisV2 extends JPanel {
     };
     private final JTable documentosTable = new AppV2Table(documentoModel);
     private final List<AnalisisExpedienteDTO> expedientes = new ArrayList<AnalisisExpedienteDTO>();
+    private final List<AnalisisTableRow> filasTabla = new ArrayList<AnalisisTableRow>();
+    private final Map<Long, List<ExpedienteRelacionadoDTO>> asociadosCache = new HashMap<Long, List<ExpedienteRelacionadoDTO>>();
+    private final Set<Long> principalesExpandidos = new HashSet<Long>();
+    private final Set<Long> principalesCargando = new HashSet<Long>();
     private final MetricCardV2 cardPorRecibir = new MetricCardV2("Por recibir", "0", "Asignación / Asignado", AppV2Theme.INFO);
     private final MetricCardV2 cardEnAnalisis = new MetricCardV2("En análisis", "0", "Recibidos y observados", AppV2Theme.TEAL);
     private final MetricCardV2 cardEspeciales = new MetricCardV2("Rutas especiales", "0", "No corresponde / notificación", AppV2Theme.WARNING);
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelAnalisis;
     private boolean panelAnalisisCerradoPorUsuario;
+    private Long idExpedienteExpansionActiva;
 
     private boolean cargandoCatalogos;
     private boolean busquedaInicialEjecutada;
@@ -449,7 +490,7 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private void configurarTabla() {
         table.setRowHeight(34);
-        table.setAutoCreateRowSorter(true);
+        table.setAutoCreateRowSorter(false);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
@@ -461,7 +502,12 @@ public class JPanelAnalisisV2 extends JPanel {
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new AnalisisRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 88, 185, 170, 145, 230, 130, 130, 260, 155, 190, 160, 0);
+        AppV2TableColumnSizer.applyWidths(table, 46, 88, 185, 170, 145, 230, 130, 130, 260, 155, 190, 160, 0);
+        table.getColumnModel().getColumn(COL_EXPANDIR).setMinWidth(42);
+        table.getColumnModel().getColumn(COL_EXPANDIR).setPreferredWidth(46);
+        table.getColumnModel().getColumn(COL_EXPANDIR).setMaxWidth(48);
+        table.getColumnModel().getColumn(COL_EXPANDIR).setCellRenderer(new ExpandirRenderer());
+        tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     }
 
     private void configurarDocumentoTabla() {
@@ -502,7 +548,15 @@ public class JPanelAnalisisV2 extends JPanel {
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (table.rowAtPoint(e.getPoint()) >= 0) {
+                int viewRow = table.rowAtPoint(e.getPoint());
+                int viewColumn = table.columnAtPoint(e.getPoint());
+                if (viewRow >= 0
+                        && viewColumn >= 0
+                        && table.convertColumnIndexToModel(viewColumn) == COL_EXPANDIR) {
+                    alternarExpansionFila(table.convertRowIndexToModel(viewRow));
+                    return;
+                }
+                if (viewRow >= 0) {
                     panelAnalisisCerradoPorUsuario = false;
                     actualizarVisibilidadPanelAnalisis();
                 }
@@ -612,7 +666,13 @@ public class JPanelAnalisisV2 extends JPanel {
     private void cargarTabla(List<AnalisisExpedienteDTO> items) {
         expedientes.clear();
         expedientes.addAll(items);
+        filasTabla.clear();
+        asociadosCache.clear();
+        principalesExpandidos.clear();
+        principalesCargando.clear();
+        idExpedienteExpansionActiva = null;
         tableModel.setRowCount(0);
+        table.clearSelection();
         int porRecibir = 0;
         int enAnalisis = 0;
         int especiales = 0;
@@ -626,20 +686,7 @@ public class JPanelAnalisisV2 extends JPanel {
             if (item.isDerivableNotificacionEspecial() || item.isArchivableNoCorresponde()) {
                 especiales++;
             }
-            tableModel.addRow(new Object[]{
-                item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
-                item.getNumeroExpediente(),
-                item.getNumeroTramiteDocumentario(),
-                formatDate(item.getFechaRecepcion()),
-                item.getProcedimiento(),
-                item.getTipoActa(),
-                item.getNumeroActa(),
-                item.getTitular(),
-                DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                item.isTieneObservacionPendiente() ? "Con observación" : "Sin observación",
-                item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociados" : "Sin asociados",
-                item.getIdExpediente()
-            });
+            agregarFilaPrincipal(item);
         }
         cardPorRecibir.setValue(String.valueOf(porRecibir));
         cardEnAnalisis.setValue(String.valueOf(enAnalisis));
@@ -657,7 +704,13 @@ public class JPanelAnalisisV2 extends JPanel {
         spnLimite.setValue(200);
         restaurarFechasBusqueda();
         expedientes.clear();
+        filasTabla.clear();
+        asociadosCache.clear();
+        principalesExpandidos.clear();
+        principalesCargando.clear();
+        idExpedienteExpansionActiva = null;
         tableModel.setRowCount(0);
+        table.clearSelection();
         tablePanel.setEmpty(true);
         limpiarFormulario();
         cardPorRecibir.setValue("0");
@@ -668,16 +721,269 @@ public class JPanelAnalisisV2 extends JPanel {
         actualizarSeleccion();
     }
 
+    private void agregarFilaPrincipal(AnalisisExpedienteDTO item) {
+        AnalisisTableRow row = AnalisisTableRow.principal(item);
+        filasTabla.add(row);
+        tableModel.addRow(new Object[]{
+            iconoExpansion(item),
+            item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
+            item.getNumeroExpediente(),
+            item.getNumeroTramiteDocumentario(),
+            formatDate(item.getFechaRecepcion()),
+            item.getProcedimiento(),
+            item.getTipoActa(),
+            item.getNumeroActa(),
+            item.getTitular(),
+            DisplayNameMapperV2.estado(item.getEstadoCodigo()),
+            item.isTieneObservacionPendiente() ? "Con observación" : "Sin observación",
+            item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociados" : "Sin asociados",
+            item.getIdExpediente()
+        });
+    }
+
+    private void agregarFilaAsociada(AnalisisExpedienteDTO principal, ExpedienteRelacionadoDTO asociado, int index) {
+        AnalisisTableRow row = AnalisisTableRow.asociada(principal, asociado);
+        filasTabla.add(index, row);
+        tableModel.insertRow(index, new Object[]{
+            "",
+            "",
+            "",
+            valorUi(asociado.getNumeroDocumento().isEmpty()
+                    ? asociado.getNumeroTramiteDocumentario()
+                    : asociado.getNumeroDocumento()),
+            formatDate(asociado.getFechaRecepcion()),
+            procedimientoAsociado(asociado),
+            valorUi(asociado.getTipoActa()),
+            valorUi(asociado.getNumeroActa()),
+            valorUi(asociado.getTitular()),
+            estadoAsociado(asociado),
+            "Disponible para análisis",
+            textoRelacionAsociada(asociado),
+            asociado.getIdExpediente()
+        });
+    }
+
+    private String iconoExpansion(AnalisisExpedienteDTO item) {
+        if (item == null || item.getIdExpediente() == null || item.getTotalRelacionados() <= 0) {
+            return "";
+        }
+        if (principalesCargando.contains(item.getIdExpediente())) {
+            return "loading";
+        }
+        return principalesExpandidos.contains(item.getIdExpediente()) ? "expanded" : "collapsed";
+    }
+
+    private String procedimientoAsociado(ExpedienteRelacionadoDTO asociado) {
+        if (asociado == null) {
+            return "-";
+        }
+        String procedimiento = asociado.getProcedimiento();
+        if (procedimiento == null || procedimiento.trim().isEmpty() || pareceIdentificadorTecnico(procedimiento)) {
+            return "-";
+        }
+        return procedimiento.trim();
+    }
+
+    private String estadoAsociado(ExpedienteRelacionadoDTO asociado) {
+        if (asociado == null || asociado.getEstadoCodigo().isEmpty()) {
+            return "Documento asociado";
+        }
+        if (asociado.isRecibidoPorAbogado()) {
+            return "Recibido por abogado";
+        }
+        return DisplayNameMapperV2.estado(asociado.getEstadoCodigo());
+    }
+
+    private String textoRelacionAsociada(ExpedienteRelacionadoDTO asociado) {
+        if (asociado == null) {
+            return "Documento asociado";
+        }
+        if (!asociado.getTipoRelacion().isEmpty()) {
+            return "Duplicado confirmado";
+        }
+        if (!asociado.getDescripcionRelacion().isEmpty()) {
+            return "Relación confirmada";
+        }
+        return "Documento asociado";
+    }
+
+    private void refrescarIconoExpansion(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size()) {
+            return;
+        }
+        AnalisisTableRow row = filasTabla.get(modelRow);
+        if (!row.esPrincipal()) {
+            return;
+        }
+        tableModel.setValueAt(iconoExpansion(row.principal), modelRow, COL_EXPANDIR);
+    }
+
+    private void alternarExpansionFila(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size()) {
+            return;
+        }
+        AnalisisTableRow row = filasTabla.get(modelRow);
+        if (!row.esPrincipal()
+                || row.principal.getIdExpediente() == null
+                || row.principal.getTotalRelacionados() <= 0) {
+            return;
+        }
+        Long idPrincipal = row.principal.getIdExpediente();
+        if (principalesExpandidos.contains(idPrincipal)
+                || (idPrincipal.equals(idExpedienteExpansionActiva) && principalesCargando.contains(idPrincipal))) {
+            contraerAsociados(idPrincipal);
+            principalesCargando.remove(idPrincipal);
+            idExpedienteExpansionActiva = null;
+            refrescarIconoExpansion(indiceFilaPrincipal(idPrincipal));
+            return;
+        }
+        contraerTodosExcepto(idPrincipal);
+        idExpedienteExpansionActiva = idPrincipal;
+        List<ExpedienteRelacionadoDTO> cache = asociadosCache.get(idPrincipal);
+        if (cache != null) {
+            insertarAsociados(modelRow, row.principal, cache);
+            return;
+        }
+        if (principalesCargando.contains(idPrincipal)) {
+            return;
+        }
+        principalesCargando.add(idPrincipal);
+        refrescarIconoExpansion(modelRow);
+        SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker = new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {
+            @Override
+            protected List<ExpedienteRelacionadoDTO> doInBackground() throws Exception {
+                return relacionadoService.listarAsociadosConfirmados(idPrincipal);
+            }
+
+            @Override
+            protected void done() {
+                principalesCargando.remove(idPrincipal);
+                int principalRow = indiceFilaPrincipal(idPrincipal);
+                if (principalRow < 0) {
+                    return;
+                }
+                if (!idPrincipal.equals(idExpedienteExpansionActiva)) {
+                    refrescarIconoExpansion(principalRow);
+                    return;
+                }
+                try {
+                    List<ExpedienteRelacionadoDTO> asociados = get();
+                    asociadosCache.put(idPrincipal, asociados);
+                    insertarAsociados(principalRow, filasTabla.get(principalRow).principal, asociados);
+                } catch (Exception ex) {
+                    refrescarIconoExpansion(principalRow);
+                    mostrarError("No se pudieron cargar los documentos asociados.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void insertarAsociados(int principalRow, AnalisisExpedienteDTO principal, List<ExpedienteRelacionadoDTO> asociados) {
+        if (principal == null || principal.getIdExpediente() == null || principalesExpandidos.contains(principal.getIdExpediente())) {
+            return;
+        }
+        Long idPrincipal = principal.getIdExpediente();
+        if (!idPrincipal.equals(idExpedienteExpansionActiva)) {
+            return;
+        }
+        contraerTodosExcepto(idPrincipal);
+        principalRow = indiceFilaPrincipal(idPrincipal);
+        if (principalRow < 0) {
+            return;
+        }
+        principalesExpandidos.add(idPrincipal);
+        int insertAt = principalRow + 1;
+        if (asociados != null) {
+            for (ExpedienteRelacionadoDTO asociado : asociados) {
+                agregarFilaAsociada(principal, asociado, insertAt);
+                insertAt++;
+            }
+        }
+        refrescarIconoExpansion(principalRow);
+        table.revalidate();
+        table.repaint();
+    }
+
+    private void contraerTodosExcepto(Long idPermitido) {
+        List<Long> expandidos = new ArrayList<Long>(principalesExpandidos);
+        for (Long id : expandidos) {
+            if (id != null && !id.equals(idPermitido)) {
+                contraerAsociados(id);
+            }
+        }
+        List<Long> cargando = new ArrayList<Long>(principalesCargando);
+        for (Long id : cargando) {
+            if (id != null && !id.equals(idPermitido)) {
+                principalesCargando.remove(id);
+                refrescarIconoExpansion(indiceFilaPrincipal(id));
+            }
+        }
+    }
+
+    private void contraerAsociados(Long idPrincipal) {
+        if (idPrincipal == null) {
+            return;
+        }
+        int principalRow = indiceFilaPrincipal(idPrincipal);
+        if (principalRow < 0) {
+            principalesExpandidos.remove(idPrincipal);
+            if (idPrincipal.equals(idExpedienteExpansionActiva)) {
+                idExpedienteExpansionActiva = null;
+            }
+            return;
+        }
+        int selectedRow = obtenerModelRowSeleccionada();
+        AnalisisTableRow selected = filaTabla(selectedRow);
+        boolean seleccionarPrincipal = selected != null && selected.esAsociada() && idPrincipal.equals(selected.idExpedientePrincipal);
+        for (int i = filasTabla.size() - 1; i > principalRow; i--) {
+            AnalisisTableRow row = filasTabla.get(i);
+            if (row.esAsociada() && idPrincipal.equals(row.idExpedientePrincipal)) {
+                filasTabla.remove(i);
+                tableModel.removeRow(i);
+            }
+        }
+        principalesExpandidos.remove(idPrincipal);
+        if (idPrincipal.equals(idExpedienteExpansionActiva)) {
+            idExpedienteExpansionActiva = null;
+        }
+        refrescarIconoExpansion(principalRow);
+        if (seleccionarPrincipal && principalRow >= 0 && principalRow < tableModel.getRowCount()) {
+            int viewRow = table.convertRowIndexToView(principalRow);
+            if (viewRow >= 0 && viewRow < table.getRowCount()) {
+                table.setRowSelectionInterval(viewRow, viewRow);
+            }
+        }
+        table.revalidate();
+        table.repaint();
+        actualizarSeleccion();
+    }
+
+    private int indiceFilaPrincipal(Long idPrincipal) {
+        if (idPrincipal == null) {
+            return -1;
+        }
+        for (int i = 0; i < filasTabla.size(); i++) {
+            AnalisisTableRow row = filasTabla.get(i);
+            if (row.esPrincipal() && idPrincipal.equals(row.principal.getIdExpediente())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private void actualizarSeleccion() {
-        AnalisisExpedienteDTO item = obtenerSeleccionado();
-        boolean has = item != null;
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        AnalisisExpedienteDTO item = fila == null ? null : fila.principal;
+        boolean has = fila != null;
+        boolean asociado = fila != null && fila.esAsociada();
         btnVerDetalle.setEnabled(has);
-        btnRecibir.setEnabled(has && item.isRecibible());
-        btnRegistrarAnalisis.setEnabled(has && item.isRegistrable());
-        btnEnviarVerificacion.setEnabled(has && item.isEnviableVerificacion());
-        btnDerivarNotificacion.setEnabled(has && item.isDerivableNotificacionEspecial());
-        btnArchivarNoCorresponde.setEnabled(has && item.isArchivableNoCorresponde());
-        btnDerivarExterna.setEnabled(has && item.isArchivableNoCorresponde());
+        btnRecibir.setEnabled(has && !asociado && item.isRecibible());
+        btnRegistrarAnalisis.setEnabled(has && !asociado && item.isRegistrable());
+        btnEnviarVerificacion.setEnabled(has && !asociado && item.isEnviableVerificacion());
+        btnDerivarNotificacion.setEnabled(has && !asociado && item.isDerivableNotificacionEspecial());
+        btnArchivarNoCorresponde.setEnabled(has && !asociado && item.isArchivableNoCorresponde());
+        btnDerivarExterna.setEnabled(has && !asociado && item.isArchivableNoCorresponde());
         actualizarVisibilidadPanelAnalisis();
         if (!has) {
             lblExpediente.setText("-");
@@ -687,6 +993,18 @@ public class JPanelAnalisisV2 extends JPanel {
             lblResponsable.setText("-");
             lblEtapaEstado.setText("-");
             lblAlertas.setText("Sin alertas.");
+            return;
+        }
+        if (asociado) {
+            ExpedienteRelacionadoDTO relacionado = fila.asociado;
+            lblExpediente.setText("Documento asociado seleccionado");
+            lblTitular.setText(valorUi(relacionado.getTitular()));
+            lblActa.setText((valorUi(relacionado.getTipoActa()) + " " + valorUi(relacionado.getNumeroActa())).trim());
+            lblProcedimiento.setText(procedimientoAsociado(relacionado));
+            lblResponsable.setText(valorUi(relacionado.getAbogadoAsignado()));
+            lblEtapaEstado.setText("Expediente principal: " + fila.numeroExpedientePrincipal());
+            lblAlertas.setText(textoRelacionAsociada(relacionado) + " · Disponible para análisis");
+            txtComentarioMovimiento.setText("Este documento está asociado al expediente principal y se muestra como contexto del caso.");
             return;
         }
         lblExpediente.setText(item.getNumeroExpediente());
@@ -715,7 +1033,7 @@ public class JPanelAnalisisV2 extends JPanel {
         if (splitOperativo == null) {
             return;
         }
-        splitOperativo.setSideVisible(obtenerSeleccionado() != null && !panelAnalisisCerradoPorUsuario);
+        splitOperativo.setSideVisible(obtenerFilaSeleccionada() != null && !panelAnalisisCerradoPorUsuario);
         tabPanelAnalisis.setExpanded(splitOperativo.isSideExpanded());
         actualizarTooltipTabPanelAnalisis();
     }
@@ -930,18 +1248,24 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void abrirDetalle() {
-        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para ver el detalle.");
-        if (item == null) {
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        if (fila == null || fila.getIdExpediente() == null) {
+            mostrarInfo("Seleccione un expediente para ver el detalle.");
             return;
         }
         Window owner = SwingUtilities.getWindowAncestor(this);
-        DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(owner, item.getIdExpediente());
+        DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(owner, fila.getIdExpediente());
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
     private AnalisisExpedienteDTO requerirSeleccion(String mensaje) {
-        AnalisisExpedienteDTO item = obtenerSeleccionado();
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        if (fila != null && fila.esAsociada()) {
+            mostrarInfo("Este documento está asociado al expediente principal y se muestra como contexto del caso.");
+            return null;
+        }
+        AnalisisExpedienteDTO item = fila == null ? null : fila.principal;
         if (item == null) {
             mostrarInfo(mensaje);
         }
@@ -949,15 +1273,32 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private AnalisisExpedienteDTO obtenerSeleccionado() {
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        return fila == null || !fila.esPrincipal() ? null : fila.principal;
+    }
+
+    private AnalisisTableRow obtenerFilaSeleccionada() {
         int selected = table.getSelectedRow();
         if (selected < 0) {
             return null;
         }
         int modelRow = table.convertRowIndexToModel(selected);
-        if (modelRow < 0 || modelRow >= expedientes.size()) {
+        return filaTabla(modelRow);
+    }
+
+    private int obtenerModelRowSeleccionada() {
+        int selected = table.getSelectedRow();
+        if (selected < 0) {
+            return -1;
+        }
+        return table.convertRowIndexToModel(selected);
+    }
+
+    private AnalisisTableRow filaTabla(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size()) {
             return null;
         }
-        return expedientes.get(modelRow);
+        return filasTabla.get(modelRow);
     }
 
     private void actualizarChecksIncorporado() {
@@ -1027,13 +1368,15 @@ public class JPanelAnalisisV2 extends JPanel {
         btnBuscar.setEnabled(!trabajando);
         btnLimpiar.setEnabled(!trabajando);
         btnRefrescar.setEnabled(!trabajando);
-        btnVerDetalle.setEnabled(!trabajando && obtenerSeleccionado() != null);
-        btnRecibir.setEnabled(!trabajando && obtenerSeleccionado() != null && obtenerSeleccionado().isRecibible());
-        btnRegistrarAnalisis.setEnabled(!trabajando && obtenerSeleccionado() != null && obtenerSeleccionado().isRegistrable());
-        btnEnviarVerificacion.setEnabled(!trabajando && obtenerSeleccionado() != null && obtenerSeleccionado().isEnviableVerificacion());
-        btnDerivarNotificacion.setEnabled(!trabajando && obtenerSeleccionado() != null && obtenerSeleccionado().isDerivableNotificacionEspecial());
-        btnArchivarNoCorresponde.setEnabled(!trabajando && obtenerSeleccionado() != null && obtenerSeleccionado().isArchivableNoCorresponde());
-        btnDerivarExterna.setEnabled(!trabajando && obtenerSeleccionado() != null && obtenerSeleccionado().isArchivableNoCorresponde());
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        AnalisisExpedienteDTO item = fila == null || !fila.esPrincipal() ? null : fila.principal;
+        btnVerDetalle.setEnabled(!trabajando && fila != null);
+        btnRecibir.setEnabled(!trabajando && item != null && item.isRecibible());
+        btnRegistrarAnalisis.setEnabled(!trabajando && item != null && item.isRegistrable());
+        btnEnviarVerificacion.setEnabled(!trabajando && item != null && item.isEnviableVerificacion());
+        btnDerivarNotificacion.setEnabled(!trabajando && item != null && item.isDerivableNotificacionEspecial());
+        btnArchivarNoCorresponde.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
+        btnDerivarExterna.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
         if (mensaje != null) {
             lblEstado.setText(mensaje);
         }
@@ -1089,6 +1432,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private class AnalisisTableModel extends DefaultTableModel {
         private AnalisisTableModel() {
             super(new Object[]{
+                "",
                 "Días",
                 "Expediente",
                 "Trámite / Documento",
@@ -1110,7 +1454,65 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
-    private static class AnalisisRenderer extends DefaultTableCellRenderer {
+    private class ExpandirRenderer extends JPanel implements TableCellRenderer {
+
+        private final AppV2ExpandCollapseGlyph glyph = new AppV2ExpandCollapseGlyph();
+
+        private ExpandirRenderer() {
+            setOpaque(true);
+            setLayout(new BorderLayout());
+            add(glyph, BorderLayout.CENTER);
+            setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            int modelRow = table.convertRowIndexToModel(row);
+            AnalisisTableRow fila = filaTabla(modelRow);
+            Color background = colorFondoFila(row, fila, isSelected);
+            setBorder(BorderFactory.createCompoundBorder(
+                    debeMostrarBarraGrupo(fila)
+                            ? BorderFactory.createMatteBorder(0, GROUP_STRIPE_WIDTH, 0, 0, acentoGrupo(fila.getIdPrincipal()))
+                            : BorderFactory.createEmptyBorder(0, GROUP_STRIPE_WIDTH, 0, 0),
+                    BorderFactory.createEmptyBorder(0, 4, 0, 4)));
+            setBackground(background);
+            if (fila != null && fila.esAsociada()) {
+                glyph.configure(AppV2ExpandCollapseGlyph.NONE, GRID_ACTION_ICON_BLUE, background);
+                setToolTipText("Documento asociado al expediente principal.");
+                return this;
+            }
+            if (fila != null
+                    && fila.esPrincipal()
+                    && fila.principal.getIdExpediente() != null
+                    && fila.principal.getTotalRelacionados() > 0) {
+                Long idPrincipal = fila.principal.getIdExpediente();
+                int state = principalesCargando.contains(idPrincipal)
+                        ? AppV2ExpandCollapseGlyph.LOADING
+                        : (principalesExpandidos.contains(idPrincipal)
+                        ? AppV2ExpandCollapseGlyph.COLLAPSE
+                        : AppV2ExpandCollapseGlyph.EXPAND);
+                glyph.configure(state, GRID_ACTION_ICON_BLUE, background);
+                setToolTipText(state == AppV2ExpandCollapseGlyph.COLLAPSE
+                        ? "Ocultar documentos asociados"
+                        : "Ver documentos asociados");
+            } else {
+                glyph.configure(AppV2ExpandCollapseGlyph.NONE, AppV2Theme.TEXT_SECONDARY, background);
+                setToolTipText(null);
+            }
+            return this;
+        }
+    }
+
+    private class AnalisisRenderer extends DefaultTableCellRenderer {
+
+        private final AppV2AssociatedDocumentIconCell documentoAsociadoCell = new AppV2AssociatedDocumentIconCell();
+
         @Override
         public Component getTableCellRendererComponent(
                 JTable table,
@@ -1120,26 +1522,148 @@ public class JPanelAnalisisV2 extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
-            if (!isSelected && modelColumn == 0) {
-                return StatusBadgeV2.forDias(value);
+            int modelRow = table.convertRowIndexToModel(row);
+            AnalisisTableRow fila = filaTabla(modelRow);
+            boolean filaAsociada = fila != null && fila.esAsociada();
+            Color cellBackground = colorFondoFila(row, fila, isSelected);
+            if (modelColumn == COL_DIAS) {
+                if (filaAsociada) {
+                    Component c = super.getTableCellRendererComponent(table, "", isSelected, hasFocus, row, column);
+                    c.setBackground(cellBackground);
+                    setBorder(bordeContenidoAsociado(modelRow, 8, 8));
+                    setToolTipText("La alerta de días aplica al expediente principal.");
+                    return c;
+                }
+                return StatusBadgeV2.forDias(value, cellBackground);
             }
-            if (!isSelected && modelColumn == 8) {
+            if (modelColumn == COL_EXPEDIENTE && filaAsociada) {
+                documentoAsociadoCell.configure(
+                        GRID_ACTION_ICON_BLUE,
+                        cellBackground,
+                        bordeContenidoAsociado(modelRow, 8, 8));
+                documentoAsociadoCell.setToolTipText("Documento asociado al expediente principal.");
+                return documentoAsociadoCell;
+            }
+            if (!isSelected && modelColumn == COL_ESTADO) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 9 && value != null && value.toString().startsWith("Con")) {
+            if (!isSelected && modelColumn == COL_OBSERVACION && value != null && value.toString().startsWith("Con")) {
                 return new BadgeV2(value.toString(), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
             }
-            if (!isSelected && modelColumn == 10 && value != null && !value.toString().startsWith("Sin")) {
-                return new BadgeV2(value.toString(), AppV2Theme.SOFT_BLUE, AppV2Theme.INFO);
+            if (!isSelected && modelColumn == COL_ASOCIADOS && value != null && !value.toString().startsWith("Sin")) {
+                Color bg = filaAsociada ? ASSOCIATED_ROW_BACKGROUND : AppV2Theme.SOFT_BLUE;
+                Color fg = filaAsociada ? AppV2Theme.TEXT_SECONDARY : AppV2Theme.INFO;
+                return new BadgeV2(value.toString(), bg, fg);
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-            if (!isSelected) {
-                c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
-                c.setForeground(modelColumn == 1 ? AppV2Theme.PRIMARY : AppV2Theme.TEXT_PRIMARY);
+            setFont(filaAsociada && modelColumn != COL_EXPEDIENTE
+                    ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL)
+                    : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            String text = value == null ? "" : value.toString();
+            setToolTipText(text.isEmpty() ? null : text);
+            if (isSelected) {
+                c.setBackground(cellBackground);
+                c.setForeground(TABLE_SELECTION_FOREGROUND);
+                setBorder(filaAsociada
+                        ? bordeContenidoAsociado(modelRow, 8, 8)
+                        : BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            } else if (filaAsociada) {
+                setBorder(bordeContenidoAsociado(modelRow, 8, 8));
+                c.setBackground(ASSOCIATED_ROW_BACKGROUND);
+                c.setForeground(AppV2Theme.TEXT_SECONDARY);
+            } else {
+                setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                c.setBackground(cellBackground);
+                c.setForeground(modelColumn == COL_EXPEDIENTE ? AppV2Theme.PRIMARY : AppV2Theme.TEXT_PRIMARY);
             }
             return c;
+        }
+    }
+
+    private Color colorFondoFila(int viewRow, AnalisisTableRow fila, boolean selected) {
+        if (selected) {
+            return TABLE_SELECTION_BACKGROUND;
+        }
+        if (fila != null && fila.esAsociada()) {
+            return ASSOCIATED_ROW_BACKGROUND;
+        }
+        if (fila != null && fila.esPrincipal() && principalesExpandidos.contains(fila.getIdPrincipal())) {
+            return new Color(238, 250, 252);
+        }
+        return viewRow % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
+    }
+
+    private boolean debeMostrarBarraGrupo(AnalisisTableRow fila) {
+        if (fila == null || fila.getIdPrincipal() == null) {
+            return false;
+        }
+        return fila.esAsociada() || principalesExpandidos.contains(fila.getIdPrincipal());
+    }
+
+    private Color acentoGrupo(Long groupKey) {
+        if (groupKey == null) {
+            return GRID_ACTION_ICON_BLUE;
+        }
+        int index = Math.abs(groupKey.hashCode()) % GROUP_STRIPE_COLORS.length;
+        return GROUP_STRIPE_COLORS[index];
+    }
+
+    private javax.swing.border.Border bordeContenidoAsociado(int modelRow, int leftPadding, int rightPadding) {
+        AnalisisTableRow fila = filaTabla(modelRow);
+        Color accent = acentoGrupo(fila == null ? null : fila.getIdPrincipal());
+        return BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, GROUP_STRIPE_WIDTH, 1, 0, accent),
+                BorderFactory.createEmptyBorder(0, leftPadding, 0, rightPadding));
+    }
+
+    private static String valorUi(String value) {
+        return value == null || value.trim().isEmpty() ? "-" : value.trim();
+    }
+
+    private static boolean pareceIdentificadorTecnico(String value) {
+        return value != null && value.trim().matches("\\d+");
+    }
+
+    private static final class AnalisisTableRow {
+
+        private final AnalisisExpedienteDTO principal;
+        private final ExpedienteRelacionadoDTO asociado;
+        private final Long idExpedientePrincipal;
+
+        private AnalisisTableRow(AnalisisExpedienteDTO principal, ExpedienteRelacionadoDTO asociado) {
+            this.principal = principal;
+            this.asociado = asociado;
+            this.idExpedientePrincipal = principal == null ? null : principal.getIdExpediente();
+        }
+
+        private static AnalisisTableRow principal(AnalisisExpedienteDTO principal) {
+            return new AnalisisTableRow(principal, null);
+        }
+
+        private static AnalisisTableRow asociada(AnalisisExpedienteDTO principal, ExpedienteRelacionadoDTO asociado) {
+            return new AnalisisTableRow(principal, asociado);
+        }
+
+        private boolean esPrincipal() {
+            return asociado == null && principal != null;
+        }
+
+        private boolean esAsociada() {
+            return asociado != null;
+        }
+
+        private Long getIdExpediente() {
+            return esAsociada() ? asociado.getIdExpediente() : principal.getIdExpediente();
+        }
+
+        private Long getIdPrincipal() {
+            return idExpedientePrincipal;
+        }
+
+        private String numeroExpedientePrincipal() {
+            return principal == null || principal.getNumeroExpediente().isEmpty()
+                    ? "-"
+                    : principal.getNumeroExpediente();
         }
     }
 
