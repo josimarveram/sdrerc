@@ -142,6 +142,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private boolean panelAnalisisCerradoPorUsuario;
 
     private boolean cargandoCatalogos;
+    private boolean busquedaInicialEjecutada;
 
     public JPanelAnalisisV2() {
         this(new AnalisisExpedienteService(), new DocumentoAnalisisService());
@@ -545,6 +546,10 @@ public class JPanelAnalisisV2 extends JPanel {
                     setTrabajando(false, null);
                     actualizarResultadoSeleccionado();
                     actualizarObservacionHabilitada();
+                    if (!busquedaInicialEjecutada) {
+                        busquedaInicialEjecutada = true;
+                        buscar();
+                    }
                 }
             }
         };
@@ -573,6 +578,7 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void buscar() {
+        busquedaInicialEjecutada = true;
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
         if (desde != null && hasta != null && desde.isAfter(hasta)) {

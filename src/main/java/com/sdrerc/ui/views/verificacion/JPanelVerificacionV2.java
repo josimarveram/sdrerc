@@ -133,6 +133,7 @@ public class JPanelVerificacionV2 extends JPanel {
     private boolean panelVerificacionCerradoPorUsuario;
 
     private boolean cargandoCatalogos;
+    private boolean busquedaInicialEjecutada;
 
     public JPanelVerificacionV2() {
         this(new VerificacionExpedienteService(), new DocumentoVerificacionService());
@@ -469,6 +470,10 @@ public class JPanelVerificacionV2 extends JPanel {
                     cargandoCatalogos = false;
                     setTrabajando(false, null);
                     actualizarResultadoSeleccionado();
+                    if (!busquedaInicialEjecutada) {
+                        busquedaInicialEjecutada = true;
+                        buscar();
+                    }
                 }
             }
         };
@@ -494,6 +499,7 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private void buscar() {
+        busquedaInicialEjecutada = true;
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
