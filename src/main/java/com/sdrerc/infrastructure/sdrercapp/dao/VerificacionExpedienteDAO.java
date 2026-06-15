@@ -72,7 +72,7 @@ public class VerificacionExpedienteDAO {
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
         sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
         sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
-        sql.append("e.fecha_ultimo_movimiento, ");
+        sql.append("e.fecha_registro, e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
         sql.append("JOIN tipo_movimiento tm ON tm.id_tipo_movimiento = h.id_tipo_movimiento ");
         sql.append("WHERE h.id_expediente = e.id_expediente AND h.activo = 1 ");
