@@ -32,6 +32,7 @@ public final class AppV2IconProvider {
     public static final String SALIR = "SALIR";
     public static final String COLLAPSE = "COLLAPSE";
     public static final String EXPAND = "EXPAND";
+    public static final String PENCIL = "PENCIL";
 
     private static final String ROOT = "icons/appv2/";
     private static final Map<String, String> ICONS = new LinkedHashMap<String, String>();
@@ -55,6 +56,7 @@ public final class AppV2IconProvider {
         ICONS.put(SALIR, "log-out.svg");
         ICONS.put(COLLAPSE, "panel-left-close.svg");
         ICONS.put(EXPAND, "panel-left-open.svg");
+        ICONS.put(PENCIL, "pencil.svg");
     }
 
     private AppV2IconProvider() {
