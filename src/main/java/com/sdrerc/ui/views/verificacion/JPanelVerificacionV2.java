@@ -644,7 +644,7 @@ public class JPanelVerificacionV2 extends JPanel {
         tableModel.insertRow(index, new Object[]{
             "",
             "",
-            "",
+            valorUi(principal.getNumeroExpediente()),
             valorUi(asociado.getNumeroDocumento().isEmpty()
                     ? asociado.getNumeroTramiteDocumentario()
                     : asociado.getNumeroDocumento()),
@@ -1394,21 +1394,14 @@ public class JPanelVerificacionV2 extends JPanel {
             Color cellBackground = colorFondoFila(row, fila, isSelected);
             if (modelColumn == COL_DIAS) {
                 if (filaAsociada) {
-                    Component c = super.getTableCellRendererComponent(table, "", isSelected, hasFocus, row, column);
-                    c.setBackground(cellBackground);
-                    setBorder(bordeContenidoAsociado(modelRow, 8, 8));
-                    setToolTipText("La alerta de días aplica al expediente principal.");
-                    return c;
+                    documentoAsociadoCell.configure(
+                            GRID_ACTION_ICON_BLUE,
+                            cellBackground,
+                            bordeContenidoAsociado(modelRow, 8, 8));
+                    documentoAsociadoCell.setToolTipText("Documento asociado al expediente principal.");
+                    return documentoAsociadoCell;
                 }
                 return StatusBadgeV2.forDias(value, cellBackground);
-            }
-            if (modelColumn == COL_EXPEDIENTE && filaAsociada) {
-                documentoAsociadoCell.configure(
-                        GRID_ACTION_ICON_BLUE,
-                        cellBackground,
-                        bordeContenidoAsociado(modelRow, 8, 8));
-                documentoAsociadoCell.setToolTipText("Documento asociado al expediente principal.");
-                return documentoAsociadoCell;
             }
             if (!isSelected && modelColumn == COL_ESTADO) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
@@ -1431,7 +1424,9 @@ public class JPanelVerificacionV2 extends JPanel {
             } else if (filaAsociada) {
                 setBorder(bordeContenidoAsociado(modelRow, 8, 8));
                 c.setBackground(ASSOCIATED_ROW_BACKGROUND);
-                c.setForeground(AppV2Theme.TEXT_SECONDARY);
+                c.setForeground(modelColumn == COL_EXPEDIENTE
+                        ? AppV2Theme.TEXT_PRIMARY
+                        : AppV2Theme.TEXT_SECONDARY);
             } else {
                 setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
                 c.setBackground(cellBackground);
@@ -1470,10 +1465,8 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private javax.swing.border.Border bordeContenidoAsociado(int modelRow, int leftPadding, int rightPadding) {
-        VerificacionTableRow fila = filaTabla(modelRow);
-        Color accent = acentoGrupo(fila == null ? null : fila.getIdPrincipal());
         return BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, GROUP_STRIPE_WIDTH, 1, 0, accent),
+                BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
                 BorderFactory.createEmptyBorder(0, leftPadding, 0, rightPadding));
     }
 
