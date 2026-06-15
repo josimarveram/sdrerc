@@ -405,8 +405,11 @@ public class JPanelAnalisisV2 extends JPanel {
         addRow(form, row, "", acciones);
 
         JScrollPane scroll = new JScrollPane(documentosTable);
-        scroll.setPreferredSize(new Dimension(360, 140));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        documentoModel.addTableModelListener(e -> actualizarAlturaDocumentosAnalizados(scroll));
+        actualizarAlturaDocumentosAnalizados(scroll);
 
         JPanel top = new JPanel(new BorderLayout(0, 8));
         top.setOpaque(false);
@@ -416,6 +419,19 @@ public class JPanelAnalisisV2 extends JPanel {
         panel.add(top, BorderLayout.NORTH);
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
+    }
+
+    private void actualizarAlturaDocumentosAnalizados(JScrollPane scroll) {
+        int headerHeight = documentosTable.getTableHeader().getPreferredSize().height;
+        int rowCount = Math.max(1, documentoModel.getRowCount());
+        int rowsHeight = rowCount * documentosTable.getRowHeight();
+        int horizontalBarHeight = scroll.getHorizontalScrollBar().getPreferredSize().height;
+        int height = headerHeight + rowsHeight + horizontalBarHeight + 4;
+        Dimension size = new Dimension(360, height);
+        scroll.setPreferredSize(size);
+        scroll.setMinimumSize(new Dimension(280, height));
+        scroll.revalidate();
+        scroll.repaint();
     }
 
     private JPanel crearDocumentosAsociadosPanel() {
