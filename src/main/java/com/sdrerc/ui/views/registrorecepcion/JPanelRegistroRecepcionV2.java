@@ -58,9 +58,9 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 "Registro / Recepción",
                 "Expedientes registrados o recibidos pendientes de gestión",
                 true,
-                false);
+                false,
+                metricas);
 
-        panel.add(metricas, BorderLayout.NORTH);
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;
     }

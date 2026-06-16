@@ -67,6 +67,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final String subtituloBandeja;
     private final boolean etapaBloqueada;
     private final boolean mostrarEncabezado;
+    private final Component encabezadoOperativo;
     private final boolean perfilRegistroRecepcion;
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SITD, titular o responsable", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
@@ -110,11 +111,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     public JPanelBandejaExpedientesNueva(boolean mostrarEncabezado) {
-        this(new ExpedienteConsultaService(), null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, mostrarEncabezado);
+        this(new ExpedienteConsultaService(), null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, mostrarEncabezado, null);
     }
 
     public JPanelBandejaExpedientesNueva(String etapaInicial, String tituloBandeja, String subtituloBandeja, boolean etapaBloqueada) {
-        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, true);
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, true, null);
     }
 
     public JPanelBandejaExpedientesNueva(
@@ -123,11 +124,21 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             String subtituloBandeja,
             boolean etapaBloqueada,
             boolean mostrarEncabezado) {
-        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado);
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, null);
+    }
+
+    public JPanelBandejaExpedientesNueva(
+            String etapaInicial,
+            String tituloBandeja,
+            String subtituloBandeja,
+            boolean etapaBloqueada,
+            boolean mostrarEncabezado,
+            Component encabezadoOperativo) {
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, encabezadoOperativo);
     }
 
     public JPanelBandejaExpedientesNueva(ExpedienteConsultaService consultaService) {
-        this(consultaService, null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, true);
+        this(consultaService, null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, true, null);
     }
 
     private JPanelBandejaExpedientesNueva(
@@ -136,13 +147,15 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             String tituloBandeja,
             String subtituloBandeja,
             boolean etapaBloqueada,
-            boolean mostrarEncabezado) {
+            boolean mostrarEncabezado,
+            Component encabezadoOperativo) {
         this.consultaService = consultaService;
         this.etapaInicial = normalizar(etapaInicial);
         this.tituloBandeja = textoConDefault(tituloBandeja, "Bandeja de Expedientes");
         this.subtituloBandeja = textoConDefault(subtituloBandeja, "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención");
         this.etapaBloqueada = etapaBloqueada && this.etapaInicial != null;
         this.mostrarEncabezado = mostrarEncabezado;
+        this.encabezadoOperativo = encabezadoOperativo;
         this.perfilRegistroRecepcion = this.etapaBloqueada && "REGISTRO".equals(this.etapaInicial);
         this.tableModel = crearTableModel(this.perfilRegistroRecepcion);
         this.table = new AppV2Table(tableModel);
@@ -298,15 +311,26 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         superior.add(filtros, BorderLayout.CENTER);
         superior.add(lblResultado, BorderLayout.SOUTH);
 
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        contenidoOperativo.setOpaque(false);
+        contenidoOperativo.add(superior, BorderLayout.NORTH);
+        contenidoOperativo.add(tablePanel, BorderLayout.CENTER);
+
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        contenidoPrincipal.setOpaque(false);
+        if (encabezadoOperativo != null) {
+            contenidoPrincipal.add(encabezadoOperativo, BorderLayout.NORTH);
+        }
+        contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
+
         panelRecepcion = crearPanelRecepcion();
         splitBandeja = new AppV2OperationalSplitPanel(
-                tablePanel,
+                contenidoPrincipal,
                 crearPanelRecepcionConTab(panelRecepcion),
                 0,
                 PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
                 PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG);
 
-        add(superior, BorderLayout.NORTH);
         add(splitBandeja, BorderLayout.CENTER);
     }
 
