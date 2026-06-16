@@ -47,6 +47,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private final JTextField txtNumeroTramite = new JTextField();
     private final JTextField txtNumeroDocumento = new JTextField();
+    private final JTextField txtNumeroExpedienteDigitalSitd = new JTextField();
     private final PremiumDateFieldV2 fechaRecepcionField = new PremiumDateFieldV2();
     private final JRadioButton rdoCorrespondeSdrerc = new JRadioButton("Sí corresponde a la SDRERC", true);
     private final JRadioButton rdoNoCorrespondeSdrerc = new JRadioButton("No corresponde a la SDRERC");
@@ -177,12 +178,13 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         JPanel panel = seccion("Datos de solicitud");
         agregarFila(panel, 0, "Nro. trámite web *", txtNumeroTramite);
         agregarFila(panel, 1, "N° documento *", txtNumeroDocumento);
-        agregarFila(panel, 2, "Tipo de solicitud *", cmbTipoSolicitud);
-        agregarFila(panel, 3, "Fecha recepción *", fechaRecepcionField);
-        agregarFila(panel, 4, "Procedimiento registral *", cmbProcedimiento);
-        agregarFila(panel, 5, "Tipo documento *", cmbTipoDocumento);
-        agregarFila(panel, 6, "Canal de ingreso", cmbCanal);
-        agregarFila(panel, 7, "Prioridad", cmbPrioridad);
+        agregarFila(panel, 2, "N° expediente digital SITD", txtNumeroExpedienteDigitalSitd);
+        agregarFila(panel, 3, "Tipo de solicitud *", cmbTipoSolicitud);
+        agregarFila(panel, 4, "Fecha recepción *", fechaRecepcionField);
+        agregarFila(panel, 5, "Procedimiento registral *", cmbProcedimiento);
+        agregarFila(panel, 6, "Tipo documento *", cmbTipoDocumento);
+        agregarFila(panel, 7, "Canal de ingreso", cmbCanal);
+        agregarFila(panel, 8, "Prioridad", cmbPrioridad);
         return panel;
     }
 
@@ -289,6 +291,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private void configurarEstadoInicial() {
         configurarCampo(txtNumeroTramite);
         configurarCampo(txtNumeroDocumento);
+        configurarCampo(txtNumeroExpedienteDigitalSitd);
         fechaRecepcionField.setDate(toDate(LocalDate.now()));
         configurarCampo(txtHojaEnvio);
         configurarCampo(txtNumeroActa);
@@ -372,6 +375,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         List<JTextField> fields = new ArrayList<JTextField>();
         fields.add(txtNumeroTramite);
         fields.add(txtNumeroDocumento);
+        fields.add(txtNumeroExpedienteDigitalSitd);
         fields.add(txtHojaEnvio);
         fields.add(txtNumeroActa);
         fields.add(txtTitularNombre);
@@ -566,6 +570,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         DatosSolicitudDTO solicitud = new DatosSolicitudDTO();
         solicitud.setNumeroTramite(txtNumeroTramite.getText());
         solicitud.setNumeroDocumento(txtNumeroDocumento.getText());
+        solicitud.setNumeroExpedienteDigitalSitd(txtNumeroExpedienteDigitalSitd.getText());
         solicitud.setFechaRecepcion(localDate(fechaRecepcionField.getDate()));
         solicitud.setValidacionInicial(valorValidacionInicial());
         solicitud.setHojaEnvio(txtHojaEnvio.getText());
@@ -604,6 +609,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         StringBuilder sb = new StringBuilder();
         sb.append("Trámite: ").append(safe(dto.getSolicitud().getNumeroTramite())).append("\n");
         sb.append("N° documento: ").append(safe(dto.getSolicitud().getNumeroDocumento())).append("\n");
+        sb.append("N° expediente digital SITD: ").append(safe(dto.getSolicitud().getNumeroExpedienteDigitalSitd())).append("\n");
         sb.append("Tipo de solicitud: ").append(safe(dto.getSolicitud().getTipoSolicitudNombre())).append("\n");
         sb.append("Titular: ").append(safe(dto.getTitular().getNombreCompleto())).append("\n");
         sb.append("Procedimiento: ").append(safe(dto.getSolicitud().getTipoProcedimientoNombre())).append("\n");

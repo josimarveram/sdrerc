@@ -167,6 +167,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         configurarTabla();
         aplicarConfiguracionInicial();
         configurarEventos();
+        if (perfilRegistroRecepcion) {
+            SwingUtilities.invokeLater(this::buscar);
+        }
     }
 
     private static DefaultTableModel crearTableModel(boolean perfilRegistroRecepcion) {

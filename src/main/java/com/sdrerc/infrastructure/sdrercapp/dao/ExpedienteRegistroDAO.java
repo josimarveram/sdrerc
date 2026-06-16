@@ -493,18 +493,20 @@ public class ExpedienteRegistroDAO {
 
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
-                + "fecha_recepcion, asunto, observacion, es_tramite_virtual, correo_electronico, potencial_duplicado, activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 1)";
+                + "numero_expediente_digital_sitd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
+                + "correo_electronico, potencial_duplicado, activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             setLongOrNull(ps, 2, idCanal);
             setLongOrNull(ps, 3, idPersonaSolicitante);
             ps.setString(4, solicitud.getNumeroTramite());
-            ps.setDate(5, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
-            ps.setString(6, solicitud.getTipoProcedimientoNombre());
-            ps.setString(7, limitar(observacionSolicitud(registro), 1000));
-            ps.setNull(8, Types.VARCHAR);
-            ps.setInt(9, registro.isPosibleDuplicado() ? 1 : 0);
+            ps.setString(5, solicitud.getNumeroExpedienteDigitalSitd());
+            ps.setDate(6, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
+            ps.setString(7, solicitud.getTipoProcedimientoNombre());
+            ps.setString(8, limitar(observacionSolicitud(registro), 1000));
+            ps.setNull(9, Types.VARCHAR);
+            ps.setInt(10, registro.isPosibleDuplicado() ? 1 : 0);
             ps.executeUpdate();
         }
     }
@@ -575,6 +577,7 @@ public class ExpedienteRegistroDAO {
         append(sb, "Hoja de envío", registro.getSolicitud().getHojaEnvio());
         append(sb, "Tipo de solicitud", registro.getSolicitud().getTipoSolicitudNombre());
         append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
+        append(sb, "N° expediente digital SITD", registro.getSolicitud().getNumeroExpedienteDigitalSitd());
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
         append(sb, "Observaciones de registro", registro.getObservacionesGenerales());
         append(sb, "Motivo duplicado", registro.getMotivoDuplicado());
