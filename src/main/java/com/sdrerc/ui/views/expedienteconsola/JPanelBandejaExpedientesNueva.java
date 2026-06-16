@@ -1,10 +1,16 @@
 package com.sdrerc.ui.views.expedienteconsola;
 
 import com.sdrerc.application.sdrercapp.ExpedienteConsultaService;
+import com.sdrerc.application.sdrercapp.ExpedienteDetalleService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
+import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
+import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
@@ -17,6 +23,7 @@ import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -46,10 +53,15 @@ import javax.swing.table.DefaultTableModel;
 
 public class JPanelBandejaExpedientesNueva extends JPanel {
 
+    private static final int PANEL_RECEPCION_ANCHO_MINIMO = 380;
+    private static final int PANEL_RECEPCION_ANCHO_NORMAL = 430;
+    private static final int PANEL_RECEPCION_TAB_OVERHANG = 18;
+    private static final int PANEL_RECEPCION_TAB_TOP = 18;
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final ExpedienteConsultaService consultaService;
+    private final ExpedienteDetalleService detalleService = new ExpedienteDetalleService();
     private final String etapaInicial;
     private final String tituloBandeja;
     private final String subtituloBandeja;
@@ -69,6 +81,29 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final DefaultTableModel tableModel;
     private final JTable table;
     private final AppV2TablePanel tablePanel;
+    private final AppV2NotebookToggleTab tabPanelRecepcion = new AppV2NotebookToggleTab();
+    private AppV2OperationalSplitPanel splitBandeja;
+    private AppV2SideActionPanel panelRecepcion;
+    private final JLabel lblRecepcionExpediente = valueLabel();
+    private final JLabel lblRecepcionFecha = valueLabel();
+    private final JLabel lblRecepcionCanal = valueLabel();
+    private final JLabel lblRecepcionTipoSolicitud = valueLabel();
+    private final JLabel lblRecepcionTramite = valueLabel();
+    private final JLabel lblRecepcionTipoDocumento = valueLabel();
+    private final JLabel lblRecepcionNumeroDocumento = valueLabel();
+    private final JLabel lblRecepcionProcedimiento = valueLabel();
+    private final JLabel lblRecepcionTitular = valueLabel();
+    private final JLabel lblRecepcionRemitente = valueLabel();
+    private final JLabel lblRecepcionTipoActa = valueLabel();
+    private final JLabel lblRecepcionNumeroActa = valueLabel();
+    private final JLabel lblRecepcionVencimiento = valueLabel();
+    private final JLabel lblRecepcionDias = valueLabel();
+    private final JLabel lblRecepcionResponsable = valueLabel();
+    private final JLabel lblRecepcionEquipo = valueLabel();
+    private final JLabel lblRecepcionEtapaEstado = valueLabel();
+    private Long idPanelRecepcionActual;
+    private int panelRecepcionLoadSequence;
+    private boolean panelRecepcionCargado;
 
     public JPanelBandejaExpedientesNueva() {
         this(new ExpedienteConsultaService());
@@ -263,8 +298,95 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         superior.add(filtros, BorderLayout.CENTER);
         superior.add(lblResultado, BorderLayout.SOUTH);
 
+        panelRecepcion = crearPanelRecepcion();
+        splitBandeja = new AppV2OperationalSplitPanel(
+                tablePanel,
+                crearPanelRecepcionConTab(panelRecepcion),
+                0,
+                PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
+                PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG);
+
         add(superior, BorderLayout.NORTH);
-        add(tablePanel, BorderLayout.CENTER);
+        add(splitBandeja, BorderLayout.CENTER);
+    }
+
+    private AppV2SideActionPanel crearPanelRecepcion() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Recepción", this::ocultarPanelRecepcion);
+        panel.setAccentColor(AppV2Theme.PRIMARY);
+        tabPanelRecepcion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
+        tabPanelRecepcion.setExpanded(false);
+        tabPanelRecepcion.setToolTipText("Expandir panel de recepción");
+        tabPanelRecepcion.addActionListener(e -> alternarExpansionPanelRecepcion());
+
+        AppV2SideSectionPanel expediente = new AppV2SideSectionPanel("Expediente seleccionado");
+        expediente.addRow("Expediente", lblRecepcionExpediente);
+        expediente.addRow("Etapa / estado", lblRecepcionEtapaEstado);
+
+        AppV2SideSectionPanel solicitud = new AppV2SideSectionPanel("Solicitud recibida");
+        solicitud.addRow("Fecha", lblRecepcionFecha);
+        solicitud.addRow("Canal", lblRecepcionCanal);
+        solicitud.addRow("Tipo solicitud", lblRecepcionTipoSolicitud);
+        solicitud.addRow("Trámite Web", lblRecepcionTramite);
+        solicitud.addRow("Tipo documento", lblRecepcionTipoDocumento);
+        solicitud.addRow("N° Documento", lblRecepcionNumeroDocumento);
+
+        AppV2SideSectionPanel datos = new AppV2SideSectionPanel("Datos registrales");
+        datos.addRow("Procedimiento", lblRecepcionProcedimiento);
+        datos.addRow("Titular", lblRecepcionTitular);
+        datos.addRow("Remitente", lblRecepcionRemitente);
+        datos.addRow("Tipo acta", lblRecepcionTipoActa);
+        datos.addRow("N° Acta", lblRecepcionNumeroActa);
+
+        AppV2SideSectionPanel plazo = new AppV2SideSectionPanel("Plazo");
+        plazo.addRow("Vencimiento", lblRecepcionVencimiento);
+        plazo.addRow("Días", lblRecepcionDias);
+
+        AppV2SideSectionPanel gestion = new AppV2SideSectionPanel("Gestión actual");
+        gestion.addRow("Responsable", lblRecepcionResponsable);
+        gestion.addRow("Equipo", lblRecepcionEquipo);
+
+        panel.addSection(expediente);
+        panel.addSection(solicitud);
+        panel.addSection(datos);
+        panel.addSection(plazo);
+        panel.addSection(gestion);
+        panel.setFooter(crearFooterRecepcion());
+        return panel;
+    }
+
+    private JPanel crearPanelRecepcionConTab(final AppV2SideActionPanel panel) {
+        JPanel wrapper = new JPanel(null) {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                int panelX = PANEL_RECEPCION_TAB_OVERHANG;
+                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
+                tabPanelRecepcion.setBounds(
+                        0,
+                        tabY,
+                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
+                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+            }
+        };
+        wrapper.setOpaque(false);
+        wrapper.add(panel);
+        wrapper.add(tabPanelRecepcion);
+        wrapper.setMinimumSize(new Dimension(PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG, 0));
+        wrapper.setPreferredSize(new Dimension(PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG, 0));
+        return wrapper;
+    }
+
+    private JPanel crearFooterRecepcion() {
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setOpaque(false);
+        JLabel lbl = new JLabel("Panel informativo de solo lectura");
+        lbl.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lbl.setForeground(AppV2Theme.TEXT_SECONDARY);
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppV2Theme.BORDER));
+        footer.add(lbl, BorderLayout.CENTER);
+        return footer;
     }
 
     private void aplicarConfiguracionInicial() {
@@ -361,7 +483,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                btnVerDetalle.setEnabled(table.getSelectedRow() >= 0);
+                boolean haySeleccion = table.getSelectedRow() >= 0;
+                btnVerDetalle.setEnabled(haySeleccion);
+                if (haySeleccion) {
+                    mostrarPanelRecepcionSeleccionado();
+                } else {
+                    ocultarPanelRecepcion();
+                }
             }
         });
         table.addMouseListener(new MouseAdapter() {
@@ -369,6 +497,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2 && table.getSelectedRow() >= 0) {
                     abrirDetalleSeleccionado();
+                } else if (table.getSelectedRow() >= 0 && splitBandeja != null && !splitBandeja.isSideVisible()) {
+                    mostrarPanelRecepcionSeleccionado();
                 }
             }
         });
@@ -433,6 +563,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         spnLimite.setValue(200);
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
+        ocultarPanelRecepcion();
         tablePanel.setEmpty(true);
         lblResultado.setText(etapaBloqueada
                 ? "Filtros limpiados. La bandeja permanece filtrada por la etapa seleccionada."
@@ -440,6 +571,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void cargarTabla(List<ExpedienteBandejaDTO> expedientes) {
+        ocultarPanelRecepcion();
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
         for (ExpedienteBandejaDTO item : expedientes) {
@@ -476,6 +608,114 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         } else {
             lblResultado.setText(expedientes.size() + " expediente(s) encontrado(s). Seleccione uno y presione Ver detalle.");
         }
+    }
+
+    private void mostrarPanelRecepcionSeleccionado() {
+        final Long idExpediente = obtenerIdExpedienteSeleccionado();
+        if (idExpediente == null) {
+            ocultarPanelRecepcion();
+            return;
+        }
+        if (splitBandeja != null) {
+            splitBandeja.setSideVisible(true);
+        }
+        if (idExpediente.equals(idPanelRecepcionActual) && panelRecepcionCargado) {
+            return;
+        }
+        idPanelRecepcionActual = idExpediente;
+        panelRecepcionCargado = false;
+        final int sequence = ++panelRecepcionLoadSequence;
+        setPanelRecepcionLoading();
+
+        SwingWorker<ExpedienteConsolaDTO, Void> worker = new SwingWorker<ExpedienteConsolaDTO, Void>() {
+            @Override
+            protected ExpedienteConsolaDTO doInBackground() throws Exception {
+                return detalleService.obtenerConsolaPorExpediente(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (sequence != panelRecepcionLoadSequence || !idExpediente.equals(obtenerIdExpedienteSeleccionado())) {
+                    return;
+                }
+                try {
+                    cargarPanelRecepcion(get());
+                    panelRecepcionCargado = true;
+                } catch (Exception ex) {
+                    setValue(lblRecepcionExpediente, "No se pudo cargar");
+                    setValue(lblRecepcionEtapaEstado, mensajeError(ex));
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarPanelRecepcion(ExpedienteConsolaDTO expediente) {
+        setValue(lblRecepcionExpediente, expediente.getNumeroExpediente());
+        setValue(lblRecepcionFecha, formatDate(expediente.getFechaRecepcion()));
+        setValue(lblRecepcionCanal, expediente.getCanalRecepcion());
+        setValue(lblRecepcionTipoSolicitud, expediente.getTipoSolicitud());
+        setValue(lblRecepcionTramite, expediente.getNumeroTramiteDocumentario());
+        setValue(lblRecepcionTipoDocumento, expediente.getTipoDocumento());
+        setValue(lblRecepcionNumeroDocumento, expediente.getNumeroDocumento());
+        setValue(lblRecepcionProcedimiento, expediente.getProcedimiento());
+        setValue(lblRecepcionTitular, expediente.getTitular());
+        setValue(lblRecepcionRemitente, expediente.getRemitente());
+        setValue(lblRecepcionTipoActa, expediente.getTipoActa());
+        setValue(lblRecepcionNumeroActa, expediente.getNumeroActa());
+        setValue(lblRecepcionVencimiento, formatDate(expediente.getFechaVencimiento()));
+        setValue(lblRecepcionDias, descripcionPlazo(expediente.getDiasRestantes(), expediente.getFechaVencimiento()));
+        lblRecepcionDias.setForeground(colorPlazo(expediente.getDiasRestantes()));
+        setValue(lblRecepcionResponsable, expediente.getResponsableActual());
+        setValue(lblRecepcionEquipo, expediente.getEquipoActual());
+        setValue(lblRecepcionEtapaEstado,
+                DisplayNameMapperV2.etapa(expediente.getEtapaCodigo())
+                + " / "
+                + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()));
+        panelRecepcion.revalidate();
+        panelRecepcion.repaint();
+    }
+
+    private void setPanelRecepcionLoading() {
+        setValue(lblRecepcionExpediente, "Cargando...");
+        setValue(lblRecepcionEtapaEstado, "");
+        setValue(lblRecepcionFecha, "");
+        setValue(lblRecepcionCanal, "");
+        setValue(lblRecepcionTipoSolicitud, "");
+        setValue(lblRecepcionTramite, "");
+        setValue(lblRecepcionTipoDocumento, "");
+        setValue(lblRecepcionNumeroDocumento, "");
+        setValue(lblRecepcionProcedimiento, "");
+        setValue(lblRecepcionTitular, "");
+        setValue(lblRecepcionRemitente, "");
+        setValue(lblRecepcionTipoActa, "");
+        setValue(lblRecepcionNumeroActa, "");
+        setValue(lblRecepcionVencimiento, "");
+        setValue(lblRecepcionDias, "");
+        setValue(lblRecepcionResponsable, "");
+        setValue(lblRecepcionEquipo, "");
+    }
+
+    private void ocultarPanelRecepcion() {
+        panelRecepcionCargado = false;
+        idPanelRecepcionActual = null;
+        panelRecepcionLoadSequence++;
+        tabPanelRecepcion.setExpanded(false);
+        tabPanelRecepcion.setToolTipText("Expandir panel de recepción");
+        if (splitBandeja != null) {
+            splitBandeja.setSideVisible(false);
+        }
+    }
+
+    private void alternarExpansionPanelRecepcion() {
+        if (splitBandeja == null) {
+            return;
+        }
+        boolean expandido = splitBandeja.toggleSideExpanded();
+        tabPanelRecepcion.setExpanded(expandido);
+        tabPanelRecepcion.setToolTipText(expandido
+                ? "Restaurar panel de recepción"
+                : "Expandir panel de recepción");
     }
 
     private void abrirDetalleSeleccionado() {
@@ -633,6 +873,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return dateTime == null ? "" : DATE_TIME_FORMAT.format(dateTime);
     }
 
+    private static String formatDate(LocalDate value) {
+        return value == null ? "" : DATE_FORMAT.format(value);
+    }
+
     private static String formatFechaSolicitud(ExpedienteBandejaDTO item) {
         if (item.getFechaRecepcion() != null) {
             return DATE_FORMAT.format(item.getFechaRecepcion());
@@ -641,6 +885,60 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return DATE_FORMAT.format(item.getFechaRegistro().toLocalDate());
         }
         return "";
+    }
+
+    private static JLabel valueLabel() {
+        JLabel label = new JLabel("-");
+        label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        label.setForeground(AppV2Theme.TEXT_PRIMARY);
+        label.setToolTipText(null);
+        return label;
+    }
+
+    private static void setValue(JLabel label, String value) {
+        String safeValue = safe(value);
+        label.setText(safeValue);
+        label.setToolTipText("-".equals(safeValue) ? null : safeValue);
+        label.setForeground(AppV2Theme.TEXT_PRIMARY);
+    }
+
+    private static String safe(String value) {
+        return value == null || value.trim().isEmpty() ? "-" : value.trim();
+    }
+
+    private static String mensajeError(Exception ex) {
+        String message = ex.getMessage();
+        if (message == null && ex.getCause() != null) {
+            message = ex.getCause().getMessage();
+        }
+        return message == null ? "No se pudo cargar el panel de recepción." : message;
+    }
+
+    private static Color colorPlazo(Long dias) {
+        if (dias == null) {
+            return AppV2Theme.TEXT_SECONDARY;
+        }
+        if (dias < 0) {
+            return AppV2Theme.ERROR;
+        }
+        if (dias <= 3) {
+            return AppV2Theme.WARNING;
+        }
+        return AppV2Theme.SUCCESS;
+    }
+
+    private static String descripcionPlazo(Long dias, LocalDate fechaVencimiento) {
+        String fecha = fechaVencimiento == null ? "sin fecha configurada" : DATE_FORMAT.format(fechaVencimiento);
+        if (dias == null) {
+            return "Sin plazo de vencimiento (" + fecha + ")";
+        }
+        if (dias < 0) {
+            return "Vencido hace " + Math.abs(dias) + " día(s). Vencimiento: " + fecha;
+        }
+        if (dias == 0) {
+            return "Vence hoy. Vencimiento: " + fecha;
+        }
+        return dias + " día(s) restantes. Vencimiento: " + fecha;
     }
 
     private class BandejaCellRenderer extends DefaultTableCellRenderer {

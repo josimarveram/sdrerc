@@ -6,14 +6,11 @@ import com.sdrerc.domain.dto.sdrercapp.AccionPermitidaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteTimelineDTO;
-import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
-import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
-import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
-import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.EmptyStatePanelV2;
+import com.sdrerc.ui.appv2.components.SideInfoPanelV2;
 import com.sdrerc.ui.appv2.components.StageProgressPanelV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -44,6 +41,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -53,10 +51,6 @@ import javax.swing.table.DefaultTableModel;
 
 public class DlgConsolaExpedienteV2 extends JDialog {
 
-    private static final int PANEL_RECEPCION_ANCHO_MINIMO = 380;
-    private static final int PANEL_RECEPCION_ANCHO_NORMAL = 430;
-    private static final int PANEL_RECEPCION_TAB_OVERHANG = 18;
-    private static final int PANEL_RECEPCION_TAB_TOP = 18;
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -76,26 +70,8 @@ public class DlgConsolaExpedienteV2 extends JDialog {
     private final JPanel datosGenerales = new JPanel(new BorderLayout(12, 12));
     private final JPanel documentosPanel = new JPanel(new GridLayout(0, 2, 12, 12));
     private final JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-    private final AppV2NotebookToggleTab tabPanelRecepcion = new AppV2NotebookToggleTab();
-    private AppV2OperationalSplitPanel splitConsola;
-    private AppV2SideActionPanel panelRecepcion;
+    private final JPanel sideContainer = new JPanel(new BorderLayout());
     private final JPanel avisoAsociadoPanel = new JPanel(new BorderLayout(10, 0));
-    private final JLabel lblRecepcionFecha = valueLabel();
-    private final JLabel lblRecepcionCanal = valueLabel();
-    private final JLabel lblRecepcionTipoSolicitud = valueLabel();
-    private final JLabel lblRecepcionTramite = valueLabel();
-    private final JLabel lblRecepcionTipoDocumento = valueLabel();
-    private final JLabel lblRecepcionNumeroDocumento = valueLabel();
-    private final JLabel lblRecepcionProcedimiento = valueLabel();
-    private final JLabel lblRecepcionTitular = valueLabel();
-    private final JLabel lblRecepcionRemitente = valueLabel();
-    private final JLabel lblRecepcionTipoActa = valueLabel();
-    private final JLabel lblRecepcionNumeroActa = valueLabel();
-    private final JLabel lblRecepcionVencimiento = valueLabel();
-    private final JLabel lblRecepcionDias = valueLabel();
-    private final JLabel lblRecepcionResponsable = valueLabel();
-    private final JLabel lblRecepcionEquipo = valueLabel();
-    private final JLabel lblRecepcionEtapaEstado = valueLabel();
     private final DefaultTableModel timelineModel = new DefaultTableModel(
             new Object[]{"Fecha", "Acción / Movimiento", "Usuario", "Origen -> Destino", "Comentario / Motivo"},
             0) {
@@ -177,7 +153,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         return header;
     }
 
-    private AppV2OperationalSplitPanel crearCentro() {
+    private JSplitPane crearCentro() {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         tabs.addTab("Detalles", crearDetallesTab());
@@ -186,16 +162,15 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         tabs.addTab("Timeline / Historial", crearTimelineTab());
         tabs.addTab("Acciones disponibles", crearAccionesTab());
 
-        panelRecepcion = crearPanelRecepcion();
-        JPanel panelRecepcionConTab = crearPanelRecepcionConTab(panelRecepcion);
-        splitConsola = new AppV2OperationalSplitPanel(
-                tabs,
-                panelRecepcionConTab,
-                0,
-                PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
-                PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG);
-        splitConsola.setSideVisible(true);
-        return splitConsola;
+        sideContainer.setOpaque(false);
+        sideContainer.setPreferredSize(new Dimension(340, 0));
+        sideContainer.add(new EmptyStatePanelV2("Resumen", "Cargando panel lateral..."), BorderLayout.CENTER);
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tabs, sideContainer);
+        split.setResizeWeight(0.72d);
+        split.setBorder(null);
+        split.setOpaque(false);
+        return split;
     }
 
     private JScrollPane crearDetallesTab() {
@@ -298,85 +273,6 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         return scroll;
     }
 
-    private AppV2SideActionPanel crearPanelRecepcion() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Recepción");
-        panel.setAccentColor(AppV2Theme.PRIMARY);
-        tabPanelRecepcion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
-        tabPanelRecepcion.setExpanded(false);
-        tabPanelRecepcion.setToolTipText("Expandir panel de recepción");
-        tabPanelRecepcion.addActionListener(e -> alternarExpansionPanelRecepcion());
-
-        AppV2SideSectionPanel solicitud = new AppV2SideSectionPanel("Solicitud recibida");
-        solicitud.addRow("Fecha", lblRecepcionFecha);
-        solicitud.addRow("Canal", lblRecepcionCanal);
-        solicitud.addRow("Tipo solicitud", lblRecepcionTipoSolicitud);
-        solicitud.addRow("Trámite Web", lblRecepcionTramite);
-        solicitud.addRow("Tipo documento", lblRecepcionTipoDocumento);
-        solicitud.addRow("N° Documento", lblRecepcionNumeroDocumento);
-
-        AppV2SideSectionPanel datos = new AppV2SideSectionPanel("Datos registrales");
-        datos.addRow("Procedimiento", lblRecepcionProcedimiento);
-        datos.addRow("Titular", lblRecepcionTitular);
-        datos.addRow("Remitente", lblRecepcionRemitente);
-        datos.addRow("Tipo acta", lblRecepcionTipoActa);
-        datos.addRow("N° Acta", lblRecepcionNumeroActa);
-
-        AppV2SideSectionPanel plazo = new AppV2SideSectionPanel("Plazo");
-        plazo.addRow("Vencimiento", lblRecepcionVencimiento);
-        plazo.addRow("Días", lblRecepcionDias);
-
-        AppV2SideSectionPanel gestion = new AppV2SideSectionPanel("Gestión actual");
-        gestion.addRow("Responsable", lblRecepcionResponsable);
-        gestion.addRow("Equipo", lblRecepcionEquipo);
-        gestion.addRow("Etapa / estado", lblRecepcionEtapaEstado);
-
-        panel.addSection(solicitud);
-        panel.addSection(datos);
-        panel.addSection(plazo);
-        panel.addSection(gestion);
-        panel.setFooter(crearFooterRecepcion());
-        return panel;
-    }
-
-    private JPanel crearPanelRecepcionConTab(final AppV2SideActionPanel panel) {
-        JPanel wrapper = new JPanel(null) {
-            @Override
-            public void doLayout() {
-                int width = getWidth();
-                int height = getHeight();
-                int panelX = PANEL_RECEPCION_TAB_OVERHANG;
-                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
-                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
-                tabPanelRecepcion.setBounds(
-                        0,
-                        tabY,
-                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
-                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
-            }
-        };
-        wrapper.setOpaque(false);
-        wrapper.add(panel);
-        wrapper.add(tabPanelRecepcion);
-        wrapper.setMinimumSize(new Dimension(
-                PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
-                0));
-        wrapper.setPreferredSize(new Dimension(
-                PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG,
-                0));
-        return wrapper;
-    }
-
-    private JPanel crearFooterRecepcion() {
-        JPanel footer = new JPanel(new BorderLayout());
-        footer.setOpaque(false);
-        JLabel lbl = new JLabel("Panel informativo de solo lectura");
-        lbl.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lbl.setForeground(AppV2Theme.TEXT_SECONDARY);
-        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppV2Theme.BORDER));
-        footer.add(lbl, BorderLayout.CENTER);
-        return footer;
-    }
-
     private JPanel crearFooter() {
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         footer.setOpaque(false);
@@ -459,7 +355,6 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         panelBadges.removeAll();
         panelBadges.add(StatusBadgeV2.forEtapa(expediente.getEtapaCodigo()));
         panelBadges.add(StatusBadgeV2.forEstado(expediente.getEstadoCodigo()));
-        panelBadges.add(StatusBadgeV2.forDias(expediente.getDiasRestantes()));
         panelBadges.add(expediente.isRequierePublicacion()
                 ? new BadgeV2("Requiere publicación", AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING)
                 : new BadgeV2("Sin publicación pendiente", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY));
@@ -852,41 +747,21 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             List<AccionPermitidaDTO> acciones,
             List<ExpedienteRelacionadoDTO> asociados,
             ExpedienteRelacionadoDTO principalAsociado) {
-        setValue(lblRecepcionFecha, formatDate(expediente.getFechaRecepcion()));
-        setValue(lblRecepcionCanal, expediente.getCanalRecepcion());
-        setValue(lblRecepcionTipoSolicitud, expediente.getTipoSolicitud());
-        setValue(lblRecepcionTramite, expediente.getNumeroTramiteDocumentario());
-        setValue(lblRecepcionTipoDocumento, expediente.getTipoDocumento());
-        setValue(lblRecepcionNumeroDocumento, expediente.getNumeroDocumento());
-        setValue(lblRecepcionProcedimiento, expediente.getProcedimiento());
-        setValue(lblRecepcionTitular, expediente.getTitular());
-        setValue(lblRecepcionRemitente, expediente.getRemitente());
-        setValue(lblRecepcionTipoActa, expediente.getTipoActa());
-        setValue(lblRecepcionNumeroActa, expediente.getNumeroActa());
-        setValue(lblRecepcionVencimiento, formatDate(expediente.getFechaVencimiento()));
-        setValue(lblRecepcionDias, descripcionPlazo(expediente.getDiasRestantes(), expediente.getFechaVencimiento()));
-        lblRecepcionDias.setForeground(colorPlazo(expediente.getDiasRestantes()));
-        setValue(lblRecepcionResponsable, expediente.getResponsableActual());
-        setValue(lblRecepcionEquipo, expediente.getEquipoActual());
-        setValue(lblRecepcionEtapaEstado,
-                DisplayNameMapperV2.etapa(expediente.getEtapaCodigo())
-                + " / "
-                + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()));
-        if (panelRecepcion != null) {
-            panelRecepcion.revalidate();
-            panelRecepcion.repaint();
-        }
-    }
-
-    private void alternarExpansionPanelRecepcion() {
-        if (splitConsola == null) {
-            return;
-        }
-        boolean expandido = splitConsola.toggleSideExpanded();
-        tabPanelRecepcion.setExpanded(expandido);
-        tabPanelRecepcion.setToolTipText(expandido
-                ? "Restaurar panel de recepción"
-                : "Expandir panel de recepción");
+        sideContainer.removeAll();
+        SideInfoPanelV2 side = new SideInfoPanelV2("Resumen del expediente");
+        side.addItem("Responsable actual", expediente.getResponsableActual(), expediente.getEquipoActual());
+        side.addItem("Última acción", timeline.isEmpty() ? "Sin historial" : DisplayNameMapperV2.accion(timeline.get(0).getMovimiento()), timeline.isEmpty() ? "" : formatDateTime(timeline.get(0).getFechaMovimiento()));
+        side.addItem("Documentos", value(expediente.getTotalDocumentos()), "Total asociado al expediente");
+        side.addItem("Documentos duplicados", value(asociados == null ? 0 : asociados.size()),
+                principalAsociado == null ? "Asociados confirmados" : "Asociado a principal");
+        side.addItem("Observaciones", value(expediente.getObservacionesPendientes()), "Pendientes de subsanación");
+        side.addItem("Notificación / cargo", expediente.getTotalNotificaciones() + " / " + expediente.getTotalCargos(), "Notificaciones y cargos registrados");
+        side.addItem("Publicación", expediente.isRequierePublicacion() ? "Requiere publicación" : "Sin pendiente", "Indicador de publicación");
+        side.addItem("Expediente digital", expediente.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente", "Completitud digital");
+        side.addItem("Acciones visibles", String.valueOf(acciones.size()), "Solo informativas");
+        sideContainer.add(side, BorderLayout.CENTER);
+        sideContainer.revalidate();
+        sideContainer.repaint();
     }
 
     private void alternarMaximizarConsola() {
@@ -969,21 +844,6 @@ public class DlgConsolaExpedienteV2 extends JDialog {
 
     private static String safe(String value) {
         return value == null || value.isEmpty() ? "-" : value;
-    }
-
-    private static JLabel valueLabel() {
-        JLabel label = new JLabel("-");
-        label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        label.setForeground(AppV2Theme.TEXT_PRIMARY);
-        label.setToolTipText(null);
-        return label;
-    }
-
-    private static void setValue(JLabel label, String value) {
-        String safeValue = safe(value);
-        label.setText(safeValue);
-        label.setToolTipText("-".equals(safeValue) ? null : safeValue);
-        label.setForeground(AppV2Theme.TEXT_PRIMARY);
     }
 
     private static Color colorPlazo(Long dias) {
