@@ -93,6 +93,8 @@ public class CargaDiariaArchivoParserService {
                 CargaDiariaPreviewDTO dto = new CargaDiariaPreviewDTO();
                 dto.setFila(rowIndex + 1);
                 dto.setNumeroTramite(valorExcel(row, columnas.get("numeroTramite"), formatter));
+                dto.setCanalRecepcion(valorExcel(row, columnas.get("canalRecepcion"), formatter));
+                dto.setNumeroExpedienteDigitalSitd(valorExcel(row, columnas.get("numeroExpedienteDigitalSitd"), formatter));
                 dto.setNumeroDocumento(valorExcel(row, columnas.get("numeroDocumento"), formatter));
                 dto.setTipoProcedimiento(valorExcel(row, columnas.get("tipoProcedimiento"), formatter));
                 dto.setTipoSolicitud(valorExcel(row, columnas.get("tipoSolicitud"), formatter));
@@ -147,6 +149,8 @@ public class CargaDiariaArchivoParserService {
                 CargaDiariaPreviewDTO dto = new CargaDiariaPreviewDTO();
                 dto.setFila(fila);
                 dto.setNumeroTramite(valorCsv(valores, columnas.get("numeroTramite")));
+                dto.setCanalRecepcion(valorCsv(valores, columnas.get("canalRecepcion")));
+                dto.setNumeroExpedienteDigitalSitd(valorCsv(valores, columnas.get("numeroExpedienteDigitalSitd")));
                 dto.setNumeroDocumento(valorCsv(valores, columnas.get("numeroDocumento")));
                 dto.setTipoProcedimiento(valorCsv(valores, columnas.get("tipoProcedimiento")));
                 dto.setTipoSolicitud(valorCsv(valores, columnas.get("tipoSolicitud")));
@@ -332,7 +336,11 @@ public class CargaDiariaArchivoParserService {
                 dto.setTipoDocumentoIdentidadTitular("RUC".equalsIgnoreCase(tipoSolicitante) ? null : tipoSolicitante);
             }
         }
-        dto.setCanalRecepcion(resolverCanalRecepcion(dto));
+        if (hasText(dto.getCanalRecepcion())) {
+            dto.setCanalRecepcion(resolverCodigoCanalRecepcion(dto.getCanalRecepcion()));
+        } else {
+            dto.setCanalRecepcion(resolverCanalRecepcion(dto));
+        }
     }
 
     private String resolverCanalRecepcion(CargaDiariaPreviewDTO dto) {
@@ -355,6 +363,32 @@ public class CargaDiariaArchivoParserService {
             return "MESA_PARTES_PRESENCIAL";
         }
         return null;
+    }
+
+    private String resolverCodigoCanalRecepcion(String value) {
+        String normalized = normalizarTextoLibre(value);
+        if (!hasText(normalized)) {
+            return null;
+        }
+        if ("INTERNO".equals(normalized)) {
+            return "INTERNO";
+        }
+        if ("MPV".equals(normalized)
+                || "MESA PARTES VIRTUAL".equals(normalized)
+                || "MESA DE PARTES VIRTUAL".equals(normalized)) {
+            return "MESA_PARTES_VIRTUAL";
+        }
+        if ("MP PRESENCIAL".equals(normalized)
+                || "MESA PARTES PRESENCIAL".equals(normalized)
+                || "MESA DE PARTES PRESENCIAL".equals(normalized)) {
+            return "MESA_PARTES_PRESENCIAL";
+        }
+        if ("OR".equals(normalized)
+                || "OR PRESENCIAL".equals(normalized)
+                || "OFICINA REGISTRAL".equals(normalized)) {
+            return "OR_PRESENCIAL";
+        }
+        return normalized.replace(' ', '_');
     }
 
     private boolean esOrigenInternoReniec(String solicitadoPor) {
@@ -465,6 +499,25 @@ public class CargaDiariaArchivoParserService {
                 "N TRAMITE WEB",
                 "NRO TRAMITE WEB",
                 "NUMERO TRAMITE WEB"));
+        aliases.put("canalRecepcion", normalizarLista(
+                "CANAL RECEPCION",
+                "CANAL RECEPCIÓN",
+                "CANAL_RECEPCION",
+                "CANAL DE RECEPCION",
+                "CANAL DE RECEPCIÓN",
+                "CANAL INGRESO",
+                "CANAL DE INGRESO"));
+        aliases.put("numeroExpedienteDigitalSitd", normalizarLista(
+                "N° EXPEDIENTE DIGITAL SITD",
+                "Nº EXPEDIENTE DIGITAL SITD",
+                "N EXPEDIENTE DIGITAL SITD",
+                "NUMERO EXPEDIENTE DIGITAL SITD",
+                "NUMERO DE EXPEDIENTE DIGITAL SITD",
+                "EXPEDIENTE DIGITAL SITD",
+                "N° EXPEDIENTE SITD",
+                "N EXPEDIENTE SITD",
+                "NUMERO EXPEDIENTE SITD",
+                "EXPEDIENTE SITD"));
         aliases.put("numeroDocumento", normalizarLista(
                 "NUMERO_DOCUMENTO",
                 "NUMERO DOCUMENTO",
@@ -662,6 +715,12 @@ public class CargaDiariaArchivoParserService {
                 }
             }
             if (columnas.containsKey("observacionInicial")) {
+                score += 1;
+            }
+            if (columnas.containsKey("canalRecepcion")) {
+                score += 1;
+            }
+            if (columnas.containsKey("numeroExpedienteDigitalSitd")) {
                 score += 1;
             }
             return score;

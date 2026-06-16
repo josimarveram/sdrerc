@@ -16,6 +16,7 @@ public class CargaDiariaPreviewDTO {
     private String titular;
     private String remitente;
     private String canalRecepcion;
+    private String numeroExpedienteDigitalSitd;
     private String tipoDocumentoIdentidadSolicitante;
     private String numeroDocumentoIdentidadSolicitante;
     private String tipoDocumentoIdentidadTitular;
@@ -127,6 +128,14 @@ public class CargaDiariaPreviewDTO {
 
     public void setCanalRecepcion(String canalRecepcion) {
         this.canalRecepcion = trimToNull(canalRecepcion);
+    }
+
+    public String getNumeroExpedienteDigitalSitd() {
+        return numeroExpedienteDigitalSitd;
+    }
+
+    public void setNumeroExpedienteDigitalSitd(String numeroExpedienteDigitalSitd) {
+        this.numeroExpedienteDigitalSitd = trimToNull(numeroExpedienteDigitalSitd);
     }
 
     public String getTipoDocumentoIdentidadSolicitante() {

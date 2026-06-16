@@ -128,9 +128,10 @@ public class AsignacionExpedienteDAO {
             sql.append("OR UPPER(NVL(").append(nombrePersona("ps")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.observacion, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(esol.numero_expediente_digital_sitd, '')) LIKE ? ");
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase(Locale.ROOT) + "%";
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < 9; i++) {
                 params.add(pattern);
             }
         }

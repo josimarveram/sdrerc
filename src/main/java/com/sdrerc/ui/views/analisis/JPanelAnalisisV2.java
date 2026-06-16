@@ -119,7 +119,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final DocumentoAnalisisService documentoService;
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
 
-    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular, acta o responsable", 28);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SITD, titular, acta o responsable", 28);
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
     private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();

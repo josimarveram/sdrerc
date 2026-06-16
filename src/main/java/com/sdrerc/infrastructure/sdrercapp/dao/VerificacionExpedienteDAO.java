@@ -131,8 +131,9 @@ public class VerificacionExpedienteDAO {
             sql.append("OR UPPER(NVL(ea.numero_acta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(esol.numero_expediente_digital_sitd, '')) LIKE ? ");
             sql.append(") ");
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < 7; i++) {
                 params.add(pattern);
             }
         }

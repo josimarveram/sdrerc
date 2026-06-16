@@ -347,18 +347,20 @@ public class ExpedienteRegistroDAO {
             idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, codigoCanal), "canal " + nombreVisualCanal(codigoCanal));
         }
         String sql = "INSERT INTO expediente_solicitud ("
-                + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, fecha_recepcion, "
-                + "asunto, observacion, es_tramite_virtual, potencial_duplicado, activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)";
+                + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
+                + "numero_expediente_digital_sitd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
+                + "potencial_duplicado, activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             setLongOrNull(ps, 2, idCanal);
             setLongOrNull(ps, 3, idPersonaSolicitante);
             ps.setString(4, item.getNumeroTramite());
-            ps.setDate(5, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
-            ps.setString(6, item.getTipoProcedimiento());
-            ps.setString(7, limitar(observacionSolicitud(item), 1000));
-            ps.setInt(8, item.isPosibleDuplicado() ? 1 : 0);
+            ps.setString(5, item.getNumeroExpedienteDigitalSitd());
+            ps.setDate(6, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
+            ps.setString(7, item.getTipoProcedimiento());
+            ps.setString(8, limitar(observacionSolicitud(item), 1000));
+            ps.setInt(9, item.isPosibleDuplicado() ? 1 : 0);
             ps.executeUpdate();
         }
     }
@@ -583,7 +585,8 @@ public class ExpedienteRegistroDAO {
         StringBuilder sb = new StringBuilder();
         append(sb, "Tipo de solicitud", item.getTipoSolicitud());
         append(sb, "Tipo de acta informado", item.getTipoActa());
-        append(sb, "Canal recepción derivado", nombreVisualCanal(item.getCanalRecepcion()));
+        append(sb, "Canal recepción", nombreVisualCanal(item.getCanalRecepcion()));
+        append(sb, "N° expediente digital SITD", item.getNumeroExpedienteDigitalSitd());
         append(sb, "Tipo documento identidad solicitante", item.getTipoDocumentoIdentidadSolicitante());
         append(sb, "Documento identidad solicitante", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadSolicitante()));
         append(sb, "Tipo documento identidad titular", item.getTipoDocumentoIdentidadTitular());
@@ -679,10 +682,14 @@ public class ExpedienteRegistroDAO {
                 .replace("Ó", "O")
                 .replace("Ú", "U")
                 .replaceAll("\\s+", " ");
-        if ("MPV".equals(normalized) || "MESA PARTES VIRTUAL".equals(normalized)) {
+        if ("MPV".equals(normalized)
+                || "MESA PARTES VIRTUAL".equals(normalized)
+                || "MESA DE PARTES VIRTUAL".equals(normalized)) {
             return "MESA_PARTES_VIRTUAL";
         }
-        if ("MP PRESENCIAL".equals(normalized) || "MESA PARTES PRESENCIAL".equals(normalized)) {
+        if ("MP PRESENCIAL".equals(normalized)
+                || "MESA PARTES PRESENCIAL".equals(normalized)
+                || "MESA DE PARTES PRESENCIAL".equals(normalized)) {
             return "MESA_PARTES_PRESENCIAL";
         }
         if ("OR".equals(normalized) || "OR PRESENCIAL".equals(normalized)) {
@@ -697,13 +704,13 @@ public class ExpedienteRegistroDAO {
         }
         String normalized = resolverCodigoCanalRecepcion(codigo);
         if ("MESA_PARTES_VIRTUAL".equals(normalized)) {
-            return "MPV";
+            return "Mesa de partes virtual";
         }
         if ("MESA_PARTES_PRESENCIAL".equals(normalized)) {
-            return "MP presencial";
+            return "Mesa de partes presencial";
         }
         if ("OR_PRESENCIAL".equals(normalized)) {
-            return "OR";
+            return "OR Presencial";
         }
         if ("INTERNO".equals(normalized)) {
             return "Interno";

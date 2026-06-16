@@ -67,6 +67,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 "TIPO DOCUMENTO IDENTIDAD SOLICITANTE",
                 "N° DOCUMENTO IDENTIDAD SOLICITANTE",
                 "N° TRÁMITE WEB",
+                "CANAL RECEPCIÓN",
+                "N° EXPEDIENTE DIGITAL SITD",
                 "TIPO DOCUMENTO",
                 "N° DOCUMENTO",
                 "PROCEDIMIENTO REGISTRAL",
@@ -179,6 +181,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 360,
                 340,
                 180,
+                240,
+                260,
                 190,
                 180,
                 260,
@@ -434,6 +438,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 safe(item.getTipoDocumentoIdentidadSolicitante()),
                 documentoVisual(item.getNumeroDocumentoIdentidadSolicitante()),
                 safe(item.getNumeroTramite()),
+                canalVisual(item.getCanalRecepcion()),
+                safe(item.getNumeroExpedienteDigitalSitd()),
                 safe(item.getTipoDocumento()),
                 safe(item.getNumeroDocumento()),
                 safe(item.getTipoProcedimiento()),
@@ -529,6 +535,32 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String documentoVisual(String value) {
         return value == null || value.trim().isEmpty() || "SIN DNI".equalsIgnoreCase(value.trim()) ? "" : value.trim();
+    }
+
+    private static String canalVisual(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "";
+        }
+        String normalized = value.trim().toUpperCase()
+                .replace('Á', 'A')
+                .replace('É', 'E')
+                .replace('Í', 'I')
+                .replace('Ó', 'O')
+                .replace('Ú', 'U')
+                .replaceAll("\\s+", "_");
+        if ("INTERNO".equals(normalized)) {
+            return "Interno";
+        }
+        if ("MESA_PARTES_PRESENCIAL".equals(normalized) || "MESA_DE_PARTES_PRESENCIAL".equals(normalized)) {
+            return "Mesa de partes presencial";
+        }
+        if ("MESA_PARTES_VIRTUAL".equals(normalized) || "MESA_DE_PARTES_VIRTUAL".equals(normalized) || "MPV".equals(normalized)) {
+            return "Mesa de partes virtual";
+        }
+        if ("OR".equals(normalized) || "OR_PRESENCIAL".equals(normalized)) {
+            return "OR Presencial";
+        }
+        return value.trim();
     }
 
     private static File asegurarExtensionXlsx(File file) {

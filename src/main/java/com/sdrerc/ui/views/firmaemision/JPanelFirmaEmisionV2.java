@@ -70,7 +70,7 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     private final FirmaEmisionExpedienteService firmaEmisionService;
     private final DocumentoFirmaService documentoFirmaService;
 
-    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite, titular o resolución", 28);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SITD, titular o resolución", 28);
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");

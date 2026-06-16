@@ -40,15 +40,17 @@ public class CargaDiariaPlantillaService {
     private static final int COL_TIPO_DOC_SOLICITANTE = 3;
     private static final int COL_NUM_DOC_SOLICITANTE = 4;
     private static final int COL_TRAMITE_WEB = 5;
-    private static final int COL_TIPO_DOCUMENTO = 6;
-    private static final int COL_NUM_DOCUMENTO = 7;
-    private static final int COL_PROCEDIMIENTO = 8;
-    private static final int COL_TIPO_ACTA = 9;
-    private static final int COL_NUM_ACTA = 10;
-    private static final int COL_TITULAR = 11;
-    private static final int COL_TIPO_DOC_TITULAR = 12;
-    private static final int COL_NUM_DOC_TITULAR = 13;
-    private static final int COL_OBSERVACION = 14;
+    private static final int COL_CANAL_RECEPCION = 6;
+    private static final int COL_EXPEDIENTE_DIGITAL_SITD = 7;
+    private static final int COL_TIPO_DOCUMENTO = 8;
+    private static final int COL_NUM_DOCUMENTO = 9;
+    private static final int COL_PROCEDIMIENTO = 10;
+    private static final int COL_TIPO_ACTA = 11;
+    private static final int COL_NUM_ACTA = 12;
+    private static final int COL_TITULAR = 13;
+    private static final int COL_TIPO_DOC_TITULAR = 14;
+    private static final int COL_NUM_DOC_TITULAR = 15;
+    private static final int COL_OBSERVACION = 16;
 
     private static final String[] COLUMNAS = {
         "TIPO DE SOLICITUD",
@@ -57,6 +59,8 @@ public class CargaDiariaPlantillaService {
         "TIPO DOCUMENTO IDENTIDAD SOLICITANTE",
         "N° DOCUMENTO IDENTIDAD SOLICITANTE",
         "N° TRÁMITE WEB",
+        "CANAL RECEPCIÓN",
+        "N° EXPEDIENTE DIGITAL SITD",
         "TIPO DOCUMENTO",
         "N° DOCUMENTO",
         "PROCEDIMIENTO REGISTRAL",
@@ -69,12 +73,18 @@ public class CargaDiariaPlantillaService {
     };
 
     private static final int[] ANCHOS = {
-        22, 20, 36, 30, 32, 28, 22, 28, 34, 22, 20, 38, 28, 30, 44
+        22, 20, 36, 30, 32, 28, 30, 32, 22, 28, 34, 22, 20, 38, 28, 30, 44
     };
 
     private static final String[] CATALOGO_TIPO_SOLICITUD = {"PARTE", "OFICIO"};
     private static final String[] CATALOGO_IDENTIDAD_SOLICITANTE = {"SIN DNI", "DNI", "RUC", "CE", "PASAPORTE"};
     private static final String[] CATALOGO_IDENTIDAD_TITULAR = {"SIN DNI", "DNI", "CE", "PASAPORTE"};
+    private static final String[] CATALOGO_CANAL_RECEPCION = {
+        "Interno",
+        "Mesa de partes presencial",
+        "Mesa de partes virtual",
+        "OR Presencial"
+    };
     private static final String[] CATALOGO_PROCEDIMIENTO = {
         "Rectificación administrativa",
         "Título de Nacionalidad",
@@ -151,7 +161,8 @@ public class CargaDiariaPlantillaService {
         crearCatalogo(workbook, sheet, 3, "CAT_PROCEDIMIENTO", "PROCEDIMIENTO REGISTRAL", CATALOGO_PROCEDIMIENTO);
         crearCatalogo(workbook, sheet, 4, "CAT_TIPO_ACTA", "TIPO DE ACTA", CATALOGO_TIPO_ACTA);
         crearCatalogo(workbook, sheet, 5, "CAT_TIPO_DOCUMENTO", "TIPO DOCUMENTO", CATALOGO_TIPO_DOCUMENTO);
-        for (int i = 0; i < 6; i++) {
+        crearCatalogo(workbook, sheet, 6, "CAT_CANAL_RECEPCION", "CANAL RECEPCIÓN", CATALOGO_CANAL_RECEPCION);
+        for (int i = 0; i < 7; i++) {
             sheet.autoSizeColumn(i);
         }
     }
@@ -179,6 +190,7 @@ public class CargaDiariaPlantillaService {
         DataValidationHelper helper = sheet.getDataValidationHelper();
         aplicarLista(sheet, helper, COL_TIPO_SOLICITUD, "CAT_TIPO_SOLICITUD");
         aplicarLista(sheet, helper, COL_TIPO_DOC_SOLICITANTE, "CAT_IDENTIDAD_SOLICITANTE");
+        aplicarLista(sheet, helper, COL_CANAL_RECEPCION, "CAT_CANAL_RECEPCION");
         aplicarLista(sheet, helper, COL_TIPO_DOCUMENTO, "CAT_TIPO_DOCUMENTO");
         aplicarLista(sheet, helper, COL_PROCEDIMIENTO, "CAT_PROCEDIMIENTO");
         aplicarLista(sheet, helper, COL_TIPO_ACTA, "CAT_TIPO_ACTA");
@@ -272,9 +284,12 @@ public class CargaDiariaPlantillaService {
             "Las columnas de numeros, tramites, actas y documentos se generan como texto para conservar ceros a la izquierda.",
             "La plantilla valida en la celda el numero de documento de identidad segun el tipo seleccionado.",
             "N° TRAMITE WEB puede quedar como SIN TRAMITE si no existe referencia web.",
-            "Si N° TRAMITE WEB contiene numeros, el canal se deriva como MPV.",
-            "Si N° TRAMITE WEB es SIN TRAMITE y el documento del solicitante contiene numeros, el canal se deriva como MP PRESENCIAL.",
-            "Si N° TRAMITE WEB es SIN TRAMITE y el documento del solicitante esta vacio, SOLICITADO POR permite derivar OR o INTERNO segun el origen RENIEC informado.",
+            "CANAL RECEPCIÓN permite seleccionar Interno, Mesa de partes presencial, Mesa de partes virtual u OR Presencial.",
+            "Si CANAL RECEPCIÓN queda vacio, el importador mantiene la derivacion automatica por tramite, documento del solicitante y origen informado.",
+            "Si N° TRAMITE WEB contiene numeros y CANAL RECEPCIÓN esta vacio, el canal se deriva como MPV.",
+            "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante contiene numeros, el canal se deriva como MP PRESENCIAL.",
+            "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante esta vacio, SOLICITADO POR permite derivar OR o INTERNO segun el origen RENIEC informado.",
+            "N° EXPEDIENTE DIGITAL SITD es la referencia externa del Sistema Integral de Tramite Documentario; no reemplaza el numero de expediente SDRERC.",
             "N° DOCUMENTO corresponde al numero del documento recibido y se guarda como metadata documental.",
             "TIPO DE SOLICITUD debe corresponder a Parte u Oficio segun el documento recibido.",
             "PROCEDIMIENTO REGISTRAL, TIPO DE ACTA, TIPO DOCUMENTO y TIPO DE SOLICITUD tienen lista desplegable en la plantilla.",
