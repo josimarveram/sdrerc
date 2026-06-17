@@ -1,5 +1,6 @@
 package com.sdrerc.ui.appv2;
 
+import com.sdrerc.ui.appv2.components.AppV2CopyTextSupport;
 import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2SidebarCollapseButton;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -70,6 +71,7 @@ public class MenuPrincipalV2 extends JFrame {
 
     public MenuPrincipalV2() {
         configurarVentana();
+        AppV2CopyTextSupport.installForWindow(this);
         configurarLayout();
         mostrarInicio();
     }
