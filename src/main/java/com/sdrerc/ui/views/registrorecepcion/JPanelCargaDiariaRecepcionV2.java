@@ -579,7 +579,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             safe(item.getEstadoValidacion()),
             item.isPosibleDuplicado() ? "Sí" : "No",
             safeOrPending(item.getNumeroExpedienteGenerado()),
-            safe(item.getObservacionInicial())
+            observacionTabla(item)
         };
     }
 
@@ -589,7 +589,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 && registros != null
                 && row >= 0
                 && row < registros.size()
-                && !registros.get(row).isRegistrado();
+                && !registros.get(row).isRegistrado()
+                && !esObservacionConMensajeGenerado(row, column);
     }
 
     private static boolean esColumnaEditable(int column) {
@@ -599,6 +600,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private String valorTabla(int modelRow, int column) {
         Object value = tableModel.getValueAt(modelRow, column);
         return value == null ? null : value.toString().trim();
+    }
+
+    private boolean esObservacionConMensajeGenerado(int row, int column) {
+        return column == COL_OBSERVACION && hasText(registros.get(row).getMensajeValidacion());
     }
 
     private void detenerEdicionTabla() {
@@ -691,6 +696,18 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String observacionTabla(CargaDiariaPreviewDTO item) {
+        String observacion = safe(item.getObservacionInicial());
+        String mensaje = safe(item.getMensajeValidacion());
+        if (observacion.isEmpty()) {
+            return mensaje;
+        }
+        if (mensaje.isEmpty()) {
+            return observacion;
+        }
+        return observacion + " | " + mensaje;
     }
 
     private static boolean hasText(String value) {
