@@ -83,7 +83,7 @@ public class ExpedienteBandejaDAO {
             sql.append("OR UPPER(NVL(equipo_actual, '')) LIKE ? ");
             sql.append("OR EXISTS (SELECT 1 FROM expediente_solicitud ss ");
             sql.append("WHERE ss.id_expediente = b.id_expediente AND ss.activo = 1 ");
-            sql.append("AND UPPER(NVL(ss.numero_expediente_digital_sitd, '')) LIKE ?) ");
+            sql.append("AND UPPER(NVL(ss.numero_expediente_sgd, '')) LIKE ?) ");
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase() + "%";
             for (int i = 0; i < 8; i++) {

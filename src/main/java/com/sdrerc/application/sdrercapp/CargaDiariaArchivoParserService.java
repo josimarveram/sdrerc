@@ -94,7 +94,7 @@ public class CargaDiariaArchivoParserService {
                 dto.setFila(rowIndex + 1);
                 dto.setNumeroTramite(valorExcel(row, columnas.get("numeroTramite"), formatter));
                 dto.setCanalRecepcion(valorExcel(row, columnas.get("canalRecepcion"), formatter));
-                dto.setNumeroExpedienteDigitalSitd(valorExcel(row, columnas.get("numeroExpedienteDigitalSitd"), formatter));
+                dto.setNumeroExpedienteSgd(valorExcel(row, columnas.get("numeroExpedienteSgd"), formatter));
                 dto.setNumeroDocumento(valorExcel(row, columnas.get("numeroDocumento"), formatter));
                 dto.setTipoProcedimiento(valorExcel(row, columnas.get("tipoProcedimiento"), formatter));
                 dto.setTipoSolicitud(valorExcel(row, columnas.get("tipoSolicitud"), formatter));
@@ -150,7 +150,7 @@ public class CargaDiariaArchivoParserService {
                 dto.setFila(fila);
                 dto.setNumeroTramite(valorCsv(valores, columnas.get("numeroTramite")));
                 dto.setCanalRecepcion(valorCsv(valores, columnas.get("canalRecepcion")));
-                dto.setNumeroExpedienteDigitalSitd(valorCsv(valores, columnas.get("numeroExpedienteDigitalSitd")));
+                dto.setNumeroExpedienteSgd(valorCsv(valores, columnas.get("numeroExpedienteSgd")));
                 dto.setNumeroDocumento(valorCsv(valores, columnas.get("numeroDocumento")));
                 dto.setTipoProcedimiento(valorCsv(valores, columnas.get("tipoProcedimiento")));
                 dto.setTipoSolicitud(valorCsv(valores, columnas.get("tipoSolicitud")));
@@ -507,17 +507,13 @@ public class CargaDiariaArchivoParserService {
                 "CANAL DE RECEPCIÓN",
                 "CANAL INGRESO",
                 "CANAL DE INGRESO"));
-        aliases.put("numeroExpedienteDigitalSitd", normalizarLista(
-                "N° EXPEDIENTE DIGITAL SITD",
-                "Nº EXPEDIENTE DIGITAL SITD",
-                "N EXPEDIENTE DIGITAL SITD",
-                "NUMERO EXPEDIENTE DIGITAL SITD",
-                "NUMERO DE EXPEDIENTE DIGITAL SITD",
-                "EXPEDIENTE DIGITAL SITD",
-                "N° EXPEDIENTE SITD",
-                "N EXPEDIENTE SITD",
-                "NUMERO EXPEDIENTE SITD",
-                "EXPEDIENTE SITD"));
+        aliases.put("numeroExpedienteSgd", normalizarLista(
+                "N° EXPEDIENTE SGD",
+                "Nº EXPEDIENTE SGD",
+                "N EXPEDIENTE SGD",
+                "NUMERO EXPEDIENTE SGD",
+                "NUMERO DE EXPEDIENTE SGD",
+                "EXPEDIENTE SGD"));
         aliases.put("numeroDocumento", normalizarLista(
                 "NUMERO_DOCUMENTO",
                 "NUMERO DOCUMENTO",
@@ -720,7 +716,7 @@ public class CargaDiariaArchivoParserService {
             if (columnas.containsKey("canalRecepcion")) {
                 score += 1;
             }
-            if (columnas.containsKey("numeroExpedienteDigitalSitd")) {
+            if (columnas.containsKey("numeroExpedienteSgd")) {
                 score += 1;
             }
             return score;

@@ -348,7 +348,7 @@ public class ExpedienteRegistroDAO {
         }
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
-                + "numero_expediente_digital_sitd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
+                + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
                 + "potencial_duplicado, activo"
                 + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -356,7 +356,7 @@ public class ExpedienteRegistroDAO {
             setLongOrNull(ps, 2, idCanal);
             setLongOrNull(ps, 3, idPersonaSolicitante);
             ps.setString(4, item.getNumeroTramite());
-            ps.setString(5, item.getNumeroExpedienteDigitalSitd());
+            ps.setString(5, item.getNumeroExpedienteSgd());
             ps.setDate(6, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
             ps.setString(7, item.getTipoProcedimiento());
             ps.setString(8, limitar(observacionSolicitud(item), 1000));
@@ -493,7 +493,7 @@ public class ExpedienteRegistroDAO {
 
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
-                + "numero_expediente_digital_sitd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
+                + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
                 + "correo_electronico, potencial_duplicado, activo"
                 + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -501,7 +501,7 @@ public class ExpedienteRegistroDAO {
             setLongOrNull(ps, 2, idCanal);
             setLongOrNull(ps, 3, idPersonaSolicitante);
             ps.setString(4, solicitud.getNumeroTramite());
-            ps.setString(5, solicitud.getNumeroExpedienteDigitalSitd());
+            ps.setString(5, solicitud.getNumeroExpedienteSgd());
             ps.setDate(6, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
             ps.setString(7, solicitud.getTipoProcedimientoNombre());
             ps.setString(8, limitar(observacionSolicitud(registro), 1000));
@@ -577,7 +577,7 @@ public class ExpedienteRegistroDAO {
         append(sb, "Hoja de envío", registro.getSolicitud().getHojaEnvio());
         append(sb, "Tipo de solicitud", registro.getSolicitud().getTipoSolicitudNombre());
         append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
-        append(sb, "N° expediente digital SITD", registro.getSolicitud().getNumeroExpedienteDigitalSitd());
+        append(sb, "N° EXPEDIENTE SGD", registro.getSolicitud().getNumeroExpedienteSgd());
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
         append(sb, "Observaciones de registro", registro.getObservacionesGenerales());
         append(sb, "Motivo duplicado", registro.getMotivoDuplicado());
@@ -589,7 +589,7 @@ public class ExpedienteRegistroDAO {
         append(sb, "Tipo de solicitud", item.getTipoSolicitud());
         append(sb, "Tipo de acta informado", item.getTipoActa());
         append(sb, "Canal recepción", nombreVisualCanal(item.getCanalRecepcion()));
-        append(sb, "N° expediente digital SITD", item.getNumeroExpedienteDigitalSitd());
+        append(sb, "N° EXPEDIENTE SGD", item.getNumeroExpedienteSgd());
         append(sb, "Tipo documento identidad solicitante", item.getTipoDocumentoIdentidadSolicitante());
         append(sb, "Documento identidad solicitante", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadSolicitante()));
         append(sb, "Tipo documento identidad titular", item.getTipoDocumentoIdentidadTitular());

@@ -131,7 +131,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final UsuarioAsignacionService usuarioService;
     private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
-    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SITD, titular, acta o documento", 28);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, titular, acta o documento", 28);
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
     private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>();

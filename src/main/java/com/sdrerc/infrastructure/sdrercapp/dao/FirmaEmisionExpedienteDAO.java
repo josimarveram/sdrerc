@@ -99,7 +99,7 @@ public class FirmaEmisionExpedienteDAO {
             sql.append("OR UPPER(NVL(ea.numero_acta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(res.numero_resolucion, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
-            sql.append("OR UPPER(NVL(esol.numero_expediente_digital_sitd, '')) LIKE ?) ");
+            sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ?) ");
             for (int i = 0; i < 7; i++) {
                 params.add(pattern);
             }

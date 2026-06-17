@@ -6,7 +6,7 @@ public class DatosSolicitudDTO {
 
     private String numeroTramite;
     private String numeroDocumento;
-    private String numeroExpedienteDigitalSitd;
+    private String numeroExpedienteSgd;
     private LocalDate fechaRecepcion;
     private String tipoSolicitudCodigo;
     private String tipoSolicitudNombre;
@@ -37,12 +37,12 @@ public class DatosSolicitudDTO {
         this.numeroDocumento = trimToNull(numeroDocumento);
     }
 
-    public String getNumeroExpedienteDigitalSitd() {
-        return numeroExpedienteDigitalSitd;
+    public String getNumeroExpedienteSgd() {
+        return numeroExpedienteSgd;
     }
 
-    public void setNumeroExpedienteDigitalSitd(String numeroExpedienteDigitalSitd) {
-        this.numeroExpedienteDigitalSitd = trimToNull(numeroExpedienteDigitalSitd);
+    public void setNumeroExpedienteSgd(String numeroExpedienteSgd) {
+        this.numeroExpedienteSgd = trimToNull(numeroExpedienteSgd);
     }
 
     public LocalDate getFechaRecepcion() {

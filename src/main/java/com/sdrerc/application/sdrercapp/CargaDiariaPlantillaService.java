@@ -41,7 +41,7 @@ public class CargaDiariaPlantillaService {
     private static final int COL_NUM_DOC_SOLICITANTE = 4;
     private static final int COL_TRAMITE_WEB = 5;
     private static final int COL_CANAL_RECEPCION = 6;
-    private static final int COL_EXPEDIENTE_DIGITAL_SITD = 7;
+    private static final int COL_EXPEDIENTE_SGD = 7;
     private static final int COL_TIPO_DOCUMENTO = 8;
     private static final int COL_NUM_DOCUMENTO = 9;
     private static final int COL_PROCEDIMIENTO = 10;
@@ -60,7 +60,7 @@ public class CargaDiariaPlantillaService {
         "N° DOCUMENTO IDENTIDAD SOLICITANTE",
         "N° TRÁMITE WEB",
         "CANAL RECEPCIÓN",
-        "N° EXPEDIENTE DIGITAL SITD",
+        "N° EXPEDIENTE SGD",
         "TIPO DOCUMENTO",
         "N° DOCUMENTO",
         "PROCEDIMIENTO REGISTRAL",
@@ -289,7 +289,7 @@ public class CargaDiariaPlantillaService {
             "Si N° TRAMITE WEB contiene numeros y CANAL RECEPCIÓN esta vacio, el canal se deriva como MPV.",
             "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante contiene numeros, el canal se deriva como MP PRESENCIAL.",
             "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante esta vacio, SOLICITADO POR permite derivar OR o INTERNO segun el origen RENIEC informado.",
-            "N° EXPEDIENTE DIGITAL SITD es la referencia externa del Sistema Integral de Tramite Documentario; no reemplaza el numero de expediente SDRERC.",
+            "N° EXPEDIENTE SGD es la referencia externa SGD; no reemplaza el numero de expediente SDRERC.",
             "N° DOCUMENTO corresponde al numero del documento recibido y se guarda como metadata documental.",
             "TIPO DE SOLICITUD debe corresponder a Parte u Oficio segun el documento recibido.",
             "PROCEDIMIENTO REGISTRAL, TIPO DE ACTA, TIPO DOCUMENTO y TIPO DE SOLICITUD tienen lista desplegable en la plantilla.",

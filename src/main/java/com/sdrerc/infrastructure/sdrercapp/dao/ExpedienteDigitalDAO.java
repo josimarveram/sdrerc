@@ -111,7 +111,7 @@ public class ExpedienteDigitalDAO {
             sql.append("OR UPPER(NVL(dig.ruta_carpeta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(dig.enlace_carpeta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
-            sql.append("OR UPPER(NVL(esol.numero_expediente_digital_sitd, '')) LIKE ?) ");
+            sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ?) ");
             for (int i = 0; i < 10; i++) {
                 params.add(pattern);
             }

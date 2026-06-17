@@ -132,7 +132,7 @@ public class CierreArchivoDAO {
             sql.append("OR UPPER(NVL(ent.nombre, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(der.numero_oficio, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
-            sql.append("OR UPPER(NVL(esol.numero_expediente_digital_sitd, '')) LIKE ?) ");
+            sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ?) ");
             for (int i = 0; i < 9; i++) {
                 params.add(pattern);
             }
