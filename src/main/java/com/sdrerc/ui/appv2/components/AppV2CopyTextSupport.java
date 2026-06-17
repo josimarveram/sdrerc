@@ -2,6 +2,7 @@ package com.sdrerc.ui.appv2.components;
 
 import java.awt.AWTEvent;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.datatransfer.StringSelection;
@@ -16,7 +17,9 @@ import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPasswordField;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+import javax.swing.JTextArea;
 import javax.swing.text.JTextComponent;
 
 public final class AppV2CopyTextSupport {
@@ -76,6 +79,11 @@ public final class AppV2CopyTextSupport {
         JMenuItem copyItem = new JMenuItem("Copiar");
         copyItem.addActionListener(e -> copyToClipboard(text));
         popup.add(copyItem);
+        if (component instanceof JLabel) {
+            JMenuItem selectItem = new JMenuItem("Seleccionar texto");
+            selectItem.addActionListener(e -> showSelectableTextPopup(component, text));
+            popup.add(selectItem);
+        }
         popup.show(component, event.getX(), event.getY());
         event.consume();
     }
@@ -147,5 +155,56 @@ public final class AppV2CopyTextSupport {
         Toolkit.getDefaultToolkit()
                 .getSystemClipboard()
                 .setContents(new StringSelection(text), null);
+    }
+
+    private static void showSelectableTextPopup(Component owner, String text) {
+        if (!hasText(text)) {
+            return;
+        }
+
+        JPopupMenu popup = new JPopupMenu();
+        JTextArea area = new JTextArea(text);
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(owner.getFont());
+        area.setRows(Math.min(8, Math.max(2, countLines(text))));
+        area.setColumns(Math.min(64, Math.max(28, longestLine(text))));
+
+        JScrollPane scroll = new JScrollPane(area);
+        int width = Math.min(560, Math.max(300, owner.getWidth() + 120));
+        int height = Math.min(240, Math.max(90, area.getPreferredSize().height + 28));
+        scroll.setPreferredSize(new Dimension(width, height));
+        popup.add(scroll);
+
+        JMenuItem copySelection = new JMenuItem("Copiar selección");
+        copySelection.addActionListener(e -> {
+            String selected = area.getSelectedText();
+            copyToClipboard(hasText(selected) ? selected : area.getText());
+            popup.setVisible(false);
+        });
+        popup.add(copySelection);
+
+        popup.show(owner, 0, owner.getHeight());
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                area.requestFocusInWindow();
+                area.selectAll();
+            }
+        });
+    }
+
+    private static int countLines(String text) {
+        return text.split("\\R", -1).length;
+    }
+
+    private static int longestLine(String text) {
+        String[] lines = text.split("\\R", -1);
+        int max = 0;
+        for (String line : lines) {
+            max = Math.max(max, line.length());
+        }
+        return max;
     }
 }
