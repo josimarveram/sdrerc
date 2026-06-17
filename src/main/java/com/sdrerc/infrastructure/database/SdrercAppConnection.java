@@ -17,6 +17,9 @@ public final class SdrercAppConnection {
     private static final String ENV_URL = "SDRERC_APP_DB_URL";
     private static final String ENV_USER = "SDRERC_APP_DB_USER";
     private static final String ENV_PASSWORD = "SDRERC_APP_DB_PASSWORD";
+    private static final String ENV_URL_ALIAS = "SDRERC_APP_URL";
+    private static final String ENV_USER_ALIAS = "SDRERC_APP_USER";
+    private static final String ENV_PASSWORD_ALIAS = "SDRERC_APP_PASSWORD";
     private static final String ENV_CONFIG_FILE = "SDRERC_APP_CONFIG";
 
     private static final String SYS_CONFIG_FILE = "sdrerc.app.config";
@@ -25,6 +28,9 @@ public final class SdrercAppConnection {
     private static final String PROP_URL = "db.url";
     private static final String PROP_USER = "db.user";
     private static final String PROP_PASSWORD = "db.password";
+    private static final String PROP_URL_ALIAS = "sdrerc.db.url";
+    private static final String PROP_USER_ALIAS = "sdrerc.db.user";
+    private static final String PROP_PASSWORD_ALIAS = "sdrerc.db.password";
 
     private SdrercAppConnection() {
     }
@@ -32,13 +38,13 @@ public final class SdrercAppConnection {
     public static Connection getConnection() throws SQLException {
         cargarDriverOracle();
         Properties config = cargarConfiguracionExterna();
-        String url = resolveValue(config, PROP_URL, ENV_URL);
-        String user = resolveValue(config, PROP_USER, ENV_USER);
-        String password = resolveValue(config, PROP_PASSWORD, ENV_PASSWORD);
+        String url = resolveValue(config, PROP_URL, PROP_URL_ALIAS, ENV_URL, ENV_URL_ALIAS);
+        String user = resolveValue(config, PROP_USER, PROP_USER_ALIAS, ENV_USER, ENV_USER_ALIAS);
+        String password = resolveValue(config, PROP_PASSWORD, PROP_PASSWORD_ALIAS, ENV_PASSWORD, ENV_PASSWORD_ALIAS);
 
-        requireConfigured(PROP_URL, ENV_URL, url);
-        requireConfigured(PROP_USER, ENV_USER, user);
-        requireConfigured(PROP_PASSWORD, ENV_PASSWORD, password);
+        requireConfigured(PROP_URL, PROP_URL_ALIAS, ENV_URL, ENV_URL_ALIAS, url);
+        requireConfigured(PROP_USER, PROP_USER_ALIAS, ENV_USER, ENV_USER_ALIAS, user);
+        requireConfigured(PROP_PASSWORD, PROP_PASSWORD_ALIAS, ENV_PASSWORD, ENV_PASSWORD_ALIAS, password);
 
         return DriverManager.getConnection(url, user, password);
     }
@@ -84,25 +90,36 @@ public final class SdrercAppConnection {
         return new File("config", CONFIG_FILE_NAME);
     }
 
-    private static String resolveValue(Properties config, String propertyName, String envName) {
+    private static String resolveValue(Properties config, String propertyName, String propertyAlias, String envName, String envAlias) {
         String value = trimToNull(System.getProperty(propertyName));
+        if (value == null) {
+            value = trimToNull(System.getProperty(propertyAlias));
+        }
         if (value != null) {
             return value;
         }
 
         value = trimToNull(System.getenv(envName));
+        if (value == null) {
+            value = trimToNull(System.getenv(envAlias));
+        }
         if (value != null) {
             return value;
         }
 
-        return trimToNull(config.getProperty(propertyName));
+        value = trimToNull(config.getProperty(propertyName));
+        if (value != null) {
+            return value;
+        }
+
+        return trimToNull(config.getProperty(propertyAlias));
     }
 
-    private static void requireConfigured(String propertyName, String envName, String value) throws SQLException {
+    private static void requireConfigured(String propertyName, String propertyAlias, String envName, String envAlias, String value) throws SQLException {
         if (value == null) {
             throw new SQLException(
-                    "Debe configurar " + propertyName + " en config/" + CONFIG_FILE_NAME
-                            + " o la variable de entorno " + envName + " para conectar a SDRERC_APP.");
+                    "Debe configurar " + propertyName + " o " + propertyAlias + " en config/" + CONFIG_FILE_NAME
+                            + ", o la variable de entorno " + envName + " / " + envAlias + " para conectar a SDRERC_APP.");
         }
     }
 

@@ -265,6 +265,7 @@ Toda escritura V2 autorizada debe:
 - `run-v2.ps1` queda como launcher de desarrollo; no debe ser requisito para PCs cliente.
 - El despliegue LAN debe vivir en `deploy/SDRERC-V2/` con rutas relativas, sin depender de `.m2/repository`, IntelliJ IDEA ni `target/classes`.
 - La configuracion de conexion SDRERC_APP para despliegue debe externalizarse en `config/sdrerc-app.properties` o variables de entorno; no documentar passwords reales.
+- El instalador cliente de red local debe vivir en `tools/installer-client/`, generar `dist/sdrerc-client/`, usar `SDRERC-V2.jar` autocontenido y crear `config/sdrerc-client.properties` con IP/puerto/servicio editables; no hardcodear IP ni credenciales en Java o repositorio.
 
 ## 5. Reglas de SQL y BD
 

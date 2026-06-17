@@ -1,0 +1,5 @@
+sdrerc.db.url=jdbc:oracle:thin:@//192.168.43.120:1521/XEPDB1
+sdrerc.db.user=SDRERC_APP
+sdrerc.db.password=
+app.mode=CLIENTE_RED_LOCAL
+app.name=SDRERC
