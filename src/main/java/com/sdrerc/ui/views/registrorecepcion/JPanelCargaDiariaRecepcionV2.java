@@ -16,7 +16,9 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.io.File;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,12 +32,16 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
+import javax.swing.event.TableModelEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
 public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_INPUT_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final int COL_ESTADO_VALIDACION = 16;
+    private static final int COL_OBSERVACION = 19;
 
     private final CargaDiariaArchivoParserService parserService = new CargaDiariaArchivoParserService();
     private final CargaDiariaPlantillaService plantillaService = new CargaDiariaPlantillaService();
@@ -85,7 +91,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return false;
+            return esCeldaEditable(row, column);
         }
     };
     private final JTable table = new AppV2Table(tableModel);
@@ -93,6 +99,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private File archivoSeleccionado;
     private List<CargaDiariaPreviewDTO> registros = new ArrayList<>();
     private boolean trabajando;
+    private boolean cargandoTabla;
 
     public JPanelCargaDiariaRecepcionV2() {
         this(null);
@@ -134,7 +141,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         toolbar.add(acciones, BorderLayout.WEST);
         toolbar.add(lblArchivo, BorderLayout.EAST);
 
-        JLabel ayuda = new JLabel("<html>Descargue la plantilla oficial, complete la hoja CARGA_DIARIA y luego use Seleccionar archivo para previsualizar e importar.</html>");
+        JLabel ayuda = new JLabel("<html>Descargue la plantilla oficial, complete la hoja CARGA_DIARIA y luego use Seleccionar archivo. En la previsualización puede editar las celdas de datos antes de validar e importar.</html>");
         ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
 
@@ -164,6 +171,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private JScrollPane crearTablaPreview() {
         table.setRowHeight(32);
         table.setAutoCreateRowSorter(true);
+        table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+        table.setSurrendersFocusOnKeystroke(true);
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         table.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
@@ -245,6 +254,16 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         btnValidar.addActionListener(e -> validar());
         btnConfirmar.addActionListener(e -> confirmarCarga());
         btnLimpiar.addActionListener(e -> limpiar());
+        tableModel.addTableModelListener(e -> {
+            if (cargandoTabla || e.getType() != TableModelEvent.UPDATE || e.getFirstRow() < 0) {
+                return;
+            }
+            int column = e.getColumn();
+            if (column == TableModelEvent.ALL_COLUMNS || !esColumnaEditable(column)) {
+                return;
+            }
+            sincronizarEdicionTabla(e.getFirstRow(), column);
+        });
     }
 
     private void seleccionarArchivo() {
@@ -338,6 +357,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private void validar() {
+        detenerEdicionTabla();
         if (registros.isEmpty()) {
             mostrarInfo("Previsualice registros antes de validar.");
             return;
@@ -368,6 +388,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private void confirmarCarga() {
+        detenerEdicionTabla();
         CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
         if (resumen.getListosParaRegistrar() == 0) {
             mostrarInfo("No hay registros listos para registrar.");
@@ -429,30 +450,150 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private void cargarPrevisualizacion(List<CargaDiariaPreviewDTO> items) {
-        tableModel.setRowCount(0);
-        for (CargaDiariaPreviewDTO item : items) {
-            tableModel.addRow(new Object[]{
-                safe(item.getTipoSolicitud()),
-                item.getFechaRecepcion() == null ? safe(item.getFechaRecepcionTexto()) : DATE_FORMAT.format(item.getFechaRecepcion()),
-                safe(item.getRemitente()),
-                safe(item.getTipoDocumentoIdentidadSolicitante()),
-                documentoVisual(item.getNumeroDocumentoIdentidadSolicitante()),
-                safe(item.getNumeroTramite()),
-                canalVisual(item.getCanalRecepcion()),
-                safe(item.getNumeroExpedienteSgd()),
-                safe(item.getTipoDocumento()),
-                safe(item.getNumeroDocumento()),
-                safe(item.getTipoProcedimiento()),
-                safe(item.getTipoActa()),
-                safe(item.getNumeroActa()),
-                safe(item.getTitular()),
-                safe(item.getTipoDocumentoIdentidadTitular()),
-                documentoVisual(item.getNumeroDocumentoIdentidadTitular()),
-                safe(item.getEstadoValidacion()),
-                item.isPosibleDuplicado() ? "Sí" : "No",
-                safeOrPending(item.getNumeroExpedienteGenerado()),
-                observacionTabla(item)
-            });
+        cargandoTabla = true;
+        try {
+            tableModel.setRowCount(0);
+            for (CargaDiariaPreviewDTO item : items) {
+                tableModel.addRow(crearFilaTabla(item));
+            }
+        } finally {
+            cargandoTabla = false;
+        }
+    }
+
+    private void sincronizarEdicionTabla(int modelRow, int column) {
+        if (modelRow < 0 || modelRow >= registros.size() || !esColumnaEditable(column)) {
+            return;
+        }
+        CargaDiariaPreviewDTO item = registros.get(modelRow);
+        if (item.isRegistrado()) {
+            actualizarFilaTabla(modelRow, item);
+            return;
+        }
+        aplicarValorEditado(item, column, valorTabla(modelRow, column));
+        item.reiniciarValidacion();
+        actualizarFilaTabla(modelRow, item);
+        actualizarResumen();
+        lblEstado.setText("Celda actualizada. Presione Validar para recalcular observaciones, duplicidad y número de expediente.");
+    }
+
+    private void aplicarValorEditado(CargaDiariaPreviewDTO item, int column, String value) {
+        switch (column) {
+            case 0:
+                item.setTipoSolicitud(value);
+                break;
+            case 1:
+                item.setFechaRecepcionTexto(value);
+                item.setFechaRecepcion(parseFechaTabla(value));
+                break;
+            case 2:
+                item.setRemitente(value);
+                break;
+            case 3:
+                item.setTipoDocumentoIdentidadSolicitante(value);
+                break;
+            case 4:
+                item.setNumeroDocumentoIdentidadSolicitante(value);
+                break;
+            case 5:
+                item.setNumeroTramite(value);
+                break;
+            case 6:
+                item.setCanalRecepcion(value);
+                break;
+            case 7:
+                item.setNumeroExpedienteSgd(value);
+                break;
+            case 8:
+                item.setTipoDocumento(value);
+                break;
+            case 9:
+                item.setNumeroDocumento(value);
+                break;
+            case 10:
+                item.setTipoProcedimiento(value);
+                break;
+            case 11:
+                item.setTipoActa(value);
+                break;
+            case 12:
+                item.setNumeroActa(value);
+                break;
+            case 13:
+                item.setTitular(value);
+                break;
+            case 14:
+                item.setTipoDocumentoIdentidadTitular(value);
+                break;
+            case 15:
+                item.setNumeroDocumentoIdentidadTitular(value);
+                break;
+            case COL_OBSERVACION:
+                item.setObservacionInicial(value);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void actualizarFilaTabla(int modelRow, CargaDiariaPreviewDTO item) {
+        cargandoTabla = true;
+        try {
+            Object[] values = crearFilaTabla(item);
+            for (int column = 0; column < values.length; column++) {
+                tableModel.setValueAt(values[column], modelRow, column);
+            }
+        } finally {
+            cargandoTabla = false;
+        }
+    }
+
+    private Object[] crearFilaTabla(CargaDiariaPreviewDTO item) {
+        return new Object[]{
+            safe(item.getTipoSolicitud()),
+            item.getFechaRecepcion() == null ? safe(item.getFechaRecepcionTexto()) : DATE_FORMAT.format(item.getFechaRecepcion()),
+            safe(item.getRemitente()),
+            safe(item.getTipoDocumentoIdentidadSolicitante()),
+            documentoVisual(item.getNumeroDocumentoIdentidadSolicitante()),
+            safe(item.getNumeroTramite()),
+            canalVisual(item.getCanalRecepcion()),
+            safe(item.getNumeroExpedienteSgd()),
+            safe(item.getTipoDocumento()),
+            safe(item.getNumeroDocumento()),
+            safe(item.getTipoProcedimiento()),
+            safe(item.getTipoActa()),
+            safe(item.getNumeroActa()),
+            safe(item.getTitular()),
+            safe(item.getTipoDocumentoIdentidadTitular()),
+            documentoVisual(item.getNumeroDocumentoIdentidadTitular()),
+            safe(item.getEstadoValidacion()),
+            item.isPosibleDuplicado() ? "Sí" : "No",
+            safeOrPending(item.getNumeroExpedienteGenerado()),
+            observacionTabla(item)
+        };
+    }
+
+    private boolean esCeldaEditable(int row, int column) {
+        return !trabajando
+                && esColumnaEditable(column)
+                && registros != null
+                && row >= 0
+                && row < registros.size()
+                && !registros.get(row).isRegistrado();
+    }
+
+    private static boolean esColumnaEditable(int column) {
+        return (column >= 0 && column < COL_ESTADO_VALIDACION) || column == COL_OBSERVACION;
+    }
+
+    private String valorTabla(int modelRow, int column) {
+        Object value = tableModel.getValueAt(modelRow, column);
+        return value == null ? null : value.toString().trim();
+    }
+
+    private void detenerEdicionTabla() {
+        if (table.isEditing()) {
+            table.getCellEditor().stopCellEditing();
         }
     }
 
@@ -482,6 +623,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         if (mensaje != null) {
             lblEstado.setText(mensaje);
         }
+        table.repaint();
         actualizarBotones();
     }
 
@@ -531,6 +673,23 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String safeOrPending(String value) {
         return value == null || value.trim().isEmpty() ? "Pendiente" : value;
+    }
+
+    private static LocalDate parseFechaTabla(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        try {
+            return LocalDate.parse(trimmed, DATE_FORMAT);
+        } catch (DateTimeParseException ignored) {
+            // Se intenta el formato de ingreso usado por la plantilla/usuarios.
+        }
+        try {
+            return LocalDate.parse(trimmed, DATE_INPUT_FORMAT);
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
     }
 
     private static String documentoVisual(String value) {
