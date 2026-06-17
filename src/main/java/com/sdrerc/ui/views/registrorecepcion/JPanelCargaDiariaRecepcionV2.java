@@ -15,6 +15,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.Point;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -41,6 +43,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_INPUT_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final int COL_ESTADO_VALIDACION = 16;
+    private static final int COL_POSIBLE_DUPLICADO = 17;
+    private static final int COL_NUMERO_EXPEDIENTE_GENERADO = 18;
     private static final int COL_OBSERVACION = 19;
 
     private final CargaDiariaArchivoParserService parserService = new CargaDiariaArchivoParserService();
@@ -94,7 +98,13 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             return esCeldaEditable(row, column);
         }
     };
-    private final JTable table = new AppV2Table(tableModel);
+    private final JTable table = new AppV2Table(tableModel) {
+        @Override
+        public String getToolTipText(MouseEvent event) {
+            String tooltip = tooltipPrevisualizacion(event);
+            return tooltip != null ? tooltip : super.getToolTipText(event);
+        }
+    };
 
     private File archivoSeleccionado;
     private List<CargaDiariaPreviewDTO> registros = new ArrayList<>();
@@ -569,7 +579,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             safe(item.getEstadoValidacion()),
             item.isPosibleDuplicado() ? "Sí" : "No",
             safeOrPending(item.getNumeroExpedienteGenerado()),
-            observacionTabla(item)
+            safe(item.getObservacionInicial())
         };
     }
 
@@ -595,6 +605,30 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         if (table.isEditing()) {
             table.getCellEditor().stopCellEditing();
         }
+    }
+
+    private String tooltipPrevisualizacion(MouseEvent event) {
+        Point point = event.getPoint();
+        int viewRow = table.rowAtPoint(point);
+        int viewColumn = table.columnAtPoint(point);
+        if (viewRow < 0 || viewColumn < 0) {
+            return null;
+        }
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        int modelColumn = table.convertColumnIndexToModel(viewColumn);
+        if (modelRow < 0 || modelRow >= registros.size()) {
+            return null;
+        }
+        CargaDiariaPreviewDTO item = registros.get(modelRow);
+        String text = null;
+        if (modelColumn == COL_ESTADO_VALIDACION) {
+            text = item.getMensajeValidacion();
+        } else if (modelColumn == COL_POSIBLE_DUPLICADO) {
+            text = item.getMotivoDuplicado();
+        } else if (modelColumn == COL_NUMERO_EXPEDIENTE_GENERADO && item.isRegistrado()) {
+            text = "Expediente registrado correctamente.";
+        }
+        return hasText(text) ? htmlTooltip(text) : null;
     }
 
     private void actualizarResumen() {
@@ -655,20 +689,12 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         return message.replaceFirst("^java\\.[a-zA-Z0-9_.]+:\\s*", "").trim();
     }
 
-    private static String observacionTabla(CargaDiariaPreviewDTO item) {
-        String observacion = safe(item.getObservacionInicial());
-        String mensaje = safe(item.getMensajeValidacion());
-        if (observacion.isEmpty()) {
-            return mensaje;
-        }
-        if (mensaje.isEmpty()) {
-            return observacion;
-        }
-        return observacion + " | " + mensaje;
-    }
-
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private static String safeOrPending(String value) {
@@ -690,6 +716,17 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         } catch (DateTimeParseException ignored) {
             return null;
         }
+    }
+
+    private static String htmlTooltip(String value) {
+        return "<html><body style='max-width:360px'>" + escapeHtml(value.trim()) + "</body></html>";
+    }
+
+    private static String escapeHtml(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private static String documentoVisual(String value) {
