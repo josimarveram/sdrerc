@@ -22,6 +22,7 @@ public class AppV2SideActionPanel extends JPanel {
     private final JPanel sections = new JPanel();
     private final JPanel footer = new JPanel(new BorderLayout());
     private final JPanel leadingSlot = new JPanel(new BorderLayout());
+    private final JLabel lblTitle = new JLabel();
 
     public AppV2SideActionPanel(String title) {
         this(title, null);
@@ -35,7 +36,7 @@ public class AppV2SideActionPanel extends JPanel {
         setBackground(AppV2Theme.SURFACE);
         applyAccentBorder(null);
 
-        JLabel lblTitle = new JLabel(title);
+        lblTitle.setText(title);
         lblTitle.setFont(AppV2Theme.fontBold(18));
         lblTitle.setForeground(AppV2Theme.TEXT_PRIMARY);
 
@@ -105,6 +106,12 @@ public class AppV2SideActionPanel extends JPanel {
         } else {
             leadingSlot.setVisible(false);
         }
+        revalidate();
+        repaint();
+    }
+
+    public void setTitle(String title) {
+        lblTitle.setText(title == null || title.trim().isEmpty() ? "Panel" : title.trim());
         revalidate();
         repaint();
     }

@@ -15,9 +15,12 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 public class AsignacionExpedienteDAO {
@@ -59,7 +62,7 @@ public class AsignacionExpedienteDAO {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
-        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
+        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
         sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
         sql.append(" FROM expediente_documento ed ");
         sql.append(" WHERE ed.id_expediente = e.id_expediente AND ed.activo = 1 ");
@@ -167,6 +170,22 @@ public class AsignacionExpedienteDAO {
             Long idAbogadoResponsable,
             String comentario,
             Long idUsuarioAsignador) throws SQLException {
+        return asignarExpedientes(
+                idsExpediente,
+                idEquipoDestino,
+                idAbogadoResponsable,
+                comentario,
+                idUsuarioAsignador,
+                Collections.<Long, String>emptyMap());
+    }
+
+    public AsignacionResultadoDTO asignarExpedientes(
+            List<Long> idsExpediente,
+            Long idEquipoDestino,
+            Long idAbogadoResponsable,
+            String comentario,
+            Long idUsuarioAsignador,
+            Map<Long, String> hojasEnvioPorExpediente) throws SQLException {
         Set<Long> idsUnicos = normalizarIds(idsExpediente);
         if (idsUnicos.isEmpty()) {
             throw new IllegalArgumentException("Seleccione al menos un expediente para asignar.");
@@ -177,6 +196,8 @@ public class AsignacionExpedienteDAO {
         if (idAbogadoResponsable == null) {
             throw new IllegalArgumentException("Seleccione el abogado responsable.");
         }
+        Map<Long, String> hojasNormalizadas = normalizarHojasEnvio(idsUnicos, hojasEnvioPorExpediente);
+        validarHojasEnvioUnicasEnSeleccion(hojasNormalizadas);
 
         List<String> detalles = new ArrayList<>();
         try (Connection conn = SdrercAppConnection.getConnection()) {
@@ -191,6 +212,11 @@ public class AsignacionExpedienteDAO {
                 validarTransicion(conn, idEtapaOrigen, idEstadoOrigen, idEtapaDestino, idEstadoDestino);
                 validarEquipoActivo(conn, idEquipoDestino);
                 validarAbogadoAsignable(conn, idAbogadoResponsable, idEquipoDestino);
+                boolean soportaNumeroHojaEnvio = soportaNumeroHojaEnvio(conn);
+                if (!hojasNormalizadas.isEmpty() && !soportaNumeroHojaEnvio) {
+                    throw new SQLException("La base de datos aún no tiene EXPEDIENTE_ASIGNACION.NUMERO_HOJA_ENVIO. Ejecute el script 26_patch_expediente_asignacion_hoja_envio.sql.");
+                }
+                validarHojasEnvioNoRegistradas(conn, hojasNormalizadas, soportaNumeroHojaEnvio);
 
                 for (Long idExpediente : idsUnicos) {
                     ExpedienteBloqueado expediente = bloquearExpediente(conn, idExpediente);
@@ -211,8 +237,10 @@ public class AsignacionExpedienteDAO {
                             idAbogadoResponsable,
                             idEquipoDestino,
                             idEtapaDestino,
+                            hojasNormalizadas.get(idExpediente),
                             comentario,
-                            idUsuarioAsignador);
+                            idUsuarioAsignador,
+                            soportaNumeroHojaEnvio);
                     actualizarExpediente(
                             conn,
                             idExpediente,
@@ -264,6 +292,7 @@ public class AsignacionExpedienteDAO {
         return new AsignacionExpedienteDTO(
                 idExpediente,
                 rs.getString("numero_expediente"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("numero_documento"),
                 rs.getString("procedimiento"),
@@ -399,6 +428,43 @@ public class AsignacionExpedienteDAO {
             Long idAbogado,
             Long idEquipo,
             Long idEtapa,
+            String numeroHojaEnvio,
+            String comentario,
+            Long idUsuarioAsignador,
+            boolean soportaNumeroHojaEnvio) throws SQLException {
+        if (!soportaNumeroHojaEnvio) {
+            return insertarAsignacionSinHojaEnvio(
+                    conn,
+                    idExpediente,
+                    idAbogado,
+                    idEquipo,
+                    idEtapa,
+                    comentario,
+                    idUsuarioAsignador);
+        }
+        String sql = "INSERT INTO expediente_asignacion ("
+                + "id_expediente, id_usuario_asignado, id_equipo_asignado, id_etapa, fecha_asignacion, "
+                + "activa, es_abogado_principal, es_reasignacion_excepcional, numero_hoja_envio, motivo, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, ?, ?, SYSTIMESTAMP, 1, 1, 0, ?, ?, 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_ASIGNACION"})) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idAbogado);
+            ps.setLong(3, idEquipo);
+            ps.setLong(4, idEtapa);
+            ps.setString(5, limitar(numeroHojaEnvio, 120));
+            ps.setString(6, limitar(comentario, 1000));
+            setLongOrNull(ps, 7, idUsuarioAsignador);
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "expediente_asignacion");
+        }
+    }
+
+    private Long insertarAsignacionSinHojaEnvio(
+            Connection conn,
+            Long idExpediente,
+            Long idAbogado,
+            Long idEquipo,
+            Long idEtapa,
             String comentario,
             Long idUsuarioAsignador) throws SQLException {
         String sql = "INSERT INTO expediente_asignacion ("
@@ -489,6 +555,72 @@ public class AsignacionExpedienteDAO {
         }
     }
 
+    private Map<Long, String> normalizarHojasEnvio(
+            Set<Long> idsExpediente,
+            Map<Long, String> hojasEnvioPorExpediente) {
+        Map<Long, String> result = new LinkedHashMap<>();
+        if (idsExpediente == null || idsExpediente.isEmpty() || hojasEnvioPorExpediente == null) {
+            return result;
+        }
+        for (Long idExpediente : idsExpediente) {
+            String hoja = hojasEnvioPorExpediente.get(idExpediente);
+            if (hasText(hoja)) {
+                result.put(idExpediente, hoja.trim());
+            }
+        }
+        return result;
+    }
+
+    private void validarHojasEnvioUnicasEnSeleccion(Map<Long, String> hojasEnvioPorExpediente) {
+        Set<String> valores = new LinkedHashSet<>();
+        for (String hoja : hojasEnvioPorExpediente.values()) {
+            String normalizada = normalizarHojaEnvio(hoja);
+            if (normalizada == null) {
+                continue;
+            }
+            if (!valores.add(normalizada)) {
+                throw new IllegalArgumentException("El número de hoja de envío " + hoja.trim() + " está duplicado en la selección.");
+            }
+        }
+    }
+
+    private boolean soportaNumeroHojaEnvio(Connection conn) throws SQLException {
+        String sql = "SELECT 1 FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_ASIGNACION' "
+                + "AND column_name = 'NUMERO_HOJA_ENVIO'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        }
+    }
+
+    private void validarHojasEnvioNoRegistradas(
+            Connection conn,
+            Map<Long, String> hojasEnvioPorExpediente,
+            boolean soportaNumeroHojaEnvio) throws SQLException {
+        if (hojasEnvioPorExpediente.isEmpty() || !soportaNumeroHojaEnvio) {
+            return;
+        }
+        String sql = "SELECT 1 FROM expediente_asignacion "
+                + "WHERE activo = 1 "
+                + "AND numero_hoja_envio IS NOT NULL "
+                + "AND UPPER(TRIM(numero_hoja_envio)) = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (String hoja : hojasEnvioPorExpediente.values()) {
+                String normalizada = normalizarHojaEnvio(hoja);
+                if (normalizada == null) {
+                    continue;
+                }
+                ps.setString(1, normalizada);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        throw new SQLException("El número de hoja de envío " + hoja.trim() + " ya se encuentra registrado en otra asignación.");
+                    }
+                }
+            }
+        }
+    }
+
     private Long obtenerGeneratedKey(PreparedStatement ps, String entidad) throws SQLException {
         try (ResultSet rs = ps.getGeneratedKeys()) {
             if (rs.next()) {
@@ -560,6 +692,12 @@ public class AsignacionExpedienteDAO {
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    private static String normalizarHojaEnvio(String value) {
+        return value == null || value.trim().isEmpty()
+                ? null
+                : value.trim().toUpperCase(Locale.ROOT);
     }
 
     private void rollbackSilencioso(Connection conn) {

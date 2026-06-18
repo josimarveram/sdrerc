@@ -9,7 +9,9 @@ import com.sdrerc.infrastructure.sdrercapp.dao.AsignacionExpedienteDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class AsignacionExpedienteService {
 
@@ -57,6 +59,15 @@ public class AsignacionExpedienteService {
             EquipoAsignacionDTO equipo,
             UsuarioAsignableDTO abogado,
             String comentario) throws SQLException {
+        return asignar(idsExpediente, equipo, abogado, comentario, Collections.<Long, String>emptyMap());
+    }
+
+    public AsignacionResultadoDTO asignar(
+            List<Long> idsExpediente,
+            EquipoAsignacionDTO equipo,
+            UsuarioAsignableDTO abogado,
+            String comentario,
+            Map<Long, String> hojasEnvioPorExpediente) throws SQLException {
         List<String> errores = validacionService.validarAsignacion(idsExpediente, equipo, abogado);
         if (!errores.isEmpty()) {
             throw new IllegalArgumentException(String.join("\n", errores));
@@ -66,7 +77,8 @@ public class AsignacionExpedienteService {
                 equipo.getIdEquipo(),
                 abogado.getIdUsuario(),
                 comentario,
-                resolverUsuarioActualSdrercApp());
+                resolverUsuarioActualSdrercApp(),
+                hojasEnvioPorExpediente);
     }
 
     private Long resolverUsuarioActualSdrercApp() {
