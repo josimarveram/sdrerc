@@ -1,6 +1,7 @@
 package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
+import com.sdrerc.domain.dto.sdrercapp.PlazoConfiguracionDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.FeriadoNacionalDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.PlazoConfiguracionDAO;
 import java.sql.Connection;
@@ -8,6 +9,7 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.Set;
 
@@ -28,7 +30,14 @@ public class CalendarioLaboralService {
     }
 
     public LocalDate calcularFechaVencimientoSolicitud(Connection conn, LocalDate fechaBase) throws SQLException {
-        return calcularFechaVencimientoHabil(conn, fechaBase, resolverDiasPlazoSolicitud(conn));
+        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn);
+        if (plazo == null) {
+            return calcularFechaVencimientoHabil(conn, fechaBase, PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT);
+        }
+        if (PlazoConfiguracionDTO.UNIDAD_CALENDARIO.equals(plazo.getUnidadPlazo())) {
+            return calcularFechaVencimientoCalendario(fechaBase, plazo.getDiasPlazo().intValue());
+        }
+        return calcularFechaVencimientoHabil(conn, fechaBase, plazo.getDiasPlazo().intValue());
     }
 
     public LocalDate calcularFechaVencimientoSolicitud(LocalDate fechaBase) throws SQLException {
@@ -58,7 +67,23 @@ public class CalendarioLaboralService {
         return cursor;
     }
 
+    public LocalDate calcularFechaVencimientoCalendario(LocalDate fechaBase, int diasCalendario) {
+        if (fechaBase == null) {
+            return null;
+        }
+        if (diasCalendario <= 0) {
+            return fechaBase;
+        }
+        return fechaBase.plusDays(diasCalendario);
+    }
+
     public Long calcularDiasHabilesRestantes(Connection conn, Date fechaVencimiento) throws SQLException {
+        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn);
+        if (plazo != null && PlazoConfiguracionDTO.UNIDAD_CALENDARIO.equals(plazo.getUnidadPlazo())) {
+            return fechaVencimiento == null
+                    ? null
+                    : Long.valueOf(ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento.toLocalDate()));
+        }
         return fechaVencimiento == null
                 ? null
                 : Long.valueOf(calcularDiasHabilesRestantes(conn, LocalDate.now(), fechaVencimiento.toLocalDate()));
@@ -103,12 +128,22 @@ public class CalendarioLaboralService {
     }
 
     public int resolverDiasPlazoSolicitud(Connection conn) throws SQLException {
+        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn);
+        return plazo == null || plazo.getDiasPlazo() == null || plazo.getDiasPlazo().intValue() <= 0
+                ? PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT
+                : plazo.getDiasPlazo().intValue();
+    }
+
+    public PlazoConfiguracionDTO resolverPlazoSolicitud(Connection conn) throws SQLException {
         try {
-            Integer dias = plazoConfiguracionDAO.obtenerDiasPlazoSolicitud(conn);
-            return dias == null || dias.intValue() <= 0 ? PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT : dias.intValue();
+            return plazoConfiguracionDAO.obtenerPlazoSolicitud(conn);
         } catch (SQLException ex) {
             if (esObjetoNoExiste(ex) || esColumnaNoExiste(ex)) {
-                return PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT;
+                PlazoConfiguracionDTO fallback = new PlazoConfiguracionDTO();
+                fallback.setDiasPlazo(Integer.valueOf(PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT));
+                fallback.setUnidadPlazo(PlazoConfiguracionDTO.UNIDAD_HABILES);
+                fallback.setActivo(true);
+                return fallback;
             }
             throw ex;
         }

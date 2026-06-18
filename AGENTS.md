@@ -83,8 +83,10 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - La carga diaria mediante Excel representa el canal de interoperabilidad controlada con los archivos originados en SGD; no asumir integracion directa con SGD sin contrato y autorizacion.
 - Para actas de matrimonio, el modelo y la UI V2 deben permitir dos titulares. La persistencia debe usar multiples relaciones `EXPEDIENTE_PERSONA` de tipo `TITULAR`; no agregar columnas especificas de segundo titular en la cabecera V2.
 - Los datos de grupo familiar y de notificacion no son obligatorios en Registro / Recepcion. Los datos de notificacion se gestionan en su modulo.
-- El plazo de atencion debe tender a resolverse mediante `PLAZO_CONFIGURACION` por tipo de documento o etapa. Un plazo fijo en Java es transitorio y debe quedar identificado como deuda tecnica.
+- El plazo de atencion debe resolverse mediante `PLAZO_CONFIGURACION` o administracion equivalente; un fallback fijo en Java es solo contingencia tecnica y no debe ser la fuente funcional oficial.
+- La configuracion oficial inicial de solicitudes SDRERC es `SOLICITUD_SDRERC = 30 dias habiles`, activa en `PLAZO_CONFIGURACION`.
 - El plazo de 30 dias habiles debe centralizarse en configuracion o helper unico; no repetir el numero 30 ni la logica de calendario laboral en pantallas.
+- Los plazos funcionales se mantienen desde Administracion / Plazos; no hardcodear plazos operativos en formularios Swing.
 - La exportacion de reportes Excel por etapa es un requerimiento funcional. Debe implementarse mediante Service/DAO, con nombres amigables y sin SQL en formularios, una vez validada la matriz de columnas de cada reporte.
 - La actualizacion masiva por Excel para Ejecucion y Notificacion es un requerimiento pendiente de definicion de matriz. No implementarla ni efectuar escrituras parciales hasta contar con estructura, reglas de validacion y autorizacion explicita.
 - El mantenimiento de descripciones breves preconfiguradas por tipo de documento es un requerimiento pendiente de diseno de catalogo; no resolverlo con listas hardcodeadas.
@@ -111,6 +113,7 @@ Modulos V2 ya incorporados o en uso dentro de la app nueva:
 - Administracion / Equipo Juridico.
 - Administracion / Roles.
 - Administracion / Feriados.
+- Administracion / Plazos.
 
 Reglas por modulo:
 

@@ -6,6 +6,7 @@ import com.sdrerc.ui.appv2.components.AppV2SidebarCollapseButton;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.administracion.equipojuridico.JPanelEquipoJuridicoV2;
 import com.sdrerc.ui.views.administracion.feriados.JPanelFeriadosV2;
+import com.sdrerc.ui.views.administracion.plazos.JPanelPlazosV2;
 import com.sdrerc.ui.views.administracion.usuarios.JPanelUsuariosV2;
 import com.sdrerc.ui.views.analisis.JPanelAnalisisV2;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
@@ -69,6 +70,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
     private JButton btnFeriados;
+    private JButton btnPlazos;
     private JButton botonActivo;
 
     public MenuPrincipalV2() {
@@ -173,6 +175,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnFeriados = crearBotonMenu("Feriados", AppV2IconProvider.FERIADOS);
         btnFeriados.addActionListener(e -> mostrarFeriados(btnFeriados));
         opciones.add(btnFeriados);
+        btnPlazos = crearBotonMenu("Plazos", AppV2IconProvider.PLAZOS);
+        btnPlazos.addActionListener(e -> mostrarPlazos(btnPlazos));
+        opciones.add(btnPlazos);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Sistema"));
@@ -444,6 +449,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Feriados");
         lblSubtitulo.setText("Configuración de feriados nacionales para el cálculo de plazos hábiles");
         cambiarContenido(new JPanelFeriadosV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarPlazos(JButton boton) {
+        lblTitulo.setText("Plazos");
+        lblSubtitulo.setText("Configuración de plazos de atención y unidad de cálculo");
+        cambiarContenido(new JPanelPlazosV2());
         aplicarEstadoActivo(boton);
     }
 

@@ -30,6 +30,7 @@ public final class AppV2IconProvider {
     public static final String EQUIPO_JURIDICO = "EQUIPO_JURIDICO";
     public static final String ROLES = "ROLES";
     public static final String FERIADOS = "FERIADOS";
+    public static final String PLAZOS = "PLAZOS";
     public static final String SALIR = "SALIR";
     public static final String COLLAPSE = "COLLAPSE";
     public static final String EXPAND = "EXPAND";
@@ -55,6 +56,7 @@ public final class AppV2IconProvider {
         ICONS.put(EQUIPO_JURIDICO, "briefcase.svg");
         ICONS.put(ROLES, "shield.svg");
         ICONS.put(FERIADOS, "check-circle.svg");
+        ICONS.put(PLAZOS, "archive.svg");
         ICONS.put(SALIR, "log-out.svg");
         ICONS.put(COLLAPSE, "panel-left-close.svg");
         ICONS.put(EXPAND, "panel-left-open.svg");
