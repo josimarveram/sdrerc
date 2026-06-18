@@ -22,7 +22,7 @@ public class ExpedienteConsolaDAO {
             return null;
         }
 
-        String sql = "SELECT id_expediente, numero_expediente, numero_tramite_documentario, "
+        String sql = "SELECT id_expediente, numero_expediente, numero_tramite_documentario, numero_expediente_sgd, "
                 + "etapa_codigo, estado_codigo, abogado_inicial, responsable_actual, equipo_actual, "
                 + "titular, titular_documento, remitente, remitente_documento, procedimiento, canal_recepcion, fecha_recepcion, "
                 + "solicitud_observacion, tipo_documento, numero_documento, tipo_acta, numero_acta, anio_acta, oficina_registral, "
@@ -40,6 +40,7 @@ public class ExpedienteConsolaDAO {
                 + ", (SELECT procedimiento FROM (SELECT s.asunto AS procedimiento FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS procedimiento "
                 + ", (SELECT canal FROM (SELECT cr.nombre AS canal FROM expediente_solicitud s LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = s.id_canal_recepcion WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS canal_recepcion "
                 + ", (SELECT fecha_recepcion FROM (SELECT s.fecha_recepcion FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS fecha_recepcion "
+                + ", (SELECT numero_expediente_sgd FROM (SELECT s.numero_expediente_sgd FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS numero_expediente_sgd "
                 + ", (SELECT solicitud_observacion FROM (SELECT s.observacion AS solicitud_observacion FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS solicitud_observacion "
                 + ", (SELECT tipo_documento FROM (SELECT d.nombre_documento AS tipo_documento FROM expediente_documento d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS tipo_documento "
                 + ", (SELECT numero_documento FROM (SELECT d.numero_documento FROM expediente_documento d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS numero_documento "
@@ -81,6 +82,7 @@ public class ExpedienteConsolaDAO {
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
                 rs.getString("numero_tramite_documentario"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 rs.getString("abogado_inicial"),

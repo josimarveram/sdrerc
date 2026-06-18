@@ -93,6 +93,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JLabel lblRecepcionCanal = valueLabel();
     private final JLabel lblRecepcionTipoSolicitud = valueLabel();
     private final JLabel lblRecepcionTramite = valueLabel();
+    private final JLabel lblRecepcionNumeroExpedienteSgd = valueLabel();
     private final JLabel lblRecepcionTipoDocumento = valueLabel();
     private final JLabel lblRecepcionNumeroDocumento = valueLabel();
     private final JLabel lblRecepcionProcedimiento = valueLabel();
@@ -376,6 +377,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         solicitud.addRow("Canal", lblRecepcionCanal);
         solicitud.addRow("Tipo solicitud", lblRecepcionTipoSolicitud);
         solicitud.addRow("Trámite Web", lblRecepcionTramite);
+        solicitud.addRow("N° expediente SGD", lblRecepcionNumeroExpedienteSgd);
         solicitud.addRow("Tipo documento", lblRecepcionTipoDocumento);
         solicitud.addRow("N° Documento", lblRecepcionNumeroDocumento);
 
@@ -715,6 +717,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionCanal, expediente.getCanalRecepcion());
         setValue(lblRecepcionTipoSolicitud, expediente.getTipoSolicitud());
         setValue(lblRecepcionTramite, expediente.getNumeroTramiteDocumentario());
+        setValue(lblRecepcionNumeroExpedienteSgd, expediente.getNumeroExpedienteSgd());
         setValue(lblRecepcionTipoDocumento, expediente.getTipoDocumento());
         setValue(lblRecepcionNumeroDocumento, expediente.getNumeroDocumento());
         setValue(lblRecepcionProcedimiento, expediente.getProcedimiento());
@@ -742,6 +745,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionCanal, "");
         setValue(lblRecepcionTipoSolicitud, "");
         setValue(lblRecepcionTramite, "");
+        setValue(lblRecepcionNumeroExpedienteSgd, "");
         setValue(lblRecepcionTipoDocumento, "");
         setValue(lblRecepcionNumeroDocumento, "");
         setValue(lblRecepcionProcedimiento, "");
