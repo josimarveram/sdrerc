@@ -960,12 +960,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return "Sin plazo de vencimiento (" + fecha + ")";
         }
         if (dias < 0) {
-            return "Vencido hace " + Math.abs(dias) + " día(s). Vencimiento: " + fecha;
+            return "Vencido hace " + Math.abs(dias) + " día(s) hábil(es). Vencimiento: " + fecha;
         }
         if (dias == 0) {
             return "Vence hoy. Vencimiento: " + fecha;
         }
-        return dias + " día(s) restantes. Vencimiento: " + fecha;
+        return dias + " día(s) hábil(es) restantes. Vencimiento: " + fecha;
     }
 
     private class BandejaCellRenderer extends DefaultTableCellRenderer {

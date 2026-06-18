@@ -1,0 +1,495 @@
+package com.sdrerc.ui.views.administracion.feriados;
+
+import com.sdrerc.application.sdrercapp.FeriadoNacionalService;
+import com.sdrerc.domain.dto.sdrercapp.FeriadoNacionalDTO;
+import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
+import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.JSplitPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingWorker;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+
+public class JPanelFeriadosV2 extends JPanel {
+
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private final FeriadoNacionalService feriadoService;
+    private final JSpinner spnAnio = new JSpinner(new SpinnerNumberModel(LocalDate.now().getYear(), 2000, 2100, 1));
+    private final JComboBox<EstadoFiltroItem> cmbEstado = new JComboBox<EstadoFiltroItem>();
+    private final JButton btnBuscar = new JButton("Buscar");
+    private final JButton btnLimpiar = new JButton("Limpiar");
+    private final JButton btnNuevo = new JButton("Nuevo");
+    private final JButton btnGuardar = new JButton("Guardar feriado");
+    private final JButton btnActivarInactivar = new JButton("Activar / Inactivar");
+
+    private final JLabel lblEstado = new JLabel("Los feriados activos se excluyen del cálculo de 30 días hábiles.");
+    private final JTextField txtFecha = new JTextField(12);
+    private final JTextField txtNombre = new JTextField(24);
+    private final JTextField txtTipo = new JTextField(16);
+    private final JTextArea txtObservacion = new JTextArea(5, 24);
+    private final JCheckBox chkActivo = new JCheckBox("Feriado activo");
+
+    private final FeriadosTableModel tableModel = new FeriadosTableModel();
+    private final JTable tblFeriados = new AppV2Table(tableModel);
+    private final MetricCardV2 cardTotal = new MetricCardV2("Feriados", "0", "Resultado del año", AppV2Theme.PRIMARY);
+    private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Excluidos del plazo", AppV2Theme.SUCCESS);
+    private final MetricCardV2 cardInactivos = new MetricCardV2("Inactivos", "0", "Sin efecto en el cálculo", AppV2Theme.WARNING);
+
+    private final List<FeriadoNacionalDTO> feriados = new ArrayList<FeriadoNacionalDTO>();
+    private Long idFeriadoEditando;
+    private boolean cargandoFormulario;
+
+    public JPanelFeriadosV2() {
+        this(new FeriadoNacionalService());
+    }
+
+    public JPanelFeriadosV2(FeriadoNacionalService feriadoService) {
+        this.feriadoService = feriadoService;
+        setLayout(new BorderLayout(14, 14));
+        setBackground(AppV2Theme.BACKGROUND);
+        setBorder(AppV2Theme.pageBorder());
+        add(crearMetricas(), BorderLayout.NORTH);
+        add(crearCentro(), BorderLayout.CENTER);
+        configurarControles();
+        configurarTabla();
+        configurarEventos();
+        nuevoFeriado();
+        cargarFeriados();
+    }
+
+    private JPanel crearMetricas() {
+        JPanel metricas = new JPanel(new GridLayout(1, 3, 12, 0));
+        metricas.setOpaque(false);
+        metricas.add(cardTotal);
+        metricas.add(cardActivos);
+        metricas.add(cardInactivos);
+        return metricas;
+    }
+
+    private Component crearCentro() {
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, crearPanelListado(), crearPanelDetalle());
+        split.setBorder(null);
+        split.setResizeWeight(0.68);
+        split.setDividerSize(8);
+        split.setOpaque(false);
+        return split;
+    }
+
+    private JPanel crearPanelListado() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setOpaque(false);
+
+        JPanel filtros = new JPanel(new GridBagLayout());
+        filtros.setBackground(AppV2Theme.SURFACE);
+        filtros.setBorder(AppV2Theme.toolbarBorder());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 6, 4, 6);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        filtros.add(label("Año"), gbc);
+        gbc.gridx = 1;
+        filtros.add(spnAnio, gbc);
+
+        gbc.gridx = 2;
+        filtros.add(label("Estado"), gbc);
+        gbc.gridx = 3;
+        filtros.add(cmbEstado, gbc);
+
+        JPanel accionesFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        accionesFiltro.setOpaque(false);
+        accionesFiltro.add(btnBuscar);
+        accionesFiltro.add(btnLimpiar);
+        gbc.gridx = 4;
+        gbc.weightx = 1;
+        gbc.anchor = GridBagConstraints.EAST;
+        filtros.add(accionesFiltro, gbc);
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnNuevo);
+        acciones.add(btnActivarInactivar);
+
+        lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel barra = new JPanel(new BorderLayout(8, 8));
+        barra.setOpaque(false);
+        barra.add(filtros, BorderLayout.NORTH);
+        barra.add(acciones, BorderLayout.CENTER);
+        barra.add(lblEstado, BorderLayout.SOUTH);
+
+        panel.add(barra, BorderLayout.NORTH);
+        panel.add(new JScrollPane(tblFeriados), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearPanelDetalle() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setPreferredSize(new Dimension(430, 0));
+        panel.setBackground(AppV2Theme.SURFACE);
+        panel.setBorder(AppV2Theme.sectionBorder());
+
+        JLabel title = new JLabel("Detalle del feriado");
+        title.setFont(AppV2Theme.fontBold(18));
+        title.setForeground(AppV2Theme.TEXT_PRIMARY);
+
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+        int row = 0;
+        agregarFila(form, row++, "Fecha", txtFecha);
+        agregarFila(form, row++, "Nombre", txtNombre);
+        agregarFila(form, row++, "Tipo", txtTipo);
+        agregarFila(form, row++, "Observación", new JScrollPane(txtObservacion));
+        agregarFila(form, row++, "", chkActivo);
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(btnGuardar);
+
+        panel.add(title, BorderLayout.NORTH);
+        panel.add(form, BorderLayout.CENTER);
+        panel.add(acciones, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private void configurarControles() {
+        cmbEstado.addItem(new EstadoFiltroItem("Todos", null));
+        cmbEstado.addItem(new EstadoFiltroItem("Activos", Boolean.TRUE));
+        cmbEstado.addItem(new EstadoFiltroItem("Inactivos", Boolean.FALSE));
+        txtFecha.setToolTipText("Formato dd/MM/yyyy");
+        txtTipo.setText("NACIONAL");
+        chkActivo.setSelected(true);
+        txtObservacion.setLineWrap(true);
+        txtObservacion.setWrapStyleWord(true);
+    }
+
+    private void configurarTabla() {
+        tblFeriados.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblFeriados.setDefaultRenderer(Object.class, new FeriadoCellRenderer());
+        AppV2TableColumnSizer.applyWidths(tblFeriados, 120, 240, 120, 110, 260);
+    }
+
+    private void configurarEventos() {
+        btnBuscar.addActionListener(e -> cargarFeriados());
+        btnLimpiar.addActionListener(e -> limpiarFiltros());
+        btnNuevo.addActionListener(e -> nuevoFeriado());
+        btnGuardar.addActionListener(e -> guardarFeriado());
+        btnActivarInactivar.addActionListener(e -> cambiarActivoSeleccionado());
+        tblFeriados.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting()) {
+                    cargarSeleccion();
+                }
+            }
+        });
+    }
+
+    private void cargarFeriados() {
+        final Integer anio = Integer.valueOf(((Number) spnAnio.getValue()).intValue());
+        final Boolean activo = ((EstadoFiltroItem) cmbEstado.getSelectedItem()).activo;
+        lblEstado.setText("Consultando feriados...");
+        btnBuscar.setEnabled(false);
+        new SwingWorker<List<FeriadoNacionalDTO>, Void>() {
+            @Override
+            protected List<FeriadoNacionalDTO> doInBackground() throws Exception {
+                return feriadoService.buscar(anio, activo, 1000);
+            }
+
+            @Override
+            protected void done() {
+                btnBuscar.setEnabled(true);
+                try {
+                    feriados.clear();
+                    feriados.addAll(get());
+                    tableModel.fireTableDataChanged();
+                    actualizarMetricas();
+                    lblEstado.setText(feriados.size() + " feriado(s) encontrado(s).");
+                } catch (Exception ex) {
+                    lblEstado.setText("No se pudo consultar feriados. Verifique el script de configuración.");
+                    mostrarError("No se pudo consultar feriados.", ex);
+                }
+            }
+        }.execute();
+    }
+
+    private void guardarFeriado() {
+        FeriadoNacionalDTO dto;
+        try {
+            dto = leerFormulario();
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        btnGuardar.setEnabled(false);
+        new SwingWorker<Long, Void>() {
+            @Override
+            protected Long doInBackground() throws Exception {
+                return feriadoService.guardar(dto).getIdFeriado();
+            }
+
+            @Override
+            protected void done() {
+                btnGuardar.setEnabled(true);
+                try {
+                    idFeriadoEditando = get();
+                    lblEstado.setText("Feriado guardado correctamente.");
+                    cargarFeriados();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo guardar el feriado.", ex);
+                }
+            }
+        }.execute();
+    }
+
+    private void cambiarActivoSeleccionado() {
+        int viewRow = tblFeriados.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione un feriado.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int modelRow = tblFeriados.convertRowIndexToModel(viewRow);
+        FeriadoNacionalDTO seleccionado = feriados.get(modelRow);
+        final boolean nuevoEstado = !seleccionado.isActivo();
+        btnActivarInactivar.setEnabled(false);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                feriadoService.cambiarActivo(seleccionado.getIdFeriado(), nuevoEstado);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                btnActivarInactivar.setEnabled(true);
+                try {
+                    get();
+                    lblEstado.setText(nuevoEstado ? "Feriado activado." : "Feriado inactivado.");
+                    cargarFeriados();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo cambiar el estado del feriado.", ex);
+                }
+            }
+        }.execute();
+    }
+
+    private FeriadoNacionalDTO leerFormulario() {
+        FeriadoNacionalDTO dto = new FeriadoNacionalDTO();
+        dto.setIdFeriado(idFeriadoEditando);
+        dto.setFecha(parseFecha(txtFecha.getText()));
+        dto.setNombre(txtNombre.getText());
+        dto.setTipo(txtTipo.getText());
+        dto.setObservacion(txtObservacion.getText());
+        dto.setActivo(chkActivo.isSelected());
+        return dto;
+    }
+
+    private LocalDate parseFecha(String value) {
+        try {
+            return LocalDate.parse(value == null ? "" : value.trim(), DATE_FORMAT);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Ingrese la fecha del feriado con formato dd/MM/yyyy.");
+        }
+    }
+
+    private void cargarSeleccion() {
+        if (cargandoFormulario) {
+            return;
+        }
+        int viewRow = tblFeriados.getSelectedRow();
+        if (viewRow < 0) {
+            return;
+        }
+        int modelRow = tblFeriados.convertRowIndexToModel(viewRow);
+        if (modelRow < 0 || modelRow >= feriados.size()) {
+            return;
+        }
+        FeriadoNacionalDTO dto = feriados.get(modelRow);
+        cargandoFormulario = true;
+        try {
+            idFeriadoEditando = dto.getIdFeriado();
+            txtFecha.setText(dto.getFecha() == null ? "" : DATE_FORMAT.format(dto.getFecha()));
+            txtNombre.setText(dto.getNombre());
+            txtTipo.setText(dto.getTipo());
+            txtObservacion.setText(dto.getObservacion());
+            chkActivo.setSelected(dto.isActivo());
+        } finally {
+            cargandoFormulario = false;
+        }
+    }
+
+    private void nuevoFeriado() {
+        idFeriadoEditando = null;
+        tblFeriados.clearSelection();
+        txtFecha.setText("");
+        txtNombre.setText("");
+        txtTipo.setText("NACIONAL");
+        txtObservacion.setText("");
+        chkActivo.setSelected(true);
+        txtFecha.requestFocusInWindow();
+    }
+
+    private void limpiarFiltros() {
+        spnAnio.setValue(LocalDate.now().getYear());
+        cmbEstado.setSelectedIndex(0);
+        cargarFeriados();
+    }
+
+    private void actualizarMetricas() {
+        int activos = 0;
+        int inactivos = 0;
+        for (FeriadoNacionalDTO feriado : feriados) {
+            if (feriado.isActivo()) {
+                activos++;
+            } else {
+                inactivos++;
+            }
+        }
+        cardTotal.setValue(String.valueOf(feriados.size()));
+        cardActivos.setValue(String.valueOf(activos));
+        cardInactivos.setValue(String.valueOf(inactivos));
+    }
+
+    private void agregarFila(JPanel panel, int row, String label, Component component) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(6, 4, 6, 4);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel lbl = label(label);
+        panel.add(lbl, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(component, gbc);
+    }
+
+    private JLabel label(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        label.setForeground(AppV2Theme.TEXT_SECONDARY);
+        return label;
+    }
+
+    private void mostrarError(String mensaje, Exception ex) {
+        Throwable causa = ex;
+        if (ex instanceof java.util.concurrent.ExecutionException && ex.getCause() != null) {
+            causa = ex.getCause();
+        }
+        String detalle = causa == null ? "" : causa.getMessage();
+        if (causa instanceof SQLException && detalle != null && detalle.contains("ORA-00942")) {
+            detalle = "Falta aplicar el script db/sdrerc_app/scripts/24_feriados_y_plazos_habiles.sql.";
+        }
+        JOptionPane.showMessageDialog(this, mensaje + "\n" + detalle, "Feriados", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private final class FeriadosTableModel extends AbstractTableModel {
+        private final String[] columns = {"Fecha", "Nombre", "Tipo", "Estado", "Observación"};
+
+        @Override
+        public int getRowCount() {
+            return feriados.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return columns.length;
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return columns[column];
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            FeriadoNacionalDTO dto = feriados.get(rowIndex);
+            switch (columnIndex) {
+                case 0:
+                    return dto.getFecha() == null ? "" : DATE_FORMAT.format(dto.getFecha());
+                case 1:
+                    return dto.getNombre();
+                case 2:
+                    return dto.getTipo();
+                case 3:
+                    return dto.isActivo() ? "Activo" : "Inactivo";
+                case 4:
+                    return dto.getObservacion();
+                default:
+                    return "";
+            }
+        }
+    }
+
+    private static final class EstadoFiltroItem {
+        private final String label;
+        private final Boolean activo;
+
+        private EstadoFiltroItem(String label, Boolean activo) {
+            this.label = label;
+            this.activo = activo;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private final class FeriadoCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (!isSelected) {
+                c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+                c.setForeground(AppV2Theme.TEXT_PRIMARY);
+            }
+            setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+            setToolTipText(value == null ? "" : String.valueOf(value));
+            return c;
+        }
+    }
+}

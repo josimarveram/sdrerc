@@ -18,6 +18,7 @@ public class ExpedienteBandejaDTO {
     private final LocalDateTime fechaRegistro;
     private final LocalDateTime fechaUltimoMovimiento;
     private final LocalDate fechaVencimiento;
+    private final Long diasRestantes;
     private final boolean requierePublicacion;
     private final boolean expedienteDigitalCompleto;
     private final String canal;
@@ -86,6 +87,52 @@ public class ExpedienteBandejaDTO {
             String numeroActa,
             String grupoFamiliar,
             String titular) {
+        this(
+                idExpediente,
+                numeroExpediente,
+                numeroTramiteDocumentario,
+                etapaCodigo,
+                estadoCodigo,
+                abogadoInicial,
+                responsableActual,
+                equipoActual,
+                fechaRecepcion,
+                fechaRegistro,
+                fechaUltimoMovimiento,
+                fechaVencimiento,
+                requierePublicacion,
+                expedienteDigitalCompleto,
+                canal,
+                procedimiento,
+                tipoActa,
+                numeroActa,
+                grupoFamiliar,
+                titular,
+                null);
+    }
+
+    public ExpedienteBandejaDTO(
+            Long idExpediente,
+            String numeroExpediente,
+            String numeroTramiteDocumentario,
+            String etapaCodigo,
+            String estadoCodigo,
+            String abogadoInicial,
+            String responsableActual,
+            String equipoActual,
+            LocalDate fechaRecepcion,
+            LocalDateTime fechaRegistro,
+            LocalDateTime fechaUltimoMovimiento,
+            LocalDate fechaVencimiento,
+            boolean requierePublicacion,
+            boolean expedienteDigitalCompleto,
+            String canal,
+            String procedimiento,
+            String tipoActa,
+            String numeroActa,
+            String grupoFamiliar,
+            String titular,
+            Long diasRestantes) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
@@ -98,6 +145,7 @@ public class ExpedienteBandejaDTO {
         this.fechaRegistro = fechaRegistro;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.fechaVencimiento = fechaVencimiento;
+        this.diasRestantes = diasRestantes;
         this.requierePublicacion = requierePublicacion;
         this.expedienteDigitalCompleto = expedienteDigitalCompleto;
         this.canal = safe(canal);
@@ -189,10 +237,7 @@ public class ExpedienteBandejaDTO {
     }
 
     public Long getDiasRestantes() {
-        if (fechaVencimiento == null) {
-            return null;
-        }
-        return ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
+        return diasRestantes;
     }
 
     public Long getDiasDesdeSolicitud() {

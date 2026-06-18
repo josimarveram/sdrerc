@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.CierrePublicacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionRegistroDTO;
@@ -32,6 +33,7 @@ public class PublicacionExpedienteDAO {
     private static final String ACCION_CIERRE = "CIERRE";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
+    private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
 
     public PublicacionExpedienteDAO() {
         this(new CatalogoLookupDAO());
@@ -48,8 +50,7 @@ public class PublicacionExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
-        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
         sql.append("JOIN etapa_expediente edh ON edh.id_etapa = h.id_etapa_destino ");
@@ -137,7 +138,7 @@ public class PublicacionExpedienteDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 List<PublicacionExpedienteDTO> expedientes = new ArrayList<PublicacionExpedienteDTO>();
                 while (rs.next()) {
-                    expedientes.add(map(rs));
+                    expedientes.add(map(conn, rs));
                 }
                 return expedientes;
             }
@@ -534,7 +535,7 @@ public class PublicacionExpedienteDAO {
         }
     }
 
-    private PublicacionExpedienteDTO map(ResultSet rs) throws SQLException {
+    private PublicacionExpedienteDTO map(Connection conn, ResultSet rs) throws SQLException {
         Boolean requierePublicacion = null;
         int requiereValue = rs.getInt("requiere_publicacion");
         if (!rs.wasNull()) {
@@ -550,7 +551,7 @@ public class PublicacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
-                getLongOrNull(rs, "dias_restantes"),
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_ingreso_publicacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 rs.getString("responsable"),

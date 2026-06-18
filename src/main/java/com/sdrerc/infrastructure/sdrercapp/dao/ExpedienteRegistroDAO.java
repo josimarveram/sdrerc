@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
@@ -28,16 +29,21 @@ public class ExpedienteRegistroDAO {
     private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
     private static final String CODIGO_MOVIMIENTO_CARGA_DIARIA = "IMPORTACION_CARGA_DIARIA";
     private static final String CODIGO_MOVIMIENTO_REGISTRO_MANUAL = "RECEPCION_DOCUMENTO";
-    private static final int DIAS_PLAZO_INICIAL = 30;
 
     private final CatalogoLookupDAO catalogoLookupDAO;
+    private final CalendarioLaboralService calendarioLaboralService;
 
     public ExpedienteRegistroDAO() {
-        this(new CatalogoLookupDAO());
+        this(new CatalogoLookupDAO(), new CalendarioLaboralService());
     }
 
     public ExpedienteRegistroDAO(CatalogoLookupDAO catalogoLookupDAO) {
+        this(catalogoLookupDAO, new CalendarioLaboralService());
+    }
+
+    public ExpedienteRegistroDAO(CatalogoLookupDAO catalogoLookupDAO, CalendarioLaboralService calendarioLaboralService) {
         this.catalogoLookupDAO = catalogoLookupDAO;
+        this.calendarioLaboralService = calendarioLaboralService;
     }
 
     public Map<Integer, String> detectarDuplicadosContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
@@ -322,7 +328,7 @@ public class ExpedienteRegistroDAO {
             ps.setString(1, item.getNumeroTramite());
             ps.setLong(2, idEtapa);
             ps.setLong(3, idEstado);
-            ps.setDate(4, calcularFechaVencimiento(item.getFechaRecepcion()));
+            ps.setDate(4, calcularFechaVencimiento(conn, item.getFechaRecepcion()));
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente");
         }
@@ -466,18 +472,18 @@ public class ExpedienteRegistroDAO {
             ps.setString(1, solicitud.getNumeroTramite());
             ps.setLong(2, idEtapa);
             ps.setLong(3, idEstado);
-            ps.setDate(4, calcularFechaVencimiento(solicitud.getFechaRecepcion()));
+            ps.setDate(4, calcularFechaVencimiento(conn, solicitud.getFechaRecepcion()));
             ps.setString(5, hasText(solicitud.getPrioridad()) ? solicitud.getPrioridad() : "NORMAL");
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente");
         }
     }
 
-    private Date calcularFechaVencimiento(java.time.LocalDate fechaSolicitud) {
+    private Date calcularFechaVencimiento(Connection conn, java.time.LocalDate fechaSolicitud) throws SQLException {
         if (fechaSolicitud == null) {
             return null;
         }
-        return Date.valueOf(fechaSolicitud.plusDays(DIAS_PLAZO_INICIAL));
+        return Date.valueOf(calendarioLaboralService.calcularFechaVencimientoSolicitud(conn, fechaSolicitud));
     }
 
     private void insertarSolicitudManual(

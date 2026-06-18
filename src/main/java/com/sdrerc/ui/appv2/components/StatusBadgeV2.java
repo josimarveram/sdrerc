@@ -42,13 +42,22 @@ public final class StatusBadgeV2 {
         }
         try {
             long dias = Long.parseLong(value.toString());
+            String tooltip;
             if (dias < 0) {
-                return pill(String.valueOf(dias), AppV2Theme.SOFT_RED, AppV2Theme.ERROR, cellBackground);
+                tooltip = "Vencido. Días hábiles restantes: " + dias;
+                BadgeV2 badge = pill(String.valueOf(dias), AppV2Theme.SOFT_RED, AppV2Theme.ERROR, cellBackground);
+                badge.setToolTipText(tooltip);
+                return badge;
             }
             if (dias <= 3) {
-                return pill(String.valueOf(dias), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING, cellBackground);
+                tooltip = dias == 0 ? "Vence hoy. Días hábiles restantes: 0" : "Días hábiles restantes: " + dias;
+                BadgeV2 badge = pill(String.valueOf(dias), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING, cellBackground);
+                badge.setToolTipText(tooltip);
+                return badge;
             }
-            return pill(String.valueOf(dias), AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS, cellBackground);
+            BadgeV2 badge = pill(String.valueOf(dias), AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS, cellBackground);
+            badge.setToolTipText("Días hábiles restantes: " + dias);
+            return badge;
         } catch (NumberFormatException ex) {
             return pill(value.toString(), AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED, cellBackground);
         }

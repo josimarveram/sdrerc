@@ -64,7 +64,10 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Si el modelo aun no separa canal de ingreso y modalidad, usar opciones compuestas amigables en la UI y dejar documentada la separacion futura como mejora de arquitectura.
 - En Registro / Recepcion, la carga diaria y el registro manual deben detectar duplicidad solo por la combinacion `numero de acta + titular`. Los registros duplicados se guardan para trazabilidad, quedan marcados como potencial duplicado y no deben generar un nuevo numero de expediente hasta que Asignacion confirme/asocie el caso.
 - En Registro / Recepcion, los duplicados sin numero no deben consumir correlativo. El siguiente numero `SDRERC-EXP-YYYY-000001` debe calcularse desde el ultimo numero de expediente existente y avanzar solo cuando realmente se asigna numero; no usar `id_expediente` como correlativo visible.
-- En todas las bandejas operativas V2, la columna `Dias` debe mostrar dias restantes respecto de `EXPEDIENTE.FECHA_VENCIMIENTO`, no dias transcurridos desde ingreso, registro o ultimo movimiento.
+- En todas las bandejas operativas V2, la columna `Dias` debe mostrar dias habiles restantes respecto de `EXPEDIENTE.FECHA_VENCIMIENTO`, no dias transcurridos desde ingreso, registro o ultimo movimiento.
+- El vencimiento de solicitudes SDRERC debe calcularse en dias habiles salvo configuracion explicita distinta; los dias habiles excluyen sabados, domingos y feriados activos configurados.
+- Los feriados nacionales o dias no laborables excepcionales deben administrarse por configuracion/mantenimiento; no hardcodearlos en Java ni cargarlos desde internet.
+- No recalcular vencimientos historicos masivamente sin autorizacion explicita; aplicar el calculo habil a nuevos registros, cargas o acciones controladas.
 - En modulos operativos V2 con filtros de `Fecha solicitud` desde/hasta, salvo la Bandeja General de Expedientes, el rango por defecto debe iniciar el primer dia del mes de hace cinco meses y terminar en la fecha actual; centralizar el calculo en helper reutilizable y no hardcodear fechas.
 - Los combos de estado de cada modulo operativo deben consultar estados activos de `ESTADO_EXPEDIENTE` por la etapa correspondiente, mostrar primero `Todos los estados`, usar `NOMBRE` como texto visible y conservar `CODIGO` internamente para filtros y acciones; resolver la etapa por codigo, no hardcodear `ID_ETAPA`.
 - En la bandeja de Registro / Recepcion, los filtros visibles deben priorizar busqueda, rango de `Fecha solicitud`, estado de la etapa `REGISTRO` y cantidad a mostrar; no mostrar filtro de etapa.
@@ -81,6 +84,7 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Para actas de matrimonio, el modelo y la UI V2 deben permitir dos titulares. La persistencia debe usar multiples relaciones `EXPEDIENTE_PERSONA` de tipo `TITULAR`; no agregar columnas especificas de segundo titular en la cabecera V2.
 - Los datos de grupo familiar y de notificacion no son obligatorios en Registro / Recepcion. Los datos de notificacion se gestionan en su modulo.
 - El plazo de atencion debe tender a resolverse mediante `PLAZO_CONFIGURACION` por tipo de documento o etapa. Un plazo fijo en Java es transitorio y debe quedar identificado como deuda tecnica.
+- El plazo de 30 dias habiles debe centralizarse en configuracion o helper unico; no repetir el numero 30 ni la logica de calendario laboral en pantallas.
 - La exportacion de reportes Excel por etapa es un requerimiento funcional. Debe implementarse mediante Service/DAO, con nombres amigables y sin SQL en formularios, una vez validada la matriz de columnas de cada reporte.
 - La actualizacion masiva por Excel para Ejecucion y Notificacion es un requerimiento pendiente de definicion de matriz. No implementarla ni efectuar escrituras parciales hasta contar con estructura, reglas de validacion y autorizacion explicita.
 - El mantenimiento de descripciones breves preconfiguradas por tipo de documento es un requerimiento pendiente de diseno de catalogo; no resolverlo con listas hardcodeadas.
@@ -106,6 +110,7 @@ Modulos V2 ya incorporados o en uso dentro de la app nueva:
 - Administracion / Usuarios.
 - Administracion / Equipo Juridico.
 - Administracion / Roles.
+- Administracion / Feriados.
 
 Reglas por modulo:
 

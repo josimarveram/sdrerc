@@ -882,7 +882,7 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         if (dias == 0) {
             return "vence hoy";
         }
-        return "día(s)";
+        return "hábil(es)";
     }
 
     private static String descripcionPlazo(Long dias, LocalDate fechaVencimiento) {
@@ -891,12 +891,12 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             return "Sin plazo de vencimiento (" + fecha + ")";
         }
         if (dias < 0) {
-            return "Vencido hace " + Math.abs(dias) + " día(s). Vencimiento: " + fecha;
+            return "Vencido hace " + Math.abs(dias) + " día(s) hábil(es). Vencimiento: " + fecha;
         }
         if (dias == 0) {
             return "Vence hoy. Vencimiento: " + fecha;
         }
-        return dias + " día(s) restantes. Vencimiento: " + fecha;
+        return dias + " día(s) hábil(es) restantes. Vencimiento: " + fecha;
     }
 
     private static class DetalleCarga {

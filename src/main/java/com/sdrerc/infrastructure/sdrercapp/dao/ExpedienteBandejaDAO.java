@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
@@ -17,6 +18,7 @@ public class ExpedienteBandejaDAO {
 
     private static final int DEFAULT_LIMIT = 200;
     private static final int MAX_LIMIT = 1000;
+    private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
 
     public List<ExpedienteBandejaDTO> listarTodos() throws SQLException {
         return buscar(null, null, null, DEFAULT_LIMIT);
@@ -127,14 +129,15 @@ public class ExpedienteBandejaDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 List<ExpedienteBandejaDTO> expedientes = new ArrayList<>();
                 while (rs.next()) {
-                    expedientes.add(map(rs));
+                    expedientes.add(map(conn, rs));
                 }
                 return expedientes;
             }
         }
     }
 
-    private ExpedienteBandejaDTO map(ResultSet rs) throws SQLException {
+    private ExpedienteBandejaDTO map(Connection conn, ResultSet rs) throws SQLException {
+        Date fechaVencimiento = rs.getDate("fecha_vencimiento");
         return new ExpedienteBandejaDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
@@ -147,7 +150,7 @@ public class ExpedienteBandejaDAO {
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
-                toLocalDate(rs.getDate("fecha_vencimiento")),
+                toLocalDate(fechaVencimiento),
                 getBooleanFromNumber(rs, "requiere_publicacion"),
                 getBooleanFromNumber(rs, "expediente_digital_completo"),
                 rs.getString("canal"),
@@ -155,7 +158,8 @@ public class ExpedienteBandejaDAO {
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
                 grupoFamiliar(rs.getInt("cantidad_relaciones")),
-                rs.getString("titular")
+                rs.getString("titular"),
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
         );
     }
 

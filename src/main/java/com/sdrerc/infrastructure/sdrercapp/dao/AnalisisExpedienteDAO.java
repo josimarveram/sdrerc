@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
@@ -54,6 +55,7 @@ public class AnalisisExpedienteDAO {
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final DocumentoAnalisisDAO documentoAnalisisDAO;
     private final ObservacionExpedienteDAO observacionExpedienteDAO;
+    private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
 
     public AnalisisExpedienteDAO() {
         this(new CatalogoLookupDAO(), new DocumentoAnalisisDAO(), new ObservacionExpedienteDAO());
@@ -119,8 +121,7 @@ public class AnalisisExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
-        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_registro, asig.fecha_asignacion, e.fecha_ultimo_movimiento, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
         sql.append("et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
@@ -193,7 +194,7 @@ public class AnalisisExpedienteDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 List<AnalisisExpedienteDTO> expedientes = new ArrayList<>();
                 while (rs.next()) {
-                    expedientes.add(map(rs));
+                    expedientes.add(map(conn, rs));
                 }
                 return expedientes;
             }
@@ -647,7 +648,7 @@ public class AnalisisExpedienteDAO {
         }
     }
 
-    private AnalisisExpedienteDTO map(ResultSet rs) throws SQLException {
+    private AnalisisExpedienteDTO map(Connection conn, ResultSet rs) throws SQLException {
         return new AnalisisExpedienteDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
@@ -659,7 +660,7 @@ public class AnalisisExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
-                getLongOrNull(rs, "dias_restantes"),
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 toLocalDateTime(rs.getTimestamp("fecha_asignacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),

@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionResultadoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
@@ -28,16 +29,21 @@ public class ExpedienteRelacionadoDAO {
     private static final String CODIGO_ESTADO_ASIGNADO = "ASIGNADO";
     private static final String MOTIVO_MISMA_ACTA_TITULAR = "Misma acta y titular";
     private static final String MOTIVO_DOCUMENTO_DUPLICADO = "Documento duplicado asociado al expediente principal por misma acta y titular";
-    private static final int DIAS_PLAZO_INICIAL = 30;
 
     private final CatalogoLookupDAO catalogoLookupDAO;
+    private final CalendarioLaboralService calendarioLaboralService;
 
     public ExpedienteRelacionadoDAO() {
-        this(new CatalogoLookupDAO());
+        this(new CatalogoLookupDAO(), new CalendarioLaboralService());
     }
 
     public ExpedienteRelacionadoDAO(CatalogoLookupDAO catalogoLookupDAO) {
+        this(catalogoLookupDAO, new CalendarioLaboralService());
+    }
+
+    public ExpedienteRelacionadoDAO(CatalogoLookupDAO catalogoLookupDAO, CalendarioLaboralService calendarioLaboralService) {
         this.catalogoLookupDAO = catalogoLookupDAO;
+        this.calendarioLaboralService = calendarioLaboralService;
     }
 
     public List<ExpedienteRelacionadoDTO> listarPosiblesRelacionados(Long idExpediente) throws SQLException {
@@ -769,7 +775,8 @@ public class ExpedienteRelacionadoDAO {
         if (fechaSolicitud == null) {
             return null;
         }
-        Date calculada = Date.valueOf(fechaSolicitud.toLocalDate().plusDays(DIAS_PLAZO_INICIAL));
+        Date calculada = Date.valueOf(
+                calendarioLaboralService.calcularFechaVencimientoSolicitud(conn, fechaSolicitud.toLocalDate()));
         sincronizarFechaVencimientoRelacionado(conn, idExpedientePrincipal, calculada, idUsuarioCreador);
         return calculada;
     }

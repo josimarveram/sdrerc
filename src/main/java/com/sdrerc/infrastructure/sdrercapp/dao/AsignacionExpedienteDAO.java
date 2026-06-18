@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
@@ -34,6 +35,7 @@ public class AsignacionExpedienteDAO {
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final ExpedienteRelacionadoDAO expedienteRelacionadoDAO;
+    private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
 
     public AsignacionExpedienteDAO() {
         this(new CatalogoLookupDAO(), new ExpedienteRelacionadoDAO());
@@ -70,8 +72,7 @@ public class AsignacionExpedienteDAO {
         sql.append(" JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado ");
         sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1)) AS abogado_asignado, ");
         sql.append("e.id_usuario_responsable_actual AS id_abogado_responsable, ");
-        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
-        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
@@ -275,7 +276,7 @@ public class AsignacionExpedienteDAO {
                 getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("numero_documento_titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
-                getLongOrNull(rs, "dias_restantes"),
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),

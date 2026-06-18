@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
@@ -13,6 +14,8 @@ import java.time.LocalDateTime;
 import java.util.Locale;
 
 public class ExpedienteConsolaDAO {
+
+    private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
 
     public ExpedienteConsolaDTO obtenerPorExpediente(Long idExpediente) throws SQLException {
         if (idExpediente == null) {
@@ -67,12 +70,13 @@ public class ExpedienteConsolaDAO {
                 if (!rs.next()) {
                     return null;
                 }
-                return map(rs);
+                return map(conn, rs);
             }
         }
     }
 
-    private ExpedienteConsolaDTO map(ResultSet rs) throws SQLException {
+    private ExpedienteConsolaDTO map(Connection conn, ResultSet rs) throws SQLException {
+        Date fechaVencimiento = rs.getDate("fecha_vencimiento");
         return new ExpedienteConsolaDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
@@ -111,13 +115,14 @@ public class ExpedienteConsolaDAO {
                 rs.getString("enlace_carpeta_digital"),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
-                toLocalDate(rs.getDate("fecha_vencimiento")),
+                toLocalDate(fechaVencimiento),
                 getBooleanFromNumber(rs, "requiere_publicacion"),
                 getBooleanFromNumber(rs, "expediente_digital_completo"),
                 getIntegerOrNull(rs, "total_documentos"),
                 getIntegerOrNull(rs, "observaciones_pendientes"),
                 getIntegerOrNull(rs, "total_notificaciones"),
-                getIntegerOrNull(rs, "total_cargos")
+                getIntegerOrNull(rs, "total_cargos"),
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
         );
     }
 

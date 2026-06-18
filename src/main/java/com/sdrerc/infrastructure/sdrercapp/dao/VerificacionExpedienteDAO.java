@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.VerificacionResultadoDTO;
@@ -40,6 +41,7 @@ public class VerificacionExpedienteDAO {
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final DocumentoAnalisisDAO documentoAnalisisDAO;
     private final ObservacionExpedienteDAO observacionExpedienteDAO;
+    private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
 
     public VerificacionExpedienteDAO() {
         this(new CatalogoLookupDAO(), new DocumentoAnalisisDAO(), new ObservacionExpedienteDAO());
@@ -70,8 +72,7 @@ public class VerificacionExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append("esol.fecha_recepcion, CASE WHEN e.fecha_vencimiento IS NULL THEN NULL ");
-        sql.append("ELSE TRUNC(e.fecha_vencimiento) - TRUNC(SYSDATE) END AS dias_restantes, ");
+        sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_registro, e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
         sql.append("JOIN tipo_movimiento tm ON tm.id_tipo_movimiento = h.id_tipo_movimiento ");
@@ -150,7 +151,7 @@ public class VerificacionExpedienteDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 List<VerificacionExpedienteDTO> expedientes = new ArrayList<VerificacionExpedienteDTO>();
                 while (rs.next()) {
-                    expedientes.add(map(rs));
+                    expedientes.add(map(conn, rs));
                 }
                 return expedientes;
             }
@@ -409,7 +410,7 @@ public class VerificacionExpedienteDAO {
         }
     }
 
-    private VerificacionExpedienteDTO map(ResultSet rs) throws SQLException {
+    private VerificacionExpedienteDTO map(Connection conn, ResultSet rs) throws SQLException {
         return new VerificacionExpedienteDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
@@ -421,7 +422,7 @@ public class VerificacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
-                getLongOrNull(rs, "dias_restantes"),
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_envio_verificacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 rs.getString("responsable"),

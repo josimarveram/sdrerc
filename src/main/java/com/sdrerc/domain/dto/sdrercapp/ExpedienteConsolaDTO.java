@@ -2,7 +2,6 @@ package com.sdrerc.domain.dto.sdrercapp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 public class ExpedienteConsolaDTO {
 
@@ -44,6 +43,7 @@ public class ExpedienteConsolaDTO {
     private final LocalDateTime fechaRegistro;
     private final LocalDateTime fechaUltimoMovimiento;
     private final LocalDate fechaVencimiento;
+    private final Long diasRestantes;
     private final boolean requierePublicacion;
     private final boolean expedienteDigitalCompleto;
     private final Integer totalDocumentos;
@@ -96,6 +96,100 @@ public class ExpedienteConsolaDTO {
             Integer observacionesPendientes,
             Integer totalNotificaciones,
             Integer totalCargos) {
+        this(
+                idExpediente,
+                numeroExpediente,
+                numeroTramiteDocumentario,
+                etapaCodigo,
+                estadoCodigo,
+                abogadoInicial,
+                responsableActual,
+                equipoActual,
+                titular,
+                titularDocumento,
+                remitente,
+                remitenteDocumento,
+                procedimiento,
+                canalRecepcion,
+                fechaRecepcion,
+                tipoSolicitud,
+                tipoDocumento,
+                numeroDocumento,
+                tipoActa,
+                numeroActa,
+                anioActa,
+                oficinaRegistral,
+                tipoResolucion,
+                numeroResolucion,
+                fechaResolucion,
+                fechaFirma,
+                tipoNotificacion,
+                estadoNotificacion,
+                resultadoNotificacion,
+                estadoCargoAcuse,
+                estadoPublicacion,
+                medioPublicacion,
+                numeroPublicacion,
+                rutaCarpetaDigital,
+                enlaceCarpetaDigital,
+                fechaRegistro,
+                fechaUltimoMovimiento,
+                fechaVencimiento,
+                requierePublicacion,
+                expedienteDigitalCompleto,
+                totalDocumentos,
+                observacionesPendientes,
+                totalNotificaciones,
+                totalCargos,
+                null);
+    }
+
+    public ExpedienteConsolaDTO(
+            Long idExpediente,
+            String numeroExpediente,
+            String numeroTramiteDocumentario,
+            String etapaCodigo,
+            String estadoCodigo,
+            String abogadoInicial,
+            String responsableActual,
+            String equipoActual,
+            String titular,
+            String titularDocumento,
+            String remitente,
+            String remitenteDocumento,
+            String procedimiento,
+            String canalRecepcion,
+            LocalDate fechaRecepcion,
+            String tipoSolicitud,
+            String tipoDocumento,
+            String numeroDocumento,
+            String tipoActa,
+            String numeroActa,
+            Integer anioActa,
+            String oficinaRegistral,
+            String tipoResolucion,
+            String numeroResolucion,
+            LocalDate fechaResolucion,
+            LocalDateTime fechaFirma,
+            String tipoNotificacion,
+            String estadoNotificacion,
+            String resultadoNotificacion,
+            String estadoCargoAcuse,
+            String estadoPublicacion,
+            String medioPublicacion,
+            String numeroPublicacion,
+            String rutaCarpetaDigital,
+            String enlaceCarpetaDigital,
+            LocalDateTime fechaRegistro,
+            LocalDateTime fechaUltimoMovimiento,
+            LocalDate fechaVencimiento,
+            boolean requierePublicacion,
+            boolean expedienteDigitalCompleto,
+            Integer totalDocumentos,
+            Integer observacionesPendientes,
+            Integer totalNotificaciones,
+            Integer totalCargos,
+            Long diasRestantes) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
@@ -134,6 +228,7 @@ public class ExpedienteConsolaDTO {
         this.fechaRegistro = fechaRegistro;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.fechaVencimiento = fechaVencimiento;
+        this.diasRestantes = diasRestantes;
         this.requierePublicacion = requierePublicacion;
         this.expedienteDigitalCompleto = expedienteDigitalCompleto;
         this.totalDocumentos = safe(totalDocumentos);
@@ -319,10 +414,7 @@ public class ExpedienteConsolaDTO {
     }
 
     public Long getDiasRestantes() {
-        if (fechaVencimiento == null) {
-            return null;
-        }
-        return ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
+        return diasRestantes;
     }
 
     private static String safe(String value) {
