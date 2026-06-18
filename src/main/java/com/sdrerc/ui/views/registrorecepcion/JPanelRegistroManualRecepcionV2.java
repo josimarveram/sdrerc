@@ -1,11 +1,13 @@
 package com.sdrerc.ui.views.registrorecepcion;
 
 import com.sdrerc.application.sdrercapp.CatalogoLookupService;
+import com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService;
 import com.sdrerc.application.sdrercapp.RegistroManualExpedienteService;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
+import com.sdrerc.domain.dto.sdrercapp.ExpedienteEdicionManualDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
 import com.sdrerc.ui.appv2.components.BadgeV2;
@@ -43,7 +45,10 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private final CatalogoLookupService catalogoService = new CatalogoLookupService();
     private final RegistroManualExpedienteService registroService = new RegistroManualExpedienteService();
+    private final ExpedienteEdicionManualService edicionService = new ExpedienteEdicionManualService();
     private final Runnable onRegistroConfirmado;
+    private final Runnable onCancelarEdicion;
+    private final Long idExpedienteEdicion;
 
     private final JTextField txtNumeroTramite = new JTextField();
     private final JTextField txtNumeroDocumento = new JTextField();
@@ -84,10 +89,18 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private boolean trabajando;
     private boolean validado;
+    private boolean cargandoEdicion;
     private RegistroManualExpedienteDTO registroValidado;
+    private ExpedienteEdicionManualDTO edicionValidada;
 
     public JPanelRegistroManualRecepcionV2(Runnable onRegistroConfirmado) {
+        this(null, onRegistroConfirmado, null);
+    }
+
+    public JPanelRegistroManualRecepcionV2(Long idExpedienteEdicion, Runnable onRegistroConfirmado, Runnable onCancelarEdicion) {
         this.onRegistroConfirmado = onRegistroConfirmado;
+        this.onCancelarEdicion = onCancelarEdicion;
+        this.idExpedienteEdicion = idExpedienteEdicion;
         setLayout(new BorderLayout(12, 12));
         setBackground(AppV2Theme.BACKGROUND);
         add(crearHeader(), BorderLayout.NORTH);
@@ -103,10 +116,14 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         panel.setBackground(AppV2Theme.SURFACE);
         panel.setBorder(AppV2Theme.cardBorder());
 
-        JLabel title = new JLabel("Registro manual de expediente");
+        JLabel title = new JLabel(modoEdicion()
+                ? "Edición manual de expediente"
+                : "Registro manual de expediente");
         title.setFont(AppV2Theme.fontBold(18));
         title.setForeground(AppV2Theme.TEXT_PRIMARY);
-        JLabel subtitle = new JLabel("Complete los datos de solicitud, acta, titular y remitente antes de registrar el expediente.");
+        JLabel subtitle = new JLabel(modoEdicion()
+                ? "Actualice los datos recibidos sin modificar el número de expediente generado."
+                : "Complete los datos de solicitud, acta, titular y remitente antes de registrar el expediente.");
         subtitle.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         subtitle.setForeground(AppV2Theme.TEXT_SECONDARY);
 
@@ -115,7 +132,10 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         text.add(title, BorderLayout.NORTH);
         text.add(subtitle, BorderLayout.CENTER);
         panel.add(text, BorderLayout.CENTER);
-        panel.add(new BadgeV2("Escritura controlada", AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS), BorderLayout.EAST);
+        panel.add(new BadgeV2(
+                modoEdicion() ? "Edición controlada" : "Escritura controlada",
+                AppV2Theme.SOFT_GREEN,
+                AppV2Theme.SUCCESS), BorderLayout.EAST);
         return panel;
     }
 
@@ -308,8 +328,11 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         configurarCombo(cmbTitularTipoDoc);
         configurarCombo(cmbRemitenteTipoDoc);
         actualizarEstadoHojaEnvio();
-        txtResumen.setText("Validación pendiente.");
+        txtResumen.setText(modoEdicion() ? "Cargando datos del expediente..." : "Validación pendiente.");
         txtErrores.setText("");
+        btnValidar.setText(modoEdicion() ? "Validar cambios" : "Validar");
+        btnLimpiar.setText(modoEdicion() ? "Cancelar edición" : "Limpiar");
+        btnRegistrar.setText(modoEdicion() ? "Guardar cambios" : "Registrar expediente");
         btnRegistrar.setEnabled(false);
     }
 
@@ -333,7 +356,13 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private void configurarEventos() {
         btnValidar.addActionListener(e -> validarFormulario());
-        btnLimpiar.addActionListener(e -> limpiar());
+        btnLimpiar.addActionListener(e -> {
+            if (modoEdicion()) {
+                cancelarEdicion();
+            } else {
+                limpiar();
+            }
+        });
         btnRegistrar.addActionListener(e -> registrarExpediente());
         registrarInvalidacion();
     }
@@ -419,9 +448,13 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
                 try {
                     CatalogosFormulario catalogos = get();
                     int vacios = aplicarCatalogos(catalogos);
-                    lblEstado.setText(vacios == 0
-                            ? "Catálogos cargados. Complete el formulario y presione Validar."
-                            : "Catálogos cargados con " + vacios + " combo(s) sin opciones activas. Revise datos maestros.");
+                    if (modoEdicion()) {
+                        cargarExpedienteEdicion();
+                    } else {
+                        lblEstado.setText(vacios == 0
+                                ? "Catálogos cargados. Complete el formulario y presione Validar."
+                                : "Catálogos cargados con " + vacios + " combo(s) sin opciones activas. Revise datos maestros.");
+                    }
                 } catch (Exception ex) {
                     String message = ex.getMessage();
                     if (message == null && ex.getCause() != null) {
@@ -456,11 +489,16 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     }
 
     private void validarFormulario() {
-        RegistroManualExpedienteDTO dto = construirRegistro();
-        setTrabajando(true, "Validando formulario y duplicidad por acta y titular en SDRERC_APP...");
+        RegistroManualExpedienteDTO dto = modoEdicion() ? construirEdicion() : construirRegistro();
+        setTrabajando(true, modoEdicion()
+                ? "Validando cambios de edición manual..."
+                : "Validando formulario y duplicidad por acta y titular en SDRERC_APP...");
         SwingWorker<ValidacionManualResultado, Void> worker = new SwingWorker<ValidacionManualResultado, Void>() {
             @Override
             protected ValidacionManualResultado doInBackground() throws Exception {
+                if (dto instanceof ExpedienteEdicionManualDTO) {
+                    return new ValidacionManualResultado(dto, edicionService.validar((ExpedienteEdicionManualDTO) dto));
+                }
                 return new ValidacionManualResultado(dto, registroService.validarConDuplicados(dto));
             }
 
@@ -480,36 +518,121 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     }
 
     private void aplicarValidacion(RegistroManualExpedienteDTO dto, List<String> errores) {
-        String numeroPreview = dto.isPosibleDuplicado()
+        String numeroPreview = modoEdicion()
+                ? safe(dto.getNumeroExpedienteVistaPrevia())
+                : dto.isPosibleDuplicado()
                 ? "Sin número por duplicado al guardar"
                 : "Pendiente de generación al guardar";
         if (errores.isEmpty()) {
             dto.setNumeroExpedienteVistaPrevia(numeroPreview);
             validado = true;
             registroValidado = dto;
+            edicionValidada = dto instanceof ExpedienteEdicionManualDTO ? (ExpedienteEdicionManualDTO) dto : null;
             txtErrores.setBackground(AppV2Theme.SOFT_GREEN);
-            txtErrores.setText("Sin errores críticos. Listo para registrar.");
+            txtErrores.setText(modoEdicion()
+                    ? "Sin errores críticos. Listo para guardar cambios."
+                    : "Sin errores críticos. Listo para registrar.");
             txtResumen.setText(resumen(dto));
             lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
-            lblEstado.setText("Formulario validado. Revise el resumen y registre el expediente.");
+            lblEstado.setText(modoEdicion()
+                    ? "Cambios validados. Revise el resumen y guarde."
+                    : "Formulario validado. Revise el resumen y registre el expediente.");
             btnRegistrar.setEnabled(!trabajando);
         } else {
             dto.setNumeroExpedienteVistaPrevia(numeroPreview);
             dto.setObservacionesGenerales("Advertencias de validación: " + String.join(" | ", errores));
             validado = true;
             registroValidado = dto;
+            edicionValidada = dto instanceof ExpedienteEdicionManualDTO ? (ExpedienteEdicionManualDTO) dto : null;
             txtErrores.setBackground(AppV2Theme.SOFT_ORANGE);
             txtErrores.setText(String.join("\n", errores));
             txtResumen.setText(resumen(dto));
             lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
-            lblEstado.setText(dto.isPosibleDuplicado()
+            lblEstado.setText(modoEdicion()
+                    ? "Se encontraron observaciones. Corrija antes de guardar."
+                    : dto.isPosibleDuplicado()
                     ? "Documento duplicado detectado. Puede registrarlo y quedará marcado para Asignación."
                     : "Se encontraron observaciones. Puede registrar el expediente y quedará marcado para revisión.");
-            btnRegistrar.setEnabled(!trabajando);
+            btnRegistrar.setEnabled(!trabajando && !modoEdicion());
+        }
+    }
+
+    private void cargarExpedienteEdicion() {
+        if (idExpedienteEdicion == null) {
+            lblEstado.setText("Seleccione un expediente para editar.");
+            return;
+        }
+        setTrabajando(true, "Cargando datos actuales del expediente...");
+        SwingWorker<ExpedienteEdicionManualDTO, Void> worker = new SwingWorker<ExpedienteEdicionManualDTO, Void>() {
+            @Override
+            protected ExpedienteEdicionManualDTO doInBackground() throws Exception {
+                return edicionService.obtenerParaEdicion(idExpedienteEdicion);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    aplicarExpedienteEdicion(get());
+                    lblEstado.setText("Datos cargados. Modifique los campos permitidos y presione Validar cambios.");
+                } catch (Exception ex) {
+                    mostrarError("No se pudo cargar el expediente para edición.", ex);
+                    btnValidar.setEnabled(false);
+                    btnRegistrar.setEnabled(false);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void aplicarExpedienteEdicion(ExpedienteEdicionManualDTO dto) {
+        cargandoEdicion = true;
+        try {
+            edicionValidada = null;
+            registroValidado = null;
+            txtNumeroTramite.setText(safeText(dto.getSolicitud().getNumeroTramite()));
+            txtNumeroDocumento.setText(safeText(dto.getSolicitud().getNumeroDocumento()));
+            txtNumeroExpedienteSgd.setText(safeText(dto.getSolicitud().getNumeroExpedienteSgd()));
+            fechaRecepcionField.setDate(dto.getSolicitud().getFechaRecepcion() == null
+                    ? null
+                    : toDate(dto.getSolicitud().getFechaRecepcion()));
+            seleccionarCombo(cmbTipoSolicitud, dto.getSolicitud().getTipoSolicitudCodigo(), dto.getSolicitud().getTipoSolicitudNombre());
+            seleccionarCombo(cmbProcedimiento, dto.getSolicitud().getTipoProcedimientoCodigo(), dto.getSolicitud().getTipoProcedimientoNombre());
+            seleccionarCombo(cmbTipoDocumento, dto.getSolicitud().getTipoDocumentoCodigo(), dto.getSolicitud().getTipoDocumentoNombre());
+            seleccionarCombo(cmbCanal, dto.getSolicitud().getCanalCodigo(), dto.getSolicitud().getCanalNombre());
+            seleccionarCombo(cmbPrioridad, dto.getSolicitud().getPrioridad(), dto.getSolicitud().getPrioridad());
+            seleccionarCombo(cmbTipoActa, dto.getActa().getTipoActaCodigo(), dto.getActa().getTipoActaNombre());
+            txtNumeroActa.setText(safeText(dto.getActa().getNumeroActa()));
+            txtTitularNombre.setText(safeText(dto.getTitular().getNombreCompleto()));
+            seleccionarCombo(cmbTitularTipoDoc, dto.getTitular().getTipoDocumento(), dto.getTitular().getTipoDocumento());
+            txtTitularDocumento.setText(safeText(dto.getTitular().getNumeroDocumento()));
+            txtRemitenteNombre.setText(safeText(dto.getRemitente().getNombreCompleto()));
+            seleccionarCombo(cmbRemitenteTipoDoc, dto.getRemitente().getTipoDocumento(), dto.getRemitente().getTipoDocumento());
+            txtRemitenteDocumento.setText(safeText(dto.getRemitente().getNumeroDocumento()));
+            if ("No corresponde a la SDRERC".equalsIgnoreCase(dto.getSolicitud().getValidacionInicial())) {
+                rdoNoCorrespondeSdrerc.setSelected(true);
+            } else {
+                rdoCorrespondeSdrerc.setSelected(true);
+            }
+            actualizarEstadoHojaEnvio();
+            txtHojaEnvio.setText(safeText(dto.getSolicitud().getHojaEnvio()));
+            lblNumeroExpediente.setText(safe(dto.getNumeroExpedienteVistaPrevia()));
+            txtErrores.setBackground(AppV2Theme.SOFT_GREEN);
+            txtErrores.setText("Expediente editable. Estado actual: Registro / Registrado.");
+            txtResumen.setText(resumen(dto));
+            validado = false;
+            btnRegistrar.setEnabled(false);
+        } finally {
+            cargandoEdicion = false;
         }
     }
 
     private void registrarExpediente() {
+        if (modoEdicion()) {
+            guardarEdicionManual();
+            return;
+        }
         if (!validado || registroValidado == null) {
             validarFormulario();
             return;
@@ -565,6 +688,60 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         worker.execute();
     }
 
+    private void guardarEdicionManual() {
+        if (!validado || edicionValidada == null) {
+            validarFormulario();
+            return;
+        }
+        int option = JOptionPane.showConfirmDialog(
+                this,
+                "Se actualizarán los datos de recepción del expediente.\n"
+                        + "No se modificará el número de expediente generado.\n\n"
+                        + resumen(edicionValidada) + "\n¿Desea continuar?",
+                "Confirmar edición manual",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (option != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        setTrabajando(true, "Guardando cambios de edición manual...");
+        SwingWorker<RegistroManualResultadoDTO, Void> worker = new SwingWorker<RegistroManualResultadoDTO, Void>() {
+            @Override
+            protected RegistroManualResultadoDTO doInBackground() throws Exception {
+                return edicionService.guardar(edicionValidada);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    RegistroManualResultadoDTO resultado = get();
+                    lblNumeroExpediente.setText(resultado.getNumeroExpediente());
+                    lblEstado.setText(resultado.getMensaje());
+                    txtResumen.setText(resultado.getMensaje() + "\n\n" + txtResumen.getText());
+                    JOptionPane.showMessageDialog(
+                            JPanelRegistroManualRecepcionV2.this,
+                            resultado.getMensaje(),
+                            "Edición manual confirmada",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    validado = false;
+                    btnRegistrar.setEnabled(false);
+                    if (onRegistroConfirmado != null) {
+                        onRegistroConfirmado.run();
+                    }
+                    if (onCancelarEdicion != null) {
+                        onCancelarEdicion.run();
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudo guardar la edición manual. La transacción fue revertida.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private RegistroManualExpedienteDTO construirRegistro() {
         RegistroManualExpedienteDTO dto = new RegistroManualExpedienteDTO();
         DatosSolicitudDTO solicitud = new DatosSolicitudDTO();
@@ -602,6 +779,23 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         remitente.setTipoDocumento(codigo(cmbRemitenteTipoDoc));
         remitente.setNumeroDocumento(txtRemitenteDocumento.getText());
         dto.setRemitente(remitente);
+        return dto;
+    }
+
+    private ExpedienteEdicionManualDTO construirEdicion() {
+        RegistroManualExpedienteDTO base = construirRegistro();
+        ExpedienteEdicionManualDTO dto = new ExpedienteEdicionManualDTO();
+        dto.setIdExpediente(idExpedienteEdicion);
+        dto.setSolicitud(base.getSolicitud());
+        dto.setActa(base.getActa());
+        dto.setTitular(base.getTitular());
+        dto.setRemitente(base.getRemitente());
+        dto.setObservacionesGenerales(base.getObservacionesGenerales());
+        String numero = edicionValidada == null ? lblNumeroExpediente.getText() : edicionValidada.getNumeroExpediente();
+        dto.setNumeroExpediente(numero);
+        dto.setNumeroExpedienteVistaPrevia(safe(numero));
+        dto.setEtapaCodigo("REGISTRO");
+        dto.setEstadoCodigo("REGISTRADO");
         return dto;
     }
 
@@ -675,13 +869,16 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     }
 
     private void invalidarValidacion() {
-        if (trabajando) {
+        if (trabajando || cargandoEdicion) {
             return;
         }
         validado = false;
         registroValidado = null;
+        edicionValidada = null;
         btnRegistrar.setEnabled(false);
-        lblNumeroExpediente.setText("Pendiente de generación al guardar");
+        lblNumeroExpediente.setText(modoEdicion() && edicionValidada != null
+                ? safe(edicionValidada.getNumeroExpedienteVistaPrevia())
+                : modoEdicion() ? lblNumeroExpediente.getText() : "Pendiente de generación al guardar");
         lblEstado.setText("Cambios pendientes de validación.");
     }
 
@@ -702,6 +899,46 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         if (mensaje != null) {
             lblEstado.setText(mensaje);
         }
+    }
+
+    private void cancelarEdicion() {
+        int option = JOptionPane.showConfirmDialog(
+                this,
+                "Se cerrará la edición manual y se volverá a mostrar Registro manual.\n"
+                        + "Los cambios no guardados se perderán.",
+                "Cancelar edición manual",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (option == JOptionPane.YES_OPTION && onCancelarEdicion != null) {
+            onCancelarEdicion.run();
+        }
+    }
+
+    private boolean modoEdicion() {
+        return idExpedienteEdicion != null;
+    }
+
+    private void seleccionarCombo(JComboBox<FiltroCatalogoItemV2> combo, String codigo, String nombre) {
+        String normalizedCodigo = normalizarComparacion(codigo);
+        String normalizedNombre = normalizarComparacion(nombre);
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            FiltroCatalogoItemV2 item = combo.getItemAt(i);
+            if (normalizedCodigo != null && normalizedCodigo.equals(normalizarComparacion(item.getCodigo()))) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+            if (normalizedNombre != null && normalizedNombre.equals(normalizarComparacion(item.getNombreVisible()))) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    private String normalizarComparacion(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value.trim())) {
+            return null;
+        }
+        return value.trim().toUpperCase();
     }
 
     private void mostrarError(String titulo, Exception ex) {
@@ -820,6 +1057,10 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private static String safe(String value) {
         return value == null ? "-" : value;
+    }
+
+    private static String safeText(String value) {
+        return value == null ? "" : value;
     }
 
     private static class CatalogosFormulario {

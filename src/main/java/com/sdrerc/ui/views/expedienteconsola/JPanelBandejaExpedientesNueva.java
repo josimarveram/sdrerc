@@ -36,6 +36,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -68,6 +69,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final boolean etapaBloqueada;
     private final boolean mostrarEncabezado;
     private final Component encabezadoOperativo;
+    private final Consumer<Long> editarExpedienteHandler;
     private final boolean perfilRegistroRecepcion;
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, titular o responsable", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
@@ -78,6 +80,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
+    private final JButton btnEditar = new JButton("Editar");
     private final JLabel lblResultado = new JLabel("Seleccione un expediente y presione Ver detalle para abrir la consola.");
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -111,11 +114,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     public JPanelBandejaExpedientesNueva(boolean mostrarEncabezado) {
-        this(new ExpedienteConsultaService(), null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, mostrarEncabezado, null);
+        this(new ExpedienteConsultaService(), null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, mostrarEncabezado, null, null);
     }
 
     public JPanelBandejaExpedientesNueva(String etapaInicial, String tituloBandeja, String subtituloBandeja, boolean etapaBloqueada) {
-        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, true, null);
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, true, null, null);
     }
 
     public JPanelBandejaExpedientesNueva(
@@ -124,7 +127,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             String subtituloBandeja,
             boolean etapaBloqueada,
             boolean mostrarEncabezado) {
-        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, null);
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, null, null);
     }
 
     public JPanelBandejaExpedientesNueva(
@@ -134,11 +137,22 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             boolean etapaBloqueada,
             boolean mostrarEncabezado,
             Component encabezadoOperativo) {
-        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, encabezadoOperativo);
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, encabezadoOperativo, null);
+    }
+
+    public JPanelBandejaExpedientesNueva(
+            String etapaInicial,
+            String tituloBandeja,
+            String subtituloBandeja,
+            boolean etapaBloqueada,
+            boolean mostrarEncabezado,
+            Component encabezadoOperativo,
+            Consumer<Long> editarExpedienteHandler) {
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, encabezadoOperativo, editarExpedienteHandler);
     }
 
     public JPanelBandejaExpedientesNueva(ExpedienteConsultaService consultaService) {
-        this(consultaService, null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, true, null);
+        this(consultaService, null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, true, null, null);
     }
 
     private JPanelBandejaExpedientesNueva(
@@ -148,7 +162,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             String subtituloBandeja,
             boolean etapaBloqueada,
             boolean mostrarEncabezado,
-            Component encabezadoOperativo) {
+            Component encabezadoOperativo,
+            Consumer<Long> editarExpedienteHandler) {
         this.consultaService = consultaService;
         this.etapaInicial = normalizar(etapaInicial);
         this.tituloBandeja = textoConDefault(tituloBandeja, "Bandeja de Expedientes");
@@ -156,6 +171,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         this.etapaBloqueada = etapaBloqueada && this.etapaInicial != null;
         this.mostrarEncabezado = mostrarEncabezado;
         this.encabezadoOperativo = encabezadoOperativo;
+        this.editarExpedienteHandler = editarExpedienteHandler;
         this.perfilRegistroRecepcion = this.etapaBloqueada && "REGISTRO".equals(this.etapaInicial);
         this.tableModel = crearTableModel(this.perfilRegistroRecepcion);
         this.table = new AppV2Table(tableModel);
@@ -183,6 +199,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     "Tipo Acta",
                     "Nro Acta",
                     "Titular",
+                    "_ESTADO",
                     "_ID"
                 }
                 : new Object[]{
@@ -236,6 +253,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
         acciones.add(btnVerDetalle);
+        if (editarExpedienteHandler != null) {
+            acciones.add(btnEditar);
+        }
         gbc.gridx = 4;
         gbc.gridwidth = 3;
         gbc.anchor = GridBagConstraints.EAST;
@@ -288,6 +308,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         btnVerDetalle.setEnabled(false);
         btnVerDetalle.setToolTipText("Seleccione un expediente para abrir la consola de expediente");
+        btnEditar.setEnabled(false);
+        btnEditar.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado");
 
         JPanel superior = new JPanel(new BorderLayout(8, 8));
         superior.setOpaque(false);
@@ -448,9 +470,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setDefaultRenderer(Object.class, new BandejaCellRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
-            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 0);
+            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 0, 0);
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(7).setMinWidth(220);
+            table.getColumnModel().getColumn(8).setMinWidth(0);
+            table.getColumnModel().getColumn(8).setMaxWidth(0);
+            table.getColumnModel().getColumn(9).setMinWidth(0);
+            table.getColumnModel().getColumn(9).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
         } else {
             table.getColumnModel().getColumn(0).setMaxWidth(90);
@@ -501,6 +527,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private void configurarBotones() {
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnVerDetalle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnEditar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnLimpiar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
     }
 
@@ -508,10 +535,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
+        btnEditar.addActionListener(e -> editarSeleccionado());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 boolean haySeleccion = table.getSelectedRow() >= 0;
                 btnVerDetalle.setEnabled(haySeleccion);
+                btnEditar.setEnabled(haySeleccion && esRegistroSeleccionadoEditable());
                 if (haySeleccion) {
                     mostrarPanelRecepcionSeleccionado();
                 } else {
@@ -590,6 +619,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         spnLimite.setValue(200);
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
+        btnEditar.setEnabled(false);
         ocultarPanelRecepcion();
         tablePanel.setEmpty(true);
         lblResultado.setText(etapaBloqueada
@@ -601,6 +631,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         ocultarPanelRecepcion();
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
+        btnEditar.setEnabled(false);
         for (ExpedienteBandejaDTO item : expedientes) {
             if (perfilRegistroRecepcion) {
                 tableModel.addRow(new Object[]{
@@ -612,6 +643,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     item.getTipoActa(),
                     item.getNumeroActa(),
                     item.getTitular(),
+                    item.getEstadoCodigo(),
                     item.getIdExpediente()
                 });
             } else {
@@ -759,6 +791,39 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         DlgConsolaExpedienteV2 dialog = new DlgConsolaExpedienteV2(owner, idExpediente);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
+    }
+
+    private void editarSeleccionado() {
+        if (editarExpedienteHandler == null) {
+            return;
+        }
+        Long idExpediente = obtenerIdExpedienteSeleccionado();
+        if (idExpediente == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Seleccione un expediente para editar.",
+                    "Registro / Recepción",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (!esRegistroSeleccionadoEditable()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Solo se permite editar expedientes en estado Registrado y sin asignación a abogado.",
+                    "Edición manual no disponible",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        editarExpedienteHandler.accept(idExpediente);
+    }
+
+    private boolean esRegistroSeleccionadoEditable() {
+        if (!perfilRegistroRecepcion || table.getSelectedRow() < 0 || tableModel.getColumnCount() < 10) {
+            return false;
+        }
+        int modelRow = table.convertRowIndexToModel(table.getSelectedRow());
+        Object estado = tableModel.getValueAt(modelRow, tableModel.getColumnCount() - 2);
+        return estado != null && "REGISTRADO".equalsIgnoreCase(estado.toString().trim());
     }
 
     private Long obtenerIdExpedienteSeleccionado() {

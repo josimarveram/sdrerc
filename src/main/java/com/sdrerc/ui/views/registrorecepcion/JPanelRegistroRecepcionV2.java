@@ -5,12 +5,16 @@ import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
+import java.util.function.Consumer;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
 public class JPanelRegistroRecepcionV2 extends JPanel {
 
+    private static final int TAB_REGISTRO_MANUAL = 2;
+
     private JPanelBandejaExpedientesNueva bandejaRegistro;
+    private JTabbedPane tabs;
 
     public JPanelRegistroRecepcionV2() {
         setLayout(new BorderLayout(14, 14));
@@ -20,7 +24,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
     }
 
     private JTabbedPane crearTabs() {
-        JTabbedPane tabs = new JTabbedPane();
+        tabs = new JTabbedPane();
         tabs.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         tabs.addTab("Bandeja Registro", crearBandejaRegistro());
         tabs.addTab("Carga diaria", new JPanelCargaDiariaRecepcionV2(new Runnable() {
@@ -31,14 +35,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 }
             }
         }));
-        tabs.addTab("Registro manual", new JPanelRegistroManualRecepcionV2(new Runnable() {
-            @Override
-            public void run() {
-                if (bandejaRegistro != null) {
-                    bandejaRegistro.refrescar();
-                }
-            }
-        }));
+        tabs.addTab("Registro manual", crearPanelRegistroManual());
         return tabs;
     }
 
@@ -59,9 +56,61 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 "Expedientes registrados o recibidos pendientes de gestión",
                 true,
                 false,
-                metricas);
+                metricas,
+                new Consumer<Long>() {
+                    @Override
+                    public void accept(Long idExpediente) {
+                        mostrarEdicionManual(idExpediente);
+                    }
+                });
 
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;
+    }
+
+    private JPanelRegistroManualRecepcionV2 crearPanelRegistroManual() {
+        return new JPanelRegistroManualRecepcionV2(new Runnable() {
+            @Override
+            public void run() {
+                refrescarBandeja();
+            }
+        });
+    }
+
+    private void mostrarEdicionManual(final Long idExpediente) {
+        if (tabs == null || idExpediente == null) {
+            return;
+        }
+        tabs.setTitleAt(TAB_REGISTRO_MANUAL, "Edición Manual");
+        tabs.setComponentAt(TAB_REGISTRO_MANUAL, new JPanelRegistroManualRecepcionV2(
+                idExpediente,
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        refrescarBandeja();
+                    }
+                },
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        restaurarRegistroManual();
+                    }
+                }));
+        tabs.setSelectedIndex(TAB_REGISTRO_MANUAL);
+    }
+
+    private void restaurarRegistroManual() {
+        if (tabs == null) {
+            return;
+        }
+        tabs.setTitleAt(TAB_REGISTRO_MANUAL, "Registro manual");
+        tabs.setComponentAt(TAB_REGISTRO_MANUAL, crearPanelRegistroManual());
+        tabs.setSelectedIndex(TAB_REGISTRO_MANUAL);
+    }
+
+    private void refrescarBandeja() {
+        if (bandejaRegistro != null) {
+            bandejaRegistro.refrescar();
+        }
     }
 }
