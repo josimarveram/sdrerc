@@ -1684,6 +1684,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (filaPanel != null && filaPanel.esPrincipal()) {
             AsignacionExpedienteDTO item = filaPanel.principal;
             prepararHojaEnvioSimple(item);
+            btnAsignarSeleccionado.setEnabled(seleccionados == 1 && !modoMultiple && item.isAsignable());
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(item.getNumeroExpediente());
             actualizarIdentificacionDocumento(
@@ -1757,17 +1758,29 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void prepararHojaEnvioSimple(AsignacionExpedienteDTO item) {
-        if (item == null || item.getIdExpediente() == null || !item.isAsignable()) {
+        if (item == null || item.getIdExpediente() == null) {
             idExpedienteHojaEnvioSimple = null;
             txtHojaEnvioAsignacion.setText("");
             txtHojaEnvioAsignacion.setEnabled(false);
+            txtHojaEnvioAsignacion.setEditable(false);
+            txtHojaEnvioAsignacion.setForeground(AppV2Theme.TEXT_SECONDARY);
+            txtHojaEnvioAsignacion.setToolTipText("Número de hoja de envío de la asignación.");
             return;
         }
         if (!item.getIdExpediente().equals(idExpedienteHojaEnvioSimple)) {
             idExpedienteHojaEnvioSimple = item.getIdExpediente();
-            txtHojaEnvioAsignacion.setText("");
+            txtHojaEnvioAsignacion.setText(item.isAsignable() ? "" : item.getNumeroHojaEnvioAsignacion());
         }
         txtHojaEnvioAsignacion.setEnabled(true);
+        txtHojaEnvioAsignacion.setEditable(item.isAsignable());
+        txtHojaEnvioAsignacion.setForeground(item.isAsignable()
+                ? AppV2Theme.TEXT_PRIMARY
+                : AppV2Theme.TEXT_SECONDARY);
+        txtHojaEnvioAsignacion.setToolTipText(item.isAsignable()
+                ? "Ingrese el número de hoja de envío para confirmar la asignación."
+                : (item.getNumeroHojaEnvioAsignacion().isEmpty()
+                        ? "Este expediente no tiene hoja de envío registrada."
+                        : "Hoja de envío registrada durante la asignación."));
     }
 
     private void actualizarModoPanelAsignacion(boolean multiple) {

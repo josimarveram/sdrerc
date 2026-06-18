@@ -59,10 +59,21 @@ public class AsignacionExpedienteDAO {
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
+        boolean soportaNumeroHojaEnvio;
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            soportaNumeroHojaEnvio = soportaNumeroHojaEnvio(conn);
+        }
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
+        if (soportaNumeroHojaEnvio) {
+            sql.append("(SELECT MAX(axa.numero_hoja_envio) KEEP (DENSE_RANK LAST ORDER BY axa.fecha_asignacion, axa.id_expediente_asignacion) ");
+            sql.append(" FROM expediente_asignacion axa ");
+            sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS numero_hoja_envio_asignacion, ");
+        } else {
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_asignacion, ");
+        }
         sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
         sql.append(" FROM expediente_documento ed ");
         sql.append(" WHERE ed.id_expediente = e.id_expediente AND ed.activo = 1 ");
@@ -293,6 +304,7 @@ public class AsignacionExpedienteDAO {
                 idExpediente,
                 rs.getString("numero_expediente"),
                 rs.getString("numero_expediente_sgd"),
+                rs.getString("numero_hoja_envio_asignacion"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("numero_documento"),
                 rs.getString("procedimiento"),

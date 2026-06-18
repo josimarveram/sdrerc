@@ -8,6 +8,7 @@ public class AsignacionExpedienteDTO {
     private final Long idExpediente;
     private final String numeroExpediente;
     private final String numeroExpedienteSgd;
+    private final String numeroHojaEnvioAsignacion;
     private final String numeroTramiteDocumentario;
     private final String numeroDocumento;
     private final String procedimiento;
@@ -35,6 +36,7 @@ public class AsignacionExpedienteDTO {
             Long idExpediente,
             String numeroExpediente,
             String numeroExpedienteSgd,
+            String numeroHojaEnvioAsignacion,
             String numeroTramiteDocumentario,
             String numeroDocumento,
             String procedimiento,
@@ -60,6 +62,7 @@ public class AsignacionExpedienteDTO {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
+        this.numeroHojaEnvioAsignacion = safe(numeroHojaEnvioAsignacion);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.numeroDocumento = safe(numeroDocumento);
         this.procedimiento = safe(procedimiento);
@@ -94,6 +97,10 @@ public class AsignacionExpedienteDTO {
 
     public String getNumeroExpedienteSgd() {
         return numeroExpedienteSgd;
+    }
+
+    public String getNumeroHojaEnvioAsignacion() {
+        return numeroHojaEnvioAsignacion;
     }
 
     public String getNumeroTramiteDocumentario() {
