@@ -221,8 +221,12 @@ public class FeriadoNacionalService {
         feriado.setNombre(firstNonBlank(
                 element.getAttribute("nombre"),
                 element.getAttribute("name"),
+                element.getAttribute("motivo"),
+                element.getAttribute("reason"),
                 textFromFirst(element, "nombre"),
-                textFromFirst(element, "name")));
+                textFromFirst(element, "name"),
+                textFromFirst(element, "motivo"),
+                textFromFirst(element, "reason")));
         feriado.setTipo(firstNonBlank(
                 element.getAttribute("tipo"),
                 element.getAttribute("type"),
