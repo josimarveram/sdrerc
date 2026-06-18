@@ -1469,7 +1469,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void guardarHojasEnvioAsignacionMultiple() {
-        finalizarEdicionTabla();
+        finalizarEdicionAsignacionMultiple();
         for (int row = 0; row < asignacionMultipleModel.getRowCount(); row++) {
             Long id = obtenerIdDesdeFilaAsignacionMultiple(row);
             if (id == null) {
@@ -2237,6 +2237,10 @@ public class JPanelAsignacionV2 extends JPanel {
                 editor.stopCellEditing();
             }
         }
+        finalizarEdicionAsignacionMultiple();
+    }
+
+    private void finalizarEdicionAsignacionMultiple() {
         if (asignacionMultipleTable.isEditing()) {
             TableCellEditor editor = asignacionMultipleTable.getCellEditor();
             if (editor != null) {
