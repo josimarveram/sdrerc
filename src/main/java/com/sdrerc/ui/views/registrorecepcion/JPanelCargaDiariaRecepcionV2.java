@@ -110,6 +110,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private List<CargaDiariaPreviewDTO> registros = new ArrayList<>();
     private boolean trabajando;
     private boolean cargandoTabla;
+    private boolean edicionPendienteValidacion;
 
     public JPanelCargaDiariaRecepcionV2() {
         this(null);
@@ -286,6 +287,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             lblArchivo.setText(archivoSeleccionado.getName());
             lblEstado.setText("Archivo seleccionado correctamente. Presione Previsualizar para revisar los registros de la plantilla.");
             registros = new ArrayList<>();
+            edicionPendienteValidacion = false;
             cargarPrevisualizacion(registros);
             actualizarResumen();
             actualizarBotones();
@@ -348,6 +350,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             protected void done() {
                 try {
                     registros = get();
+                    edicionPendienteValidacion = false;
                     cargarPrevisualizacion(registros);
                     String diagnostico = parserService.getUltimoDiagnostico();
                     lblEstado.setText(registros.size() + " registro(s) leídos. "
@@ -355,6 +358,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                             + "Presione Validar para revisar reglas y duplicados.");
                 } catch (Exception ex) {
                     registros = new ArrayList<>();
+                    edicionPendienteValidacion = false;
                     cargarPrevisualizacion(registros);
                     mostrarError("No se pudo previsualizar el archivo.", ex);
                 } finally {
@@ -383,6 +387,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             protected void done() {
                 try {
                     registros = get();
+                    edicionPendienteValidacion = false;
                     cargarPrevisualizacion(registros);
                     CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
                     lblEstado.setText(resumen.getListosParaRegistrar() + " registro(s) listo(s) para confirmar.");
@@ -428,6 +433,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 try {
                     CargaDiariaResultadoDTO resultado = get();
                     registros = new ArrayList<CargaDiariaPreviewDTO>(resultado.getRegistros());
+                    edicionPendienteValidacion = false;
                     cargarPrevisualizacion(registros);
                     lblEstado.setText(resultado.getMensaje());
                     JOptionPane.showMessageDialog(
@@ -452,6 +458,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private void limpiar() {
         archivoSeleccionado = null;
         registros = new ArrayList<>();
+        edicionPendienteValidacion = false;
         lblArchivo.setText("Sin archivo seleccionado");
         lblEstado.setText("Seleccione un archivo .xlsx o .csv para iniciar.");
         cargarPrevisualizacion(registros);
@@ -483,7 +490,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         aplicarValorEditado(item, column, valorTabla(modelRow, column));
         item.reiniciarValidacion();
         actualizarFilaTabla(modelRow, item);
-        actualizarResumen();
+        edicionPendienteValidacion = true;
+        actualizarBotones();
         lblEstado.setText("Celda actualizada. Presione Validar para recalcular observaciones, duplicidad y número de expediente.");
     }
 
@@ -651,7 +659,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
         btnPrevisualizar.setEnabled(!trabajando && archivoSeleccionado != null);
         btnValidar.setEnabled(!trabajando && !registros.isEmpty());
-        btnConfirmar.setEnabled(!trabajando && resumen.getListosParaRegistrar() > 0);
+        btnConfirmar.setEnabled(!trabajando && !edicionPendienteValidacion && resumen.getListosParaRegistrar() > 0);
         btnDescargarPlantilla.setEnabled(!trabajando);
         btnArchivo.setEnabled(!trabajando);
         btnLimpiar.setEnabled(!trabajando && (archivoSeleccionado != null || !registros.isEmpty()));
