@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -27,6 +28,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -41,6 +43,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
@@ -57,6 +60,7 @@ public class JPanelFeriadosV2 extends JPanel {
     private final JButton btnEditar = new JButton("Editar");
     private final JButton btnGuardar = new JButton("Guardar feriado");
     private final JButton btnActivarInactivar = new JButton("Activar / Inactivar");
+    private final JButton btnImportarXml = new JButton("Importar XML");
     private final JButton btnRefrescar = new JButton("Refrescar");
 
     private final JLabel lblEstado = new JLabel("Los sábados y domingos se excluyen automáticamente. Aquí solo se registran feriados o días no laborables excepcionales.");
@@ -149,6 +153,7 @@ public class JPanelFeriadosV2 extends JPanel {
         acciones.add(btnNuevo);
         acciones.add(btnEditar);
         acciones.add(btnActivarInactivar);
+        acciones.add(btnImportarXml);
         acciones.add(btnRefrescar);
 
         lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -220,6 +225,7 @@ public class JPanelFeriadosV2 extends JPanel {
         btnEditar.addActionListener(e -> cargarSeleccion());
         btnGuardar.addActionListener(e -> guardarFeriado());
         btnActivarInactivar.addActionListener(e -> cambiarActivoSeleccionado());
+        btnImportarXml.addActionListener(e -> importarXmlFeriados());
         btnRefrescar.addActionListener(e -> cargarFeriados());
         tblFeriados.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             @Override
@@ -254,6 +260,57 @@ public class JPanelFeriadosV2 extends JPanel {
                 } catch (Exception ex) {
                     lblEstado.setText("No se pudo consultar feriados. Verifique el script de configuración.");
                     mostrarError("No se pudo consultar feriados.", ex);
+                }
+            }
+        }.execute();
+    }
+
+    private void importarXmlFeriados() {
+        final Integer anio = Integer.valueOf(((Number) spnAnio.getValue()).intValue());
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Importar feriados XML - " + anio);
+        chooser.setFileFilter(new FileNameExtensionFilter("Archivo XML de feriados (*.xml)", "xml"));
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        final File archivo = chooser.getSelectedFile();
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se importarán los feriados del año " + anio + ".\n"
+                        + "Si el XML contiene fechas ya registradas, no se importará ningún feriado.\n\n"
+                        + "¿Desea continuar?",
+                "Importar XML",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        lblEstado.setText("Importando feriados desde XML...");
+        btnImportarXml.setEnabled(false);
+        new SwingWorker<Integer, Void>() {
+            @Override
+            protected Integer doInBackground() throws Exception {
+                return feriadoService.importarXmlPorAnio(archivo, anio);
+            }
+
+            @Override
+            protected void done() {
+                btnImportarXml.setEnabled(true);
+                try {
+                    int importados = get();
+                    lblEstado.setText(importados + " feriado(s) importado(s) desde XML.");
+                    JOptionPane.showMessageDialog(
+                            JPanelFeriadosV2.this,
+                            importados + " feriado(s) importado(s) correctamente.",
+                            "Importar XML",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    cargarFeriados();
+                } catch (Exception ex) {
+                    lblEstado.setText("No se importó el XML. Revise las validaciones.");
+                    mostrarError("No se pudo importar el XML de feriados.", ex);
                 }
             }
         }.execute();
