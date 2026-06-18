@@ -73,7 +73,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final NotificacionExpedienteService notificacionService;
     private final DocumentoEjecucionService documentoService;
 
-    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, titular, resolución o destinatario", 28);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");

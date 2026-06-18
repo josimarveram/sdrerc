@@ -86,9 +86,17 @@ public class ExpedienteBandejaDAO {
             sql.append("OR EXISTS (SELECT 1 FROM expediente_solicitud ss ");
             sql.append("WHERE ss.id_expediente = b.id_expediente AND ss.activo = 1 ");
             sql.append("AND UPPER(NVL(ss.numero_expediente_sgd, '')) LIKE ?) ");
+            sql.append("OR EXISTS (SELECT 1 FROM expediente_acta aa ");
+            sql.append("WHERE aa.id_expediente = b.id_expediente AND aa.activo = 1 ");
+            sql.append("AND UPPER(NVL(aa.numero_acta, '')) LIKE ?) ");
+            sql.append("OR EXISTS (SELECT 1 FROM expediente_persona ept JOIN persona pt ON pt.id_persona = ept.id_persona ");
+            sql.append("WHERE ept.id_expediente = b.id_expediente AND ept.activo = 1 ");
+            sql.append("AND UPPER(ept.tipo_relacion_persona) = 'TITULAR' ");
+            sql.append("AND (UPPER(NVL(").append(nombrePersona("pt")).append(", '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(pt.numero_documento, '')) LIKE ?)) ");
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase() + "%";
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < 11; i++) {
                 params.add(pattern);
             }
         }
@@ -117,7 +125,7 @@ public class ExpedienteBandejaDAO {
             params.add(Date.valueOf(fechaSolicitudHasta));
         }
 
-        sql.append("ORDER BY fecha_ultimo_movimiento DESC NULLS LAST, id_expediente DESC");
+        sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, titular ASC NULLS LAST, id_expediente ASC");
         sql.append(") WHERE ROWNUM <= ?");
         params.add(normalizarLimite(limite));
 

@@ -55,6 +55,7 @@ public class ExpedienteDigitalDAO {
         sql.append("JOIN etapa_expediente edh ON edh.id_etapa = h.id_etapa_destino ");
         sql.append("WHERE h.id_expediente = e.id_expediente AND h.activo = 1 AND edh.codigo = 'EXPEDIENTE_DIGITAL') AS fecha_ingreso_digital, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT MAX(o.descripcion) KEEP (DENSE_RANK LAST ORDER BY o.fecha_observacion) ");
         sql.append("FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.activo = 1) AS ultima_observacion, ");
         sql.append("(SELECT COUNT(*) FROM expediente_documento d WHERE d.id_expediente = e.id_expediente AND d.activo = 1) AS documentos, ");
@@ -111,14 +112,15 @@ public class ExpedienteDigitalDAO {
             sql.append("OR UPPER(NVL(dig.codigo_expediente_digital, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(dig.ruta_carpeta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(dig.enlace_carpeta, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ?) ");
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 11; i++) {
                 params.add(pattern);
             }
         }
 
-        sql.append("ORDER BY e.fecha_ultimo_movimiento ASC NULLS LAST, e.id_expediente ASC");
+        sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, orden_titular ASC, id_expediente ASC");
         sql.append(") WHERE ROWNUM <= ?");
         params.add(normalizarLimite(filtro == null ? 0 : filtro.getLimite()));
 

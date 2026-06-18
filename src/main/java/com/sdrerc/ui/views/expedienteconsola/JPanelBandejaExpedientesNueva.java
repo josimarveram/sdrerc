@@ -71,7 +71,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final Component encabezadoOperativo;
     private final Consumer<Long> editarExpedienteHandler;
     private final boolean perfilRegistroRecepcion;
-    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, titular o responsable", 28);
+    private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
@@ -500,7 +500,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void configurarControlesFiltro() {
         if (perfilRegistroRecepcion) {
-            txtBusqueda.setPlaceholder("Buscar expediente, trámite/SGD, titular o documento");
+            txtBusqueda.setPlaceholder("Buscar expediente, trámite/SGD, acta, titular o documento");
         }
         txtBusqueda.setColumns(34);
         txtBusqueda.setPreferredSize(new Dimension(perfilRegistroRecepcion ? 460 : 360, 34));

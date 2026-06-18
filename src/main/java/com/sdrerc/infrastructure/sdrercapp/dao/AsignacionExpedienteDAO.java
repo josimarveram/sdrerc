@@ -75,6 +75,7 @@ public class AsignacionExpedienteDAO {
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
         sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa, ");
         sql.append("(SELECT COUNT(*) FROM expediente_relacion rc ");
@@ -137,7 +138,7 @@ public class AsignacionExpedienteDAO {
             }
         }
 
-        sql.append("ORDER BY e.fecha_registro ASC NULLS LAST, e.id_expediente ASC");
+        sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, orden_titular ASC, id_expediente ASC");
         sql.append(") WHERE ROWNUM <= ?");
         params.add(normalizarLimite(limite));
 

@@ -125,6 +125,7 @@ public class AnalisisExpedienteDAO {
         sql.append("e.fecha_registro, asig.fecha_asignacion, e.fecha_ultimo_movimiento, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
         sql.append("et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT COUNT(*) FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.subsanada = 0 AND o.activo = 1) AS observaciones_pendientes, ");
         sql.append("(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, ");
         sql.append("(SELECT COUNT(*) FROM expediente_documento_analizado da WHERE da.id_expediente = e.id_expediente AND da.activo = 1) AS documentos_analizados, ");
@@ -182,7 +183,7 @@ public class AnalisisExpedienteDAO {
             }
         }
 
-        sql.append("ORDER BY e.fecha_registro ASC NULLS LAST, e.id_expediente ASC");
+        sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, orden_titular ASC, id_expediente ASC");
         sql.append(") WHERE ROWNUM <= ?");
         params.add(normalizarLimite(limite));
 

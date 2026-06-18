@@ -70,6 +70,7 @@ public class EjecucionExpedienteDAO {
         sql.append("AND tm.codigo = 'REGISTRO_NUMERO_RESOLUCION') AS fecha_ingreso_ejecucion, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
         sql.append("et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT MAX(NVL(tre.nombre, tre.codigo)) KEEP (DENSE_RANK LAST ORDER BY ev.fecha_evaluacion NULLS FIRST, ev.creado_en) ");
         sql.append("FROM expediente_evaluacion ev LEFT JOIN tipo_resultado_evaluacion tre ON tre.id_tipo_resultado_evaluacion = ev.id_tipo_resultado_evaluacion ");
         sql.append("WHERE ev.id_expediente = e.id_expediente AND ev.activo = 1) AS resultado_analisis, ");
@@ -116,14 +117,15 @@ public class EjecucionExpedienteDAO {
             sql.append("OR UPPER(NVL(esol.asunto, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(ea.numero_acta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(res.numero_resolucion, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ?) ");
-            for (int i = 0; i < 7; i++) {
+            for (int i = 0; i < 8; i++) {
                 params.add(pattern);
             }
         }
 
-        sql.append("ORDER BY e.fecha_ultimo_movimiento ASC NULLS LAST, e.id_expediente ASC");
+        sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, orden_titular ASC, id_expediente ASC");
         sql.append(") WHERE ROWNUM <= ?");
         params.add(normalizarLimite(limite));
 

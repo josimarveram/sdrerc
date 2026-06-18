@@ -60,6 +60,7 @@ public class CierreArchivoDAO {
         sql.append("JOIN tipo_movimiento tm ON tm.id_tipo_movimiento = h.id_tipo_movimiento ");
         sql.append("WHERE h.id_expediente = e.id_expediente AND h.activo = 1 AND tm.codigo = 'ARCHIVO') AS fecha_archivo, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("e.cerrado, e.archivado, e.expediente_digital_completo, ");
         sql.append("(SELECT MAX(o.descripcion) KEEP (DENSE_RANK LAST ORDER BY o.fecha_observacion) ");
         sql.append("FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.activo = 1) AS ultima_observacion, ");
@@ -132,15 +133,15 @@ public class CierreArchivoDAO {
             sql.append("OR UPPER(NVL(res.numero_resolucion, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(ent.nombre, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(der.numero_oficio, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ?) ");
-            for (int i = 0; i < 9; i++) {
+            for (int i = 0; i < 10; i++) {
                 params.add(pattern);
             }
         }
 
-        sql.append("ORDER BY CASE WHEN et.codigo = 'CIERRE_ARCHIVO' THEN 1 ELSE 0 END, ");
-        sql.append("e.fecha_ultimo_movimiento DESC NULLS LAST, e.id_expediente DESC");
+        sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, orden_titular ASC, id_expediente ASC");
         sql.append(") WHERE ROWNUM <= ?");
         params.add(normalizarLimite(limite));
 
