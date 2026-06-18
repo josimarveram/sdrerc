@@ -68,6 +68,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
@@ -175,6 +176,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable asignacionMultipleTable = new AppV2Table(asignacionMultipleModel);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
+    private final JTextField txtHojaEnvioAsignacion = new JTextField();
     private final JTextArea txtComentario = new JTextArea(3, 18);
     private final AppV2NotebookToggleTab tabPanelAsignacion = new AppV2NotebookToggleTab();
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
@@ -201,6 +203,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideSectionPanel sectionAccionesRelacionados;
     private AppV2SideSectionPanel sectionFlujoAsignacion;
     private AppV2SideSectionPanel sectionDestinoAsignacion;
+    private AppV2SideSectionPanel sectionHojaEnvioAsignacion;
     private AppV2SideSectionPanel sectionComentarioAsignacion;
     private AppV2OperationalSplitPanel splitOperativo;
     private Color acentoSeleccion = GROUP_STRIPE_COLORS[0];
@@ -212,6 +215,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean todasVisiblesSeleccionadas;
     private boolean busquedaInicialEjecutada;
     private Long idExpedienteDocumentosRelacionados;
+    private Long idExpedienteHojaEnvioSimple;
 
     private boolean cargandoCombos;
     private boolean actualizandoSeleccion;
@@ -324,12 +328,14 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionAccionesRelacionados = crearAccionesRelacionados();
         sectionFlujoAsignacion = crearFlujoAsignacion();
         sectionDestinoAsignacion = crearDestinoAsignacion();
+        sectionHojaEnvioAsignacion = crearHojaEnvioAsignacion();
         sectionComentarioAsignacion = crearComentarioAsignacion();
         panel.addSection(sectionResumenAsignacion);
         panel.addSection(sectionAsignacionMultiple);
         panel.addSection(sectionAccionesRelacionados);
         panel.addSection(sectionFlujoAsignacion);
         panel.addSection(sectionDestinoAsignacion);
+        panel.addSection(sectionHojaEnvioAsignacion);
         panel.addSection(sectionComentarioAsignacion);
         sectionAsignacionMultiple.setVisible(false);
         panel.setFooter(crearAccionesAsignacion());
@@ -439,6 +445,12 @@ public class JPanelAsignacionV2 extends JPanel {
         return section;
     }
 
+    private AppV2SideSectionPanel crearHojaEnvioAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Hoja de envío");
+        section.addRow("N° hoja de envío", txtHojaEnvioAsignacion);
+        return section;
+    }
+
     private AppV2SideSectionPanel crearComentarioAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Comentario");
         section.addContent(scrollComentario());
@@ -482,6 +494,10 @@ public class JPanelAsignacionV2 extends JPanel {
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        txtHojaEnvioAsignacion.setPreferredSize(new Dimension(230, 34));
+        txtHojaEnvioAsignacion.setMinimumSize(new Dimension(180, 34));
+        txtHojaEnvioAsignacion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        txtHojaEnvioAsignacion.setToolTipText("Número de hoja de envío de la asignación.");
         lblTramiteWebSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblNumeroDocumentoSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -1277,7 +1293,11 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         List<Long> ids = new ArrayList<>();
         ids.add(id);
-        ejecutarAsignacion(ids, Collections.<Long, String>emptyMap());
+        Map<Long, String> hojasEnvio = obtenerHojaEnvioAsignacionSimple(id);
+        if (hojasEnvio == null) {
+            return;
+        }
+        ejecutarAsignacion(ids, hojasEnvio);
     }
 
     private void asignarMarcados() {
@@ -1289,7 +1309,7 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         Map<Long, String> hojasEnvio = ids.size() > 1
                 ? obtenerHojasEnvioAsignacionMultiple(ids)
-                : Collections.<Long, String>emptyMap();
+                : obtenerHojaEnvioAsignacionSimple(ids.get(0));
         if (hojasEnvio == null) {
             return;
         }
@@ -1445,6 +1465,21 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
         return ids;
+    }
+
+    private Map<Long, String> obtenerHojaEnvioAsignacionSimple(Long idExpediente) {
+        String hoja = txtHojaEnvioAsignacion.getText() == null
+                ? ""
+                : txtHojaEnvioAsignacion.getText().trim();
+        txtHojaEnvioAsignacion.setText(hoja);
+        if (hoja.isEmpty()) {
+            mostrarInfo("Ingrese el número de hoja de envío de la asignación.");
+            txtHojaEnvioAsignacion.requestFocusInWindow();
+            return null;
+        }
+        Map<Long, String> result = new HashMap<>();
+        result.put(idExpediente, hoja);
+        return result;
     }
 
     private Map<Long, String> obtenerHojasEnvioAsignacionMultiple(List<Long> ids) {
@@ -1648,6 +1683,7 @@ public class JPanelAsignacionV2 extends JPanel {
         AsignacionTableRow filaPanel = filaParaPanel(modelRow, marcados);
         if (filaPanel != null && filaPanel.esPrincipal()) {
             AsignacionExpedienteDTO item = filaPanel.principal;
+            prepararHojaEnvioSimple(item);
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(item.getNumeroExpediente());
             actualizarIdentificacionDocumento(
@@ -1675,6 +1711,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     : "Sin relacionados pendientes");
             btnAsociarRelacionados.setEnabled(item.getPosiblesRelacionados() > 0);
         } else if (filaPanel != null && filaPanel.esAsociada()) {
+            prepararHojaEnvioSimple(null);
             aplicarIdentidadVisual(filaPanel.principal, false);
             lblExpedienteSeleccionado.setText("Expediente principal: " + filaPanel.numeroExpedientePrincipal());
             actualizarIdentificacionDocumento(
@@ -1695,6 +1732,7 @@ public class JPanelAsignacionV2 extends JPanel {
             btnAsociarRelacionados.setText("Relación confirmada");
             btnAsociarRelacionados.setEnabled(false);
         } else if (modoMultiple) {
+            prepararHojaEnvioSimple(null);
             aplicarIdentidadVisual(null, true);
             cargarPanelAsignacionMultiple(obtenerExpedientesMarcados());
             lblExpedienteSeleccionado.setText("Selección múltiple");
@@ -1718,6 +1756,20 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
+    private void prepararHojaEnvioSimple(AsignacionExpedienteDTO item) {
+        if (item == null || item.getIdExpediente() == null || !item.isAsignable()) {
+            idExpedienteHojaEnvioSimple = null;
+            txtHojaEnvioAsignacion.setText("");
+            txtHojaEnvioAsignacion.setEnabled(false);
+            return;
+        }
+        if (!item.getIdExpediente().equals(idExpedienteHojaEnvioSimple)) {
+            idExpedienteHojaEnvioSimple = item.getIdExpediente();
+            txtHojaEnvioAsignacion.setText("");
+        }
+        txtHojaEnvioAsignacion.setEnabled(true);
+    }
+
     private void actualizarModoPanelAsignacion(boolean multiple) {
         if (panelAsignacion != null) {
             panelAsignacion.setTitle(multiple ? "Panel de asignación múltiple" : "Panel de asignación");
@@ -1730,6 +1782,9 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         if (sectionFlujoAsignacion != null) {
             sectionFlujoAsignacion.setVisible(!multiple);
+        }
+        if (sectionHojaEnvioAsignacion != null) {
+            sectionHojaEnvioAsignacion.setVisible(!multiple);
         }
         if (panelAsignacion != null) {
             panelAsignacion.revalidate();
@@ -2119,6 +2174,9 @@ public class JPanelAsignacionV2 extends JPanel {
         limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
         btnAsociarRelacionados.setText("Sin relacionados pendientes");
         btnAsociarRelacionados.setEnabled(false);
+        idExpedienteHojaEnvioSimple = null;
+        txtHojaEnvioAsignacion.setText("");
+        txtHojaEnvioAsignacion.setEnabled(false);
         txtComentario.setText("");
     }
 
