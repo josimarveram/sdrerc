@@ -6,6 +6,7 @@ import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -17,9 +18,10 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -58,7 +60,7 @@ public class JPanelFeriadosV2 extends JPanel {
     private final JButton btnRefrescar = new JButton("Refrescar");
 
     private final JLabel lblEstado = new JLabel("Los sábados y domingos se excluyen automáticamente. Aquí solo se registran feriados o días no laborables excepcionales.");
-    private final JTextField txtFecha = new JTextField(12);
+    private final PremiumDateFieldV2 fechaFeriadoField = new PremiumDateFieldV2();
     private final JTextField txtNombre = new JTextField(24);
     private final JTextField txtTipo = new JTextField(16);
     private final JTextArea txtObservacion = new JTextArea(5, 24);
@@ -176,7 +178,7 @@ public class JPanelFeriadosV2 extends JPanel {
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         int row = 0;
-        agregarFila(form, row++, "Fecha", txtFecha);
+        agregarFila(form, row++, "Fecha", fechaFeriadoField);
         agregarFila(form, row++, "Nombre", txtNombre);
         agregarFila(form, row++, "Tipo", txtTipo);
         agregarFila(form, row++, "Observación", new JScrollPane(txtObservacion));
@@ -196,7 +198,9 @@ public class JPanelFeriadosV2 extends JPanel {
         cmbEstado.addItem(new EstadoFiltroItem("Todos", null));
         cmbEstado.addItem(new EstadoFiltroItem("Activos", Boolean.TRUE));
         cmbEstado.addItem(new EstadoFiltroItem("Inactivos", Boolean.FALSE));
-        txtFecha.setToolTipText("Formato dd/MM/yyyy");
+        fechaFeriadoField.setDateFormatString("dd/MM/yyyy");
+        fechaFeriadoField.setToolTipText("Seleccione la fecha del feriado");
+        fechaFeriadoField.getDateChooser().setToolTipText("Seleccione la fecha del feriado");
         txtTipo.setText("NACIONAL");
         chkActivo.setSelected(true);
         txtObservacion.setLineWrap(true);
@@ -319,7 +323,7 @@ public class JPanelFeriadosV2 extends JPanel {
     private FeriadoNacionalDTO leerFormulario() {
         FeriadoNacionalDTO dto = new FeriadoNacionalDTO();
         dto.setIdFeriado(idFeriadoEditando);
-        dto.setFecha(parseFecha(txtFecha.getText()));
+        dto.setFecha(leerFechaFeriado());
         dto.setNombre(txtNombre.getText());
         dto.setTipo(txtTipo.getText());
         dto.setObservacion(txtObservacion.getText());
@@ -327,12 +331,19 @@ public class JPanelFeriadosV2 extends JPanel {
         return dto;
     }
 
-    private LocalDate parseFecha(String value) {
-        try {
-            return LocalDate.parse(value == null ? "" : value.trim(), DATE_FORMAT);
-        } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException("Ingrese la fecha del feriado con formato dd/MM/yyyy.");
+    private LocalDate leerFechaFeriado() {
+        Date fecha = fechaFeriadoField.getDate();
+        if (fecha == null) {
+            throw new IllegalArgumentException("Seleccione la fecha del feriado.");
         }
+        if (fecha instanceof java.sql.Date) {
+            return ((java.sql.Date) fecha).toLocalDate();
+        }
+        return fecha.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private Date toDate(LocalDate fecha) {
+        return fecha == null ? null : java.sql.Date.valueOf(fecha);
     }
 
     private void cargarSeleccion() {
@@ -351,7 +362,7 @@ public class JPanelFeriadosV2 extends JPanel {
         cargandoFormulario = true;
         try {
             idFeriadoEditando = dto.getIdFeriado();
-            txtFecha.setText(dto.getFecha() == null ? "" : DATE_FORMAT.format(dto.getFecha()));
+            fechaFeriadoField.setDate(toDate(dto.getFecha()));
             txtNombre.setText(dto.getNombre());
             txtTipo.setText(dto.getTipo());
             txtObservacion.setText(dto.getObservacion());
@@ -364,12 +375,12 @@ public class JPanelFeriadosV2 extends JPanel {
     private void nuevoFeriado() {
         idFeriadoEditando = null;
         tblFeriados.clearSelection();
-        txtFecha.setText("");
+        fechaFeriadoField.setDate(null);
         txtNombre.setText("");
         txtTipo.setText("NACIONAL");
         txtObservacion.setText("");
         chkActivo.setSelected(true);
-        txtFecha.requestFocusInWindow();
+        fechaFeriadoField.requestFocusInWindow();
     }
 
     private void limpiarFiltros() {
