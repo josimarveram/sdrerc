@@ -32,7 +32,7 @@ BEGIN
       )';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -42,7 +42,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE feriado_nacional ADD CONSTRAINT pk_feriado_nacional PRIMARY KEY (id_feriado)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -52,7 +52,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE feriado_nacional ADD CONSTRAINT uk_feriado_nacional_fecha_tipo UNIQUE (fecha, tipo)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -62,7 +62,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE feriado_nacional ADD CONSTRAINT ck_feriado_nacional_activo CHECK (activo IN (0, 1))';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -72,7 +72,7 @@ BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX ix_feriado_nacional_fecha ON feriado_nacional (fecha, activo)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_table_count NUMBER;
@@ -92,7 +92,7 @@ BEGIN
     END IF;
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -107,7 +107,7 @@ EXCEPTION
       RAISE;
     END IF;
 END;
-/
+
 
 SELECT table_name
   FROM user_tables

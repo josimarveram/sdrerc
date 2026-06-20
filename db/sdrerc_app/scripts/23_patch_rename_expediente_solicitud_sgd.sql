@@ -24,7 +24,7 @@ BEGIN
         EXECUTE IMMEDIATE 'ALTER TABLE expediente_solicitud ADD numero_expediente_sgd VARCHAR2(80 CHAR)';
     END IF;
 END;
-/
+
 
 
 DECLARE
@@ -54,7 +54,7 @@ BEGIN
         EXECUTE IMMEDIATE 'CREATE INDEX ix_exp_sol_sgd ON expediente_solicitud(numero_expediente_sgd)';
     END IF;
 END;
-/
+
 
 
 COMMENT ON COLUMN expediente_solicitud.numero_expediente_sgd IS

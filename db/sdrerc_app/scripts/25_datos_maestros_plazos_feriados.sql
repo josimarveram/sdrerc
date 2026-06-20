@@ -34,7 +34,7 @@ BEGIN
     add_column_if_missing('OBSERVACION', 'observacion VARCHAR2(300)');
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -49,7 +49,7 @@ EXCEPTION
       RAISE;
     END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -64,7 +64,7 @@ EXCEPTION
       RAISE;
     END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -79,7 +79,7 @@ EXCEPTION
       RAISE;
     END IF;
 END;
-/
+
 
 DECLARE
   v_id_etapa_registro NUMBER;
@@ -134,7 +134,7 @@ BEGIN
      WHERE UPPER(codigo) = 'SOLICITUD_SDRERC';
   END IF;
 END;
-/
+
 
 SELECT codigo,
        nombre,

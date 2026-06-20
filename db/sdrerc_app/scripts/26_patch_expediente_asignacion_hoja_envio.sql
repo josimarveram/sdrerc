@@ -33,7 +33,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 SELECT column_name, data_type, data_length, nullable
   FROM user_tab_columns
