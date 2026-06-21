@@ -7,7 +7,10 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class SdrercAppConnection {
 
@@ -31,6 +34,9 @@ public final class SdrercAppConnection {
     private static final String PROP_URL_ALIAS = "sdrerc.db.url";
     private static final String PROP_USER_ALIAS = "sdrerc.db.user";
     private static final String PROP_PASSWORD_ALIAS = "sdrerc.db.password";
+    private static final Pattern ORACLE_THIN_URL = Pattern.compile(
+            "jdbc:oracle:thin:@(?://)?([^:/]+):(\\d+)/(\\S+)",
+            Pattern.CASE_INSENSITIVE);
 
     private SdrercAppConnection() {
     }
@@ -46,7 +52,11 @@ public final class SdrercAppConnection {
         requireConfigured(PROP_USER, PROP_USER_ALIAS, ENV_USER, ENV_USER_ALIAS, user);
         requireConfigured(PROP_PASSWORD, PROP_PASSWORD_ALIAS, ENV_PASSWORD, ENV_PASSWORD_ALIAS, password);
 
-        return DriverManager.getConnection(url, user, password);
+        try {
+            return DriverManager.getConnection(url, user, password);
+        } catch (SQLException ex) {
+            throw traducirErrorConexion(url, ex);
+        }
     }
 
     private static void cargarDriverOracle() throws SQLException {
@@ -88,6 +98,57 @@ public final class SdrercAppConnection {
         }
 
         return new File("config", CONFIG_FILE_NAME);
+    }
+
+    private static SQLException traducirErrorConexion(String url, SQLException ex) {
+        if (!esErrorRedOracle(ex)) {
+            return ex;
+        }
+
+        String destino = describirDestino(url);
+        StringBuilder mensaje = new StringBuilder();
+        mensaje.append("No se pudo establecer conexion con Oracle SDRERC_APP");
+        if (destino != null) {
+            mensaje.append(" en ").append(destino);
+        }
+        mensaje.append(". Verifique que el servidor Oracle este encendido, que el listener escuche el puerto 1521, ")
+                .append("que la IP configurada sea la IP actual del servidor y que el firewall permita la conexion. ")
+                .append("Configuracion usada: ").append(resolveConfigFile().getPath()).append(". ")
+                .append("Prueba sugerida: Test-NetConnection <IP_SERVIDOR> -Port 1521.");
+        return new SQLException(mensaje.toString(), ex.getSQLState(), ex.getErrorCode(), ex);
+    }
+
+    private static boolean esErrorRedOracle(SQLException ex) {
+        SQLException current = ex;
+        while (current != null) {
+            String message = current.getMessage();
+            if (current instanceof SQLRecoverableException) {
+                return true;
+            }
+            if (message != null) {
+                String lower = message.toLowerCase();
+                if (lower.contains("network adapter")
+                        || lower.contains("io error")
+                        || lower.contains("error de e/s")
+                        || lower.contains("connection refused")
+                        || lower.contains("the network adapter could not establish the connection")) {
+                    return true;
+                }
+            }
+            current = current.getNextException();
+        }
+        return false;
+    }
+
+    private static String describirDestino(String url) {
+        if (url == null) {
+            return null;
+        }
+        Matcher matcher = ORACLE_THIN_URL.matcher(url.trim());
+        if (!matcher.matches()) {
+            return url;
+        }
+        return matcher.group(1) + ":" + matcher.group(2) + "/" + matcher.group(3);
     }
 
     private static String resolveValue(Properties config, String propertyName, String propertyAlias, String envName, String envAlias) {
