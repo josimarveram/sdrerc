@@ -60,8 +60,10 @@ public class AsignacionExpedienteDAO {
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
         boolean soportaNumeroHojaEnvio;
+        boolean soportaGrupoFamiliar;
         try (Connection conn = SdrercAppConnection.getConnection()) {
             soportaNumeroHojaEnvio = soportaNumeroHojaEnvio(conn);
+            soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
         }
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
@@ -88,6 +90,13 @@ public class AsignacionExpedienteDAO {
         sql.append("e.id_usuario_responsable_actual AS id_abogado_responsable, ");
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
+        if (soportaGrupoFamiliar) {
+            sql.append("NVL(esol.grupo_familiar, 0) AS grupo_familiar, ");
+            sql.append("esol.criterio_grupo_familiar, esol.observacion_grupo_familiar, ");
+        } else {
+            sql.append("0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
+            sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
+        }
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
@@ -145,9 +154,13 @@ public class AsignacionExpedienteDAO {
             sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.observacion, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ? ");
+            if (soportaGrupoFamiliar) {
+                sql.append("OR UPPER(NVL(esol.observacion_grupo_familiar, '')) LIKE ? ");
+            }
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase(Locale.ROOT) + "%";
-            for (int i = 0; i < 9; i++) {
+            int patrones = soportaGrupoFamiliar ? 10 : 9;
+            for (int i = 0; i < patrones; i++) {
                 params.add(pattern);
             }
         }
@@ -326,7 +339,10 @@ public class AsignacionExpedienteDAO {
                 expedienteRelacionadoDAO.contarPosiblesRelacionados(conn, idExpediente),
                 rs.getInt("asociados_confirmados"),
                 rs.getInt("potencial_duplicado") > 0,
-                rs.getString("observacion_solicitud"));
+                rs.getString("observacion_solicitud"),
+                rs.getInt("grupo_familiar") == 1,
+                rs.getString("criterio_grupo_familiar"),
+                rs.getString("observacion_grupo_familiar"));
     }
 
     private void validarTransicion(
@@ -600,6 +616,16 @@ public class AsignacionExpedienteDAO {
         String sql = "SELECT 1 FROM user_tab_columns "
                 + "WHERE table_name = 'EXPEDIENTE_ASIGNACION' "
                 + "AND column_name = 'NUMERO_HOJA_ENVIO'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        }
+    }
+
+    private boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+        String sql = "SELECT 1 FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name = 'GRUPO_FAMILIAR'";
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             return rs.next();

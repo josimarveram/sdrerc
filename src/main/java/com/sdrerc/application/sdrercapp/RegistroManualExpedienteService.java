@@ -37,20 +37,32 @@ public class RegistroManualExpedienteService {
         }
         registro.setPosibleDuplicado(false);
         registro.setMotivoDuplicado(null);
+        registro.getSolicitud().limpiarDeteccionGrupoFamiliar();
+        if (registro.getSolicitud().isGrupoFamiliar() && !hasText(registro.getSolicitud().getCriterioGrupoFamiliar())) {
+            registro.getSolicitud().setCriterioGrupoFamiliar("MANUAL");
+        }
 
         String numeroActa = registro.getActa().getNumeroActa();
         String titular = registro.getTitular().getNombreCompleto();
-        if (!hasText(numeroActa) || !hasText(titular)) {
+        if (!hasText(titular)) {
             return mensajes;
         }
 
-        String duplicado = expedienteRegistroDAO.detectarDuplicadoPorActaYTitular(numeroActa, titular);
-        if (hasText(duplicado)) {
-            String motivo = "Acta y titular ya existen en " + duplicado;
-            registro.setPosibleDuplicado(true);
-            registro.setMotivoDuplicado(motivo);
-            mensajes.add("Documento duplicado: " + motivo
-                    + ". Se guardará sin número de expediente y quedará marcado para Asignación.");
+        if (hasText(numeroActa)) {
+            String duplicado = expedienteRegistroDAO.detectarDuplicadoPorActaYTitular(numeroActa, titular);
+            if (hasText(duplicado)) {
+                String motivo = "Acta y titular ya existen en " + duplicado;
+                registro.setPosibleDuplicado(true);
+                registro.setMotivoDuplicado(motivo);
+                mensajes.add("Documento duplicado: " + motivo
+                        + ". Se guardará sin número de expediente y quedará marcado para Asignación.");
+            }
+        }
+
+        String grupoFamiliar = expedienteRegistroDAO.detectarPosibleGrupoFamiliarPorTitular(titular, null);
+        if (hasText(grupoFamiliar)) {
+            registro.getSolicitud().agregarObservacionGrupoFamiliar("COINCIDENCIA_APELLIDOS_BD", grupoFamiliar);
+            mensajes.add(grupoFamiliar);
         }
         return mensajes;
     }

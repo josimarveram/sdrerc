@@ -21,6 +21,9 @@ public class CargaDiariaPreviewDTO {
     private String numeroDocumentoIdentidadSolicitante;
     private String tipoDocumentoIdentidadTitular;
     private String numeroDocumentoIdentidadTitular;
+    private boolean grupoFamiliar;
+    private String criterioGrupoFamiliar;
+    private String observacionGrupoFamiliar;
     private LocalDate fechaRecepcion;
     private String fechaRecepcionTexto;
     private String observacionInicial;
@@ -170,6 +173,74 @@ public class CargaDiariaPreviewDTO {
         this.numeroDocumentoIdentidadTitular = normalizarNumeroIdentidad(numeroDocumentoIdentidadTitular);
     }
 
+    public boolean isGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public void setGrupoFamiliar(boolean grupoFamiliar) {
+        this.grupoFamiliar = grupoFamiliar;
+    }
+
+    public String getCriterioGrupoFamiliar() {
+        return criterioGrupoFamiliar;
+    }
+
+    public void setCriterioGrupoFamiliar(String criterioGrupoFamiliar) {
+        this.criterioGrupoFamiliar = trimToNull(criterioGrupoFamiliar);
+    }
+
+    public String getObservacionGrupoFamiliar() {
+        return observacionGrupoFamiliar;
+    }
+
+    public void setObservacionGrupoFamiliar(String observacionGrupoFamiliar) {
+        this.observacionGrupoFamiliar = trimToNull(observacionGrupoFamiliar);
+    }
+
+    public boolean isPosibleGrupoFamiliar() {
+        return !grupoFamiliar && (hasText(criterioGrupoFamiliar) || hasText(observacionGrupoFamiliar));
+    }
+
+    public String getGrupoFamiliarTexto() {
+        return grupoFamiliar ? "Sí" : "No";
+    }
+
+    public void limpiarDeteccionGrupoFamiliar() {
+        if (criterioGrupoFamiliar != null && criterioGrupoFamiliar.startsWith("COINCIDENCIA_APELLIDOS")) {
+            criterioGrupoFamiliar = null;
+        }
+        if (observacionGrupoFamiliar != null) {
+            StringBuilder limpio = new StringBuilder();
+            String[] partes = observacionGrupoFamiliar.split("\\|");
+            for (String parte : partes) {
+                String texto = trimToNull(parte);
+                if (texto == null || texto.startsWith("Posible grupo familiar")) {
+                    continue;
+                }
+                if (limpio.length() > 0) {
+                    limpio.append(" | ");
+                }
+                limpio.append(texto);
+            }
+            observacionGrupoFamiliar = limpio.length() == 0 ? null : limpio.toString();
+        }
+    }
+
+    public void agregarObservacionGrupoFamiliar(String criterio, String observacion) {
+        if (!hasText(criterioGrupoFamiliar)) {
+            setCriterioGrupoFamiliar(criterio);
+        }
+        String texto = trimToNull(observacion);
+        if (texto == null) {
+            return;
+        }
+        if (observacionGrupoFamiliar == null || observacionGrupoFamiliar.trim().isEmpty()) {
+            observacionGrupoFamiliar = texto;
+        } else if (!observacionGrupoFamiliar.contains(texto)) {
+            observacionGrupoFamiliar = observacionGrupoFamiliar + " | " + texto;
+        }
+    }
+
     public LocalDate getFechaRecepcion() {
         return fechaRecepcion;
     }
@@ -315,6 +386,10 @@ public class CargaDiariaPreviewDTO {
             return "PASAPORTE";
         }
         return upper;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private static String normalizarNumeroIdentidad(String value) {

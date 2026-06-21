@@ -151,6 +151,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblTramiteWebSeleccionado = new JLabel("-");
     private final JLabel lblNumeroDocumentoSeleccionado = new JLabel("-");
     private final JLabel lblRecepcionAbogado = new JLabel("-");
+    private final JLabel lblGrupoFamiliar = new JLabel("No");
     private final JLabel lblOrigen = new JLabel("Registro / Registrado");
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
     private final JLabel lblIngreso = new JLabel("Normal");
@@ -377,6 +378,7 @@ public class JPanelAsignacionV2 extends JPanel {
         section.addRow("Trámite Web", lblTramiteWebSeleccionado);
         section.addRow("N° Documento", lblNumeroDocumentoSeleccionado);
         section.addRow("Recepción", lblRecepcionAbogado);
+        section.addRow("Grupo familiar", lblGrupoFamiliar);
         section.addRow("Alertas", crearPanelDocumentosRelacionados());
         return section;
     }
@@ -501,6 +503,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblTramiteWebSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblNumeroDocumentoSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblGrupoFamiliar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblEquipoActual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblAbogadoActual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -1003,14 +1006,20 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private String alertaAsignacion(AsignacionExpedienteDTO item) {
-        if (item.getAsociadosConfirmados() > 0 && item.getPosiblesRelacionados() > 0) {
-            return item.getAsociadosConfirmados() + " asociados / " + item.getPosiblesRelacionados() + " pendientes";
-        }
+        List<String> alertas = new ArrayList<>();
         if (item.getAsociadosConfirmados() > 0) {
-            return item.getAsociadosConfirmados() + " documento(s) asociado(s)";
+            alertas.add(item.getAsociadosConfirmados() + " asociado(s)");
         }
         if (item.getPosiblesRelacionados() > 0) {
-            return item.getPosiblesRelacionados() + " relacionados";
+            alertas.add(item.getPosiblesRelacionados() + " relacionado(s)");
+        }
+        if (item.isGrupoFamiliar()) {
+            alertas.add("Grupo familiar");
+        } else if (item.isPosibleGrupoFamiliar()) {
+            alertas.add("Posible grupo familiar");
+        }
+        if (!alertas.isEmpty()) {
+            return String.join(" / ", alertas);
         }
         String alerta = item.getAlertaIngreso();
         return "Normal".equalsIgnoreCase(alerta) ? "Sin alerta" : alerta;
@@ -1697,6 +1706,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     item.getAbogadoAsignado(),
                     item.getIdAbogadoResponsable());
             aplicarEstadoRecepcion(lblRecepcionAbogado, estadoRecepcionPrincipal(item));
+            aplicarGrupoFamiliarPanel(item);
             lblOrigen.setText("Registro / Registrado");
             lblDestino.setText("Asignación / Asignado");
             lblIngreso.setText(item.getAlertaIngreso());
@@ -1725,6 +1735,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     filaPanel.asociado.getAbogadoAsignado(),
                     filaPanel.asociado.getIdAbogadoResponsable());
             aplicarEstadoRecepcion(lblRecepcionAbogado, estadoRecepcionAsociado(filaPanel));
+            aplicarGrupoFamiliarPanel(filaPanel.principal);
             lblOrigen.setText("Expediente principal");
             lblDestino.setText(filaPanel.numeroExpedientePrincipal());
             lblIngreso.setText("Duplicado confirmado");
@@ -1743,6 +1754,8 @@ public class JPanelAsignacionV2 extends JPanel {
             lblAbogadoActual.setText("Selección múltiple");
             lblAbogadoActual.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
             aplicarEstadoRecepcion(lblRecepcionAbogado, "No aplica");
+            lblGrupoFamiliar.setText("Múltiple");
+            lblGrupoFamiliar.setToolTipText("Revise la columna Alertas de cada expediente seleccionado.");
             lblOrigen.setText("Registro / Registrado");
             lblDestino.setText("Asignación / Asignado");
             lblIngreso.setText("Múltiple");
@@ -1957,6 +1970,32 @@ public class JPanelAsignacionV2 extends JPanel {
             return "Recibido por abogado";
         }
         return "Pendiente de recibir";
+    }
+
+    private void aplicarGrupoFamiliarPanel(AsignacionExpedienteDTO item) {
+        if (item == null) {
+            lblGrupoFamiliar.setText("No");
+            lblGrupoFamiliar.setToolTipText(null);
+            return;
+        }
+        lblGrupoFamiliar.setText(item.getGrupoFamiliarEstado());
+        StringBuilder tooltip = new StringBuilder();
+        if (!item.getCriterioGrupoFamiliar().isEmpty()) {
+            tooltip.append("Criterio: ").append(item.getCriterioGrupoFamiliar());
+        }
+        if (!item.getObservacionGrupoFamiliar().isEmpty()) {
+            if (tooltip.length() > 0) {
+                tooltip.append(" | ");
+            }
+            tooltip.append(item.getObservacionGrupoFamiliar());
+        }
+        if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+            if (tooltip.length() > 0) {
+                tooltip.append(" | ");
+            }
+            tooltip.append("Considere asignar solicitudes relacionadas al mismo abogado.");
+        }
+        lblGrupoFamiliar.setToolTipText(tooltip.length() == 0 ? null : tooltip.toString());
     }
 
     private void aplicarEstadoRecepcion(JLabel label, String estado) {
@@ -2180,6 +2219,7 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarIdentificacionDocumento(null, null, null);
         mostrarAsignacionActual(null, null, null, null);
         aplicarEstadoRecepcion(lblRecepcionAbogado, "-");
+        aplicarGrupoFamiliarPanel(null);
         lblOrigen.setText("Registro / Registrado");
         lblDestino.setText("Asignación / Asignado");
         lblIngreso.setText("Normal");

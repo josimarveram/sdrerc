@@ -20,6 +20,9 @@ public class DatosSolicitudDTO {
     private String validacionInicial;
     private String hojaEnvio;
     private String observacionInicial;
+    private boolean grupoFamiliar;
+    private String criterioGrupoFamiliar;
+    private String observacionGrupoFamiliar;
 
     public String getNumeroTramite() {
         return numeroTramite;
@@ -149,6 +152,74 @@ public class DatosSolicitudDTO {
         this.observacionInicial = trimToNull(observacionInicial);
     }
 
+    public boolean isGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public void setGrupoFamiliar(boolean grupoFamiliar) {
+        this.grupoFamiliar = grupoFamiliar;
+    }
+
+    public String getCriterioGrupoFamiliar() {
+        return criterioGrupoFamiliar;
+    }
+
+    public void setCriterioGrupoFamiliar(String criterioGrupoFamiliar) {
+        this.criterioGrupoFamiliar = trimToNull(criterioGrupoFamiliar);
+    }
+
+    public String getObservacionGrupoFamiliar() {
+        return observacionGrupoFamiliar;
+    }
+
+    public void setObservacionGrupoFamiliar(String observacionGrupoFamiliar) {
+        this.observacionGrupoFamiliar = trimToNull(observacionGrupoFamiliar);
+    }
+
+    public boolean isPosibleGrupoFamiliar() {
+        return !grupoFamiliar && (hasText(criterioGrupoFamiliar) || hasText(observacionGrupoFamiliar));
+    }
+
+    public String getGrupoFamiliarTexto() {
+        return grupoFamiliar ? "Sí" : "No";
+    }
+
+    public void limpiarDeteccionGrupoFamiliar() {
+        if (criterioGrupoFamiliar != null && criterioGrupoFamiliar.startsWith("COINCIDENCIA_APELLIDOS")) {
+            criterioGrupoFamiliar = null;
+        }
+        if (observacionGrupoFamiliar != null) {
+            StringBuilder limpio = new StringBuilder();
+            String[] partes = observacionGrupoFamiliar.split("\\|");
+            for (String parte : partes) {
+                String texto = trimToNull(parte);
+                if (texto == null || texto.startsWith("Posible grupo familiar")) {
+                    continue;
+                }
+                if (limpio.length() > 0) {
+                    limpio.append(" | ");
+                }
+                limpio.append(texto);
+            }
+            observacionGrupoFamiliar = limpio.length() == 0 ? null : limpio.toString();
+        }
+    }
+
+    public void agregarObservacionGrupoFamiliar(String criterio, String observacion) {
+        if (!hasText(criterioGrupoFamiliar)) {
+            setCriterioGrupoFamiliar(criterio);
+        }
+        String texto = trimToNull(observacion);
+        if (texto == null) {
+            return;
+        }
+        if (observacionGrupoFamiliar == null || observacionGrupoFamiliar.trim().isEmpty()) {
+            observacionGrupoFamiliar = texto;
+        } else if (!observacionGrupoFamiliar.contains(texto)) {
+            observacionGrupoFamiliar = observacionGrupoFamiliar + " | " + texto;
+        }
+    }
+
     private static String trimToNull(String value) {
         if (value == null) {
             return null;
@@ -169,5 +240,9 @@ public class DatosSolicitudDTO {
             return "Oficio";
         }
         return trimmed;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

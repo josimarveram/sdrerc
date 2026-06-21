@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -361,6 +362,11 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         panelBadges.add(expediente.isExpedienteDigitalCompleto()
                 ? new BadgeV2("Digital completo", AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS)
                 : new BadgeV2("Digital pendiente", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY));
+        if (expediente.tieneIndicadorGrupoFamiliar()) {
+            panelBadges.add(expediente.isGrupoFamiliar()
+                    ? new BadgeV2("Grupo familiar", AppV2Theme.SOFT_BLUE, AppV2Theme.PRIMARY)
+                    : new BadgeV2("Posible grupo familiar", AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING));
+        }
         panelBadges.revalidate();
         panelBadges.repaint();
     }
@@ -481,6 +487,14 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             {"Número acta", expediente.getNumeroActa()}
         }));
         content.add(Box.createVerticalStrut(10));
+        if (expediente.tieneIndicadorGrupoFamiliar()) {
+            content.add(crearSeccionDetalle("Grupo familiar", new String[][]{
+                {"Estado", expediente.getGrupoFamiliarEstado()},
+                {"Criterio", criterioGrupoFamiliar(expediente.getCriterioGrupoFamiliar())},
+                {"Observación", expediente.getObservacionGrupoFamiliar()}
+            }));
+            content.add(Box.createVerticalStrut(10));
+        }
         content.add(crearSeccionDetalle("Responsables", new String[][]{
             {"Abogado inicial", expediente.getAbogadoInicial()},
             {"Responsable actual", expediente.getResponsableActual()},
@@ -841,6 +855,26 @@ public class DlgConsolaExpedienteV2 extends JDialog {
 
     private static String value(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private static String criterioGrupoFamiliar(String criterio) {
+        if (criterio == null || criterio.trim().isEmpty()) {
+            return "";
+        }
+        String normalized = criterio.trim().toUpperCase(Locale.ROOT);
+        if ("MANUAL".equals(normalized)) {
+            return "Marcado manual";
+        }
+        if ("EXCEL".equals(normalized)) {
+            return "Informado desde Excel";
+        }
+        if ("COINCIDENCIA_APELLIDOS_EXCEL".equals(normalized)) {
+            return "Coincidencia de apellidos en carga";
+        }
+        if ("COINCIDENCIA_APELLIDOS_BD".equals(normalized)) {
+            return "Coincidencia de apellidos con solicitud existente";
+        }
+        return DisplayNameMapperV2.valor(criterio);
     }
 
     private static String safe(String value) {

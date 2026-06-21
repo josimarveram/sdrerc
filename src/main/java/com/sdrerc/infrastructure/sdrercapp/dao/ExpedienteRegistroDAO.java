@@ -2,6 +2,7 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 
 import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
+import com.sdrerc.application.sdrercapp.GrupoFamiliarHeuristicaService;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
@@ -32,6 +33,7 @@ public class ExpedienteRegistroDAO {
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService;
+    private final GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService = new GrupoFamiliarHeuristicaService();
 
     public ExpedienteRegistroDAO() {
         this(new CatalogoLookupDAO(), new CalendarioLaboralService());
@@ -73,6 +75,39 @@ public class ExpedienteRegistroDAO {
         }
     }
 
+    public Map<Integer, String> detectarPosiblesGruposFamiliaresContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> coincidencias = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return coincidencias;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            Map<String, String> existentes = buscarClavesGrupoFamiliarExistentes(conn, null);
+            for (CargaDiariaPreviewDTO item : registros) {
+                String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(item.getTitular());
+                String descripcion = clave == null ? null : existentes.get(clave);
+                if (hasText(descripcion)) {
+                    coincidencias.put(
+                            item.getFila(),
+                            "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + descripcion + ".");
+                }
+            }
+        }
+        return coincidencias;
+    }
+
+    public String detectarPosibleGrupoFamiliarPorTitular(String titular, Long idExpedienteExcluir) throws SQLException {
+        String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(titular);
+        if (!hasText(clave)) {
+            return null;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String descripcion = buscarClavesGrupoFamiliarExistentes(conn, idExpedienteExcluir).get(clave);
+            return hasText(descripcion)
+                    ? "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + descripcion + "."
+                    : null;
+        }
+    }
+
     public int obtenerSiguienteCorrelativoExpediente(int anio) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             return obtenerUltimoCorrelativoExpediente(conn, anio) + 1;
@@ -109,6 +144,7 @@ public class ExpedienteRegistroDAO {
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_CARGA_DIARIA), "movimiento IMPORTACION_CARGA_DIARIA");
                 int anioCorrelativo = correlativoService.anioActual();
                 int siguienteCorrelativo = obtenerUltimoCorrelativoExpediente(conn, anioCorrelativo) + 1;
+                boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
 
                 for (CargaDiariaPreviewDTO item : candidatos) {
                     DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(conn, item.getNumeroActa(), item.getTitular());
@@ -140,7 +176,7 @@ public class ExpedienteRegistroDAO {
                         actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
                     }
 
-                    insertarSolicitud(conn, item, idExpediente, idSolicitante);
+                    insertarSolicitud(conn, item, idExpediente, idSolicitante, soportaGrupoFamiliar);
                     insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
                     if (idRemitente != null) {
                         insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
@@ -205,6 +241,7 @@ public class ExpedienteRegistroDAO {
                 Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
                 Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_REGISTRO_MANUAL), "movimiento RECEPCION_DOCUMENTO");
+                boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
                 DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(
                         conn,
                         registro.getActa().getNumeroActa(),
@@ -225,7 +262,7 @@ public class ExpedienteRegistroDAO {
                     actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
                 }
 
-                insertarSolicitudManual(conn, registro, idExpediente, idRemitente);
+                insertarSolicitudManual(conn, registro, idExpediente, idRemitente, soportaGrupoFamiliar);
                 insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
                 insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
                 insertarActaManual(conn, registro.getActa(), idExpediente);
@@ -307,6 +344,43 @@ public class ExpedienteRegistroDAO {
         }
     }
 
+    private Map<String, String> buscarClavesGrupoFamiliarExistentes(Connection conn, Long idExpedienteExcluir) throws SQLException {
+        Map<String, String> existentes = new LinkedHashMap<>();
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + "COALESCE(NULLIF(TRIM(p.razon_social), ''), "
+                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
+                + "p.numero_documento) AS titular "
+                + "FROM expediente e "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                + "JOIN persona p ON p.id_persona = ep.id_persona "
+                + "LEFT JOIN expediente_solicitud es ON es.id_expediente = e.id_expediente AND es.activo = 1 "
+                + "WHERE e.activo = 1 AND ep.activo = 1 "
+                + "AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "AND (es.fecha_recepcion IS NULL OR es.fecha_recepcion >= ADD_MONTHS(TRUNC(SYSDATE), -12)) "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
+                + "AND ROWNUM <= 2000";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (idExpedienteExcluir != null) {
+                ps.setLong(1, idExpedienteExcluir);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String titular = rs.getString("titular");
+                    String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(titular);
+                    if (!hasText(clave) || existentes.containsKey(clave)) {
+                        continue;
+                    }
+                    String numero = rs.getString("numero_expediente");
+                    String descripcion = hasText(numero)
+                            ? numero
+                            : "expediente ID " + rs.getLong("id_expediente") + " sin número";
+                    existentes.put(clave, descripcion);
+                }
+            }
+        }
+        return existentes;
+    }
+
     private Long insertarPersona(Connection conn, String nombre, String tipoDocumento, String numeroDocumento) throws SQLException {
         String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, activo) VALUES (?, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
@@ -346,17 +420,26 @@ public class ExpedienteRegistroDAO {
         }
     }
 
-    private void insertarSolicitud(Connection conn, CargaDiariaPreviewDTO item, Long idExpediente, Long idPersonaSolicitante) throws SQLException {
+    private void insertarSolicitud(
+            Connection conn,
+            CargaDiariaPreviewDTO item,
+            Long idExpediente,
+            Long idPersonaSolicitante,
+            boolean soportaGrupoFamiliar) throws SQLException {
         Long idCanal = null;
         if (hasText(item.getCanalRecepcion())) {
             String codigoCanal = resolverCodigoCanalRecepcion(item.getCanalRecepcion());
             idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, codigoCanal), "canal " + nombreVisualCanal(codigoCanal));
         }
+        String columnasGrupo = soportaGrupoFamiliar
+                ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
+                : "";
+        String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                 + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
-                + "potencial_duplicado, activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)";
+                + "potencial_duplicado" + columnasGrupo + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?" + valoresGrupo + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             setLongOrNull(ps, 2, idCanal);
@@ -367,6 +450,11 @@ public class ExpedienteRegistroDAO {
             ps.setString(7, item.getTipoProcedimiento());
             ps.setString(8, limitar(observacionSolicitud(item), 1000));
             ps.setInt(9, item.isPosibleDuplicado() ? 1 : 0);
+            if (soportaGrupoFamiliar) {
+                ps.setInt(10, item.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(11, limitar(resolverCriterioGrupoFamiliar(item.isGrupoFamiliar(), item.getCriterioGrupoFamiliar()), 80));
+                ps.setString(12, limitar(item.getObservacionGrupoFamiliar(), 500));
+            }
             ps.executeUpdate();
         }
     }
@@ -490,18 +578,23 @@ public class ExpedienteRegistroDAO {
             Connection conn,
             RegistroManualExpedienteDTO registro,
             Long idExpediente,
-            Long idPersonaSolicitante) throws SQLException {
+            Long idPersonaSolicitante,
+            boolean soportaGrupoFamiliar) throws SQLException {
         DatosSolicitudDTO solicitud = registro.getSolicitud();
         Long idCanal = null;
         if (hasText(solicitud.getCanalCodigo())) {
             idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, solicitud.getCanalCodigo()), "canal " + solicitud.getCanalNombre());
         }
 
+        String columnasGrupo = soportaGrupoFamiliar
+                ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
+                : "";
+        String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                 + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
-                + "correo_electronico, potencial_duplicado, activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 1)";
+                + "correo_electronico, potencial_duplicado" + columnasGrupo + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?" + valoresGrupo + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             setLongOrNull(ps, 2, idCanal);
@@ -513,6 +606,11 @@ public class ExpedienteRegistroDAO {
             ps.setString(8, limitar(observacionSolicitud(registro), 1000));
             ps.setNull(9, Types.VARCHAR);
             ps.setInt(10, registro.isPosibleDuplicado() ? 1 : 0);
+            if (soportaGrupoFamiliar) {
+                ps.setInt(11, solicitud.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(12, limitar(resolverCriterioGrupoFamiliar(solicitud.isGrupoFamiliar(), solicitud.getCriterioGrupoFamiliar()), 80));
+                ps.setString(13, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+            }
             ps.executeUpdate();
         }
     }
@@ -584,6 +682,9 @@ public class ExpedienteRegistroDAO {
         append(sb, "Tipo de solicitud", registro.getSolicitud().getTipoSolicitudNombre());
         append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
         append(sb, "N° EXPEDIENTE SGD", registro.getSolicitud().getNumeroExpedienteSgd());
+        append(sb, "Grupo familiar", registro.getSolicitud().getGrupoFamiliarTexto());
+        append(sb, "Criterio grupo familiar", registro.getSolicitud().getCriterioGrupoFamiliar());
+        append(sb, "Observación grupo familiar", registro.getSolicitud().getObservacionGrupoFamiliar());
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
         append(sb, "Observaciones de registro", registro.getObservacionesGenerales());
         append(sb, "Motivo duplicado", registro.getMotivoDuplicado());
@@ -600,6 +701,9 @@ public class ExpedienteRegistroDAO {
         append(sb, "Documento identidad solicitante", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadSolicitante()));
         append(sb, "Tipo documento identidad titular", item.getTipoDocumentoIdentidadTitular());
         append(sb, "Documento identidad titular", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadTitular()));
+        append(sb, "Grupo familiar", item.getGrupoFamiliarTexto());
+        append(sb, "Criterio grupo familiar", item.getCriterioGrupoFamiliar());
+        append(sb, "Observación grupo familiar", item.getObservacionGrupoFamiliar());
         append(sb, "Observación inicial", item.getObservacionInicial());
         if (!"Válido".equalsIgnoreCase(item.getEstadoValidacion())) {
             append(sb, "Advertencias de validación", item.getMensajeValidacion());
@@ -735,6 +839,23 @@ public class ExpedienteRegistroDAO {
             return actual;
         }
         return actual.trim() + " | " + nuevo.trim();
+    }
+
+    private String resolverCriterioGrupoFamiliar(boolean grupoFamiliar, String criterioActual) {
+        if (hasText(criterioActual)) {
+            return criterioActual;
+        }
+        return grupoFamiliar ? "MANUAL" : null;
+    }
+
+    private boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name = 'GRUPO_FAMILIAR'";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
     }
 
     private void rollbackSilencioso(Connection conn) {

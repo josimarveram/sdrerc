@@ -14,16 +14,19 @@ public class CargaDiariaValidacionService {
 
     private final ExpedienteRegistroDAO expedienteRegistroDAO;
     private final CorrelativoExpedienteService correlativoExpedienteService;
+    private final GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService;
 
     public CargaDiariaValidacionService() {
-        this(new ExpedienteRegistroDAO(), new CorrelativoExpedienteService());
+        this(new ExpedienteRegistroDAO(), new CorrelativoExpedienteService(), new GrupoFamiliarHeuristicaService());
     }
 
     public CargaDiariaValidacionService(
             ExpedienteRegistroDAO expedienteRegistroDAO,
-            CorrelativoExpedienteService correlativoExpedienteService) {
+            CorrelativoExpedienteService correlativoExpedienteService,
+            GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService) {
         this.expedienteRegistroDAO = expedienteRegistroDAO;
         this.correlativoExpedienteService = correlativoExpedienteService;
+        this.grupoFamiliarHeuristicaService = grupoFamiliarHeuristicaService;
     }
 
     public List<CargaDiariaPreviewDTO> validar(List<CargaDiariaPreviewDTO> registros) throws SQLException {
@@ -33,16 +36,21 @@ public class CargaDiariaValidacionService {
 
         Map<String, Integer> actaTitular = new HashMap<>();
         Map<String, Integer> primeraFilaActaTitular = new HashMap<>();
+        Map<String, Integer> apellidosTitular = new HashMap<>();
         for (CargaDiariaPreviewDTO item : registros) {
             item.reiniciarValidacion();
+            item.limpiarDeteccionGrupoFamiliar();
             String claveActaTitular = claveActaTitular(item);
             sumarClave(actaTitular, claveActaTitular);
             if (hasText(claveActaTitular) && !primeraFilaActaTitular.containsKey(claveActaTitular)) {
                 primeraFilaActaTitular.put(claveActaTitular, item.getFila());
             }
+            sumarClave(apellidosTitular, claveApellidosTitular(item));
         }
 
         Map<Integer, String> duplicadosBase = expedienteRegistroDAO.detectarDuplicadosContraBase(registros);
+        Map<Integer, String> posiblesGruposFamiliaresBase =
+                expedienteRegistroDAO.detectarPosiblesGruposFamiliaresContraBase(registros);
 
         int siguienteCorrelativo = expedienteRegistroDAO.obtenerSiguienteCorrelativoExpediente(correlativoExpedienteService.anioActual());
         for (CargaDiariaPreviewDTO item : registros) {
@@ -114,6 +122,20 @@ public class CargaDiariaValidacionService {
                 item.setPosibleDuplicado(true);
                 item.setMotivoDuplicado(String.join(" | ", motivosDuplicado));
                 item.agregarMensaje(item.getMotivoDuplicado());
+            }
+
+            String claveApellidos = claveApellidosTitular(item);
+            Integer cantidadApellidos = hasText(claveApellidos) ? apellidosTitular.get(claveApellidos) : null;
+            if (cantidadApellidos != null && cantidadApellidos > 1) {
+                item.agregarObservacionGrupoFamiliar(
+                        "COINCIDENCIA_APELLIDOS_EXCEL",
+                        "Posible grupo familiar por coincidencia de apellidos.");
+                item.agregarMensaje("Posible grupo familiar por coincidencia de apellidos.");
+            }
+            String grupoFamiliarBd = posiblesGruposFamiliaresBase.get(item.getFila());
+            if (hasText(grupoFamiliarBd)) {
+                item.agregarObservacionGrupoFamiliar("COINCIDENCIA_APELLIDOS_BD", grupoFamiliarBd);
+                item.agregarMensaje(grupoFamiliarBd);
             }
 
             if (item.isPosibleDuplicado()) {
@@ -213,6 +235,13 @@ public class CargaDiariaValidacionService {
             return null;
         }
         return clave(item.getNumeroActa()) + "|" + clave(item.getTitular());
+    }
+
+    private String claveApellidosTitular(CargaDiariaPreviewDTO item) {
+        if (item == null) {
+            return null;
+        }
+        return grupoFamiliarHeuristicaService.claveApellidosTitular(item.getTitular());
     }
 
     private String clave(String value) {

@@ -48,6 +48,10 @@ public class ExpedienteBandejaDAO {
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
         List<Object> params = new ArrayList<>();
+        boolean soportaGrupoFamiliar;
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+        }
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT id_expediente, numero_expediente, numero_tramite_documentario, ");
@@ -70,6 +74,17 @@ public class ExpedienteBandejaDAO {
         sql.append("ORDER BY ep.creado_en DESC) WHERE ROWNUM = 1) AS titular, ");
         sql.append("(SELECT COUNT(1) FROM expediente_relacion er WHERE er.activo = 1 ");
         sql.append("AND (er.id_expediente_principal = b.id_expediente OR er.id_expediente_relacionado = b.id_expediente)) AS cantidad_relaciones, ");
+        if (soportaGrupoFamiliar) {
+            sql.append("(SELECT NVL(sg.grupo_familiar, 0) FROM (SELECT s.grupo_familiar FROM expediente_solicitud s ");
+            sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) sg WHERE ROWNUM = 1) AS grupo_familiar_marca, ");
+            sql.append("(SELECT sg.criterio_grupo_familiar FROM (SELECT s.criterio_grupo_familiar FROM expediente_solicitud s ");
+            sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) sg WHERE ROWNUM = 1) AS criterio_grupo_familiar, ");
+            sql.append("(SELECT sg.observacion_grupo_familiar FROM (SELECT s.observacion_grupo_familiar FROM expediente_solicitud s ");
+            sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) sg WHERE ROWNUM = 1) AS observacion_grupo_familiar, ");
+        } else {
+            sql.append("0 AS grupo_familiar_marca, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
+            sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
+        }
         sql.append("fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, ");
         sql.append("requiere_publicacion, expediente_digital_completo ");
         sql.append("FROM vw_expediente_bandeja b WHERE 1 = 1 ");
@@ -165,17 +180,37 @@ public class ExpedienteBandejaDAO {
                 rs.getString("procedimiento"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
-                grupoFamiliar(rs.getInt("cantidad_relaciones")),
+                grupoFamiliar(
+                        rs.getInt("cantidad_relaciones"),
+                        rs.getInt("grupo_familiar_marca") == 1,
+                        rs.getString("criterio_grupo_familiar"),
+                        rs.getString("observacion_grupo_familiar")),
                 rs.getString("titular"),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
         );
     }
 
-    private static String grupoFamiliar(int cantidadRelaciones) {
-        if (cantidadRelaciones <= 0) {
-            return "Sin grupo";
+    private static String grupoFamiliar(int cantidadRelaciones, boolean grupoFamiliar, String criterio, String observacion) {
+        List<String> alertas = new ArrayList<>();
+        if (cantidadRelaciones > 0) {
+            alertas.add(cantidadRelaciones == 1 ? "1 asociado" : cantidadRelaciones + " asociados");
         }
-        return cantidadRelaciones == 1 ? "1 asociado" : cantidadRelaciones + " asociados";
+        if (grupoFamiliar) {
+            alertas.add("Grupo familiar");
+        } else if (hasText(criterio) || hasText(observacion)) {
+            alertas.add("Posible grupo familiar");
+        }
+        return alertas.isEmpty() ? "Sin alerta" : String.join(" / ", alertas);
+    }
+
+    private boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+        String sql = "SELECT 1 FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name = 'GRUPO_FAMILIAR'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        }
     }
 
     private static String nombrePersona(String alias) {

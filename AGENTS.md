@@ -83,6 +83,11 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - La carga diaria mediante Excel representa el canal de interoperabilidad controlada con los archivos originados en SGD; no asumir integracion directa con SGD sin contrato y autorizacion.
 - Para actas de matrimonio, el modelo y la UI V2 deben permitir dos titulares. La persistencia debe usar multiples relaciones `EXPEDIENTE_PERSONA` de tipo `TITULAR`; no agregar columnas especificas de segundo titular en la cabecera V2.
 - Los datos de grupo familiar y de notificacion no son obligatorios en Registro / Recepcion. Los datos de notificacion se gestionan en su modulo.
+- Grupo familiar es una alerta o marca funcional no bloqueante; no debe impedir registro, importacion ni edicion de solicitudes.
+- Grupo familiar no debe confundirse con duplicidad: la duplicidad en Registro / Recepcion sigue siendo exclusivamente por la combinacion `numero de acta + titular`.
+- En fase 1, grupo familiar se persiste como marca simple en `EXPEDIENTE_SOLICITUD`; no crear relaciones automaticas en `EXPEDIENTE_RELACION`, tabla formal de grupo familiar ni catalogo de parentesco sin autorizacion explicita.
+- La deteccion automatica de posible grupo familiar por coincidencia conservadora de apellidos es solo alerta operativa y no confirma grupo familiar por si sola.
+- `Asignacion` puede mostrar grupo familiar como sugerencia para asignacion coordinada, pero no debe forzar abogado ni equipo automaticamente por esa marca.
 - El plazo de atencion debe resolverse mediante `PLAZO_CONFIGURACION` o administracion equivalente; un fallback fijo en Java es solo contingencia tecnica y no debe ser la fuente funcional oficial.
 - La configuracion oficial inicial de solicitudes SDRERC es `SOLICITUD_SDRERC = 30 dias habiles`, activa en `PLAZO_CONFIGURACION`.
 - El plazo de 30 dias habiles debe centralizarse en configuracion o helper unico; no repetir el numero 30 ni la logica de calendario laboral en pantallas.

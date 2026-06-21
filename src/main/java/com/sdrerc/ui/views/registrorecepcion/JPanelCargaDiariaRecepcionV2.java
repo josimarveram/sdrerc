@@ -42,10 +42,11 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_INPUT_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final int COL_ESTADO_VALIDACION = 16;
-    private static final int COL_POSIBLE_DUPLICADO = 17;
-    private static final int COL_NUMERO_EXPEDIENTE_GENERADO = 18;
-    private static final int COL_OBSERVACION = 19;
+    private static final int COL_GRUPO_FAMILIAR = 16;
+    private static final int COL_ESTADO_VALIDACION = 17;
+    private static final int COL_POSIBLE_DUPLICADO = 18;
+    private static final int COL_NUMERO_EXPEDIENTE_GENERADO = 19;
+    private static final int COL_OBSERVACION = 20;
 
     private final CargaDiariaArchivoParserService parserService = new CargaDiariaArchivoParserService();
     private final CargaDiariaPlantillaService plantillaService = new CargaDiariaPlantillaService();
@@ -87,6 +88,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 "TITULAR",
                 "TIPO DOCUMENTO IDENTIDAD TITULAR",
                 "N° DOCUMENTO IDENTIDAD TITULAR",
+                "GRUPO FAMILIAR",
                 "ESTADO VALIDACION",
                 "POSIBLE DUPLICADO",
                 "NÚMERO EXPEDIENTE GENERADO",
@@ -546,11 +548,37 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             case 15:
                 item.setNumeroDocumentoIdentidadTitular(value);
                 break;
+            case COL_GRUPO_FAMILIAR:
+                aplicarGrupoFamiliarEditado(item, value);
+                break;
             case COL_OBSERVACION:
                 item.setObservacionInicial(value);
                 break;
             default:
                 break;
+        }
+    }
+
+    private void aplicarGrupoFamiliarEditado(CargaDiariaPreviewDTO item, String value) {
+        item.setGrupoFamiliar(false);
+        item.setCriterioGrupoFamiliar(null);
+        item.setObservacionGrupoFamiliar(null);
+        if (!hasText(value)) {
+            return;
+        }
+        String normalizado = value.trim()
+                .toUpperCase()
+                .replace('Á', 'A')
+                .replace('É', 'E')
+                .replace('Í', 'I')
+                .replace('Ó', 'O')
+                .replace('Ú', 'U');
+        if ("SI".equals(normalizado) || "S".equals(normalizado)) {
+            item.setGrupoFamiliar(true);
+            item.setCriterioGrupoFamiliar("EXCEL");
+        } else if (!"NO".equals(normalizado) && !"N".equals(normalizado)) {
+            item.agregarObservacionGrupoFamiliar(null,
+                    "Valor de Grupo familiar no reconocido: " + value.trim() + ". Se tomó No.");
         }
     }
 
@@ -584,6 +612,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             safe(item.getTitular()),
             safe(item.getTipoDocumentoIdentidadTitular()),
             documentoVisual(item.getNumeroDocumentoIdentidadTitular()),
+            item.getGrupoFamiliarTexto(),
             safe(item.getEstadoValidacion()),
             item.isPosibleDuplicado() ? "Sí" : "No",
             safeOrPending(item.getNumeroExpedienteGenerado()),
@@ -638,6 +667,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             text = item.getMensajeValidacion();
         } else if (modelColumn == COL_POSIBLE_DUPLICADO) {
             text = item.getMotivoDuplicado();
+        } else if (modelColumn == COL_GRUPO_FAMILIAR) {
+            text = item.getObservacionGrupoFamiliar();
         } else if (modelColumn == COL_NUMERO_EXPEDIENTE_GENERADO && item.isRegistrado()) {
             text = "Expediente registrado correctamente.";
         }
@@ -708,14 +739,22 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String observacionTabla(CargaDiariaPreviewDTO item) {
         String observacion = safe(item.getObservacionInicial());
-        String mensaje = safe(item.getMensajeValidacion());
-        if (observacion.isEmpty()) {
-            return mensaje;
+        observacion = appendObservacion(observacion, item.getObservacionGrupoFamiliar());
+        observacion = appendObservacion(observacion, item.getMensajeValidacion());
+        return observacion;
+    }
+
+    private static String appendObservacion(String actual, String nueva) {
+        if (!hasText(nueva)) {
+            return safe(actual);
         }
-        if (mensaje.isEmpty()) {
-            return observacion;
+        if (!hasText(actual)) {
+            return nueva.trim();
         }
-        return observacion + " | " + mensaje;
+        if (actual.contains(nueva.trim())) {
+            return actual;
+        }
+        return actual + " | " + nueva.trim();
     }
 
     private static boolean hasText(String value) {

@@ -40,6 +40,12 @@ public class ExpedienteEdicionManualDAO {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para editar.");
         }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+            String grupoFamiliarSelect = soportaGrupoFamiliar
+                    ? "NVL(sol.grupo_familiar, 0) AS grupo_familiar, sol.criterio_grupo_familiar, sol.observacion_grupo_familiar, "
+                    : "0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, "
+                            + "CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ";
         String sql = ""
                 + "WITH sol AS ("
                 + "  SELECT * FROM (SELECT s.* FROM expediente_solicitud s "
@@ -64,7 +70,8 @@ public class ExpedienteEdicionManualDAO {
                 + "SELECT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, e.prioridad, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, "
                 + "sol.numero_tramite_documentario AS solicitud_tramite, sol.numero_expediente_sgd, sol.fecha_recepcion, "
-                + "sol.asunto, sol.observacion, cr.codigo AS canal_codigo, cr.nombre AS canal_nombre, "
+                + "sol.asunto, sol.observacion, " + grupoFamiliarSelect
+                + "cr.codigo AS canal_codigo, cr.nombre AS canal_nombre, "
                 + "doc.nombre_documento, doc.numero_documento, "
                 + "act.numero_acta, act.anio_acta, ta.codigo AS tipo_acta_codigo, ta.nombre AS tipo_acta_nombre, "
                 + "titular.tipo_documento AS titular_tipo_documento, titular.numero_documento AS titular_numero_documento, "
@@ -84,8 +91,7 @@ public class ExpedienteEdicionManualDAO {
                 + "LEFT JOIN titular ON titular.id_persona IS NOT NULL "
                 + "LEFT JOIN remitente ON remitente.id_persona IS NOT NULL "
                 + "WHERE e.id_expediente = ? AND e.activo = 1";
-        try (Connection conn = SdrercAppConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 1; i <= 5; i++) {
                 ps.setLong(i, idExpediente);
             }
@@ -98,6 +104,7 @@ public class ExpedienteEdicionManualDAO {
                 validarEditable(dto, tieneAsignacionActiva(conn, idExpediente));
                 return dto;
             }
+        }
         }
     }
 
@@ -165,6 +172,9 @@ public class ExpedienteEdicionManualDAO {
         solicitud.setPrioridad(rs.getString("prioridad"));
         solicitud.setValidacionInicial(firstText(extraerObservacion(observacion, "Validación inicial"), "Sí corresponde a la SDRERC"));
         solicitud.setHojaEnvio(extraerObservacion(observacion, "Hoja de envío"));
+        solicitud.setGrupoFamiliar(rs.getInt("grupo_familiar") == 1);
+        solicitud.setCriterioGrupoFamiliar(firstText(rs.getString("criterio_grupo_familiar"), extraerObservacion(observacion, "Criterio grupo familiar")));
+        solicitud.setObservacionGrupoFamiliar(firstText(rs.getString("observacion_grupo_familiar"), extraerObservacion(observacion, "Observación grupo familiar")));
         dto.setSolicitud(solicitud);
 
         DatosActaDTO acta = new DatosActaDTO();
@@ -209,16 +219,21 @@ public class ExpedienteEdicionManualDAO {
     private void upsertSolicitud(Connection conn, ExpedienteEdicionManualDTO dto, Long idSolicitante) throws SQLException {
         Long idSolicitud = obtenerUltimoId(conn, "expediente_solicitud", "id_expediente_solicitud", dto.getIdExpediente());
         DatosSolicitudDTO solicitud = dto.getSolicitud();
+        boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
         Long idCanal = null;
         if (hasText(solicitud.getCanalCodigo())) {
             idCanal = catalogoLookupDAO.obtenerCanalRecepcionId(conn, solicitud.getCanalCodigo());
         }
         if (idSolicitud == null) {
+            String columnasGrupo = soportaGrupoFamiliar
+                    ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
+                    : "";
+            String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
             String insert = "INSERT INTO expediente_solicitud ("
                     + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                     + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
-                    + "correo_electronico, potencial_duplicado, activo"
-                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, 1)";
+                    + "correo_electronico, potencial_duplicado" + columnasGrupo + ", activo"
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0" + valoresGrupo + ", 1)";
             try (PreparedStatement ps = conn.prepareStatement(insert)) {
                 ps.setLong(1, dto.getIdExpediente());
                 setLongOrNull(ps, 2, idCanal);
@@ -228,13 +243,22 @@ public class ExpedienteEdicionManualDAO {
                 ps.setDate(6, toSqlDate(solicitud.getFechaRecepcion()));
                 ps.setString(7, solicitud.getTipoProcedimientoNombre());
                 ps.setString(8, limitar(observacionSolicitud(dto), 1000));
+                if (soportaGrupoFamiliar) {
+                    ps.setInt(9, solicitud.isGrupoFamiliar() ? 1 : 0);
+                    ps.setString(10, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
+                    ps.setString(11, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+                }
                 ps.executeUpdate();
             }
             return;
         }
+        String columnasGrupoUpdate = soportaGrupoFamiliar
+                ? "grupo_familiar = ?, criterio_grupo_familiar = ?, observacion_grupo_familiar = ?, "
+                : "";
         String update = "UPDATE expediente_solicitud SET "
                 + "id_canal_recepcion = ?, id_persona_solicitante = ?, numero_tramite_documentario = ?, "
                 + "numero_expediente_sgd = ?, fecha_recepcion = ?, asunto = ?, observacion = ?, "
+                + columnasGrupoUpdate
                 + "modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente_solicitud = ?";
         try (PreparedStatement ps = conn.prepareStatement(update)) {
@@ -245,7 +269,14 @@ public class ExpedienteEdicionManualDAO {
             ps.setDate(5, toSqlDate(solicitud.getFechaRecepcion()));
             ps.setString(6, solicitud.getTipoProcedimientoNombre());
             ps.setString(7, limitar(observacionSolicitud(dto), 1000));
-            ps.setLong(8, idSolicitud);
+            if (soportaGrupoFamiliar) {
+                ps.setInt(8, solicitud.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(9, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
+                ps.setString(10, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+                ps.setLong(11, idSolicitud);
+            } else {
+                ps.setLong(8, idSolicitud);
+            }
             ps.executeUpdate();
         }
     }
@@ -493,10 +524,23 @@ public class ExpedienteEdicionManualDAO {
         append(sb, "Tipo de solicitud", dto.getSolicitud().getTipoSolicitudNombre());
         append(sb, "Tipo de documento", dto.getSolicitud().getTipoDocumentoNombre());
         append(sb, "N° EXPEDIENTE SGD", dto.getSolicitud().getNumeroExpedienteSgd());
+        append(sb, "Grupo familiar", dto.getSolicitud().getGrupoFamiliarTexto());
+        append(sb, "Criterio grupo familiar", dto.getSolicitud().getCriterioGrupoFamiliar());
+        append(sb, "Observación grupo familiar", dto.getSolicitud().getObservacionGrupoFamiliar());
         append(sb, "Tipo de acta", dto.getActa().getTipoActaNombre());
         append(sb, "Observaciones de registro", dto.getObservacionesGenerales());
         append(sb, "Edición manual", "Datos de recepción actualizados sin modificar número de expediente");
         return sb.toString();
+    }
+
+    private String resolverCriterioGrupoFamiliar(DatosSolicitudDTO solicitud) {
+        if (solicitud == null) {
+            return null;
+        }
+        if (hasText(solicitud.getCriterioGrupoFamiliar())) {
+            return solicitud.getCriterioGrupoFamiliar();
+        }
+        return solicitud.isGrupoFamiliar() ? "MANUAL" : null;
     }
 
     private void append(StringBuilder sb, String etiqueta, String valor) {
@@ -575,6 +619,16 @@ public class ExpedienteEdicionManualDAO {
     private static Long getLongOrNull(ResultSet rs, String column) throws SQLException {
         long value = rs.getLong(column);
         return rs.wasNull() ? null : value;
+    }
+
+    private boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name = 'GRUPO_FAMILIAR'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
     }
 
     private static void setLongOrNull(PreparedStatement ps, int index, Long value) throws SQLException {

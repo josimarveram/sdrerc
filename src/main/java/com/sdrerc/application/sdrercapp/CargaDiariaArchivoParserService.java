@@ -103,6 +103,7 @@ public class CargaDiariaArchivoParserService {
                 dto.setNumeroDocumentoIdentidadSolicitante(valorExcel(row, columnas.get("numeroDocumentoIdentidadSolicitante"), formatter));
                 dto.setTipoDocumentoIdentidadTitular(valorExcel(row, columnas.get("tipoDocumentoIdentidadTitular"), formatter));
                 dto.setNumeroDocumentoIdentidadTitular(valorExcel(row, columnas.get("numeroDocumentoIdentidadTitular"), formatter));
+                aplicarGrupoFamiliar(dto, valorExcel(row, columnas.get("grupoFamiliar"), formatter));
                 dto.setTipoActa(valorExcel(row, columnas.get("tipoActa"), formatter));
                 dto.setNumeroActa(valorExcel(row, columnas.get("numeroActa"), formatter));
                 dto.setTitular(valorExcel(row, columnas.get("titular"), formatter));
@@ -159,6 +160,7 @@ public class CargaDiariaArchivoParserService {
                 dto.setNumeroDocumentoIdentidadSolicitante(valorCsv(valores, columnas.get("numeroDocumentoIdentidadSolicitante")));
                 dto.setTipoDocumentoIdentidadTitular(valorCsv(valores, columnas.get("tipoDocumentoIdentidadTitular")));
                 dto.setNumeroDocumentoIdentidadTitular(valorCsv(valores, columnas.get("numeroDocumentoIdentidadTitular")));
+                aplicarGrupoFamiliar(dto, valorCsv(valores, columnas.get("grupoFamiliar")));
                 dto.setTipoActa(valorCsv(valores, columnas.get("tipoActa")));
                 dto.setNumeroActa(valorCsv(valores, columnas.get("numeroActa")));
                 dto.setTitular(valorCsv(valores, columnas.get("titular")));
@@ -321,6 +323,29 @@ public class CargaDiariaArchivoParserService {
         } catch (NumberFormatException ex) {
             dto.setFechaRecepcion(null);
         }
+    }
+
+    private void aplicarGrupoFamiliar(CargaDiariaPreviewDTO dto, String value) {
+        if (dto == null) {
+            return;
+        }
+        dto.setGrupoFamiliar(false);
+        dto.setCriterioGrupoFamiliar(null);
+        dto.setObservacionGrupoFamiliar(null);
+        if (!hasText(value)) {
+            return;
+        }
+        String normalized = normalizarTextoLibre(value);
+        if ("SI".equals(normalized) || "S".equals(normalized)) {
+            dto.setGrupoFamiliar(true);
+            dto.setCriterioGrupoFamiliar("EXCEL");
+            return;
+        }
+        if ("NO".equals(normalized) || "N".equals(normalized)) {
+            return;
+        }
+        dto.agregarObservacionGrupoFamiliar(null,
+                "Valor de Grupo familiar no reconocido: " + value.trim() + ". Se tomó No.");
     }
 
     private void aplicarReglasDerivadas(CargaDiariaPreviewDTO dto) {
@@ -607,6 +632,11 @@ public class CargaDiariaArchivoParserService {
                 "DOCUMENTO IDENTIDAD TITULAR",
                 "DNI TITULAR",
                 "DNI_TITULAR"));
+        aliases.put("grupoFamiliar", normalizarLista(
+                "GRUPO FAMILIAR",
+                "GRUPO_FAMILIAR",
+                "FAMILIA",
+                "MARCA GRUPO FAMILIAR"));
         aliases.put("remitente", normalizarLista(
                 "REMITENTE",
                 "ENTIDAD REMITENTE",
@@ -717,6 +747,9 @@ public class CargaDiariaArchivoParserService {
                 score += 1;
             }
             if (columnas.containsKey("numeroExpedienteSgd")) {
+                score += 1;
+            }
+            if (columnas.containsKey("grupoFamiliar")) {
                 score += 1;
             }
             return score;

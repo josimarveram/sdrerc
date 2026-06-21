@@ -31,6 +31,9 @@ public class AsignacionExpedienteDTO {
     private final int asociadosConfirmados;
     private final boolean potencialDuplicado;
     private final String observacionSolicitud;
+    private final boolean grupoFamiliar;
+    private final String criterioGrupoFamiliar;
+    private final String observacionGrupoFamiliar;
 
     public AsignacionExpedienteDTO(
             Long idExpediente,
@@ -58,7 +61,10 @@ public class AsignacionExpedienteDTO {
             int posiblesRelacionados,
             int asociadosConfirmados,
             boolean potencialDuplicado,
-            String observacionSolicitud) {
+            String observacionSolicitud,
+            boolean grupoFamiliar,
+            String criterioGrupoFamiliar,
+            String observacionGrupoFamiliar) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
@@ -85,6 +91,9 @@ public class AsignacionExpedienteDTO {
         this.asociadosConfirmados = asociadosConfirmados;
         this.potencialDuplicado = potencialDuplicado;
         this.observacionSolicitud = safe(observacionSolicitud);
+        this.grupoFamiliar = grupoFamiliar;
+        this.criterioGrupoFamiliar = safe(criterioGrupoFamiliar);
+        this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
     }
 
     public Long getIdExpediente() {
@@ -191,6 +200,29 @@ public class AsignacionExpedienteDTO {
         return observacionSolicitud;
     }
 
+    public boolean isGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public String getCriterioGrupoFamiliar() {
+        return criterioGrupoFamiliar;
+    }
+
+    public String getObservacionGrupoFamiliar() {
+        return observacionGrupoFamiliar;
+    }
+
+    public boolean isPosibleGrupoFamiliar() {
+        return !grupoFamiliar && (!criterioGrupoFamiliar.isEmpty() || !observacionGrupoFamiliar.isEmpty());
+    }
+
+    public String getGrupoFamiliarEstado() {
+        if (grupoFamiliar) {
+            return "Sí";
+        }
+        return isPosibleGrupoFamiliar() ? "Posible" : "No";
+    }
+
     public boolean tieneObservacionRegistro() {
         String observacion = observacionSolicitud.toUpperCase();
         return observacion.contains("ADVERTENCIAS DE VALIDACIÓN")
@@ -200,6 +232,12 @@ public class AsignacionExpedienteDTO {
     public String getAlertaIngreso() {
         if (potencialDuplicado) {
             return "Potencial duplicado";
+        }
+        if (grupoFamiliar) {
+            return "Grupo familiar";
+        }
+        if (isPosibleGrupoFamiliar()) {
+            return "Posible grupo familiar";
         }
         if (tieneObservacionRegistro()) {
             return "Con observaciones";

@@ -22,10 +22,19 @@ public class ExpedienteConsolaDAO {
             return null;
         }
 
-        String sql = "SELECT id_expediente, numero_expediente, numero_tramite_documentario, numero_expediente_sgd, "
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+            String grupoFamiliarSelect = soportaGrupoFamiliar
+                    ? ", (SELECT grupo_familiar FROM (SELECT NVL(s.grupo_familiar, 0) AS grupo_familiar FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) WHERE ROWNUM = 1) AS grupo_familiar "
+                    + ", (SELECT criterio_grupo_familiar FROM (SELECT s.criterio_grupo_familiar FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) WHERE ROWNUM = 1) AS criterio_grupo_familiar "
+                    + ", (SELECT observacion_grupo_familiar FROM (SELECT s.observacion_grupo_familiar FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) WHERE ROWNUM = 1) AS observacion_grupo_familiar "
+                    : ", 0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar ";
+
+            String sql = "SELECT id_expediente, numero_expediente, numero_tramite_documentario, numero_expediente_sgd, "
                 + "etapa_codigo, estado_codigo, abogado_inicial, responsable_actual, equipo_actual, "
                 + "titular, titular_documento, remitente, remitente_documento, procedimiento, canal_recepcion, fecha_recepcion, "
-                + "solicitud_observacion, tipo_documento, numero_documento, tipo_acta, numero_acta, anio_acta, oficina_registral, "
+                + "solicitud_observacion, grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar, "
+                + "tipo_documento, numero_documento, tipo_acta, numero_acta, anio_acta, oficina_registral, "
                 + "tipo_resolucion, numero_resolucion, fecha_resolucion, fecha_firma, "
                 + "tipo_notificacion, estado_notificacion, resultado_notificacion, estado_cargo_acuse, "
                 + "estado_publicacion, medio_publicacion, numero_publicacion, ruta_carpeta_digital, enlace_carpeta_digital, "
@@ -42,6 +51,7 @@ public class ExpedienteConsolaDAO {
                 + ", (SELECT fecha_recepcion FROM (SELECT s.fecha_recepcion FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS fecha_recepcion "
                 + ", (SELECT numero_expediente_sgd FROM (SELECT s.numero_expediente_sgd FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS numero_expediente_sgd "
                 + ", (SELECT solicitud_observacion FROM (SELECT s.observacion AS solicitud_observacion FROM expediente_solicitud s WHERE s.id_expediente = c.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS solicitud_observacion "
+                + grupoFamiliarSelect
                 + ", (SELECT tipo_documento FROM (SELECT d.nombre_documento AS tipo_documento FROM expediente_documento d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS tipo_documento "
                 + ", (SELECT numero_documento FROM (SELECT d.numero_documento FROM expediente_documento d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS numero_documento "
                 + ", (SELECT tipo_acta FROM (SELECT ta.nombre AS tipo_acta FROM expediente_acta a LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = a.id_tipo_acta WHERE a.id_expediente = c.id_expediente AND a.activo = 1 ORDER BY a.creado_en DESC) WHERE ROWNUM = 1) AS tipo_acta "
@@ -64,14 +74,14 @@ public class ExpedienteConsolaDAO {
                 + "FROM vw_expediente_consola c) "
                 + "WHERE id_expediente = ?";
 
-        try (Connection conn = SdrercAppConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, idExpediente);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    return null;
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return null;
+                    }
+                    return map(conn, rs);
                 }
-                return map(conn, rs);
             }
         }
     }
@@ -124,8 +134,23 @@ public class ExpedienteConsolaDAO {
                 getIntegerOrNull(rs, "observaciones_pendientes"),
                 getIntegerOrNull(rs, "total_notificaciones"),
                 getIntegerOrNull(rs, "total_cargos"),
+                getBooleanFromNumber(rs, "grupo_familiar"),
+                rs.getString("criterio_grupo_familiar"),
+                rs.getString("observacion_grupo_familiar"),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
         );
+    }
+
+    private boolean soportaGrupoFamiliar(Connection conn) {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name IN ('GRUPO_FAMILIAR', 'CRITERIO_GRUPO_FAMILIAR', 'OBSERVACION_GRUPO_FAMILIAR')";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 3;
+        } catch (SQLException ex) {
+            return false;
+        }
     }
 
     private static String personSubquery(String tipoRelacion, String alias) {

@@ -36,6 +36,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -96,6 +97,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JLabel lblRecepcionNumeroExpedienteSgd = valueLabel();
     private final JLabel lblRecepcionTipoDocumento = valueLabel();
     private final JLabel lblRecepcionNumeroDocumento = valueLabel();
+    private final JLabel lblRecepcionGrupoFamiliar = valueLabel();
     private final JLabel lblRecepcionProcedimiento = valueLabel();
     private final JLabel lblRecepcionTitular = valueLabel();
     private final JLabel lblRecepcionRemitente = valueLabel();
@@ -200,6 +202,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     "Tipo Acta",
                     "Nro Acta",
                     "Titular",
+                    "Alertas",
                     "_ESTADO",
                     "_ID"
                 }
@@ -380,6 +383,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         solicitud.addRow("N° expediente SGD", lblRecepcionNumeroExpedienteSgd);
         solicitud.addRow("Tipo documento", lblRecepcionTipoDocumento);
         solicitud.addRow("N° Documento", lblRecepcionNumeroDocumento);
+        solicitud.addRow("Grupo familiar", lblRecepcionGrupoFamiliar);
 
         AppV2SideSectionPanel datos = new AppV2SideSectionPanel("Datos registrales");
         datos.addRow("Procedimiento", lblRecepcionProcedimiento);
@@ -472,13 +476,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setDefaultRenderer(Object.class, new BandejaCellRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
-            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 0, 0);
+            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 190, 0, 0);
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(7).setMinWidth(220);
-            table.getColumnModel().getColumn(8).setMinWidth(0);
-            table.getColumnModel().getColumn(8).setMaxWidth(0);
+            table.getColumnModel().getColumn(8).setMinWidth(170);
             table.getColumnModel().getColumn(9).setMinWidth(0);
             table.getColumnModel().getColumn(9).setMaxWidth(0);
+            table.getColumnModel().getColumn(10).setMinWidth(0);
+            table.getColumnModel().getColumn(10).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
         } else {
             table.getColumnModel().getColumn(0).setMaxWidth(90);
@@ -645,6 +650,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     item.getTipoActa(),
                     item.getNumeroActa(),
                     item.getTitular(),
+                    item.getGrupoFamiliar(),
                     item.getEstadoCodigo(),
                     item.getIdExpediente()
                 });
@@ -720,6 +726,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionNumeroExpedienteSgd, expediente.getNumeroExpedienteSgd());
         setValue(lblRecepcionTipoDocumento, expediente.getTipoDocumento());
         setValue(lblRecepcionNumeroDocumento, expediente.getNumeroDocumento());
+        setValue(lblRecepcionGrupoFamiliar, expediente.getGrupoFamiliarEstado());
+        lblRecepcionGrupoFamiliar.setToolTipText(toolTipGrupoFamiliar(expediente));
         setValue(lblRecepcionProcedimiento, expediente.getProcedimiento());
         setValue(lblRecepcionTitular, expediente.getTitular());
         setValue(lblRecepcionRemitente, expediente.getRemitente());
@@ -748,6 +756,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionNumeroExpedienteSgd, "");
         setValue(lblRecepcionTipoDocumento, "");
         setValue(lblRecepcionNumeroDocumento, "");
+        setValue(lblRecepcionGrupoFamiliar, "");
         setValue(lblRecepcionProcedimiento, "");
         setValue(lblRecepcionTitular, "");
         setValue(lblRecepcionRemitente, "");
@@ -981,6 +990,45 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return DATE_FORMAT.format(item.getFechaRegistro().toLocalDate());
         }
         return "";
+    }
+
+    private static String toolTipGrupoFamiliar(ExpedienteConsolaDTO expediente) {
+        if (expediente == null || !expediente.tieneIndicadorGrupoFamiliar()) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(expediente.isGrupoFamiliar()
+                ? "Grupo familiar identificado"
+                : "Posible grupo familiar");
+        String criterio = criterioGrupoFamiliar(expediente.getCriterioGrupoFamiliar());
+        if (!criterio.isEmpty()) {
+            sb.append(" · ").append(criterio);
+        }
+        if (expediente.getObservacionGrupoFamiliar() != null
+                && !expediente.getObservacionGrupoFamiliar().trim().isEmpty()) {
+            sb.append(" · ").append(expediente.getObservacionGrupoFamiliar().trim());
+        }
+        return sb.toString();
+    }
+
+    private static String criterioGrupoFamiliar(String criterio) {
+        if (criterio == null || criterio.trim().isEmpty()) {
+            return "";
+        }
+        String normalized = criterio.trim().toUpperCase(Locale.ROOT);
+        if ("MANUAL".equals(normalized)) {
+            return "Marcado manual";
+        }
+        if ("EXCEL".equals(normalized)) {
+            return "Informado desde Excel";
+        }
+        if ("COINCIDENCIA_APELLIDOS_EXCEL".equals(normalized)) {
+            return "Coincidencia de apellidos en carga";
+        }
+        if ("COINCIDENCIA_APELLIDOS_BD".equals(normalized)) {
+            return "Coincidencia de apellidos con solicitud existente";
+        }
+        return DisplayNameMapperV2.valor(criterio);
     }
 
     private static JLabel valueLabel() {

@@ -45,6 +45,9 @@ public class ExpedienteConsolaDTO {
     private final LocalDateTime fechaUltimoMovimiento;
     private final LocalDate fechaVencimiento;
     private final Long diasRestantes;
+    private final boolean grupoFamiliar;
+    private final String criterioGrupoFamiliar;
+    private final String observacionGrupoFamiliar;
     private final boolean requierePublicacion;
     private final boolean expedienteDigitalCompleto;
     private final Integer totalDocumentos;
@@ -144,6 +147,9 @@ public class ExpedienteConsolaDTO {
                 observacionesPendientes,
                 totalNotificaciones,
                 totalCargos,
+                false,
+                null,
+                null,
                 null);
     }
 
@@ -193,6 +199,9 @@ public class ExpedienteConsolaDTO {
             Integer observacionesPendientes,
             Integer totalNotificaciones,
             Integer totalCargos,
+            boolean grupoFamiliar,
+            String criterioGrupoFamiliar,
+            String observacionGrupoFamiliar,
             Long diasRestantes) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
@@ -234,6 +243,9 @@ public class ExpedienteConsolaDTO {
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.fechaVencimiento = fechaVencimiento;
         this.diasRestantes = diasRestantes;
+        this.grupoFamiliar = grupoFamiliar;
+        this.criterioGrupoFamiliar = safe(criterioGrupoFamiliar);
+        this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
         this.requierePublicacion = requierePublicacion;
         this.expedienteDigitalCompleto = expedienteDigitalCompleto;
         this.totalDocumentos = safe(totalDocumentos);
@@ -424,6 +436,36 @@ public class ExpedienteConsolaDTO {
 
     public Long getDiasRestantes() {
         return diasRestantes;
+    }
+
+    public boolean isGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public String getCriterioGrupoFamiliar() {
+        return criterioGrupoFamiliar;
+    }
+
+    public String getObservacionGrupoFamiliar() {
+        return observacionGrupoFamiliar;
+    }
+
+    public boolean isPosibleGrupoFamiliar() {
+        return !grupoFamiliar && (!criterioGrupoFamiliar.isEmpty() || !observacionGrupoFamiliar.isEmpty());
+    }
+
+    public boolean tieneIndicadorGrupoFamiliar() {
+        return grupoFamiliar || isPosibleGrupoFamiliar();
+    }
+
+    public String getGrupoFamiliarEstado() {
+        if (grupoFamiliar) {
+            return "Sí";
+        }
+        if (isPosibleGrupoFamiliar()) {
+            return "Posible";
+        }
+        return "No";
     }
 
     private static String safe(String value) {
