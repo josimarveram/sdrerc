@@ -14,6 +14,7 @@ import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.SheetVisibility;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.DataValidation;
@@ -32,6 +33,7 @@ public class CargaDiariaPlantillaService {
     private static final String HOJA_CARGA = "CARGA_DIARIA";
     private static final String HOJA_INSTRUCCIONES = "INSTRUCCIONES";
     private static final String HOJA_CATALOGOS = "CATALOGOS";
+    private static final String PROTECCION_FORMATO = "SDRERC_FORMATO";
     private static final int ULTIMA_FILA_VALIDACION = 1000;
 
     private static final int COL_TIPO_SOLICITUD = 0;
@@ -129,7 +131,7 @@ public class CargaDiariaPlantillaService {
             crearHojaCatalogos(workbook);
             crearHojaCarga(workbook, headerStyle, textStyle, dateStyle);
             crearHojaInstrucciones(workbook, titleStyle, textStyle);
-            workbook.setSheetHidden(workbook.getSheetIndex(HOJA_CATALOGOS), true);
+            workbook.setSheetVisibility(workbook.getSheetIndex(HOJA_CATALOGOS), SheetVisibility.VERY_HIDDEN);
             workbook.setActiveSheet(workbook.getSheetIndex(HOJA_CARGA));
 
             try (FileOutputStream out = new FileOutputStream(destino)) {
@@ -151,18 +153,24 @@ public class CargaDiariaPlantillaService {
             sheet.setDefaultColumnStyle(i, i == 1 ? dateStyle : textStyle);
         }
 
-        aplicarValoresPorDefecto(sheet, textStyle);
+        aplicarValoresPorDefecto(sheet, textStyle, dateStyle);
         sheet.createFreezePane(0, 1);
         sheet.setAutoFilter(new CellRangeAddress(0, 0, 0, COLUMNAS.length - 1));
         aplicarValidaciones(sheet);
+        protegerFormatoPlantilla(sheet);
     }
 
-    private void aplicarValoresPorDefecto(Sheet sheet, CellStyle textStyle) {
+    private void aplicarValoresPorDefecto(Sheet sheet, CellStyle textStyle, CellStyle dateStyle) {
         for (int rowIndex = 1; rowIndex <= ULTIMA_FILA_VALIDACION; rowIndex++) {
             Row row = obtenerOCrearFila(sheet, rowIndex);
-            Cell cell = row.createCell(COL_GRUPO_FAMILIAR);
-            cell.setCellValue("No");
-            cell.setCellStyle(textStyle);
+            for (int col = 0; col < COLUMNAS.length; col++) {
+                Cell cell = row.getCell(col);
+                if (cell == null) {
+                    cell = row.createCell(col);
+                }
+                cell.setCellStyle(col == COL_FECHA_SOLICITUD ? dateStyle : textStyle);
+            }
+            row.getCell(COL_GRUPO_FAMILIAR).setCellValue("No");
         }
     }
 
@@ -179,6 +187,7 @@ public class CargaDiariaPlantillaService {
         for (int i = 0; i < 8; i++) {
             sheet.autoSizeColumn(i);
         }
+        sheet.protectSheet(PROTECCION_FORMATO);
     }
 
     private void crearCatalogo(Workbook workbook, Sheet sheet, int column, String nombreRango, String titulo, String[] valores) {
@@ -222,6 +231,7 @@ public class CargaDiariaPlantillaService {
         validation.setEmptyCellAllowed(true);
         validation.setShowPromptBox(true);
         validation.setShowErrorBox(true);
+        validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
         validation.createPromptBox("Seleccione una opción", "Use la lista desplegable de esta celda.");
         validation.createErrorBox("Valor no permitido", "Seleccione una opción válida de la lista.");
         sheet.addValidationData(validation);
@@ -244,6 +254,7 @@ public class CargaDiariaPlantillaService {
         validation.setEmptyCellAllowed(true);
         validation.setShowPromptBox(true);
         validation.setShowErrorBox(true);
+        validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
         validation.createPromptBox(
                 "Documento de identidad",
                 "SIN DNI: deje vacío. DNI: 8 números. RUC: 11 números. CE/Pasaporte: hasta 12 caracteres alfanuméricos.");
@@ -272,6 +283,10 @@ public class CargaDiariaPlantillaService {
                 + ")";
     }
 
+    private void protegerFormatoPlantilla(Sheet sheet) {
+        sheet.protectSheet(PROTECCION_FORMATO);
+    }
+
     private void crearHojaInstrucciones(Workbook workbook, CellStyle titleStyle, CellStyle textStyle) {
         Sheet sheet = workbook.createSheet(HOJA_INSTRUCCIONES);
         int rowIndex = 0;
@@ -290,6 +305,7 @@ public class CargaDiariaPlantillaService {
             "Complete la informacion en la hoja CARGA_DIARIA desde la fila 2.",
             "No cambie los nombres de las columnas.",
             "No elimine columnas. Puede dejar OBSERVACION INICIAL vacia si no aplica.",
+            "La hoja CARGA_DIARIA protege el formato y las listas desplegables; puede escribir o pegar valores en las celdas de carga, pero no modificar las opciones de los combos.",
             "FECHA DE SOLICITUD debe ingresarse en formato dd/MM/yyyy.",
             "TIPO DOCUMENTO IDENTIDAD SOLICITANTE permite SIN DNI, DNI, RUC, CE o PASAPORTE.",
             "N° DOCUMENTO IDENTIDAD SOLICITANTE reemplaza al campo DNI SOLICITANTE. Si no existe DNI, puede usar SIN DNI y el importador lo guardara vacio.",
@@ -354,6 +370,7 @@ public class CargaDiariaPlantillaService {
         style.setBorderRight(BorderStyle.THIN);
         style.setWrapText(true);
         style.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("@"));
+        style.setLocked(false);
         return style;
     }
 
