@@ -87,7 +87,8 @@ public class CargaDiariaPlantillaService {
         "Interno",
         "Mesa de partes presencial",
         "Mesa de partes virtual",
-        "OR Presencial"
+        "OR Presencial",
+        "OR Pasivo"
     };
     private static final String[] CATALOGO_GRUPO_FAMILIAR = {"No", "Sí"};
     private static final String[] CATALOGO_PROCEDIMIENTO = {
@@ -314,7 +315,7 @@ public class CargaDiariaPlantillaService {
             "Las columnas de numeros, tramites, actas y documentos se generan como texto para conservar ceros a la izquierda.",
             "La plantilla valida en la celda el numero de documento de identidad segun el tipo seleccionado.",
             "N° TRAMITE WEB puede quedar como SIN TRAMITE si no existe referencia web.",
-            "CANAL RECEPCIÓN permite seleccionar Interno, Mesa de partes presencial, Mesa de partes virtual u OR Presencial.",
+            "CANAL RECEPCIÓN permite seleccionar Interno, Mesa de partes presencial, Mesa de partes virtual, OR Presencial u OR Pasivo.",
             "Si CANAL RECEPCIÓN queda vacio, el importador mantiene la derivacion automatica por tramite, documento del solicitante y origen informado.",
             "Si N° TRAMITE WEB contiene numeros y CANAL RECEPCIÓN esta vacio, el canal se deriva como MPV.",
             "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante contiene numeros, el canal se deriva como MP PRESENCIAL.",

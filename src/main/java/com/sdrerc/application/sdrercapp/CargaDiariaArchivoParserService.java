@@ -413,6 +413,11 @@ public class CargaDiariaArchivoParserService {
                 || "OFICINA REGISTRAL".equals(normalized)) {
             return "OR_PRESENCIAL";
         }
+        if ("OR PASIVO".equals(normalized)
+                || "OFICINA REGISTRAL PASIVO".equals(normalized)
+                || "PASIVO OR".equals(normalized)) {
+            return "OR_PASIVO";
+        }
         return normalized.replace(' ', '_');
     }
 

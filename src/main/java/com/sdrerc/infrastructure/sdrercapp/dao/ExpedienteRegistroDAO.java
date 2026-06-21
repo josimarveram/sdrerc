@@ -808,6 +808,11 @@ public class ExpedienteRegistroDAO {
         if ("OR".equals(normalized) || "OR PRESENCIAL".equals(normalized)) {
             return "OR_PRESENCIAL";
         }
+        if ("OR PASIVO".equals(normalized)
+                || "OFICINA REGISTRAL PASIVO".equals(normalized)
+                || "PASIVO OR".equals(normalized)) {
+            return "OR_PASIVO";
+        }
         return normalized.replace(' ', '_');
     }
 
@@ -824,6 +829,9 @@ public class ExpedienteRegistroDAO {
         }
         if ("OR_PRESENCIAL".equals(normalized)) {
             return "OR Presencial";
+        }
+        if ("OR_PASIVO".equals(normalized)) {
+            return "OR Pasivo";
         }
         if ("INTERNO".equals(normalized)) {
             return "Interno";

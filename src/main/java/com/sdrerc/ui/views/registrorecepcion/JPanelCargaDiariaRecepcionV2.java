@@ -820,6 +820,9 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         if ("OR".equals(normalized) || "OR_PRESENCIAL".equals(normalized)) {
             return "OR Presencial";
         }
+        if ("OR_PASIVO".equals(normalized) || "PASIVO_OR".equals(normalized)) {
+            return "OR Pasivo";
+        }
         return value.trim();
     }
 
