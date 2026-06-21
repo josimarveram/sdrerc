@@ -153,14 +153,14 @@ public class CargaDiariaPlantillaService {
             sheet.setDefaultColumnStyle(i, i == 1 ? dateStyle : textStyle);
         }
 
-        aplicarValoresPorDefecto(sheet, textStyle, dateStyle);
+        aplicarFormatoFilasEntrada(sheet, textStyle, dateStyle);
         sheet.createFreezePane(0, 1);
         sheet.setAutoFilter(new CellRangeAddress(0, 0, 0, COLUMNAS.length - 1));
         aplicarValidaciones(sheet);
         protegerFormatoPlantilla(sheet);
     }
 
-    private void aplicarValoresPorDefecto(Sheet sheet, CellStyle textStyle, CellStyle dateStyle) {
+    private void aplicarFormatoFilasEntrada(Sheet sheet, CellStyle textStyle, CellStyle dateStyle) {
         for (int rowIndex = 1; rowIndex <= ULTIMA_FILA_VALIDACION; rowIndex++) {
             Row row = obtenerOCrearFila(sheet, rowIndex);
             for (int col = 0; col < COLUMNAS.length; col++) {
@@ -170,7 +170,6 @@ public class CargaDiariaPlantillaService {
                 }
                 cell.setCellStyle(col == COL_FECHA_SOLICITUD ? dateStyle : textStyle);
             }
-            row.getCell(COL_GRUPO_FAMILIAR).setCellValue("No");
         }
     }
 
@@ -321,7 +320,7 @@ public class CargaDiariaPlantillaService {
             "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante contiene numeros, el canal se deriva como MP PRESENCIAL.",
             "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante esta vacio, SOLICITADO POR permite derivar OR o INTERNO segun el origen RENIEC informado.",
             "N° EXPEDIENTE SGD es la referencia externa SGD; no reemplaza el numero de expediente SDRERC.",
-            "GRUPO FAMILIAR es una marca operativa Si/No. No bloquea el registro ni reemplaza la deteccion de duplicidad.",
+            "GRUPO FAMILIAR es una marca operativa Si/No. Puede quedar vacio; el importador lo interpreta como No. No bloquea el registro ni reemplaza la deteccion de duplicidad.",
             "N° DOCUMENTO corresponde al numero del documento recibido y se guarda como metadata documental.",
             "TIPO DE SOLICITUD debe corresponder a Parte u Oficio segun el documento recibido.",
             "PROCEDIMIENTO REGISTRAL, TIPO DE ACTA, TIPO DOCUMENTO y TIPO DE SOLICITUD tienen lista desplegable en la plantilla.",
