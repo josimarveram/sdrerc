@@ -1,6 +1,8 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
 import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
+import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
@@ -33,12 +35,14 @@ public class AsignacionExpedienteDAO {
     private static final String CODIGO_ETAPA_DESTINO = "ASIGNACION";
     private static final String CODIGO_ESTADO_DESTINO = "ASIGNADO";
     private static final String CODIGO_MOVIMIENTO = "ASIGNACION_ABOGADO";
+    private static final String CODIGO_MOVIMIENTO_GENERACION_NUMERO = "GENERACION_CODIGO_EXPEDIENTE";
     private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
     private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final ExpedienteRelacionadoDAO expedienteRelacionadoDAO;
     private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
+    private final CorrelativoExpedienteService correlativoExpedienteService = new CorrelativoExpedienteService();
 
     public AsignacionExpedienteDAO() {
         this(new CatalogoLookupDAO(), new ExpedienteRelacionadoDAO());
@@ -254,6 +258,9 @@ public class AsignacionExpedienteDAO {
                     if (esDocumentoDuplicadoAsociado(conn, idExpediente)) {
                         throw new SQLException("Este registro está asociado al expediente principal y no requiere asignación independiente.");
                     }
+                    if (!hasText(expediente.numeroExpediente)) {
+                        throw new SQLException("El expediente seleccionado aún no tiene número. Asócielo a un expediente principal o genere número antes de asignarlo.");
+                    }
 
                     Long idAsignacion = insertarAsignacion(
                             conn,
@@ -309,6 +316,59 @@ public class AsignacionExpedienteDAO {
                 idsUnicos.size(),
                 idsUnicos.size() + " expediente(s) asignado(s) correctamente.",
                 detalles);
+    }
+
+    public String generarNumeroExpediente(Long idExpediente, Long idUsuario) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para generar número.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteParaNumero expediente = bloquearExpedienteParaNumero(conn, idExpediente);
+                if (!CODIGO_ETAPA_ORIGEN.equalsIgnoreCase(expediente.etapaCodigo)
+                        || !CODIGO_ESTADO_ORIGEN.equalsIgnoreCase(expediente.estadoCodigo)) {
+                    throw new SQLException("Solo se puede generar número para registros en REGISTRO / REGISTRADO.");
+                }
+                if (hasText(expediente.numeroExpediente)) {
+                    throw new SQLException("El expediente ya tiene número asignado: " + expediente.numeroExpediente + ".");
+                }
+                if (!ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(expediente.procedimiento)) {
+                    throw new SQLException("La generación manual de número solo está habilitada para Reconsideración o Apelación sin número.");
+                }
+                if (esDocumentoDuplicadoAsociado(conn, idExpediente)) {
+                    throw new SQLException("Este registro ya está asociado al expediente principal y no requiere número independiente.");
+                }
+
+                int anio = correlativoExpedienteService.anioActual();
+                int correlativo = obtenerUltimoCorrelativoExpediente(conn, anio) + 1;
+                String numero = correlativoExpedienteService.generar(anio, correlativo);
+                actualizarNumeroExpediente(conn, idExpediente, numero, idUsuario);
+                Long idMovimiento = requerirId(
+                        catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_GENERACION_NUMERO),
+                        "movimiento GENERACION_CODIGO_EXPEDIENTE");
+                insertarHistorialGeneracionNumero(
+                        conn,
+                        idExpediente,
+                        idMovimiento,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        idUsuario,
+                        numero);
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return numero;
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
     }
 
     private AsignacionExpedienteDTO mapPendiente(Connection conn, ResultSet rs) throws SQLException {
@@ -421,6 +481,33 @@ public class AsignacionExpedienteDAO {
                         rs.getString("numero_expediente"),
                         rs.getString("etapa_codigo"),
                         rs.getString("estado_codigo"));
+            }
+        }
+    }
+
+    private ExpedienteParaNumero bloquearExpedienteParaNumero(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT e.id_expediente, e.numero_expediente, e.id_etapa_actual, e.id_estado_actual, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, "
+                + "(SELECT MAX(s.asunto) KEEP (DENSE_RANK LAST ORDER BY s.creado_en, s.id_expediente_solicitud) "
+                + " FROM expediente_solicitud s "
+                + " WHERE s.id_expediente = e.id_expediente AND s.activo = 1) AS procedimiento "
+                + "FROM expediente e "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente est ON est.id_estado = e.id_estado_actual "
+                + "WHERE e.id_expediente = ? AND e.activo = 1 FOR UPDATE";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("El expediente seleccionado no existe o no está activo.");
+                }
+                return new ExpedienteParaNumero(
+                        rs.getString("numero_expediente"),
+                        getLongOrNull(rs, "id_etapa_actual"),
+                        getLongOrNull(rs, "id_estado_actual"),
+                        rs.getString("etapa_codigo"),
+                        rs.getString("estado_codigo"),
+                        rs.getString("procedimiento"));
             }
         }
     }
@@ -579,6 +666,78 @@ public class AsignacionExpedienteDAO {
                     : limitar(comentario.trim(), 2000));
             ps.setString(12, CODIGO_MOVIMIENTO);
             setLongOrNull(ps, 13, idUsuarioAsignador);
+            ps.executeUpdate();
+        }
+    }
+
+    private int obtenerUltimoCorrelativoExpediente(Connection conn, int anio) throws SQLException {
+        String sql = "SELECT NVL(MAX(TO_NUMBER(SUBSTR(numero_expediente, -6))), 0) AS correlativo "
+                + "FROM expediente "
+                + "WHERE numero_expediente IS NOT NULL "
+                + "AND activo = 1 "
+                + "AND (numero_expediente LIKE ? OR numero_expediente LIKE ?) "
+                + "AND REGEXP_LIKE(numero_expediente, '^SDRERC[-_]EXP[-_][0-9]{4}[-_][0-9]{6}$')";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, "SDRERC-EXP-" + anio + "-%");
+            ps.setString(2, "SDRERC_EXP_" + anio + "_%");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("correlativo");
+                }
+            }
+        }
+        return 0;
+    }
+
+    private void actualizarNumeroExpediente(
+            Connection conn,
+            Long idExpediente,
+            String numeroExpediente,
+            Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente SET "
+                + "numero_expediente = ?, "
+                + "fecha_ultimo_movimiento = SYSTIMESTAMP, "
+                + "modificado_por = ?, "
+                + "modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? "
+                + "AND activo = 1 "
+                + "AND (numero_expediente IS NULL OR TRIM(numero_expediente) IS NULL)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, numeroExpediente);
+            setLongOrNull(ps, 2, idUsuario);
+            ps.setLong(3, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo generar número; el expediente pudo haber sido actualizado por otro usuario.");
+            }
+        }
+    }
+
+    private void insertarHistorialGeneracionNumero(
+            Connection conn,
+            Long idExpediente,
+            Long idMovimiento,
+            Long idEtapa,
+            Long idEstado,
+            Long idUsuario,
+            String numeroExpediente) throws SQLException {
+        String sql = "INSERT INTO expediente_historial ("
+                + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
+                + "id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino, "
+                + "id_usuario_origen, tabla_relacionada, id_registro_relacionado, comentario, motivo, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, ?, ?, ?, 'EXPEDIENTE', ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idMovimiento);
+            setLongOrNull(ps, 3, idEtapa);
+            setLongOrNull(ps, 4, idEstado);
+            setLongOrNull(ps, 5, idEtapa);
+            setLongOrNull(ps, 6, idEstado);
+            setLongOrNull(ps, 7, idUsuario);
+            ps.setLong(8, idExpediente);
+            ps.setString(9, "Generación de número de expediente desde Asignación para Reconsideración/Apelación: " + numeroExpediente + ".");
+            ps.setString(10, CODIGO_MOVIMIENTO_GENERACION_NUMERO);
+            setLongOrNull(ps, 11, idUsuario);
             ps.executeUpdate();
         }
     }
@@ -756,6 +915,31 @@ public class AsignacionExpedienteDAO {
             this.numeroExpediente = numeroExpediente == null ? "" : numeroExpediente;
             this.etapaCodigo = etapaCodigo == null ? "" : etapaCodigo;
             this.estadoCodigo = estadoCodigo == null ? "" : estadoCodigo;
+        }
+    }
+
+    private static class ExpedienteParaNumero {
+
+        private final String numeroExpediente;
+        private final Long idEtapa;
+        private final Long idEstado;
+        private final String etapaCodigo;
+        private final String estadoCodigo;
+        private final String procedimiento;
+
+        private ExpedienteParaNumero(
+                String numeroExpediente,
+                Long idEtapa,
+                Long idEstado,
+                String etapaCodigo,
+                String estadoCodigo,
+                String procedimiento) {
+            this.numeroExpediente = numeroExpediente == null ? "" : numeroExpediente;
+            this.idEtapa = idEtapa;
+            this.idEstado = idEstado;
+            this.etapaCodigo = etapaCodigo == null ? "" : etapaCodigo;
+            this.estadoCodigo = estadoCodigo == null ? "" : estadoCodigo;
+            this.procedimiento = procedimiento == null ? "" : procedimiento;
         }
     }
 }

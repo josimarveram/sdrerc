@@ -1,6 +1,7 @@
 package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.infrastructure.sdrercapp.dao.ExpedienteRegistroDAO;
 import java.sql.SQLException;
 import java.text.Normalizer;
@@ -138,7 +139,13 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje(grupoFamiliarBd);
             }
 
-            if (item.isPosibleDuplicado()) {
+            boolean requiereDecisionAsignacionNumero =
+                    ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getTipoProcedimiento());
+            if (requiereDecisionAsignacionNumero) {
+                item.agregarMensaje(ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
+            }
+
+            if (item.isPosibleDuplicado() || requiereDecisionAsignacionNumero) {
                 item.setNumeroExpedienteGenerado(null);
             } else {
                 item.setNumeroExpedienteGenerado(correlativoExpedienteService.generarPreliminar(siguienteCorrelativo++));
@@ -146,6 +153,8 @@ public class CargaDiariaValidacionService {
             item.setListoParaRegistrar(true);
             if (item.isPosibleDuplicado()) {
                 item.setEstadoValidacion("Duplicado");
+            } else if (requiereDecisionAsignacionNumero) {
+                item.setEstadoValidacion("Con observaciones");
             } else if (error) {
                 item.setEstadoValidacion("Con observaciones");
             } else {

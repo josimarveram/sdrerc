@@ -2,6 +2,7 @@ package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.infrastructure.sdrercapp.dao.ExpedienteRegistroDAO;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -57,6 +58,10 @@ public class RegistroManualExpedienteService {
                 mensajes.add("Documento duplicado: " + motivo
                         + ". Se guardará sin número de expediente y quedará marcado para Asignación.");
             }
+        }
+        if (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(
+                registro.getSolicitud().getTipoProcedimientoNombre())) {
+            mensajes.add(ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
         }
 
         String grupoFamiliar = expedienteRegistroDAO.detectarPosibleGrupoFamiliarPorTitular(titular, null);

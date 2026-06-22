@@ -4,6 +4,7 @@ import com.sdrerc.application.sdrercapp.CargaDiariaArchivoParserService;
 import com.sdrerc.application.sdrercapp.CargaDiariaPlantillaService;
 import com.sdrerc.application.sdrercapp.CargaDiariaRegistroService;
 import com.sdrerc.application.sdrercapp.CargaDiariaValidacionService;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResumenDTO;
@@ -615,7 +616,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             item.getGrupoFamiliarTexto(),
             safe(item.getEstadoValidacion()),
             item.isPosibleDuplicado() ? "Sí" : "No",
-            safeOrPending(item.getNumeroExpedienteGenerado()),
+            numeroExpedientePreview(item),
             observacionTabla(item)
         };
     }
@@ -761,8 +762,20 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         return value != null && !value.trim().isEmpty();
     }
 
-    private static String safeOrPending(String value) {
-        return value == null || value.trim().isEmpty() ? "Pendiente" : value;
+    private static String numeroExpedientePreview(CargaDiariaPreviewDTO item) {
+        if (item == null) {
+            return "Pendiente";
+        }
+        if (hasText(item.getNumeroExpedienteGenerado())) {
+            return item.getNumeroExpedienteGenerado();
+        }
+        if (item.isPosibleDuplicado()) {
+            return "Sin número por duplicado";
+        }
+        if (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getTipoProcedimiento())) {
+            return "Sin número por procedimiento";
+        }
+        return "Pendiente";
     }
 
     private static LocalDate parseFechaTabla(String value) {

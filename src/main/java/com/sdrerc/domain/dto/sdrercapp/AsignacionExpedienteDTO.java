@@ -1,5 +1,6 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -253,6 +254,16 @@ public class AsignacionExpedienteDTO {
         return "REGISTRO".equalsIgnoreCase(etapaCodigo)
                 && "REGISTRADO".equalsIgnoreCase(estadoCodigo)
                 && !asignacionActiva;
+    }
+
+    public boolean tieneNumeroExpediente() {
+        return !numeroExpediente.trim().isEmpty();
+    }
+
+    public boolean requiereDecisionNumeroAsignacion() {
+        return !tieneNumeroExpediente()
+                && isAsignable()
+                && ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(procedimiento);
     }
 
     private static String safe(String value) {

@@ -2,6 +2,7 @@ package com.sdrerc.ui.views.registrorecepcion;
 
 import com.sdrerc.application.sdrercapp.CatalogoLookupService;
 import com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.application.sdrercapp.RegistroManualExpedienteService;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
@@ -534,6 +535,8 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
                 ? safe(dto.getNumeroExpedienteVistaPrevia())
                 : dto.isPosibleDuplicado()
                 ? "Sin número por duplicado al guardar"
+                : ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(dto.getSolicitud().getTipoProcedimientoNombre())
+                ? "Sin número por procedimiento al guardar"
                 : "Pendiente de generación al guardar";
         if (errores.isEmpty()) {
             dto.setNumeroExpedienteVistaPrevia(numeroPreview);

@@ -3,6 +3,7 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
 import com.sdrerc.application.sdrercapp.GrupoFamiliarHeuristicaService;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
@@ -170,8 +171,9 @@ public class ExpedienteRegistroDAO {
                     Long idSolicitante = idRemitente == null ? idTitular : idRemitente;
 
                     Long idExpediente = insertarExpediente(conn, item, idEtapaRegistro, idEstadoRegistrado);
+                    String motivoSinNumero = motivoSinNumero(duplicadoActaTitular, item.getTipoProcedimiento());
                     String numeroExpediente = null;
-                    if (duplicadoActaTitular == null) {
+                    if (motivoSinNumero == null) {
                         numeroExpediente = correlativoService.generar(anioCorrelativo, siguienteCorrelativo++);
                         actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
                     }
@@ -185,7 +187,7 @@ public class ExpedienteRegistroDAO {
                     insertarDocumento(conn, item, idExpediente);
                     insertarHistorial(conn, item, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado);
 
-                    confirmados.add(new RegistroConfirmado(item, idExpediente, numeroExpediente, duplicadoActaTitular != null));
+                    confirmados.add(new RegistroConfirmado(item, idExpediente, numeroExpediente, motivoSinNumero));
                 }
 
                 conn.commit();
@@ -201,14 +203,21 @@ public class ExpedienteRegistroDAO {
         }
 
         int sinNumeroPorDuplicado = 0;
+        int sinNumeroPorProcedimiento = 0;
         for (RegistroConfirmado confirmado : confirmados) {
             confirmado.item.setRegistrado(true);
             confirmado.item.setListoParaRegistrar(false);
             confirmado.item.setEstadoValidacion("Registrado");
-            if (confirmado.duplicadoSinNumero) {
-                sinNumeroPorDuplicado++;
-                confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP sin número de expediente por duplicidad de acta y titular.");
-                confirmado.item.setNumeroExpedienteGenerado("Sin número por duplicado");
+            if (confirmado.motivoSinNumero != null) {
+                if (ProcedimientoRegistralRules.etiquetaSinNumero().equals(confirmado.motivoSinNumero)) {
+                    sinNumeroPorProcedimiento++;
+                    confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP sin número de expediente por procedimiento registral. Asignación decidirá si se asocia o genera número.");
+                    confirmado.item.setNumeroExpedienteGenerado("Sin número por procedimiento");
+                } else {
+                    sinNumeroPorDuplicado++;
+                    confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP sin número de expediente por duplicidad de acta y titular.");
+                    confirmado.item.setNumeroExpedienteGenerado("Sin número por duplicado");
+                }
             } else {
                 confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP.");
                 confirmado.item.setNumeroExpedienteGenerado(confirmado.numeroExpediente);
@@ -219,6 +228,9 @@ public class ExpedienteRegistroDAO {
         String mensaje = confirmados.size() + " expediente(s) registrado(s) en SDRERC_APP.";
         if (sinNumeroPorDuplicado > 0) {
             mensaje += " " + sinNumeroPorDuplicado + " duplicado(s) quedaron sin número de expediente.";
+        }
+        if (sinNumeroPorProcedimiento > 0) {
+            mensaje += " " + sinNumeroPorProcedimiento + " registro(s) de Reconsideración/Apelación quedaron sin número para decisión en Asignación.";
         }
         return new CargaDiariaResultadoDTO(
                 confirmados.size(),
@@ -254,8 +266,9 @@ public class ExpedienteRegistroDAO {
                 Long idTitular = insertarPersonaManual(conn, registro.getTitular());
                 Long idRemitente = insertarPersonaManual(conn, registro.getRemitente());
                 Long idExpediente = insertarExpedienteManual(conn, registro.getSolicitud(), idEtapaRegistro, idEstadoRegistrado);
+                String motivoSinNumero = motivoSinNumero(duplicadoActaTitular, registro.getSolicitud().getTipoProcedimientoNombre());
                 String numeroExpediente = null;
-                if (duplicadoActaTitular == null) {
+                if (motivoSinNumero == null) {
                     int anioCorrelativo = correlativoService.anioActual();
                     int siguienteCorrelativo = obtenerUltimoCorrelativoExpediente(conn, anioCorrelativo) + 1;
                     numeroExpediente = correlativoService.generar(anioCorrelativo, siguienteCorrelativo);
@@ -277,6 +290,13 @@ public class ExpedienteRegistroDAO {
                             "Sin número por duplicado",
                             "Registro manual guardado sin número de expediente por duplicidad de acta y titular. "
                                     + "Registro previo: " + duplicadoActaTitular.descripcion() + ".");
+                }
+                if (ProcedimientoRegistralRules.etiquetaSinNumero().equals(motivoSinNumero)) {
+                    return new RegistroManualResultadoDTO(
+                            idExpediente,
+                            "Sin número por procedimiento",
+                            "Registro manual guardado sin número de expediente por Reconsideración/Apelación. "
+                                    + "En Asignación se podrá asociar a un expediente principal o generar número.");
                 }
                 return new RegistroManualResultadoDTO(
                         idExpediente,
@@ -342,6 +362,15 @@ public class ExpedienteRegistroDAO {
                 return new DuplicadoRegistro(rs.getLong("id_expediente"), rs.getString("numero_expediente"));
             }
         }
+    }
+
+    private String motivoSinNumero(DuplicadoRegistro duplicadoActaTitular, String procedimientoRegistral) {
+        if (duplicadoActaTitular != null) {
+            return "duplicado";
+        }
+        return ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(procedimientoRegistral)
+                ? ProcedimientoRegistralRules.etiquetaSinNumero()
+                : null;
     }
 
     private Map<String, String> buscarClavesGrupoFamiliarExistentes(Connection conn, Long idExpedienteExcluir) throws SQLException {
@@ -662,7 +691,11 @@ public class ExpedienteRegistroDAO {
                 + "tabla_relacionada, id_registro_relacionado, comentario, motivo, activo"
                 + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, 'EXPEDIENTE', ?, ?, 'REGISTRO_MANUAL', 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            String numeroVisual = hasText(numeroExpediente) ? numeroExpediente : "sin número por duplicado";
+            String numeroVisual = hasText(numeroExpediente)
+                    ? numeroExpediente
+                    : (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(registro.getSolicitud().getTipoProcedimientoNombre())
+                            ? "sin número por procedimiento"
+                            : "sin número por duplicidad");
             ps.setLong(1, idExpediente);
             ps.setLong(2, idTipoMovimiento);
             ps.setLong(3, idEtapaDestino);
@@ -685,6 +718,9 @@ public class ExpedienteRegistroDAO {
         append(sb, "Grupo familiar", registro.getSolicitud().getGrupoFamiliarTexto());
         append(sb, "Criterio grupo familiar", registro.getSolicitud().getCriterioGrupoFamiliar());
         append(sb, "Observación grupo familiar", registro.getSolicitud().getObservacionGrupoFamiliar());
+        if (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(registro.getSolicitud().getTipoProcedimientoNombre())) {
+            append(sb, "Decisión de número", ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
+        }
         append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
         append(sb, "Observaciones de registro", registro.getObservacionesGenerales());
         append(sb, "Motivo duplicado", registro.getMotivoDuplicado());
@@ -705,6 +741,9 @@ public class ExpedienteRegistroDAO {
         append(sb, "Criterio grupo familiar", item.getCriterioGrupoFamiliar());
         append(sb, "Observación grupo familiar", item.getObservacionGrupoFamiliar());
         append(sb, "Observación inicial", item.getObservacionInicial());
+        if (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getTipoProcedimiento())) {
+            append(sb, "Decisión de número", ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
+        }
         if (!"Válido".equalsIgnoreCase(item.getEstadoValidacion())) {
             append(sb, "Advertencias de validación", item.getMensajeValidacion());
         }
@@ -887,13 +926,13 @@ public class ExpedienteRegistroDAO {
         private final CargaDiariaPreviewDTO item;
         private final Long idExpediente;
         private final String numeroExpediente;
-        private final boolean duplicadoSinNumero;
+        private final String motivoSinNumero;
 
-        private RegistroConfirmado(CargaDiariaPreviewDTO item, Long idExpediente, String numeroExpediente, boolean duplicadoSinNumero) {
+        private RegistroConfirmado(CargaDiariaPreviewDTO item, Long idExpediente, String numeroExpediente, String motivoSinNumero) {
             this.item = item;
             this.idExpediente = idExpediente;
             this.numeroExpediente = numeroExpediente;
-            this.duplicadoSinNumero = duplicadoSinNumero;
+            this.motivoSinNumero = motivoSinNumero;
         }
     }
 

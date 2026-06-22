@@ -81,6 +81,13 @@ public class AsignacionExpedienteService {
                 hojasEnvioPorExpediente);
     }
 
+    public String generarNumeroExpediente(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para generar número.");
+        }
+        return asignacionExpedienteDAO.generarNumeroExpediente(idExpediente, resolverUsuarioActualSdrercApp());
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();
