@@ -99,9 +99,10 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_DOCUMENTO_CONFIRMACION_RESPUESTA = 7;
     private static final int COL_DOCUMENTO_FECHA_RESPUESTA = 8;
     private static final int COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA = 9;
-    private static final int COL_DOCUMENTO_TIPO_CODIGO = 10;
-    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 11;
-    private static final int COL_DOCUMENTO_ID = 12;
+    private static final int COL_DOCUMENTO_ACCION = 10;
+    private static final int COL_DOCUMENTO_TIPO_CODIGO = 11;
+    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 12;
+    private static final int COL_DOCUMENTO_ID = 13;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 18;
@@ -193,6 +194,7 @@ public class JPanelAnalisisV2 extends JPanel {
                 "Confirmación de respuesta",
                 "Fecha Respuesta",
                 "Hoja de Envío",
+                "",
                 "tipo_codigo",
                 "estado_codigo",
                 "_id_documento"
@@ -200,7 +202,8 @@ public class JPanelAnalisisV2 extends JPanel {
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return column >= COL_DOCUMENTO_TIPO && column <= COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA;
+            return (column >= COL_DOCUMENTO_TIPO && column <= COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA)
+                    || column == COL_DOCUMENTO_ACCION;
         }
 
         @Override
@@ -627,10 +630,15 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_ACUSE).setCellEditor(new FechaDocumentoCellEditor());
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_CONFIRMACION_RESPUESTA).setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_RESPUESTA).setCellEditor(new FechaDocumentoCellEditor());
-        int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 0, 0, 0};
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new EditarEstadoDocumentoRenderer());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new EditarEstadoDocumentoEditor());
+        int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 42, 0, 0, 0};
         for (int i = 0; i < widths.length; i++) {
             configurarColumnaDocumento(i, widths[i], i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : Math.min(widths[i], 90), i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : widths[i] + 90);
         }
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMinWidth(42);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setPreferredWidth(42);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMaxWidth(48);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMinWidth(0);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMaxWidth(0);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMinWidth(0);
@@ -1310,6 +1318,7 @@ public class JPanelAnalisisV2 extends JPanel {
                 confirmacionRespuestaUi(documento.getConfirmacionRespuesta(), documento.isRequiereRespuesta()),
                 documento.getFechaRespuesta() == null ? "" : DATE_FORMAT.format(documento.getFechaRespuesta()),
                 valueOrEmpty(documento.getNumeroHojaEnvioRespuesta()),
+                "",
                 documento.getTipoDocumentoCodigo(),
                 documento.getEstadoDocumentoCodigo(),
                 documento.getIdDocumentoAnalizado()
@@ -1694,6 +1703,7 @@ public class JPanelAnalisisV2 extends JPanel {
             "Pendiente",
             "",
             "",
+            "",
             tipo.codigo,
             estado.codigo,
             null
@@ -1748,7 +1758,7 @@ public class JPanelAnalisisV2 extends JPanel {
         if (seleccionado == null || seleccionado.codigo.isEmpty()) {
             return;
         }
-        documentoModel.setValueAt(seleccionado.nombre, modelRow, 1);
+        documentoModel.setValueAt(seleccionado, modelRow, COL_DOCUMENTO_ESTADO);
         documentoModel.setValueAt(seleccionado.codigo, modelRow, COL_DOCUMENTO_ESTADO_CODIGO);
     }
 
