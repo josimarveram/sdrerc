@@ -5,15 +5,10 @@ import java.util.Locale;
 
 public final class AsignacionRegistroEditRules {
 
-    private static final String TIPO_DOCUMENTO_CARTA = "CARTA";
     private static final String PROCEDIMIENTO_RECONSIDERACION = "RECONSIDERACION";
     private static final String PROCEDIMIENTO_APELACION = "APELACION";
 
     private AsignacionRegistroEditRules() {
-    }
-
-    public static boolean esTipoDocumentoPermitido(String value) {
-        return TIPO_DOCUMENTO_CARTA.equals(normalizar(value));
     }
 
     public static boolean esProcedimientoPermitido(String value) {
@@ -22,10 +17,6 @@ public final class AsignacionRegistroEditRules {
                 || PROCEDIMIENTO_APELACION.equals(normalized)
                 || normalized.contains(PROCEDIMIENTO_RECONSIDERACION)
                 || normalized.contains(PROCEDIMIENTO_APELACION);
-    }
-
-    public static String mensajeTipoDocumentoPermitido() {
-        return "En Asignación solo se permite cambiar el tipo de documento a Carta.";
     }
 
     public static String mensajeProcedimientoPermitido() {

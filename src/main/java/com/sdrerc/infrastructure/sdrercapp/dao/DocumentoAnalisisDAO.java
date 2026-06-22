@@ -8,6 +8,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,10 +47,19 @@ public class DocumentoAnalisisDAO {
         if (conn == null || idExpediente == null) {
             return documentos;
         }
+        boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
         String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
                 + "td.codigo AS tipo_documento_codigo, td.nombre AS tipo_documento_nombre, "
                 + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
-                + "da.fecha_documento, da.descripcion "
+                + "da.fecha_documento, da.descripcion, "
+                + (soportaRespuesta
+                        ? "NVL(da.notificado, 0) AS notificado, da.fecha_acuse, "
+                        + "NVL(da.requiere_respuesta, 0) AS requiere_respuesta, "
+                        + "da.confirmacion_respuesta, da.fecha_respuesta, da.numero_hoja_envio_respuesta "
+                        : "0 AS notificado, CAST(NULL AS DATE) AS fecha_acuse, "
+                        + "0 AS requiere_respuesta, CAST(NULL AS VARCHAR2(20)) AS confirmacion_respuesta, "
+                        + "CAST(NULL AS DATE) AS fecha_respuesta, "
+                        + "CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_respuesta ")
                 + "FROM expediente_documento_analizado da "
                 + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                 + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
@@ -67,7 +77,13 @@ public class DocumentoAnalisisDAO {
                             rs.getString("estado_documento_codigo"),
                             rs.getString("estado_documento_nombre"),
                             toLocalDate(rs.getDate("fecha_documento")),
-                            rs.getString("descripcion")));
+                            rs.getString("descripcion"),
+                            rs.getInt("notificado") == 1,
+                            toLocalDate(rs.getDate("fecha_acuse")),
+                            rs.getInt("requiere_respuesta") == 1,
+                            rs.getString("confirmacion_respuesta"),
+                            toLocalDate(rs.getDate("fecha_respuesta")),
+                            rs.getString("numero_hoja_envio_respuesta")));
                 }
             }
         }
@@ -80,6 +96,83 @@ public class DocumentoAnalisisDAO {
             ps.setLong(1, idExpediente);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    public void actualizarRespuestaDocumentoAnalizado(
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idUsuarioModificador) throws SQLException {
+        if (idExpediente == null || documento == null || documento.getIdDocumentoAnalizado() == null) {
+            throw new IllegalArgumentException("Seleccione un documento analizado para actualizar la respuesta.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                actualizarRespuestaDocumentoAnalizado(conn, idExpediente, documento, idUsuarioModificador);
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    public void actualizarRespuestaDocumentoAnalizado(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idUsuarioModificador) throws SQLException {
+        if (!soportaRespuestaDocumentoAnalizado(conn)) {
+            throw new SQLException("Faltan columnas de respuesta en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 29_patch_documento_analizado_respuesta.sql.");
+        }
+        String confirmacion = normalizarConfirmacionRespuesta(documento.getConfirmacionRespuesta());
+        LocalDate fechaRespuesta = documento.getFechaRespuesta();
+        String hojaRespuesta = limitar(emptyToNull(documento.getNumeroHojaEnvioRespuesta()), 120);
+        if (!documento.isRequiereRespuesta()) {
+            confirmacion = null;
+            fechaRespuesta = null;
+            hojaRespuesta = null;
+        } else if (!documento.isNotificado() || documento.getFechaAcuse() == null) {
+            confirmacion = "PENDIENTE";
+            fechaRespuesta = null;
+            hojaRespuesta = null;
+        }
+        String sql = "UPDATE expediente_documento_analizado SET "
+                + "notificado = ?, fecha_acuse = ?, confirmacion_respuesta = ?, fecha_respuesta = ?, "
+                + "numero_hoja_envio_respuesta = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, documento.isNotificado() ? 1 : 0);
+            setDateOrNull(ps, 2, documento.getFechaAcuse());
+            if (confirmacion == null) {
+                ps.setNull(3, Types.VARCHAR);
+            } else {
+                ps.setString(3, confirmacion);
+            }
+            setDateOrNull(ps, 4, fechaRespuesta);
+            if (hojaRespuesta == null) {
+                ps.setNull(5, Types.VARCHAR);
+            } else {
+                ps.setString(5, hojaRespuesta);
+            }
+            if (idUsuarioModificador == null) {
+                ps.setNull(6, Types.NUMERIC);
+            } else {
+                ps.setLong(6, idUsuarioModificador);
+            }
+            ps.setLong(7, documento.getIdDocumentoAnalizado());
+            ps.setLong(8, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar la respuesta del documento analizado.");
             }
         }
     }
@@ -155,6 +248,51 @@ public class DocumentoAnalisisDAO {
 
     private static LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toLocalDate();
+    }
+
+    private static void setDateOrNull(PreparedStatement ps, int index, LocalDate date) throws SQLException {
+        if (date == null) {
+            ps.setNull(index, Types.DATE);
+        } else {
+            ps.setDate(index, Date.valueOf(date));
+        }
+    }
+
+    private static boolean soportaRespuestaDocumentoAnalizado(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(DISTINCT column_name) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                + "AND column_name IN ("
+                + "'NOTIFICADO', 'FECHA_ACUSE', 'REQUIERE_RESPUESTA', "
+                + "'CONFIRMACION_RESPUESTA', 'FECHA_RESPUESTA', 'NUMERO_HOJA_ENVIO_RESPUESTA'"
+                + ")";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 6;
+        }
+    }
+
+    private static String normalizarConfirmacionRespuesta(String value) {
+        String normalized = value == null ? "" : value.trim().toUpperCase(java.util.Locale.ROOT);
+        normalized = normalized.replace('Í', 'I');
+        if ("SI".equals(normalized) || "NO".equals(normalized) || "PENDIENTE".equals(normalized)) {
+            return normalized;
+        }
+        return "PENDIENTE";
+    }
+
+    private static String emptyToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private static void rollbackSilencioso(Connection conn) {
+        if (conn == null) {
+            return;
+        }
+        try {
+            conn.rollback();
+        } catch (SQLException ignored) {
+            // rollback de contingencia
+        }
     }
 
     private static String limitar(String value, int maxLength) {

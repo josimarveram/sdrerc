@@ -377,23 +377,18 @@ public class AsignacionExpedienteDAO {
         }
     }
 
-    public void actualizarDatosRegistrales(
+    public void actualizarProcedimientoRegistral(
             Long idExpediente,
-            String tipoDocumentoDestino,
             String procedimientoDestino,
             Long idUsuario) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para actualizar sus datos registrales.");
         }
-        String tipoDocumento = textoEditable(tipoDocumentoDestino);
         String procedimiento = textoEditable(procedimientoDestino);
-        if (!hasText(tipoDocumento) && !hasText(procedimiento)) {
-            throw new IllegalArgumentException("Seleccione al menos un dato permitido para actualizar.");
+        if (!hasText(procedimiento)) {
+            throw new IllegalArgumentException("Seleccione un procedimiento registral permitido para actualizar.");
         }
-        if (hasText(tipoDocumento) && !AsignacionRegistroEditRules.esTipoDocumentoPermitido(tipoDocumento)) {
-            throw new IllegalArgumentException(AsignacionRegistroEditRules.mensajeTipoDocumentoPermitido());
-        }
-        if (hasText(procedimiento) && !AsignacionRegistroEditRules.esProcedimientoPermitido(procedimiento)) {
+        if (!AsignacionRegistroEditRules.esProcedimientoPermitido(procedimiento)) {
             throw new IllegalArgumentException(AsignacionRegistroEditRules.mensajeProcedimientoPermitido());
         }
 
@@ -414,14 +409,8 @@ public class AsignacionExpedienteDAO {
                 }
 
                 List<String> cambios = new ArrayList<>();
-                if (hasText(tipoDocumento)) {
-                    actualizarTipoDocumentoPrincipal(conn, idExpediente, tipoDocumento);
-                    cambios.add("tipo de documento: " + tipoDocumento);
-                }
-                if (hasText(procedimiento)) {
-                    actualizarProcedimientoSolicitud(conn, idExpediente, procedimiento);
-                    cambios.add("procedimiento registral: " + procedimiento);
-                }
+                actualizarProcedimientoSolicitud(conn, idExpediente, procedimiento);
+                cambios.add("procedimiento registral: " + procedimiento);
                 insertarHistorialEdicionDatosAsignacion(conn, expediente, idUsuario, cambios);
 
                 conn.commit();
@@ -617,24 +606,6 @@ public class AsignacionExpedienteDAO {
             int updated = ps.executeUpdate();
             if (updated != 1) {
                 throw new SQLException("No se encontró solicitud activa para actualizar el procedimiento registral.");
-            }
-        }
-    }
-
-    private void actualizarTipoDocumentoPrincipal(Connection conn, Long idExpediente, String tipoDocumento) throws SQLException {
-        String sql = "UPDATE expediente_documento SET nombre_documento = ?, modificado_en = SYSTIMESTAMP "
-                + "WHERE id_expediente_documento = ("
-                + "SELECT id_expediente_documento FROM ("
-                + "SELECT d.id_expediente_documento FROM expediente_documento d "
-                + "WHERE d.id_expediente = ? AND d.activo = 1 "
-                + "ORDER BY d.id_expediente_documento ASC"
-                + ") WHERE ROWNUM = 1)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, limitar(tipoDocumento, 150));
-            ps.setLong(2, idExpediente);
-            int updated = ps.executeUpdate();
-            if (updated != 1) {
-                throw new SQLException("No se encontró documento activo para actualizar el tipo de documento.");
             }
         }
     }

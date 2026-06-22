@@ -2,12 +2,14 @@ package com.sdrerc.ui.views.asignacion;
 
 import com.sdrerc.application.sdrercapp.AsignacionExpedienteService;
 import com.sdrerc.application.sdrercapp.CatalogoLookupService;
+import com.sdrerc.application.sdrercapp.DocumentoAnalisisService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoDeteccionService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.application.sdrercapp.UsuarioAsignacionService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
+import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionResultadoDTO;
@@ -64,6 +66,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.DefaultCellEditor;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -95,6 +98,17 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int COL_ESTADO = 11;
     private static final int COL_RELACIONADOS = 12;
     private static final int COL_ID = 13;
+    private static final int CARTA_COL_TIPO = 0;
+    private static final int CARTA_COL_ESTADO = 1;
+    private static final int CARTA_COL_FECHA = 2;
+    private static final int CARTA_COL_DESCRIPCION = 3;
+    private static final int CARTA_COL_NOTIFICADO = 4;
+    private static final int CARTA_COL_FECHA_ACUSE = 5;
+    private static final int CARTA_COL_REQUIERE_RESPUESTA = 6;
+    private static final int CARTA_COL_CONFIRMACION_RESPUESTA = 7;
+    private static final int CARTA_COL_FECHA_RESPUESTA = 8;
+    private static final int CARTA_COL_HOJA_ENVIO_RESPUESTA = 9;
+    private static final int CARTA_COL_ACCION = 10;
     private static final int PANEL_ASIGNACION_ANCHO_MINIMO = 380;
     private static final int PANEL_ASIGNACION_ANCHO_NORMAL = 430;
     private static final int PANEL_ASIGNACION_TAB_OVERHANG = 18;
@@ -136,6 +150,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
     private final CatalogoLookupService catalogoLookupService = new CatalogoLookupService();
+    private final DocumentoAnalisisService documentoAnalisisService = new DocumentoAnalisisService();
     private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
@@ -183,9 +198,42 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable asignacionMultipleTable = new AppV2Table(asignacionMultipleModel);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
-    private final JComboBox<FiltroCatalogoItemV2> cmbTipoDocumentoRegistro = new JComboBox<FiltroCatalogoItemV2>();
     private final JComboBox<FiltroCatalogoItemV2> cmbProcedimientoRegistro = new JComboBox<FiltroCatalogoItemV2>();
     private final JButton btnGuardarDatosRegistro = new JButton("Guardar datos");
+    private final DefaultTableModel cartasRespuestaModel = new DefaultTableModel(
+            new Object[]{
+                "Tipo",
+                "Estado",
+                "Fecha",
+                "Descripción",
+                "Notificado",
+                "Fecha Acuse",
+                "¿Requiere respuesta?",
+                "Confirmación de respuesta",
+                "Fecha Respuesta",
+                "Hoja de Envío",
+                ""
+            }, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            if (row < 0 || row >= getRowCount()) {
+                return false;
+            }
+            if (column == CARTA_COL_NOTIFICADO || column == CARTA_COL_FECHA_ACUSE || column == CARTA_COL_ACCION) {
+                return true;
+            }
+            return respuestaCartaHabilitada(row)
+                    && (column == CARTA_COL_CONFIRMACION_RESPUESTA
+                    || column == CARTA_COL_FECHA_RESPUESTA
+                    || column == CARTA_COL_HOJA_ENVIO_RESPUESTA);
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == CARTA_COL_REQUIERE_RESPUESTA ? Boolean.class : Object.class;
+        }
+    };
+    private final JTable cartasRespuestaTable = new AppV2Table(cartasRespuestaModel);
     private final JTextField txtHojaEnvioAsignacion = new JTextField();
     private final JTextArea txtComentario = new JTextArea(3, 18);
     private final AppV2NotebookToggleTab tabPanelAsignacion = new AppV2NotebookToggleTab();
@@ -211,6 +259,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
     private AppV2SideSectionPanel sectionDatosRegistro;
+    private AppV2SideSectionPanel sectionCartasRespuesta;
     private AppV2SideSectionPanel sectionAccionesRelacionados;
     private AppV2SideSectionPanel sectionDecisionNumero;
     private AppV2SideSectionPanel sectionFlujoAsignacion;
@@ -229,19 +278,21 @@ public class JPanelAsignacionV2 extends JPanel {
     private Long idExpedienteDocumentosRelacionados;
     private Long idExpedienteHojaEnvioSimple;
     private Long idExpedienteDatosRegistro;
-    private String tipoDocumentoOriginalDatosRegistro = "";
+    private Long idExpedienteCartasRespuesta;
     private String procedimientoOriginalDatosRegistro = "";
-    private FiltroCatalogoItemV2 ultimoTipoDocumentoSeleccionado;
     private FiltroCatalogoItemV2 ultimoProcedimientoSeleccionado;
+    private final Map<Integer, DocumentoAnalizadoDTO> documentosCartasRespuesta = new HashMap<>();
 
     private boolean cargandoCombos;
     private boolean actualizandoDatosRegistro;
     private boolean actualizandoSeleccion;
+    private boolean actualizandoCartasRespuesta;
     private boolean usuarioActualResuelto;
     private Long idUsuarioActualSdrercApp;
     private Long idEquipoPendienteSeleccion;
     private Long idAbogadoPendienteSeleccion;
     private long secuenciaCargaAbogados;
+    private long secuenciaCargaCartasRespuesta;
 
     public JPanelAsignacionV2() {
         this(new AsignacionExpedienteService(), new UsuarioAsignacionService());
@@ -257,6 +308,7 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarTabla();
         configurarTablaDocumentosRelacionados();
         configurarTablaAsignacionMultiple();
+        configurarTablaCartasRespuesta();
         configurarEventos();
         restaurarFechasBusqueda();
         cargarEstados();
@@ -345,6 +397,7 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionResumenAsignacion = crearResumenAsignacion();
         sectionAsignacionMultiple = crearAsignacionMultiple();
         sectionDatosRegistro = crearDatosRegistroAsignacion();
+        sectionCartasRespuesta = crearCartasRespuesta();
         sectionAccionesRelacionados = crearAccionesRelacionados();
         sectionDecisionNumero = crearDecisionNumero();
         sectionFlujoAsignacion = crearFlujoAsignacion();
@@ -354,6 +407,7 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.addSection(sectionResumenAsignacion);
         panel.addSection(sectionAsignacionMultiple);
         panel.addSection(sectionDatosRegistro);
+        panel.addSection(sectionCartasRespuesta);
         panel.addSection(sectionAccionesRelacionados);
         panel.addSection(sectionDecisionNumero);
         panel.addSection(sectionFlujoAsignacion);
@@ -362,6 +416,7 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.addSection(sectionComentarioAsignacion);
         sectionAsignacionMultiple.setVisible(false);
         sectionDatosRegistro.setVisible(false);
+        sectionCartasRespuesta.setVisible(false);
         sectionDecisionNumero.setVisible(false);
         panel.setFooter(crearAccionesAsignacion());
         return panel;
@@ -429,11 +484,30 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideSectionPanel crearDatosRegistroAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos registrales");
-        section.addRow("Tipo documento", cmbTipoDocumentoRegistro);
         section.addRow("Procedimiento", cmbProcedimientoRegistro);
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnGuardarDatosRegistro);
         section.addContent(acciones);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearCartasRespuesta() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Cartas de respuesta");
+        JLabel ayuda = new JLabel("<html>Complete notificación, acuse y respuesta cuando el documento lo requiera.</html>");
+        ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel content = new JPanel(new BorderLayout(6, 6));
+        content.setOpaque(false);
+        content.add(ayuda, BorderLayout.NORTH);
+        JScrollPane scroll = new JScrollPane(cartasRespuestaTable);
+        scroll.setPreferredSize(new Dimension(330, 185));
+        scroll.setMinimumSize(new Dimension(290, 135));
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        content.add(scroll, BorderLayout.CENTER);
+        section.addContent(content);
         return section;
     }
 
@@ -535,23 +609,18 @@ public class JPanelAsignacionV2 extends JPanel {
         spnLimite.setPreferredSize(new Dimension(88, 34));
         cmbEquipo.setPreferredSize(new Dimension(230, 34));
         cmbAbogado.setPreferredSize(new Dimension(230, 34));
-        cmbTipoDocumentoRegistro.setPreferredSize(new Dimension(230, 34));
-        cmbTipoDocumentoRegistro.setMinimumSize(new Dimension(190, 34));
         cmbProcedimientoRegistro.setPreferredSize(new Dimension(230, 34));
         cmbProcedimientoRegistro.setMinimumSize(new Dimension(190, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        cmbTipoDocumentoRegistro.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbProcedimientoRegistro.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        cmbTipoDocumentoRegistro.setRenderer(new CatalogoRestringidoRenderer(true));
-        cmbProcedimientoRegistro.setRenderer(new CatalogoRestringidoRenderer(false));
-        cmbTipoDocumentoRegistro.setToolTipText("Solo se permite cambiar a Carta.");
+        cmbProcedimientoRegistro.setRenderer(new CatalogoRestringidoRenderer());
         cmbProcedimientoRegistro.setToolTipText("Solo se permite cambiar a Reconsideración o Apelación.");
         btnGuardarDatosRegistro.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnGuardarDatosRegistro.setEnabled(false);
-        btnGuardarDatosRegistro.setToolTipText("Guardar cambios permitidos de tipo de documento o procedimiento registral.");
+        btnGuardarDatosRegistro.setToolTipText("Guardar cambio permitido de procedimiento registral.");
         txtHojaEnvioAsignacion.setPreferredSize(new Dimension(230, 34));
         txtHojaEnvioAsignacion.setMinimumSize(new Dimension(180, 34));
         txtHojaEnvioAsignacion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
@@ -650,10 +719,60 @@ public class JPanelAsignacionV2 extends JPanel {
         asignacionMultipleTable.getColumnModel().getColumn(2).setMinWidth(150);
     }
 
+    private void configurarTablaCartasRespuesta() {
+        cartasRespuestaTable.setRowHeight(34);
+        cartasRespuestaTable.setAutoCreateRowSorter(false);
+        cartasRespuestaTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        cartasRespuestaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        cartasRespuestaTable.getTableHeader().setReorderingAllowed(false);
+        cartasRespuestaTable.getTableHeader().setResizingAllowed(true);
+        cartasRespuestaTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        cartasRespuestaTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        cartasRespuestaTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        cartasRespuestaTable.setGridColor(AppV2Theme.BORDER);
+        cartasRespuestaTable.setShowVerticalLines(false);
+        cartasRespuestaTable.setIntercellSpacing(new Dimension(0, 1));
+        cartasRespuestaTable.setDefaultRenderer(Object.class, new CartaRespuestaRenderer());
+        cartasRespuestaTable.setDefaultRenderer(Boolean.class, new CartaRespuestaCheckRenderer());
+        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_NOTIFICADO)
+                .setCellEditor(new DefaultCellEditor(comboSiNo()));
+        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_FECHA_ACUSE)
+                .setCellEditor(new FechaCartaCellEditor());
+        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_CONFIRMACION_RESPUESTA)
+                .setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
+        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_FECHA_RESPUESTA)
+                .setCellEditor(new FechaCartaCellEditor());
+        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_ACCION)
+                .setCellRenderer(new GuardarCartaRenderer());
+        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_ACCION)
+                .setCellEditor(new GuardarCartaEditor());
+        int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 82};
+        for (int i = 0; i < widths.length; i++) {
+            configurarColumna(cartasRespuestaTable.getColumnModel().getColumn(i), widths[i], Math.min(widths[i], 90), Math.max(widths[i] + 70, widths[i]));
+        }
+        cartasRespuestaModel.addTableModelListener(e -> {
+            if (!actualizandoCartasRespuesta) {
+                cartasRespuestaTable.repaint();
+            }
+        });
+    }
+
     private void configurarColumna(TableColumn column, int preferred, int min, int max) {
         column.setPreferredWidth(preferred);
         column.setMinWidth(min);
         column.setMaxWidth(max);
+    }
+
+    private JComboBox<String> comboSiNo() {
+        JComboBox<String> combo = new JComboBox<String>(new String[]{"No", "Si"});
+        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        return combo;
+    }
+
+    private JComboBox<String> comboConfirmacionRespuesta() {
+        JComboBox<String> combo = new JComboBox<String>(new String[]{"Pendiente", "Si", "No"});
+        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        return combo;
     }
 
     private void configurarEventos() {
@@ -665,7 +784,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnGuardarDatosRegistro.addActionListener(e -> guardarDatosRegistralesAsignacion());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
-        cmbTipoDocumentoRegistro.addActionListener(e -> validarSeleccionTipoDocumentoRegistro());
         cmbProcedimientoRegistro.addActionListener(e -> validarSeleccionProcedimientoRegistro());
         cmbEquipo.addActionListener(e -> {
             if (!cargandoCombos) {
@@ -725,17 +843,13 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void cargarCatalogosDatosRegistro() {
         actualizandoDatosRegistro = true;
-        cmbTipoDocumentoRegistro.removeAllItems();
         cmbProcedimientoRegistro.removeAllItems();
-        cmbTipoDocumentoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione tipo documento"));
         cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione procedimiento"));
         actualizandoDatosRegistro = false;
         SwingWorker<CatalogosDatosRegistro, Void> worker = new SwingWorker<CatalogosDatosRegistro, Void>() {
             @Override
             protected CatalogosDatosRegistro doInBackground() throws Exception {
-                return new CatalogosDatosRegistro(
-                        catalogoLookupService.listarTiposDocumento(),
-                        catalogoLookupService.listarProcedimientosRegistrales());
+                return new CatalogosDatosRegistro(catalogoLookupService.listarProcedimientosRegistrales());
             }
 
             @Override
@@ -743,13 +857,8 @@ public class JPanelAsignacionV2 extends JPanel {
                 actualizandoDatosRegistro = true;
                 try {
                     CatalogosDatosRegistro catalogos = get();
-                    cmbTipoDocumentoRegistro.removeAllItems();
                     cmbProcedimientoRegistro.removeAllItems();
-                    cmbTipoDocumentoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione tipo documento"));
                     cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione procedimiento"));
-                    for (CatalogoItemDTO item : catalogos.tiposDocumento) {
-                        cmbTipoDocumentoRegistro.addItem(new FiltroCatalogoItemV2(item.getCodigo(), item.getNombre()));
-                    }
                     for (CatalogoItemDTO item : catalogos.procedimientos) {
                         cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(item.getCodigo(), item.getNombre()));
                     }
@@ -1903,6 +2012,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             ? item.getAsociadosConfirmados() + " documento(s) asociado(s) confirmado(s)."
                             : "Sin alerta de relacionados."));
             cargarDocumentosRelacionadosPanel(item);
+            cargarCartasRespuestaPanel(item);
             btnAsociarRelacionados.setText(item.getPosiblesRelacionados() > 0
                     ? "Asociar " + item.getPosiblesRelacionados() + " relacionado(s)"
                     : "Sin relacionados pendientes");
@@ -1930,6 +2040,7 @@ public class JPanelAsignacionV2 extends JPanel {
             lblIngreso.setText("Duplicado confirmado");
             lblIngreso.setToolTipText("Este documento está asociado al expediente principal y no requiere asignación independiente.");
             limpiarDocumentosRelacionadosPanel("Asociado a expediente principal " + filaPanel.numeroExpedientePrincipal() + ".");
+            limpiarCartasRespuestaPanel();
             btnAsociarRelacionados.setText("Relación confirmada");
             btnAsociarRelacionados.setEnabled(false);
         } else if (modoMultiple) {
@@ -1952,6 +2063,7 @@ public class JPanelAsignacionV2 extends JPanel {
             lblIngreso.setText("Múltiple");
             lblIngreso.setToolTipText("Selección múltiple de expedientes marcados.");
             limpiarDocumentosRelacionadosPanel("Puede asociar la selección si comparte número de acta y titular.");
+            limpiarCartasRespuestaPanel();
             btnAsociarRelacionados.setText("Asociar selección relacionada");
             btnAsociarRelacionados.setEnabled(true);
         } else {
@@ -1959,6 +2071,7 @@ public class JPanelAsignacionV2 extends JPanel {
             prepararDatosRegistroAsignacion(null);
             aplicarIdentidadVisual(null, false);
             cargarPanelAsignacionMultiple(Collections.<AsignacionExpedienteDTO>emptyList());
+            limpiarCartasRespuestaPanel();
             limpiarPanelAsignacion();
         }
     }
@@ -1969,19 +2082,15 @@ public class JPanelAsignacionV2 extends JPanel {
             sectionDatosRegistro.setVisible(visible);
         }
         idExpedienteDatosRegistro = visible ? item.getIdExpediente() : null;
-        tipoDocumentoOriginalDatosRegistro = visible ? item.getTipoDocumento() : "";
         procedimientoOriginalDatosRegistro = visible ? item.getProcedimiento() : "";
         actualizandoDatosRegistro = true;
         try {
-            seleccionarItemCatalogo(cmbTipoDocumentoRegistro, tipoDocumentoOriginalDatosRegistro);
             seleccionarItemCatalogo(cmbProcedimientoRegistro, procedimientoOriginalDatosRegistro);
-            ultimoTipoDocumentoSeleccionado = itemSeleccionado(cmbTipoDocumentoRegistro);
             ultimoProcedimientoSeleccionado = itemSeleccionado(cmbProcedimientoRegistro);
         } finally {
             actualizandoDatosRegistro = false;
         }
         boolean editable = item != null && item.isAsignable();
-        cmbTipoDocumentoRegistro.setEnabled(editable);
         cmbProcedimientoRegistro.setEnabled(editable);
         btnGuardarDatosRegistro.setEnabled(false);
         actualizarEstadoBotonDatosRegistro();
@@ -2010,20 +2119,6 @@ public class JPanelAsignacionV2 extends JPanel {
         FiltroCatalogoItemV2 itemActual = new FiltroCatalogoItemV2(null, nombre.trim());
         combo.addItem(itemActual);
         combo.setSelectedItem(itemActual);
-    }
-
-    private void validarSeleccionTipoDocumentoRegistro() {
-        if (actualizandoDatosRegistro) {
-            return;
-        }
-        FiltroCatalogoItemV2 item = itemSeleccionado(cmbTipoDocumentoRegistro);
-        if (item == null || !seleccionTipoDocumentoPermitida(item)) {
-            mostrarRestriccionSeleccion(cmbTipoDocumentoRegistro, ultimoTipoDocumentoSeleccionado,
-                    AsignacionRegistroEditRules.mensajeTipoDocumentoPermitido());
-            return;
-        }
-        ultimoTipoDocumentoSeleccionado = item;
-        actualizarEstadoBotonDatosRegistro();
     }
 
     private void validarSeleccionProcedimientoRegistro() {
@@ -2059,14 +2154,6 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarEstadoBotonDatosRegistro();
     }
 
-    private boolean seleccionTipoDocumentoPermitida(FiltroCatalogoItemV2 item) {
-        if (item == null || !hasTextUi(item.getNombreVisible())) {
-            return false;
-        }
-        return esValorOriginal(item.getNombreVisible(), tipoDocumentoOriginalDatosRegistro)
-                || AsignacionRegistroEditRules.esTipoDocumentoPermitido(item.getNombreVisible());
-    }
-
     private boolean seleccionProcedimientoPermitida(FiltroCatalogoItemV2 item) {
         if (item == null || !hasTextUi(item.getNombreVisible())) {
             return false;
@@ -2077,17 +2164,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void actualizarEstadoBotonDatosRegistro() {
         btnGuardarDatosRegistro.setEnabled(idExpedienteDatosRegistro != null
-                && cmbTipoDocumentoRegistro.isEnabled()
-                && (hasTextUi(tipoDocumentoCambioPermitido()) || hasTextUi(procedimientoCambioPermitido())));
-    }
-
-    private String tipoDocumentoCambioPermitido() {
-        FiltroCatalogoItemV2 item = itemSeleccionado(cmbTipoDocumentoRegistro);
-        if (item == null || esValorOriginal(item.getNombreVisible(), tipoDocumentoOriginalDatosRegistro)
-                || !AsignacionRegistroEditRules.esTipoDocumentoPermitido(item.getNombreVisible())) {
-            return null;
-        }
-        return item.getNombreVisible().trim();
+                && cmbProcedimientoRegistro.isEnabled()
+                && hasTextUi(procedimientoCambioPermitido()));
     }
 
     private String procedimientoCambioPermitido() {
@@ -2101,19 +2179,13 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void guardarDatosRegistralesAsignacion() {
         final Long idExpediente = idExpedienteDatosRegistro;
-        final String tipoDocumento = tipoDocumentoCambioPermitido();
         final String procedimiento = procedimientoCambioPermitido();
-        if (idExpediente == null || (!hasTextUi(tipoDocumento) && !hasTextUi(procedimiento))) {
+        if (idExpediente == null || !hasTextUi(procedimiento)) {
             mostrarInfo("Seleccione un cambio permitido antes de guardar.");
             return;
         }
         List<String> cambios = new ArrayList<>();
-        if (hasTextUi(tipoDocumento)) {
-            cambios.add("Tipo documento: " + tipoDocumento);
-        }
-        if (hasTextUi(procedimiento)) {
-            cambios.add("Procedimiento registral: " + procedimiento);
-        }
+        cambios.add("Procedimiento registral: " + procedimiento);
         int confirm = JOptionPane.showConfirmDialog(
                 this,
                 "Se actualizarán los datos registrales del expediente seleccionado:\n"
@@ -2129,7 +2201,7 @@ public class JPanelAsignacionV2 extends JPanel {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                asignacionService.actualizarDatosRegistrales(idExpediente, tipoDocumento, procedimiento);
+                asignacionService.actualizarProcedimientoRegistral(idExpediente, procedimiento);
                 return null;
             }
 
@@ -2159,6 +2231,191 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         return AsignacionRegistroEditRules.normalizar(valor)
                 .equals(AsignacionRegistroEditRules.normalizar(original));
+    }
+
+    private void cargarCartasRespuestaPanel(AsignacionExpedienteDTO item) {
+        if (item == null || item.getIdExpediente() == null) {
+            limpiarCartasRespuestaPanel();
+            return;
+        }
+        if (sectionCartasRespuesta != null) {
+            sectionCartasRespuesta.setVisible(true);
+        }
+        cargarCartasRespuestaPorId(item.getIdExpediente());
+    }
+
+    private void cargarCartasRespuestaPorId(final Long idExpediente) {
+        idExpedienteCartasRespuesta = idExpediente;
+        final long secuencia = ++secuenciaCargaCartasRespuesta;
+        limpiarCartasRespuestaModel();
+        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
+            @Override
+            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (secuencia != secuenciaCargaCartasRespuesta || !idExpediente.equals(idExpedienteCartasRespuesta)) {
+                    return;
+                }
+                try {
+                    cargarCartasRespuestaModel(get());
+                } catch (Exception ex) {
+                    lblEstado.setText("No se pudieron cargar cartas de respuesta.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void limpiarCartasRespuestaPanel() {
+        idExpedienteCartasRespuesta = null;
+        ++secuenciaCargaCartasRespuesta;
+        limpiarCartasRespuestaModel();
+        if (sectionCartasRespuesta != null) {
+            sectionCartasRespuesta.setVisible(false);
+        }
+    }
+
+    private void limpiarCartasRespuestaModel() {
+        actualizandoCartasRespuesta = true;
+        try {
+            documentosCartasRespuesta.clear();
+            cartasRespuestaModel.setRowCount(0);
+        } finally {
+            actualizandoCartasRespuesta = false;
+        }
+    }
+
+    private void cargarCartasRespuestaModel(List<DocumentoAnalizadoDTO> documentos) {
+        actualizandoCartasRespuesta = true;
+        try {
+            documentosCartasRespuesta.clear();
+            cartasRespuestaModel.setRowCount(0);
+            if (documentos == null) {
+                return;
+            }
+            for (DocumentoAnalizadoDTO documento : documentos) {
+                int row = cartasRespuestaModel.getRowCount();
+                documentosCartasRespuesta.put(row, documento);
+                cartasRespuestaModel.addRow(new Object[]{
+                    valorUi(documento.getTipoDocumentoNombre()),
+                    valorUi(documento.getEstadoDocumentoNombre()),
+                    formatDate(documento.getFechaDocumento()),
+                    valorUi(documento.getDescripcion()),
+                    documento.isNotificado() ? "Si" : "No",
+                    formatDate(documento.getFechaAcuse()),
+                    documento.isRequiereRespuesta(),
+                    confirmacionRespuestaUi(documento.getConfirmacionRespuesta(), documento.isRequiereRespuesta()),
+                    formatDate(documento.getFechaRespuesta()),
+                    valorUi(documento.getNumeroHojaEnvioRespuesta()),
+                    "Guardar"
+                });
+            }
+        } finally {
+            actualizandoCartasRespuesta = false;
+            cartasRespuestaTable.repaint();
+        }
+    }
+
+    private boolean respuestaCartaHabilitada(int row) {
+        if (row < 0 || row >= cartasRespuestaModel.getRowCount()) {
+            return false;
+        }
+        return Boolean.TRUE.equals(cartasRespuestaModel.getValueAt(row, CARTA_COL_REQUIERE_RESPUESTA))
+                && esSi(cartasRespuestaModel.getValueAt(row, CARTA_COL_NOTIFICADO))
+                && parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_ACUSE))) != null;
+    }
+
+    private void guardarCartaRespuesta(int row) {
+        if (row < 0 || row >= cartasRespuestaModel.getRowCount() || idExpedienteCartasRespuesta == null) {
+            mostrarInfo("Seleccione una carta de respuesta válida.");
+            return;
+        }
+        DocumentoAnalizadoDTO original = documentosCartasRespuesta.get(row);
+        if (original == null || original.getIdDocumentoAnalizado() == null) {
+            mostrarInfo("El documento seleccionado no tiene identificador para actualizar.");
+            return;
+        }
+        final DocumentoAnalizadoDTO documento = new DocumentoAnalizadoDTO(
+                original.getIdDocumentoAnalizado(),
+                idExpedienteCartasRespuesta,
+                original.getTipoDocumentoCodigo(),
+                original.getTipoDocumentoNombre(),
+                original.getEstadoDocumentoCodigo(),
+                original.getEstadoDocumentoNombre(),
+                original.getFechaDocumento(),
+                original.getDescripcion(),
+                esSi(cartasRespuestaModel.getValueAt(row, CARTA_COL_NOTIFICADO)),
+                parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_ACUSE))),
+                Boolean.TRUE.equals(cartasRespuestaModel.getValueAt(row, CARTA_COL_REQUIERE_RESPUESTA)),
+                stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_CONFIRMACION_RESPUESTA)),
+                parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_RESPUESTA))),
+                normalizarValorEditable(cartasRespuestaModel.getValueAt(row, CARTA_COL_HOJA_ENVIO_RESPUESTA)));
+        final Long idExpediente = idExpedienteCartasRespuesta;
+        setTrabajando(true, "Guardando carta de respuesta...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.guardarRespuestaDocumentoAnalizado(idExpediente, documento);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    lblEstado.setText("Carta de respuesta actualizada correctamente.");
+                    cargarCartasRespuestaPorId(idExpediente);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo guardar la carta de respuesta.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private static boolean esSi(Object value) {
+        String text = stringValue(value);
+        return "SI".equals(AsignacionRegistroEditRules.normalizar(text))
+                || "S".equals(AsignacionRegistroEditRules.normalizar(text));
+    }
+
+    private static String confirmacionRespuestaUi(String value, boolean requiereRespuesta) {
+        if (!requiereRespuesta) {
+            return "Pendiente";
+        }
+        String normalized = AsignacionRegistroEditRules.normalizar(value);
+        if ("SI".equals(normalized)) {
+            return "Si";
+        }
+        if ("NO".equals(normalized)) {
+            return "No";
+        }
+        return "Pendiente";
+    }
+
+    private static LocalDate parseFechaUi(String value) {
+        if (!hasTextUi(value) || "-".equals(value.trim())) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim(), DATE_FORMAT);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private static String normalizarValorEditable(Object value) {
+        String text = stringValue(value);
+        return "-".equals(text) ? "" : text;
+    }
+
+    private static String stringValue(Object value) {
+        return value == null ? "" : value.toString().trim();
     }
 
     private static FiltroCatalogoItemV2 itemSeleccionado(JComboBox<FiltroCatalogoItemV2> combo) {
@@ -2863,12 +3120,164 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
+    private class CartaRespuestaRenderer extends DefaultTableCellRenderer {
+
+        private CartaRespuestaRenderer() {
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            int modelRow = table.convertRowIndexToModel(row);
+            boolean respuestaHabilitada = respuestaCartaHabilitada(modelRow);
+            boolean columnaRespuesta = column == CARTA_COL_CONFIRMACION_RESPUESTA
+                    || column == CARTA_COL_FECHA_RESPUESTA
+                    || column == CARTA_COL_HOJA_ENVIO_RESPUESTA;
+            setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
+            setToolTipText(getText());
+            setHorizontalAlignment(column == CARTA_COL_FECHA
+                    || column == CARTA_COL_NOTIFICADO
+                    || column == CARTA_COL_FECHA_ACUSE
+                    || column == CARTA_COL_CONFIRMACION_RESPUESTA
+                    || column == CARTA_COL_FECHA_RESPUESTA
+                            ? SwingConstants.CENTER
+                            : SwingConstants.LEFT);
+            if (isSelected) {
+                setBackground(TABLE_SELECTION_BACKGROUND);
+                setForeground(TABLE_SELECTION_FOREGROUND);
+            } else {
+                Color base = row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
+                setBackground(columnaRespuesta && !respuestaHabilitada ? new Color(244, 247, 250) : base);
+                setForeground(columnaRespuesta && !respuestaHabilitada ? AppV2Theme.MUTED : AppV2Theme.TEXT_PRIMARY);
+            }
+            return component;
+        }
+    }
+
+    private class CartaRespuestaCheckRenderer extends JCheckBox implements TableCellRenderer {
+
+        private CartaRespuestaCheckRenderer() {
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setOpaque(true);
+            setEnabled(false);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setSelected(Boolean.TRUE.equals(value));
+            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            setToolTipText(Boolean.TRUE.equals(value)
+                    ? "El documento requiere respuesta según Análisis."
+                    : "El documento no requiere respuesta.");
+            return this;
+        }
+    }
+
+    private class FechaCartaCellEditor extends AbstractCellEditor implements TableCellEditor {
+
+        private final PremiumDateFieldV2 field = new PremiumDateFieldV2();
+
+        private FechaCartaCellEditor() {
+            field.setPreferredSize(new Dimension(120, 34));
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            LocalDate date = fechaSeleccionada(field);
+            return date == null ? "" : formatDate(date);
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            LocalDate date = parseFechaUi(stringValue(value));
+            field.setDate(date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+            return field;
+        }
+    }
+
+    private class GuardarCartaRenderer extends JButton implements TableCellRenderer {
+
+        private GuardarCartaRenderer() {
+            setText("Guardar");
+            setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            setFocusPainted(false);
+            setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+            setBackground(AppV2Theme.SURFACE);
+            setForeground(AppV2Theme.PRIMARY);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setToolTipText("Guardar datos de notificación y respuesta.");
+            return this;
+        }
+    }
+
+    private class GuardarCartaEditor extends AbstractCellEditor implements TableCellEditor {
+
+        private final JButton button = new JButton("Guardar");
+        private int modelRow = -1;
+
+        private GuardarCartaEditor() {
+            button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            button.setFocusPainted(false);
+            button.addActionListener(e -> {
+                final int row = modelRow;
+                fireEditingStopped();
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        guardarCartaRespuesta(row);
+                    }
+                });
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Guardar";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            modelRow = table.convertRowIndexToModel(row);
+            return button;
+        }
+    }
+
     private class CatalogoRestringidoRenderer extends DefaultListCellRenderer {
 
-        private final boolean tipoDocumento;
-
-        private CatalogoRestringidoRenderer(boolean tipoDocumento) {
-            this.tipoDocumento = tipoDocumento;
+        private CatalogoRestringidoRenderer() {
             setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         }
 
@@ -2883,9 +3292,7 @@ public class JPanelAsignacionV2 extends JPanel {
             if (value instanceof FiltroCatalogoItemV2) {
                 FiltroCatalogoItemV2 item = (FiltroCatalogoItemV2) value;
                 setText(item.toString());
-                boolean permitido = tipoDocumento
-                        ? seleccionTipoDocumentoPermitida(item)
-                        : seleccionProcedimientoPermitida(item);
+                boolean permitido = seleccionProcedimientoPermitida(item);
                 if (!permitido) {
                     setForeground(AppV2Theme.MUTED);
                 } else if (!isSelected) {
@@ -2893,9 +3300,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 }
                 setToolTipText(permitido
                         ? item.toString()
-                        : (tipoDocumento
-                                ? AsignacionRegistroEditRules.mensajeTipoDocumentoPermitido()
-                                : AsignacionRegistroEditRules.mensajeProcedimientoPermitido()));
+                        : AsignacionRegistroEditRules.mensajeProcedimientoPermitido());
             }
             return component;
         }
@@ -3426,11 +3831,9 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private static class CatalogosDatosRegistro {
 
-        private final List<CatalogoItemDTO> tiposDocumento;
         private final List<CatalogoItemDTO> procedimientos;
 
-        private CatalogosDatosRegistro(List<CatalogoItemDTO> tiposDocumento, List<CatalogoItemDTO> procedimientos) {
-            this.tiposDocumento = tiposDocumento == null ? Collections.<CatalogoItemDTO>emptyList() : tiposDocumento;
+        private CatalogosDatosRegistro(List<CatalogoItemDTO> procedimientos) {
             this.procedimientos = procedimientos == null ? Collections.<CatalogoItemDTO>emptyList() : procedimientos;
         }
     }

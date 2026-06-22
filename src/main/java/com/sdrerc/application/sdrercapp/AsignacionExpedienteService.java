@@ -88,13 +88,11 @@ public class AsignacionExpedienteService {
         return asignacionExpedienteDAO.generarNumeroExpediente(idExpediente, resolverUsuarioActualSdrercApp());
     }
 
-    public void actualizarDatosRegistrales(
+    public void actualizarProcedimientoRegistral(
             Long idExpediente,
-            String tipoDocumentoDestino,
             String procedimientoDestino) throws SQLException {
-        asignacionExpedienteDAO.actualizarDatosRegistrales(
+        asignacionExpedienteDAO.actualizarProcedimientoRegistral(
                 idExpediente,
-                tipoDocumentoDestino,
                 procedimientoDestino,
                 resolverUsuarioActualSdrercApp());
     }
