@@ -1,15 +1,18 @@
 package com.sdrerc.ui.views.asignacion;
 
 import com.sdrerc.application.sdrercapp.AsignacionExpedienteService;
+import com.sdrerc.application.sdrercapp.CatalogoLookupService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoDeteccionService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.application.sdrercapp.UsuarioAsignacionService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
+import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
@@ -61,6 +64,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -131,6 +135,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
+    private final CatalogoLookupService catalogoLookupService = new CatalogoLookupService();
     private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
@@ -178,6 +183,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable asignacionMultipleTable = new AppV2Table(asignacionMultipleModel);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
+    private final JComboBox<FiltroCatalogoItemV2> cmbTipoDocumentoRegistro = new JComboBox<FiltroCatalogoItemV2>();
+    private final JComboBox<FiltroCatalogoItemV2> cmbProcedimientoRegistro = new JComboBox<FiltroCatalogoItemV2>();
+    private final JButton btnGuardarDatosRegistro = new JButton("Guardar datos");
     private final JTextField txtHojaEnvioAsignacion = new JTextField();
     private final JTextArea txtComentario = new JTextArea(3, 18);
     private final AppV2NotebookToggleTab tabPanelAsignacion = new AppV2NotebookToggleTab();
@@ -202,6 +210,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideActionPanel panelAsignacion;
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
+    private AppV2SideSectionPanel sectionDatosRegistro;
     private AppV2SideSectionPanel sectionAccionesRelacionados;
     private AppV2SideSectionPanel sectionDecisionNumero;
     private AppV2SideSectionPanel sectionFlujoAsignacion;
@@ -219,8 +228,14 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean busquedaInicialEjecutada;
     private Long idExpedienteDocumentosRelacionados;
     private Long idExpedienteHojaEnvioSimple;
+    private Long idExpedienteDatosRegistro;
+    private String tipoDocumentoOriginalDatosRegistro = "";
+    private String procedimientoOriginalDatosRegistro = "";
+    private FiltroCatalogoItemV2 ultimoTipoDocumentoSeleccionado;
+    private FiltroCatalogoItemV2 ultimoProcedimientoSeleccionado;
 
     private boolean cargandoCombos;
+    private boolean actualizandoDatosRegistro;
     private boolean actualizandoSeleccion;
     private boolean usuarioActualResuelto;
     private Long idUsuarioActualSdrercApp;
@@ -245,6 +260,7 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarEventos();
         restaurarFechasBusqueda();
         cargarEstados();
+        cargarCatalogosDatosRegistro();
         cargarEquipos();
         actualizarPanelSeleccion();
     }
@@ -328,6 +344,7 @@ public class JPanelAsignacionV2 extends JPanel {
         tabPanelAsignacion.addActionListener(e -> alternarExpansionPanelAsignacion());
         sectionResumenAsignacion = crearResumenAsignacion();
         sectionAsignacionMultiple = crearAsignacionMultiple();
+        sectionDatosRegistro = crearDatosRegistroAsignacion();
         sectionAccionesRelacionados = crearAccionesRelacionados();
         sectionDecisionNumero = crearDecisionNumero();
         sectionFlujoAsignacion = crearFlujoAsignacion();
@@ -336,6 +353,7 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionComentarioAsignacion = crearComentarioAsignacion();
         panel.addSection(sectionResumenAsignacion);
         panel.addSection(sectionAsignacionMultiple);
+        panel.addSection(sectionDatosRegistro);
         panel.addSection(sectionAccionesRelacionados);
         panel.addSection(sectionDecisionNumero);
         panel.addSection(sectionFlujoAsignacion);
@@ -343,6 +361,7 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.addSection(sectionHojaEnvioAsignacion);
         panel.addSection(sectionComentarioAsignacion);
         sectionAsignacionMultiple.setVisible(false);
+        sectionDatosRegistro.setVisible(false);
         sectionDecisionNumero.setVisible(false);
         panel.setFooter(crearAccionesAsignacion());
         return panel;
@@ -405,6 +424,16 @@ public class JPanelAsignacionV2 extends JPanel {
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         content.add(scroll, BorderLayout.CENTER);
         section.addContent(content);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosRegistroAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos registrales");
+        section.addRow("Tipo documento", cmbTipoDocumentoRegistro);
+        section.addRow("Procedimiento", cmbProcedimientoRegistro);
+        JPanel acciones = AppV2ActionPanel.right();
+        acciones.add(btnGuardarDatosRegistro);
+        section.addContent(acciones);
         return section;
     }
 
@@ -506,10 +535,23 @@ public class JPanelAsignacionV2 extends JPanel {
         spnLimite.setPreferredSize(new Dimension(88, 34));
         cmbEquipo.setPreferredSize(new Dimension(230, 34));
         cmbAbogado.setPreferredSize(new Dimension(230, 34));
+        cmbTipoDocumentoRegistro.setPreferredSize(new Dimension(230, 34));
+        cmbTipoDocumentoRegistro.setMinimumSize(new Dimension(190, 34));
+        cmbProcedimientoRegistro.setPreferredSize(new Dimension(230, 34));
+        cmbProcedimientoRegistro.setMinimumSize(new Dimension(190, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        cmbTipoDocumentoRegistro.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        cmbProcedimientoRegistro.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        cmbTipoDocumentoRegistro.setRenderer(new CatalogoRestringidoRenderer(true));
+        cmbProcedimientoRegistro.setRenderer(new CatalogoRestringidoRenderer(false));
+        cmbTipoDocumentoRegistro.setToolTipText("Solo se permite cambiar a Carta.");
+        cmbProcedimientoRegistro.setToolTipText("Solo se permite cambiar a Reconsideración o Apelación.");
+        btnGuardarDatosRegistro.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnGuardarDatosRegistro.setEnabled(false);
+        btnGuardarDatosRegistro.setToolTipText("Guardar cambios permitidos de tipo de documento o procedimiento registral.");
         txtHojaEnvioAsignacion.setPreferredSize(new Dimension(230, 34));
         txtHojaEnvioAsignacion.setMinimumSize(new Dimension(180, 34));
         txtHojaEnvioAsignacion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
@@ -620,8 +662,11 @@ public class JPanelAsignacionV2 extends JPanel {
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
         btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpedienteSeleccionado());
+        btnGuardarDatosRegistro.addActionListener(e -> guardarDatosRegistralesAsignacion());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
+        cmbTipoDocumentoRegistro.addActionListener(e -> validarSeleccionTipoDocumentoRegistro());
+        cmbProcedimientoRegistro.addActionListener(e -> validarSeleccionProcedimientoRegistro());
         cmbEquipo.addActionListener(e -> {
             if (!cargandoCombos) {
                 idEquipoPendienteSeleccion = null;
@@ -676,6 +721,47 @@ public class JPanelAsignacionV2 extends JPanel {
                 ex -> lblEstado.setText("No se pudieron cargar los estados de Asignación."),
                 "REGISTRADO",
                 "ASIGNADO");
+    }
+
+    private void cargarCatalogosDatosRegistro() {
+        actualizandoDatosRegistro = true;
+        cmbTipoDocumentoRegistro.removeAllItems();
+        cmbProcedimientoRegistro.removeAllItems();
+        cmbTipoDocumentoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione tipo documento"));
+        cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione procedimiento"));
+        actualizandoDatosRegistro = false;
+        SwingWorker<CatalogosDatosRegistro, Void> worker = new SwingWorker<CatalogosDatosRegistro, Void>() {
+            @Override
+            protected CatalogosDatosRegistro doInBackground() throws Exception {
+                return new CatalogosDatosRegistro(
+                        catalogoLookupService.listarTiposDocumento(),
+                        catalogoLookupService.listarProcedimientosRegistrales());
+            }
+
+            @Override
+            protected void done() {
+                actualizandoDatosRegistro = true;
+                try {
+                    CatalogosDatosRegistro catalogos = get();
+                    cmbTipoDocumentoRegistro.removeAllItems();
+                    cmbProcedimientoRegistro.removeAllItems();
+                    cmbTipoDocumentoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione tipo documento"));
+                    cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione procedimiento"));
+                    for (CatalogoItemDTO item : catalogos.tiposDocumento) {
+                        cmbTipoDocumentoRegistro.addItem(new FiltroCatalogoItemV2(item.getCodigo(), item.getNombre()));
+                    }
+                    for (CatalogoItemDTO item : catalogos.procedimientos) {
+                        cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(item.getCodigo(), item.getNombre()));
+                    }
+                } catch (Exception ex) {
+                    lblEstado.setText("No se pudieron cargar catálogos de edición registral.");
+                } finally {
+                    actualizandoDatosRegistro = false;
+                    actualizarPanelSeleccion();
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void cargarEquipos() {
@@ -1787,6 +1873,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (filaPanel != null && filaPanel.esPrincipal()) {
             AsignacionExpedienteDTO item = filaPanel.principal;
             prepararHojaEnvioSimple(item);
+            prepararDatosRegistroAsignacion(item);
             btnAsignarSeleccionado.setEnabled(seleccionados == 1 && !modoMultiple && item.isAsignable() && item.tieneNumeroExpediente());
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(numeroExpedienteVisual(item));
@@ -1823,6 +1910,7 @@ public class JPanelAsignacionV2 extends JPanel {
             actualizarDecisionNumero(item);
         } else if (filaPanel != null && filaPanel.esAsociada()) {
             prepararHojaEnvioSimple(null);
+            prepararDatosRegistroAsignacion(null);
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(filaPanel.principal, false);
             lblExpedienteSeleccionado.setText("Expediente principal: " + filaPanel.numeroExpedientePrincipal());
@@ -1846,6 +1934,7 @@ public class JPanelAsignacionV2 extends JPanel {
             btnAsociarRelacionados.setEnabled(false);
         } else if (modoMultiple) {
             prepararHojaEnvioSimple(null);
+            prepararDatosRegistroAsignacion(null);
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(null, true);
             cargarPanelAsignacionMultiple(obtenerExpedientesMarcados());
@@ -1867,10 +1956,214 @@ public class JPanelAsignacionV2 extends JPanel {
             btnAsociarRelacionados.setEnabled(true);
         } else {
             actualizarDecisionNumero(null);
+            prepararDatosRegistroAsignacion(null);
             aplicarIdentidadVisual(null, false);
             cargarPanelAsignacionMultiple(Collections.<AsignacionExpedienteDTO>emptyList());
             limpiarPanelAsignacion();
         }
+    }
+
+    private void prepararDatosRegistroAsignacion(AsignacionExpedienteDTO item) {
+        boolean visible = item != null;
+        if (sectionDatosRegistro != null) {
+            sectionDatosRegistro.setVisible(visible);
+        }
+        idExpedienteDatosRegistro = visible ? item.getIdExpediente() : null;
+        tipoDocumentoOriginalDatosRegistro = visible ? item.getTipoDocumento() : "";
+        procedimientoOriginalDatosRegistro = visible ? item.getProcedimiento() : "";
+        actualizandoDatosRegistro = true;
+        try {
+            seleccionarItemCatalogo(cmbTipoDocumentoRegistro, tipoDocumentoOriginalDatosRegistro);
+            seleccionarItemCatalogo(cmbProcedimientoRegistro, procedimientoOriginalDatosRegistro);
+            ultimoTipoDocumentoSeleccionado = itemSeleccionado(cmbTipoDocumentoRegistro);
+            ultimoProcedimientoSeleccionado = itemSeleccionado(cmbProcedimientoRegistro);
+        } finally {
+            actualizandoDatosRegistro = false;
+        }
+        boolean editable = item != null && item.isAsignable();
+        cmbTipoDocumentoRegistro.setEnabled(editable);
+        cmbProcedimientoRegistro.setEnabled(editable);
+        btnGuardarDatosRegistro.setEnabled(false);
+        actualizarEstadoBotonDatosRegistro();
+        if (panelAsignacion != null) {
+            panelAsignacion.revalidate();
+            panelAsignacion.repaint();
+        }
+    }
+
+    private void seleccionarItemCatalogo(JComboBox<FiltroCatalogoItemV2> combo, String nombre) {
+        if (combo.getItemCount() == 0) {
+            return;
+        }
+        if (!hasTextUi(nombre)) {
+            combo.setSelectedIndex(0);
+            return;
+        }
+        String normalizado = AsignacionRegistroEditRules.normalizar(nombre);
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            FiltroCatalogoItemV2 item = combo.getItemAt(i);
+            if (item != null && normalizado.equals(AsignacionRegistroEditRules.normalizar(item.getNombreVisible()))) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+        FiltroCatalogoItemV2 itemActual = new FiltroCatalogoItemV2(null, nombre.trim());
+        combo.addItem(itemActual);
+        combo.setSelectedItem(itemActual);
+    }
+
+    private void validarSeleccionTipoDocumentoRegistro() {
+        if (actualizandoDatosRegistro) {
+            return;
+        }
+        FiltroCatalogoItemV2 item = itemSeleccionado(cmbTipoDocumentoRegistro);
+        if (item == null || !seleccionTipoDocumentoPermitida(item)) {
+            mostrarRestriccionSeleccion(cmbTipoDocumentoRegistro, ultimoTipoDocumentoSeleccionado,
+                    AsignacionRegistroEditRules.mensajeTipoDocumentoPermitido());
+            return;
+        }
+        ultimoTipoDocumentoSeleccionado = item;
+        actualizarEstadoBotonDatosRegistro();
+    }
+
+    private void validarSeleccionProcedimientoRegistro() {
+        if (actualizandoDatosRegistro) {
+            return;
+        }
+        FiltroCatalogoItemV2 item = itemSeleccionado(cmbProcedimientoRegistro);
+        if (item == null || !seleccionProcedimientoPermitida(item)) {
+            mostrarRestriccionSeleccion(cmbProcedimientoRegistro, ultimoProcedimientoSeleccionado,
+                    AsignacionRegistroEditRules.mensajeProcedimientoPermitido());
+            return;
+        }
+        ultimoProcedimientoSeleccionado = item;
+        actualizarEstadoBotonDatosRegistro();
+    }
+
+    private void mostrarRestriccionSeleccion(
+            JComboBox<FiltroCatalogoItemV2> combo,
+            FiltroCatalogoItemV2 anterior,
+            String mensaje) {
+        java.awt.Toolkit.getDefaultToolkit().beep();
+        lblEstado.setText(mensaje);
+        actualizandoDatosRegistro = true;
+        try {
+            if (anterior != null) {
+                combo.setSelectedItem(anterior);
+            } else if (combo.getItemCount() > 0) {
+                combo.setSelectedIndex(0);
+            }
+        } finally {
+            actualizandoDatosRegistro = false;
+        }
+        actualizarEstadoBotonDatosRegistro();
+    }
+
+    private boolean seleccionTipoDocumentoPermitida(FiltroCatalogoItemV2 item) {
+        if (item == null || !hasTextUi(item.getNombreVisible())) {
+            return false;
+        }
+        return esValorOriginal(item.getNombreVisible(), tipoDocumentoOriginalDatosRegistro)
+                || AsignacionRegistroEditRules.esTipoDocumentoPermitido(item.getNombreVisible());
+    }
+
+    private boolean seleccionProcedimientoPermitida(FiltroCatalogoItemV2 item) {
+        if (item == null || !hasTextUi(item.getNombreVisible())) {
+            return false;
+        }
+        return esValorOriginal(item.getNombreVisible(), procedimientoOriginalDatosRegistro)
+                || AsignacionRegistroEditRules.esProcedimientoPermitido(item.getNombreVisible());
+    }
+
+    private void actualizarEstadoBotonDatosRegistro() {
+        btnGuardarDatosRegistro.setEnabled(idExpedienteDatosRegistro != null
+                && cmbTipoDocumentoRegistro.isEnabled()
+                && (hasTextUi(tipoDocumentoCambioPermitido()) || hasTextUi(procedimientoCambioPermitido())));
+    }
+
+    private String tipoDocumentoCambioPermitido() {
+        FiltroCatalogoItemV2 item = itemSeleccionado(cmbTipoDocumentoRegistro);
+        if (item == null || esValorOriginal(item.getNombreVisible(), tipoDocumentoOriginalDatosRegistro)
+                || !AsignacionRegistroEditRules.esTipoDocumentoPermitido(item.getNombreVisible())) {
+            return null;
+        }
+        return item.getNombreVisible().trim();
+    }
+
+    private String procedimientoCambioPermitido() {
+        FiltroCatalogoItemV2 item = itemSeleccionado(cmbProcedimientoRegistro);
+        if (item == null || esValorOriginal(item.getNombreVisible(), procedimientoOriginalDatosRegistro)
+                || !AsignacionRegistroEditRules.esProcedimientoPermitido(item.getNombreVisible())) {
+            return null;
+        }
+        return item.getNombreVisible().trim();
+    }
+
+    private void guardarDatosRegistralesAsignacion() {
+        final Long idExpediente = idExpedienteDatosRegistro;
+        final String tipoDocumento = tipoDocumentoCambioPermitido();
+        final String procedimiento = procedimientoCambioPermitido();
+        if (idExpediente == null || (!hasTextUi(tipoDocumento) && !hasTextUi(procedimiento))) {
+            mostrarInfo("Seleccione un cambio permitido antes de guardar.");
+            return;
+        }
+        List<String> cambios = new ArrayList<>();
+        if (hasTextUi(tipoDocumento)) {
+            cambios.add("Tipo documento: " + tipoDocumento);
+        }
+        if (hasTextUi(procedimiento)) {
+            cambios.add("Procedimiento registral: " + procedimiento);
+        }
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se actualizarán los datos registrales del expediente seleccionado:\n"
+                        + String.join("\n", cambios)
+                        + "\n\nNo se modificará el número de expediente. ¿Desea continuar?",
+                "Actualizar datos registrales",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        setTrabajando(true, "Actualizando datos registrales...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                asignacionService.actualizarDatosRegistrales(idExpediente, tipoDocumento, procedimiento);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            "Datos registrales actualizados correctamente.",
+                            "Datos registrales",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron actualizar los datos registrales.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private boolean esValorOriginal(String valor, String original) {
+        if (!hasTextUi(valor) || !hasTextUi(original)) {
+            return false;
+        }
+        return AsignacionRegistroEditRules.normalizar(valor)
+                .equals(AsignacionRegistroEditRules.normalizar(original));
+    }
+
+    private static FiltroCatalogoItemV2 itemSeleccionado(JComboBox<FiltroCatalogoItemV2> combo) {
+        Object selected = combo.getSelectedItem();
+        return selected instanceof FiltroCatalogoItemV2 ? (FiltroCatalogoItemV2) selected : null;
     }
 
     private void prepararHojaEnvioSimple(AsignacionExpedienteDTO item) {
@@ -2456,6 +2749,11 @@ public class JPanelAsignacionV2 extends JPanel {
         btnAsignarSeleccionado.setEnabled(!trabajando && contarSeleccionOperativa() == 1 && marcados <= 1 && asignacionFocoConNumero());
         btnAsignarSeleccionados.setEnabled(!trabajando && marcados > 0);
         btnGenerarNumeroExpediente.setEnabled(!trabajando && puedeGenerarNumeroExpediente());
+        if (trabajando) {
+            btnGuardarDatosRegistro.setEnabled(false);
+        } else {
+            actualizarEstadoBotonDatosRegistro();
+        }
         documentosRelacionadosTable.setEnabled(!trabajando);
         asignacionMultipleTable.setEnabled(!trabajando);
         if (mensaje != null) {
@@ -2513,6 +2811,10 @@ public class JPanelAsignacionV2 extends JPanel {
         return usuarioActualEsAbogadoResponsable(buscarExpedientePrincipal(idExpedienteDocumentosRelacionados));
     }
 
+    private static boolean hasTextUi(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
     private void mostrarError(String context, Exception ex) {
         String message = ex.getMessage();
         if (message == null && ex.getCause() != null) {
@@ -2558,6 +2860,44 @@ public class JPanelAsignacionV2 extends JPanel {
         @Override
         public Class<?> getColumnClass(int columnIndex) {
             return columnIndex == COL_SELECCION ? Boolean.class : Object.class;
+        }
+    }
+
+    private class CatalogoRestringidoRenderer extends DefaultListCellRenderer {
+
+        private final boolean tipoDocumento;
+
+        private CatalogoRestringidoRenderer(boolean tipoDocumento) {
+            this.tipoDocumento = tipoDocumento;
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        }
+
+        @Override
+        public Component getListCellRendererComponent(
+                javax.swing.JList<?> list,
+                Object value,
+                int index,
+                boolean isSelected,
+                boolean cellHasFocus) {
+            Component component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof FiltroCatalogoItemV2) {
+                FiltroCatalogoItemV2 item = (FiltroCatalogoItemV2) value;
+                setText(item.toString());
+                boolean permitido = tipoDocumento
+                        ? seleccionTipoDocumentoPermitida(item)
+                        : seleccionProcedimientoPermitida(item);
+                if (!permitido) {
+                    setForeground(AppV2Theme.MUTED);
+                } else if (!isSelected) {
+                    setForeground(AppV2Theme.TEXT_PRIMARY);
+                }
+                setToolTipText(permitido
+                        ? item.toString()
+                        : (tipoDocumento
+                                ? AsignacionRegistroEditRules.mensajeTipoDocumentoPermitido()
+                                : AsignacionRegistroEditRules.mensajeProcedimientoPermitido()));
+            }
+            return component;
         }
     }
 
@@ -3081,6 +3421,17 @@ public class JPanelAsignacionV2 extends JPanel {
 
         private boolean esSeleccionMultiple() {
             return totalSeleccionados >= 2;
+        }
+    }
+
+    private static class CatalogosDatosRegistro {
+
+        private final List<CatalogoItemDTO> tiposDocumento;
+        private final List<CatalogoItemDTO> procedimientos;
+
+        private CatalogosDatosRegistro(List<CatalogoItemDTO> tiposDocumento, List<CatalogoItemDTO> procedimientos) {
+            this.tiposDocumento = tiposDocumento == null ? Collections.<CatalogoItemDTO>emptyList() : tiposDocumento;
+            this.procedimientos = procedimientos == null ? Collections.<CatalogoItemDTO>emptyList() : procedimientos;
         }
     }
 }

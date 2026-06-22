@@ -88,6 +88,17 @@ public class AsignacionExpedienteService {
         return asignacionExpedienteDAO.generarNumeroExpediente(idExpediente, resolverUsuarioActualSdrercApp());
     }
 
+    public void actualizarDatosRegistrales(
+            Long idExpediente,
+            String tipoDocumentoDestino,
+            String procedimientoDestino) throws SQLException {
+        asignacionExpedienteDAO.actualizarDatosRegistrales(
+                idExpediente,
+                tipoDocumentoDestino,
+                procedimientoDestino,
+                resolverUsuarioActualSdrercApp());
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();
