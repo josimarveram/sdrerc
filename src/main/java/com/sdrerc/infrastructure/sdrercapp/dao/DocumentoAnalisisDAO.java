@@ -190,7 +190,17 @@ public class DocumentoAnalisisDAO {
         if (idEstadoDocumento == null) {
             throw new SQLException("No se encontró el estado de documento: " + documento.getEstadoDocumentoCodigo() + ".");
         }
-        String sql = "INSERT INTO expediente_documento_analizado ("
+        boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
+        if (!soportaRespuesta && tieneDatosRespuesta(documento)) {
+            throw new SQLException("Faltan columnas de respuesta en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 29_patch_documento_analizado_respuesta.sql.");
+        }
+        String sql = soportaRespuesta
+                ? "INSERT INTO expediente_documento_analizado ("
+                + "id_expediente, id_tipo_documento_adjunto, id_estado_documento, fecha_documento, "
+                + "descripcion, notificado, fecha_acuse, requiere_respuesta, confirmacion_respuesta, "
+                + "fecha_respuesta, numero_hoja_envio_respuesta, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)"
+                : "INSERT INTO expediente_documento_analizado ("
                 + "id_expediente, id_tipo_documento_adjunto, id_estado_documento, fecha_documento, "
                 + "descripcion, activo, creado_por, creado_en"
                 + ") VALUES (?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
@@ -198,18 +208,90 @@ public class DocumentoAnalisisDAO {
             ps.setLong(1, idExpediente);
             ps.setLong(2, idTipoDocumento);
             ps.setLong(3, idEstadoDocumento);
-            if (documento.getFechaDocumento() == null) {
-                ps.setDate(4, null);
-            } else {
-                ps.setDate(4, Date.valueOf(documento.getFechaDocumento()));
-            }
+            setDateOrNull(ps, 4, documento.getFechaDocumento());
             ps.setString(5, limitar(documento.getDescripcion(), 1000));
-            if (idUsuarioCreador == null) {
-                ps.setNull(6, java.sql.Types.NUMERIC);
+            int usuarioIndex;
+            if (soportaRespuesta) {
+                RespuestaPersistencia respuesta = respuestaPersistencia(documento, true);
+                ps.setInt(6, documento.isNotificado() ? 1 : 0);
+                setDateOrNull(ps, 7, documento.getFechaAcuse());
+                ps.setInt(8, documento.isRequiereRespuesta() ? 1 : 0);
+                setStringOrNull(ps, 9, respuesta.confirmacion);
+                setDateOrNull(ps, 10, respuesta.fechaRespuesta);
+                setStringOrNull(ps, 11, respuesta.hojaRespuesta);
+                usuarioIndex = 12;
             } else {
-                ps.setLong(6, idUsuarioCreador);
+                usuarioIndex = 6;
+            }
+            if (idUsuarioCreador == null) {
+                ps.setNull(usuarioIndex, java.sql.Types.NUMERIC);
+            } else {
+                ps.setLong(usuarioIndex, idUsuarioCreador);
             }
             ps.executeUpdate();
+        }
+    }
+
+    public void actualizarDocumentoAnalizado(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idUsuarioModificador) throws SQLException {
+        Long idTipoDocumento = catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, documento.getTipoDocumentoCodigo());
+        Long idEstadoDocumento = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, documento.getEstadoDocumentoCodigo());
+        if (idTipoDocumento == null) {
+            throw new SQLException("No se encontró el tipo de documento analizado: " + documento.getTipoDocumentoCodigo() + ".");
+        }
+        if (idEstadoDocumento == null) {
+            throw new SQLException("No se encontró el estado de documento: " + documento.getEstadoDocumentoCodigo() + ".");
+        }
+        boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
+        if (!soportaRespuesta && tieneDatosRespuesta(documento)) {
+            throw new SQLException("Faltan columnas de respuesta en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 29_patch_documento_analizado_respuesta.sql.");
+        }
+        String sql = soportaRespuesta
+                ? "UPDATE expediente_documento_analizado SET "
+                + "id_tipo_documento_adjunto = ?, id_estado_documento = ?, fecha_documento = ?, descripcion = ?, "
+                + "notificado = ?, fecha_acuse = ?, requiere_respuesta = ?, confirmacion_respuesta = ?, "
+                + "fecha_respuesta = ?, numero_hoja_envio_respuesta = ?, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1"
+                : "UPDATE expediente_documento_analizado SET "
+                + "id_tipo_documento_adjunto = ?, id_estado_documento = ?, fecha_documento = ?, descripcion = ?, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idTipoDocumento);
+            ps.setLong(2, idEstadoDocumento);
+            setDateOrNull(ps, 3, documento.getFechaDocumento());
+            ps.setString(4, limitar(documento.getDescripcion(), 1000));
+            int userIndex;
+            int idIndex;
+            if (soportaRespuesta) {
+                RespuestaPersistencia respuesta = respuestaPersistencia(documento, true);
+                ps.setInt(5, documento.isNotificado() ? 1 : 0);
+                setDateOrNull(ps, 6, documento.getFechaAcuse());
+                ps.setInt(7, documento.isRequiereRespuesta() ? 1 : 0);
+                setStringOrNull(ps, 8, respuesta.confirmacion);
+                setDateOrNull(ps, 9, respuesta.fechaRespuesta);
+                setStringOrNull(ps, 10, respuesta.hojaRespuesta);
+                userIndex = 11;
+                idIndex = 12;
+            } else {
+                userIndex = 5;
+                idIndex = 6;
+            }
+            if (idUsuarioModificador == null) {
+                ps.setNull(userIndex, Types.NUMERIC);
+            } else {
+                ps.setLong(userIndex, idUsuarioModificador);
+            }
+            ps.setLong(idIndex, documento.getIdDocumentoAnalizado());
+            ps.setLong(idIndex + 1, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar el documento analizado.");
+            }
         }
     }
 
@@ -258,6 +340,14 @@ public class DocumentoAnalisisDAO {
         }
     }
 
+    private static void setStringOrNull(PreparedStatement ps, int index, String value) throws SQLException {
+        if (value == null || value.trim().isEmpty()) {
+            ps.setNull(index, Types.VARCHAR);
+        } else {
+            ps.setString(index, value.trim());
+        }
+    }
+
     private static boolean soportaRespuestaDocumentoAnalizado(Connection conn) throws SQLException {
         String sql = "SELECT COUNT(DISTINCT column_name) FROM user_tab_columns "
                 + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
@@ -280,8 +370,33 @@ public class DocumentoAnalisisDAO {
         return "PENDIENTE";
     }
 
+    private static RespuestaPersistencia respuestaPersistencia(
+            DocumentoAnalizadoDTO documento,
+            boolean incluirRequiereRespuesta) {
+        boolean requiereRespuesta = incluirRequiereRespuesta && documento.isRequiereRespuesta();
+        String confirmacion = requiereRespuesta
+                ? normalizarConfirmacionRespuesta(documento.getConfirmacionRespuesta())
+                : null;
+        LocalDate fechaRespuesta = requiereRespuesta ? documento.getFechaRespuesta() : null;
+        String hojaRespuesta = requiereRespuesta ? limitar(emptyToNull(documento.getNumeroHojaEnvioRespuesta()), 120) : null;
+        return new RespuestaPersistencia(confirmacion, fechaRespuesta, hojaRespuesta);
+    }
+
+    private static boolean tieneDatosRespuesta(DocumentoAnalizadoDTO documento) {
+        return documento.isNotificado()
+                || documento.getFechaAcuse() != null
+                || documento.isRequiereRespuesta()
+                || !emptyString(documento.getConfirmacionRespuesta()).isEmpty()
+                || documento.getFechaRespuesta() != null
+                || !emptyString(documento.getNumeroHojaEnvioRespuesta()).isEmpty();
+    }
+
     private static String emptyToNull(String value) {
         return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private static String emptyString(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private static void rollbackSilencioso(Connection conn) {
@@ -300,5 +415,17 @@ public class DocumentoAnalisisDAO {
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    private static final class RespuestaPersistencia {
+        private final String confirmacion;
+        private final LocalDate fechaRespuesta;
+        private final String hojaRespuesta;
+
+        private RespuestaPersistencia(String confirmacion, LocalDate fechaRespuesta, String hojaRespuesta) {
+            this.confirmacion = confirmacion;
+            this.fechaRespuesta = fechaRespuesta;
+            this.hojaRespuesta = hojaRespuesta;
+        }
     }
 }

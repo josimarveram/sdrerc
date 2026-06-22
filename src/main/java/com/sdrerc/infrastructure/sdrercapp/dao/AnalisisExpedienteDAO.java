@@ -365,7 +365,7 @@ public class AnalisisExpedienteDAO {
                     if (documento.getIdDocumentoAnalizado() == null) {
                         documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documento, idUsuario);
                     } else {
-                        documentoAnalisisDAO.actualizarEstadoDocumentoAnalizado(
+                        documentoAnalisisDAO.actualizarDocumentoAnalizado(
                                 conn,
                                 registro.getIdExpediente(),
                                 documento,
