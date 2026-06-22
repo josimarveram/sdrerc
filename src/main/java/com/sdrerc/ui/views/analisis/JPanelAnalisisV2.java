@@ -143,9 +143,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnRecibir = new JButton("Recibir expediente");
     private final JButton btnRegistrarAnalisis = new JButton("Registrar análisis");
     private final JButton btnEnviarVerificacion = new JButton("Enviar a verificación");
-    private final JButton btnDerivarNotificacion = new JButton("Derivar a notificación");
     private final JButton btnArchivarNoCorresponde = new JButton("Archivar no corresponde");
-    private final JButton btnDerivarExterna = new JButton("Derivación externa");
     private final JButton btnAgregarDocumento = new JButton("Agregar documento");
     private final JButton btnQuitarDocumento = new JButton("Quitar documento");
 
@@ -227,7 +225,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final List<ExpedienteRelacionadoDTO> documentosAsociadosPanel = new ArrayList<ExpedienteRelacionadoDTO>();
     private final MetricCardV2 cardPorRecibir = new MetricCardV2("Por recibir", "0", "Asignación / Asignado", AppV2Theme.INFO);
     private final MetricCardV2 cardEnAnalisis = new MetricCardV2("En análisis", "0", "Recibidos y observados", AppV2Theme.TEAL);
-    private final MetricCardV2 cardEspeciales = new MetricCardV2("Rutas especiales", "0", "No corresponde / notificación", AppV2Theme.WARNING);
+    private final MetricCardV2 cardEspeciales = new MetricCardV2("Rutas especiales", "0", "No corresponde", AppV2Theme.WARNING);
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelAnalisis;
     private boolean panelAnalisisCerradoPorUsuario;
@@ -373,9 +371,7 @@ public class JPanelAnalisisV2 extends JPanel {
         panel.add(btnRecibir);
         panel.add(btnRegistrarAnalisis);
         panel.add(btnEnviarVerificacion);
-        panel.add(btnDerivarNotificacion);
         panel.add(btnArchivarNoCorresponde);
-        panel.add(btnDerivarExterna);
         return panel;
     }
 
@@ -582,9 +578,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRegistrarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEnviarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnDerivarNotificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnArchivarNoCorresponde.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnDerivarExterna.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         chkReconstitucion.setOpaque(false);
         chkLegitimidad.setOpaque(false);
         chkMediosProbatorios.setOpaque(false);
@@ -685,9 +679,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.addActionListener(e -> recibir());
         btnRegistrarAnalisis.addActionListener(e -> registrarAnalisis());
         btnEnviarVerificacion.addActionListener(e -> enviarVerificacion());
-        btnDerivarNotificacion.addActionListener(e -> derivarNotificacion());
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
-        btnDerivarExterna.addActionListener(e -> diagnosticarDerivacionExterna());
         btnAgregarDocumento.addActionListener(e -> agregarDocumento());
         btnQuitarDocumento.addActionListener(e -> quitarDocumento());
         cmbIncorporado.addActionListener(e -> actualizarChecksIncorporado());
@@ -869,7 +861,7 @@ public class JPanelAnalisisV2 extends JPanel {
             if (item.isRegistrable() || item.isEnviableVerificacion()) {
                 enAnalisis++;
             }
-            if (item.isDerivableNotificacionEspecial() || item.isArchivableNoCorresponde()) {
+            if (item.isArchivableNoCorresponde()) {
                 especiales++;
             }
             agregarFilaPrincipal(item);
@@ -1165,9 +1157,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.setEnabled(has && !asociado && item.isRecibible());
         btnRegistrarAnalisis.setEnabled(has && !asociado && item.isRegistrable());
         btnEnviarVerificacion.setEnabled(has && !asociado && item.isEnviableVerificacion());
-        btnDerivarNotificacion.setEnabled(has && !asociado && item.isDerivableNotificacionEspecial());
         btnArchivarNoCorresponde.setEnabled(has && !asociado && item.isArchivableNoCorresponde());
-        btnDerivarExterna.setEnabled(has && !asociado && item.isArchivableNoCorresponde());
         actualizarVisibilidadPanelAnalisis();
         if (!has) {
             idExpedienteDetalleSolicitado = null;
@@ -1577,17 +1567,6 @@ public class JPanelAnalisisV2 extends JPanel {
                 () -> analisisService.enviarVerificacion(item.getIdExpediente(), txtComentarioMovimiento.getText()));
     }
 
-    private void derivarNotificacion() {
-        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para derivar a notificación.");
-        if (item == null) {
-            return;
-        }
-        confirmarYEjecutar(
-                "Derivar a notificación",
-                "Se derivará el expediente " + item.getNumeroExpediente() + " a Notificación. ¿Desea continuar?",
-                () -> analisisService.derivarNotificacionEspecial(item.getIdExpediente(), txtComentarioMovimiento.getText()));
-    }
-
     private void archivarNoCorresponde() {
         AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente no corresponde para archivar.");
         if (item == null) {
@@ -1597,19 +1576,6 @@ public class JPanelAnalisisV2 extends JPanel {
                 "Archivar no corresponde",
                 "Se archivará el expediente " + item.getNumeroExpediente() + " por no corresponder a SDRERC. ¿Desea continuar?",
                 () -> analisisService.archivarNoCorresponde(item.getIdExpediente(), txtComentarioMovimiento.getText()));
-    }
-
-    private void diagnosticarDerivacionExterna() {
-        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente no corresponde para preparar derivación externa.");
-        if (item == null) {
-            return;
-        }
-        JOptionPane.showMessageDialog(
-                this,
-                "La derivación externa está prevista por el flujo SDRERC_TO_BE, pero requiere registrar entidad destino, tipo de derivación y datos del documento enviado.\n"
-                + "Esta escritura queda bloqueada hasta definir esos datos en el módulo correspondiente.",
-                "Derivación externa",
-                JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void confirmarYEjecutar(String titulo, String mensaje, OperacionAnalisis operacion) {
@@ -1958,9 +1924,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.setEnabled(!trabajando && item != null && item.isRecibible());
         btnRegistrarAnalisis.setEnabled(!trabajando && item != null && item.isRegistrable());
         btnEnviarVerificacion.setEnabled(!trabajando && item != null && item.isEnviableVerificacion());
-        btnDerivarNotificacion.setEnabled(!trabajando && item != null && item.isDerivableNotificacionEspecial());
         btnArchivarNoCorresponde.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
-        btnDerivarExterna.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
         documentosAsociadosTable.setEnabled(!trabajando);
         if (mensaje != null) {
             lblEstado.setText(mensaje);
