@@ -515,7 +515,8 @@ public class DlgConsolaExpedienteV2 extends JDialog {
             {"Cargo de acuse", expediente.getEstadoCargoAcuse()},
             {"Estado publicación", DisplayNameMapperV2.valor(expediente.getEstadoPublicacion())},
             {"Medio publicación", expediente.getMedioPublicacion()},
-            {"Número publicación", expediente.getNumeroPublicacion()}
+            {"Número publicación", expediente.getNumeroPublicacion()},
+            {"Fecha publicación", formatDate(expediente.getFechaPublicacion())}
         }));
         content.add(Box.createVerticalStrut(10));
         content.add(crearSeccionDetalle("Expediente digital", new String[][]{
@@ -579,7 +580,12 @@ public class DlgConsolaExpedienteV2 extends JDialog {
         documentosPanel.add(crearInfoCard("Observaciones", value(expediente.getObservacionesPendientes()), "Pendientes de subsanación"));
         documentosPanel.add(crearInfoCard("Notificaciones", value(expediente.getTotalNotificaciones()), "Registros asociados"));
         documentosPanel.add(crearInfoCard("Cargos de acuse", value(expediente.getTotalCargos()), "Registros asociados"));
-        documentosPanel.add(crearInfoCard("Publicación", expediente.isRequierePublicacion() ? "Pendiente" : "Sin pendiente", "Indicador de publicación"));
+        documentosPanel.add(crearInfoCard(
+                "Publicación",
+                expediente.isRequierePublicacion() ? "Prevista" : "Sin pendiente",
+                expediente.getFechaPublicacion() == null
+                        ? "Sin fecha registrada"
+                        : "Fecha: " + formatDate(expediente.getFechaPublicacion())));
         documentosPanel.add(crearInfoCard("Expediente digital", expediente.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente", "Completitud digital"));
         documentosPanel.revalidate();
         documentosPanel.repaint();
@@ -771,7 +777,12 @@ public class DlgConsolaExpedienteV2 extends JDialog {
                 principalAsociado == null ? "Asociados confirmados" : "Asociado a principal");
         side.addItem("Observaciones", value(expediente.getObservacionesPendientes()), "Pendientes de subsanación");
         side.addItem("Notificación / cargo", expediente.getTotalNotificaciones() + " / " + expediente.getTotalCargos(), "Notificaciones y cargos registrados");
-        side.addItem("Publicación", expediente.isRequierePublicacion() ? "Requiere publicación" : "Sin pendiente", "Indicador de publicación");
+        side.addItem(
+                "Publicación",
+                expediente.isRequierePublicacion() ? "Requiere publicación" : "Sin pendiente",
+                expediente.getFechaPublicacion() == null
+                        ? "Sin fecha registrada"
+                        : "Fecha: " + formatDate(expediente.getFechaPublicacion()));
         side.addItem("Expediente digital", expediente.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente", "Completitud digital");
         side.addItem("Acciones visibles", String.valueOf(acciones.size()), "Solo informativas");
         sideContainer.add(side, BorderLayout.CENTER);

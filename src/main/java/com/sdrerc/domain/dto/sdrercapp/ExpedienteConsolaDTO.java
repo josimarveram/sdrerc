@@ -49,6 +49,7 @@ public class ExpedienteConsolaDTO {
     private final String criterioGrupoFamiliar;
     private final String observacionGrupoFamiliar;
     private final boolean requierePublicacion;
+    private final LocalDate fechaPublicacion;
     private final boolean expedienteDigitalCompleto;
     private final Integer totalDocumentos;
     private final Integer observacionesPendientes;
@@ -150,6 +151,7 @@ public class ExpedienteConsolaDTO {
                 false,
                 null,
                 null,
+                null,
                 null);
     }
 
@@ -202,7 +204,8 @@ public class ExpedienteConsolaDTO {
             boolean grupoFamiliar,
             String criterioGrupoFamiliar,
             String observacionGrupoFamiliar,
-            Long diasRestantes) {
+            Long diasRestantes,
+            LocalDate fechaPublicacion) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
@@ -247,6 +250,7 @@ public class ExpedienteConsolaDTO {
         this.criterioGrupoFamiliar = safe(criterioGrupoFamiliar);
         this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
         this.requierePublicacion = requierePublicacion;
+        this.fechaPublicacion = fechaPublicacion;
         this.expedienteDigitalCompleto = expedienteDigitalCompleto;
         this.totalDocumentos = safe(totalDocumentos);
         this.observacionesPendientes = safe(observacionesPendientes);
@@ -412,6 +416,10 @@ public class ExpedienteConsolaDTO {
 
     public boolean isRequierePublicacion() {
         return requierePublicacion;
+    }
+
+    public LocalDate getFechaPublicacion() {
+        return fechaPublicacion;
     }
 
     public boolean isExpedienteDigitalCompleto() {

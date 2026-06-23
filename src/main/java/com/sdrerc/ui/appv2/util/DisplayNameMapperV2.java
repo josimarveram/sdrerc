@@ -17,7 +17,7 @@ public final class DisplayNameMapperV2 {
             case "VERIFICACION":
                 return "Verificación";
             case "FIRMA_EMISION":
-                return "Firma / Emisión";
+                return "Verificación";
             case "EJECUCION":
                 return "Ejecución";
             case "NOTIFICACION":
@@ -63,9 +63,9 @@ public final class DisplayNameMapperV2 {
             case "VERIFICADO":
                 return "Verificado";
             case "PARA_FIRMA":
-                return "Para firma";
+                return "Pendiente de emisión";
             case "FIRMADO":
-                return "Firmado";
+                return "Documento validado";
             case "EMITIDO":
                 return "Emitido";
             case "RESOLUCION_NUMERADA":
@@ -134,9 +134,9 @@ public final class DisplayNameMapperV2 {
             case "APROBACION_VERIFICACION":
                 return "Aprobación de verificación";
             case "ENVIO_FIRMA":
-                return "Envío a firma";
+                return "Preparación de documento emitido";
             case "FIRMA_DOCUMENTO":
-                return "Firma de documento";
+                return "Documento emitido";
             case "REGISTRO_NUMERO_RESOLUCION":
                 return "Registro de número de resolución";
             case "INICIO_EJECUCION":

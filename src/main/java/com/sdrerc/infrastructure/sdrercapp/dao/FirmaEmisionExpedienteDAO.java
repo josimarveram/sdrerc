@@ -25,13 +25,16 @@ public class FirmaEmisionExpedienteDAO {
     private static final String CODIGO_FLUJO = "SDRERC_TO_BE";
     private static final String ETAPA_FIRMA = "FIRMA_EMISION";
     private static final String ETAPA_EJECUCION = "EJECUCION";
+    private static final String ETAPA_NOTIFICACION = "NOTIFICACION";
     private static final String ESTADO_PARA_FIRMA = "PARA_FIRMA";
     private static final String ESTADO_FIRMADO = "FIRMADO";
     private static final String ESTADO_EMITIDO = "EMITIDO";
     private static final String ESTADO_RESOLUCION_NUMERADA = "RESOLUCION_NUMERADA";
     private static final String ESTADO_EN_EJECUCION = "EN_EJECUCION";
+    private static final String ESTADO_EN_NOTIFICACION = "EN_NOTIFICACION";
     private static final String ACCION_FIRMA_DOCUMENTO = "FIRMA_DOCUMENTO";
     private static final String ACCION_REGISTRO_NUMERO = "REGISTRO_NUMERO_RESOLUCION";
+    private static final String ACCION_DERIVACION_NOTIFICACION = "DERIVACION_A_NOTIFICACION";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
@@ -183,6 +186,7 @@ public class FirmaEmisionExpedienteDAO {
                 if (idResolucion == null || !tieneNumeroResolucion(conn, idResolucion)) {
                     throw new SQLException("Registre el número de resolución antes de enviar a Ejecución.");
                 }
+                validarDestinoPorResultado(conn, registro.getIdExpediente(), true);
                 Transicion transicion = requerirTransicion(
                         conn,
                         ACCION_REGISTRO_NUMERO,
@@ -216,6 +220,72 @@ public class FirmaEmisionExpedienteDAO {
                         ETAPA_EJECUCION,
                         ESTADO_EN_EJECUCION,
                         "El expediente fue enviado a Ejecución.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            } finally {
+                conn.setAutoCommit(previousAutoCommit);
+            }
+        }
+    }
+
+    public FirmaEmisionResultadoDTO enviarNotificacion(FirmaEmisionRegistroDTO registro, Long idUsuario) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteBloqueado expediente = bloquearExpediente(conn, registro.getIdExpediente());
+                if (!ETAPA_FIRMA.equalsIgnoreCase(expediente.etapaCodigo)) {
+                    throw new SQLException("El documento debe encontrarse dentro de Verificación para derivarlo a Notificación.");
+                }
+                validarDestinoPorResultado(conn, registro.getIdExpediente(), false);
+                Transicion transicion = requerirTransicion(
+                        conn,
+                        ACCION_DERIVACION_NOTIFICACION,
+                        ETAPA_FIRMA,
+                        expediente.estadoCodigo,
+                        ETAPA_NOTIFICACION,
+                        ESTADO_EN_NOTIFICACION);
+                validarRequisitosTransicion(conn, transicion, registro.getComentario(), registro.getIdExpediente());
+                Long idMovimiento = requerirId(
+                        catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_DERIVACION_NOTIFICACION),
+                        "movimiento " + ACCION_DERIVACION_NOTIFICACION);
+                Long idResolucion = obtenerIdResolucionActiva(conn, registro.getIdExpediente());
+                actualizarExpediente(
+                        conn,
+                        registro.getIdExpediente(),
+                        transicion.idEtapaDestino,
+                        transicion.idEstadoDestino,
+                        idUsuario);
+                insertarHistorial(
+                        conn,
+                        registro.getIdExpediente(),
+                        idMovimiento,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        transicion.idEtapaDestino,
+                        transicion.idEstadoDestino,
+                        idUsuario,
+                        expediente.idUsuarioResponsable,
+                        expediente.idEquipoResponsable,
+                        idResolucion == null ? null : "EXPEDIENTE_RESOLUCION",
+                        idResolucion,
+                        comentarioMovimiento(
+                                ACCION_DERIVACION_NOTIFICACION,
+                                registro.getComentario(),
+                                "Documento emitido derivado a Notificación."),
+                        "ENVIO_NOTIFICACION");
+                conn.commit();
+                return new FirmaEmisionResultadoDTO(
+                        registro.getIdExpediente(),
+                        expediente.numeroExpediente,
+                        ACCION_DERIVACION_NOTIFICACION,
+                        ETAPA_NOTIFICACION,
+                        ESTADO_EN_NOTIFICACION,
+                        "El documento emitido fue derivado a Notificación.");
             } catch (Exception ex) {
                 rollbackSilencioso(conn);
                 if (ex instanceof SQLException) {
@@ -398,6 +468,33 @@ public class FirmaEmisionExpedienteDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() && rs.getInt(1) > 0;
             }
+        }
+    }
+
+    private void validarDestinoPorResultado(Connection conn, Long idExpediente, boolean requiereResolutivo) throws SQLException {
+        String sql = "SELECT UPPER(NVL(tre.codigo, '')) AS resultado_codigo "
+                + "FROM expediente_evaluacion ev "
+                + "LEFT JOIN tipo_resultado_evaluacion tre "
+                + "ON tre.id_tipo_resultado_evaluacion = ev.id_tipo_resultado_evaluacion "
+                + "WHERE ev.id_expediente = ? AND ev.activo = 1 "
+                + "ORDER BY ev.fecha_evaluacion DESC NULLS LAST, ev.creado_en DESC, ev.id_expediente_evaluacion DESC";
+        String resultadoCodigo = "";
+        try (PreparedStatement ps = conn.prepareStatement("SELECT resultado_codigo FROM (" + sql + ") WHERE ROWNUM = 1")) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    resultadoCodigo = rs.getString("resultado_codigo");
+                }
+            }
+        }
+        boolean resolutivo = "PROCEDENTE".equalsIgnoreCase(resultadoCodigo)
+                || "PROCEDENTE_EN_PARTE".equalsIgnoreCase(resultadoCodigo)
+                || "IMPROCEDENTE".equalsIgnoreCase(resultadoCodigo);
+        if (requiereResolutivo && !resolutivo) {
+            throw new SQLException("Solo las resoluciones procedentes, procedentes en parte o improcedentes pueden enviarse a Ejecución.");
+        }
+        if (!requiereResolutivo && resolutivo) {
+            throw new SQLException("Las resoluciones deben continuar a Ejecución; no corresponde derivarlas directamente a Notificación.");
         }
     }
 

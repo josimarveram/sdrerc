@@ -69,7 +69,7 @@ public class VerificacionExpedienteDAO {
         List<Object> params = new ArrayList<Object>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
-        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
+        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
@@ -94,7 +94,25 @@ public class VerificacionExpedienteDAO {
         sql.append("FROM expediente_evaluacion ev WHERE ev.id_expediente = e.id_expediente AND ev.activo = 1) AS fundamento_analisis, ");
         sql.append("(SELECT MAX(o.descripcion) KEEP (DENSE_RANK LAST ORDER BY o.fecha_observacion) ");
         sql.append("FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.activo = 1 ");
-        sql.append("AND UPPER(o.origen_observacion) = 'VERIFICACION') AS ultima_observacion_verificacion ");
+        sql.append("AND UPPER(o.origen_observacion) = 'VERIFICACION') AS ultima_observacion_verificacion, ");
+        sql.append("NVL(e.requiere_publicacion, 0) AS requiere_publicacion, ");
+        sql.append("(SELECT MAX(pub.fecha_publicacion) KEEP (DENSE_RANK LAST ORDER BY pub.creado_en, pub.id_expediente_publicacion) ");
+        sql.append("FROM expediente_publicacion pub WHERE pub.id_expediente = e.id_expediente AND pub.activo = 1) AS fecha_publicacion, ");
+        sql.append("tr.nombre AS tipo_documento_emitido, res.numero_resolucion AS numero_documento_emitido, ");
+        sql.append("res.fecha_resolucion AS fecha_documento_emitido, res.fecha_firma AS fecha_firma_documento, ");
+        sql.append("(SELECT COUNT(*) FROM expediente_documento_analizado da ");
+        sql.append("LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto ");
+        sql.append("WHERE da.id_expediente = e.id_expediente AND da.activo = 1 ");
+        sql.append("AND (UPPER(NVL(tda.codigo, '')) LIKE '%EDICTO%' OR UPPER(NVL(tda.nombre, '')) LIKE '%EDICTO%')) AS cartas_edicto, ");
+        sql.append("CASE WHEN EXISTS (");
+        sql.append("SELECT 1 FROM flujo f JOIN flujo_transicion ft ON ft.id_flujo = f.id_flujo ");
+        sql.append("JOIN etapa_expediente edn ON edn.id_etapa = ft.id_etapa_destino ");
+        sql.append("JOIN estado_expediente sdn ON sdn.id_estado = ft.id_estado_destino ");
+        sql.append("WHERE f.codigo = 'SDRERC_TO_BE' AND f.activo = 1 AND ft.activo = 1 ");
+        sql.append("AND ft.id_etapa_origen = e.id_etapa_actual AND ft.id_estado_origen = e.id_estado_actual ");
+        sql.append("AND ft.codigo_accion = 'DERIVACION_A_NOTIFICACION' ");
+        sql.append("AND edn.codigo = 'NOTIFICACION' AND sdn.codigo = 'EN_NOTIFICACION'");
+        sql.append(") THEN 1 ELSE 0 END AS puede_derivar_notificacion ");
         sql.append("FROM expediente e ");
         sql.append("JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual ");
         sql.append("JOIN estado_expediente est ON est.id_estado = e.id_estado_actual ");
@@ -105,6 +123,12 @@ public class VerificacionExpedienteDAO {
         sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
+        sql.append("LEFT JOIN (SELECT id_expediente, ");
+        sql.append("MAX(id_expediente_resolucion) KEEP (DENSE_RANK LAST ORDER BY creado_en, id_expediente_resolucion) AS id_expediente_resolucion ");
+        sql.append("FROM expediente_resolucion WHERE activo = 1 GROUP BY id_expediente) res_pick ");
+        sql.append("ON res_pick.id_expediente = e.id_expediente ");
+        sql.append("LEFT JOIN expediente_resolucion res ON res.id_expediente_resolucion = res_pick.id_expediente_resolucion ");
+        sql.append("LEFT JOIN tipo_resolucion tr ON tr.id_tipo_resolucion = res.id_tipo_resolucion ");
         sql.append("WHERE e.activo = 1 AND et.codigo IN (?, ?) ");
         params.add(ETAPA_VERIFICACION);
         params.add(ETAPA_FIRMA);
@@ -207,7 +231,7 @@ public class VerificacionExpedienteDAO {
                 comentario,
                 idUsuario,
                 true,
-                "El expediente fue enviado a Firma / Emisión.");
+                "El expediente continúa con la preparación del documento emitido.");
     }
 
     public VerificacionResultadoDTO devolverAnalisis(VerificacionRegistroDTO registro, Long idUsuario) throws SQLException {
@@ -415,6 +439,7 @@ public class VerificacionExpedienteDAO {
         return new VerificacionExpedienteDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("procedimiento"),
                 rs.getString("tipo_documento"),
@@ -436,7 +461,15 @@ public class VerificacionExpedienteDAO {
                 rs.getInt("documentos_analizados"),
                 rs.getString("ultimo_resultado"),
                 rs.getString("fundamento_analisis"),
-                rs.getString("ultima_observacion_verificacion"));
+                rs.getString("ultima_observacion_verificacion"),
+                rs.getInt("requiere_publicacion") == 1,
+                toLocalDate(rs.getDate("fecha_publicacion")),
+                rs.getString("tipo_documento_emitido"),
+                rs.getString("numero_documento_emitido"),
+                toLocalDate(rs.getDate("fecha_documento_emitido")),
+                toLocalDateTime(rs.getTimestamp("fecha_firma_documento")),
+                rs.getInt("cartas_edicto") > 0,
+                rs.getInt("puede_derivar_notificacion") == 1);
     }
 
     private boolean tieneEvaluacionActiva(Connection conn, Long idExpediente) throws SQLException {
@@ -598,7 +631,7 @@ public class VerificacionExpedienteDAO {
             return "Verificación aprobada.";
         }
         if (ACCION_ENVIO_FIRMA.equals(accionCodigo)) {
-            return "Expediente enviado a Firma / Emisión.";
+            return "Expediente preparado para emisión documental.";
         }
         if (ACCION_OBSERVACION.equals(accionCodigo)) {
             return "Observación de verificación registrada.";

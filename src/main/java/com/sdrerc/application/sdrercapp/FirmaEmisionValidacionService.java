@@ -15,7 +15,7 @@ public class FirmaEmisionValidacionService {
     public List<String> validarRegistro(FirmaEmisionRegistroDTO registro, boolean requiereNumero) {
         List<String> errores = new ArrayList<String>();
         if (registro == null) {
-            errores.add("Complete los datos de Firma / Emisión.");
+            errores.add("Complete los datos del documento emitido.");
             return errores;
         }
         if (registro.getIdExpediente() == null) {

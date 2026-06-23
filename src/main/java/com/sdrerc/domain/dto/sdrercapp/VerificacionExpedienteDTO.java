@@ -1,12 +1,15 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 public class VerificacionExpedienteDTO {
 
     private final Long idExpediente;
     private final String numeroExpediente;
+    private final String numeroExpedienteSgd;
     private final String numeroTramiteDocumentario;
     private final String procedimiento;
     private final String tipoDocumento;
@@ -29,10 +32,19 @@ public class VerificacionExpedienteDTO {
     private final String ultimoResultadoAnalisis;
     private final String fundamentoAnalisis;
     private final String ultimaObservacionVerificacion;
+    private final boolean requierePublicacion;
+    private final LocalDate fechaPublicacion;
+    private final String tipoDocumentoEmitido;
+    private final String numeroDocumentoEmitido;
+    private final LocalDate fechaDocumentoEmitido;
+    private final LocalDateTime fechaFirmaDocumento;
+    private final boolean tieneCartaEdicto;
+    private final boolean puedeDerivarNotificacion;
 
     public VerificacionExpedienteDTO(
             Long idExpediente,
             String numeroExpediente,
+            String numeroExpedienteSgd,
             String numeroTramiteDocumentario,
             String procedimiento,
             String tipoDocumento,
@@ -54,9 +66,18 @@ public class VerificacionExpedienteDTO {
             int totalDocumentosAnalizados,
             String ultimoResultadoAnalisis,
             String fundamentoAnalisis,
-            String ultimaObservacionVerificacion) {
+            String ultimaObservacionVerificacion,
+            boolean requierePublicacion,
+            LocalDate fechaPublicacion,
+            String tipoDocumentoEmitido,
+            String numeroDocumentoEmitido,
+            LocalDate fechaDocumentoEmitido,
+            LocalDateTime fechaFirmaDocumento,
+            boolean tieneCartaEdicto,
+            boolean puedeDerivarNotificacion) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
+        this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.procedimiento = safe(procedimiento);
         this.tipoDocumento = safe(tipoDocumento);
@@ -79,6 +100,14 @@ public class VerificacionExpedienteDTO {
         this.ultimoResultadoAnalisis = safe(ultimoResultadoAnalisis);
         this.fundamentoAnalisis = safe(fundamentoAnalisis);
         this.ultimaObservacionVerificacion = safe(ultimaObservacionVerificacion);
+        this.requierePublicacion = requierePublicacion;
+        this.fechaPublicacion = fechaPublicacion;
+        this.tipoDocumentoEmitido = safe(tipoDocumentoEmitido);
+        this.numeroDocumentoEmitido = safe(numeroDocumentoEmitido);
+        this.fechaDocumentoEmitido = fechaDocumentoEmitido;
+        this.fechaFirmaDocumento = fechaFirmaDocumento;
+        this.tieneCartaEdicto = tieneCartaEdicto;
+        this.puedeDerivarNotificacion = puedeDerivarNotificacion;
     }
 
     public Long getIdExpediente() {
@@ -87,6 +116,10 @@ public class VerificacionExpedienteDTO {
 
     public String getNumeroExpediente() {
         return numeroExpediente;
+    }
+
+    public String getNumeroExpedienteSgd() {
+        return numeroExpedienteSgd;
     }
 
     public String getNumeroTramiteDocumentario() {
@@ -173,6 +206,38 @@ public class VerificacionExpedienteDTO {
         return ultimaObservacionVerificacion;
     }
 
+    public boolean isRequierePublicacion() {
+        return requierePublicacion;
+    }
+
+    public LocalDate getFechaPublicacion() {
+        return fechaPublicacion;
+    }
+
+    public String getTipoDocumentoEmitido() {
+        return tipoDocumentoEmitido;
+    }
+
+    public String getNumeroDocumentoEmitido() {
+        return numeroDocumentoEmitido;
+    }
+
+    public LocalDate getFechaDocumentoEmitido() {
+        return fechaDocumentoEmitido;
+    }
+
+    public LocalDateTime getFechaFirmaDocumento() {
+        return fechaFirmaDocumento;
+    }
+
+    public boolean isTieneCartaEdicto() {
+        return tieneCartaEdicto;
+    }
+
+    public boolean isPuedeDerivarNotificacion() {
+        return puedeDerivarNotificacion;
+    }
+
     public Long getDiasEnEtapa() {
         return diasRestantes;
     }
@@ -191,7 +256,42 @@ public class VerificacionExpedienteDTO {
                 || "DOCUMENTO_INCONSISTENTE".equalsIgnoreCase(estadoCodigo));
     }
 
+    public boolean isDocumentoEmitido() {
+        return "FIRMA_EMISION".equalsIgnoreCase(etapaCodigo)
+                && ("EMITIDO".equalsIgnoreCase(estadoCodigo)
+                || "RESOLUCION_NUMERADA".equalsIgnoreCase(estadoCodigo));
+    }
+
+    public boolean isResultadoResolutivo() {
+        String resultado = normalize(ultimoResultadoAnalisis);
+        return "PROCEDENTE".equals(resultado)
+                || "PROCEDENTE EN PARTE".equals(resultado)
+                || "IMPROCEDENTE".equals(resultado);
+    }
+
+    public boolean isEnviableNotificacion() {
+        return "FIRMA_EMISION".equalsIgnoreCase(etapaCodigo)
+                && !isResultadoResolutivo()
+                && puedeDerivarNotificacion;
+    }
+
+    public String getDestinoSiguiente() {
+        if (isResultadoResolutivo()) {
+            return "Ejecución";
+        }
+        if (puedeDerivarNotificacion) {
+            return "Notificación";
+        }
+        return "Notificación (transición no configurada)";
+    }
+
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String normalize(String value) {
+        String normalized = Normalizer.normalize(safe(value), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return normalized.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
     }
 }

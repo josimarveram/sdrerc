@@ -39,7 +39,7 @@ public class ExpedienteConsolaDAO {
                 + "tipo_notificacion, estado_notificacion, resultado_notificacion, estado_cargo_acuse, "
                 + "estado_publicacion, medio_publicacion, numero_publicacion, ruta_carpeta_digital, enlace_carpeta_digital, "
                 + "fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, "
-                + "requiere_publicacion, expediente_digital_completo, total_documentos, "
+                + "requiere_publicacion, fecha_publicacion, expediente_digital_completo, total_documentos, "
                 + "observaciones_pendientes, total_notificaciones, total_cargos "
                 + "FROM (SELECT c.*, "
                 + personSubquery("TITULAR", "titular")
@@ -69,6 +69,7 @@ public class ExpedienteConsolaDAO {
                 + ", (SELECT estado_publicacion FROM (SELECT p.estado_publicacion FROM expediente_publicacion p WHERE p.id_expediente = c.id_expediente AND p.activo = 1 ORDER BY p.creado_en DESC) WHERE ROWNUM = 1) AS estado_publicacion "
                 + ", (SELECT medio_publicacion FROM (SELECT p.medio_publicacion FROM expediente_publicacion p WHERE p.id_expediente = c.id_expediente AND p.activo = 1 ORDER BY p.creado_en DESC) WHERE ROWNUM = 1) AS medio_publicacion "
                 + ", (SELECT numero_publicacion FROM (SELECT p.numero_publicacion FROM expediente_publicacion p WHERE p.id_expediente = c.id_expediente AND p.activo = 1 ORDER BY p.creado_en DESC) WHERE ROWNUM = 1) AS numero_publicacion "
+                + ", (SELECT fecha_publicacion FROM (SELECT p.fecha_publicacion FROM expediente_publicacion p WHERE p.id_expediente = c.id_expediente AND p.activo = 1 ORDER BY p.creado_en DESC, p.id_expediente_publicacion DESC) WHERE ROWNUM = 1) AS fecha_publicacion "
                 + ", (SELECT ruta_carpeta FROM (SELECT d.ruta_carpeta FROM expediente_digital d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS ruta_carpeta_digital "
                 + ", (SELECT enlace_carpeta FROM (SELECT d.enlace_carpeta FROM expediente_digital d WHERE d.id_expediente = c.id_expediente AND d.activo = 1 ORDER BY d.creado_en DESC) WHERE ROWNUM = 1) AS enlace_carpeta_digital "
                 + "FROM vw_expediente_consola c) "
@@ -137,7 +138,8 @@ public class ExpedienteConsolaDAO {
                 getBooleanFromNumber(rs, "grupo_familiar"),
                 rs.getString("criterio_grupo_familiar"),
                 rs.getString("observacion_grupo_familiar"),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento),
+                toLocalDate(rs.getDate("fecha_publicacion"))
         );
     }
 

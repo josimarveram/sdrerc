@@ -15,6 +15,7 @@ public class FirmaEmisionExpedienteService {
 
     public static final String ACCION_FIRMA_DOCUMENTO = "FIRMA_DOCUMENTO";
     public static final String ACCION_REGISTRO_NUMERO = "REGISTRO_NUMERO_RESOLUCION";
+    public static final String ACCION_DERIVACION_NOTIFICACION = "DERIVACION_A_NOTIFICACION";
 
     private final FirmaEmisionExpedienteDAO firmaEmisionExpedienteDAO;
     private final FirmaEmisionValidacionService validacionService;
@@ -66,6 +67,13 @@ public class FirmaEmisionExpedienteService {
     public FirmaEmisionResultadoDTO enviarEjecucion(FirmaEmisionRegistroDTO registro) throws SQLException {
         validar(registro, false);
         return firmaEmisionExpedienteDAO.enviarEjecucion(normalizarRegistro(registro), resolverUsuarioActualSdrercApp());
+    }
+
+    public FirmaEmisionResultadoDTO enviarNotificacion(FirmaEmisionRegistroDTO registro) throws SQLException {
+        validar(registro, false);
+        return firmaEmisionExpedienteDAO.enviarNotificacion(
+                normalizarRegistro(registro),
+                resolverUsuarioActualSdrercApp());
     }
 
     private void validar(FirmaEmisionRegistroDTO registro, boolean requiereNumero) {
