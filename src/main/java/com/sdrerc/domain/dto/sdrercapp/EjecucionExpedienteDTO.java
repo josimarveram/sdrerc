@@ -11,6 +11,7 @@ public class EjecucionExpedienteDTO {
 
     private final Long idExpediente;
     private final String numeroExpediente;
+    private final String numeroExpedienteSgd;
     private final String numeroTramiteDocumentario;
     private final String procedimiento;
     private final String tipoDocumento;
@@ -23,6 +24,7 @@ public class EjecucionExpedienteDTO {
     private final LocalDateTime fechaUltimoMovimiento;
     private final String responsable;
     private final String equipo;
+    private final String responsableAnalisis;
     private final String etapaCodigo;
     private final String estadoCodigo;
     private final String resultadoAnalisis;
@@ -35,11 +37,15 @@ public class EjecucionExpedienteDTO {
     private final String tipoResolucion;
     private final String numeroResolucion;
     private final LocalDate fechaResolucion;
+    private final LocalDateTime fechaFirmaResolucion;
+    private final boolean requierePublicacion;
+    private final LocalDate fechaPublicacion;
     private final String accionesPermitidas;
 
     public EjecucionExpedienteDTO(
             Long idExpediente,
             String numeroExpediente,
+            String numeroExpedienteSgd,
             String numeroTramiteDocumentario,
             String procedimiento,
             String tipoDocumento,
@@ -52,6 +58,7 @@ public class EjecucionExpedienteDTO {
             LocalDateTime fechaUltimoMovimiento,
             String responsable,
             String equipo,
+            String responsableAnalisis,
             String etapaCodigo,
             String estadoCodigo,
             String resultadoAnalisis,
@@ -64,9 +71,13 @@ public class EjecucionExpedienteDTO {
             String tipoResolucion,
             String numeroResolucion,
             LocalDate fechaResolucion,
+            LocalDateTime fechaFirmaResolucion,
+            boolean requierePublicacion,
+            LocalDate fechaPublicacion,
             String accionesPermitidas) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
+        this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.procedimiento = safe(procedimiento);
         this.tipoDocumento = safe(tipoDocumento);
@@ -79,6 +90,7 @@ public class EjecucionExpedienteDTO {
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
         this.responsable = safe(responsable);
         this.equipo = safe(equipo);
+        this.responsableAnalisis = safe(responsableAnalisis);
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
         this.resultadoAnalisis = safe(resultadoAnalisis);
@@ -91,6 +103,9 @@ public class EjecucionExpedienteDTO {
         this.tipoResolucion = safe(tipoResolucion);
         this.numeroResolucion = safe(numeroResolucion);
         this.fechaResolucion = fechaResolucion;
+        this.fechaFirmaResolucion = fechaFirmaResolucion;
+        this.requierePublicacion = requierePublicacion;
+        this.fechaPublicacion = fechaPublicacion;
         this.accionesPermitidas = safe(accionesPermitidas);
     }
 
@@ -100,6 +115,10 @@ public class EjecucionExpedienteDTO {
 
     public String getNumeroExpediente() {
         return numeroExpediente;
+    }
+
+    public String getNumeroExpedienteSgd() {
+        return numeroExpedienteSgd;
     }
 
     public String getNumeroTramiteDocumentario() {
@@ -144,6 +163,10 @@ public class EjecucionExpedienteDTO {
 
     public String getEquipo() {
         return equipo;
+    }
+
+    public String getResponsableAnalisis() {
+        return responsableAnalisis;
     }
 
     public String getEtapaCodigo() {
@@ -194,6 +217,18 @@ public class EjecucionExpedienteDTO {
         return fechaResolucion;
     }
 
+    public LocalDateTime getFechaFirmaResolucion() {
+        return fechaFirmaResolucion;
+    }
+
+    public boolean isRequierePublicacion() {
+        return requierePublicacion;
+    }
+
+    public LocalDate getFechaPublicacion() {
+        return fechaPublicacion;
+    }
+
     public String getAccionesPermitidas() {
         return accionesPermitidas;
     }
@@ -224,7 +259,19 @@ public class EjecucionExpedienteDTO {
                 || "REQUIERE_CORRECCION".equalsIgnoreCase(estadoCodigo));
     }
 
+    public boolean isDocumentoEmitido() {
+        return hasText(numeroResolucion) || idResolucion != null;
+    }
+
+    public boolean isListoParaNotificacion() {
+        return isEjecutado() && hasAccion("DERIVACION_A_NOTIFICACION");
+    }
+
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

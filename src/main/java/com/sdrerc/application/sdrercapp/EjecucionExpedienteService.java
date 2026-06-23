@@ -49,8 +49,18 @@ public class EjecucionExpedienteService {
         this.observacionExpedienteDAO = observacionExpedienteDAO;
     }
 
-    public List<EjecucionExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
-        return ejecucionExpedienteDAO.buscarExpedientes(textoLibre, estadoCodigo, limite);
+    public List<EjecucionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite) throws SQLException {
+        return ejecucionExpedienteDAO.buscarExpedientes(
+                textoLibre,
+                estadoCodigo,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                limite);
     }
 
     public List<CatalogoItemDTO> listarResultadosEjecucion() throws SQLException {

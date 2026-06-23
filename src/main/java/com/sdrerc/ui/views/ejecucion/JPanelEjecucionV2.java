@@ -11,6 +11,7 @@ import com.sdrerc.domain.dto.sdrercapp.EjecucionReversionDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
+import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
@@ -19,15 +20,16 @@ import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
+import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -35,6 +37,7 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -72,6 +75,8 @@ public class JPanelEjecucionV2 extends JPanel {
     private final DocumentoEjecucionService documentoService;
 
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
+    private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
@@ -81,20 +86,28 @@ public class JPanelEjecucionV2 extends JPanel {
     private final JButton btnRegistrarEjecucion = new JButton("Registrar ejecución");
     private final JButton btnMarcarEjecutado = new JButton("Marcar ejecutado");
     private final JButton btnObservar = new JButton("Observación ejecución");
-    private final JButton btnDocumentoInconsistente = new JButton("Documento inconsistente");
-    private final JButton btnRevertirAnalisis = new JButton("Revertir a Análisis");
+    private final JButton btnDocumentoInconsistente = new JButton("Error material");
+    private final JButton btnRevertirAnalisis = new JButton("Devolver a Análisis");
     private final JButton btnDerivarNotificacion = new JButton("Derivar a Notificación");
 
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes en Ejecución.");
     private final JLabel lblExpediente = new JLabel("-");
+    private final JLabel lblExpedienteSgd = new JLabel("-");
     private final JLabel lblTitular = new JLabel("-");
     private final JLabel lblActa = new JLabel("-");
     private final JLabel lblProcedimiento = new JLabel("-");
     private final JLabel lblResponsable = new JLabel("-");
     private final JLabel lblEtapaEstado = new JLabel("-");
     private final JLabel lblResolucion = new JLabel("-");
+    private final JLabel lblDocumentoEmitido = new JLabel("-");
+    private final JLabel lblResponsableAnalisis = new JLabel("-");
     private final JLabel lblAnalisis = new JLabel("-");
     private final JLabel lblVerificacion = new JLabel("-");
+    private final JLabel lblPublicacion = new JLabel("-");
+    private final JLabel lblDestinoSiguiente = new JLabel("-");
+    private final JLabel lblDestinoCarta = new JLabel("-");
+    private final JLabel lblCartaNotificacion = new JLabel("-");
+    private final JLabel lblValidacionSupervisor = new JLabel("-");
     private final JLabel lblAlertas = new JLabel("Sin alertas.");
     private final JLabel lblAcciones = new JLabel("-");
 
@@ -125,9 +138,12 @@ public class JPanelEjecucionV2 extends JPanel {
     private final JTable documentosTable = new JTable(documentosModel);
     private final List<EjecucionExpedienteDTO> expedientes = new ArrayList<EjecucionExpedienteDTO>();
 
-    private final MetricCardV2 cardEnEjecucion = new MetricCardV2("En ejecución", "0", "Pendientes de atención", AppV2Theme.INFO);
-    private final MetricCardV2 cardConCorreccion = new MetricCardV2("Con corrección", "0", "Observados o inconsistentes", AppV2Theme.WARNING);
-    private final MetricCardV2 cardEjecutados = new MetricCardV2("Ejecutados", "0", "Listos para notificación", AppV2Theme.SUCCESS);
+    private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "En ejecución", AppV2Theme.INFO);
+    private final MetricCardV2 cardEnRevision = new MetricCardV2("En revisión", "0", "Documento emitido", AppV2Theme.TEAL);
+    private final MetricCardV2 cardErrorMaterial = new MetricCardV2("Error material", "0", "Corrección requerida", AppV2Theme.ERROR);
+    private final MetricCardV2 cardListosNotificacion = new MetricCardV2("Listos para notificación", "0", "Con transición activa", AppV2Theme.PRIMARY);
+    private final MetricCardV2 cardEjecutados = new MetricCardV2("Ejecutados", "0", "Resultado registrado", AppV2Theme.SUCCESS);
+    private final MetricCardV2 cardPlazoCritico = new MetricCardV2("Por vencer / vencidos", "0", "Días hábiles críticos", AppV2Theme.WARNING);
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelEjecucion;
     private boolean panelEjecucionCerradoPorUsuario;
@@ -148,6 +164,7 @@ public class JPanelEjecucionV2 extends JPanel {
         configurarTabla();
         configurarDocumentosTabla();
         configurarEventos();
+        restaurarFechasBusqueda();
         cargarFiltrosBase();
         cargarCatalogos();
         inicializarFecha();
@@ -155,11 +172,13 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new JPanel(new GridLayout(1, 3, 12, 0));
-        metricas.setOpaque(false);
-        metricas.add(cardEnEjecucion);
-        metricas.add(cardConCorreccion);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 6, 12, 10);
+        metricas.add(cardPendientes);
+        metricas.add(cardEnRevision);
+        metricas.add(cardErrorMaterial);
+        metricas.add(cardListosNotificacion);
         metricas.add(cardEjecutados);
+        metricas.add(cardPlazoCritico);
         return metricas;
     }
 
@@ -194,6 +213,8 @@ public class JPanelEjecucionV2 extends JPanel {
         accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
+        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
+        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
         toolbar.addFilter("Estado", cmbEstadoFiltro);
         toolbar.addFilter("Mostrar", spnLimite);
         return toolbar;
@@ -222,6 +243,10 @@ public class JPanelEjecucionV2 extends JPanel {
         panel.addSection(crearResumenSeleccion());
         panel.addSection(crearAntecedentes());
         panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearDocumentoEmitidoPanel());
+        panel.addSection(crearErrorMaterialPanel());
+        panel.addSection(crearCartaNotificacionPanel());
+        panel.addSection(crearPublicacionPrevistaPanel());
         panel.addSection(crearFormularioEjecucion());
         panel.setFooter(crearAccionesPanelEjecucion());
         return panel;
@@ -269,12 +294,13 @@ public class JPanelEjecucionV2 extends JPanel {
         grid.setOpaque(false);
         int row = 0;
         addRow(grid, row++, "Expediente", lblExpediente);
+        addRow(grid, row++, "N° expediente SGD", lblExpedienteSgd);
         addRow(grid, row++, "Titular", lblTitular);
         addRow(grid, row++, "Acta", lblActa);
         addRow(grid, row++, "Procedimiento", lblProcedimiento);
         addRow(grid, row++, "Responsable", lblResponsable);
         addRow(grid, row++, "Etapa / Estado", lblEtapaEstado);
-        addRow(grid, row++, "Resolución", lblResolucion);
+        addRow(grid, row++, "Destino siguiente", lblDestinoSiguiente);
         addRow(grid, row++, "Acciones", lblAcciones);
         addRow(grid, row, "Alertas", lblAlertas);
         panel.add(grid, BorderLayout.CENTER);
@@ -291,6 +317,7 @@ public class JPanelEjecucionV2 extends JPanel {
         grid.setOpaque(false);
         int row = 0;
         addRow(grid, row++, "Análisis", lblAnalisis);
+        addRow(grid, row++, "Abogado análisis", lblResponsableAnalisis);
         addRow(grid, row++, "Verificación", lblVerificacion);
         addRow(grid, row++, "Sustento", scrollText(txtFundamentoAnalisis, 80));
         addRow(grid, row, "Observación", scrollText(txtObservacion, 70));
@@ -299,11 +326,53 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private JPanel crearDocumentosPanel() {
-        JPanel panel = section("Documentos y resolución");
+        JPanel panel = section("Documentos de expediente");
         JScrollPane scroll = new JScrollPane(documentosTable);
         scroll.setPreferredSize(new Dimension(355, 132));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearDocumentoEmitidoPanel() {
+        JPanel panel = section("Documento emitido");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Estado documental", lblDocumentoEmitido);
+        addRow(grid, row, "Resolución / documento", lblResolucion);
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearErrorMaterialPanel() {
+        JPanel panel = section("Validación de error material");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Validación supervisor", lblValidacionSupervisor);
+        addRow(grid, row, "Motivo / sustento", scrollText(txtMotivoReversion, 78));
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearCartaNotificacionPanel() {
+        JPanel panel = section("Carta de notificación");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Preparación", lblCartaNotificacion);
+        addRow(grid, row, "Destino siguiente", lblDestinoCarta);
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearPublicacionPrevistaPanel() {
+        JPanel panel = section("Publicación prevista");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        addRow(grid, 0, "Contexto", lblPublicacion);
+        panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
 
@@ -317,7 +386,6 @@ public class JPanelEjecucionV2 extends JPanel {
         addRow(grid, row++, "Motivo corrección", cmbMotivoCorreccion);
         addRow(grid, row++, "Fecha ejecución", txtFechaEjecucion);
         addRow(grid, row++, "Comentario", scrollText(txtComentario, 88));
-        addRow(grid, row, "Motivo reversión", scrollText(txtMotivoReversion, 78));
         panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
@@ -372,6 +440,8 @@ public class JPanelEjecucionV2 extends JPanel {
 
     private void configurarControles() {
         txtBusqueda.setPreferredSize(new Dimension(340, 34));
+        fechaSolicitudDesde.setPreferredSize(new Dimension(180, 40));
+        fechaSolicitudHasta.setPreferredSize(new Dimension(180, 40));
         cmbEstadoFiltro.setPreferredSize(new Dimension(220, 34));
         cmbResultado.setPreferredSize(new Dimension(250, 34));
         cmbTipoObservacion.setPreferredSize(new Dimension(250, 34));
@@ -400,12 +470,11 @@ public class JPanelEjecucionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new EjecucionRenderer());
-        table.getColumnModel().getColumn(11).setPreferredWidth(145);
-        table.getColumnModel().getColumn(12).setPreferredWidth(160);
-        table.getColumnModel().getColumn(13).setMaxWidth(92);
-        table.getColumnModel().getColumn(15).setMaxWidth(92);
-        table.getColumnModel().getColumn(16).setMaxWidth(92);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.getColumnModel().getColumn(1).setMaxWidth(92);
+        table.getColumnModel().getColumn(9).setPreferredWidth(160);
+        table.getColumnModel().getColumn(10).setPreferredWidth(142);
+        table.getColumnModel().getColumn(12).setMaxWidth(92);
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setPreferredWidth(0);
         table.getColumnModel().getColumn(0).setMaxWidth(0);
@@ -491,6 +560,12 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private void buscar() {
+        LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
+        LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            JOptionPane.showMessageDialog(this, "Fecha desde no puede ser mayor que Fecha hasta.", "Ejecución", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         setTrabajando(true, "Consultando expedientes en Ejecución...");
         String texto = txtBusqueda.getText();
         String estado = obtenerCodigo(cmbEstadoFiltro);
@@ -498,7 +573,7 @@ public class JPanelEjecucionV2 extends JPanel {
         SwingWorker<List<EjecucionExpedienteDTO>, Void> worker = new SwingWorker<List<EjecucionExpedienteDTO>, Void>() {
             @Override
             protected List<EjecucionExpedienteDTO> doInBackground() throws Exception {
-                return ejecucionService.buscarExpedientes(texto, estado, limite);
+                return ejecucionService.buscarExpedientes(texto, estado, desde, hasta, limite);
             }
 
             @Override
@@ -531,27 +606,44 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private void actualizarMetricas() {
-        int enEjecucion = 0;
-        int correccion = 0;
+        int pendientes = 0;
+        int enRevision = 0;
+        int errorMaterial = 0;
+        int listosNotificacion = 0;
         int ejecutados = 0;
+        int plazoCritico = 0;
         for (EjecucionExpedienteDTO expediente : expedientes) {
             if ("EN_EJECUCION".equalsIgnoreCase(expediente.getEstadoCodigo())
                     || "INDAGATORIO".equalsIgnoreCase(expediente.getEstadoCodigo())) {
-                enEjecucion++;
-            } else if ("DOCUMENTO_INCONSISTENTE".equalsIgnoreCase(expediente.getEstadoCodigo())
+                pendientes++;
+            }
+            if (expediente.isDocumentoEmitido()) {
+                enRevision++;
+            }
+            if ("DOCUMENTO_INCONSISTENTE".equalsIgnoreCase(expediente.getEstadoCodigo())
                     || "REQUIERE_CORRECCION".equalsIgnoreCase(expediente.getEstadoCodigo())) {
-                correccion++;
+                errorMaterial++;
             } else if ("EJECUTADO".equalsIgnoreCase(expediente.getEstadoCodigo())) {
                 ejecutados++;
             }
+            if (expediente.isListoParaNotificacion()) {
+                listosNotificacion++;
+            }
+            if (expediente.getDiasEnEtapa() != null && expediente.getDiasEnEtapa() <= 3L) {
+                plazoCritico++;
+            }
         }
-        cardEnEjecucion.setValue(String.valueOf(enEjecucion));
-        cardConCorreccion.setValue(String.valueOf(correccion));
+        cardPendientes.setValue(String.valueOf(pendientes));
+        cardEnRevision.setValue(String.valueOf(enRevision));
+        cardErrorMaterial.setValue(String.valueOf(errorMaterial));
+        cardListosNotificacion.setValue(String.valueOf(listosNotificacion));
         cardEjecutados.setValue(String.valueOf(ejecutados));
+        cardPlazoCritico.setValue(String.valueOf(plazoCritico));
     }
 
     private void limpiar() {
         txtBusqueda.setText("");
+        restaurarFechasBusqueda();
         cmbEstadoFiltro.setSelectedIndex(0);
         spnLimite.setValue(200);
         expedientes.clear();
@@ -564,6 +656,18 @@ public class JPanelEjecucionV2 extends JPanel {
         panelEjecucionCerradoPorUsuario = false;
     }
 
+    private void restaurarFechasBusqueda() {
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
+    }
+
+    private static LocalDate fechaSeleccionada(PremiumDateFieldV2 field) {
+        if (field == null || field.getDate() == null) {
+            return null;
+        }
+        return field.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
     private void actualizarSeleccion() {
         EjecucionExpedienteDTO expediente = seleccionado();
         actualizarVisibilidadPanelEjecucion();
@@ -572,6 +676,7 @@ public class JPanelEjecucionV2 extends JPanel {
             return;
         }
         lblExpediente.setText(valor(expediente.getNumeroExpediente()));
+        lblExpedienteSgd.setText(valor(expediente.getNumeroExpedienteSgd()));
         lblTitular.setText(valor(expediente.getTitular()));
         lblActa.setText(valor(expediente.getTipoActa()) + " " + valor(expediente.getNumeroActa()));
         lblProcedimiento.setText(valor(expediente.getProcedimiento()));
@@ -579,8 +684,15 @@ public class JPanelEjecucionV2 extends JPanel {
         lblEtapaEstado.setText(DisplayNameMapperV2.etapa(expediente.getEtapaCodigo())
                 + " / " + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()));
         lblResolucion.setText(resolucionTexto(expediente));
+        lblDocumentoEmitido.setText(documentoEmitidoDetalle(expediente));
+        lblResponsableAnalisis.setText(valor(expediente.getResponsableAnalisis()));
         lblAnalisis.setText(valor(expediente.getResultadoAnalisis()));
         lblVerificacion.setText(valor(expediente.getResultadoVerificacion()));
+        lblPublicacion.setText(publicacionTexto(expediente));
+        lblDestinoSiguiente.setText(destinoSiguienteTexto(expediente));
+        lblDestinoCarta.setText(destinoSiguienteTexto(expediente));
+        lblCartaNotificacion.setText(cartaNotificacionTexto(expediente));
+        lblValidacionSupervisor.setText(validacionSupervisorTexto(expediente));
         lblAcciones.setText(accionesTexto(expediente));
         lblAlertas.setText(alertasTexto(expediente));
         txtFundamentoAnalisis.setText(expediente.getFundamentoAnalisis());
@@ -592,14 +704,22 @@ public class JPanelEjecucionV2 extends JPanel {
 
     private void limpiarDetalle() {
         lblExpediente.setText("-");
+        lblExpedienteSgd.setText("-");
         lblTitular.setText("-");
         lblActa.setText("-");
         lblProcedimiento.setText("-");
         lblResponsable.setText("-");
         lblEtapaEstado.setText("-");
         lblResolucion.setText("-");
+        lblDocumentoEmitido.setText("-");
+        lblResponsableAnalisis.setText("-");
         lblAnalisis.setText("-");
         lblVerificacion.setText("-");
+        lblPublicacion.setText("-");
+        lblDestinoSiguiente.setText("-");
+        lblDestinoCarta.setText("-");
+        lblCartaNotificacion.setText("-");
+        lblValidacionSupervisor.setText("-");
         lblAcciones.setText("-");
         lblAlertas.setText("Sin expediente seleccionado.");
         txtComentario.setText("");
@@ -696,10 +816,10 @@ public class JPanelEjecucionV2 extends JPanel {
 
     private void registrarDocumentoInconsistente() {
         EjecucionExpedienteDTO expediente = requerirSeleccion();
-        if (expediente == null || !confirmar("Se registrará documento inconsistente para " + expediente.getNumeroExpediente() + ". ¿Desea continuar?")) {
+        if (expediente == null || !confirmar("Se registrará error material para " + expediente.getNumeroExpediente() + ". ¿Desea continuar?")) {
             return;
         }
-        ejecutarOperacion("Registrando documento inconsistente...", new Callable<EjecucionResultadoDTO>() {
+        ejecutarOperacion("Registrando error material...", new Callable<EjecucionResultadoDTO>() {
             @Override
             public EjecucionResultadoDTO call() throws Exception {
                 return ejecucionService.registrarDocumentoInconsistente(crearRegistro(EjecucionExpedienteService.ACCION_DOCUMENTO_INCONSISTENTE));
@@ -913,6 +1033,9 @@ public class JPanelEjecucionV2 extends JPanel {
         if (expediente.getTotalRelacionados() > 0) {
             alertas.add(expediente.getTotalRelacionados() + " expediente(s) asociado(s)");
         }
+        if (expediente.isRequierePublicacion()) {
+            alertas.add("Publicación prevista");
+        }
         if (expediente.getTotalDocumentos() == 0) {
             alertas.add("Sin documentos registrados");
         }
@@ -923,6 +1046,90 @@ public class JPanelEjecucionV2 extends JPanel {
             alertas.add("No hay transición activa para marcar ejecutado");
         }
         return alertas.isEmpty() ? "Sin alertas." : String.join(" · ", alertas);
+    }
+
+    private String documentoEmitidoTabla(EjecucionExpedienteDTO expediente) {
+        if (expediente == null || !expediente.isDocumentoEmitido()) {
+            return "Pendiente";
+        }
+        if (hasText(expediente.getNumeroResolucion())) {
+            return expediente.getNumeroResolucion();
+        }
+        return hasText(expediente.getTipoResolucion()) ? expediente.getTipoResolucion() : "Emitido";
+    }
+
+    private String documentoEmitidoDetalle(EjecucionExpedienteDTO expediente) {
+        if (expediente == null || !expediente.isDocumentoEmitido()) {
+            return "Sin documento emitido registrado";
+        }
+        List<String> partes = new ArrayList<String>();
+        if (hasText(expediente.getTipoResolucion())) {
+            partes.add(expediente.getTipoResolucion());
+        }
+        if (hasText(expediente.getNumeroResolucion())) {
+            partes.add(expediente.getNumeroResolucion());
+        }
+        if (expediente.getFechaFirmaResolucion() != null) {
+            partes.add("Firma: " + format(expediente.getFechaFirmaResolucion().toLocalDate()));
+        }
+        return partes.isEmpty() ? "Documento emitido" : String.join(" · ", partes);
+    }
+
+    private String publicacionTexto(EjecucionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "-";
+        }
+        if (!expediente.isRequierePublicacion()) {
+            return "No requiere publicación";
+        }
+        return "Requiere publicación"
+                + (expediente.getFechaPublicacion() == null
+                ? " · Fecha pendiente"
+                : " · " + format(expediente.getFechaPublicacion()));
+    }
+
+    private String destinoSiguienteTexto(EjecucionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "-";
+        }
+        if (expediente.isListoParaNotificacion()) {
+            return "Notificación";
+        }
+        if (expediente.isEjecutado()) {
+            return "Notificación (transición no configurada)";
+        }
+        if (expediente.isCorregible()) {
+            return "Análisis";
+        }
+        return "Registrar ejecución / validar carta";
+    }
+
+    private String cartaNotificacionTexto(EjecucionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "-";
+        }
+        if (!expediente.isDocumentoEmitido()) {
+            return "Pendiente de documento emitido desde Verificación";
+        }
+        if (expediente.isEjecutado()) {
+            return expediente.hasAccion(EjecucionExpedienteService.ACCION_DERIVACION_NOTIFICACION)
+                    ? "Lista para derivar a Notificación"
+                    : "Ejecutada, sin transición activa a Notificación";
+        }
+        return "Preparar carta de notificación y validar con supervisor";
+    }
+
+    private String validacionSupervisorTexto(EjecucionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "-";
+        }
+        if (expediente.isCorregible()) {
+            return "Error material / corrección pendiente";
+        }
+        if (expediente.isEjecutado()) {
+            return "Validación de ejecución registrada";
+        }
+        return "Pendiente de revisión de error material";
     }
 
     private String accionesTexto(EjecucionExpedienteDTO expediente) {
@@ -970,9 +1177,9 @@ public class JPanelEjecucionV2 extends JPanel {
     private class EjecucionTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Expediente", "Trámite", "Procedimiento", "Tipo doc.", "Tipo acta", "Nro. acta",
-            "Titular", "Nro. resolución", "Fecha resolución", "Ingreso ejecución", "Etapa", "Estado",
-            "Días", "Responsable", "Docs", "Asociados"
+            "ID", "Días", "Expediente", "N° expediente SGD", "Trámite / Documento", "Titular",
+            "Procedimiento", "Resultado análisis", "Documento emitido", "Estado",
+            "Requiere publicación", "Alertas", "Asociados"
         };
 
         @Override
@@ -997,36 +1204,28 @@ public class JPanelEjecucionV2 extends JPanel {
                 case 0:
                     return item.getIdExpediente();
                 case 1:
-                    return item.getNumeroExpediente();
-                case 2:
-                    return item.getNumeroTramiteDocumentario();
-                case 3:
-                    return item.getProcedimiento();
-                case 4:
-                    return item.getTipoDocumento();
-                case 5:
-                    return item.getTipoActa();
-                case 6:
-                    return item.getNumeroActa();
-                case 7:
-                    return item.getTitular();
-                case 8:
-                    return item.getNumeroResolucion();
-                case 9:
-                    return format(item.getFechaResolucion());
-                case 10:
-                    return format(item.getFechaIngresoEjecucion());
-                case 11:
-                    return item.getEtapaCodigo();
-                case 12:
-                    return item.getEstadoCodigo();
-                case 13:
                     return item.getDiasEnEtapa();
-                case 14:
-                    return item.getResponsable();
-                case 15:
-                    return item.getTotalDocumentos();
-                case 16:
+                case 2:
+                    return item.getNumeroExpediente();
+                case 3:
+                    return item.getNumeroExpedienteSgd();
+                case 4:
+                    return item.getNumeroTramiteDocumentario();
+                case 5:
+                    return item.getTitular();
+                case 6:
+                    return item.getProcedimiento();
+                case 7:
+                    return valor(item.getResultadoAnalisis());
+                case 8:
+                    return documentoEmitidoTabla(item);
+                case 9:
+                    return DisplayNameMapperV2.estado(item.getEstadoCodigo());
+                case 10:
+                    return item.isRequierePublicacion() ? "Requiere" : "No";
+                case 11:
+                    return alertasTexto(item);
+                case 12:
                     return item.getTotalRelacionados();
                 default:
                     return "";
@@ -1043,14 +1242,18 @@ public class JPanelEjecucionV2 extends JPanel {
                 boolean hasFocus,
                 int row,
                 int column) {
-            if (column == 11) {
-                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
+            if (column == 1) {
+                return StatusBadgeV2.forDias(value);
             }
-            if (column == 12) {
+            if (column == 9) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (column == 13) {
-                return StatusBadgeV2.forDias(value);
+            if (column == 10) {
+                String text = value == null ? "" : value.toString();
+                return StatusBadgeV2.small(
+                        text,
+                        "Requiere".equalsIgnoreCase(text) ? AppV2Theme.SOFT_ORANGE : AppV2Theme.SOFT_GRAY,
+                        "Requiere".equalsIgnoreCase(text) ? AppV2Theme.WARNING : AppV2Theme.TEXT_SECONDARY);
             }
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));

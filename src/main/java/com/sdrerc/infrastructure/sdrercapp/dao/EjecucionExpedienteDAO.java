@@ -55,11 +55,16 @@ public class EjecucionExpedienteDAO {
         this.resolucionDocumentoDAO = resolucionDocumentoDAO;
     }
 
-    public List<EjecucionExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
+    public List<EjecucionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite) throws SQLException {
         List<Object> params = new ArrayList<Object>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
-        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
+        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
@@ -69,6 +74,9 @@ public class EjecucionExpedienteDAO {
         sql.append("WHERE h.id_expediente = e.id_expediente AND h.activo = 1 ");
         sql.append("AND tm.codigo = 'REGISTRO_NUMERO_RESOLUCION') AS fecha_ingreso_ejecucion, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
+        sql.append("(SELECT MAX(ua.nombre_completo) KEEP (DENSE_RANK LAST ORDER BY ev.fecha_evaluacion NULLS FIRST, ev.creado_en) ");
+        sql.append("FROM expediente_evaluacion ev LEFT JOIN usuario ua ON ua.id_usuario = ev.creado_por ");
+        sql.append("WHERE ev.id_expediente = e.id_expediente AND ev.activo = 1) AS responsable_analisis, ");
         sql.append("et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT MAX(NVL(tre.nombre, tre.codigo)) KEEP (DENSE_RANK LAST ORDER BY ev.fecha_evaluacion NULLS FIRST, ev.creado_en) ");
@@ -83,7 +91,11 @@ public class EjecucionExpedienteDAO {
         sql.append("FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.activo = 1) AS ultima_observacion, ");
         sql.append("(SELECT COUNT(*) FROM expediente_documento d WHERE d.id_expediente = e.id_expediente AND d.activo = 1) AS documentos, ");
         sql.append("(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, ");
-        sql.append("res.id_expediente_resolucion, tr.nombre AS tipo_resolucion, res.numero_resolucion, res.fecha_resolucion, ");
+        sql.append("res.id_expediente_resolucion, tr.nombre AS tipo_resolucion, res.numero_resolucion, ");
+        sql.append("res.fecha_resolucion, res.fecha_firma, ");
+        sql.append("NVL(e.requiere_publicacion, 0) AS requiere_publicacion, ");
+        sql.append("(SELECT MAX(pub.fecha_publicacion) KEEP (DENSE_RANK LAST ORDER BY pub.creado_en, pub.id_expediente_publicacion) ");
+        sql.append("FROM expediente_publicacion pub WHERE pub.id_expediente = e.id_expediente AND pub.activo = 1) AS fecha_publicacion, ");
         sql.append("(SELECT LISTAGG(ap.codigo_accion, ',') WITHIN GROUP (ORDER BY ap.codigo_accion) ");
         sql.append("FROM vw_expediente_acciones_permitidas ap WHERE ap.id_expediente = e.id_expediente) AS acciones_permitidas ");
         sql.append("FROM expediente e ");
@@ -108,6 +120,16 @@ public class EjecucionExpedienteDAO {
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
             params.add(estadoCodigo.trim().toUpperCase(Locale.ROOT));
+        }
+
+        if (fechaSolicitudDesde != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) >= ? ");
+            params.add(Date.valueOf(fechaSolicitudDesde));
+        }
+
+        if (fechaSolicitudHasta != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) <= ? ");
+            params.add(Date.valueOf(fechaSolicitudHasta));
         }
 
         if (hasText(textoLibre)) {
@@ -603,6 +625,7 @@ public class EjecucionExpedienteDAO {
         return new EjecucionExpedienteDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("procedimiento"),
                 rs.getString("tipo_documento"),
@@ -615,6 +638,7 @@ public class EjecucionExpedienteDAO {
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 rs.getString("responsable"),
                 rs.getString("equipo"),
+                rs.getString("responsable_analisis"),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 rs.getString("resultado_analisis"),
@@ -627,6 +651,9 @@ public class EjecucionExpedienteDAO {
                 rs.getString("tipo_resolucion"),
                 rs.getString("numero_resolucion"),
                 toLocalDate(rs.getDate("fecha_resolucion")),
+                toLocalDateTime(rs.getTimestamp("fecha_firma")),
+                rs.getInt("requiere_publicacion") == 1,
+                toLocalDate(rs.getDate("fecha_publicacion")),
                 rs.getString("acciones_permitidas"));
     }
 
