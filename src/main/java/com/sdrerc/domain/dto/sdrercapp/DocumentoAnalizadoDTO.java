@@ -18,6 +18,8 @@ public class DocumentoAnalizadoDTO {
     private final String confirmacionRespuesta;
     private final LocalDate fechaRespuesta;
     private final String numeroHojaEnvioRespuesta;
+    private final boolean requierePublicacion;
+    private final LocalDate fechaPublicacion;
 
     public DocumentoAnalizadoDTO(
             Long idDocumentoAnalizado,
@@ -42,7 +44,9 @@ public class DocumentoAnalizadoDTO {
                 false,
                 "",
                 null,
-                "");
+                "",
+                false,
+                null);
     }
 
     public DocumentoAnalizadoDTO(
@@ -60,6 +64,42 @@ public class DocumentoAnalizadoDTO {
             String confirmacionRespuesta,
             LocalDate fechaRespuesta,
             String numeroHojaEnvioRespuesta) {
+        this(
+                idDocumentoAnalizado,
+                idExpediente,
+                tipoDocumentoCodigo,
+                tipoDocumentoNombre,
+                estadoDocumentoCodigo,
+                estadoDocumentoNombre,
+                fechaDocumento,
+                descripcion,
+                notificado,
+                fechaAcuse,
+                requiereRespuesta,
+                confirmacionRespuesta,
+                fechaRespuesta,
+                numeroHojaEnvioRespuesta,
+                false,
+                null);
+    }
+
+    public DocumentoAnalizadoDTO(
+            Long idDocumentoAnalizado,
+            Long idExpediente,
+            String tipoDocumentoCodigo,
+            String tipoDocumentoNombre,
+            String estadoDocumentoCodigo,
+            String estadoDocumentoNombre,
+            LocalDate fechaDocumento,
+            String descripcion,
+            boolean notificado,
+            LocalDate fechaAcuse,
+            boolean requiereRespuesta,
+            String confirmacionRespuesta,
+            LocalDate fechaRespuesta,
+            String numeroHojaEnvioRespuesta,
+            boolean requierePublicacion,
+            LocalDate fechaPublicacion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.tipoDocumentoCodigo = safe(tipoDocumentoCodigo);
@@ -74,6 +114,8 @@ public class DocumentoAnalizadoDTO {
         this.confirmacionRespuesta = safe(confirmacionRespuesta);
         this.fechaRespuesta = fechaRespuesta;
         this.numeroHojaEnvioRespuesta = safe(numeroHojaEnvioRespuesta);
+        this.requierePublicacion = requierePublicacion;
+        this.fechaPublicacion = fechaPublicacion;
     }
 
     public static DocumentoAnalizadoDTO nuevo(
@@ -148,6 +190,14 @@ public class DocumentoAnalizadoDTO {
 
     public String getNumeroHojaEnvioRespuesta() {
         return numeroHojaEnvioRespuesta;
+    }
+
+    public boolean isRequierePublicacion() {
+        return requierePublicacion;
+    }
+
+    public LocalDate getFechaPublicacion() {
+        return fechaPublicacion;
     }
 
     private static String safe(String value) {

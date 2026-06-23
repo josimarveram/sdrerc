@@ -1,6 +1,7 @@
 package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
+import com.sdrerc.domain.dto.sdrercapp.CargaLaboralAbogadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.EquipoAsignacionDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.UsuarioAsignacionDAO;
@@ -27,6 +28,10 @@ public class UsuarioAsignacionService {
 
     public List<UsuarioAsignableDTO> listarAbogadosAsignables(Long idEquipo) throws SQLException {
         return usuarioAsignacionDAO.listarAbogadosAsignables(idEquipo);
+    }
+
+    public List<CargaLaboralAbogadoDTO> listarCargaLaboralAbogados(Long idEquipo) throws SQLException {
+        return usuarioAsignacionDAO.listarCargaLaboralAbogados(idEquipo);
     }
 
     public Long obtenerIdUsuarioActivoPorUsername(String username) throws SQLException {

@@ -48,6 +48,7 @@ public class DocumentoAnalisisDAO {
             return documentos;
         }
         boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
+        boolean soportaPublicacion = soportaPublicacionPreparada(conn);
         String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
                 + "td.codigo AS tipo_documento_codigo, td.nombre AS tipo_documento_nombre, "
                 + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
@@ -60,7 +61,16 @@ public class DocumentoAnalisisDAO {
                         + "0 AS requiere_respuesta, CAST(NULL AS VARCHAR2(20)) AS confirmacion_respuesta, "
                         + "CAST(NULL AS DATE) AS fecha_respuesta, "
                         + "CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_respuesta ")
+                + (soportaPublicacion
+                        ? ", NVL(e.requiere_publicacion, 0) AS requiere_publicacion, "
+                        + "(SELECT fecha_publicacion FROM ("
+                        + " SELECT p.fecha_publicacion FROM expediente_publicacion p "
+                        + " WHERE p.id_expediente = da.id_expediente AND p.activo = 1 "
+                        + " ORDER BY p.creado_en DESC, p.id_expediente_publicacion DESC"
+                        + ") WHERE ROWNUM = 1) AS fecha_publicacion "
+                        : ", 0 AS requiere_publicacion, CAST(NULL AS DATE) AS fecha_publicacion ")
                 + "FROM expediente_documento_analizado da "
+                + "JOIN expediente e ON e.id_expediente = da.id_expediente "
                 + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                 + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                 + "WHERE da.id_expediente = ? AND da.activo = 1 "
@@ -83,7 +93,9 @@ public class DocumentoAnalisisDAO {
                             rs.getInt("requiere_respuesta") == 1,
                             rs.getString("confirmacion_respuesta"),
                             toLocalDate(rs.getDate("fecha_respuesta")),
-                            rs.getString("numero_hoja_envio_respuesta")));
+                            rs.getString("numero_hoja_envio_respuesta"),
+                            rs.getInt("requiere_publicacion") == 1,
+                            toLocalDate(rs.getDate("fecha_publicacion"))));
                 }
             }
         }
@@ -112,6 +124,7 @@ public class DocumentoAnalisisDAO {
             conn.setAutoCommit(false);
             try {
                 actualizarRespuestaDocumentoAnalizado(conn, idExpediente, documento, idUsuarioModificador);
+                actualizarPublicacionPreparada(conn, idExpediente, documento, idUsuarioModificador);
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);
             } catch (Exception ex) {
@@ -122,6 +135,43 @@ public class DocumentoAnalisisDAO {
                 }
                 throw new SQLException(ex.getMessage(), ex);
             }
+        }
+    }
+
+    private void actualizarPublicacionPreparada(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idUsuarioModificador) throws SQLException {
+        if (!soportaPublicacionPreparada(conn)) {
+            if (documento.isRequierePublicacion() || documento.getFechaPublicacion() != null) {
+                throw new SQLException("La base de datos no tiene soporte completo de publicación preparada en EXPEDIENTE/EXPEDIENTE_PUBLICACION.");
+            }
+            return;
+        }
+        String sqlExpediente = "UPDATE expediente SET requiere_publicacion = ?, "
+                + "fecha_ultimo_movimiento = SYSTIMESTAMP, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sqlExpediente)) {
+            ps.setInt(1, documento.isRequierePublicacion() ? 1 : 0);
+            if (idUsuarioModificador == null) {
+                ps.setNull(2, Types.NUMERIC);
+            } else {
+                ps.setLong(2, idUsuarioModificador);
+            }
+            ps.setLong(3, idExpediente);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("No se pudo actualizar el indicador de publicación del expediente.");
+            }
+        }
+        if (!documento.isRequierePublicacion() && documento.getFechaPublicacion() == null) {
+            return;
+        }
+        Long idPublicacion = obtenerPublicacionActiva(conn, idExpediente);
+        if (idPublicacion == null) {
+            insertarPublicacionPreparada(conn, idExpediente, documento.getFechaPublicacion(), idUsuarioModificador);
+        } else {
+            actualizarPublicacionPreparada(conn, idPublicacion, documento.getFechaPublicacion(), idUsuarioModificador);
         }
     }
 
@@ -358,6 +408,83 @@ public class DocumentoAnalisisDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt(1) == 6;
+        }
+    }
+
+    private static boolean soportaPublicacionPreparada(Connection conn) throws SQLException {
+        String sql = "SELECT "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE' AND column_name = 'REQUIERE_PUBLICACION') + "
+                + "(SELECT COUNT(1) FROM user_tables WHERE table_name = 'EXPEDIENTE_PUBLICACION') + "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE_PUBLICACION' AND column_name = 'FECHA_PUBLICACION') "
+                + "AS total FROM dual";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt("total") == 3;
+        }
+    }
+
+    private static Long obtenerPublicacionActiva(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT id_expediente_publicacion FROM ("
+                + "SELECT id_expediente_publicacion FROM expediente_publicacion "
+                + "WHERE id_expediente = ? AND activo = 1 "
+                + "ORDER BY creado_en DESC, id_expediente_publicacion DESC"
+                + ") WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return getLongOrNull(rs, "id_expediente_publicacion");
+            }
+        }
+    }
+
+    private static void insertarPublicacionPreparada(
+            Connection conn,
+            Long idExpediente,
+            LocalDate fechaPublicacion,
+            Long idUsuario) throws SQLException {
+        String sql = "INSERT INTO expediente_publicacion ("
+                + "id_expediente, tipo_publicacion, estado_publicacion, fecha_generacion, fecha_publicacion, "
+                + "observacion, activo, creado_por, creado_en"
+                + ") VALUES (?, 'CARTA_RESPUESTA', 'PENDIENTE_PUBLICACION', SYSDATE, ?, "
+                + "'Publicación preparada desde Asignación - Cartas de respuesta.', 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            setDateOrNull(ps, 2, fechaPublicacion);
+            if (idUsuario == null) {
+                ps.setNull(3, Types.NUMERIC);
+            } else {
+                ps.setLong(3, idUsuario);
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    private static void actualizarPublicacionPreparada(
+            Connection conn,
+            Long idPublicacion,
+            LocalDate fechaPublicacion,
+            Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_publicacion SET "
+                + "tipo_publicacion = NVL(tipo_publicacion, 'CARTA_RESPUESTA'), "
+                + "estado_publicacion = CASE WHEN estado_publicacion IS NULL THEN 'PENDIENTE_PUBLICACION' ELSE estado_publicacion END, "
+                + "fecha_publicacion = ?, "
+                + "observacion = NVL(observacion, 'Publicación preparada desde Asignación - Cartas de respuesta.'), "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente_publicacion = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setDateOrNull(ps, 1, fechaPublicacion);
+            if (idUsuario == null) {
+                ps.setNull(2, Types.NUMERIC);
+            } else {
+                ps.setLong(2, idUsuario);
+            }
+            ps.setLong(3, idPublicacion);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("No se pudo actualizar la publicación preparada.");
+            }
         }
     }
 

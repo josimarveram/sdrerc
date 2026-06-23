@@ -42,12 +42,29 @@ public class AsignacionExpedienteService {
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
+        return buscarExpedientes(
+                textoLibre,
+                estadoCodigo,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                limite,
+                false);
+    }
+
+    public List<AsignacionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite,
+            boolean soloGrupoFamiliar) throws SQLException {
         return asignacionExpedienteDAO.buscarExpedientes(
                 textoLibre,
                 estadoCodigo,
                 fechaSolicitudDesde,
                 fechaSolicitudHasta,
-                limite);
+                limite,
+                soloGrupoFamiliar);
     }
 
     public List<CatalogoItemDTO> listarEstadosExpediente() throws SQLException {

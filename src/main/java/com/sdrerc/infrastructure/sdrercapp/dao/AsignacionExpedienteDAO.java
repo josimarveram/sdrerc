@@ -65,6 +65,16 @@ public class AsignacionExpedienteDAO {
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
+        return buscarExpedientes(textoLibre, estadoCodigo, fechaSolicitudDesde, fechaSolicitudHasta, limite, false);
+    }
+
+    public List<AsignacionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaSolicitudDesde,
+            LocalDate fechaSolicitudHasta,
+            int limite,
+            boolean soloGrupoFamiliar) throws SQLException {
         boolean soportaNumeroHojaEnvio;
         boolean soportaGrupoFamiliar;
         try (Connection conn = SdrercAppConnection.getConnection()) {
@@ -151,6 +161,15 @@ public class AsignacionExpedienteDAO {
         if (fechaSolicitudHasta != null) {
             sql.append("AND TRUNC(esol.fecha_recepcion) <= ? ");
             params.add(Date.valueOf(fechaSolicitudHasta));
+        }
+
+        if (soloGrupoFamiliar) {
+            if (soportaGrupoFamiliar) {
+                sql.append("AND (NVL(esol.grupo_familiar, 0) = 1 ");
+                sql.append("OR TRIM(esol.observacion_grupo_familiar) IS NOT NULL) ");
+            } else {
+                sql.append("AND 1 = 0 ");
+            }
         }
 
         if (hasText(textoLibre)) {

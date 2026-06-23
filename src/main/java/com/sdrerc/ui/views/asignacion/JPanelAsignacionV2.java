@@ -8,6 +8,7 @@ import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.application.sdrercapp.UsuarioAsignacionService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CargaLaboralAbogadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
@@ -95,9 +96,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int COL_SELECCION = 1;
     private static final int COL_DIAS = 2;
     private static final int COL_EXPEDIENTE = 3;
-    private static final int COL_ESTADO = 11;
-    private static final int COL_RELACIONADOS = 12;
-    private static final int COL_ID = 13;
+    private static final int COL_ESTADO = 12;
+    private static final int COL_RELACIONADOS = 13;
+    private static final int COL_ID = 14;
     private static final int CARTA_COL_TIPO = 0;
     private static final int CARTA_COL_ESTADO = 1;
     private static final int CARTA_COL_FECHA = 2;
@@ -108,7 +109,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int CARTA_COL_CONFIRMACION_RESPUESTA = 7;
     private static final int CARTA_COL_FECHA_RESPUESTA = 8;
     private static final int CARTA_COL_HOJA_ENVIO_RESPUESTA = 9;
-    private static final int CARTA_COL_ACCION = 10;
+    private static final int CARTA_COL_REQUIERE_PUBLICACION = 10;
+    private static final int CARTA_COL_FECHA_PUBLICACION = 11;
+    private static final int CARTA_COL_ACCION = 12;
     private static final int PANEL_ASIGNACION_ANCHO_MINIMO = 380;
     private static final int PANEL_ASIGNACION_ANCHO_NORMAL = 430;
     private static final int PANEL_ASIGNACION_TAB_OVERHANG = 18;
@@ -161,10 +164,12 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
+    private final JCheckBox chkSoloGrupoFamiliar = new JCheckBox("Con grupo familiar");
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
     private final JButton btnGenerarNumeroExpediente = new JButton("Generar número");
     private final JButton btnAsignarSeleccionado = new JButton("Asignar expediente");
     private final JButton btnAsignarSeleccionados = new JButton("Asignar seleccionados");
+    private final JButton btnVerCargaLaboral = new JButton("Ver carga laboral");
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes.");
     private final JLabel lblSeleccionados = new JLabel("0 expedientes seleccionados");
     private final JLabel lblSeleccionadosPanel = new JLabel("0 expedientes seleccionados");
@@ -212,6 +217,8 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Confirmación de respuesta",
                 "Fecha Respuesta",
                 "Hoja de Envío",
+                "¿Requiere publicación?",
+                "Fecha publicación",
                 ""
             }, 0) {
         @Override
@@ -222,6 +229,9 @@ public class JPanelAsignacionV2 extends JPanel {
             if (column == CARTA_COL_NOTIFICADO || column == CARTA_COL_FECHA_ACUSE || column == CARTA_COL_ACCION) {
                 return true;
             }
+            if (column == CARTA_COL_REQUIERE_PUBLICACION || column == CARTA_COL_FECHA_PUBLICACION) {
+                return true;
+            }
             return respuestaCartaHabilitada(row)
                     && (column == CARTA_COL_CONFIRMACION_RESPUESTA
                     || column == CARTA_COL_FECHA_RESPUESTA
@@ -230,7 +240,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            return columnIndex == CARTA_COL_REQUIERE_RESPUESTA ? Boolean.class : Object.class;
+            return columnIndex == CARTA_COL_REQUIERE_RESPUESTA
+                    || columnIndex == CARTA_COL_REQUIERE_PUBLICACION ? Boolean.class : Object.class;
         }
     };
     private final JTable cartasRespuestaTable = new AppV2Table(cartasRespuestaModel);
@@ -252,9 +263,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private final Set<Long> principalesExpandidos = new HashSet<>();
     private final Set<Long> principalesCargando = new HashSet<>();
     private final List<ExpedienteRelacionadoDTO> documentosRelacionadosPanel = new ArrayList<>();
-    private final MetricCardV2 cardPendientes = new MetricCardV2("Resultados", "0", "Según filtros", AppV2Theme.INFO);
-    private final MetricCardV2 cardSeleccionados = new MetricCardV2("Seleccionados", "0", "Listos para asignación", AppV2Theme.TEAL);
-    private final MetricCardV2 cardRelacionados = new MetricCardV2("Alertas", "0", "Posibles relacionados", AppV2Theme.WARNING);
+    private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Para asignación", AppV2Theme.INFO);
+    private final MetricCardV2 cardSinNumero = new MetricCardV2("Sin número", "0", "Requieren decisión", AppV2Theme.TEAL);
+    private final MetricCardV2 cardGrupoFamiliar = new MetricCardV2("Grupo familiar", "0", "Sugerencia operativa", AppV2Theme.PRIMARY);
+    private final MetricCardV2 cardPorVencer = new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
+    private final MetricCardV2 cardVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
     private AppV2SideActionPanel panelAsignacion;
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
@@ -318,11 +331,13 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new JPanel(new GridLayout(1, 3, 12, 0));
+        JPanel metricas = new JPanel(new GridLayout(1, 5, 12, 0));
         metricas.setOpaque(false);
         metricas.add(cardPendientes);
-        metricas.add(cardSeleccionados);
-        metricas.add(cardRelacionados);
+        metricas.add(cardSinNumero);
+        metricas.add(cardGrupoFamiliar);
+        metricas.add(cardPorVencer);
+        metricas.add(cardVencidos);
         return metricas;
     }
 
@@ -363,6 +378,7 @@ public class JPanelAsignacionV2 extends JPanel {
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
         toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
         toolbar.addFilter("Estado", cmbEstado);
+        toolbar.addFilter("Grupo familiar", chkSoloGrupoFamiliar);
         toolbar.addFilter("Mostrar", spnLimite);
         return toolbar;
     }
@@ -561,6 +577,7 @@ public class JPanelAsignacionV2 extends JPanel {
         section.addRow("Equipo destino", cmbEquipo);
         section.addRow("Abogado responsable", cmbAbogado);
         section.addRow("Supervisor", lblSupervisor);
+        section.addRow("Carga laboral", btnVerCargaLaboral);
         return section;
     }
 
@@ -625,6 +642,10 @@ public class JPanelAsignacionV2 extends JPanel {
         txtHojaEnvioAsignacion.setMinimumSize(new Dimension(180, 34));
         txtHojaEnvioAsignacion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         txtHojaEnvioAsignacion.setToolTipText("Número de hoja de envío de la asignación.");
+        chkSoloGrupoFamiliar.setOpaque(false);
+        chkSoloGrupoFamiliar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        chkSoloGrupoFamiliar.setForeground(AppV2Theme.TEXT_PRIMARY);
+        chkSoloGrupoFamiliar.setToolTipText("Filtra solicitudes marcadas o alertadas como grupo familiar.");
         lblTramiteWebSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblNumeroDocumentoSeleccionado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -637,6 +658,8 @@ public class JPanelAsignacionV2 extends JPanel {
         btnGenerarNumeroExpediente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnGenerarNumeroExpediente.setEnabled(false);
         btnGenerarNumeroExpediente.setToolTipText("Disponible solo para Reconsideración/Apelación registrada sin número.");
+        btnVerCargaLaboral.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnVerCargaLaboral.setToolTipText("Muestra carga laboral del equipo seleccionado.");
     }
 
     private void configurarTabla() {
@@ -655,20 +678,22 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 46, 54, 84, 185, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
+        AppV2TableColumnSizer.applyWidths(table, 46, 54, 84, 185, 155, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
         configurarColumna(table.getColumnModel().getColumn(COL_EXPANDIR), 46, 42, 48);
         configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 54, 54, 58);
         configurarColumna(table.getColumnModel().getColumn(COL_DIAS), 84, 78, 92);
         configurarColumna(table.getColumnModel().getColumn(3), 185, 165, 260);
-        configurarColumna(table.getColumnModel().getColumn(4), 135, 128, 170);
-        configurarColumna(table.getColumnModel().getColumn(5), 230, 210, 320);
-        configurarColumna(table.getColumnModel().getColumn(6), 135, 128, 190);
-        configurarColumna(table.getColumnModel().getColumn(7), 130, 120, 180);
-        configurarColumna(table.getColumnModel().getColumn(8), 260, 230, 380);
-        configurarColumna(table.getColumnModel().getColumn(9), 240, 210, 360);
-        configurarColumna(table.getColumnModel().getColumn(10), 220, 190, 320);
+        configurarColumna(table.getColumnModel().getColumn(4), 155, 140, 220);
+        configurarColumna(table.getColumnModel().getColumn(5), 135, 128, 170);
+        configurarColumna(table.getColumnModel().getColumn(6), 230, 210, 320);
+        configurarColumna(table.getColumnModel().getColumn(7), 135, 128, 190);
+        configurarColumna(table.getColumnModel().getColumn(8), 130, 120, 180);
+        configurarColumna(table.getColumnModel().getColumn(9), 260, 230, 380);
+        configurarColumna(table.getColumnModel().getColumn(10), 240, 210, 360);
+        configurarColumna(table.getColumnModel().getColumn(11), 220, 190, 320);
         configurarColumna(table.getColumnModel().getColumn(COL_ESTADO), 155, 145, 220);
         configurarColumna(table.getColumnModel().getColumn(COL_RELACIONADOS), 170, 150, 240);
+        configurarColumna(table.getColumnModel().getColumn(COL_ID), 0, 0, 0);
         table.getColumnModel().getColumn(COL_EXPANDIR).setCellRenderer(new ExpandirRenderer());
         table.getColumnModel().getColumn(COL_SELECCION).setHeaderRenderer(new SelectAllHeaderRenderer());
         table.getColumnModel().getColumn(COL_SELECCION).setCellRenderer(new SeleccionRenderer());
@@ -742,11 +767,13 @@ public class JPanelAsignacionV2 extends JPanel {
                 .setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
         cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_FECHA_RESPUESTA)
                 .setCellEditor(new FechaCartaCellEditor());
+        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_FECHA_PUBLICACION)
+                .setCellEditor(new FechaCartaCellEditor());
         cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_ACCION)
                 .setCellRenderer(new GuardarCartaRenderer());
         cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_ACCION)
                 .setCellEditor(new GuardarCartaEditor());
-        int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 82};
+        int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 150, 125, 82};
         for (int i = 0; i < widths.length; i++) {
             configurarColumna(cartasRespuestaTable.getColumnModel().getColumn(i), widths[i], Math.min(widths[i], 90), Math.max(widths[i] + 70, widths[i]));
         }
@@ -784,6 +811,7 @@ public class JPanelAsignacionV2 extends JPanel {
         btnGuardarDatosRegistro.addActionListener(e -> guardarDatosRegistralesAsignacion());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
+        btnVerCargaLaboral.addActionListener(e -> mostrarCargaLaboralAbogados());
         cmbProcedimientoRegistro.addActionListener(e -> validarSeleccionProcedimientoRegistro());
         cmbEquipo.addActionListener(e -> {
             if (!cargandoCombos) {
@@ -1060,11 +1088,12 @@ public class JPanelAsignacionV2 extends JPanel {
         setTrabajando(true, "Consultando expedientes según filtros...");
         String texto = txtBusqueda.getText();
         String estado = codigoSeleccionado(cmbEstado);
+        boolean soloGrupoFamiliar = chkSoloGrupoFamiliar.isSelected();
         int limite = ((Number) spnLimite.getValue()).intValue();
         SwingWorker<List<AsignacionExpedienteDTO>, Void> worker = new SwingWorker<List<AsignacionExpedienteDTO>, Void>() {
             @Override
             protected List<AsignacionExpedienteDTO> doInBackground() throws Exception {
-                return asignacionService.buscarExpedientes(texto, estado, desde, hasta, limite);
+                return asignacionService.buscarExpedientes(texto, estado, desde, hasta, limite, soloGrupoFamiliar);
             }
 
             @Override
@@ -1092,17 +1121,34 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteExpansionActiva = null;
         tableModel.setRowCount(0);
         table.clearSelection();
-        int alertas = 0;
+        int pendientes = 0;
+        int sinNumero = 0;
+        int grupoFamiliar = 0;
+        int porVencer = 0;
+        int vencidos = 0;
         for (AsignacionExpedienteDTO item : expedientes) {
-            if (item.getPosiblesRelacionados() > 0 || item.getAsociadosConfirmados() > 0) {
-                alertas++;
-            } else if (!"Normal".equalsIgnoreCase(item.getAlertaIngreso())) {
-                alertas++;
+            if (item.isAsignable()) {
+                pendientes++;
+            }
+            if (!item.tieneNumeroExpediente()) {
+                sinNumero++;
+            }
+            if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+                grupoFamiliar++;
+            }
+            Long dias = item.getDiasRestantes();
+            if (dias != null && dias < 0) {
+                vencidos++;
+            } else if (dias != null && dias <= 5) {
+                porVencer++;
             }
             agregarFilaPrincipal(item);
         }
-        cardPendientes.setValue(String.valueOf(items.size()));
-        cardRelacionados.setValue(String.valueOf(alertas));
+        cardPendientes.setValue(String.valueOf(pendientes));
+        cardSinNumero.setValue(String.valueOf(sinNumero));
+        cardGrupoFamiliar.setValue(String.valueOf(grupoFamiliar));
+        cardPorVencer.setValue(String.valueOf(porVencer));
+        cardVencidos.setValue(String.valueOf(vencidos));
         lblEstado.setText(items.isEmpty()
                 ? "No se encontraron expedientes con los filtros ingresados."
                 : items.size() + " expediente(s) encontrado(s).");
@@ -1118,6 +1164,7 @@ public class JPanelAsignacionV2 extends JPanel {
             Boolean.FALSE,
             item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
             item.getNumeroExpediente(),
+            item.getNumeroExpedienteSgd(),
             formatDate(item.getFechaRecepcion()),
             item.getProcedimiento(),
             item.getTipoActa(),
@@ -1139,6 +1186,7 @@ public class JPanelAsignacionV2 extends JPanel {
             null,
             "",
             principal == null ? "" : principal.getNumeroExpediente(),
+            "",
             formatDate(asociado.getFechaRecepcion()),
             procedimientoAsociado(asociado),
             valorUi(asociado.getTipoActa()),
@@ -1271,6 +1319,7 @@ public class JPanelAsignacionV2 extends JPanel {
         txtBusqueda.setText("");
         restaurarFechasBusqueda();
         cmbEstado.setSelectedIndex(0);
+        chkSoloGrupoFamiliar.setSelected(false);
         spnLimite.setValue(200);
         expedientes.clear();
         filasTabla.clear();
@@ -1283,7 +1332,10 @@ public class JPanelAsignacionV2 extends JPanel {
         tablePanel.setEmpty(true);
         txtComentario.setText("");
         cardPendientes.setValue("0");
-        cardRelacionados.setValue("0");
+        cardSinNumero.setValue("0");
+        cardGrupoFamiliar.setValue("0");
+        cardPorVencer.setValue("0");
+        cardVencidos.setValue("0");
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes.");
         actualizarPanelSeleccion();
     }
@@ -1956,6 +2008,78 @@ public class JPanelAsignacionV2 extends JPanel {
         lblSupervisor.setText(abogado == null || abogado.getSupervisorNombre().isEmpty() ? "-" : abogado.getSupervisorNombre());
     }
 
+    private void mostrarCargaLaboralAbogados() {
+        EquipoAsignacionDTO equipo = obtenerEquipoSeleccionado();
+        if (equipo == null) {
+            mostrarInfo("Seleccione un equipo para consultar la carga laboral.");
+            return;
+        }
+        setTrabajando(true, "Consultando carga laboral del equipo...");
+        SwingWorker<List<CargaLaboralAbogadoDTO>, Void> worker = new SwingWorker<List<CargaLaboralAbogadoDTO>, Void>() {
+            @Override
+            protected List<CargaLaboralAbogadoDTO> doInBackground() throws Exception {
+                return usuarioService.listarCargaLaboralAbogados(equipo.getIdEquipo());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    mostrarDialogoCargaLaboral(equipo, get());
+                } catch (Exception ex) {
+                    mostrarError("No se pudo consultar la carga laboral.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void mostrarDialogoCargaLaboral(EquipoAsignacionDTO equipo, List<CargaLaboralAbogadoDTO> cargas) {
+        DefaultTableModel model = new DefaultTableModel(
+                new Object[]{"Abogado", "Equipo", "Activos", "Por vencer", "Vencidos", "En análisis"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        if (cargas != null) {
+            for (CargaLaboralAbogadoDTO carga : cargas) {
+                model.addRow(new Object[]{
+                    valorUi(carga.getAbogado()),
+                    valorUi(carga.getEquipo()),
+                    carga.getExpedientesActivos(),
+                    carga.getPorVencer(),
+                    carga.getVencidos(),
+                    carga.getEnAnalisis()
+                });
+            }
+        }
+        JTable cargaTable = new AppV2Table(model);
+        cargaTable.setRowHeight(30);
+        cargaTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        cargaTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        cargaTable.setDefaultRenderer(Object.class, new CargaLaboralRenderer());
+        AppV2TableColumnSizer.applyWidths(cargaTable, 230, 170, 80, 90, 80, 90);
+        JScrollPane scroll = new JScrollPane(cargaTable);
+        scroll.setPreferredSize(new Dimension(760, 280));
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(AppV2Theme.SURFACE);
+        JLabel titulo = new JLabel("Carga laboral - " + equipo.getNombre());
+        titulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
+        JLabel ayuda = new JLabel("Indicadores informativos para apoyar la asignación; no bloquean la decisión.");
+        ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
+        JPanel header = new JPanel(new BorderLayout(4, 4));
+        header.setOpaque(false);
+        header.add(titulo, BorderLayout.NORTH);
+        header.add(ayuda, BorderLayout.SOUTH);
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(scroll, BorderLayout.CENTER);
+        JOptionPane.showMessageDialog(this, panel, "Carga laboral", JOptionPane.PLAIN_MESSAGE);
+    }
+
     private void actualizarPanelSeleccion() {
         guardarHojasEnvioAsignacionMultiple();
         int marcados = contarSeleccionados();
@@ -1968,7 +2092,6 @@ public class JPanelAsignacionV2 extends JPanel {
                 : seleccionados + " expediente(s) seleccionados";
         lblSeleccionados.setText(seleccionadosText);
         lblSeleccionadosPanel.setText(seleccionados + " expediente(s) seleccionados");
-        cardSeleccionados.setValue(String.valueOf(seleccionados));
         actualizarEstadoHeaderSeleccion();
         if (seleccionados == 0) {
             panelAsignacionCerradoPorUsuario = false;
@@ -2310,6 +2433,8 @@ public class JPanelAsignacionV2 extends JPanel {
                     confirmacionRespuestaUi(documento.getConfirmacionRespuesta(), documento.isRequiereRespuesta()),
                     formatDate(documento.getFechaRespuesta()),
                     valorUi(documento.getNumeroHojaEnvioRespuesta()),
+                    documento.isRequierePublicacion(),
+                    formatDate(documento.getFechaPublicacion()),
                     "Guardar"
                 });
             }
@@ -2352,7 +2477,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 Boolean.TRUE.equals(cartasRespuestaModel.getValueAt(row, CARTA_COL_REQUIERE_RESPUESTA)),
                 stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_CONFIRMACION_RESPUESTA)),
                 parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_RESPUESTA))),
-                normalizarValorEditable(cartasRespuestaModel.getValueAt(row, CARTA_COL_HOJA_ENVIO_RESPUESTA)));
+                normalizarValorEditable(cartasRespuestaModel.getValueAt(row, CARTA_COL_HOJA_ENVIO_RESPUESTA)),
+                Boolean.TRUE.equals(cartasRespuestaModel.getValueAt(row, CARTA_COL_REQUIERE_PUBLICACION)),
+                parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_PUBLICACION))));
         final Long idExpediente = idExpedienteCartasRespuesta;
         setTrabajando(true, "Guardando carta de respuesta...");
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
@@ -3006,6 +3133,7 @@ public class JPanelAsignacionV2 extends JPanel {
         btnAsignarSeleccionado.setEnabled(!trabajando && contarSeleccionOperativa() == 1 && marcados <= 1 && asignacionFocoConNumero());
         btnAsignarSeleccionados.setEnabled(!trabajando && marcados > 0);
         btnGenerarNumeroExpediente.setEnabled(!trabajando && puedeGenerarNumeroExpediente());
+        btnVerCargaLaboral.setEnabled(!trabajando);
         if (trabajando) {
             btnGuardarDatosRegistro.setEnabled(false);
         } else {
@@ -3093,6 +3221,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 "",
                 "Días",
                 "Nro. Expediente",
+                "N° expediente SGD",
                 "Fecha Solicitud",
                 "Proc. Registral",
                 "Tipo Acta",
@@ -3141,6 +3270,7 @@ public class JPanelAsignacionV2 extends JPanel {
             boolean columnaRespuesta = column == CARTA_COL_CONFIRMACION_RESPUESTA
                     || column == CARTA_COL_FECHA_RESPUESTA
                     || column == CARTA_COL_HOJA_ENVIO_RESPUESTA;
+            boolean columnaPublicacion = column == CARTA_COL_FECHA_PUBLICACION;
             setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
             setToolTipText(getText());
             setHorizontalAlignment(column == CARTA_COL_FECHA
@@ -3148,6 +3278,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     || column == CARTA_COL_FECHA_ACUSE
                     || column == CARTA_COL_CONFIRMACION_RESPUESTA
                     || column == CARTA_COL_FECHA_RESPUESTA
+                    || column == CARTA_COL_FECHA_PUBLICACION
                             ? SwingConstants.CENTER
                             : SwingConstants.LEFT);
             if (isSelected) {
@@ -3156,7 +3287,39 @@ public class JPanelAsignacionV2 extends JPanel {
             } else {
                 Color base = row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
                 setBackground(columnaRespuesta && !respuestaHabilitada ? new Color(244, 247, 250) : base);
-                setForeground(columnaRespuesta && !respuestaHabilitada ? AppV2Theme.MUTED : AppV2Theme.TEXT_PRIMARY);
+                setForeground(columnaRespuesta && !respuestaHabilitada && !columnaPublicacion
+                        ? AppV2Theme.MUTED
+                        : AppV2Theme.TEXT_PRIMARY);
+            }
+            return component;
+        }
+    }
+
+    private class CargaLaboralRenderer extends DefaultTableCellRenderer {
+
+        private CargaLaboralRenderer() {
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
+            setHorizontalAlignment(column >= 2 ? SwingConstants.CENTER : SwingConstants.LEFT);
+            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            if (!isSelected && column == 4 && value instanceof Number && ((Number) value).intValue() > 0) {
+                setForeground(AppV2Theme.ERROR);
+                setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            } else {
+                setForeground(AppV2Theme.TEXT_PRIMARY);
+                setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
             }
             return component;
         }
@@ -3180,9 +3343,15 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             setSelected(Boolean.TRUE.equals(value));
             setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
-            setToolTipText(Boolean.TRUE.equals(value)
-                    ? "El documento requiere respuesta según Análisis."
-                    : "El documento no requiere respuesta.");
+            if (column == CARTA_COL_REQUIERE_PUBLICACION) {
+                setToolTipText(Boolean.TRUE.equals(value)
+                        ? "El documento requiere preparación de publicación."
+                        : "El documento no requiere publicación.");
+            } else {
+                setToolTipText(Boolean.TRUE.equals(value)
+                        ? "El documento requiere respuesta según Análisis."
+                        : "El documento no requiere respuesta.");
+            }
             return this;
         }
     }
@@ -3233,7 +3402,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 boolean hasFocus,
                 int row,
                 int column) {
-            setToolTipText("Guardar datos de notificación y respuesta.");
+            setToolTipText("Guardar datos de notificación, respuesta y publicación preparada.");
             return this;
         }
     }
