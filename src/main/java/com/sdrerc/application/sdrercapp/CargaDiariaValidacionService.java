@@ -89,7 +89,7 @@ public class CargaDiariaValidacionService {
                 error = true;
             }
             if (item.getFechaRecepcion() == null) {
-                item.agregarMensaje("Fecha recepción inválida u obligatoria.");
+                item.agregarMensaje("Fecha de solicitud inválida u obligatoria.");
                 error = true;
             }
             if (!hasText(item.getCanalRecepcion())) {

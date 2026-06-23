@@ -21,28 +21,9 @@ public class PlazoConfiguracionDAO {
     private static final int MAX_LIMIT = 1000;
 
     public PlazoConfiguracionDTO obtenerPlazoSolicitud(Connection conn) throws SQLException {
-        try {
-            String sql = "SELECT * FROM ("
-                    + baseSelect()
-                    + " WHERE pc.activo = 1 "
-                    + " AND UPPER(NVL(pc.codigo, pc.ambito)) = ? "
-                    + " AND (pc.fecha_vigencia_desde IS NULL OR TRUNC(pc.fecha_vigencia_desde) <= TRUNC(SYSDATE)) "
-                    + " AND (pc.fecha_vigencia_hasta IS NULL OR TRUNC(pc.fecha_vigencia_hasta) >= TRUNC(SYSDATE)) "
-                    + " ORDER BY CASE WHEN pc.fecha_vigencia_desde IS NULL THEN 1 ELSE 0 END, "
-                    + " pc.fecha_vigencia_desde DESC NULLS LAST, pc.id_plazo_configuracion DESC"
-                    + ") WHERE ROWNUM = 1";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, PlazoConfiguracionDTO.CODIGO_SOLICITUD_SDRERC);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        return map(rs);
-                    }
-                }
-            }
-        } catch (SQLException ex) {
-            if (!esColumnaNoExiste(ex)) {
-                throw ex;
-            }
+        PlazoConfiguracionDTO plazo = obtenerPlazoPorCodigo(conn, PlazoConfiguracionDTO.CODIGO_SOLICITUD_SDRERC);
+        if (plazo != null) {
+            return plazo;
         }
 
         Integer dias = obtenerDiasPlazoSolicitudLegacy(conn);
@@ -54,6 +35,34 @@ public class PlazoConfiguracionDAO {
         fallback.setUnidadPlazo(PlazoConfiguracionDTO.UNIDAD_HABILES);
         fallback.setActivo(true);
         return fallback;
+    }
+
+    public PlazoConfiguracionDTO obtenerPlazoPorCodigo(Connection conn, String codigo) throws SQLException {
+        if (!hasText(codigo)) {
+            return null;
+        }
+        try {
+            String sql = "SELECT * FROM ("
+                    + baseSelect()
+                    + " WHERE pc.activo = 1 "
+                    + " AND UPPER(NVL(pc.codigo, pc.ambito)) = ? "
+                    + " AND (pc.fecha_vigencia_desde IS NULL OR TRUNC(pc.fecha_vigencia_desde) <= TRUNC(SYSDATE)) "
+                    + " AND (pc.fecha_vigencia_hasta IS NULL OR TRUNC(pc.fecha_vigencia_hasta) >= TRUNC(SYSDATE)) "
+                    + " ORDER BY CASE WHEN pc.fecha_vigencia_desde IS NULL THEN 1 ELSE 0 END, "
+                    + " pc.fecha_vigencia_desde DESC NULLS LAST, pc.id_plazo_configuracion DESC"
+                    + ") WHERE ROWNUM = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, codigo.trim().toUpperCase(Locale.ROOT));
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? map(rs) : null;
+                }
+            }
+        } catch (SQLException ex) {
+            if (esColumnaNoExiste(ex)) {
+                return null;
+            }
+            throw ex;
+        }
     }
 
     public Integer obtenerDiasPlazoSolicitud(Connection conn) throws SQLException {

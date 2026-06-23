@@ -92,8 +92,8 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - La deteccion automatica de posible grupo familiar por coincidencia conservadora de apellidos es solo alerta operativa y no confirma grupo familiar por si sola.
 - `Asignacion` puede mostrar grupo familiar como sugerencia para asignacion coordinada, pero no debe forzar abogado ni equipo automaticamente por esa marca.
 - El plazo de atencion debe resolverse mediante `PLAZO_CONFIGURACION` o administracion equivalente; un fallback fijo en Java es solo contingencia tecnica y no debe ser la fuente funcional oficial.
-- La configuracion oficial inicial de solicitudes SDRERC es `SOLICITUD_SDRERC = 30 dias habiles`, activa en `PLAZO_CONFIGURACION`.
-- El plazo de 30 dias habiles debe centralizarse en configuracion o helper unico; no repetir el numero 30 ni la logica de calendario laboral en pantallas.
+- La configuracion oficial inicial de plazos SDRERC debe contemplar `SOLICITUD_RECTIFICACION_ADMINISTRATIVA = 30 dias habiles`, `SOLICITUD_RECONSIDERACION = 15 dias habiles` y `SOLICITUD_APELACION = 30 dias habiles`; `SOLICITUD_SDRERC = 30 dias habiles` queda como plazo general de contingencia.
+- Los plazos oficiales deben centralizarse en configuracion o helper unico; no repetir dias ni logica de calendario laboral en pantallas.
 - Los plazos funcionales se mantienen desde Administracion / Plazos; no hardcodear plazos operativos en formularios Swing.
 - La exportacion de reportes Excel por etapa es un requerimiento funcional. Debe implementarse mediante Service/DAO, con nombres amigables y sin SQL en formularios, una vez validada la matriz de columnas de cada reporte.
 - La actualizacion masiva por Excel para Ejecucion y Notificacion es un requerimiento pendiente de definicion de matriz. No implementarla ni efectuar escrituras parciales hasta contar con estructura, reglas de validacion y autorizacion explicita.

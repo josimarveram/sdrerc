@@ -8,6 +8,9 @@ public class PlazoConfiguracionDTO {
     public static final String UNIDAD_HABILES = "HABILES";
     public static final String UNIDAD_CALENDARIO = "CALENDARIO";
     public static final String CODIGO_SOLICITUD_SDRERC = "SOLICITUD_SDRERC";
+    public static final String CODIGO_SOLICITUD_RECTIFICACION_ADMINISTRATIVA = "SOLICITUD_RECTIFICACION_ADMINISTRATIVA";
+    public static final String CODIGO_SOLICITUD_RECONSIDERACION = "SOLICITUD_RECONSIDERACION";
+    public static final String CODIGO_SOLICITUD_APELACION = "SOLICITUD_APELACION";
 
     private Long idPlazoConfiguracion;
     private String codigo;

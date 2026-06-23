@@ -431,7 +431,7 @@ public class ExpedienteRegistroDAO {
             ps.setString(1, item.getNumeroTramite());
             ps.setLong(2, idEtapa);
             ps.setLong(3, idEstado);
-            ps.setDate(4, calcularFechaVencimiento(conn, item.getFechaRecepcion()));
+            ps.setDate(4, calcularFechaVencimiento(conn, item.getFechaRecepcion(), item.getTipoProcedimiento()));
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente");
         }
@@ -589,18 +589,24 @@ public class ExpedienteRegistroDAO {
             ps.setString(1, solicitud.getNumeroTramite());
             ps.setLong(2, idEtapa);
             ps.setLong(3, idEstado);
-            ps.setDate(4, calcularFechaVencimiento(conn, solicitud.getFechaRecepcion()));
+            ps.setDate(4, calcularFechaVencimiento(conn, solicitud.getFechaRecepcion(), solicitud.getTipoProcedimientoNombre()));
             ps.setString(5, hasText(solicitud.getPrioridad()) ? solicitud.getPrioridad() : "NORMAL");
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente");
         }
     }
 
-    private Date calcularFechaVencimiento(Connection conn, java.time.LocalDate fechaSolicitud) throws SQLException {
+    private Date calcularFechaVencimiento(
+            Connection conn,
+            java.time.LocalDate fechaSolicitud,
+            String procedimientoRegistral) throws SQLException {
         if (fechaSolicitud == null) {
             return null;
         }
-        return Date.valueOf(calendarioLaboralService.calcularFechaVencimientoSolicitud(conn, fechaSolicitud));
+        return Date.valueOf(calendarioLaboralService.calcularFechaVencimientoSolicitud(
+                conn,
+                fechaSolicitud,
+                procedimientoRegistral));
     }
 
     private void insertarSolicitudManual(

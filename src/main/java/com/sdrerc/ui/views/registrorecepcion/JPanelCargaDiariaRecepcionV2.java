@@ -47,7 +47,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private static final int COL_ESTADO_VALIDACION = 17;
     private static final int COL_POSIBLE_DUPLICADO = 18;
     private static final int COL_NUMERO_EXPEDIENTE_GENERADO = 19;
-    private static final int COL_OBSERVACION = 20;
+    private static final int COL_OBSERVACION_ARCHIVO = 20;
+    private static final int COL_OBSERVACIONES_VALIDACION = 21;
 
     private final CargaDiariaArchivoParserService parserService = new CargaDiariaArchivoParserService();
     private final CargaDiariaPlantillaService plantillaService = new CargaDiariaPlantillaService();
@@ -66,8 +67,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private final ResumenCard cardTotal = new ResumenCard("Total leídos", "0", "Pendiente de archivo", AppV2Theme.INFO);
     private final ResumenCard cardValidos = new ResumenCard("Válidos", "0", "Pendiente de validación", AppV2Theme.SUCCESS);
-    private final ResumenCard cardErrores = new ResumenCard("Con observaciones", "0", "Registrables", AppV2Theme.WARNING);
+    private final ResumenCard cardErrores = new ResumenCard("Con alertas", "0", "No bloqueantes", AppV2Theme.WARNING);
     private final ResumenCard cardDuplicados = new ResumenCard("Posibles duplicados", "0", "Acta + titular", AppV2Theme.WARNING);
+    private final ResumenCard cardGrupoFamiliar = new ResumenCard("Grupo familiar", "0", "Marca o alerta", AppV2Theme.TEAL);
+    private final ResumenCard cardPendientesNumero = new ResumenCard("Pendientes de número", "0", "Asignación decide", AppV2Theme.WARNING);
     private final ResumenCard cardListos = new ResumenCard("Listos para registrar", "0", "Confirmación requerida", AppV2Theme.TEAL);
     private final ResumenCard cardRegistrados = new ResumenCard("Registrados", "0", "Pendiente", AppV2Theme.INDIGO);
 
@@ -90,10 +93,11 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 "TIPO DOCUMENTO IDENTIDAD TITULAR",
                 "N° DOCUMENTO IDENTIDAD TITULAR",
                 "GRUPO FAMILIAR",
-                "ESTADO VALIDACION",
-                "POSIBLE DUPLICADO",
-                "NÚMERO EXPEDIENTE GENERADO",
-                "OBSERVACIÓN"
+                "RESULTADO DEL SISTEMA",
+                "DUPLICIDAD",
+                "NÚMERO EXPEDIENTE",
+                "OBSERVACIÓN DEL ARCHIVO",
+                "OBSERVACIONES DE VALIDACIÓN"
             },
             0) {
         @Override
@@ -155,7 +159,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         toolbar.add(acciones, BorderLayout.WEST);
         toolbar.add(lblArchivo, BorderLayout.EAST);
 
-        JLabel ayuda = new JLabel("<html>Descargue la plantilla oficial, complete la hoja CARGA_DIARIA y luego use Seleccionar archivo. En la previsualización puede editar las celdas de datos antes de validar e importar.</html>");
+        JLabel ayuda = new JLabel("<html>Descargue la plantilla oficial, complete la hoja CARGA_DIARIA y luego use Seleccionar archivo. En la previsualización puede editar solo datos importados; las observaciones de validación son calculadas por el sistema.</html>");
         ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
 
@@ -167,12 +171,14 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         mensajes.add(ayuda, BorderLayout.NORTH);
         mensajes.add(lblEstado, BorderLayout.SOUTH);
 
-        JPanel metricas = new JPanel(new GridLayout(1, 6, 10, 0));
+        JPanel metricas = new JPanel(new GridLayout(2, 4, 10, 8));
         metricas.setOpaque(false);
         metricas.add(cardTotal);
         metricas.add(cardValidos);
         metricas.add(cardErrores);
         metricas.add(cardDuplicados);
+        metricas.add(cardGrupoFamiliar);
+        metricas.add(cardPendientesNumero);
         metricas.add(cardListos);
         metricas.add(cardRegistrados);
 
@@ -216,8 +222,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 320,
                 190,
                 190,
+                170,
                 280,
-                380);
+                320,
+                420);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
@@ -227,11 +235,14 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private JPanel crearPanelNotas() {
-        JPanel panel = new JPanel(new GridLayout(1, 2, 12, 0));
+        JPanel panel = new JPanel(new GridLayout(1, 3, 12, 0));
         panel.setOpaque(false);
         panel.add(crearNota(
                 "Duplicados",
                 "Los duplicados se detectan únicamente por la combinación acta y titular. Se registran y quedan marcados para identificarlos en Asignación."));
+        panel.add(crearNota(
+                "Observaciones",
+                "La observación del archivo es editable. Las observaciones de validación y alertas del sistema se recalculan al presionar Validar."));
         panel.add(crearNota(
                 "Confirmación",
                 "La confirmación registra expediente, solicitud, acta, personas, documento inicial e historial en una transacción sobre SDRERC_APP."));
@@ -552,7 +563,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             case COL_GRUPO_FAMILIAR:
                 aplicarGrupoFamiliarEditado(item, value);
                 break;
-            case COL_OBSERVACION:
+            case COL_OBSERVACION_ARCHIVO:
                 item.setObservacionInicial(value);
                 break;
             default:
@@ -617,7 +628,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             safe(item.getEstadoValidacion()),
             item.isPosibleDuplicado() ? "Sí" : "No",
             numeroExpedientePreview(item),
-            observacionTabla(item)
+            observacionArchivoTabla(item),
+            observacionesValidacionTabla(item)
         };
     }
 
@@ -627,21 +639,16 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 && registros != null
                 && row >= 0
                 && row < registros.size()
-                && !registros.get(row).isRegistrado()
-                && !esObservacionConMensajeGenerado(row, column);
+                && !registros.get(row).isRegistrado();
     }
 
     private static boolean esColumnaEditable(int column) {
-        return (column >= 0 && column < COL_ESTADO_VALIDACION) || column == COL_OBSERVACION;
+        return (column >= 0 && column < COL_ESTADO_VALIDACION) || column == COL_OBSERVACION_ARCHIVO;
     }
 
     private String valorTabla(int modelRow, int column) {
         Object value = tableModel.getValueAt(modelRow, column);
         return value == null ? null : value.toString().trim();
-    }
-
-    private boolean esObservacionConMensajeGenerado(int row, int column) {
-        return column == COL_OBSERVACION && hasText(registros.get(row).getMensajeValidacion());
     }
 
     private void detenerEdicionTabla() {
@@ -670,6 +677,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             text = item.getMotivoDuplicado();
         } else if (modelColumn == COL_GRUPO_FAMILIAR) {
             text = item.getObservacionGrupoFamiliar();
+        } else if (modelColumn == COL_OBSERVACION_ARCHIVO) {
+            text = item.getObservacionInicial();
+        } else if (modelColumn == COL_OBSERVACIONES_VALIDACION) {
+            text = observacionesValidacionTabla(item);
         } else if (modelColumn == COL_NUMERO_EXPEDIENTE_GENERADO && item.isRegistrado()) {
             text = "Expediente registrado correctamente.";
         }
@@ -680,8 +691,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
         cardTotal.actualizar(String.valueOf(resumen.getTotalLeidos()), resumen.getTotalLeidos() == 0 ? "Pendiente de archivo" : "Archivo leído");
         cardValidos.actualizar(String.valueOf(resumen.getValidos()), "Sin errores críticos");
-        cardErrores.actualizar(String.valueOf(resumen.getConErrores()), "Registrables");
+        cardErrores.actualizar(String.valueOf(resumen.getConErrores()), "No bloqueantes");
         cardDuplicados.actualizar(String.valueOf(resumen.getPosiblesDuplicados()), "Acta + titular");
+        cardGrupoFamiliar.actualizar(String.valueOf(resumen.getConGrupoFamiliar()), "Marca o alerta");
+        cardPendientesNumero.actualizar(String.valueOf(resumen.getPendientesNumero()), "Asignación decide");
         cardListos.actualizar(String.valueOf(resumen.getListosParaRegistrar()), "Confirmación requerida");
         cardRegistrados.actualizar(String.valueOf(resumen.getRegistrados()), "En SDRERC_APP");
         actualizarBotones();
@@ -738,9 +751,12 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         return value == null ? "" : value;
     }
 
-    private static String observacionTabla(CargaDiariaPreviewDTO item) {
-        String observacion = safe(item.getObservacionInicial());
-        observacion = appendObservacion(observacion, item.getObservacionGrupoFamiliar());
+    private static String observacionArchivoTabla(CargaDiariaPreviewDTO item) {
+        return safe(item.getObservacionInicial());
+    }
+
+    private static String observacionesValidacionTabla(CargaDiariaPreviewDTO item) {
+        String observacion = appendObservacion("", item.getObservacionGrupoFamiliar());
         observacion = appendObservacion(observacion, item.getMensajeValidacion());
         return observacion;
     }

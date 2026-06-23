@@ -208,7 +208,7 @@ public class ExpedienteEdicionManualDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, solicitud.getNumeroTramite());
             ps.setString(2, hasText(solicitud.getPrioridad()) ? solicitud.getPrioridad() : "NORMAL");
-            ps.setDate(3, calcularFechaVencimiento(conn, solicitud.getFechaRecepcion()));
+            ps.setDate(3, calcularFechaVencimiento(conn, solicitud.getFechaRecepcion(), solicitud.getTipoProcedimientoNombre()));
             ps.setLong(4, dto.getIdExpediente());
             if (ps.executeUpdate() != 1) {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");
@@ -510,11 +510,17 @@ public class ExpedienteEdicionManualDAO {
         }
     }
 
-    private Date calcularFechaVencimiento(Connection conn, LocalDate fechaSolicitud) throws SQLException {
+    private Date calcularFechaVencimiento(
+            Connection conn,
+            LocalDate fechaSolicitud,
+            String procedimientoRegistral) throws SQLException {
         if (fechaSolicitud == null) {
             return null;
         }
-        return Date.valueOf(calendarioLaboralService.calcularFechaVencimientoSolicitud(conn, fechaSolicitud));
+        return Date.valueOf(calendarioLaboralService.calcularFechaVencimientoSolicitud(
+                conn,
+                fechaSolicitud,
+                procedimientoRegistral));
     }
 
     private String observacionSolicitud(ExpedienteEdicionManualDTO dto) {

@@ -2,6 +2,7 @@ package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import com.sdrerc.domain.dto.sdrercapp.PlazoConfiguracionDTO;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.infrastructure.sdrercapp.dao.FeriadoNacionalDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.PlazoConfiguracionDAO;
 import java.sql.Connection;
@@ -30,19 +31,35 @@ public class CalendarioLaboralService {
     }
 
     public LocalDate calcularFechaVencimientoSolicitud(Connection conn, LocalDate fechaBase) throws SQLException {
-        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn);
+        return calcularFechaVencimientoSolicitud(conn, fechaBase, null);
+    }
+
+    public LocalDate calcularFechaVencimientoSolicitud(
+            Connection conn,
+            LocalDate fechaBase,
+            String procedimientoRegistral) throws SQLException {
+        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn, procedimientoRegistral);
         if (plazo == null) {
             return calcularFechaVencimientoHabil(conn, fechaBase, PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT);
         }
+        int diasPlazo = diasPlazoValido(
+                plazo,
+                ProcedimientoRegistralRules.resolverDiasHabilesFallback(procedimientoRegistral));
         if (PlazoConfiguracionDTO.UNIDAD_CALENDARIO.equals(plazo.getUnidadPlazo())) {
-            return calcularFechaVencimientoCalendario(fechaBase, plazo.getDiasPlazo().intValue());
+            return calcularFechaVencimientoCalendario(fechaBase, diasPlazo);
         }
-        return calcularFechaVencimientoHabil(conn, fechaBase, plazo.getDiasPlazo().intValue());
+        return calcularFechaVencimientoHabil(conn, fechaBase, diasPlazo);
     }
 
     public LocalDate calcularFechaVencimientoSolicitud(LocalDate fechaBase) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             return calcularFechaVencimientoSolicitud(conn, fechaBase);
+        }
+    }
+
+    public LocalDate calcularFechaVencimientoSolicitud(LocalDate fechaBase, String procedimientoRegistral) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return calcularFechaVencimientoSolicitud(conn, fechaBase, procedimientoRegistral);
         }
     }
 
@@ -129,9 +146,12 @@ public class CalendarioLaboralService {
 
     public int resolverDiasPlazoSolicitud(Connection conn) throws SQLException {
         PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn);
-        return plazo == null || plazo.getDiasPlazo() == null || plazo.getDiasPlazo().intValue() <= 0
-                ? PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT
-                : plazo.getDiasPlazo().intValue();
+        return diasPlazoValido(plazo, PLAZO_SOLICITUD_DIAS_HABILES_DEFAULT);
+    }
+
+    public int resolverDiasPlazoSolicitud(Connection conn, String procedimientoRegistral) throws SQLException {
+        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn, procedimientoRegistral);
+        return diasPlazoValido(plazo, ProcedimientoRegistralRules.resolverDiasHabilesFallback(procedimientoRegistral));
     }
 
     public PlazoConfiguracionDTO resolverPlazoSolicitud(Connection conn) throws SQLException {
@@ -147,6 +167,39 @@ public class CalendarioLaboralService {
             }
             throw ex;
         }
+    }
+
+    public PlazoConfiguracionDTO resolverPlazoSolicitud(Connection conn, String procedimientoRegistral) throws SQLException {
+        String codigoPlazo = ProcedimientoRegistralRules.resolverCodigoPlazoSolicitud(procedimientoRegistral);
+        if (PlazoConfiguracionDTO.CODIGO_SOLICITUD_SDRERC.equals(codigoPlazo)) {
+            return resolverPlazoSolicitud(conn);
+        }
+        try {
+            PlazoConfiguracionDTO plazo = plazoConfiguracionDAO.obtenerPlazoPorCodigo(conn, codigoPlazo);
+            return plazo == null ? crearFallbackProcedimiento(codigoPlazo, procedimientoRegistral) : plazo;
+        } catch (SQLException ex) {
+            if (esObjetoNoExiste(ex) || esColumnaNoExiste(ex)) {
+                return crearFallbackProcedimiento(codigoPlazo, procedimientoRegistral);
+            }
+            throw ex;
+        }
+    }
+
+    private PlazoConfiguracionDTO crearFallbackProcedimiento(String codigoPlazo, String procedimientoRegistral) {
+        PlazoConfiguracionDTO fallback = new PlazoConfiguracionDTO();
+        fallback.setCodigo(codigoPlazo);
+        fallback.setAmbito(codigoPlazo);
+        fallback.setNombre("Plazo técnico de contingencia para " + codigoPlazo);
+        fallback.setDiasPlazo(Integer.valueOf(ProcedimientoRegistralRules.resolverDiasHabilesFallback(procedimientoRegistral)));
+        fallback.setUnidadPlazo(PlazoConfiguracionDTO.UNIDAD_HABILES);
+        fallback.setActivo(true);
+        return fallback;
+    }
+
+    private int diasPlazoValido(PlazoConfiguracionDTO plazo, int fallback) {
+        return plazo == null || plazo.getDiasPlazo() == null || plazo.getDiasPlazo().intValue() <= 0
+                ? fallback
+                : plazo.getDiasPlazo().intValue();
     }
 
     private int contarDiasHabiles(LocalDate inicio, LocalDate fin, Set<LocalDate> feriados) {
