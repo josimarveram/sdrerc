@@ -11,6 +11,7 @@ public class NotificacionExpedienteDTO {
 
     private final Long idExpediente;
     private final String numeroExpediente;
+    private final String numeroExpedienteSgd;
     private final String numeroTramiteDocumentario;
     private final String procedimiento;
     private final String tipoDocumento;
@@ -36,13 +37,17 @@ public class NotificacionExpedienteDTO {
     private final String numeroResolucion;
     private final LocalDate fechaResolucion;
     private final Long idNotificacion;
+    private final String tipoNotificacionCodigo;
     private final String tipoNotificacion;
+    private final String estadoNotificacionCodigo;
     private final String estadoNotificacion;
     private final Integer numeroIntento;
     private final LocalDateTime fechaEnvio;
     private final String resultadoNotificacion;
     private final boolean requierePublicacion;
+    private final LocalDate fechaPublicacion;
     private final Long idCargoAcuse;
+    private final String estadoCargoCodigo;
     private final String estadoCargo;
     private final LocalDateTime fechaCargo;
     private final String recibidoPor;
@@ -51,6 +56,7 @@ public class NotificacionExpedienteDTO {
     public NotificacionExpedienteDTO(
             Long idExpediente,
             String numeroExpediente,
+            String numeroExpedienteSgd,
             String numeroTramiteDocumentario,
             String procedimiento,
             String tipoDocumento,
@@ -76,19 +82,24 @@ public class NotificacionExpedienteDTO {
             String numeroResolucion,
             LocalDate fechaResolucion,
             Long idNotificacion,
+            String tipoNotificacionCodigo,
             String tipoNotificacion,
+            String estadoNotificacionCodigo,
             String estadoNotificacion,
             Integer numeroIntento,
             LocalDateTime fechaEnvio,
             String resultadoNotificacion,
             boolean requierePublicacion,
+            LocalDate fechaPublicacion,
             Long idCargoAcuse,
+            String estadoCargoCodigo,
             String estadoCargo,
             LocalDateTime fechaCargo,
             String recibidoPor,
             String accionesPermitidas) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
+        this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.procedimiento = safe(procedimiento);
         this.tipoDocumento = safe(tipoDocumento);
@@ -114,13 +125,17 @@ public class NotificacionExpedienteDTO {
         this.numeroResolucion = safe(numeroResolucion);
         this.fechaResolucion = fechaResolucion;
         this.idNotificacion = idNotificacion;
+        this.tipoNotificacionCodigo = safe(tipoNotificacionCodigo);
         this.tipoNotificacion = safe(tipoNotificacion);
+        this.estadoNotificacionCodigo = safe(estadoNotificacionCodigo);
         this.estadoNotificacion = safe(estadoNotificacion);
         this.numeroIntento = numeroIntento;
         this.fechaEnvio = fechaEnvio;
         this.resultadoNotificacion = safe(resultadoNotificacion);
         this.requierePublicacion = requierePublicacion;
+        this.fechaPublicacion = fechaPublicacion;
         this.idCargoAcuse = idCargoAcuse;
+        this.estadoCargoCodigo = safe(estadoCargoCodigo);
         this.estadoCargo = safe(estadoCargo);
         this.fechaCargo = fechaCargo;
         this.recibidoPor = safe(recibidoPor);
@@ -133,6 +148,10 @@ public class NotificacionExpedienteDTO {
 
     public String getNumeroExpediente() {
         return numeroExpediente;
+    }
+
+    public String getNumeroExpedienteSgd() {
+        return numeroExpedienteSgd;
     }
 
     public String getNumeroTramiteDocumentario() {
@@ -231,8 +250,16 @@ public class NotificacionExpedienteDTO {
         return idNotificacion;
     }
 
+    public String getTipoNotificacionCodigo() {
+        return tipoNotificacionCodigo;
+    }
+
     public String getTipoNotificacion() {
         return tipoNotificacion;
+    }
+
+    public String getEstadoNotificacionCodigo() {
+        return estadoNotificacionCodigo;
     }
 
     public String getEstadoNotificacion() {
@@ -255,8 +282,16 @@ public class NotificacionExpedienteDTO {
         return requierePublicacion;
     }
 
+    public LocalDate getFechaPublicacion() {
+        return fechaPublicacion;
+    }
+
     public Long getIdCargoAcuse() {
         return idCargoAcuse;
+    }
+
+    public String getEstadoCargoCodigo() {
+        return estadoCargoCodigo;
     }
 
     public String getEstadoCargo() {
@@ -305,6 +340,43 @@ public class NotificacionExpedienteDTO {
 
     public boolean isRequierePublicacionEstado() {
         return "NOTIFICACION".equalsIgnoreCase(etapaCodigo) && "REQUIERE_PUBLICACION".equalsIgnoreCase(estadoCodigo);
+    }
+
+    public boolean isFallida() {
+        return "FALLIDA".equalsIgnoreCase(estadoNotificacionCodigo)
+                || "FALLIDA".equalsIgnoreCase(estadoNotificacion)
+                || isRequierePublicacionEstado();
+    }
+
+    public boolean isAcuseRegistrado() {
+        return idCargoAcuse != null;
+    }
+
+    public int getSiguienteIntento() {
+        if (numeroIntento == null || numeroIntento < 1) {
+            return 1;
+        }
+        return Math.min(numeroIntento + 1, 4);
+    }
+
+    public boolean isIntentosAgotados() {
+        return numeroIntento != null && numeroIntento >= 3;
+    }
+
+    public String getDocumentoNotificarResumen() {
+        if (!tipoResolucion.trim().isEmpty() && !numeroResolucion.trim().isEmpty()) {
+            return tipoResolucion + " " + numeroResolucion;
+        }
+        if (!numeroResolucion.trim().isEmpty()) {
+            return numeroResolucion;
+        }
+        if (!tipoResolucion.trim().isEmpty()) {
+            return tipoResolucion;
+        }
+        if (!tipoDocumento.trim().isEmpty()) {
+            return tipoDocumento;
+        }
+        return "";
     }
 
     private static String safe(String value) {

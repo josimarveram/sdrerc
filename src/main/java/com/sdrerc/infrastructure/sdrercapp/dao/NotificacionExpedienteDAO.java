@@ -64,11 +64,19 @@ public class NotificacionExpedienteDAO {
         this.resolucionDocumentoDAO = resolucionDocumentoDAO;
     }
 
-    public List<NotificacionExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
+    public List<NotificacionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaDesde,
+            LocalDate fechaHasta,
+            String tipoNotificacionCodigo,
+            String resultadoNotificacionCodigo,
+            String requierePublicacionFiltro,
+            int limite) throws SQLException {
         List<Object> params = new ArrayList<Object>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
-        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
+        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
@@ -92,9 +100,12 @@ public class NotificacionExpedienteDAO {
         sql.append("(SELECT COUNT(*) FROM expediente_documento d WHERE d.id_expediente = e.id_expediente AND d.activo = 1) AS documentos, ");
         sql.append("(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, ");
         sql.append("res.id_expediente_resolucion, tr.nombre AS tipo_resolucion, res.numero_resolucion, res.fecha_resolucion, ");
-        sql.append("n.id_expediente_notificacion, tn.nombre AS tipo_notificacion, en.nombre AS estado_notificacion, ");
-        sql.append("n.numero_intento, n.fecha_envio, n.resultado AS resultado_notificacion, n.requiere_publicacion, ");
-        sql.append("ca.id_expediente_cargo_acuse, eca.nombre AS estado_cargo, ca.fecha_recepcion AS fecha_cargo, ca.recibido_por, ");
+        sql.append("n.id_expediente_notificacion, tn.codigo AS tipo_notificacion_codigo, tn.nombre AS tipo_notificacion, ");
+        sql.append("en.codigo AS estado_notificacion_codigo, en.nombre AS estado_notificacion, ");
+        sql.append("n.numero_intento, n.fecha_envio, n.resultado AS resultado_notificacion, ");
+        sql.append("CASE WHEN NVL(e.requiere_publicacion, 0) = 1 OR NVL(n.requiere_publicacion, 0) = 1 OR pub.id_expediente_publicacion IS NOT NULL THEN 1 ELSE 0 END AS requiere_publicacion, ");
+        sql.append("pub.fecha_publicacion, ");
+        sql.append("ca.id_expediente_cargo_acuse, eca.codigo AS estado_cargo_codigo, eca.nombre AS estado_cargo, ca.fecha_recepcion AS fecha_cargo, ca.recibido_por, ");
         sql.append("(SELECT LISTAGG(ap.codigo_accion, ',') WITHIN GROUP (ORDER BY ap.codigo_accion) ");
         sql.append("FROM vw_expediente_acciones_permitidas ap WHERE ap.id_expediente = e.id_expediente) AS acciones_permitidas ");
         sql.append("FROM expediente e ");
@@ -116,6 +127,9 @@ public class NotificacionExpedienteDAO {
         sql.append("LEFT JOIN expediente_notificacion n ON n.id_expediente_notificacion = n_pick.id_expediente_notificacion ");
         sql.append("LEFT JOIN tipo_notificacion tn ON tn.id_tipo_notificacion = n.id_tipo_notificacion ");
         sql.append("LEFT JOIN estado_notificacion en ON en.id_estado_notificacion = n.id_estado_notificacion ");
+        sql.append("LEFT JOIN (SELECT id_expediente, MAX(id_expediente_publicacion) KEEP (DENSE_RANK LAST ORDER BY creado_en, id_expediente_publicacion) AS id_expediente_publicacion ");
+        sql.append("FROM expediente_publicacion WHERE activo = 1 GROUP BY id_expediente) pub_pick ON pub_pick.id_expediente = e.id_expediente ");
+        sql.append("LEFT JOIN expediente_publicacion pub ON pub.id_expediente_publicacion = pub_pick.id_expediente_publicacion ");
         sql.append("LEFT JOIN (SELECT id_expediente, MAX(id_expediente_cargo_acuse) KEEP (DENSE_RANK LAST ORDER BY creado_en, id_expediente_cargo_acuse) AS id_expediente_cargo_acuse ");
         sql.append("FROM expediente_cargo_acuse WHERE activo = 1 GROUP BY id_expediente) ca_pick ON ca_pick.id_expediente = e.id_expediente ");
         sql.append("LEFT JOIN expediente_cargo_acuse ca ON ca.id_expediente_cargo_acuse = ca_pick.id_expediente_cargo_acuse ");
@@ -126,6 +140,32 @@ public class NotificacionExpedienteDAO {
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
             params.add(estadoCodigo.trim().toUpperCase(Locale.ROOT));
+        }
+
+        if (fechaDesde != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) >= ? ");
+            params.add(Date.valueOf(fechaDesde));
+        }
+
+        if (fechaHasta != null) {
+            sql.append("AND TRUNC(esol.fecha_recepcion) <= ? ");
+            params.add(Date.valueOf(fechaHasta));
+        }
+
+        if (hasText(tipoNotificacionCodigo) && !"TODOS".equalsIgnoreCase(tipoNotificacionCodigo)) {
+            sql.append("AND UPPER(NVL(tn.codigo, '')) = ? ");
+            params.add(tipoNotificacionCodigo.trim().toUpperCase(Locale.ROOT));
+        }
+
+        if (hasText(resultadoNotificacionCodigo) && !"TODOS".equalsIgnoreCase(resultadoNotificacionCodigo)) {
+            sql.append("AND UPPER(NVL(en.codigo, '')) = ? ");
+            params.add(resultadoNotificacionCodigo.trim().toUpperCase(Locale.ROOT));
+        }
+
+        if ("SI".equalsIgnoreCase(requierePublicacionFiltro)) {
+            sql.append("AND (NVL(e.requiere_publicacion, 0) = 1 OR NVL(n.requiere_publicacion, 0) = 1 OR pub.id_expediente_publicacion IS NOT NULL) ");
+        } else if ("NO".equalsIgnoreCase(requierePublicacionFiltro)) {
+            sql.append("AND NVL(e.requiere_publicacion, 0) = 0 AND NVL(n.requiere_publicacion, 0) = 0 AND pub.id_expediente_publicacion IS NULL ");
         }
 
         if (hasText(textoLibre)) {
@@ -407,6 +447,9 @@ public class NotificacionExpedienteDAO {
                     throw new SQLException("El expediente debe tener cargo pendiente para registrar notificación fallida.");
                 }
                 NotificacionActiva notificacion = requerirNotificacionActiva(conn, publicacion.getIdExpediente());
+                if (notificacion.numeroIntento < 3) {
+                    throw new SQLException("Antes de preparar publicación debe registrar los tres intentos de notificación.");
+                }
                 Transicion transicion = requerirTransicion(
                         conn,
                         ACCION_NOTIFICACION_FALLIDA,
@@ -516,6 +559,7 @@ public class NotificacionExpedienteDAO {
         Long idEstadoNotificacion = requerirId(catalogoLookupDAO.obtenerEstadoNotificacionId(conn, ESTADO_NOTIFICACION_ENVIADA), "estado de notificación " + ESTADO_NOTIFICACION_ENVIADA);
         Long idResolucion = resolucionDocumentoDAO.obtenerIdResolucionActiva(conn, registro.getIdExpediente());
         int intento = siguienteIntento(conn, registro.getIdExpediente());
+        validarSecuenciaIntento(registro, intento);
         String sql = "INSERT INTO expediente_notificacion ("
                 + "id_expediente, id_expediente_resolucion, id_tipo_notificacion, id_estado_notificacion, "
                 + "numero_intento, fecha_programada, fecha_envio, resultado, requiere_publicacion, observacion, "
@@ -859,6 +903,24 @@ public class NotificacionExpedienteDAO {
         }
     }
 
+    private void validarSecuenciaIntento(NotificacionRegistroDTO registro, int intento) throws SQLException {
+        if (intento == 1) {
+            if (!ACCION_NOTIFICACION_VIRTUAL.equalsIgnoreCase(registro.getAccionCodigo())
+                    || !"VIRTUAL".equalsIgnoreCase(registro.getTipoNotificacionCodigo())) {
+                throw new SQLException("El primer intento debe registrarse como notificación virtual.");
+            }
+            return;
+        }
+        if (intento == 2 || intento == 3) {
+            if (!ACCION_NOTIFICACION_PRESENCIAL_2.equalsIgnoreCase(registro.getAccionCodigo())
+                    || !"PRESENCIAL_2".equalsIgnoreCase(registro.getTipoNotificacionCodigo())) {
+                throw new SQLException("Los intentos 2 y 3 deben registrarse como notificación presencial/física.");
+            }
+            return;
+        }
+        throw new SQLException("El expediente ya alcanzó el máximo de tres intentos de notificación.");
+    }
+
     private NotificacionExpedienteDTO map(Connection conn, ResultSet rs) throws SQLException {
         Integer numeroIntento = null;
         int intentoValue = rs.getInt("numero_intento");
@@ -868,6 +930,7 @@ public class NotificacionExpedienteDAO {
         return new NotificacionExpedienteDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("procedimiento"),
                 rs.getString("tipo_documento"),
@@ -893,13 +956,17 @@ public class NotificacionExpedienteDAO {
                 rs.getString("numero_resolucion"),
                 toLocalDate(rs.getDate("fecha_resolucion")),
                 getLongOrNull(rs, "id_expediente_notificacion"),
+                rs.getString("tipo_notificacion_codigo"),
                 rs.getString("tipo_notificacion"),
+                rs.getString("estado_notificacion_codigo"),
                 rs.getString("estado_notificacion"),
                 numeroIntento,
                 toLocalDateTime(rs.getTimestamp("fecha_envio")),
                 rs.getString("resultado_notificacion"),
                 rs.getInt("requiere_publicacion") == 1,
+                toLocalDate(rs.getDate("fecha_publicacion")),
                 getLongOrNull(rs, "id_expediente_cargo_acuse"),
+                rs.getString("estado_cargo_codigo"),
                 rs.getString("estado_cargo"),
                 toLocalDateTime(rs.getTimestamp("fecha_cargo")),
                 rs.getString("recibido_por"),

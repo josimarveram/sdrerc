@@ -49,8 +49,24 @@ public class NotificacionExpedienteService {
         this.catalogoLookupDAO = catalogoLookupDAO;
     }
 
-    public List<NotificacionExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
-        return notificacionExpedienteDAO.buscarExpedientes(textoLibre, estadoCodigo, limite);
+    public List<NotificacionExpedienteDTO> buscarExpedientes(
+            String textoLibre,
+            String estadoCodigo,
+            LocalDate fechaDesde,
+            LocalDate fechaHasta,
+            String tipoNotificacionCodigo,
+            String resultadoNotificacionCodigo,
+            String requierePublicacionFiltro,
+            int limite) throws SQLException {
+        return notificacionExpedienteDAO.buscarExpedientes(
+                textoLibre,
+                estadoCodigo,
+                fechaDesde,
+                fechaHasta,
+                tipoNotificacionCodigo,
+                resultadoNotificacionCodigo,
+                requierePublicacionFiltro,
+                limite);
     }
 
     public List<CatalogoItemDTO> listarTiposNotificacion() throws SQLException {

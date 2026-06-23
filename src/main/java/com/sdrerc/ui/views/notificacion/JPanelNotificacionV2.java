@@ -21,11 +21,13 @@ import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
+import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -37,9 +39,11 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 import javax.swing.BorderFactory;
@@ -75,6 +79,11 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final JComboBox<SimpleItem> cmbEstadoFiltro = new JComboBox<SimpleItem>();
+    private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
+    private final JComboBox<SimpleItem> cmbTipoNotificacionFiltro = new JComboBox<SimpleItem>();
+    private final JComboBox<SimpleItem> cmbResultadoFiltro = new JComboBox<SimpleItem>();
+    private final JComboBox<SimpleItem> cmbPublicacionFiltro = new JComboBox<SimpleItem>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
@@ -88,13 +97,19 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes en Notificación.");
     private final JLabel lblExpediente = new JLabel("-");
+    private final JLabel lblExpedienteSgd = new JLabel("-");
     private final JLabel lblTitular = new JLabel("-");
     private final JLabel lblActa = new JLabel("-");
     private final JLabel lblProcedimiento = new JLabel("-");
     private final JLabel lblEtapaEstado = new JLabel("-");
     private final JLabel lblResolucion = new JLabel("-");
+    private final JLabel lblDocumentoNotificar = new JLabel("-");
     private final JLabel lblNotificacion = new JLabel("-");
+    private final JLabel lblIntentos = new JLabel("-");
     private final JLabel lblCargo = new JLabel("-");
+    private final JLabel lblSupervisor = new JLabel("-");
+    private final JLabel lblPublicacion = new JLabel("-");
+    private final JLabel lblDestino = new JLabel("-");
     private final JLabel lblAlertas = new JLabel("Sin alertas.");
     private final JLabel lblAcciones = new JLabel("-");
     private final JLabel lblAnalisis = new JLabel("-");
@@ -130,9 +145,12 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JTable documentosTable = new JTable(documentosModel);
     private final List<NotificacionExpedienteDTO> expedientes = new ArrayList<NotificacionExpedienteDTO>();
 
-    private final MetricCardV2 cardEnNotificacion = new MetricCardV2("En notificación", "0", "Pendientes de registro", AppV2Theme.INFO);
-    private final MetricCardV2 cardCargo = new MetricCardV2("Cargo", "0", "Pendiente o recibido", AppV2Theme.WARNING);
-    private final MetricCardV2 cardNotificados = new MetricCardV2("Notificados", "0", "Listos para cierre", AppV2Theme.SUCCESS);
+    private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Por notificar", AppV2Theme.INFO);
+    private final MetricCardV2 cardRevision = new MetricCardV2("En revisión", "0", "Cargo pendiente", AppV2Theme.WARNING);
+    private final MetricCardV2 cardNotificados = new MetricCardV2("Notificados", "0", "Confirmados", AppV2Theme.SUCCESS);
+    private final MetricCardV2 cardFallidos = new MetricCardV2("Fallidos", "0", "Intentos agotados", AppV2Theme.ERROR);
+    private final MetricCardV2 cardPublicacion = new MetricCardV2("Publicación", "0", "Requieren publicación", AppV2Theme.PRIMARY);
+    private final MetricCardV2 cardVencidos = new MetricCardV2("Por vencer", "0", "Vencidos o críticos", AppV2Theme.WARNING);
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelNotificacion;
     private boolean panelNotificacionCerradoPorUsuario;
@@ -156,15 +174,19 @@ public class JPanelNotificacionV2 extends JPanel {
         cargarFiltrosBase();
         cargarCatalogos();
         inicializarFechas();
+        inicializarFechasFiltro();
         actualizarSeleccion();
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new JPanel(new GridLayout(1, 3, 12, 0));
+        JPanel metricas = new JPanel(new GridLayout(2, 3, 12, 12));
         metricas.setOpaque(false);
-        metricas.add(cardEnNotificacion);
-        metricas.add(cardCargo);
+        metricas.add(cardPendientes);
+        metricas.add(cardRevision);
         metricas.add(cardNotificados);
+        metricas.add(cardFallidos);
+        metricas.add(cardPublicacion);
+        metricas.add(cardVencidos);
         return metricas;
     }
 
@@ -199,7 +221,12 @@ public class JPanelNotificacionV2 extends JPanel {
         accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
+        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
+        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
         toolbar.addFilter("Estado", cmbEstadoFiltro);
+        toolbar.addFilter("Tipo notificación", cmbTipoNotificacionFiltro);
+        toolbar.addFilter("Resultado", cmbResultadoFiltro);
+        toolbar.addFilter("Publicación", cmbPublicacionFiltro);
         toolbar.addFilter("Mostrar", spnLimite);
         return toolbar;
     }
@@ -227,7 +254,9 @@ public class JPanelNotificacionV2 extends JPanel {
         panel.addSection(crearResumenSeleccion());
         panel.addSection(crearAntecedentes());
         panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearValidacionCartaPanel());
         panel.addSection(crearFormularioNotificacion());
+        panel.addSection(crearPublicacionPanel());
         panel.setFooter(crearAccionesPanelNotificacion());
         return panel;
     }
@@ -273,13 +302,13 @@ public class JPanelNotificacionV2 extends JPanel {
         grid.setOpaque(false);
         int row = 0;
         addRow(grid, row++, "Expediente", lblExpediente);
+        addRow(grid, row++, "N° expediente SGD", lblExpedienteSgd);
         addRow(grid, row++, "Titular", lblTitular);
         addRow(grid, row++, "Acta", lblActa);
         addRow(grid, row++, "Procedimiento", lblProcedimiento);
         addRow(grid, row++, "Etapa / Estado", lblEtapaEstado);
         addRow(grid, row++, "Resolución", lblResolucion);
-        addRow(grid, row++, "Notificación", lblNotificacion);
-        addRow(grid, row++, "Cargo", lblCargo);
+        addRow(grid, row++, "Documento a notificar", lblDocumentoNotificar);
         addRow(grid, row++, "Acciones", lblAcciones);
         addRow(grid, row, "Alertas", lblAlertas);
         panel.add(grid, BorderLayout.CENTER);
@@ -310,20 +339,44 @@ public class JPanelNotificacionV2 extends JPanel {
         return panel;
     }
 
-    private JPanel crearFormularioNotificacion() {
-        JPanel panel = section("Registro de notificación");
+    private JPanel crearValidacionCartaPanel() {
+        JPanel panel = section("Validación de carta");
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
         int row = 0;
+        addRow(grid, row++, "Supervisor", lblSupervisor);
+        addRow(grid, row, "Destino siguiente", lblDestino);
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearFormularioNotificacion() {
+        JPanel panel = section("Intentos de notificación y cargo");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Notificación actual", lblNotificacion);
+        addRow(grid, row++, "Intentos", lblIntentos);
         addRow(grid, row++, "Tipo / modalidad", cmbTipoNotificacion);
         addRow(grid, row++, "Fecha notificación", txtFechaNotificacion);
         addRow(grid, row++, "Destinatario", txtDestinatario);
         addRow(grid, row++, "Resultado", txtResultado);
+        addRow(grid, row++, "Cargo actual", lblCargo);
         addRow(grid, row++, "Estado cargo", cmbEstadoCargo);
         addRow(grid, row++, "Fecha cargo", txtFechaCargo);
         addRow(grid, row++, "Recibido por", txtRecibidoPor);
         addRow(grid, row++, "Comentario", scrollText(txtComentario, 86));
-        addRow(grid, row, "Motivo publicación", scrollText(txtMotivoPublicacion, 72));
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearPublicacionPanel() {
+        JPanel panel = section("Publicación prevista");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Estado", lblPublicacion);
+        addRow(grid, row, "Motivo", scrollText(txtMotivoPublicacion, 72));
         panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
@@ -379,6 +432,11 @@ public class JPanelNotificacionV2 extends JPanel {
     private void configurarControles() {
         txtBusqueda.setPreferredSize(new Dimension(340, 34));
         cmbEstadoFiltro.setPreferredSize(new Dimension(220, 34));
+        fechaSolicitudDesde.setPreferredSize(new Dimension(190, 38));
+        fechaSolicitudHasta.setPreferredSize(new Dimension(190, 38));
+        cmbTipoNotificacionFiltro.setPreferredSize(new Dimension(180, 34));
+        cmbResultadoFiltro.setPreferredSize(new Dimension(170, 34));
+        cmbPublicacionFiltro.setPreferredSize(new Dimension(150, 34));
         cmbTipoNotificacion.setPreferredSize(new Dimension(250, 34));
         cmbEstadoCargo.setPreferredSize(new Dimension(250, 34));
         txtFechaNotificacion.setPreferredSize(new Dimension(250, 34));
@@ -408,15 +466,17 @@ public class JPanelNotificacionV2 extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new NotificacionRenderer());
-        table.getColumnModel().getColumn(10).setPreferredWidth(145);
-        table.getColumnModel().getColumn(11).setPreferredWidth(160);
-        table.getColumnModel().getColumn(12).setMaxWidth(92);
-        table.getColumnModel().getColumn(15).setMaxWidth(92);
-        table.getColumnModel().getColumn(16).setMaxWidth(92);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        table.getColumnModel().getColumn(0).setMinWidth(0);
-        table.getColumnModel().getColumn(0).setPreferredWidth(0);
-        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(0).setMaxWidth(84);
+        table.getColumnModel().getColumn(1).setPreferredWidth(180);
+        table.getColumnModel().getColumn(2).setPreferredWidth(150);
+        table.getColumnModel().getColumn(3).setPreferredWidth(150);
+        table.getColumnModel().getColumn(4).setPreferredWidth(190);
+        table.getColumnModel().getColumn(5).setPreferredWidth(220);
+        table.getColumnModel().getColumn(6).setPreferredWidth(190);
+        table.getColumnModel().getColumn(7).setPreferredWidth(145);
+        table.getColumnModel().getColumn(8).setMaxWidth(92);
+        table.getColumnModel().getColumn(11).setMaxWidth(105);
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     }
 
@@ -452,6 +512,15 @@ public class JPanelNotificacionV2 extends JPanel {
                 cmbEstadoFiltro, "NOTIFICACION", new SimpleItem("TODOS", "Todos los estados"),
                 (codigo, nombre) -> new SimpleItem(codigo, nombre),
                 ex -> lblEstado.setText("No se pudieron cargar los estados de Notificación."));
+        cmbResultadoFiltro.removeAllItems();
+        cmbResultadoFiltro.addItem(new SimpleItem("TODOS", "Todos los resultados"));
+        cmbResultadoFiltro.addItem(new SimpleItem("ENVIADA", "Enviada"));
+        cmbResultadoFiltro.addItem(new SimpleItem("EXITOSA", "Exitosa"));
+        cmbResultadoFiltro.addItem(new SimpleItem("FALLIDA", "Fallida"));
+        cmbPublicacionFiltro.removeAllItems();
+        cmbPublicacionFiltro.addItem(new SimpleItem("TODOS", "Todas"));
+        cmbPublicacionFiltro.addItem(new SimpleItem("SI", "Requiere publicación"));
+        cmbPublicacionFiltro.addItem(new SimpleItem("NO", "Sin publicación"));
     }
 
     private void cargarCatalogos() {
@@ -469,6 +538,7 @@ public class JPanelNotificacionV2 extends JPanel {
                 try {
                     CatalogosCarga carga = get();
                     cargarCombo(cmbTipoNotificacion, carga.tiposNotificacion, false);
+                    cargarCombo(cmbTipoNotificacionFiltro, carga.tiposNotificacion, true);
                     cargarCombo(cmbEstadoCargo, carga.estadosCargo, false);
                 } catch (Exception ex) {
                     cargarFallbackCatalogos();
@@ -486,6 +556,11 @@ public class JPanelNotificacionV2 extends JPanel {
         cmbTipoNotificacion.addItem(new SimpleItem("VIRTUAL", "Virtual"));
         cmbTipoNotificacion.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
         cmbTipoNotificacion.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
+        cmbTipoNotificacionFiltro.removeAllItems();
+        cmbTipoNotificacionFiltro.addItem(new SimpleItem("TODOS", "Todos los tipos"));
+        cmbTipoNotificacionFiltro.addItem(new SimpleItem("VIRTUAL", "Virtual"));
+        cmbTipoNotificacionFiltro.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
+        cmbTipoNotificacionFiltro.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
         cmbEstadoCargo.removeAllItems();
         cmbEstadoCargo.addItem(new SimpleItem("CARGO_RECIBIDO", "Cargo recibido"));
         cmbEstadoCargo.addItem(new SimpleItem("CARGO_PENDIENTE", "Cargo pendiente"));
@@ -507,15 +582,37 @@ public class JPanelNotificacionV2 extends JPanel {
         txtFechaCargo.setText(hoy);
     }
 
+    private void inicializarFechasFiltro() {
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
+    }
+
     private void buscar() {
+        final LocalDate desde = toLocalDate(fechaSolicitudDesde);
+        final LocalDate hasta = toLocalDate(fechaSolicitudHasta);
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            JOptionPane.showMessageDialog(this, "Fecha desde no puede ser mayor que Fecha hasta.", "Notificación", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         setTrabajando(true, "Consultando expedientes en Notificación...");
         final String texto = txtBusqueda.getText();
         final String estado = obtenerCodigo(cmbEstadoFiltro);
+        final String tipoNotificacion = obtenerCodigo(cmbTipoNotificacionFiltro);
+        final String resultadoNotificacion = obtenerCodigo(cmbResultadoFiltro);
+        final String requierePublicacion = obtenerCodigo(cmbPublicacionFiltro);
         final int limite = ((Number) spnLimite.getValue()).intValue();
         SwingWorker<List<NotificacionExpedienteDTO>, Void> worker = new SwingWorker<List<NotificacionExpedienteDTO>, Void>() {
             @Override
             protected List<NotificacionExpedienteDTO> doInBackground() throws Exception {
-                return notificacionService.buscarExpedientes(texto, estado, limite);
+                return notificacionService.buscarExpedientes(
+                        texto,
+                        estado,
+                        desde,
+                        hasta,
+                        tipoNotificacion,
+                        resultadoNotificacion,
+                        requierePublicacion,
+                        limite);
             }
 
             @Override
@@ -545,7 +642,11 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void limpiar() {
         txtBusqueda.setText("");
-        cmbEstadoFiltro.setSelectedIndex(0);
+        seleccionarPrimero(cmbEstadoFiltro);
+        seleccionarPrimero(cmbTipoNotificacionFiltro);
+        seleccionarPrimero(cmbResultadoFiltro);
+        seleccionarPrimero(cmbPublicacionFiltro);
+        inicializarFechasFiltro();
         expedientes.clear();
         tableModel.fireTableDataChanged();
         table.clearSelection();
@@ -557,23 +658,38 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void actualizarMetricas() {
-        int enNotificacion = 0;
-        int cargo = 0;
+        int pendientes = 0;
+        int revision = 0;
         int notificados = 0;
+        int fallidos = 0;
+        int publicacion = 0;
+        int vencidos = 0;
         for (NotificacionExpedienteDTO expediente : expedientes) {
             if (expediente.isEnNotificacion()) {
-                enNotificacion++;
+                pendientes++;
             }
-            if (expediente.isCargoPendiente() || expediente.isCargoRecibido()) {
-                cargo++;
+            if (expediente.isCargoPendiente()) {
+                revision++;
             }
-            if (expediente.isNotificado() || expediente.isRequierePublicacionEstado()) {
+            if (expediente.isNotificado()) {
                 notificados++;
             }
+            if (expediente.isFallida()) {
+                fallidos++;
+            }
+            if (expediente.isRequierePublicacion() || expediente.isRequierePublicacionEstado()) {
+                publicacion++;
+            }
+            if (expediente.getDiasEnEtapa() != null && expediente.getDiasEnEtapa() <= 3) {
+                vencidos++;
+            }
         }
-        cardEnNotificacion.setValue(String.valueOf(enNotificacion));
-        cardCargo.setValue(String.valueOf(cargo));
+        cardPendientes.setValue(String.valueOf(pendientes));
+        cardRevision.setValue(String.valueOf(revision));
         cardNotificados.setValue(String.valueOf(notificados));
+        cardFallidos.setValue(String.valueOf(fallidos));
+        cardPublicacion.setValue(String.valueOf(publicacion));
+        cardVencidos.setValue(String.valueOf(vencidos));
     }
 
     private void actualizarSeleccion() {
@@ -584,13 +700,19 @@ public class JPanelNotificacionV2 extends JPanel {
             return;
         }
         lblExpediente.setText(valor(expediente.getNumeroExpediente()));
+        lblExpedienteSgd.setText(valor(expediente.getNumeroExpedienteSgd()));
         lblTitular.setText(valor(expediente.getTitular()));
         lblActa.setText(valor(expediente.getTipoActa()) + " · " + valor(expediente.getNumeroActa()));
         lblProcedimiento.setText(valor(expediente.getProcedimiento()));
         lblEtapaEstado.setText(DisplayNameMapperV2.etapa(expediente.getEtapaCodigo()) + " / " + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()));
         lblResolucion.setText(resolucionTexto(expediente));
+        lblDocumentoNotificar.setText(valor(expediente.getDocumentoNotificarResumen()));
         lblNotificacion.setText(notificacionTexto(expediente));
+        lblIntentos.setText(intentosTexto(expediente));
         lblCargo.setText(cargoTexto(expediente));
+        lblSupervisor.setText(supervisorTexto(expediente));
+        lblPublicacion.setText(publicacionTexto(expediente));
+        lblDestino.setText(destinoTexto(expediente));
         lblAcciones.setText(accionesTexto(expediente));
         lblAlertas.setText(alertasTexto(expediente));
         lblAnalisis.setText(valor(expediente.getResultadoAnalisis()));
@@ -600,19 +722,26 @@ public class JPanelNotificacionV2 extends JPanel {
         if (hasText(expediente.getTitular())) {
             txtDestinatario.setText(expediente.getTitular());
         }
+        seleccionarModalidadSugerida(expediente);
         cargarDocumentos(expediente.getIdExpediente());
         actualizarAcciones(expediente);
     }
 
     private void limpiarResumen() {
         lblExpediente.setText("-");
+        lblExpedienteSgd.setText("-");
         lblTitular.setText("-");
         lblActa.setText("-");
         lblProcedimiento.setText("-");
         lblEtapaEstado.setText("-");
         lblResolucion.setText("-");
+        lblDocumentoNotificar.setText("-");
         lblNotificacion.setText("-");
+        lblIntentos.setText("-");
         lblCargo.setText("-");
+        lblSupervisor.setText("-");
+        lblPublicacion.setText("-");
+        lblDestino.setText("-");
         lblAcciones.setText("-");
         lblAlertas.setText("Sin expediente seleccionado.");
         lblAnalisis.setText("-");
@@ -665,14 +794,11 @@ public class JPanelNotificacionV2 extends JPanel {
     private void actualizarAcciones(NotificacionExpedienteDTO expediente) {
         boolean seleccionado = expediente != null;
         btnVerDetalle.setEnabled(seleccionado);
-        btnRegistrarNotificacion.setEnabled(seleccionado
-                && (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)
-                || expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1)
-                || expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)));
+        btnRegistrarNotificacion.setEnabled(seleccionado && puedeRegistrarIntento(expediente));
         btnRegistrarCargo.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_RECEPCION_CARGO));
         btnMarcarNotificado.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_CONFIRMACION));
         btnRequierePublicacion.setEnabled(seleccionado
-                && (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_FALLIDA)
+                && ((expediente.isIntentosAgotados() && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_FALLIDA))
                 || expediente.hasAccion(NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION)));
         btnCerrarExpediente.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_CIERRE));
     }
@@ -687,7 +813,8 @@ public class JPanelNotificacionV2 extends JPanel {
             JOptionPane.showMessageDialog(this, "No hay una acción de notificación activa para el tipo seleccionado.", "Notificación", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        if (!confirmar("Se registrará la notificación del expediente " + expediente.getNumeroExpediente() + ". ¿Desea continuar?")) {
+        if (!confirmar("Se registrará el intento " + expediente.getSiguienteIntento()
+                + " de notificación del expediente " + expediente.getNumeroExpediente() + ". ¿Desea continuar?")) {
             return;
         }
         ejecutarOperacion("Registrando notificación...", new Callable<NotificacionResultadoDTO>() {
@@ -732,9 +859,17 @@ public class JPanelNotificacionV2 extends JPanel {
         final String accion = expediente.hasAccion(NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION)
                 ? NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION
                 : NotificacionExpedienteService.ACCION_NOTIFICACION_FALLIDA;
+        if (NotificacionExpedienteService.ACCION_NOTIFICACION_FALLIDA.equals(accion) && !expediente.isIntentosAgotados()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Para preparar publicación debe registrar primero los tres intentos de notificación.",
+                    "Notificación",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         String mensaje = NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION.equals(accion)
-                ? "El expediente será derivado a Publicación condicional. ¿Desea continuar?"
-                : "Se registrará notificación fallida y requerimiento de publicación. ¿Desea continuar?";
+                ? "Se preparará el expediente para Publicación condicional. ¿Desea continuar?"
+                : "Se registrará notificación fallida y requerimiento de publicación futura. ¿Desea continuar?";
         if (!confirmar(mensaje)) {
             return;
         }
@@ -792,11 +927,10 @@ public class JPanelNotificacionV2 extends JPanel {
         if (expediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente.");
         }
-        SimpleItem tipo = (SimpleItem) cmbTipoNotificacion.getSelectedItem();
         return new NotificacionRegistroDTO(
                 expediente.getIdExpediente(),
                 accionCodigo,
-                tipo == null ? "" : tipo.getCodigo(),
+                tipoNotificacionParaIntento(expediente),
                 parseFecha(txtFechaNotificacion, "notificación"),
                 txtResultado.getText(),
                 txtDestinatario.getText(),
@@ -842,27 +976,59 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private String resolverAccionNotificacion(NotificacionExpedienteDTO expediente) {
-        SimpleItem tipo = (SimpleItem) cmbTipoNotificacion.getSelectedItem();
-        String codigo = tipo == null ? "" : tipo.getCodigo();
-        if ("VIRTUAL".equalsIgnoreCase(codigo) && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)) {
+        int intento = expediente.getSiguienteIntento();
+        if (intento == 1 && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)) {
             return NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL;
         }
-        if ("PRESENCIAL_1".equalsIgnoreCase(codigo) && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1)) {
-            return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1;
-        }
-        if ("PRESENCIAL_2".equalsIgnoreCase(codigo) && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)) {
-            return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2;
-        }
-        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)) {
-            return NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL;
-        }
-        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1)) {
-            return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_1;
-        }
-        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)) {
+        if ((intento == 2 || intento == 3) && expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)) {
             return NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2;
         }
         return "";
+    }
+
+    private boolean puedeRegistrarIntento(NotificacionExpedienteDTO expediente) {
+        if (expediente == null || expediente.getSiguienteIntento() > 3) {
+            return false;
+        }
+        return hasText(resolverAccionNotificacion(expediente));
+    }
+
+    private String tipoNotificacionParaIntento(NotificacionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "";
+        }
+        return expediente.getSiguienteIntento() == 1 ? "VIRTUAL" : "PRESENCIAL_2";
+    }
+
+    private void seleccionarModalidadSugerida(NotificacionExpedienteDTO expediente) {
+        seleccionarComboPorCodigo(cmbTipoNotificacion, tipoNotificacionParaIntento(expediente));
+    }
+
+    private void seleccionarComboPorCodigo(JComboBox<SimpleItem> combo, String codigo) {
+        if (combo == null || !hasText(codigo)) {
+            return;
+        }
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            SimpleItem item = combo.getItemAt(i);
+            if (item != null && codigo.equalsIgnoreCase(item.getCodigo())) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    private void seleccionarPrimero(JComboBox<SimpleItem> combo) {
+        if (combo != null && combo.getItemCount() > 0) {
+            combo.setSelectedIndex(0);
+        }
+    }
+
+    private LocalDate toLocalDate(PremiumDateFieldV2 field) {
+        if (field == null) {
+            return null;
+        }
+        Date date = field.getDate();
+        return date == null ? null : date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
     private LocalDate parseFecha(JTextField field, String nombreCampo) {
@@ -978,6 +1144,54 @@ public class JPanelNotificacionV2 extends JPanel {
                 : "Ampliar panel de notificación");
     }
 
+    private String intentosTexto(NotificacionExpedienteDTO expediente) {
+        int registrados = expediente.getNumeroIntento() == null ? 0 : expediente.getNumeroIntento();
+        if (registrados >= 3) {
+            return "3 de 3 intentos registrados";
+        }
+        return registrados + " de 3 registrados · siguiente intento " + expediente.getSiguienteIntento();
+    }
+
+    private String supervisorTexto(NotificacionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "-";
+        }
+        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_VIRTUAL)
+                || expediente.hasAccion(NotificacionExpedienteService.ACCION_NOTIFICACION_PRESENCIAL_2)) {
+            return "Carta lista para notificar según transición activa";
+        }
+        return "Sin devolución a Ejecución configurada; cualquier inconsistencia debe bloquearse con diagnóstico";
+    }
+
+    private String publicacionTexto(NotificacionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "-";
+        }
+        if (!expediente.isRequierePublicacion() && !expediente.isRequierePublicacionEstado()) {
+            return "No requiere publicación";
+        }
+        String fecha = expediente.getFechaPublicacion() == null
+                ? "sin fecha registrada"
+                : "fecha " + format(expediente.getFechaPublicacion());
+        return "Requiere publicación · " + fecha + " · dato registrado desde Asignación o Notificación";
+    }
+
+    private String destinoTexto(NotificacionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return "-";
+        }
+        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION)) {
+            return "Preparar para Publicación futura";
+        }
+        if (expediente.hasAccion(NotificacionExpedienteService.ACCION_CIERRE)) {
+            return "Cierre / Archivo";
+        }
+        if (expediente.isCargoPendiente()) {
+            return "Registrar cargo, siguiente intento o publicación futura según corresponda";
+        }
+        return "Pendiente de acción real activa";
+    }
+
     private String alertasTexto(NotificacionExpedienteDTO expediente) {
         List<String> alertas = new ArrayList<String>();
         if (expediente.getTotalRelacionados() > 0) {
@@ -994,6 +1208,13 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         if (expediente.isRequierePublicacion()) {
             alertas.add("Publicación requerida");
+        }
+        if (!expediente.hasAccion(NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION)
+                && expediente.isRequierePublicacionEstado()) {
+            alertas.add("Sin transición activa a Publicación");
+        }
+        if (expediente.getSiguienteIntento() > 3 && !expediente.isRequierePublicacionEstado() && !expediente.isNotificado()) {
+            alertas.add("Intentos agotados");
         }
         return alertas.isEmpty() ? "Sin alertas." : String.join(" · ", alertas);
     }
@@ -1058,9 +1279,9 @@ public class JPanelNotificacionV2 extends JPanel {
     private class NotificacionTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Expediente", "Trámite", "Procedimiento", "Tipo doc.", "Tipo acta", "Nro. acta",
-            "Titular", "Nro. resolución", "Ingreso notificación", "Etapa", "Estado",
-            "Días", "Modalidad", "Cargo", "Docs", "Asociados"
+            "Días", "Expediente", "N° expediente SGD", "Trámite / documento", "Titular",
+            "Documento a notificar", "Estado", "Intento", "Tipo notificación",
+            "Resultado", "Acuse", "Publicación", "Alertas"
         };
 
         @Override
@@ -1083,39 +1304,31 @@ public class JPanelNotificacionV2 extends JPanel {
             NotificacionExpedienteDTO item = expedientes.get(rowIndex);
             switch (columnIndex) {
                 case 0:
-                    return item.getIdExpediente();
+                    return item.getDiasEnEtapa();
                 case 1:
                     return item.getNumeroExpediente();
                 case 2:
-                    return item.getNumeroTramiteDocumentario();
+                    return item.getNumeroExpedienteSgd();
                 case 3:
-                    return item.getProcedimiento();
+                    return item.getNumeroTramiteDocumentario();
                 case 4:
-                    return item.getTipoDocumento();
-                case 5:
-                    return item.getTipoActa();
-                case 6:
-                    return item.getNumeroActa();
-                case 7:
                     return item.getTitular();
+                case 5:
+                    return item.getDocumentoNotificarResumen();
+                case 6:
+                    return DisplayNameMapperV2.estado(item.getEstadoCodigo());
+                case 7:
+                    return item.getNumeroIntento() == null ? "Sin intento" : "Intento " + item.getNumeroIntento();
                 case 8:
-                    return item.getNumeroResolucion();
-                case 9:
-                    return format(item.getFechaIngresoNotificacion());
-                case 10:
-                    return item.getEtapaCodigo();
-                case 11:
-                    return item.getEstadoCodigo();
-                case 12:
-                    return item.getDiasEnEtapa();
-                case 13:
                     return item.getTipoNotificacion();
-                case 14:
-                    return item.getEstadoCargo();
-                case 15:
-                    return item.getTotalDocumentos();
-                case 16:
-                    return item.getTotalRelacionados();
+                case 9:
+                    return item.getResultadoNotificacion();
+                case 10:
+                    return item.isAcuseRegistrado() ? item.getEstadoCargo() : "Sin acuse";
+                case 11:
+                    return item.isRequierePublicacion() ? "Sí" : "No";
+                case 12:
+                    return alertasTexto(item);
                 default:
                     return "";
             }
@@ -1131,14 +1344,11 @@ public class JPanelNotificacionV2 extends JPanel {
                 boolean hasFocus,
                 int row,
                 int column) {
-            if (column == 10) {
-                return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
-            }
-            if (column == 11) {
-                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
-            }
-            if (column == 12) {
+            if (column == 0) {
                 return StatusBadgeV2.forDias(value);
+            }
+            if (column == 6) {
+                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
