@@ -5,6 +5,7 @@ import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
+import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.AnalisisExpedienteDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.CatalogoLookupDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.ObservacionExpedienteDAO;
@@ -117,6 +118,19 @@ public class AnalisisExpedienteService {
             throw new IllegalArgumentException(String.join("\n", errores));
         }
         return analisisExpedienteDAO.registrarAnalisis(registro, resolverUsuarioActualSdrercApp());
+    }
+
+    public AnalisisResultadoDTO guardarDocumentosAnalisis(
+            Long idExpediente,
+            List<DocumentoAnalizadoDTO> documentos) throws SQLException {
+        List<String> errores = validacionService.validarDocumentosAnalisis(idExpediente, documentos);
+        if (!errores.isEmpty()) {
+            throw new IllegalArgumentException(String.join("\n", errores));
+        }
+        return analisisExpedienteDAO.guardarDocumentosAnalisis(
+                idExpediente,
+                documentos,
+                resolverUsuarioActualSdrercApp());
     }
 
     public AnalisisResultadoDTO enviarVerificacion(Long idExpediente, String comentario) throws SQLException {

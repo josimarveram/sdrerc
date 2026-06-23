@@ -118,7 +118,7 @@ public class AnalisisExpedienteDAO {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
-        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, ");
+        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
@@ -409,6 +409,49 @@ public class AnalisisExpedienteDAO {
         }
     }
 
+    public AnalisisResultadoDTO guardarDocumentosAnalisis(
+            Long idExpediente,
+            List<DocumentoAnalizadoDTO> documentos,
+            Long idUsuario) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteBloqueado expediente = bloquearExpediente(conn, idExpediente);
+                if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
+                        || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo))) {
+                    throw new SQLException("El expediente debe estar en Análisis para guardar documentos de análisis.");
+                }
+                for (DocumentoAnalizadoDTO documento : documentos) {
+                    if (documento.getIdDocumentoAnalizado() == null) {
+                        documentoAnalisisDAO.insertarDocumentoAnalizado(conn, idExpediente, documento, idUsuario);
+                    } else {
+                        documentoAnalisisDAO.actualizarDocumentoAnalizado(conn, idExpediente, documento, idUsuario);
+                    }
+                }
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return new AnalisisResultadoDTO(
+                        idExpediente,
+                        expediente.numeroExpediente,
+                        "GUARDAR_DOCUMENTOS_ANALISIS",
+                        ETAPA_ANALISIS,
+                        expediente.estadoCodigo,
+                        "Los documentos de análisis fueron guardados correctamente.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
     public AnalisisResultadoDTO enviarVerificacion(Long idExpediente, String comentario, Long idUsuario) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             ExpedienteBloqueado expediente = obtenerExpediente(conn, idExpediente);
@@ -653,6 +696,7 @@ public class AnalisisExpedienteDAO {
         return new AnalisisExpedienteDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("procedimiento"),
                 rs.getString("tipo_documento"),

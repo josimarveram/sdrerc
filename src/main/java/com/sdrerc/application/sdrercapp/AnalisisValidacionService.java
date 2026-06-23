@@ -3,6 +3,7 @@ package com.sdrerc.application.sdrercapp;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class AnalisisValidacionService {
@@ -59,6 +60,35 @@ public class AnalisisValidacionService {
                 || "OBSERVACION_ADMINISTRATIVA".equalsIgnoreCase(resultado))
                 && (registro.getObservacion() == null || !registro.getObservacion().hasDescripcion())) {
             errores.add("Ingrese la observación del análisis.");
+        }
+        return errores;
+    }
+
+    public List<String> validarDocumentosAnalisis(Long idExpediente, List<DocumentoAnalizadoDTO> documentos) {
+        List<String> errores = new ArrayList<>();
+        if (idExpediente == null) {
+            errores.add("Seleccione un expediente para guardar documentos de análisis.");
+        }
+        List<DocumentoAnalizadoDTO> items = documentos == null
+                ? Collections.<DocumentoAnalizadoDTO>emptyList()
+                : documentos;
+        if (items.isEmpty()) {
+            errores.add("Agregue al menos un documento de análisis.");
+            return errores;
+        }
+        for (DocumentoAnalizadoDTO documento : items) {
+            if (!hasText(documento.getTipoDocumentoCodigo())) {
+                errores.add("Seleccione el tipo de cada documento de análisis.");
+                break;
+            }
+            if (!hasText(documento.getEstadoDocumentoCodigo())) {
+                errores.add("Seleccione el estado de cada documento de análisis.");
+                break;
+            }
+            if (!hasText(documento.getDescripcion())) {
+                errores.add("Ingrese la descripción de cada documento de análisis.");
+                break;
+            }
         }
         return errores;
     }
