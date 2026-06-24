@@ -26,7 +26,7 @@ BEGIN
     'Fecha en que SDRERC recibe la solicitud. Dato adicional para reportes; no reemplaza la fecha de solicitud/origen ni recalcula plazos.'
   ]';
 END;
-/
+
 
 MERGE INTO canal_recepcion dst
 USING (
