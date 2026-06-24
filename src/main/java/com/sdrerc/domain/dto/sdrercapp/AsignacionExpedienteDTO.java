@@ -75,7 +75,7 @@ public class AsignacionExpedienteDTO {
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.numeroDocumento = safe(numeroDocumento);
         this.tipoDocumento = safe(tipoDocumento);
-        this.procedimiento = safe(procedimiento);
+        this.procedimiento = safeProcedimiento(procedimiento);
         this.tipoActa = safe(tipoActa);
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
@@ -275,5 +275,10 @@ public class AsignacionExpedienteDTO {
 
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String safeProcedimiento(String value) {
+        String canonico = ProcedimientoRegistralRules.nombreCanonico(value);
+        return canonico == null ? "" : canonico;
     }
 }

@@ -1,5 +1,6 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -149,7 +150,7 @@ public class ExpedienteBandejaDTO {
         this.requierePublicacion = requierePublicacion;
         this.expedienteDigitalCompleto = expedienteDigitalCompleto;
         this.canal = safe(canal);
-        this.procedimiento = safe(procedimiento);
+        this.procedimiento = safeProcedimiento(procedimiento);
         this.tipoActa = safe(tipoActa);
         this.numeroActa = safe(numeroActa);
         this.grupoFamiliar = safe(grupoFamiliar);
@@ -250,5 +251,10 @@ public class ExpedienteBandejaDTO {
 
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String safeProcedimiento(String value) {
+        String canonico = ProcedimientoRegistralRules.nombreCanonico(value);
+        return canonico == null ? "" : canonico;
     }
 }

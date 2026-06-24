@@ -43,6 +43,39 @@ public final class ProcedimientoRegistralRules {
         return PLAZO_GENERAL_HABILES;
     }
 
+    public static String nombreCanonico(String procedimiento) {
+        if (procedimiento == null) {
+            return null;
+        }
+        String trimmed = procedimiento.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        String normalized = normalizar(trimmed);
+        if (esRectificacionAdministrativa(normalized)) {
+            return "Rectificación administrativa";
+        }
+        if (esReconsideracion(normalized)) {
+            return "Reconsideración";
+        }
+        if (esApelacion(normalized)) {
+            return "Apelación";
+        }
+        if (esReconstitucion(normalized)) {
+            return "Reconstitución";
+        }
+        if (esCancelacion(normalized)) {
+            return "Cancelación";
+        }
+        if (esActualizacionDatos(normalized)) {
+            return "Actualización de datos";
+        }
+        if (esTituloNacionalidad(normalized)) {
+            return "Título de Nacionalidad";
+        }
+        return trimmed;
+    }
+
     public static String mensajeSinNumeroRecepcion() {
         return "Procedimiento registral Reconsideración/Apelación: se registrará sin número de expediente. "
                 + "En Asignación se podrá asociar a un expediente principal o generar número a criterio del asignador.";
@@ -61,7 +94,26 @@ public final class ProcedimientoRegistralRules {
     }
 
     private static boolean esRectificacionAdministrativa(String normalized) {
-        return normalized.contains("RECTIFICACION") && normalized.contains("ADMINISTRATIVA");
+        return (normalized.contains("RECTIFICACION") || normalized.contains("RECT"))
+                && (normalized.contains("ADMINISTRATIVA")
+                || normalized.contains("ADMIN")
+                || normalized.contains("ADM"));
+    }
+
+    private static boolean esReconstitucion(String normalized) {
+        return "RECONSTITUCION".equals(normalized) || normalized.contains("RECONSTITUCION");
+    }
+
+    private static boolean esCancelacion(String normalized) {
+        return "CANCELACION".equals(normalized) || normalized.contains("CANCELACION");
+    }
+
+    private static boolean esActualizacionDatos(String normalized) {
+        return normalized.contains("ACTUALIZACION") && normalized.contains("DATOS");
+    }
+
+    private static boolean esTituloNacionalidad(String normalized) {
+        return normalized.contains("TITULO") && normalized.contains("NACIONALIDAD");
     }
 
     private static String normalizar(String value) {

@@ -1,5 +1,6 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -57,7 +58,7 @@ public class AnalisisExpedienteDTO {
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
-        this.procedimiento = safe(procedimiento);
+        this.procedimiento = safeProcedimiento(procedimiento);
         this.tipoDocumento = safe(tipoDocumento);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
         this.tipoActa = safe(tipoActa);
@@ -198,5 +199,10 @@ public class AnalisisExpedienteDTO {
 
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String safeProcedimiento(String value) {
+        String canonico = ProcedimientoRegistralRules.nombreCanonico(value);
+        return canonico == null ? "" : canonico;
     }
 }

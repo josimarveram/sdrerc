@@ -1,5 +1,6 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -219,7 +220,7 @@ public class ExpedienteConsolaDTO {
         this.titularDocumento = safe(titularDocumento);
         this.remitente = safe(remitente);
         this.remitenteDocumento = safe(remitenteDocumento);
-        this.procedimiento = safe(procedimiento);
+        this.procedimiento = safeProcedimiento(procedimiento);
         this.canalRecepcion = safe(canalRecepcion);
         this.fechaRecepcion = fechaRecepcion;
         this.tipoSolicitud = safe(tipoSolicitud);
@@ -478,6 +479,11 @@ public class ExpedienteConsolaDTO {
 
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String safeProcedimiento(String value) {
+        String canonico = ProcedimientoRegistralRules.nombreCanonico(value);
+        return canonico == null ? "" : canonico;
     }
 
     private static Integer safe(Integer value) {

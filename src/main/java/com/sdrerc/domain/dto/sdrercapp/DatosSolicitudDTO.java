@@ -1,5 +1,6 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import java.time.LocalDate;
 
 public class DatosSolicitudDTO {
@@ -85,7 +86,7 @@ public class DatosSolicitudDTO {
     }
 
     public void setTipoProcedimientoNombre(String tipoProcedimientoNombre) {
-        this.tipoProcedimientoNombre = trimToNull(tipoProcedimientoNombre);
+        this.tipoProcedimientoNombre = ProcedimientoRegistralRules.nombreCanonico(tipoProcedimientoNombre);
     }
 
     public String getTipoDocumentoCodigo() {

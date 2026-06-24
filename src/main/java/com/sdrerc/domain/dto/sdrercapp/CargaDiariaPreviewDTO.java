@@ -1,5 +1,6 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import java.time.LocalDate;
 
 public class CargaDiariaPreviewDTO {
@@ -65,7 +66,7 @@ public class CargaDiariaPreviewDTO {
     }
 
     public void setTipoProcedimiento(String tipoProcedimiento) {
-        this.tipoProcedimiento = trimToNull(tipoProcedimiento);
+        this.tipoProcedimiento = ProcedimientoRegistralRules.nombreCanonico(tipoProcedimiento);
     }
 
     public String getTipoSolicitud() {
