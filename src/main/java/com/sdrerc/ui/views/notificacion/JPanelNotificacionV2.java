@@ -92,7 +92,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JButton btnRegistrarNotificacion = new JButton("Registrar notificación");
     private final JButton btnRegistrarCargo = new JButton("Registrar cargo");
     private final JButton btnMarcarNotificado = new JButton("Marcar notificado");
-    private final JButton btnRequierePublicacion = new JButton("Requiere publicación");
+    private final JButton btnRequierePublicacion = new JButton("Preparar publicación");
     private final JButton btnCerrarExpediente = new JButton("Cerrar expediente");
 
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes en Notificación.");
@@ -149,7 +149,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final MetricCardV2 cardRevision = new MetricCardV2("En revisión", "0", "Cargo pendiente", AppV2Theme.WARNING);
     private final MetricCardV2 cardNotificados = new MetricCardV2("Notificados", "0", "Confirmados", AppV2Theme.SUCCESS);
     private final MetricCardV2 cardFallidos = new MetricCardV2("Fallidos", "0", "Intentos agotados", AppV2Theme.ERROR);
-    private final MetricCardV2 cardPublicacion = new MetricCardV2("Publicación", "0", "Requieren publicación", AppV2Theme.PRIMARY);
+    private final MetricCardV2 cardPublicacion = new MetricCardV2("Requieren publicación", "0", "Publicación prevista", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardVencidos = new MetricCardV2("Por vencer", "0", "Vencidos o críticos", AppV2Theme.WARNING);
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelNotificacion;
@@ -226,7 +226,7 @@ public class JPanelNotificacionV2 extends JPanel {
         toolbar.addFilter("Estado", cmbEstadoFiltro);
         toolbar.addFilter("Tipo notificación", cmbTipoNotificacionFiltro);
         toolbar.addFilter("Resultado", cmbResultadoFiltro);
-        toolbar.addFilter("Publicación", cmbPublicacionFiltro);
+        toolbar.addFilter("Publicación prevista", cmbPublicacionFiltro);
         toolbar.addFilter("Mostrar", spnLimite);
         return toolbar;
     }
@@ -450,6 +450,7 @@ public class JPanelNotificacionV2 extends JPanel {
         btnRegistrarCargo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnMarcarNotificado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRequierePublicacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnRequierePublicacion.setToolTipText("Preparar metadata para publicación futura sin registrar publicación real.");
         btnCerrarExpediente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
     }
 
@@ -868,7 +869,7 @@ public class JPanelNotificacionV2 extends JPanel {
             return;
         }
         String mensaje = NotificacionExpedienteService.ACCION_GENERACION_PUBLICACION.equals(accion)
-                ? "Se preparará el expediente para Publicación condicional. ¿Desea continuar?"
+                ? "Se preparará el expediente para publicación futura. ¿Desea continuar?"
                 : "Se registrará notificación fallida y requerimiento de publicación futura. ¿Desea continuar?";
         if (!confirmar(mensaje)) {
             return;
@@ -1281,7 +1282,7 @@ public class JPanelNotificacionV2 extends JPanel {
         private final String[] columns = {
             "Días", "Expediente", "N° expediente SGD", "Trámite / documento", "Titular",
             "Documento a notificar", "Estado", "Intento", "Tipo notificación",
-            "Resultado", "Acuse", "Publicación", "Alertas"
+            "Resultado", "Acuse", "Publicación prevista", "Alertas"
         };
 
         @Override

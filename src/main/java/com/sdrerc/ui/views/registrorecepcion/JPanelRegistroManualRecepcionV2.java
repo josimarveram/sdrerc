@@ -852,7 +852,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         int option = JOptionPane.showConfirmDialog(
                 this,
                 "¿Desea limpiar el formulario para registrar otro expediente?",
-                "Registro / Recepción V2",
+                "Registro / Recepción",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (option == JOptionPane.YES_OPTION) {

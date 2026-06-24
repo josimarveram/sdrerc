@@ -91,11 +91,9 @@ public class HomeV2 extends JPanel {
         {"Registro / Recepción", "Ingreso, carga diaria y registro manual de expedientes.", AppV2IconProvider.REGISTRO},
         {"Asignación", "Distribución controlada de expedientes a equipos y responsables.", AppV2IconProvider.ASIGNACION},
         {"Análisis", "Evaluación jurídica y documental de expedientes asignados.", AppV2IconProvider.ANALISIS},
-        {"Verificación", "Revisión de resultados, documentos y observaciones del análisis.", AppV2IconProvider.VERIFICACION},
-        {"Firma / Emisión", "Firma, emisión y numeración del documento resolutivo.", AppV2IconProvider.FIRMA_EMISION},
+        {"Verificación", "Revisión, documento emitido y numeración dentro del control documental.", AppV2IconProvider.VERIFICACION},
         {"Ejecución", "Seguimiento del cumplimiento de resoluciones emitidas.", AppV2IconProvider.EJECUCION},
         {"Notificación", "Gestión de modalidades, cargos y resultados de comunicación.", AppV2IconProvider.NOTIFICACION},
-        {"Publicación", "Control de publicaciones requeridas por notificación no concretada.", AppV2IconProvider.PUBLICACION},
         {"Expediente digital", "Carpeta, enlace y completitud documental del expediente.", AppV2IconProvider.EXPEDIENTE_DIGITAL},
         {"Cierre / Archivo", "Gestión final de expedientes cerrados o archivados.", AppV2IconProvider.CIERRE_ARCHIVO},
         {"Administración", "Usuarios, roles y organización del equipo jurídico.", AppV2IconProvider.USUARIOS}

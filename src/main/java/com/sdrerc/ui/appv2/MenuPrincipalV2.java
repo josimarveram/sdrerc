@@ -16,7 +16,6 @@ import com.sdrerc.ui.views.ejecucion.JPanelEjecucionV2;
 import com.sdrerc.ui.views.expedientedigital.JPanelExpedienteDigitalV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import com.sdrerc.ui.views.notificacion.JPanelNotificacionV2;
-import com.sdrerc.ui.views.publicacion.JPanelPublicacionV2;
 import com.sdrerc.ui.views.registrorecepcion.JPanelRegistroRecepcionV2;
 import com.sdrerc.ui.views.verificacion.JPanelVerificacionV2;
 import java.awt.BorderLayout;
@@ -63,7 +62,6 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnVerificacion;
     private JButton btnEjecucion;
     private JButton btnNotificacion;
-    private JButton btnPublicacion;
     private JButton btnExpedienteDigital;
     private JButton btnCierreArchivo;
     private JButton btnUsuarios;
@@ -151,9 +149,6 @@ public class MenuPrincipalV2 extends JFrame {
         btnNotificacion = crearBotonMenu("Notificación", AppV2IconProvider.NOTIFICACION);
         btnNotificacion.addActionListener(e -> mostrarNotificacion(btnNotificacion));
         opciones.add(btnNotificacion);
-        btnPublicacion = crearBotonMenu("Publicación", AppV2IconProvider.PUBLICACION);
-        btnPublicacion.addActionListener(e -> mostrarPublicacion(btnPublicacion));
-        opciones.add(btnPublicacion);
         btnExpedienteDigital = crearBotonMenu("Expediente digital", AppV2IconProvider.EXPEDIENTE_DIGITAL);
         btnExpedienteDigital.addActionListener(e -> mostrarExpedienteDigital(btnExpedienteDigital));
         opciones.add(btnExpedienteDigital);
@@ -400,13 +395,6 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Notificación");
         lblSubtitulo.setText("Gestión de notificaciones, cargos de acuse y resultado de comunicación al administrado");
         cambiarContenido(new JPanelNotificacionV2());
-        aplicarEstadoActivo(boton);
-    }
-
-    private void mostrarPublicacion(JButton boton) {
-        lblTitulo.setText("Publicación");
-        lblSubtitulo.setText("Gestión de expedientes con publicación pendiente por notificación no concretada");
-        cambiarContenido(new JPanelPublicacionV2());
         aplicarEstadoActivo(boton);
     }
 

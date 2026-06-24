@@ -720,7 +720,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private void mostrarInfo(String message) {
-        JOptionPane.showMessageDialog(this, message, "Registro / Recepción V2", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, message, "Registro / Recepción", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void mostrarError(String titulo, Exception ex) {
