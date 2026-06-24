@@ -31,9 +31,12 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.text.Normalizer;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -44,14 +47,22 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.RowFilter;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.TableColumnModelEvent;
+import javax.swing.event.TableColumnModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableRowSorter;
 
 public class JPanelBandejaExpedientesNueva extends JPanel {
 
@@ -59,8 +70,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private static final int PANEL_RECEPCION_ANCHO_NORMAL = 430;
     private static final int PANEL_RECEPCION_TAB_OVERHANG = 18;
     private static final int PANEL_RECEPCION_TAB_TOP = 18;
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ExpedienteConsultaService consultaService;
     private final ExpedienteDetalleService detalleService = new ExpedienteDetalleService();
@@ -86,6 +96,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final DefaultTableModel tableModel;
     private final JTable table;
     private final AppV2TablePanel tablePanel;
+    private TableRowSorter<DefaultTableModel> rowSorter;
+    private JTextField[] columnFilterFields;
+    private JPanel tableHeaderWithFilters;
+    private ColumnFilterPanel columnFilterPanel;
     private final AppV2NotebookToggleTab tabPanelRecepcion = new AppV2NotebookToggleTab();
     private AppV2OperationalSplitPanel splitBandeja;
     private AppV2SideActionPanel panelRecepcion;
@@ -222,6 +236,26 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
+            }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (perfilRegistroRecepcion) {
+                    if (columnIndex == 0 || columnIndex == 10) {
+                        return Long.class;
+                    }
+                    if (columnIndex == 3) {
+                        return LocalDate.class;
+                    }
+                    return String.class;
+                }
+                if (columnIndex == 0 || columnIndex == 9) {
+                    return Long.class;
+                }
+                if (columnIndex == 5 || columnIndex == 6) {
+                    return LocalDate.class;
+                }
+                return String.class;
             }
         };
     }
@@ -463,7 +497,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void configurarTabla() {
         table.setRowHeight(34);
-        table.setAutoCreateRowSorter(true);
+        rowSorter = new TableRowSorter<DefaultTableModel>(tableModel);
+        rowSorter.setSortsOnUpdates(true);
+        table.setRowSorter(rowSorter);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setAutoResizeMode(perfilRegistroRecepcion ? JTable.AUTO_RESIZE_OFF : JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         table.getTableHeader().setReorderingAllowed(false);
@@ -494,6 +530,139 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             table.getColumnModel().getColumn(7).setMaxWidth(125);
             table.getColumnModel().getColumn(8).setMaxWidth(120);
         }
+        instalarFiltrosPorColumna();
+    }
+
+    private void instalarFiltrosPorColumna() {
+        columnFilterFields = new JTextField[tableModel.getColumnCount()];
+        for (int i = 0; i < columnFilterFields.length; i++) {
+            columnFilterFields[i] = crearCampoFiltroColumna(i);
+        }
+        columnFilterPanel = new ColumnFilterPanel();
+        tableHeaderWithFilters = new JPanel(new BorderLayout());
+        tableHeaderWithFilters.setOpaque(true);
+        tableHeaderWithFilters.setBackground(AppV2Theme.SURFACE_ALT);
+        tableHeaderWithFilters.add(table.getTableHeader(), BorderLayout.NORTH);
+        tableHeaderWithFilters.add(columnFilterPanel, BorderLayout.CENTER);
+        tablePanel.getScrollPane().setColumnHeaderView(tableHeaderWithFilters);
+        table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
+            @Override
+            public void columnAdded(TableColumnModelEvent e) {
+                refrescarFiltrosPorColumna();
+            }
+
+            @Override
+            public void columnRemoved(TableColumnModelEvent e) {
+                refrescarFiltrosPorColumna();
+            }
+
+            @Override
+            public void columnMoved(TableColumnModelEvent e) {
+                refrescarFiltrosPorColumna();
+            }
+
+            @Override
+            public void columnMarginChanged(javax.swing.event.ChangeEvent e) {
+                refrescarFiltrosPorColumna();
+            }
+
+            @Override
+            public void columnSelectionChanged(javax.swing.event.ListSelectionEvent e) {
+                // No aplica: la fila de filtros solo replica anchos de columnas.
+            }
+        });
+    }
+
+    private JTextField crearCampoFiltroColumna(final int modelColumn) {
+        final JTextField field = new JTextField();
+        String header = String.valueOf(tableModel.getColumnName(modelColumn));
+        boolean visible = !esColumnaTecnica(modelColumn);
+        field.setVisible(visible);
+        field.setEnabled(visible);
+        field.setFont(AppV2Theme.fontPlain(11));
+        field.setForeground(AppV2Theme.TEXT_PRIMARY);
+        field.setBackground(AppV2Theme.SURFACE);
+        field.setCaretColor(AppV2Theme.PRIMARY);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(2, 7, 2, 7)));
+        field.setToolTipText("Filtrar " + DisplayNameMapperV2.valor(header));
+        field.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                aplicarFiltrosPorColumna();
+            }
+        });
+        return field;
+    }
+
+    private void refrescarFiltrosPorColumna() {
+        if (columnFilterPanel != null) {
+            columnFilterPanel.revalidate();
+            columnFilterPanel.repaint();
+        }
+        if (tableHeaderWithFilters != null) {
+            tableHeaderWithFilters.revalidate();
+            tableHeaderWithFilters.repaint();
+        }
+    }
+
+    private void aplicarFiltrosPorColumna() {
+        if (rowSorter == null || columnFilterFields == null) {
+            return;
+        }
+        List<RowFilter<DefaultTableModel, Integer>> filtros = new ArrayList<RowFilter<DefaultTableModel, Integer>>();
+        for (int i = 0; i < columnFilterFields.length; i++) {
+            final int modelColumn = i;
+            JTextField field = columnFilterFields[i];
+            if (field == null || !field.isEnabled()) {
+                continue;
+            }
+            String text = field.getText();
+            if (text == null || text.trim().isEmpty()) {
+                continue;
+            }
+            final String criterio = normalizarFiltro(text);
+            filtros.add(new RowFilter<DefaultTableModel, Integer>() {
+                @Override
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                    Object value = entry.getValue(modelColumn);
+                    return normalizarFiltro(valorFiltro(value)).contains(criterio);
+                }
+            });
+        }
+        rowSorter.setRowFilter(filtros.isEmpty() ? null : RowFilter.andFilter(filtros));
+        btnVerDetalle.setEnabled(table.getSelectedRow() >= 0);
+        btnEditar.setEnabled(table.getSelectedRow() >= 0 && esRegistroSeleccionadoEditable());
+    }
+
+    private void limpiarFiltrosPorColumna() {
+        if (columnFilterFields == null) {
+            return;
+        }
+        for (JTextField field : columnFilterFields) {
+            if (field != null && field.getText().length() > 0) {
+                field.setText("");
+            }
+        }
+        if (rowSorter != null) {
+            rowSorter.setRowFilter(null);
+        }
+    }
+
+    private boolean esColumnaTecnica(int modelColumn) {
+        String name = tableModel.getColumnName(modelColumn);
+        return name != null && name.startsWith("_");
     }
 
     private JLabel crearLabelFiltro(String text) {
@@ -624,6 +793,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             fechaSolicitudHasta.setDate(null);
         }
         spnLimite.setValue(200);
+        limpiarFiltrosPorColumna();
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
         btnEditar.setEnabled(false);
@@ -642,10 +812,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         for (ExpedienteBandejaDTO item : expedientes) {
             if (perfilRegistroRecepcion) {
                 tableModel.addRow(new Object[]{
-                    item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
+                    item.getDiasRestantes(),
                     item.getNumeroExpediente(),
                     item.getCanal(),
-                    formatFechaSolicitud(item),
+                    fechaSolicitud(item),
                     item.getProcedimiento(),
                     item.getTipoActa(),
                     item.getNumeroActa(),
@@ -656,13 +826,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 });
             } else {
                 tableModel.addRow(new Object[]{
-                    item.getDiasRestantes() == null ? "" : item.getDiasRestantes(),
+                    item.getDiasRestantes(),
                     item.getNumeroExpediente(),
                     item.getNumeroTramiteDocumentario(),
                     DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
                     DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                    formatDateTime(item.getFechaRegistro()),
-                    item.getFechaVencimiento() == null ? "" : DATE_FORMAT.format(item.getFechaVencimiento()),
+                    fechaRegistro(item),
+                    item.getFechaVencimiento(),
                     item.isRequierePublicacion() ? "Requiere" : "No",
                     item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente",
                     item.getIdExpediente()
@@ -974,22 +1144,49 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         };
     }
 
-    private static String formatDateTime(java.time.LocalDateTime dateTime) {
-        return dateTime == null ? "" : DATE_TIME_FORMAT.format(dateTime);
+    private static String formatDateTime(LocalDateTime dateTime) {
+        return dateTime == null ? "" : formatDate(dateTime.toLocalDate());
     }
 
     private static String formatDate(LocalDate value) {
         return value == null ? "" : DATE_FORMAT.format(value);
     }
 
-    private static String formatFechaSolicitud(ExpedienteBandejaDTO item) {
+    private static LocalDate fechaSolicitud(ExpedienteBandejaDTO item) {
         if (item.getFechaRecepcion() != null) {
-            return DATE_FORMAT.format(item.getFechaRecepcion());
+            return item.getFechaRecepcion();
         }
         if (item.getFechaRegistro() != null) {
-            return DATE_FORMAT.format(item.getFechaRegistro().toLocalDate());
+            return item.getFechaRegistro().toLocalDate();
         }
-        return "";
+        return null;
+    }
+
+    private static LocalDate fechaRegistro(ExpedienteBandejaDTO item) {
+        return item.getFechaRegistro() == null ? null : item.getFechaRegistro().toLocalDate();
+    }
+
+    private static String valorFiltro(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof LocalDate) {
+            return formatDate((LocalDate) value);
+        }
+        if (value instanceof LocalDateTime) {
+            return formatDateTime((LocalDateTime) value);
+        }
+        return DisplayNameMapperV2.valor(value.toString());
+    }
+
+    private static String normalizarFiltro(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT);
+        return normalized.replaceAll("\\s+", " ");
     }
 
     private static String toolTipGrupoFamiliar(ExpedienteConsolaDTO expediente) {
@@ -1085,6 +1282,54 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return dias + " día(s) hábil(es) restantes. Vencimiento: " + fecha;
     }
 
+    private class ColumnFilterPanel extends JPanel {
+
+        private static final int HEIGHT = 38;
+
+        private ColumnFilterPanel() {
+            setLayout(null);
+            setOpaque(true);
+            setBackground(AppV2Theme.SURFACE_ALT);
+            if (columnFilterFields != null) {
+                for (JTextField field : columnFilterFields) {
+                    add(field);
+                }
+            }
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            int width = 0;
+            for (int i = 0; i < table.getColumnModel().getColumnCount(); i++) {
+                width += table.getColumnModel().getColumn(i).getWidth();
+            }
+            return new Dimension(Math.max(width, table.getWidth()), HEIGHT);
+        }
+
+        @Override
+        public void doLayout() {
+            int x = 0;
+            for (int viewColumn = 0; viewColumn < table.getColumnModel().getColumnCount(); viewColumn++) {
+                TableColumn column = table.getColumnModel().getColumn(viewColumn);
+                int width = column.getWidth();
+                int modelColumn = table.convertColumnIndexToModel(viewColumn);
+                JTextField field = modelColumn >= 0 && modelColumn < columnFilterFields.length
+                        ? columnFilterFields[modelColumn]
+                        : null;
+                if (field != null) {
+                    boolean visible = !esColumnaTecnica(modelColumn) && width > 18;
+                    field.setVisible(visible);
+                    if (visible) {
+                        field.setBounds(x + 5, 5, Math.max(0, width - 10), 27);
+                    } else {
+                        field.setBounds(x, 0, 0, 0);
+                    }
+                }
+                x += width;
+            }
+        }
+    }
+
     private class BandejaCellRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
@@ -1132,9 +1377,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 boolean hasFocus,
                 int row,
                 int column) {
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String display = valorFiltro(value);
+            Component c = super.getTableCellRendererComponent(table, display, isSelected, hasFocus, row, column);
             setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
             setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            setToolTipText(display == null || display.trim().isEmpty() ? null : display);
             if (!isSelected) {
                 c.setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
