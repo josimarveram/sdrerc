@@ -1,0 +1,9 @@
+{
+  "app": "SDRERC-V2",
+  "version": "1.0.0",
+  "releaseDate": "YYYY-MM-DD",
+  "zipFile": "SDRERC-V2.zip",
+  "mainJar": "SDRERC-V2.jar",
+  "minJavaVersion": "1.8",
+  "notes": "Release SDRERC V2 LAN"
+}

@@ -1,0 +1,14 @@
+{
+  "remoteReleasePath": "\\\\DESKTOP-TEOGE91\\SDRERC_RELEASES\\latest",
+  "localBasePath": "C:\\SDRERC_CLIENTE",
+  "javaPath": "",
+  "mainJar": "SDRERC-V2.jar",
+  "appDirectoryName": "app",
+  "configFile": "C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties",
+  "javaArgs": [
+    "-Dsdrerc.app.config=C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties",
+    "-Dawt.useSystemAAFontSettings=lcd",
+    "-Dswing.aatext=true",
+    "-Dsun.java2d.dpiaware=true"
+  ]
+}
