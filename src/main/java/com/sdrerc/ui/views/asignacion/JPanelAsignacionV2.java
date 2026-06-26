@@ -3223,8 +3223,8 @@ public class JPanelAsignacionV2 extends JPanel {
         boolean mismaTab = tab.equals(tabAsignacionActiva);
         tabAsignacionActiva = tab;
         panelAsignacionCardsLayout.show(panelAsignacionCards, tab);
-        if (splitOperativo != null && panelAsignacionVisible) {
-            splitOperativo.setSideExpanded(!mismaTab || !splitOperativo.isSideExpanded());
+        if (splitOperativo != null && panelAsignacionVisible && mismaTab) {
+            splitOperativo.setSideExpanded(!splitOperativo.isSideExpanded());
         }
         if (TAB_PANEL_CARGA.equals(tab)) {
             cargarCargaLaboralEnPanel();

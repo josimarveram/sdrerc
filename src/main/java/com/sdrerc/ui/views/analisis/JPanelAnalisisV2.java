@@ -1899,8 +1899,8 @@ public class JPanelAnalisisV2 extends JPanel {
         boolean mismaTab = tab.equals(tabAnalisisActiva);
         tabAnalisisActiva = tab;
         panelAnalisisCardsLayout.show(panelAnalisisCards, tab);
-        if (splitOperativo != null && splitOperativo.isSideVisible()) {
-            splitOperativo.setSideExpanded(!mismaTab || !splitOperativo.isSideExpanded());
+        if (splitOperativo != null && splitOperativo.isSideVisible() && mismaTab) {
+            splitOperativo.setSideExpanded(!splitOperativo.isSideExpanded());
         }
         actualizarLenguetasAnalisis();
         panelAnalisisCards.revalidate();
