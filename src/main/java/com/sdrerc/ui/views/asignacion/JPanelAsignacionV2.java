@@ -177,6 +177,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblSeleccionados = new JLabel("0 expedientes seleccionados");
     private final JLabel lblSeleccionadosPanel = new JLabel("0 expedientes seleccionados");
     private final JLabel lblExpedienteSeleccionado = new JLabel("-");
+    private final JLabel lblTitularSeleccionado = new JLabel("-");
     private final JLabel lblTramiteWebSeleccionado = new JLabel("-");
     private final JLabel lblNumeroDocumentoSeleccionado = new JLabel("-");
     private final JLabel lblRecepcionAbogado = new JLabel("-");
@@ -274,6 +275,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardPorVencer = new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
     private final MetricCardV2 cardVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
     private AppV2SideActionPanel panelAsignacion;
+    private AppV2SideSectionPanel sectionDatosExpediente;
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
     private AppV2SideSectionPanel sectionDatosRegistro;
@@ -429,6 +431,7 @@ public class JPanelAsignacionV2 extends JPanel {
         tabPanelAsignacion.setToolTipText("Expandir panel de asignación");
         tabPanelAsignacion.addActionListener(e -> alternarExpansionPanelAsignacion());
         sectionResumenAsignacion = crearResumenAsignacion();
+        sectionDatosExpediente = crearDatosExpedienteAsignacion();
         sectionAsignacionMultiple = crearAsignacionMultiple();
         sectionDatosRegistro = crearDatosRegistroAsignacion();
         sectionCartasRespuesta = crearCartasRespuesta();
@@ -438,6 +441,7 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionDestinoAsignacion = crearDestinoAsignacion();
         sectionHojaEnvioAsignacion = crearHojaEnvioAsignacion();
         sectionComentarioAsignacion = crearComentarioAsignacion();
+        panel.addSection(sectionDatosExpediente);
         panel.addSection(sectionResumenAsignacion);
         panel.addSection(sectionAsignacionMultiple);
         panel.addSection(sectionDatosRegistro);
@@ -485,17 +489,23 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private AppV2SideSectionPanel crearResumenAsignacion() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Expediente seleccionado");
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Selección y alertas");
         section.addRow("Seleccionados", lblSeleccionadosPanel);
-        section.addRow("Expediente", lblExpedienteSeleccionado);
-        section.addRow("Trámite Web", lblTramiteWebSeleccionado);
-        section.addRow("N° Documento", lblNumeroDocumentoSeleccionado);
         section.addRow("Recepción", lblRecepcionAbogado);
         section.addRow("Grupo familiar", lblGrupoFamiliar);
         section.addRow("Alertas", lblRelacionados);
         panelSolicitudesAsociadas = crearPanelDocumentosRelacionados();
         panelSolicitudesAsociadas.setVisible(false);
         section.addContent(panelSolicitudesAsociadas);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosExpedienteAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del expediente");
+        section.addRow("Expediente", lblExpedienteSeleccionado);
+        section.addRow("Titular", lblTitularSeleccionado);
+        section.addRow("Trámite Web", lblTramiteWebSeleccionado);
+        section.addRow("N° Documento", lblNumeroDocumentoSeleccionado);
         return section;
     }
 
@@ -2143,6 +2153,7 @@ public class JPanelAsignacionV2 extends JPanel {
         btnAsignarSeleccionados.setEnabled(marcados > 0);
 
         AsignacionTableRow filaPanel = filaParaPanel(modelRow, marcados);
+        actualizarTituloPanelAsignacion(filaPanel, modoMultiple);
         if (filaPanel != null && filaPanel.esPrincipal()) {
             AsignacionExpedienteDTO item = filaPanel.principal;
             prepararHojaEnvioSimple(item);
@@ -2150,6 +2161,7 @@ public class JPanelAsignacionV2 extends JPanel {
             btnAsignarSeleccionado.setEnabled(seleccionados == 1 && !modoMultiple && item.isAsignable() && item.tieneNumeroExpediente());
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(numeroExpedienteVisual(item));
+            lblTitularSeleccionado.setText(titularPrincipalVisual(item));
             actualizarIdentificacionDocumento(
                     item.getNumeroTramiteDocumentario(),
                     item.getNumeroDocumento(),
@@ -2188,6 +2200,7 @@ public class JPanelAsignacionV2 extends JPanel {
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(filaPanel.principal, false);
             lblExpedienteSeleccionado.setText("Expediente principal: " + filaPanel.numeroExpedientePrincipal());
+            lblTitularSeleccionado.setText(titularPrincipalVisual(filaPanel.principal));
             actualizarIdentificacionDocumento(
                     filaPanel.asociado.getNumeroTramiteDocumentario(),
                     filaPanel.asociado.getNumeroDocumento(),
@@ -2214,6 +2227,7 @@ public class JPanelAsignacionV2 extends JPanel {
             aplicarIdentidadVisual(null, true);
             cargarPanelAsignacionMultiple(obtenerExpedientesMarcados());
             lblExpedienteSeleccionado.setText("Selección múltiple");
+            lblTitularSeleccionado.setText("Múltiples titulares");
             actualizarIdentificacionDocumento(null, null, null);
             lblEquipoActual.setText("Selección múltiple");
             lblEquipoActual.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
@@ -2236,8 +2250,37 @@ public class JPanelAsignacionV2 extends JPanel {
             aplicarIdentidadVisual(null, false);
             cargarPanelAsignacionMultiple(Collections.<AsignacionExpedienteDTO>emptyList());
             limpiarCartasRespuestaPanel();
+            lblTitularSeleccionado.setText("-");
             limpiarPanelAsignacion();
         }
+    }
+
+    private void actualizarTituloPanelAsignacion(AsignacionTableRow filaPanel, boolean modoMultiple) {
+        if (panelAsignacion == null) {
+            return;
+        }
+        String titulo = "Panel de Asignación";
+        if (modoMultiple) {
+            titulo = titulo + " - Selección múltiple";
+        } else if (filaPanel != null) {
+            AsignacionExpedienteDTO item = filaPanel.principal;
+            if (item != null) {
+                String titular = titularPrincipalVisual(item);
+                if (!titular.isEmpty() && !"-".equals(titular)) {
+                    titulo = titulo + " - " + titular;
+                }
+            }
+        }
+        panelAsignacion.setTitle(titulo);
+    }
+
+    private String titularPrincipalVisual(AsignacionExpedienteDTO item) {
+        if (item == null) {
+            return "-";
+        }
+        String titular = item.getTitular();
+        titular = titular == null ? "" : titular.trim();
+        return titular.isEmpty() ? "-" : titular;
     }
 
     private void prepararDatosRegistroAsignacion(AsignacionExpedienteDTO item) {
