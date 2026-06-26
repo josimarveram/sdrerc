@@ -9,6 +9,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
@@ -224,10 +225,23 @@ public final class AppV2ColumnFilterSupport {
 
         private void configureAlignment() {
             scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            scrollPane.setColumnHeaderView(headerPanel);
+            installColumnHeaderPanel();
             AppV2TableScrollDiagnostics.log(this.moduleName, table, scrollPane, headerPanel, filterPanel);
-            SwingUtilities.invokeLater(() -> AppV2TableScrollDiagnostics.log(
-                    this.moduleName + ".afterLayout", table, scrollPane, headerPanel, filterPanel));
+            SwingUtilities.invokeLater(() -> {
+                installColumnHeaderPanel();
+                AppV2TableScrollDiagnostics.log(
+                        this.moduleName + ".afterLayout", table, scrollPane, headerPanel, filterPanel);
+            });
+            table.addHierarchyListener(event -> {
+                long flags = event.getChangeFlags();
+                if ((flags & (HierarchyEvent.DISPLAYABILITY_CHANGED | HierarchyEvent.SHOWING_CHANGED)) != 0) {
+                    SwingUtilities.invokeLater(() -> {
+                        installColumnHeaderPanel();
+                        AppV2TableScrollDiagnostics.log(
+                                this.moduleName + ".hierarchy", table, scrollPane, headerPanel, filterPanel);
+                    });
+                }
+            });
             scrollPane.getHorizontalScrollBar().addAdjustmentListener(event -> refreshFilterPanel());
             table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
                 @Override
@@ -255,6 +269,14 @@ public final class AppV2ColumnFilterSupport {
                     // The filter row only mirrors column geometry.
                 }
             });
+        }
+
+        private void installColumnHeaderPanel() {
+            scrollPane.setColumnHeaderView(headerPanel);
+            scrollPane.revalidate();
+            headerPanel.revalidate();
+            headerPanel.doLayout();
+            headerPanel.repaint();
         }
 
         private void applyFilters() {
