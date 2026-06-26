@@ -247,6 +247,8 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     };
     private final JTable documentosTable = new AppV2Table(documentoModel);
+    private JScrollPane documentosScrollPane;
+    private AppV2ColumnFilterSupport.Controller documentosColumnFilterSupport;
     private final DefaultTableModel documentosAsociadosModel = new DefaultTableModel(
             new Object[]{"N° documento", "Estado", ""}, 0) {
         @Override
@@ -479,12 +481,12 @@ public class JPanelAnalisisV2 extends JPanel {
         acciones.add(btnQuitarDocumento);
         addRow(form, row, "", acciones);
 
-        JScrollPane scroll = new JScrollPane(documentosTable);
-        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        documentoModel.addTableModelListener(e -> actualizarAlturaDocumentosAnalizados(scroll));
-        actualizarAlturaDocumentosAnalizados(scroll);
+        documentosScrollPane = new JScrollPane(documentosTable);
+        documentosScrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        documentosScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        documentosScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        documentoModel.addTableModelListener(e -> actualizarAlturaDocumentosAnalizados(documentosScrollPane));
+        actualizarAlturaDocumentosAnalizados(documentosScrollPane);
 
         JPanel top = new JPanel(new BorderLayout(0, 8));
         top.setOpaque(false);
@@ -492,7 +494,7 @@ public class JPanelAnalisisV2 extends JPanel {
         top.add(form, BorderLayout.CENTER);
 
         panel.add(top, BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
+        panel.add(documentosScrollPane, BorderLayout.CENTER);
         return panel;
     }
 
@@ -517,7 +519,9 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void actualizarAlturaDocumentosAnalizados(JScrollPane scroll) {
-        int headerHeight = documentosTable.getTableHeader().getPreferredSize().height;
+        int headerHeight = scroll.getColumnHeader() != null && scroll.getColumnHeader().getView() != null
+                ? scroll.getColumnHeader().getView().getPreferredSize().height
+                : documentosTable.getTableHeader().getPreferredSize().height;
         int rowCount = Math.max(1, documentoModel.getRowCount());
         int rowsHeight = rowCount * documentosTable.getRowHeight();
         int horizontalBarHeight = scroll.getHorizontalScrollBar().getPreferredSize().height;
@@ -728,6 +732,20 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMaxWidth(0);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMinWidth(0);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMaxWidth(0);
+        if (documentosScrollPane != null) {
+            documentosColumnFilterSupport = AppV2ColumnFilterSupport.install(
+                    "Analisis.DocumentosAnalizados",
+                    documentosTable,
+                    documentosScrollPane,
+                    documentosScrollPane,
+                    null,
+                    COL_DOCUMENTO_PLANTILLA,
+                    COL_DOCUMENTO_ACCION,
+                    COL_DOCUMENTO_TIPO_CODIGO,
+                    COL_DOCUMENTO_ESTADO_CODIGO,
+                    COL_DOCUMENTO_ID);
+            actualizarAlturaDocumentosAnalizados(documentosScrollPane);
+        }
     }
 
     private void configurarColumnaDocumento(int index, int preferred, int min, int max) {
