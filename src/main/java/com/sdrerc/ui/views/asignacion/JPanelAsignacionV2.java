@@ -18,7 +18,6 @@ import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
-import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2ReceiveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -42,10 +41,13 @@ import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -117,8 +119,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int CARTA_COL_ACCION = 12;
     private static final int PANEL_ASIGNACION_ANCHO_MINIMO = 380;
     private static final int PANEL_ASIGNACION_ANCHO_NORMAL = 430;
-    private static final int PANEL_ASIGNACION_TAB_OVERHANG = 18;
+    private static final int PANEL_ASIGNACION_TAB_OVERHANG = 46;
     private static final int PANEL_ASIGNACION_TAB_TOP = 18;
+    private static final String TAB_DATOS_EXPEDIENTE = "datosExpediente";
+    private static final String TAB_PANEL_ASIGNACION = "panelAsignacion";
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
@@ -252,9 +256,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable cartasRespuestaTable = new AppV2Table(cartasRespuestaModel);
     private final JTextField txtHojaEnvioAsignacion = new JTextField();
     private final JTextArea txtComentario = new JTextArea(3, 18);
-    private final AppV2NotebookToggleTab tabDatosExpediente = new AppV2NotebookToggleTab();
-    private final AppV2NotebookToggleTab tabPanelAsignacionOperativa = new AppV2NotebookToggleTab();
-    private final AppV2NotebookToggleTab tabPanelAsignacion = new AppV2NotebookToggleTab();
+    private final AsignacionSideTab tabDatosExpediente = new AsignacionSideTab("Datos");
+    private final AsignacionSideTab tabPanelAsignacionOperativa = new AsignacionSideTab("Asignación");
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
     private final AppV2TablePanel tablePanel = new AppV2TablePanel(
@@ -278,6 +281,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
     private AppV2SideActionPanel panelAsignacion;
     private AppV2SideActionPanel panelDatosExpediente;
+    private CardLayout panelAsignacionCardsLayout;
+    private JPanel panelAsignacionCards;
+    private String tabAsignacionActiva = TAB_DATOS_EXPEDIENTE;
     private AppV2SideSectionPanel sectionDatosExpediente;
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
@@ -426,18 +432,10 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideActionPanel crearPanelDatosExpediente() {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Datos del expediente");
-        panel.setHeaderLeadingComponent(tabDatosExpediente);
-        tabDatosExpediente.setExpanded(true);
-        tabDatosExpediente.setToolTipText("Contraer o expandir datos del expediente");
-        tabDatosExpediente.addActionListener(e -> {
-            panel.setBodyVisible(!panel.isBodyVisible());
-            tabDatosExpediente.setExpanded(panel.isBodyVisible());
-        });
         sectionDatosExpediente = crearDatosExpedienteAsignacion();
         sectionResumenAsignacion = crearResumenAsignacion();
         panel.addSection(sectionDatosExpediente);
         panel.addSection(sectionResumenAsignacion);
-        panel.setBodyVisible(true);
         return panel;
     }
 
@@ -448,16 +446,6 @@ public class JPanelAsignacionV2 extends JPanel {
                 cerrarPanelAsignacion();
             }
         });
-        panel.setHeaderLeadingComponent(tabPanelAsignacionOperativa);
-        tabPanelAsignacionOperativa.setExpanded(true);
-        tabPanelAsignacionOperativa.setToolTipText("Contraer o expandir el panel de asignación");
-        tabPanelAsignacionOperativa.addActionListener(e -> {
-            panel.setBodyVisible(!panel.isBodyVisible());
-            tabPanelAsignacionOperativa.setExpanded(panel.isBodyVisible());
-        });
-        tabPanelAsignacion.setExpanded(false);
-        tabPanelAsignacion.setToolTipText("Expandir panel de asignación");
-        tabPanelAsignacion.addActionListener(e -> alternarExpansionPanelAsignacion());
         sectionAsignacionMultiple = crearAsignacionMultiple();
         sectionDatosRegistro = crearDatosRegistroAsignacion();
         sectionCartasRespuesta = crearCartasRespuesta();
@@ -481,7 +469,6 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionCartasRespuesta.setVisible(false);
         sectionDecisionNumero.setVisible(false);
         panel.setFooter(crearAccionesAsignacion());
-        panel.setBodyVisible(true);
         return panel;
     }
 
@@ -493,39 +480,54 @@ public class JPanelAsignacionV2 extends JPanel {
             public void doLayout() {
                 int width = getWidth();
                 int height = getHeight();
-                int panelX = PANEL_ASIGNACION_TAB_OVERHANG;
-                int availableWidth = Math.max(0, width - panelX);
-                int availableHeight = Math.max(0, height);
-                int gap = 12;
-                int panelHeight = Math.max(0, (availableHeight - gap) / 2);
-                int firstHeight = panelDatos.isBodyVisible() ? panelHeight : Math.min(panelDatos.getPreferredSize().height, 130);
-                int secondHeight = panelOperativo.isBodyVisible() ? Math.max(0, availableHeight - firstHeight - gap) : Math.min(panelOperativo.getPreferredSize().height, 130);
-                if (!panelDatos.isBodyVisible() && !panelOperativo.isBodyVisible()) {
-                    firstHeight = Math.min(panelDatos.getPreferredSize().height, 130);
-                    secondHeight = Math.min(panelOperativo.getPreferredSize().height, 130);
-                }
-                int y = 0;
-                panelDatos.setBounds(panelX, y, availableWidth, firstHeight);
-                y += firstHeight + gap;
-                panelOperativo.setBounds(panelX, y, availableWidth, Math.max(0, availableHeight - y));
-                int tabY = Math.min(PANEL_ASIGNACION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
-                tabPanelAsignacion.setBounds(
+                int railWidth = PANEL_ASIGNACION_TAB_OVERHANG;
+                int availableWidth = Math.max(0, width - railWidth);
+                int tabHeight = AsignacionSideTab.PREFERRED_HEIGHT;
+                int gap = 10;
+                int firstY = Math.min(PANEL_ASIGNACION_TAB_TOP, Math.max(0, height - (tabHeight * 2 + gap)));
+                tabDatosExpediente.setBounds(
                         0,
-                        tabY,
-                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
-                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+                        firstY,
+                        AsignacionSideTab.PREFERRED_WIDTH,
+                        tabHeight);
+                tabPanelAsignacionOperativa.setBounds(
+                        0,
+                        firstY + tabHeight + gap,
+                        AsignacionSideTab.PREFERRED_WIDTH,
+                        tabHeight);
+                panelAsignacionCards.setBounds(railWidth, 0, availableWidth, Math.max(0, height));
             }
         };
         wrapper.setOpaque(false);
-        wrapper.add(panelDatos);
-        wrapper.add(panelOperativo);
-        wrapper.add(tabPanelAsignacion);
+        panelAsignacionCardsLayout = new CardLayout();
+        panelAsignacionCards = new JPanel(panelAsignacionCardsLayout);
+        panelAsignacionCards.setOpaque(false);
+        panelAsignacionCards.add(panelDatos, TAB_DATOS_EXPEDIENTE);
+        panelAsignacionCards.add(panelOperativo, TAB_PANEL_ASIGNACION);
+        tabDatosExpediente.setToolTipText("Ver datos del expediente");
+        tabPanelAsignacionOperativa.setToolTipText("Ver panel de asignación");
+        tabDatosExpediente.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAsignacion(TAB_DATOS_EXPEDIENTE);
+            }
+        });
+        tabPanelAsignacionOperativa.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAsignacion(TAB_PANEL_ASIGNACION);
+            }
+        });
+        wrapper.add(tabDatosExpediente);
+        wrapper.add(tabPanelAsignacionOperativa);
+        wrapper.add(panelAsignacionCards);
         wrapper.setMinimumSize(new Dimension(
                 PANEL_ASIGNACION_ANCHO_MINIMO + PANEL_ASIGNACION_TAB_OVERHANG,
                 0));
         wrapper.setPreferredSize(new Dimension(
                 PANEL_ASIGNACION_ANCHO_NORMAL + PANEL_ASIGNACION_TAB_OVERHANG,
                 0));
+        seleccionarTabAsignacion(TAB_DATOS_EXPEDIENTE);
         return wrapper;
     }
 
@@ -2297,7 +2299,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void actualizarTituloPanelAsignacion(AsignacionTableRow filaPanel, boolean modoMultiple) {
-        if (panelAsignacion == null) {
+        if (panelAsignacion == null && panelDatosExpediente == null) {
             return;
         }
         String titulo = "Panel de Asignación";
@@ -2312,7 +2314,12 @@ public class JPanelAsignacionV2 extends JPanel {
                 }
             }
         }
-        panelAsignacion.setTitle(titulo);
+        if (panelAsignacion != null) {
+            panelAsignacion.setTitle(titulo);
+        }
+        if (panelDatosExpediente != null) {
+            panelDatosExpediente.setTitle(titulo);
+        }
     }
 
     private String titularPrincipalVisual(AsignacionExpedienteDTO item) {
@@ -3073,8 +3080,7 @@ public class JPanelAsignacionV2 extends JPanel {
             fondoSeleccion = TABLE_SELECTION_BACKGROUND;
             contextoChip = "Panel de asignación";
         }
-        tabPanelAsignacion.setAccent(acentoSeleccion, fondoSeleccion);
-        actualizarTooltipTabPanel();
+        actualizarLenguetasAsignacion();
         if (panelAsignacion != null) {
             panelAsignacion.setAccentColor(acentoSeleccion);
         }
@@ -3083,12 +3089,26 @@ public class JPanelAsignacionV2 extends JPanel {
         table.repaint();
     }
 
-    private void actualizarTooltipTabPanel() {
-        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
-        String accion = expandido
-                ? "Restaurar panel de asignación"
-                : "Expandir panel de asignación";
-        tabPanelAsignacion.setToolTipText(accion + " · " + contextoChip);
+    private void seleccionarTabAsignacion(String tab) {
+        if (tab == null || panelAsignacionCardsLayout == null || panelAsignacionCards == null) {
+            return;
+        }
+        if (!TAB_DATOS_EXPEDIENTE.equals(tab) && !TAB_PANEL_ASIGNACION.equals(tab)) {
+            return;
+        }
+        tabAsignacionActiva = tab;
+        panelAsignacionCardsLayout.show(panelAsignacionCards, tab);
+        actualizarLenguetasAsignacion();
+        panelAsignacionCards.revalidate();
+        panelAsignacionCards.repaint();
+    }
+
+    private void actualizarLenguetasAsignacion() {
+        boolean datosActivo = TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva);
+        tabDatosExpediente.setSelected(datosActivo);
+        tabPanelAsignacionOperativa.setSelected(!datosActivo);
+        tabDatosExpediente.setToolTipText("Datos del expediente · " + contextoChip);
+        tabPanelAsignacionOperativa.setToolTipText("Panel de asignación · " + contextoChip);
     }
 
     private int indicePaleta(Long idExpediente) {
@@ -3195,9 +3215,8 @@ public class JPanelAsignacionV2 extends JPanel {
         if (splitOperativo == null || !panelAsignacionVisible) {
             return;
         }
-        boolean expandido = splitOperativo.toggleSideExpanded();
-        tabPanelAsignacion.setExpanded(expandido);
-        actualizarTooltipTabPanel();
+        splitOperativo.toggleSideExpanded();
+        actualizarLenguetasAsignacion();
         panelOperativo.revalidate();
         panelOperativo.repaint();
     }
@@ -3215,8 +3234,7 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         panelAsignacionVisible = mostrar;
         splitOperativo.setSideVisible(mostrar);
-        tabPanelAsignacion.setExpanded(splitOperativo.isSideExpanded());
-        actualizarTooltipTabPanel();
+        actualizarLenguetasAsignacion();
         panelOperativo.revalidate();
         panelOperativo.repaint();
     }
@@ -4057,6 +4075,55 @@ public class JPanelAsignacionV2 extends JPanel {
                     ? "Recibir documento y asociarlo al expediente principal."
                     : "Solo el abogado responsable puede registrar la recepción.");
             return button;
+        }
+    }
+
+    private static final class AsignacionSideTab extends JPanel {
+
+        private static final int PREFERRED_WIDTH = 40;
+        private static final int PREFERRED_HEIGHT = 136;
+        private final String label;
+        private boolean selected;
+
+        private AsignacionSideTab(String label) {
+            this.label = label;
+            setOpaque(false);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setPreferredSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
+            setMinimumSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
+            setMaximumSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
+        }
+
+        private void setSelected(boolean selected) {
+            this.selected = selected;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color bg = selected ? PANEL_ASSIGNMENT_ACCENT : new Color(230, 241, 245);
+                Color border = selected ? PANEL_ASSIGNMENT_ACCENT.darker() : AppV2Theme.BORDER;
+                Color text = selected ? Color.WHITE : AppV2Theme.PRIMARY_DARK;
+                g2.setColor(bg);
+                g2.fillRoundRect(2, 2, getWidth() - 3, getHeight() - 4, 18, 18);
+                g2.setColor(border);
+                g2.drawRoundRect(2, 2, getWidth() - 3, getHeight() - 4, 18, 18);
+
+                g2.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+                g2.setColor(text);
+                FontMetrics fm = g2.getFontMetrics();
+                int textWidth = fm.stringWidth(label);
+                int x = -((getHeight() + textWidth) / 2);
+                int y = (getWidth() + fm.getAscent() - fm.getDescent()) / 2;
+                g2.rotate(-Math.PI / 2);
+                g2.drawString(label, x, y);
+            } finally {
+                g2.dispose();
+            }
         }
     }
 
