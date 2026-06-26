@@ -76,7 +76,6 @@ public class JPanelFirmaEmisionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarFirma = new JButton("Registrar firma");
     private final JButton btnRegistrarEmision = new JButton("Registrar emisión");
     private final JButton btnRegistrarNumero = new JButton("Registrar número resolución");
@@ -186,7 +185,6 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
         toolbar.addFilter("Estado", cmbEstadoFiltro);
@@ -415,7 +413,6 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRegistrarFirma.addActionListener(e -> registrarFirma());
         btnRegistrarEmision.addActionListener(e -> registrarEmision());
         btnRegistrarNumero.addActionListener(e -> registrarNumeroResolucion());
@@ -635,7 +632,6 @@ public class JPanelFirmaEmisionV2 extends JPanel {
 
     private void actualizarAcciones(FirmaEmisionExpedienteDTO expediente) {
         boolean seleccionado = expediente != null;
-        btnVerDetalle.setEnabled(seleccionado);
         btnRegistrarFirma.setEnabled(seleccionado && expediente.isFirmable());
         btnRegistrarEmision.setEnabled(seleccionado && expediente.isEmitible());
         btnRegistrarNumero.setEnabled(seleccionado && expediente.isNumerable());
@@ -815,7 +811,6 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         if (!trabajando) {
             actualizarAcciones(seleccionado());
         } else {
-            btnVerDetalle.setEnabled(false);
             btnRegistrarFirma.setEnabled(false);
             btnRegistrarEmision.setEnabled(false);
             btnRegistrarNumero.setEnabled(false);

@@ -63,7 +63,6 @@ public class JPanelExpedienteDigitalV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarCarpeta = new JButton("Registrar carpeta");
     private final JButton btnRegistrarEnlace = new JButton("Registrar enlace");
     private final JButton btnMarcarCompleto = new JButton("Marcar completo");
@@ -178,7 +177,6 @@ public class JPanelExpedienteDigitalV2 extends JPanel {
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
         accionesFiltro.add(btnRefrescar);
-        accionesFiltro.add(btnVerDetalle);
         gbc.gridx = 6;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         filtros.add(accionesFiltro, gbc);
@@ -381,7 +379,6 @@ public class JPanelExpedienteDigitalV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRegistrarCarpeta.addActionListener(e -> registrarCarpeta());
         btnRegistrarEnlace.addActionListener(e -> registrarEnlace());
         btnMarcarCompleto.addActionListener(e -> marcarCompleto());
@@ -545,7 +542,6 @@ public class JPanelExpedienteDigitalV2 extends JPanel {
 
     private void actualizarAcciones(ExpedienteDigitalDTO expediente) {
         boolean seleccionado = expediente != null;
-        btnVerDetalle.setEnabled(seleccionado);
         btnRegistrarCarpeta.setEnabled(seleccionado
                 && expediente.isCarpetaCreada()
                 && expediente.hasAccion(ExpedienteDigitalService.ACCION_CREACION_CARPETA));
@@ -710,7 +706,6 @@ public class JPanelExpedienteDigitalV2 extends JPanel {
         if (!trabajando) {
             actualizarAcciones(seleccionado());
         } else {
-            btnVerDetalle.setEnabled(false);
             btnRegistrarCarpeta.setEnabled(false);
             btnRegistrarEnlace.setEnabled(false);
             btnMarcarCompleto.setEnabled(false);

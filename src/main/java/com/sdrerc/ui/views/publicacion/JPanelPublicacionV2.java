@@ -66,7 +66,6 @@ public class JPanelPublicacionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarPublicacion = new JButton("Registrar publicación");
     private final JButton btnMarcarRegistrada = new JButton("Marcar publicación registrada");
     private final JButton btnCerrarExpediente = new JButton("Cerrar expediente");
@@ -189,7 +188,6 @@ public class JPanelPublicacionV2 extends JPanel {
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
         accionesFiltro.add(btnRefrescar);
-        accionesFiltro.add(btnVerDetalle);
         gbc.gridx = 6;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         filtros.add(accionesFiltro, gbc);
@@ -407,7 +405,6 @@ public class JPanelPublicacionV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRegistrarPublicacion.addActionListener(e -> registrarPublicacion());
         btnMarcarRegistrada.addActionListener(e -> registrarPublicacion());
         btnCerrarExpediente.addActionListener(e -> cerrarExpediente());
@@ -587,7 +584,6 @@ public class JPanelPublicacionV2 extends JPanel {
 
     private void actualizarAcciones(PublicacionExpedienteDTO expediente) {
         boolean seleccionado = expediente != null;
-        btnVerDetalle.setEnabled(seleccionado);
         btnRegistrarPublicacion.setEnabled(seleccionado && expediente.hasAccion(PublicacionExpedienteService.ACCION_REGISTRO_PUBLICACION));
         btnMarcarRegistrada.setEnabled(seleccionado && expediente.hasAccion(PublicacionExpedienteService.ACCION_REGISTRO_PUBLICACION));
         btnCerrarExpediente.setEnabled(seleccionado && expediente.hasAccion(PublicacionExpedienteService.ACCION_CIERRE));
@@ -751,7 +747,6 @@ public class JPanelPublicacionV2 extends JPanel {
         if (!trabajando) {
             actualizarAcciones(seleccionado());
         } else {
-            btnVerDetalle.setEnabled(false);
             btnRegistrarPublicacion.setEnabled(false);
             btnMarcarRegistrada.setEnabled(false);
             btnCerrarExpediente.setEnabled(false);

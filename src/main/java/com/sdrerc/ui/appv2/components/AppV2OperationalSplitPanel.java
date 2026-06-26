@@ -98,7 +98,9 @@ public class AppV2OperationalSplitPanel extends JPanel {
             return;
         }
         if (expanded) {
-            normalSideWidth = clampSideWidth(currentSideWidth);
+            if (!sideExpanded) {
+                normalSideWidth = clampSideWidth(currentSideWidth);
+            }
             currentSideWidth = maxSideWidth();
             sideExpanded = true;
         } else {
@@ -183,9 +185,12 @@ public class AppV2OperationalSplitPanel extends JPanel {
         }
         int sideWidth = splitPane.getWidth() - splitPane.getDividerLocation() - splitPane.getDividerSize();
         int clamped = clampSideWidth(sideWidth);
+        boolean expanded = clamped >= maxSideWidth() - 4;
         currentSideWidth = clamped;
-        normalSideWidth = clamped;
-        sideExpanded = clamped >= maxSideWidth() - 4;
+        if (!expanded) {
+            normalSideWidth = clamped;
+        }
+        sideExpanded = expanded;
         if (clamped != sideWidth) {
             applyDividerLocationLater();
         }

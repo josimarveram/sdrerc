@@ -170,7 +170,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JCheckBox chkSoloGrupoFamiliar = new JCheckBox("Con grupo familiar");
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
     private final JButton btnGenerarNumeroExpediente = new JButton("Generar número");
@@ -403,7 +402,6 @@ public class JPanelAsignacionV2 extends JPanel {
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
         acciones.add(btnVerCargaLaboral);
-        acciones.add(btnVerDetalle);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, acciones);
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
         toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
@@ -940,7 +938,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
-        btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
         btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpedienteSeleccionado());
         btnGuardarDatosRegistro.addActionListener(e -> guardarDatosRegistralesAsignacion());
@@ -3373,7 +3370,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private void setTrabajando(boolean trabajando, String mensaje) {
         btnBuscar.setEnabled(!trabajando);
         btnLimpiar.setEnabled(!trabajando);
-        btnVerDetalle.setEnabled(!trabajando);
         btnAsociarRelacionados.setEnabled(!trabajando && puedeAsociarRelacionados());
         int marcados = contarSeleccionados();
         btnAsignarSeleccionado.setEnabled(!trabajando && contarSeleccionOperativa() == 1 && marcados <= 1 && asignacionFocoConNumero());

@@ -89,7 +89,6 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarNotificacion = new JButton("Registrar notificación");
     private final JButton btnRegistrarCargo = new JButton("Registrar cargo");
     private final JButton btnMarcarNotificado = new JButton("Marcar notificado");
@@ -220,7 +219,6 @@ public class JPanelNotificacionV2 extends JPanel {
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
@@ -502,7 +500,6 @@ public class JPanelNotificacionV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRegistrarNotificacion.addActionListener(e -> registrarNotificacion());
         btnRegistrarCargo.addActionListener(e -> registrarCargo());
         btnMarcarNotificado.addActionListener(e -> marcarNotificado());
@@ -805,7 +802,6 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void actualizarAcciones(NotificacionExpedienteDTO expediente) {
         boolean seleccionado = expediente != null;
-        btnVerDetalle.setEnabled(seleccionado);
         btnRegistrarNotificacion.setEnabled(seleccionado && puedeRegistrarIntento(expediente));
         btnRegistrarCargo.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_RECEPCION_CARGO));
         btnMarcarNotificado.setEnabled(seleccionado && expediente.hasAccion(NotificacionExpedienteService.ACCION_CONFIRMACION));
@@ -1106,7 +1102,6 @@ public class JPanelNotificacionV2 extends JPanel {
         if (!trabajando) {
             actualizarAcciones(seleccionado());
         } else {
-            btnVerDetalle.setEnabled(false);
             btnRegistrarNotificacion.setEnabled(false);
             btnRegistrarCargo.setEnabled(false);
             btnMarcarNotificado.setEnabled(false);

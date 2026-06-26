@@ -160,7 +160,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRecibir = new JButton("Recibir expediente");
     private final JButton btnRegistrarAnalisis = new JButton("Registrar resultado final");
     private final JButton btnEnviarVerificacion = new JButton("Enviar a verificación");
@@ -342,7 +341,6 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
@@ -784,7 +782,6 @@ public class JPanelAnalisisV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRecibir.addActionListener(e -> recibir());
         btnRegistrarAnalisis.addActionListener(e -> registrarAnalisis());
         btnEnviarVerificacion.addActionListener(e -> enviarVerificacion());
@@ -1308,7 +1305,6 @@ public class JPanelAnalisisV2 extends JPanel {
         AnalisisExpedienteDTO item = fila == null ? null : fila.principal;
         boolean has = fila != null;
         boolean asociado = fila != null && fila.esAsociada();
-        btnVerDetalle.setEnabled(has);
         btnRecibir.setEnabled(has && !asociado && item.isRecibible());
         btnRegistrarAnalisis.setEnabled(has && !asociado && item.isRegistrable());
         btnEnviarVerificacion.setEnabled(has && !asociado && item.isEnviableVerificacion());
@@ -2325,7 +2321,6 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRefrescar.setEnabled(!trabajando);
         AnalisisTableRow fila = obtenerFilaSeleccionada();
         AnalisisExpedienteDTO item = fila == null || !fila.esPrincipal() ? null : fila.principal;
-        btnVerDetalle.setEnabled(!trabajando && fila != null);
         btnRecibir.setEnabled(!trabajando && item != null && item.isRecibible());
         btnRegistrarAnalisis.setEnabled(!trabajando && item != null && item.isRegistrable());
         btnEnviarVerificacion.setEnabled(!trabajando && item != null && item.isEnviableVerificacion());

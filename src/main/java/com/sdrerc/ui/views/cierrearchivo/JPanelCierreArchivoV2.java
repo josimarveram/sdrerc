@@ -66,7 +66,6 @@ public class JPanelCierreArchivoV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarCierre = new JButton("Registrar cierre");
     private final JButton btnRegistrarArchivo = new JButton("Registrar archivo");
     private final JButton btnVerHistorial = new JButton("Ver historial");
@@ -180,7 +179,6 @@ public class JPanelCierreArchivoV2 extends JPanel {
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
         accionesFiltro.add(btnRefrescar);
-        accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnVerHistorial);
         gbc.gridx = 6;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -373,7 +371,6 @@ public class JPanelCierreArchivoV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRegistrarCierre.addActionListener(e -> registrarCierre());
         btnRegistrarArchivo.addActionListener(e -> registrarArchivo());
         btnVerHistorial.addActionListener(e -> verHistorial());
@@ -542,7 +539,6 @@ public class JPanelCierreArchivoV2 extends JPanel {
 
     private void actualizarAcciones(CierreArchivoExpedienteDTO expediente) {
         boolean seleccionado = expediente != null;
-        btnVerDetalle.setEnabled(seleccionado);
         btnVerHistorial.setEnabled(seleccionado);
         btnRegistrarCierre.setEnabled(seleccionado
                 && !expediente.isFinalizado()
@@ -755,7 +751,6 @@ public class JPanelCierreArchivoV2 extends JPanel {
         if (!trabajando) {
             actualizarAcciones(seleccionado());
         } else {
-            btnVerDetalle.setEnabled(false);
             btnVerHistorial.setEnabled(false);
             btnRegistrarCierre.setEnabled(false);
             btnRegistrarArchivo.setEnabled(false);

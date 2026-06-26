@@ -83,7 +83,6 @@ public class JPanelEjecucionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarEjecucion = new JButton("Registrar ejecución");
     private final JButton btnMarcarEjecutado = new JButton("Marcar ejecutado");
     private final JButton btnObservar = new JButton("Observación ejecución");
@@ -212,7 +211,6 @@ public class JPanelEjecucionV2 extends JPanel {
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
@@ -503,7 +501,6 @@ public class JPanelEjecucionV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRegistrarEjecucion.addActionListener(e -> registrarEjecucion());
         btnMarcarEjecutado.addActionListener(e -> marcarEjecutado());
         btnObservar.addActionListener(e -> registrarObservacion());
@@ -778,7 +775,6 @@ public class JPanelEjecucionV2 extends JPanel {
 
     private void actualizarAcciones(EjecucionExpedienteDTO expediente) {
         boolean seleccionado = expediente != null;
-        btnVerDetalle.setEnabled(seleccionado);
         btnRegistrarEjecucion.setEnabled(seleccionado && expediente.hasAccion(EjecucionExpedienteService.ACCION_INICIO_EJECUCION));
         btnMarcarEjecutado.setEnabled(seleccionado && expediente.hasAccion(EjecucionExpedienteService.ACCION_INICIO_EJECUCION));
         btnObservar.setEnabled(seleccionado && expediente.hasAccion(EjecucionExpedienteService.ACCION_OBSERVACION_EJECUCION));
@@ -991,7 +987,6 @@ public class JPanelEjecucionV2 extends JPanel {
         if (!trabajando) {
             actualizarAcciones(seleccionado());
         } else {
-            btnVerDetalle.setEnabled(false);
             btnRegistrarEjecucion.setEnabled(false);
             btnMarcarEjecutado.setEnabled(false);
             btnObservar.setEnabled(false);

@@ -155,7 +155,6 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRegistrarVerificacion = new JButton("Registrar verificación");
     private final JButton btnAprobar = new JButton("Aprobar verificación");
     private final JButton btnEnviarFirma = new JButton("Preparar documento emitido");
@@ -323,7 +322,6 @@ public class JPanelVerificacionV2 extends JPanel {
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
-        accionesFiltro.add(btnVerDetalle);
         accionesFiltro.add(btnRefrescar);
         toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
@@ -648,7 +646,6 @@ public class JPanelVerificacionV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
-        btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRegistrarVerificacion.addActionListener(e -> registrarVerificacion());
         btnAprobar.addActionListener(e -> accionRapida("APROBACION_VERIFICACION"));
         btnEnviarFirma.addActionListener(e -> enviarFirma());
@@ -1126,7 +1123,6 @@ public class JPanelVerificacionV2 extends JPanel {
         VerificacionExpedienteDTO item = fila == null ? null : fila.principal;
         boolean has = fila != null;
         boolean asociado = fila != null && fila.esAsociada();
-        btnVerDetalle.setEnabled(has);
         btnRegistrarVerificacion.setEnabled(has && !asociado && item.isRegistrableVerificacion());
         btnAprobar.setEnabled(has && !asociado && item.isRegistrableVerificacion());
         btnObservar.setEnabled(has && !asociado && item.isRegistrableVerificacion());
@@ -1874,7 +1870,6 @@ public class JPanelVerificacionV2 extends JPanel {
         btnRefrescar.setEnabled(!trabajando);
         VerificacionTableRow fila = obtenerFilaSeleccionada();
         VerificacionExpedienteDTO item = fila == null || !fila.esPrincipal() ? null : fila.principal;
-        btnVerDetalle.setEnabled(!trabajando && fila != null);
         btnRegistrarVerificacion.setEnabled(!trabajando && item != null && item.isRegistrableVerificacion());
         btnAprobar.setEnabled(!trabajando && item != null && item.isRegistrableVerificacion());
         btnObservar.setEnabled(!trabajando && item != null && item.isRegistrableVerificacion());
