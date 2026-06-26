@@ -3,6 +3,7 @@ package com.sdrerc.ui.appv2.components;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
@@ -24,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.swing.BorderFactory;
+import javax.swing.CellRendererPane;
 import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -179,13 +181,7 @@ public final class AppV2ColumnFilterSupport {
                 @Override
                 public void mousePressed(MouseEvent event) {
                     int viewColumn = table.getTableHeader().columnAtPoint(event.getPoint());
-                    if (viewColumn < 0) {
-                        return;
-                    }
-                    int modelColumn = table.convertColumnIndexToModel(viewColumn);
-                    if (!isExcluded(modelColumn) && !isTechnical(modelColumn)) {
-                        runBeforeViewChange();
-                    }
+                    prepareSort(viewColumn);
                 }
             });
         }
@@ -319,6 +315,16 @@ public final class AppV2ColumnFilterSupport {
             filterPanel.repaint();
         }
 
+        private void prepareSort(int viewColumn) {
+            if (viewColumn < 0) {
+                return;
+            }
+            int modelColumn = table.convertColumnIndexToModel(viewColumn);
+            if (!isExcluded(modelColumn) && !isTechnical(modelColumn)) {
+                runBeforeViewChange();
+            }
+        }
+
         private boolean isExcluded(int modelColumn) {
             return excludedColumns.contains(modelColumn);
         }
@@ -359,12 +365,48 @@ public final class AppV2ColumnFilterSupport {
 
         private final class HeaderPanel extends JPanel {
 
+            private final CellRendererPane rendererPane = new CellRendererPane();
+
             private HeaderPanel() {
                 setLayout(null);
                 setOpaque(true);
                 setBackground(AppV2Theme.SURFACE_ALT);
-                add(table.getTableHeader());
+                add(rendererPane);
                 add(filterPanel);
+                addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mousePressed(MouseEvent event) {
+                        if (event.getY() >= HEADER_HEIGHT) {
+                            return;
+                        }
+                        int viewColumn = viewColumnAt(event.getX());
+                        prepareSort(viewColumn);
+                    }
+
+                    @Override
+                    public void mouseClicked(MouseEvent event) {
+                        if (event.getY() >= HEADER_HEIGHT || event.getClickCount() != 1) {
+                            return;
+                        }
+                        int viewColumn = viewColumnAt(event.getX());
+                        if (viewColumn < 0) {
+                            return;
+                        }
+                        int modelColumn = table.convertColumnIndexToModel(viewColumn);
+                        if (!isExcluded(modelColumn) && !isTechnical(modelColumn)) {
+                            sorter.toggleSortOrder(modelColumn);
+                            repaint();
+                        }
+                    }
+                });
+                addMouseMotionListener(new MouseAdapter() {
+                    @Override
+                    public void mouseMoved(MouseEvent event) {
+                        setCursor(event.getY() < HEADER_HEIGHT
+                                ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                                : Cursor.getDefaultCursor());
+                    }
+                });
             }
 
             @Override
@@ -381,8 +423,56 @@ public final class AppV2ColumnFilterSupport {
             @Override
             public void doLayout() {
                 int width = Math.max(table.getColumnModel().getTotalColumnWidth(), table.getPreferredSize().width);
-                table.getTableHeader().setBounds(0, 0, width, HEADER_HEIGHT);
+                rendererPane.setBounds(0, 0, width, HEADER_HEIGHT);
                 filterPanel.setBounds(0, HEADER_HEIGHT, width, FILTER_HEIGHT);
+            }
+
+            @Override
+            protected void paintComponent(Graphics graphics) {
+                super.paintComponent(graphics);
+                paintTableHeader(graphics);
+            }
+
+            private void paintTableHeader(Graphics graphics) {
+                int x = 0;
+                for (int viewColumn = 0; viewColumn < table.getColumnModel().getColumnCount(); viewColumn++) {
+                    TableColumn column = table.getColumnModel().getColumn(viewColumn);
+                    int width = column.getWidth();
+                    Object headerValue = column.getHeaderValue();
+                    TableCellRenderer renderer = column.getHeaderRenderer();
+                    if (renderer == null) {
+                        renderer = table.getTableHeader().getDefaultRenderer();
+                    }
+                    Component component = renderer.getTableCellRendererComponent(
+                            table,
+                            headerValue,
+                            false,
+                            false,
+                            -1,
+                            viewColumn);
+                    rendererPane.paintComponent(
+                            graphics,
+                            component,
+                            this,
+                            x,
+                            0,
+                            width,
+                            HEADER_HEIGHT,
+                            true);
+                    x += width;
+                }
+            }
+
+            private int viewColumnAt(int x) {
+                int offset = 0;
+                for (int viewColumn = 0; viewColumn < table.getColumnModel().getColumnCount(); viewColumn++) {
+                    int width = table.getColumnModel().getColumn(viewColumn).getWidth();
+                    if (x >= offset && x < offset + width) {
+                        return viewColumn;
+                    }
+                    offset += width;
+                }
+                return -1;
             }
         }
 
