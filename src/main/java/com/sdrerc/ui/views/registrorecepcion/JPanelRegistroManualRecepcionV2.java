@@ -4,6 +4,7 @@ import com.sdrerc.application.sdrercapp.CatalogoLookupService;
 import com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService;
 import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.application.sdrercapp.RegistroManualExpedienteService;
+import com.sdrerc.application.sdrercapp.UbigeoAppService;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosActaDTO;
 import com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO;
@@ -11,6 +12,7 @@ import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteEdicionManualDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.UbigeoItemDTO;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
@@ -48,6 +50,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private final CatalogoLookupService catalogoService = new CatalogoLookupService();
     private final RegistroManualExpedienteService registroService = new RegistroManualExpedienteService();
     private final ExpedienteEdicionManualService edicionService = new ExpedienteEdicionManualService();
+    private final UbigeoAppService ubigeoService = new UbigeoAppService();
     private final Runnable onRegistroConfirmado;
     private final Runnable onCancelarEdicion;
     private final Long idExpedienteEdicion;
@@ -81,6 +84,12 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private final JTextField txtRemitenteNombre = new JTextField();
     private final JComboBox<FiltroCatalogoItemV2> cmbRemitenteTipoDoc = new JComboBox<FiltroCatalogoItemV2>(crearTiposDocumentoRemitente());
     private final JTextField txtRemitenteDocumento = new JTextField();
+    private final JTextField txtCorreoNotificacion = new JTextField();
+    private final JTextField txtTelefonoNotificacion = new JTextField();
+    private final JComboBox<FiltroCatalogoItemV2> cmbDepartamento = comboBase("Seleccione departamento");
+    private final JComboBox<FiltroCatalogoItemV2> cmbProvincia = comboBase("Seleccione provincia");
+    private final JComboBox<FiltroCatalogoItemV2> cmbDistrito = comboBase("Seleccione distrito");
+    private final JTextField txtDireccionNotificacion = new JTextField();
 
     private final JTextArea txtErrores = area(5);
     private final JTextArea txtResumen = area(8);
@@ -93,6 +102,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private boolean trabajando;
     private boolean validado;
     private boolean cargandoEdicion;
+    private boolean cargandoUbigeo;
     private RegistroManualExpedienteDTO registroValidado;
     private ExpedienteEdicionManualDTO edicionValidada;
 
@@ -174,6 +184,12 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         gbc.gridx = 0;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(0, 0, 12, 0);
+        form.add(crearNotificacionUbicacion(), gbc);
+
+        gbc.gridy = 4;
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 12, 0);
         form.add(crearResumenConfirmacion(), gbc);
 
         JScrollPane scroll = new JScrollPane(form);
@@ -232,6 +248,17 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         agregarFila(panel, 0, "Nombres / Razón Social *", txtRemitenteNombre);
         agregarFila(panel, 1, "Tipo documento", cmbRemitenteTipoDoc);
         agregarFila(panel, 2, "Número documento", txtRemitenteDocumento);
+        return panel;
+    }
+
+    private JPanel crearNotificacionUbicacion() {
+        JPanel panel = seccion("Datos de notificación y ubicación");
+        agregarFila(panel, 0, "Correo", txtCorreoNotificacion);
+        agregarFila(panel, 1, "Teléfono", txtTelefonoNotificacion);
+        agregarFila(panel, 2, "Departamento", cmbDepartamento);
+        agregarFila(panel, 3, "Provincia", cmbProvincia);
+        agregarFila(panel, 4, "Distrito", cmbDistrito);
+        agregarFila(panel, 5, "Dirección", txtDireccionNotificacion);
         return panel;
     }
 
@@ -323,6 +350,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         configurarCampo(txtTitularDocumento);
         configurarCampo(txtRemitenteNombre);
         configurarCampo(txtRemitenteDocumento);
+        configurarCampo(txtCorreoNotificacion);
+        configurarCampo(txtTelefonoNotificacion);
+        configurarCampo(txtDireccionNotificacion);
         configurarCombo(cmbProcedimiento);
         configurarCombo(cmbTipoSolicitud);
         configurarCombo(cmbTipoDocumento);
@@ -331,6 +361,11 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         configurarCombo(cmbTipoActa);
         configurarCombo(cmbTitularTipoDoc);
         configurarCombo(cmbRemitenteTipoDoc);
+        configurarCombo(cmbDepartamento);
+        configurarCombo(cmbProvincia);
+        configurarCombo(cmbDistrito);
+        cmbProvincia.setEnabled(false);
+        cmbDistrito.setEnabled(false);
         configurarCheck(chkGrupoFamiliar);
         actualizarEstadoHojaEnvio();
         txtResumen.setText(modoEdicion() ? "Cargando datos del expediente..." : "Validación pendiente.");
@@ -411,6 +446,8 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         rdoCorrespondeSdrerc.addActionListener(e -> actualizarEstadoHojaEnvio());
         rdoNoCorrespondeSdrerc.addActionListener(e -> actualizarEstadoHojaEnvio());
         chkGrupoFamiliar.addActionListener(e -> invalidarValidacion());
+        cmbDepartamento.addActionListener(e -> cargarProvinciasSeleccionadas());
+        cmbProvincia.addActionListener(e -> cargarDistritosSeleccionados());
     }
 
     private List<JTextField> camposTexto() {
@@ -424,6 +461,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         fields.add(txtTitularDocumento);
         fields.add(txtRemitenteNombre);
         fields.add(txtRemitenteDocumento);
+        fields.add(txtCorreoNotificacion);
+        fields.add(txtTelefonoNotificacion);
+        fields.add(txtDireccionNotificacion);
         return fields;
     }
 
@@ -441,6 +481,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         comboList.add(cmbTipoActa);
         comboList.add(cmbTitularTipoDoc);
         comboList.add(cmbRemitenteTipoDoc);
+        comboList.add(cmbDepartamento);
+        comboList.add(cmbProvincia);
+        comboList.add(cmbDistrito);
         return comboList;
     }
 
@@ -461,6 +504,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
                 try {
                     CatalogosFormulario catalogos = get();
                     int vacios = aplicarCatalogos(catalogos);
+                    cargarDepartamentos();
                     if (modoEdicion()) {
                         cargarExpedienteEdicion();
                     } else {
@@ -499,6 +543,88 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         }
         combo.setToolTipText(null);
         return 0;
+    }
+
+    private void cargarDepartamentos() {
+        cargandoUbigeo = true;
+        try {
+            resetCombo(cmbDepartamento, "Seleccione departamento");
+            resetCombo(cmbProvincia, "Seleccione provincia");
+            resetCombo(cmbDistrito, "Seleccione distrito");
+            for (UbigeoItemDTO item : ubigeoService.listarDepartamentos()) {
+                cmbDepartamento.addItem(new FiltroCatalogoItemV2(String.valueOf(item.getId()), item.getNombre()));
+            }
+            cmbDepartamento.setEnabled(cmbDepartamento.getItemCount() > 1);
+            cmbProvincia.setEnabled(false);
+            cmbDistrito.setEnabled(false);
+            cmbDepartamento.setToolTipText(cmbDepartamento.getItemCount() > 1
+                    ? null
+                    : "No hay departamentos activos cargados en SDRERC_APP.");
+        } catch (Exception ex) {
+            cmbDepartamento.setEnabled(false);
+            cmbProvincia.setEnabled(false);
+            cmbDistrito.setEnabled(false);
+            cmbDepartamento.setToolTipText("Ejecute el script de ubigeo para habilitar departamentos/provincias/distritos.");
+            lblEstado.setText("Catálogos cargados. Ubigeo no disponible hasta ejecutar el script de datos maestros.");
+        } finally {
+            cargandoUbigeo = false;
+        }
+    }
+
+    private void cargarProvinciasSeleccionadas() {
+        if (cargandoUbigeo) {
+            return;
+        }
+        Long idDepartamento = idSeleccionado(cmbDepartamento);
+        cargandoUbigeo = true;
+        try {
+            resetCombo(cmbProvincia, "Seleccione provincia");
+            resetCombo(cmbDistrito, "Seleccione distrito");
+            if (idDepartamento != null) {
+                for (UbigeoItemDTO item : ubigeoService.listarProvincias(idDepartamento)) {
+                    cmbProvincia.addItem(new FiltroCatalogoItemV2(String.valueOf(item.getId()), item.getNombre()));
+                }
+            }
+            cmbProvincia.setEnabled(cmbProvincia.getItemCount() > 1);
+            cmbDistrito.setEnabled(false);
+        } catch (Exception ex) {
+            cmbProvincia.setEnabled(false);
+            cmbDistrito.setEnabled(false);
+            cmbProvincia.setToolTipText("No se pudieron cargar provincias para el departamento seleccionado.");
+        } finally {
+            cargandoUbigeo = false;
+            invalidarValidacion();
+        }
+    }
+
+    private void cargarDistritosSeleccionados() {
+        if (cargandoUbigeo) {
+            return;
+        }
+        Long idProvincia = idSeleccionado(cmbProvincia);
+        cargandoUbigeo = true;
+        try {
+            resetCombo(cmbDistrito, "Seleccione distrito");
+            if (idProvincia != null) {
+                for (UbigeoItemDTO item : ubigeoService.listarDistritos(idProvincia)) {
+                    cmbDistrito.addItem(new FiltroCatalogoItemV2(String.valueOf(item.getId()), item.getNombre()));
+                }
+            }
+            cmbDistrito.setEnabled(cmbDistrito.getItemCount() > 1);
+        } catch (Exception ex) {
+            cmbDistrito.setEnabled(false);
+            cmbDistrito.setToolTipText("No se pudieron cargar distritos para la provincia seleccionada.");
+        } finally {
+            cargandoUbigeo = false;
+            invalidarValidacion();
+        }
+    }
+
+    private void resetCombo(JComboBox<FiltroCatalogoItemV2> combo, String label) {
+        combo.removeAllItems();
+        combo.addItem(new FiltroCatalogoItemV2(null, label));
+        combo.setSelectedIndex(0);
+        combo.setToolTipText(null);
     }
 
     private void validarFormulario() {
@@ -625,6 +751,10 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             txtRemitenteNombre.setText(safeText(dto.getRemitente().getNombreCompleto()));
             seleccionarCombo(cmbRemitenteTipoDoc, dto.getRemitente().getTipoDocumento(), dto.getRemitente().getTipoDocumento());
             txtRemitenteDocumento.setText(safeText(dto.getRemitente().getNumeroDocumento()));
+            txtCorreoNotificacion.setText(safeText(dto.getRemitente().getCorreo()));
+            txtTelefonoNotificacion.setText(safeText(dto.getRemitente().getTelefono()));
+            txtDireccionNotificacion.setText(safeText(dto.getRemitente().getDireccion()));
+            seleccionarUbigeoEdicion(dto.getRemitente());
             if ("No corresponde a la SDRERC".equalsIgnoreCase(dto.getSolicitud().getValidacionInicial())) {
                 rdoNoCorrespondeSdrerc.setSelected(true);
             } else {
@@ -796,6 +926,15 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         remitente.setNombreCompleto(txtRemitenteNombre.getText());
         remitente.setTipoDocumento(codigo(cmbRemitenteTipoDoc));
         remitente.setNumeroDocumento(txtRemitenteDocumento.getText());
+        remitente.setCorreo(txtCorreoNotificacion.getText());
+        remitente.setTelefono(txtTelefonoNotificacion.getText());
+        remitente.setDireccion(txtDireccionNotificacion.getText());
+        remitente.setIdDepartamento(idSeleccionado(cmbDepartamento));
+        remitente.setIdProvincia(idSeleccionado(cmbProvincia));
+        remitente.setIdDistrito(idSeleccionado(cmbDistrito));
+        remitente.setDepartamento(nombreSeleccionadoConCodigo(cmbDepartamento));
+        remitente.setProvincia(nombreSeleccionadoConCodigo(cmbProvincia));
+        remitente.setDistrito(nombreSeleccionadoConCodigo(cmbDistrito));
         dto.setRemitente(remitente);
         return dto;
     }
@@ -834,6 +973,16 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         }
         sb.append("Acta: ").append(safe(dto.getActa().getNumeroActa())).append("\n");
         sb.append("Remitente: ").append(safe(dto.getRemitente().getNombreCompleto())).append("\n");
+        sb.append("Correo: ").append(safe(dto.getRemitente().getCorreo())).append("\n");
+        sb.append("Teléfono: ").append(safe(dto.getRemitente().getTelefono())).append("\n");
+        sb.append("Ubicación: ")
+                .append(safe(dto.getRemitente().getDepartamento()))
+                .append(" / ")
+                .append(safe(dto.getRemitente().getProvincia()))
+                .append(" / ")
+                .append(safe(dto.getRemitente().getDistrito()))
+                .append("\n");
+        sb.append("Dirección: ").append(safe(dto.getRemitente().getDireccion())).append("\n");
         sb.append("Validación inicial: ").append(safe(dto.getSolicitud().getValidacionInicial())).append("\n");
         if (requiereHojaEnvio(dto.getSolicitud().getValidacionInicial())) {
             sb.append("Hoja de envío: ").append(safe(dto.getSolicitud().getHojaEnvio())).append("\n");
@@ -879,6 +1028,11 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         seleccionarPrimero(cmbTitularTipoDoc);
         cmbPrioridad.setSelectedIndex(0);
         cmbRemitenteTipoDoc.setSelectedIndex(0);
+        seleccionarPrimero(cmbDepartamento);
+        resetCombo(cmbProvincia, "Seleccione provincia");
+        resetCombo(cmbDistrito, "Seleccione distrito");
+        cmbProvincia.setEnabled(false);
+        cmbDistrito.setEnabled(false);
         txtErrores.setText("");
         txtResumen.setText("Validación pendiente.");
         lblNumeroExpediente.setText("Pendiente de generación al guardar");
@@ -960,11 +1114,40 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         }
     }
 
+    private void seleccionarUbigeoEdicion(DatosPersonaRegistroDTO persona) {
+        if (persona == null) {
+            return;
+        }
+        seleccionarCombo(cmbDepartamento,
+                persona.getIdDepartamento() == null ? null : String.valueOf(persona.getIdDepartamento()),
+                persona.getDepartamento());
+        cargarProvinciasSeleccionadas();
+        seleccionarCombo(cmbProvincia,
+                persona.getIdProvincia() == null ? null : String.valueOf(persona.getIdProvincia()),
+                persona.getProvincia());
+        cargarDistritosSeleccionados();
+        seleccionarCombo(cmbDistrito,
+                persona.getIdDistrito() == null ? null : String.valueOf(persona.getIdDistrito()),
+                persona.getDistrito());
+    }
+
     private String normalizarComparacion(String value) {
         if (value == null || value.trim().isEmpty() || "-".equals(value.trim())) {
             return null;
         }
         return value.trim().toUpperCase();
+    }
+
+    private Long idSeleccionado(JComboBox<FiltroCatalogoItemV2> combo) {
+        String value = codigo(combo);
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private void mostrarError(String titulo, Exception ex) {

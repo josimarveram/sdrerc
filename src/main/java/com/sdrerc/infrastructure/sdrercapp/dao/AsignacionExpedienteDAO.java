@@ -77,9 +77,11 @@ public class AsignacionExpedienteDAO {
             boolean soloGrupoFamiliar) throws SQLException {
         boolean soportaNumeroHojaEnvio;
         boolean soportaGrupoFamiliar;
+        boolean soportaUbigeoPersona;
         try (Connection conn = SdrercAppConnection.getConnection()) {
             soportaNumeroHojaEnvio = soportaNumeroHojaEnvio(conn);
             soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+            soportaUbigeoPersona = soportaUbigeoPersona(conn);
         }
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
@@ -102,7 +104,17 @@ public class AsignacionExpedienteDAO {
         sql.append(" AND TRIM(ed.nombre_documento) IS NOT NULL) AS tipo_documento, ");
         sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
         sql.append(nombrePersona("p")).append(" AS titular, ");
-        sql.append(nombrePersona("ps")).append(" AS solicitante, p.numero_documento AS numero_documento_titular, ");
+        sql.append(nombrePersona("ps")).append(" AS solicitante, ");
+        sql.append("ps.tipo_documento AS solicitante_tipo_documento, ps.numero_documento AS solicitante_numero_documento, ");
+        sql.append("ps.correo_electronico AS solicitante_correo, ps.telefono AS solicitante_telefono, ps.direccion AS solicitante_direccion, ");
+        if (soportaUbigeoPersona) {
+            sql.append("ps.departamento AS solicitante_departamento, ps.provincia AS solicitante_provincia, ps.distrito AS solicitante_distrito, ");
+        } else {
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS solicitante_departamento, ");
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS solicitante_provincia, ");
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS solicitante_distrito, ");
+        }
+        sql.append("p.tipo_documento AS tipo_documento_titular, p.numero_documento AS numero_documento_titular, ");
         sql.append("eqr.nombre AS equipo_asignado, e.id_equipo_responsable_actual AS id_equipo_responsable, ");
         sql.append("NVL(ur.nombre_completo, (SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa ");
         sql.append(" JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado ");
@@ -460,10 +472,19 @@ public class AsignacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 rs.getString("solicitante"),
+                rs.getString("solicitante_tipo_documento"),
+                rs.getString("solicitante_numero_documento"),
+                rs.getString("solicitante_correo"),
+                rs.getString("solicitante_telefono"),
+                rs.getString("solicitante_direccion"),
+                rs.getString("solicitante_departamento"),
+                rs.getString("solicitante_provincia"),
+                rs.getString("solicitante_distrito"),
                 rs.getString("equipo_asignado"),
                 getLongOrNull(rs, "id_equipo_responsable"),
                 rs.getString("abogado_asignado"),
                 getLongOrNull(rs, "id_abogado_responsable"),
+                rs.getString("tipo_documento_titular"),
                 rs.getString("numero_documento_titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
@@ -937,6 +958,16 @@ public class AsignacionExpedienteDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             return rs.next();
+        }
+    }
+
+    private boolean soportaUbigeoPersona(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'PERSONA' "
+                + "AND column_name IN ('ID_UBIGEO_DISTRITO', 'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO')";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 4;
         }
     }
 

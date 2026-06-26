@@ -18,10 +18,19 @@ public class AsignacionExpedienteDTO {
     private final String numeroActa;
     private final String titular;
     private final String solicitante;
+    private final String tipoDocumentoSolicitante;
+    private final String numeroDocumentoSolicitante;
+    private final String correoSolicitante;
+    private final String telefonoSolicitante;
+    private final String direccionSolicitante;
+    private final String departamentoSolicitante;
+    private final String provinciaSolicitante;
+    private final String distritoSolicitante;
     private final String equipoAsignado;
     private final Long idEquipoResponsable;
     private final String abogadoAsignado;
     private final Long idAbogadoResponsable;
+    private final String tipoDocumentoTitular;
     private final String numeroDocumentoTitular;
     private final LocalDate fechaRecepcion;
     private final Long diasRestantes;
@@ -50,10 +59,19 @@ public class AsignacionExpedienteDTO {
             String numeroActa,
             String titular,
             String solicitante,
+            String tipoDocumentoSolicitante,
+            String numeroDocumentoSolicitante,
+            String correoSolicitante,
+            String telefonoSolicitante,
+            String direccionSolicitante,
+            String departamentoSolicitante,
+            String provinciaSolicitante,
+            String distritoSolicitante,
             String equipoAsignado,
             Long idEquipoResponsable,
             String abogadoAsignado,
             Long idAbogadoResponsable,
+            String tipoDocumentoTitular,
             String numeroDocumentoTitular,
             LocalDate fechaRecepcion,
             Long diasRestantes,
@@ -80,10 +98,19 @@ public class AsignacionExpedienteDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.solicitante = safe(solicitante);
+        this.tipoDocumentoSolicitante = safe(tipoDocumentoSolicitante);
+        this.numeroDocumentoSolicitante = safe(numeroDocumentoSolicitante);
+        this.correoSolicitante = safe(correoSolicitante);
+        this.telefonoSolicitante = safe(telefonoSolicitante);
+        this.direccionSolicitante = safe(direccionSolicitante);
+        this.departamentoSolicitante = safe(departamentoSolicitante);
+        this.provinciaSolicitante = safe(provinciaSolicitante);
+        this.distritoSolicitante = safe(distritoSolicitante);
         this.equipoAsignado = safe(equipoAsignado);
         this.idEquipoResponsable = idEquipoResponsable;
         this.abogadoAsignado = safe(abogadoAsignado);
         this.idAbogadoResponsable = idAbogadoResponsable;
+        this.tipoDocumentoTitular = safe(tipoDocumentoTitular);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
         this.fechaRecepcion = fechaRecepcion;
         this.diasRestantes = diasRestantes;
@@ -148,6 +175,38 @@ public class AsignacionExpedienteDTO {
         return solicitante;
     }
 
+    public String getTipoDocumentoSolicitante() {
+        return tipoDocumentoSolicitante;
+    }
+
+    public String getNumeroDocumentoSolicitante() {
+        return numeroDocumentoSolicitante;
+    }
+
+    public String getCorreoSolicitante() {
+        return correoSolicitante;
+    }
+
+    public String getTelefonoSolicitante() {
+        return telefonoSolicitante;
+    }
+
+    public String getDireccionSolicitante() {
+        return direccionSolicitante;
+    }
+
+    public String getDepartamentoSolicitante() {
+        return departamentoSolicitante;
+    }
+
+    public String getProvinciaSolicitante() {
+        return provinciaSolicitante;
+    }
+
+    public String getDistritoSolicitante() {
+        return distritoSolicitante;
+    }
+
     public String getEquipoAsignado() {
         return equipoAsignado;
     }
@@ -166,6 +225,10 @@ public class AsignacionExpedienteDTO {
 
     public String getNumeroDocumentoTitular() {
         return numeroDocumentoTitular;
+    }
+
+    public String getTipoDocumentoTitular() {
+        return tipoDocumentoTitular;
     }
 
     public LocalDate getFechaRecepcion() {

@@ -8,6 +8,12 @@ public class DatosPersonaRegistroDTO {
     private String telefono;
     private String correo;
     private String direccion;
+    private Long idDepartamento;
+    private Long idProvincia;
+    private Long idDistrito;
+    private String departamento;
+    private String provincia;
+    private String distrito;
     private String tipoRemitente;
     private String observacion;
 
@@ -57,6 +63,54 @@ public class DatosPersonaRegistroDTO {
 
     public void setDireccion(String direccion) {
         this.direccion = trimToNull(direccion);
+    }
+
+    public Long getIdDepartamento() {
+        return idDepartamento;
+    }
+
+    public void setIdDepartamento(Long idDepartamento) {
+        this.idDepartamento = idDepartamento;
+    }
+
+    public Long getIdProvincia() {
+        return idProvincia;
+    }
+
+    public void setIdProvincia(Long idProvincia) {
+        this.idProvincia = idProvincia;
+    }
+
+    public Long getIdDistrito() {
+        return idDistrito;
+    }
+
+    public void setIdDistrito(Long idDistrito) {
+        this.idDistrito = idDistrito;
+    }
+
+    public String getDepartamento() {
+        return departamento;
+    }
+
+    public void setDepartamento(String departamento) {
+        this.departamento = trimToNull(departamento);
+    }
+
+    public String getProvincia() {
+        return provincia;
+    }
+
+    public void setProvincia(String provincia) {
+        this.provincia = trimToNull(provincia);
+    }
+
+    public String getDistrito() {
+        return distrito;
+    }
+
+    public void setDistrito(String distrito) {
+        this.distrito = trimToNull(distrito);
     }
 
     public String getTipoRemitente() {

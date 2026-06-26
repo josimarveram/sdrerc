@@ -43,10 +43,20 @@ public class ExpedienteEdicionManualDAO {
         }
         try (Connection conn = SdrercAppConnection.getConnection()) {
             boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+            boolean soportaUbigeoPersona = soportaUbigeoPersona(conn);
             String grupoFamiliarSelect = soportaGrupoFamiliar
                     ? "NVL(sol.grupo_familiar, 0) AS grupo_familiar, sol.criterio_grupo_familiar, sol.observacion_grupo_familiar, "
                     : "0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, "
                             + "CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ";
+            String ubigeoSelect = soportaUbigeoPersona
+                    ? "NVL(remitente.id_ubigeo_distrito, solicitante.id_ubigeo_distrito) AS remitente_id_distrito, "
+                            + "NVL(remitente.departamento, solicitante.departamento) AS remitente_departamento, "
+                            + "NVL(remitente.provincia, solicitante.provincia) AS remitente_provincia, "
+                            + "NVL(remitente.distrito, solicitante.distrito) AS remitente_distrito, "
+                    : "CAST(NULL AS NUMBER) AS remitente_id_distrito, "
+                            + "CAST(NULL AS VARCHAR2(120)) AS remitente_departamento, "
+                            + "CAST(NULL AS VARCHAR2(120)) AS remitente_provincia, "
+                            + "CAST(NULL AS VARCHAR2(120)) AS remitente_distrito, ";
         String sql = ""
                 + "WITH sol AS ("
                 + "  SELECT * FROM (SELECT s.* FROM expediente_solicitud s "
@@ -79,6 +89,10 @@ public class ExpedienteEdicionManualDAO {
                 + nombrePersona("titular") + " AS titular_nombre, "
                 + "NVL(remitente.tipo_documento, solicitante.tipo_documento) AS remitente_tipo_documento, "
                 + "NVL(remitente.numero_documento, solicitante.numero_documento) AS remitente_numero_documento, "
+                + "NVL(remitente.correo_electronico, solicitante.correo_electronico) AS remitente_correo, "
+                + "NVL(remitente.telefono, solicitante.telefono) AS remitente_telefono, "
+                + "NVL(remitente.direccion, solicitante.direccion) AS remitente_direccion, "
+                + ubigeoSelect
                 + "COALESCE(" + nombrePersona("remitente") + ", " + nombrePersona("solicitante") + ") AS remitente_nombre "
                 + "FROM expediente e "
                 + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
@@ -196,6 +210,13 @@ public class ExpedienteEdicionManualDAO {
         remitente.setNombreCompleto(rs.getString("remitente_nombre"));
         remitente.setTipoDocumento(rs.getString("remitente_tipo_documento"));
         remitente.setNumeroDocumento(rs.getString("remitente_numero_documento"));
+        remitente.setCorreo(rs.getString("remitente_correo"));
+        remitente.setTelefono(rs.getString("remitente_telefono"));
+        remitente.setDireccion(rs.getString("remitente_direccion"));
+        remitente.setIdDistrito(getLongOrNull(rs, "remitente_id_distrito"));
+        remitente.setDepartamento(rs.getString("remitente_departamento"));
+        remitente.setProvincia(rs.getString("remitente_provincia"));
+        remitente.setDistrito(rs.getString("remitente_distrito"));
         dto.setRemitente(remitente);
         return dto;
     }
@@ -374,12 +395,27 @@ public class ExpedienteEdicionManualDAO {
     }
 
     private Long insertarPersona(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
-        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, activo) "
-                + "VALUES (?, ?, ?, 1)";
+        boolean soportaUbigeo = soportaUbigeoPersona(conn);
+        String columnasUbigeo = soportaUbigeo
+                ? ", id_ubigeo_distrito, departamento, provincia, distrito"
+                : "";
+        String valoresUbigeo = soportaUbigeo ? ", ?, ?, ?, ?" : "";
+        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, "
+                + "correo_electronico, telefono, direccion" + columnasUbigeo + ", activo) "
+                + "VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
             ps.setString(1, persona.getTipoDocumento());
             ps.setString(2, persona.getNumeroDocumento());
             ps.setString(3, persona.getNombreCompleto());
+            ps.setString(4, persona.getCorreo());
+            ps.setString(5, persona.getTelefono());
+            ps.setString(6, persona.getDireccion());
+            if (soportaUbigeo) {
+                setLongOrNull(ps, 7, persona.getIdDistrito());
+                ps.setString(8, persona.getDepartamento());
+                ps.setString(9, persona.getProvincia());
+                ps.setString(10, persona.getDistrito());
+            }
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -391,13 +427,30 @@ public class ExpedienteEdicionManualDAO {
     }
 
     private void actualizarPersona(Connection conn, Long idPersona, DatosPersonaRegistroDTO persona) throws SQLException {
+        boolean soportaUbigeo = soportaUbigeoPersona(conn);
+        String columnasUbigeo = soportaUbigeo
+                ? "id_ubigeo_distrito = ?, departamento = ?, provincia = ?, distrito = ?, "
+                : "";
         String sql = "UPDATE persona SET tipo_documento = ?, numero_documento = ?, razon_social = ?, "
+                + "correo_electronico = ?, telefono = ?, direccion = ?, "
+                + columnasUbigeo
                 + "modificado_en = SYSTIMESTAMP WHERE id_persona = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, persona.getTipoDocumento());
             ps.setString(2, persona.getNumeroDocumento());
             ps.setString(3, persona.getNombreCompleto());
-            ps.setLong(4, idPersona);
+            ps.setString(4, persona.getCorreo());
+            ps.setString(5, persona.getTelefono());
+            ps.setString(6, persona.getDireccion());
+            if (soportaUbigeo) {
+                setLongOrNull(ps, 7, persona.getIdDistrito());
+                ps.setString(8, persona.getDepartamento());
+                ps.setString(9, persona.getProvincia());
+                ps.setString(10, persona.getDistrito());
+                ps.setLong(11, idPersona);
+            } else {
+                ps.setLong(7, idPersona);
+            }
             ps.executeUpdate();
         }
     }
@@ -635,6 +688,16 @@ public class ExpedienteEdicionManualDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private boolean soportaUbigeoPersona(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'PERSONA' "
+                + "AND column_name IN ('ID_UBIGEO_DISTRITO', 'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO')";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 4;
         }
     }
 

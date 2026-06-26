@@ -191,6 +191,12 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblTipoDocumentoTitularSeleccionado = new JLabel("-");
     private final JLabel lblTipoDocumentoSolicitanteSeleccionado = new JLabel("-");
     private final JLabel lblNumeroDocumentoSolicitanteSeleccionado = new JLabel("-");
+    private final JLabel lblCorreoNotificacionSeleccionado = new JLabel("-");
+    private final JLabel lblTelefonoNotificacionSeleccionado = new JLabel("-");
+    private final JLabel lblDepartamentoSeleccionado = new JLabel("-");
+    private final JLabel lblProvinciaSeleccionada = new JLabel("-");
+    private final JLabel lblDistritoSeleccionado = new JLabel("-");
+    private final JLabel lblDireccionNotificacionSeleccionada = new JLabel("-");
     private final JLabel lblActaSeleccionada = new JLabel("-");
     private final JLabel lblSolicitanteSeleccionado = new JLabel("-");
     private final JLabel lblDocumentoTitularSeleccionado = new JLabel("-");
@@ -201,6 +207,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblObservacionSeleccionada = new JLabel("-");
     private final JLabel lblRecepcionAbogado = new JLabel("-");
     private final JLabel lblGrupoFamiliar = new JLabel("No");
+    private final JLabel lblMarcaOperativaSeleccionada = new JLabel("No");
     private final JLabel lblOrigen = new JLabel("Registro / Registrado");
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
     private final JLabel lblIngreso = new JLabel("Normal");
@@ -299,6 +306,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private JPanel panelAsignacionCards;
     private String tabAsignacionActiva = TAB_DATOS_EXPEDIENTE;
     private AppV2SideSectionPanel sectionDatosExpediente;
+    private AppV2SideSectionPanel sectionDatosSolicitud;
+    private AppV2SideSectionPanel sectionDatosActa;
+    private AppV2SideSectionPanel sectionDatosTitular;
+    private AppV2SideSectionPanel sectionDatosSolicitante;
+    private AppV2SideSectionPanel sectionDatosNotificacionUbicacion;
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
     private AppV2SideSectionPanel sectionCartasRespuesta;
@@ -440,9 +452,17 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideActionPanel crearPanelDatosExpediente() {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Datos del expediente");
-        sectionDatosExpediente = crearDatosExpedienteAsignacion();
+        sectionDatosSolicitud = crearDatosSolicitudAsignacion();
+        sectionDatosActa = crearDatosActaAsignacion();
+        sectionDatosTitular = crearDatosTitularAsignacion();
+        sectionDatosSolicitante = crearDatosSolicitanteAsignacion();
+        sectionDatosNotificacionUbicacion = crearDatosNotificacionUbicacionAsignacion();
         sectionResumenAsignacion = crearResumenAsignacion();
-        panel.addSection(sectionDatosExpediente);
+        panel.addSection(sectionDatosSolicitud);
+        panel.addSection(sectionDatosActa);
+        panel.addSection(sectionDatosTitular);
+        panel.addSection(sectionDatosSolicitante);
+        panel.addSection(sectionDatosNotificacionUbicacion);
         panel.addSection(sectionResumenAsignacion);
         return panel;
     }
@@ -548,8 +568,8 @@ public class JPanelAsignacionV2 extends JPanel {
         return section;
     }
 
-    private AppV2SideSectionPanel crearDatosExpedienteAsignacion() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de registro");
+    private AppV2SideSectionPanel crearDatosSolicitudAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de solicitud");
         section.addRow("Resultado inicial", lblResultadoInicialSeleccionado);
         section.addRow("Hoja de envío", lblHojaEnvioSeleccionada);
         section.addRow("Nro. trámite web", lblTramiteWebSeleccionado);
@@ -561,19 +581,46 @@ public class JPanelAsignacionV2 extends JPanel {
         section.addRow("Tipo documento", lblTipoDocumentoSeleccionado);
         section.addRow("Canal de ingreso", lblCanalIngresoSeleccionado);
         section.addRow("Prioridad", lblPrioridadSeleccionada);
-        section.addRow("Marca operativa", lblGrupoFamiliar);
-        section.addRow("Tipo de acta", lblTipoActaSeleccionada);
-        section.addRow("Nro. acta", lblNumeroActaSeleccionada);
-        section.addRow("Titular", lblTitularSeleccionado);
-        section.addRow("Tipo documento titular", lblTipoDocumentoTitularSeleccionado);
-        section.addRow("Número documento titular", lblDocumentoTitularSeleccionado);
-        section.addRow("Solicitante", lblSolicitanteSeleccionado);
-        section.addRow("Tipo documento solicitante", lblTipoDocumentoSolicitanteSeleccionado);
-        section.addRow("Número documento solicitante", lblNumeroDocumentoSolicitanteSeleccionado);
+        section.addRow("Marca operativa", lblMarcaOperativaSeleccionada);
         section.addRow("Expediente", lblExpedienteSeleccionado);
         section.addRow("Días hábiles", lblDiasSeleccionados);
         section.addRow("Estado", lblEstadoSeleccionado);
         section.addRow("Observación", lblObservacionSeleccionada);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosActaAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del acta");
+        section.addRow("Tipo de acta", lblTipoActaSeleccionada);
+        section.addRow("Nro. acta", lblNumeroActaSeleccionada);
+        section.addRow("Resumen acta", lblActaSeleccionada);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosTitularAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del titular");
+        section.addRow("Titular", lblTitularSeleccionado);
+        section.addRow("Tipo documento titular", lblTipoDocumentoTitularSeleccionado);
+        section.addRow("Número documento titular", lblDocumentoTitularSeleccionado);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosSolicitanteAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del solicitante");
+        section.addRow("Solicitante", lblSolicitanteSeleccionado);
+        section.addRow("Tipo documento solicitante", lblTipoDocumentoSolicitanteSeleccionado);
+        section.addRow("Número documento solicitante", lblNumeroDocumentoSolicitanteSeleccionado);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosNotificacionUbicacionAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de notificación y ubicación");
+        section.addRow("Correo", lblCorreoNotificacionSeleccionado);
+        section.addRow("Teléfono", lblTelefonoNotificacionSeleccionado);
+        section.addRow("Departamento", lblDepartamentoSeleccionado);
+        section.addRow("Provincia", lblProvinciaSeleccionada);
+        section.addRow("Distrito", lblDistritoSeleccionado);
+        section.addRow("Dirección", lblDireccionNotificacionSeleccionada);
         return section;
     }
 
@@ -763,7 +810,14 @@ public class JPanelAsignacionV2 extends JPanel {
             lblDiasSeleccionados,
             lblEstadoSeleccionado,
             lblHojaEnvioSeleccionada,
-            lblObservacionSeleccionada
+            lblObservacionSeleccionada,
+            lblCorreoNotificacionSeleccionado,
+            lblTelefonoNotificacionSeleccionado,
+            lblDepartamentoSeleccionado,
+            lblProvinciaSeleccionada,
+            lblDistritoSeleccionado,
+            lblDireccionNotificacionSeleccionada,
+            lblMarcaOperativaSeleccionada
         };
         for (JLabel label : labels) {
             label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
@@ -2721,6 +2775,13 @@ public class JPanelAsignacionV2 extends JPanel {
             lblTipoDocumentoTitularSeleccionado.setText("-");
             lblTipoDocumentoSolicitanteSeleccionado.setText("-");
             lblNumeroDocumentoSolicitanteSeleccionado.setText("-");
+            lblCorreoNotificacionSeleccionado.setText("-");
+            lblTelefonoNotificacionSeleccionado.setText("-");
+            lblDepartamentoSeleccionado.setText("-");
+            lblProvinciaSeleccionada.setText("-");
+            lblDistritoSeleccionado.setText("-");
+            lblDireccionNotificacionSeleccionada.setText("-");
+            lblDireccionNotificacionSeleccionada.setToolTipText(null);
             lblActaSeleccionada.setText("-");
             lblSolicitanteSeleccionado.setText("-");
             lblDocumentoTitularSeleccionado.setText("-");
@@ -2743,12 +2804,19 @@ public class JPanelAsignacionV2 extends JPanel {
         lblPrioridadSeleccionada.setText("-");
         lblTipoActaSeleccionada.setText(valorUi(item.getTipoActa()));
         lblNumeroActaSeleccionada.setText(valorUi(item.getNumeroActa()));
-        lblTipoDocumentoTitularSeleccionado.setText("-");
-        lblTipoDocumentoSolicitanteSeleccionado.setText("-");
-        lblNumeroDocumentoSolicitanteSeleccionado.setText("-");
+        lblTipoDocumentoTitularSeleccionado.setText(valorUi(item.getTipoDocumentoTitular()));
+        lblTipoDocumentoSolicitanteSeleccionado.setText(valorUi(item.getTipoDocumentoSolicitante()));
+        lblNumeroDocumentoSolicitanteSeleccionado.setText(valorUi(item.getNumeroDocumentoSolicitante()));
         lblActaSeleccionada.setText(valorUi(item.getTipoActa()) + " / " + valorUi(item.getNumeroActa()));
         lblSolicitanteSeleccionado.setText(valorUi(item.getSolicitante()));
         lblDocumentoTitularSeleccionado.setText(valorUi(item.getNumeroDocumentoTitular()));
+        lblCorreoNotificacionSeleccionado.setText(valorUi(item.getCorreoSolicitante()));
+        lblTelefonoNotificacionSeleccionado.setText(valorUi(item.getTelefonoSolicitante()));
+        lblDepartamentoSeleccionado.setText(valorUi(item.getDepartamentoSolicitante()));
+        lblProvinciaSeleccionada.setText(valorUi(item.getProvinciaSolicitante()));
+        lblDistritoSeleccionado.setText(valorUi(item.getDistritoSolicitante()));
+        lblDireccionNotificacionSeleccionada.setText(valorUi(item.getDireccionSolicitante()));
+        lblDireccionNotificacionSeleccionada.setToolTipText(valorUi(item.getDireccionSolicitante()));
         lblFechaSolicitudSeleccionada.setText(formatDate(item.getFechaRecepcion()));
         lblDiasSeleccionados.setText(item.getDiasRestantes() == null ? "-" : item.getDiasRestantes() + " día(s)");
         lblEstadoSeleccionado.setText(DisplayNameMapperV2.estado(item.getEstadoCodigo()));
@@ -2817,9 +2885,12 @@ public class JPanelAsignacionV2 extends JPanel {
         if (item == null) {
             lblGrupoFamiliar.setText("No");
             lblGrupoFamiliar.setToolTipText(null);
+            lblMarcaOperativaSeleccionada.setText("No");
+            lblMarcaOperativaSeleccionada.setToolTipText(null);
             return;
         }
         lblGrupoFamiliar.setText(item.getGrupoFamiliarEstado());
+        lblMarcaOperativaSeleccionada.setText(item.getGrupoFamiliarEstado());
         StringBuilder tooltip = new StringBuilder();
         if (!item.getCriterioGrupoFamiliar().isEmpty()) {
             tooltip.append("Criterio: ").append(item.getCriterioGrupoFamiliar());
@@ -2837,6 +2908,7 @@ public class JPanelAsignacionV2 extends JPanel {
             tooltip.append("Considere asignar solicitudes relacionadas al mismo abogado.");
         }
         lblGrupoFamiliar.setToolTipText(tooltip.length() == 0 ? null : tooltip.toString());
+        lblMarcaOperativaSeleccionada.setToolTipText(tooltip.length() == 0 ? null : tooltip.toString());
     }
 
     private void aplicarEstadoRecepcion(JLabel label, String estado) {

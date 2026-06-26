@@ -565,9 +565,15 @@ public class ExpedienteRegistroDAO {
     }
 
     private Long insertarPersonaManual(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
+        boolean soportaUbigeo = soportaUbigeoPersona(conn);
+        String columnasUbigeo = soportaUbigeo
+                ? ", id_ubigeo_distrito, departamento, provincia, distrito"
+                : "";
+        String valoresUbigeo = soportaUbigeo ? ", ?, ?, ?, ?" : "";
         String sql = "INSERT INTO persona ("
-                + "tipo_documento, numero_documento, razon_social, correo_electronico, telefono, direccion, activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, 1)";
+                + "tipo_documento, numero_documento, razon_social, correo_electronico, telefono, direccion"
+                + columnasUbigeo + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
             ps.setString(1, persona.getTipoDocumento());
             ps.setString(2, persona.getNumeroDocumento());
@@ -575,6 +581,12 @@ public class ExpedienteRegistroDAO {
             ps.setString(4, persona.getCorreo());
             ps.setString(5, persona.getTelefono());
             ps.setString(6, persona.getDireccion());
+            if (soportaUbigeo) {
+                setLongOrNull(ps, 7, persona.getIdDistrito());
+                ps.setString(8, persona.getDepartamento());
+                ps.setString(9, persona.getProvincia());
+                ps.setString(10, persona.getDistrito());
+            }
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "persona");
         }
@@ -919,6 +931,16 @@ public class ExpedienteRegistroDAO {
         try (Statement st = conn.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
             return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private boolean soportaUbigeoPersona(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'PERSONA' "
+                + "AND column_name IN ('ID_UBIGEO_DISTRITO', 'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO')";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) == 4;
         }
     }
 
