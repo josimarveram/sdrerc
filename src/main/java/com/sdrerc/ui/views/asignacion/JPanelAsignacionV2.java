@@ -1,7 +1,6 @@
 package com.sdrerc.ui.views.asignacion;
 
 import com.sdrerc.application.sdrercapp.AsignacionExpedienteService;
-import com.sdrerc.application.sdrercapp.CatalogoLookupService;
 import com.sdrerc.application.sdrercapp.DocumentoAnalisisService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoDeteccionService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
@@ -9,7 +8,6 @@ import com.sdrerc.application.sdrercapp.UsuarioAsignacionService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaLaboralAbogadoDTO;
-import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
@@ -73,7 +71,6 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.DefaultCellEditor;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -159,7 +156,6 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private final AsignacionExpedienteService asignacionService;
     private final UsuarioAsignacionService usuarioService;
-    private final CatalogoLookupService catalogoLookupService = new CatalogoLookupService();
     private final DocumentoAnalisisService documentoAnalisisService = new DocumentoAnalisisService();
     private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
@@ -186,6 +182,15 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblExpedienteSgdSeleccionado = new JLabel("-");
     private final JLabel lblTipoDocumentoSeleccionado = new JLabel("-");
     private final JLabel lblProcedimientoSeleccionado = new JLabel("-");
+    private final JLabel lblResultadoInicialSeleccionado = new JLabel("-");
+    private final JLabel lblTipoSolicitudSeleccionada = new JLabel("-");
+    private final JLabel lblCanalIngresoSeleccionado = new JLabel("-");
+    private final JLabel lblPrioridadSeleccionada = new JLabel("-");
+    private final JLabel lblTipoActaSeleccionada = new JLabel("-");
+    private final JLabel lblNumeroActaSeleccionada = new JLabel("-");
+    private final JLabel lblTipoDocumentoTitularSeleccionado = new JLabel("-");
+    private final JLabel lblTipoDocumentoSolicitanteSeleccionado = new JLabel("-");
+    private final JLabel lblNumeroDocumentoSolicitanteSeleccionado = new JLabel("-");
     private final JLabel lblActaSeleccionada = new JLabel("-");
     private final JLabel lblSolicitanteSeleccionado = new JLabel("-");
     private final JLabel lblDocumentoTitularSeleccionado = new JLabel("-");
@@ -222,8 +227,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable asignacionMultipleTable = new AppV2Table(asignacionMultipleModel);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
-    private final JComboBox<FiltroCatalogoItemV2> cmbProcedimientoRegistro = new JComboBox<FiltroCatalogoItemV2>();
-    private final JButton btnGuardarDatosRegistro = new JButton("Guardar datos");
     private final DefaultTableModel cartasRespuestaModel = new DefaultTableModel(
             new Object[]{
                 "Tipo",
@@ -297,7 +300,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideSectionPanel sectionDatosExpediente;
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
-    private AppV2SideSectionPanel sectionDatosRegistro;
     private AppV2SideSectionPanel sectionCartasRespuesta;
     private AppV2SideSectionPanel sectionAccionesRelacionados;
     private AppV2SideSectionPanel sectionDecisionNumero;
@@ -317,14 +319,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean busquedaInicialEjecutada;
     private Long idExpedienteDocumentosRelacionados;
     private Long idExpedienteHojaEnvioSimple;
-    private Long idExpedienteDatosRegistro;
     private Long idExpedienteCartasRespuesta;
-    private String procedimientoOriginalDatosRegistro = "";
-    private FiltroCatalogoItemV2 ultimoProcedimientoSeleccionado;
     private final Map<Integer, DocumentoAnalizadoDTO> documentosCartasRespuesta = new HashMap<>();
 
     private boolean cargandoCombos;
-    private boolean actualizandoDatosRegistro;
     private boolean actualizandoSeleccion;
     private boolean actualizandoCartasRespuesta;
     private boolean usuarioActualResuelto;
@@ -352,7 +350,6 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarEventos();
         restaurarFechasBusqueda();
         cargarEstados();
-        cargarCatalogosDatosRegistro();
         cargarEquipos();
         actualizarPanelSeleccion();
     }
@@ -444,11 +441,8 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Datos del expediente");
         sectionDatosExpediente = crearDatosExpedienteAsignacion();
         sectionResumenAsignacion = crearResumenAsignacion();
-        sectionDatosRegistro = crearDatosRegistroAsignacion();
         panel.addSection(sectionDatosExpediente);
-        panel.addSection(sectionDatosRegistro);
         panel.addSection(sectionResumenAsignacion);
-        sectionDatosRegistro.setVisible(false);
         return panel;
     }
 
@@ -554,21 +548,30 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private AppV2SideSectionPanel crearDatosExpedienteAsignacion() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del expediente");
-        section.addRow("Expediente", lblExpedienteSeleccionado);
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de registro");
+        section.addRow("Resultado inicial", lblResultadoInicialSeleccionado);
+        section.addRow("Hoja de envío", lblHojaEnvioSeleccionada);
+        section.addRow("Nro. trámite web", lblTramiteWebSeleccionado);
+        section.addRow("N° documento", lblNumeroDocumentoSeleccionado);
         section.addRow("N° expediente SGD", lblExpedienteSgdSeleccionado);
-        section.addRow("Titular", lblTitularSeleccionado);
-        section.addRow("Documento titular", lblDocumentoTitularSeleccionado);
-        section.addRow("Solicitante", lblSolicitanteSeleccionado);
-        section.addRow("Trámite Web", lblTramiteWebSeleccionado);
-        section.addRow("N° Documento", lblNumeroDocumentoSeleccionado);
+        section.addRow("Tipo de solicitud", lblTipoSolicitudSeleccionada);
+        section.addRow("Fecha recepción", lblFechaSolicitudSeleccionada);
+        section.addRow("Procedimiento registral", lblProcedimientoSeleccionado);
         section.addRow("Tipo documento", lblTipoDocumentoSeleccionado);
-        section.addRow("Procedimiento", lblProcedimientoSeleccionado);
-        section.addRow("Acta", lblActaSeleccionada);
-        section.addRow("Fecha solicitud", lblFechaSolicitudSeleccionada);
+        section.addRow("Canal de ingreso", lblCanalIngresoSeleccionado);
+        section.addRow("Prioridad", lblPrioridadSeleccionada);
+        section.addRow("Marca operativa", lblGrupoFamiliar);
+        section.addRow("Tipo de acta", lblTipoActaSeleccionada);
+        section.addRow("Nro. acta", lblNumeroActaSeleccionada);
+        section.addRow("Titular", lblTitularSeleccionado);
+        section.addRow("Tipo documento titular", lblTipoDocumentoTitularSeleccionado);
+        section.addRow("Número documento titular", lblDocumentoTitularSeleccionado);
+        section.addRow("Solicitante", lblSolicitanteSeleccionado);
+        section.addRow("Tipo documento solicitante", lblTipoDocumentoSolicitanteSeleccionado);
+        section.addRow("Número documento solicitante", lblNumeroDocumentoSolicitanteSeleccionado);
+        section.addRow("Expediente", lblExpedienteSeleccionado);
         section.addRow("Días hábiles", lblDiasSeleccionados);
         section.addRow("Estado", lblEstadoSeleccionado);
-        section.addRow("Hoja de envío", lblHojaEnvioSeleccionada);
         section.addRow("Observación", lblObservacionSeleccionada);
         return section;
     }
@@ -590,15 +593,6 @@ public class JPanelAsignacionV2 extends JPanel {
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         content.add(scroll, BorderLayout.CENTER);
         section.addContent(content);
-        return section;
-    }
-
-    private AppV2SideSectionPanel crearDatosRegistroAsignacion() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos registrales");
-        section.addRow("Procedimiento", cmbProcedimientoRegistro);
-        JPanel acciones = AppV2ActionPanel.right();
-        acciones.add(btnGuardarDatosRegistro);
-        section.addContent(acciones);
         return section;
     }
 
@@ -725,18 +719,10 @@ public class JPanelAsignacionV2 extends JPanel {
         spnLimite.setPreferredSize(new Dimension(88, 34));
         cmbEquipo.setPreferredSize(new Dimension(230, 34));
         cmbAbogado.setPreferredSize(new Dimension(230, 34));
-        cmbProcedimientoRegistro.setPreferredSize(new Dimension(230, 34));
-        cmbProcedimientoRegistro.setMinimumSize(new Dimension(190, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        cmbProcedimientoRegistro.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        cmbProcedimientoRegistro.setRenderer(new CatalogoRestringidoRenderer());
-        cmbProcedimientoRegistro.setToolTipText("Solo se permite cambiar a Reconsideración o Apelación.");
-        btnGuardarDatosRegistro.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnGuardarDatosRegistro.setEnabled(false);
-        btnGuardarDatosRegistro.setToolTipText("Guardar cambio permitido de procedimiento registral.");
         txtHojaEnvioAsignacion.setPreferredSize(new Dimension(230, 34));
         txtHojaEnvioAsignacion.setMinimumSize(new Dimension(180, 34));
         txtHojaEnvioAsignacion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
@@ -940,11 +926,9 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiar.addActionListener(e -> limpiar());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
         btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpedienteSeleccionado());
-        btnGuardarDatosRegistro.addActionListener(e -> guardarDatosRegistralesAsignacion());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
         btnVerCargaLaboral.addActionListener(e -> mostrarCargaLaboralAbogados());
-        cmbProcedimientoRegistro.addActionListener(e -> validarSeleccionProcedimientoRegistro());
         cmbEquipo.addActionListener(e -> {
             if (!cargandoCombos) {
                 idEquipoPendienteSeleccion = null;
@@ -999,38 +983,6 @@ public class JPanelAsignacionV2 extends JPanel {
                 ex -> lblEstado.setText("No se pudieron cargar los estados de Asignación."),
                 "REGISTRADO",
                 "ASIGNADO");
-    }
-
-    private void cargarCatalogosDatosRegistro() {
-        actualizandoDatosRegistro = true;
-        cmbProcedimientoRegistro.removeAllItems();
-        cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione procedimiento"));
-        actualizandoDatosRegistro = false;
-        SwingWorker<CatalogosDatosRegistro, Void> worker = new SwingWorker<CatalogosDatosRegistro, Void>() {
-            @Override
-            protected CatalogosDatosRegistro doInBackground() throws Exception {
-                return new CatalogosDatosRegistro(catalogoLookupService.listarProcedimientosRegistrales());
-            }
-
-            @Override
-            protected void done() {
-                actualizandoDatosRegistro = true;
-                try {
-                    CatalogosDatosRegistro catalogos = get();
-                    cmbProcedimientoRegistro.removeAllItems();
-                    cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(null, "Seleccione procedimiento"));
-                    for (CatalogoItemDTO item : catalogos.procedimientos) {
-                        cmbProcedimientoRegistro.addItem(new FiltroCatalogoItemV2(item.getCodigo(), item.getNombre()));
-                    }
-                } catch (Exception ex) {
-                    lblEstado.setText("No se pudieron cargar catálogos de edición registral.");
-                } finally {
-                    actualizandoDatosRegistro = false;
-                    actualizarPanelSeleccion();
-                }
-            }
-        };
-        worker.execute();
     }
 
     private void cargarEquipos() {
@@ -2242,7 +2194,6 @@ public class JPanelAsignacionV2 extends JPanel {
         if (filaPanel != null && filaPanel.esPrincipal()) {
             AsignacionExpedienteDTO item = filaPanel.principal;
             prepararHojaEnvioSimple(item);
-            prepararDatosRegistroAsignacion(item);
             btnAsignarSeleccionado.setEnabled(seleccionados == 1 && !modoMultiple && item.isAsignable() && item.tieneNumeroExpediente());
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(numeroExpedienteVisual(item));
@@ -2282,7 +2233,6 @@ public class JPanelAsignacionV2 extends JPanel {
             actualizarDecisionNumero(item);
         } else if (filaPanel != null && filaPanel.esAsociada()) {
             prepararHojaEnvioSimple(null);
-            prepararDatosRegistroAsignacion(null);
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(filaPanel.principal, false);
             lblExpedienteSeleccionado.setText("Expediente principal: " + filaPanel.numeroExpedientePrincipal());
@@ -2310,7 +2260,6 @@ public class JPanelAsignacionV2 extends JPanel {
             btnAsociarRelacionados.setEnabled(false);
         } else if (modoMultiple) {
             prepararHojaEnvioSimple(null);
-            prepararDatosRegistroAsignacion(null);
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(null, true);
             cargarPanelAsignacionMultiple(obtenerExpedientesMarcados());
@@ -2335,7 +2284,6 @@ public class JPanelAsignacionV2 extends JPanel {
             btnAsociarRelacionados.setEnabled(true);
         } else {
             actualizarDecisionNumero(null);
-            prepararDatosRegistroAsignacion(null);
             aplicarIdentidadVisual(null, false);
             cargarPanelAsignacionMultiple(Collections.<AsignacionExpedienteDTO>emptyList());
             limpiarCartasRespuestaPanel();
@@ -2375,163 +2323,6 @@ public class JPanelAsignacionV2 extends JPanel {
         String titular = item.getTitular();
         titular = titular == null ? "" : titular.trim();
         return titular.isEmpty() ? "-" : titular;
-    }
-
-    private void prepararDatosRegistroAsignacion(AsignacionExpedienteDTO item) {
-        boolean visible = item != null;
-        if (sectionDatosRegistro != null) {
-            sectionDatosRegistro.setVisible(visible);
-        }
-        idExpedienteDatosRegistro = visible ? item.getIdExpediente() : null;
-        procedimientoOriginalDatosRegistro = visible ? item.getProcedimiento() : "";
-        actualizandoDatosRegistro = true;
-        try {
-            seleccionarItemCatalogo(cmbProcedimientoRegistro, procedimientoOriginalDatosRegistro);
-            ultimoProcedimientoSeleccionado = itemSeleccionado(cmbProcedimientoRegistro);
-        } finally {
-            actualizandoDatosRegistro = false;
-        }
-        boolean editable = item != null && item.isAsignable();
-        cmbProcedimientoRegistro.setEnabled(editable);
-        btnGuardarDatosRegistro.setEnabled(false);
-        actualizarEstadoBotonDatosRegistro();
-        if (panelAsignacion != null) {
-            panelAsignacion.revalidate();
-            panelAsignacion.repaint();
-        }
-    }
-
-    private void seleccionarItemCatalogo(JComboBox<FiltroCatalogoItemV2> combo, String nombre) {
-        if (combo.getItemCount() == 0) {
-            return;
-        }
-        if (!hasTextUi(nombre)) {
-            combo.setSelectedIndex(0);
-            return;
-        }
-        String normalizado = AsignacionRegistroEditRules.normalizar(nombre);
-        for (int i = 0; i < combo.getItemCount(); i++) {
-            FiltroCatalogoItemV2 item = combo.getItemAt(i);
-            if (item != null && normalizado.equals(AsignacionRegistroEditRules.normalizar(item.getNombreVisible()))) {
-                combo.setSelectedIndex(i);
-                return;
-            }
-        }
-        FiltroCatalogoItemV2 itemActual = new FiltroCatalogoItemV2(null, nombre.trim());
-        combo.addItem(itemActual);
-        combo.setSelectedItem(itemActual);
-    }
-
-    private void validarSeleccionProcedimientoRegistro() {
-        if (actualizandoDatosRegistro) {
-            return;
-        }
-        FiltroCatalogoItemV2 item = itemSeleccionado(cmbProcedimientoRegistro);
-        if (item == null || !seleccionProcedimientoPermitida(item)) {
-            mostrarRestriccionSeleccion(cmbProcedimientoRegistro, ultimoProcedimientoSeleccionado,
-                    AsignacionRegistroEditRules.mensajeProcedimientoPermitido());
-            return;
-        }
-        ultimoProcedimientoSeleccionado = item;
-        actualizarEstadoBotonDatosRegistro();
-    }
-
-    private void mostrarRestriccionSeleccion(
-            JComboBox<FiltroCatalogoItemV2> combo,
-            FiltroCatalogoItemV2 anterior,
-            String mensaje) {
-        java.awt.Toolkit.getDefaultToolkit().beep();
-        lblEstado.setText(mensaje);
-        actualizandoDatosRegistro = true;
-        try {
-            if (anterior != null) {
-                combo.setSelectedItem(anterior);
-            } else if (combo.getItemCount() > 0) {
-                combo.setSelectedIndex(0);
-            }
-        } finally {
-            actualizandoDatosRegistro = false;
-        }
-        actualizarEstadoBotonDatosRegistro();
-    }
-
-    private boolean seleccionProcedimientoPermitida(FiltroCatalogoItemV2 item) {
-        if (item == null || !hasTextUi(item.getNombreVisible())) {
-            return false;
-        }
-        return esValorOriginal(item.getNombreVisible(), procedimientoOriginalDatosRegistro)
-                || AsignacionRegistroEditRules.esProcedimientoPermitido(item.getNombreVisible());
-    }
-
-    private void actualizarEstadoBotonDatosRegistro() {
-        btnGuardarDatosRegistro.setEnabled(idExpedienteDatosRegistro != null
-                && cmbProcedimientoRegistro.isEnabled()
-                && hasTextUi(procedimientoCambioPermitido()));
-    }
-
-    private String procedimientoCambioPermitido() {
-        FiltroCatalogoItemV2 item = itemSeleccionado(cmbProcedimientoRegistro);
-        if (item == null || esValorOriginal(item.getNombreVisible(), procedimientoOriginalDatosRegistro)
-                || !AsignacionRegistroEditRules.esProcedimientoPermitido(item.getNombreVisible())) {
-            return null;
-        }
-        return item.getNombreVisible().trim();
-    }
-
-    private void guardarDatosRegistralesAsignacion() {
-        final Long idExpediente = idExpedienteDatosRegistro;
-        final String procedimiento = procedimientoCambioPermitido();
-        if (idExpediente == null || !hasTextUi(procedimiento)) {
-            mostrarInfo("Seleccione un cambio permitido antes de guardar.");
-            return;
-        }
-        List<String> cambios = new ArrayList<>();
-        cambios.add("Procedimiento registral: " + procedimiento);
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Se actualizarán los datos registrales del expediente seleccionado:\n"
-                        + String.join("\n", cambios)
-                        + "\n\nNo se modificará el número de expediente. ¿Desea continuar?",
-                "Actualizar datos registrales",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-        setTrabajando(true, "Actualizando datos registrales...");
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                asignacionService.actualizarProcedimientoRegistral(idExpediente, procedimiento);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    get();
-                    JOptionPane.showMessageDialog(
-                            JPanelAsignacionV2.this,
-                            "Datos registrales actualizados correctamente.",
-                            "Datos registrales",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    buscar();
-                } catch (Exception ex) {
-                    mostrarError("No se pudieron actualizar los datos registrales.", ex);
-                } finally {
-                    setTrabajando(false, null);
-                }
-            }
-        };
-        worker.execute();
-    }
-
-    private boolean esValorOriginal(String valor, String original) {
-        if (!hasTextUi(valor) || !hasTextUi(original)) {
-            return false;
-        }
-        return AsignacionRegistroEditRules.normalizar(valor)
-                .equals(AsignacionRegistroEditRules.normalizar(original));
     }
 
     private void cargarCartasRespuestaPanel(AsignacionExpedienteDTO item) {
@@ -2723,11 +2514,6 @@ public class JPanelAsignacionV2 extends JPanel {
         return value == null ? "" : value.toString().trim();
     }
 
-    private static FiltroCatalogoItemV2 itemSeleccionado(JComboBox<FiltroCatalogoItemV2> combo) {
-        Object selected = combo.getSelectedItem();
-        return selected instanceof FiltroCatalogoItemV2 ? (FiltroCatalogoItemV2) selected : null;
-    }
-
     private void prepararHojaEnvioSimple(AsignacionExpedienteDTO item) {
         if (item == null || item.getIdExpediente() == null) {
             idExpedienteHojaEnvioSimple = null;
@@ -2911,11 +2697,20 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void actualizarDatosExpedientePanel(AsignacionExpedienteDTO item) {
         if (item == null) {
+            lblResultadoInicialSeleccionado.setText("-");
             lblExpedienteSeleccionado.setText("-");
             lblTitularSeleccionado.setText("-");
             lblExpedienteSgdSeleccionado.setText("-");
             lblTipoDocumentoSeleccionado.setText("-");
             lblProcedimientoSeleccionado.setText("-");
+            lblTipoSolicitudSeleccionada.setText("-");
+            lblCanalIngresoSeleccionado.setText("-");
+            lblPrioridadSeleccionada.setText("-");
+            lblTipoActaSeleccionada.setText("-");
+            lblNumeroActaSeleccionada.setText("-");
+            lblTipoDocumentoTitularSeleccionado.setText("-");
+            lblTipoDocumentoSolicitanteSeleccionado.setText("-");
+            lblNumeroDocumentoSolicitanteSeleccionado.setText("-");
             lblActaSeleccionada.setText("-");
             lblSolicitanteSeleccionado.setText("-");
             lblDocumentoTitularSeleccionado.setText("-");
@@ -2927,11 +2722,20 @@ public class JPanelAsignacionV2 extends JPanel {
             lblObservacionSeleccionada.setToolTipText(null);
             return;
         }
+        lblResultadoInicialSeleccionado.setText("Corresponde a SDRERC");
         lblExpedienteSeleccionado.setText(numeroExpedienteVisual(item));
         lblTitularSeleccionado.setText(titularPrincipalVisual(item));
         lblExpedienteSgdSeleccionado.setText(valorUi(item.getNumeroExpedienteSgd()));
         lblTipoDocumentoSeleccionado.setText(valorUi(item.getTipoDocumento()));
         lblProcedimientoSeleccionado.setText(valorUi(item.getProcedimiento()));
+        lblTipoSolicitudSeleccionada.setText("-");
+        lblCanalIngresoSeleccionado.setText("-");
+        lblPrioridadSeleccionada.setText("-");
+        lblTipoActaSeleccionada.setText(valorUi(item.getTipoActa()));
+        lblNumeroActaSeleccionada.setText(valorUi(item.getNumeroActa()));
+        lblTipoDocumentoTitularSeleccionado.setText("-");
+        lblTipoDocumentoSolicitanteSeleccionado.setText("-");
+        lblNumeroDocumentoSolicitanteSeleccionado.setText("-");
         lblActaSeleccionada.setText(valorUi(item.getTipoActa()) + " / " + valorUi(item.getNumeroActa()));
         lblSolicitanteSeleccionado.setText(valorUi(item.getSolicitante()));
         lblDocumentoTitularSeleccionado.setText(valorUi(item.getNumeroDocumentoTitular()));
@@ -3376,11 +3180,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnAsignarSeleccionados.setEnabled(!trabajando && marcados > 0);
         btnGenerarNumeroExpediente.setEnabled(!trabajando && puedeGenerarNumeroExpediente());
         btnVerCargaLaboral.setEnabled(!trabajando);
-        if (trabajando) {
-            btnGuardarDatosRegistro.setEnabled(false);
-        } else {
-            actualizarEstadoBotonDatosRegistro();
-        }
         documentosRelacionadosTable.setEnabled(!trabajando);
         asignacionMultipleTable.setEnabled(!trabajando);
         if (mensaje != null) {
@@ -3683,37 +3482,6 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             modelRow = table.convertRowIndexToModel(row);
             return button;
-        }
-    }
-
-    private class CatalogoRestringidoRenderer extends DefaultListCellRenderer {
-
-        private CatalogoRestringidoRenderer() {
-            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        }
-
-        @Override
-        public Component getListCellRendererComponent(
-                javax.swing.JList<?> list,
-                Object value,
-                int index,
-                boolean isSelected,
-                boolean cellHasFocus) {
-            Component component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-            if (value instanceof FiltroCatalogoItemV2) {
-                FiltroCatalogoItemV2 item = (FiltroCatalogoItemV2) value;
-                setText(item.toString());
-                boolean permitido = seleccionProcedimientoPermitida(item);
-                if (!permitido) {
-                    setForeground(AppV2Theme.MUTED);
-                } else if (!isSelected) {
-                    setForeground(AppV2Theme.TEXT_PRIMARY);
-                }
-                setToolTipText(permitido
-                        ? item.toString()
-                        : AsignacionRegistroEditRules.mensajeProcedimientoPermitido());
-            }
-            return component;
         }
     }
 
@@ -4334,12 +4102,4 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
-    private static class CatalogosDatosRegistro {
-
-        private final List<CatalogoItemDTO> procedimientos;
-
-        private CatalogosDatosRegistro(List<CatalogoItemDTO> procedimientos) {
-            this.procedimientos = procedimientos == null ? Collections.<CatalogoItemDTO>emptyList() : procedimientos;
-        }
-    }
 }
