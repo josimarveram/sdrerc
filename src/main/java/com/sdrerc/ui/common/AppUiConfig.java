@@ -1,6 +1,7 @@
 package com.sdrerc.ui.common;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import com.sdrerc.ui.appv2.util.AppV2DisplayScale;
 import java.awt.Font;
 import javax.swing.UIManager;
 
@@ -26,7 +27,7 @@ public final class AppUiConfig {
 
     private static void configurarFlatLaf()
     {
-        Font defaultFont = new Font(UI_FONT, Font.PLAIN, UI_FONT_SIZE);
+        Font defaultFont = new Font(UI_FONT, Font.PLAIN, AppV2DisplayScale.scaleFont(UI_FONT_SIZE));
         UIManager.put("defaultFont", defaultFont);
 
         FlatLightLaf.setup();

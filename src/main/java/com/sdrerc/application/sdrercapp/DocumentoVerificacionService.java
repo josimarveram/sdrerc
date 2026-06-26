@@ -34,11 +34,13 @@ public class DocumentoVerificacionService {
     public void actualizarEstadoDocumentoAnalizado(
             Long idExpediente,
             Long idDocumentoAnalizado,
-            String estadoCodigo) throws SQLException {
+            String estadoCodigo,
+            String detalleObservacion) throws SQLException {
         documentoVerificacionDAO.actualizarEstadoDocumentoAnalizado(
                 idExpediente,
                 idDocumentoAnalizado,
                 estadoCodigo,
+                detalleObservacion,
                 resolverUsuarioActualSdrercApp());
     }
 

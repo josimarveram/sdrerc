@@ -5,6 +5,7 @@ import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2WrapPanel;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import com.sdrerc.ui.appv2.util.AppV2DisplayScale;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -258,8 +259,8 @@ public class HomeV2 extends JPanel {
         JPanel card = new JPanel(new BorderLayout(10, 0));
         card.setOpaque(true);
         card.setBackground(background);
-        card.setPreferredSize(new Dimension(220, 74));
-        card.setMinimumSize(new Dimension(198, 70));
+        card.setPreferredSize(AppV2DisplayScale.scaledDimension(220, 74));
+        card.setMinimumSize(AppV2DisplayScale.scaledDimension(198, 70));
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(
                         Math.max(0, accent.getRed() - 8),
@@ -386,7 +387,7 @@ public class HomeV2 extends JPanel {
         icon.setOpaque(true);
         icon.setBackground(AppV2Theme.PRIMARY_DARK);
         icon.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        icon.setPreferredSize(new Dimension(38, 38));
+        icon.setPreferredSize(AppV2DisplayScale.scaledDimension(38, 38));
 
         JLabel label = new JLabel(title);
         label.setFont(AppV2Theme.fontBold(16));
@@ -411,8 +412,8 @@ public class HomeV2 extends JPanel {
         logoCard.setOpaque(true);
         logoCard.setBackground(Color.WHITE);
         logoCard.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        logoCard.setPreferredSize(new Dimension(214, 101));
-        logoCard.setMinimumSize(new Dimension(190, 90));
+        logoCard.setPreferredSize(AppV2DisplayScale.scaledDimension(214, 101));
+        logoCard.setMinimumSize(AppV2DisplayScale.scaledDimension(190, 90));
 
         JLabel logo = new JLabel(cargarLogoReniec());
         logo.setHorizontalAlignment(SwingConstants.CENTER);
@@ -435,8 +436,8 @@ public class HomeV2 extends JPanel {
             if (source == null) {
                 return new ImageIcon(url);
             }
-            int maxWidth = 214;
-            int maxHeight = 101;
+            int maxWidth = AppV2DisplayScale.scale(214);
+            int maxHeight = AppV2DisplayScale.scale(101);
             double scale = Math.min((double) maxWidth / source.getWidth(),
                     (double) maxHeight / source.getHeight());
             int targetWidth = Math.max(1, (int) Math.round(source.getWidth() * scale));
@@ -482,8 +483,8 @@ public class HomeV2 extends JPanel {
             setFont(AppV2Theme.fontBold(11));
             setForeground(Color.WHITE);
             setHorizontalAlignment(SwingConstants.CENTER);
-            setPreferredSize(new Dimension(36, 36));
-            setMinimumSize(new Dimension(36, 36));
+            setPreferredSize(AppV2DisplayScale.scaledDimension(36, 36));
+            setMinimumSize(AppV2DisplayScale.scaledDimension(36, 36));
         }
 
         @Override

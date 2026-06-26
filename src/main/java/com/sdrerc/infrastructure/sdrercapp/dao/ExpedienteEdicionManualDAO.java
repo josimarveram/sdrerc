@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Locale;
 
@@ -665,7 +666,17 @@ public class ExpedienteEdicionManualDAO {
         if (value == null || value.length() <= maxLength) {
             return value;
         }
-        return value.substring(0, maxLength);
+        int low = 0;
+        int high = Math.min(value.length(), maxLength);
+        while (low < high) {
+            int mid = (low + high + 1) >>> 1;
+            if (value.substring(0, mid).getBytes(StandardCharsets.UTF_8).length <= maxLength) {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return value.substring(0, low);
     }
 
     private void rollbackSilencioso(Connection conn) {

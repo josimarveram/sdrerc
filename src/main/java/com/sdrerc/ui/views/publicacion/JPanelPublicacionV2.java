@@ -8,6 +8,7 @@ import com.sdrerc.domain.dto.sdrercapp.PublicacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
@@ -96,6 +97,9 @@ public class JPanelPublicacionV2 extends JPanel {
 
     private final PublicacionTableModel tableModel = new PublicacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
+    private final JScrollPane tableScrollPane = new JScrollPane(table);
+    private final JPanel tableHost = new JPanel(new BorderLayout());
+    private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -205,7 +209,9 @@ public class JPanelPublicacionV2 extends JPanel {
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
         panel.add(superior, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        tableHost.setOpaque(false);
+        tableHost.add(tableScrollPane, BorderLayout.CENTER);
+        panel.add(tableHost, BorderLayout.CENTER);
         return panel;
     }
 
@@ -377,6 +383,14 @@ public class JPanelPublicacionV2 extends JPanel {
         table.getColumnModel().getColumn(16).setMaxWidth(92);
         table.getColumnModel().getColumn(17).setMaxWidth(92);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tableScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        columnFilterSupport = AppV2ColumnFilterSupport.install(
+                table,
+                tableScrollPane,
+                tableHost,
+                null,
+                0);
     }
 
     private void configurarDocumentosTabla() {
@@ -450,6 +464,9 @@ public class JPanelPublicacionV2 extends JPanel {
     }
 
     private void limpiar() {
+        if (columnFilterSupport != null) {
+            columnFilterSupport.clearFilters();
+        }
         txtBusqueda.setText("");
         cmbEstadoFiltro.setSelectedIndex(0);
         expedientes.clear();

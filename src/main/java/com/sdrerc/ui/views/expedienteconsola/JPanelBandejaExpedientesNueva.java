@@ -26,8 +26,12 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -42,16 +46,20 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.RowFilter;
+import javax.swing.RowSorter;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SortOrder;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
@@ -62,6 +70,7 @@ import javax.swing.event.TableColumnModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableRowSorter;
 
 public class JPanelBandejaExpedientesNueva extends JPanel {
@@ -87,6 +96,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
     private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
+    private final JCheckBox chkFiltroGrupoFamiliar = new JCheckBox("Solo identificados");
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
@@ -98,7 +108,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final AppV2TablePanel tablePanel;
     private TableRowSorter<DefaultTableModel> rowSorter;
     private JTextField[] columnFilterFields;
-    private JPanel tableHeaderWithFilters;
     private ColumnFilterPanel columnFilterPanel;
     private final AppV2NotebookToggleTab tabPanelRecepcion = new AppV2NotebookToggleTab();
     private AppV2OperationalSplitPanel splitBandeja;
@@ -200,9 +209,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         configurarTabla();
         aplicarConfiguracionInicial();
         configurarEventos();
-        if (perfilRegistroRecepcion) {
-            SwingUtilities.invokeLater(this::buscar);
-        }
+        SwingUtilities.invokeLater(this::buscar);
     }
 
     private static DefaultTableModel crearTableModel(boolean perfilRegistroRecepcion) {
@@ -306,14 +313,42 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         gbc.gridy = 1;
         gbc.gridx = 0;
         if (perfilRegistroRecepcion) {
-            filtros.add(crearLabelFiltro("Fecha solicitud desde"), gbc);
+            filtros.add(crearLabelFiltro("Fecha desde"), gbc);
             gbc.gridx = 1;
             gbc.fill = GridBagConstraints.HORIZONTAL;
             filtros.add(fechaSolicitudDesde, gbc);
             gbc.fill = GridBagConstraints.NONE;
 
             gbc.gridx = 2;
-            filtros.add(crearLabelFiltro("Fecha solicitud hasta"), gbc);
+            filtros.add(crearLabelFiltro("Fecha hasta"), gbc);
+            gbc.gridx = 3;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            filtros.add(fechaSolicitudHasta, gbc);
+            gbc.fill = GridBagConstraints.NONE;
+
+        gbc.gridx = 4;
+        filtros.add(crearLabelFiltro("Estado"), gbc);
+        gbc.gridx = 5;
+        filtros.add(cmbEstado, gbc);
+
+        gbc.gridx = 6;
+        filtros.add(crearLabelFiltro("Grupo familiar"), gbc);
+        gbc.gridx = 7;
+        filtros.add(crearFiltroGrupoFamiliar(), gbc);
+
+        gbc.gridx = 8;
+        filtros.add(crearLabelFiltro("Mostrar"), gbc);
+        gbc.gridx = 9;
+        filtros.add(spnLimite, gbc);
+        } else {
+            filtros.add(crearLabelFiltro("Fecha desde"), gbc);
+            gbc.gridx = 1;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            filtros.add(fechaSolicitudDesde, gbc);
+            gbc.fill = GridBagConstraints.NONE;
+
+            gbc.gridx = 2;
+            filtros.add(crearLabelFiltro("Fecha hasta"), gbc);
             gbc.gridx = 3;
             gbc.fill = GridBagConstraints.HORIZONTAL;
             filtros.add(fechaSolicitudHasta, gbc);
@@ -327,20 +362,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             gbc.gridx = 6;
             filtros.add(crearLabelFiltro("Mostrar"), gbc);
             gbc.gridx = 7;
-            filtros.add(spnLimite, gbc);
-        } else {
-            filtros.add(crearLabelFiltro("Etapa"), gbc);
-            gbc.gridx = 1;
-            filtros.add(cmbEtapa, gbc);
-
-            gbc.gridx = 2;
-            filtros.add(crearLabelFiltro("Estado"), gbc);
-            gbc.gridx = 3;
-            filtros.add(cmbEstado, gbc);
-
-            gbc.gridx = 4;
-            filtros.add(crearLabelFiltro("Mostrar"), gbc);
-            gbc.gridx = 5;
             filtros.add(spnLimite, gbc);
         }
 
@@ -386,15 +407,18 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
 
-        panelRecepcion = crearPanelRecepcion();
-        splitBandeja = new AppV2OperationalSplitPanel(
-                contenidoPrincipal,
-                crearPanelRecepcionConTab(panelRecepcion),
-                0,
-                PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
-                PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG);
-
-        add(splitBandeja, BorderLayout.CENTER);
+        if (perfilRegistroRecepcion) {
+            panelRecepcion = crearPanelRecepcion();
+            splitBandeja = new AppV2OperationalSplitPanel(
+                    contenidoPrincipal,
+                    crearPanelRecepcionConTab(panelRecepcion),
+                    0,
+                    PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
+                    PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG);
+            add(splitBandeja, BorderLayout.CENTER);
+        } else {
+            add(contenidoPrincipal, BorderLayout.CENTER);
+        }
     }
 
     private AppV2SideActionPanel crearPanelRecepcion() {
@@ -488,6 +512,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     new FiltroCatalogoItemV2(null, "Todos los estados"),
                     (codigo, nombre) -> new FiltroCatalogoItemV2(codigo, nombre),
                     ex -> lblResultado.setText("No se pudieron cargar los estados de Registro / Recepción."));
+        } else {
+            restaurarFechasBandejaGeneral();
         }
         if (etapaBloqueada) {
             cmbEtapa.setEnabled(false);
@@ -501,15 +527,22 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         rowSorter.setSortsOnUpdates(true);
         table.setRowSorter(rowSorter);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setAutoResizeMode(perfilRegistroRecepcion ? JTable.AUTO_RESIZE_OFF : JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         table.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
         table.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        table.getTableHeader().setPreferredSize(new Dimension(0, 30));
+        table.getTableHeader().setDefaultRenderer(
+                new BandejaHeaderRenderer(table.getTableHeader().getDefaultRenderer()));
+        rowSorter.addRowSorterListener(e -> table.getTableHeader().repaint());
         table.setGridColor(AppV2Theme.BORDER);
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new java.awt.Dimension(0, 1));
-        table.setDefaultRenderer(Object.class, new BandejaCellRenderer());
+        BandejaCellRenderer renderer = new BandejaCellRenderer();
+        table.setDefaultRenderer(Object.class, renderer);
+        table.setDefaultRenderer(Number.class, renderer);
+        table.setDefaultRenderer(Long.class, renderer);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
             AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 190, 0, 0);
@@ -522,6 +555,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             table.getColumnModel().getColumn(10).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
         } else {
+            AppV2TableColumnSizer.applyWidths(table, 88, 175, 155, 155, 175, 145, 145, 125, 125, 0);
             table.getColumnModel().getColumn(0).setMaxWidth(90);
             table.getColumnModel().getColumn(1).setMinWidth(150);
             table.getColumnModel().getColumn(2).setMinWidth(130);
@@ -529,6 +563,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             table.getColumnModel().getColumn(4).setMinWidth(150);
             table.getColumnModel().getColumn(7).setMaxWidth(125);
             table.getColumnModel().getColumn(8).setMaxWidth(120);
+            table.getColumnModel().getColumn(9).setMinWidth(0);
+            table.getColumnModel().getColumn(9).setMaxWidth(0);
+            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
         }
         instalarFiltrosPorColumna();
     }
@@ -539,12 +576,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             columnFilterFields[i] = crearCampoFiltroColumna(i);
         }
         columnFilterPanel = new ColumnFilterPanel();
-        tableHeaderWithFilters = new JPanel(new BorderLayout());
-        tableHeaderWithFilters.setOpaque(true);
-        tableHeaderWithFilters.setBackground(AppV2Theme.SURFACE_ALT);
-        tableHeaderWithFilters.add(table.getTableHeader(), BorderLayout.NORTH);
-        tableHeaderWithFilters.add(columnFilterPanel, BorderLayout.CENTER);
-        tablePanel.getScrollPane().setColumnHeaderView(tableHeaderWithFilters);
+        tablePanel.add(columnFilterPanel, BorderLayout.NORTH);
+        tablePanel.getScrollPane().setColumnHeaderView(table.getTableHeader());
+        tablePanel.getScrollPane().getHorizontalScrollBar().addAdjustmentListener(e -> refrescarFiltrosPorColumna());
         table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
             @Override
             public void columnAdded(TableColumnModelEvent e) {
@@ -574,18 +608,18 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private JTextField crearCampoFiltroColumna(final int modelColumn) {
-        final JTextField field = new JTextField();
         String header = String.valueOf(tableModel.getColumnName(modelColumn));
+        final JTextField field = new ColumnFilterField("Filtrar");
         boolean visible = !esColumnaTecnica(modelColumn);
         field.setVisible(visible);
         field.setEnabled(visible);
-        field.setFont(AppV2Theme.fontPlain(11));
+        field.setFont(AppV2Theme.fontPlain(10));
         field.setForeground(AppV2Theme.TEXT_PRIMARY);
         field.setBackground(AppV2Theme.SURFACE);
         field.setCaretColor(AppV2Theme.PRIMARY);
         field.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(AppV2Theme.BORDER),
-                BorderFactory.createEmptyBorder(2, 7, 2, 7)));
+                BorderFactory.createEmptyBorder(1, 6, 1, 6)));
         field.setToolTipText("Filtrar " + DisplayNameMapperV2.valor(header));
         field.getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -610,10 +644,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (columnFilterPanel != null) {
             columnFilterPanel.revalidate();
             columnFilterPanel.repaint();
-        }
-        if (tableHeaderWithFilters != null) {
-            tableHeaderWithFilters.revalidate();
-            tableHeaderWithFilters.repaint();
         }
     }
 
@@ -698,6 +728,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         cmbEtapa.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        chkFiltroGrupoFamiliar.setOpaque(false);
+        chkFiltroGrupoFamiliar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        chkFiltroGrupoFamiliar.setForeground(AppV2Theme.TEXT_PRIMARY);
+        chkFiltroGrupoFamiliar.setToolTipText("Mostrar únicamente expedientes identificados o alertados como grupo familiar.");
     }
 
     private void configurarBotones() {
@@ -717,10 +751,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 boolean haySeleccion = table.getSelectedRow() >= 0;
                 btnVerDetalle.setEnabled(haySeleccion);
                 btnEditar.setEnabled(haySeleccion && esRegistroSeleccionadoEditable());
-                if (haySeleccion) {
-                    mostrarPanelRecepcionSeleccionado();
-                } else {
-                    ocultarPanelRecepcion();
+                if (perfilRegistroRecepcion) {
+                    if (haySeleccion) {
+                        mostrarPanelRecepcionSeleccionado();
+                    } else {
+                        ocultarPanelRecepcion();
+                    }
                 }
             }
         });
@@ -729,7 +765,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2 && table.getSelectedRow() >= 0) {
                     abrirDetalleSeleccionado();
-                } else if (table.getSelectedRow() >= 0 && splitBandeja != null && !splitBandeja.isSideVisible()) {
+                } else if (perfilRegistroRecepcion
+                        && table.getSelectedRow() >= 0
+                        && splitBandeja != null
+                        && !splitBandeja.isSideVisible()) {
                     mostrarPanelRecepcionSeleccionado();
                 }
             }
@@ -742,17 +781,19 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void buscar() {
         String texto = txtBusqueda.getText();
-        String etapa = perfilRegistroRecepcion ? "REGISTRO" : codigoSeleccionado(cmbEtapa);
+        String etapa = perfilRegistroRecepcion
+                ? "REGISTRO"
+                : (etapaBloqueada ? etapaInicial : null);
         String estado = codigoSeleccionado(cmbEstado);
-        LocalDate fechaDesde = perfilRegistroRecepcion ? fechaSeleccionada(fechaSolicitudDesde) : null;
-        LocalDate fechaHasta = perfilRegistroRecepcion ? fechaSeleccionada(fechaSolicitudHasta) : null;
+        LocalDate fechaDesde = fechaSeleccionada(fechaSolicitudDesde);
+        LocalDate fechaHasta = fechaSeleccionada(fechaSolicitudHasta);
         int limite = ((Number) spnLimite.getValue()).intValue();
 
         if (fechaDesde != null && fechaHasta != null && fechaHasta.isBefore(fechaDesde)) {
             JOptionPane.showMessageDialog(
                     this,
-                    "La fecha solicitud hasta no puede ser menor que la fecha solicitud desde.",
-                    "Filtros de Registro / Recepción",
+                    "La Fecha hasta no puede ser menor que la Fecha desde.",
+                    perfilRegistroRecepcion ? "Filtros de Registro / Recepción" : "Filtros de Bandeja de Expedientes",
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -767,7 +808,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             @Override
             protected void done() {
                 try {
-                    cargarTabla(get());
+                    List<ExpedienteBandejaDTO> expedientes = get();
+                    if (perfilRegistroRecepcion && chkFiltroGrupoFamiliar.isSelected()) {
+                        expedientes = filtrarGrupoFamiliar(expedientes);
+                    }
+                    cargarTabla(expedientes);
                 } catch (Exception ex) {
                     mostrarError(ex);
                 } finally {
@@ -786,11 +831,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             cmbEtapa.setSelectedIndex(0);
         }
         cmbEstado.setSelectedIndex(0);
+        chkFiltroGrupoFamiliar.setSelected(false);
         if (perfilRegistroRecepcion) {
             restaurarFechasRegistro();
         } else {
-            fechaSolicitudDesde.setDate(null);
-            fechaSolicitudHasta.setDate(null);
+            restaurarFechasBandejaGeneral();
         }
         spnLimite.setValue(200);
         limpiarFiltrosPorColumna();
@@ -847,7 +892,48 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
     }
 
+    private JPanel crearFiltroGrupoFamiliar() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.add(chkFiltroGrupoFamiliar, BorderLayout.WEST);
+        panel.setPreferredSize(new Dimension(170, 34));
+        return panel;
+    }
+
+    private List<ExpedienteBandejaDTO> filtrarGrupoFamiliar(List<ExpedienteBandejaDTO> expedientes) {
+        List<ExpedienteBandejaDTO> filtrados = new ArrayList<>();
+        if (expedientes == null) {
+            return filtrados;
+        }
+        for (ExpedienteBandejaDTO item : expedientes) {
+            if (esGrupoFamiliar(item)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean esGrupoFamiliar(ExpedienteBandejaDTO item) {
+        if (item == null) {
+            return false;
+        }
+        String valor = normalizarFiltro(item.getGrupoFamiliar());
+        if (valor.isEmpty()) {
+            return false;
+        }
+        return valor.contains("GRUPO FAMILIAR")
+                || valor.contains("IDENTIFICADO")
+                || valor.contains("POSIBLE")
+                || "SI".equals(valor)
+                || "S".equals(valor)
+                || "1".equals(valor)
+                || "TRUE".equals(valor);
+    }
+
     private void mostrarPanelRecepcionSeleccionado() {
+        if (!perfilRegistroRecepcion || panelRecepcion == null) {
+            return;
+        }
         final Long idExpediente = obtenerIdExpedienteSeleccionado();
         if (idExpediente == null) {
             ocultarPanelRecepcion();
@@ -888,6 +974,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void cargarPanelRecepcion(ExpedienteConsolaDTO expediente) {
+        if (panelRecepcion == null) {
+            return;
+        }
         setValue(lblRecepcionExpediente, expediente.getNumeroExpediente());
         setValue(lblRecepcionFecha, formatDate(expediente.getFechaRecepcion()));
         setValue(lblRecepcionCanal, expediente.getCanalRecepcion());
@@ -939,6 +1028,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void ocultarPanelRecepcion() {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
         panelRecepcionCargado = false;
         idPanelRecepcionActual = null;
         panelRecepcionLoadSequence++;
@@ -1071,6 +1163,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private void restaurarFechasRegistro() {
         fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
         fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
+    }
+
+    private void restaurarFechasBandejaGeneral() {
+        Date hoy = new Date();
+        fechaSolicitudDesde.setDate(hoy);
+        fechaSolicitudHasta.setDate(hoy);
     }
 
     private void seleccionarEtapaInicial() {
@@ -1284,7 +1382,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private class ColumnFilterPanel extends JPanel {
 
-        private static final int HEIGHT = 38;
+        private static final int HEIGHT = 30;
 
         private ColumnFilterPanel() {
             setLayout(null);
@@ -1299,16 +1397,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         @Override
         public Dimension getPreferredSize() {
-            int width = 0;
-            for (int i = 0; i < table.getColumnModel().getColumnCount(); i++) {
-                width += table.getColumnModel().getColumn(i).getWidth();
-            }
-            return new Dimension(Math.max(width, table.getWidth()), HEIGHT);
+            return new Dimension(1, HEIGHT);
         }
 
         @Override
         public void doLayout() {
-            int x = 0;
+            int x = -tablePanel.getScrollPane().getHorizontalScrollBar().getValue();
             for (int viewColumn = 0; viewColumn < table.getColumnModel().getColumnCount(); viewColumn++) {
                 TableColumn column = table.getColumnModel().getColumn(viewColumn);
                 int width = column.getWidth();
@@ -1317,16 +1411,145 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         ? columnFilterFields[modelColumn]
                         : null;
                 if (field != null) {
-                    boolean visible = !esColumnaTecnica(modelColumn) && width > 18;
+                    boolean visible = !esColumnaTecnica(modelColumn)
+                            && width > 28
+                            && x + width > 0
+                            && x < getWidth();
                     field.setVisible(visible);
                     if (visible) {
-                        field.setBounds(x + 5, 5, Math.max(0, width - 10), 27);
+                        field.setBounds(x + 4, 3, Math.max(0, width - 8), 23);
                     } else {
                         field.setBounds(x, 0, 0, 0);
                     }
                 }
                 x += width;
             }
+        }
+    }
+
+    private static class ColumnFilterField extends JTextField {
+
+        private final String prompt;
+
+        private ColumnFilterField(String prompt) {
+            this.prompt = prompt;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (getText() != null && !getText().isEmpty()) {
+                return;
+            }
+            g.setColor(AppV2Theme.TEXT_SECONDARY);
+            g.setFont(getFont());
+            FontMetrics fm = g.getFontMetrics();
+            int x = getInsets().left;
+            int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+            g.drawString(prompt, x, y);
+        }
+    }
+
+    private class BandejaHeaderRenderer implements TableCellRenderer {
+
+        private final TableCellRenderer delegate;
+
+        private BandejaHeaderRenderer(TableCellRenderer delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component component = delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (component instanceof JLabel) {
+                JLabel label = (JLabel) component;
+                int modelColumn = table.convertColumnIndexToModel(column);
+                String text = value == null ? "" : value.toString();
+                SortOrder sortOrder = sortOrderFor(modelColumn);
+                label.setText(text);
+                label.setIcon(esColumnaTecnica(modelColumn) ? null : new SortIndicatorIcon(sortOrder));
+                label.setHorizontalTextPosition(JLabel.LEFT);
+                label.setIconTextGap(6);
+                label.setOpaque(true);
+                label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+                label.setForeground(AppV2Theme.TEXT_SECONDARY);
+                label.setBackground(AppV2Theme.SURFACE_ALT);
+                label.setHorizontalAlignment(JLabel.CENTER);
+                label.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
+                        BorderFactory.createEmptyBorder(0, 8, 0, 8)));
+            }
+            return component;
+        }
+
+        private SortOrder sortOrderFor(int modelColumn) {
+            if (rowSorter == null || rowSorter.getSortKeys().isEmpty()) {
+                return SortOrder.UNSORTED;
+            }
+            for (RowSorter.SortKey sortKey : rowSorter.getSortKeys()) {
+                if (sortKey.getColumn() == modelColumn) {
+                    return sortKey.getSortOrder();
+                }
+            }
+            return SortOrder.UNSORTED;
+        }
+    }
+
+    private static class SortIndicatorIcon implements Icon {
+
+        private final SortOrder order;
+
+        private SortIndicatorIcon(SortOrder order) {
+            this.order = order == null ? SortOrder.UNSORTED : order;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 9;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 14;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (order == SortOrder.ASCENDING) {
+                    g2.setColor(AppV2Theme.PRIMARY);
+                    paintUp(g2, x, y + 3);
+                } else if (order == SortOrder.DESCENDING) {
+                    g2.setColor(AppV2Theme.PRIMARY);
+                    paintDown(g2, x, y + 6);
+                } else {
+                    g2.setColor(AppV2Theme.TEXT_SECONDARY);
+                    paintUp(g2, x, y + 2);
+                    paintDown(g2, x, y + 8);
+                }
+            } finally {
+                g2.dispose();
+            }
+        }
+
+        private void paintUp(Graphics2D g2, int x, int y) {
+            int[] xs = {x + 4, x + 1, x + 7};
+            int[] ys = {y, y + 5, y + 5};
+            g2.fillPolygon(xs, ys, 3);
+        }
+
+        private void paintDown(Graphics2D g2, int x, int y) {
+            int[] xs = {x + 1, x + 7, x + 4};
+            int[] ys = {y, y, y + 5};
+            g2.fillPolygon(xs, ys, 3);
         }
     }
 
@@ -1340,8 +1563,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
-            if (!isSelected && modelColumn == 0) {
-                return StatusBadgeV2.forDias(value);
+            if (modelColumn == 0) {
+                return StatusBadgeV2.forDias(value, colorFondoCelda(row, isSelected));
             }
             if (perfilRegistroRecepcion) {
                 return defaultComponent(table, value, isSelected, hasFocus, row, column);
@@ -1368,6 +1591,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
 
             return defaultComponent(table, value, isSelected, hasFocus, row, column);
+        }
+
+        private Color colorFondoCelda(int row, boolean isSelected) {
+            if (isSelected) {
+                return table.getSelectionBackground();
+            }
+            return row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
         }
 
         private Component defaultComponent(

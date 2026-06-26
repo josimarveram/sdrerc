@@ -1,5 +1,6 @@
 package com.sdrerc.ui.appv2.theme;
 
+import com.sdrerc.ui.appv2.util.AppV2DisplayScale;
 import java.awt.Color;
 import java.awt.Font;
 import javax.swing.BorderFactory;
@@ -55,11 +56,11 @@ public final class AppV2Theme {
     }
 
     public static Font fontPlain(int size) {
-        return new Font(FONT_FAMILY, Font.PLAIN, size);
+        return new Font(FONT_FAMILY, Font.PLAIN, AppV2DisplayScale.scaleFont(size));
     }
 
     public static Font fontBold(int size) {
-        return new Font(FONT_FAMILY, Font.BOLD, size);
+        return new Font(FONT_FAMILY, Font.BOLD, AppV2DisplayScale.scaleFont(size));
     }
 
     public static Border cardBorder() {

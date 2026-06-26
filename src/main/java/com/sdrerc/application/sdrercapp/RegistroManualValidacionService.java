@@ -39,9 +39,6 @@ public class RegistroManualValidacionService {
         if (!hasText(solicitud.getNumeroTramite())) {
             errores.add("Número de trámite obligatorio.");
         }
-        if (!hasText(solicitud.getNumeroDocumento())) {
-            errores.add("Número de documento obligatorio.");
-        }
         if (!hasText(solicitud.getTipoSolicitudNombre())) {
             errores.add("Tipo de solicitud obligatorio.");
         }

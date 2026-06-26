@@ -8,6 +8,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,7 @@ public class DocumentoVerificacionDAO {
     private final CatalogoLookupDAO catalogoLookupDAO = new CatalogoLookupDAO();
 
     public List<CatalogoItemDTO> listarEstadosDocumento() throws SQLException {
-        return catalogoLookupDAO.listarEstadosDocumento();
+        return filtrarEstadosDocumentoAnalizado(catalogoLookupDAO.listarEstadosDocumento());
     }
 
     public List<DocumentoVerificacionDTO> listarDocumentosAnalizados(Long idExpediente) throws SQLException {
@@ -25,16 +26,8 @@ public class DocumentoVerificacionDAO {
         if (idExpediente == null) {
             return documentos;
         }
-        String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
-                + "td.nombre AS tipo_documento, ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento, "
-                + "da.fecha_documento, da.descripcion "
-                + "FROM expediente_documento_analizado da "
-                + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
-                + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
-                + "WHERE da.id_expediente = ? AND da.activo = 1 "
-                + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
         try (Connection conn = SdrercAppConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sqlListarDocumentos(conn))) {
             ps.setLong(1, idExpediente);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -45,7 +38,15 @@ public class DocumentoVerificacionDAO {
                             rs.getString("estado_documento_codigo"),
                             rs.getString("estado_documento"),
                             toLocalDate(rs.getDate("fecha_documento")),
-                            rs.getString("descripcion")));
+                            rs.getString("numero_documento"),
+                            rs.getString("descripcion"),
+                            rs.getInt("requiere_respuesta") == 1,
+                            toLocalDate(rs.getDate("fecha_acuse")),
+                            rs.getString("confirmacion_respuesta"),
+                            toLocalDate(rs.getDate("fecha_respuesta")),
+                            rs.getString("numero_hoja_envio_respuesta"),
+                            rs.getInt("notificado") == 1,
+                            rs.getString("detalle_observacion")));
                 }
             }
         }
@@ -56,6 +57,7 @@ public class DocumentoVerificacionDAO {
             Long idExpediente,
             Long idDocumentoAnalizado,
             String estadoCodigo,
+            String detalleObservacion,
             Long idUsuarioModificador) throws SQLException {
         if (idExpediente == null || idDocumentoAnalizado == null) {
             throw new SQLException("Documento analizado no identificado.");
@@ -68,18 +70,28 @@ public class DocumentoVerificacionDAO {
                 if (idEstadoDocumento == null) {
                     throw new SQLException("No se encontró el estado de documento: " + estadoCodigo + ".");
                 }
+                boolean soportaDetalle = soportaDetalleObservacionDocumentoAnalizado(conn);
+                if (!soportaDetalle && hasText(detalleObservacion)) {
+                    throw new SQLException("Falta la columna DETALLE_OBSERVACION en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 33_patch_documento_analizado_detalle_observacion.sql.");
+                }
                 String sql = "UPDATE expediente_documento_analizado SET "
-                        + "id_estado_documento = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                        + "id_estado_documento = ?, "
+                        + (soportaDetalle ? "detalle_observacion = ?, " : "")
+                        + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                         + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setLong(1, idEstadoDocumento);
-                    if (idUsuarioModificador == null) {
-                        ps.setNull(2, java.sql.Types.NUMERIC);
-                    } else {
-                        ps.setLong(2, idUsuarioModificador);
+                    int index = 2;
+                    if (soportaDetalle) {
+                        setStringOrNull(ps, index++, esEstadoObservado(estadoCodigo) ? limitar(detalleObservacion, 1000) : null);
                     }
-                    ps.setLong(3, idDocumentoAnalizado);
-                    ps.setLong(4, idExpediente);
+                    if (idUsuarioModificador == null) {
+                        ps.setNull(index++, java.sql.Types.NUMERIC);
+                    } else {
+                        ps.setLong(index++, idUsuarioModificador);
+                    }
+                    ps.setLong(index++, idDocumentoAnalizado);
+                    ps.setLong(index, idExpediente);
                     int updated = ps.executeUpdate();
                     if (updated != 1) {
                         throw new SQLException("No se pudo actualizar el estado del documento analizado.");
@@ -102,5 +114,102 @@ public class DocumentoVerificacionDAO {
 
     private static LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toLocalDate();
+    }
+
+    private static String sqlListarDocumentos(Connection conn) throws SQLException {
+        boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
+        boolean soportaNumero = soportaNumeroDocumentoAnalizado(conn);
+        boolean soportaDetalle = soportaDetalleObservacionDocumentoAnalizado(conn);
+        return "SELECT da.id_documento_analizado, da.id_expediente, "
+                + "td.nombre AS tipo_documento, ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento, "
+                + "da.fecha_documento, "
+                + (soportaNumero ? "da.numero_documento, " : "CAST(NULL AS VARCHAR2(120)) AS numero_documento, ")
+                + "da.descripcion, "
+                + (soportaRespuesta
+                        ? "NVL(da.requiere_respuesta, 0) AS requiere_respuesta, da.fecha_acuse, "
+                        + "da.confirmacion_respuesta, da.fecha_respuesta, da.numero_hoja_envio_respuesta, "
+                        + "NVL(da.notificado, 0) AS notificado, "
+                        : "0 AS requiere_respuesta, CAST(NULL AS DATE) AS fecha_acuse, "
+                        + "CAST(NULL AS VARCHAR2(20)) AS confirmacion_respuesta, CAST(NULL AS DATE) AS fecha_respuesta, "
+                        + "CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_respuesta, 0 AS notificado, ")
+                + (soportaDetalle ? "da.detalle_observacion " : "CAST(NULL AS VARCHAR2(1000)) AS detalle_observacion ")
+                + "FROM expediente_documento_analizado da "
+                + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
+                + "WHERE da.id_expediente = ? AND da.activo = 1 "
+                + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+    }
+
+    private static boolean soportaRespuestaDocumentoAnalizado(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(DISTINCT column_name) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                + "AND column_name IN ('NOTIFICADO', 'FECHA_ACUSE', 'REQUIERE_RESPUESTA', "
+                + "'CONFIRMACION_RESPUESTA', 'FECHA_RESPUESTA', 'NUMERO_HOJA_ENVIO_RESPUESTA')";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 6;
+        }
+    }
+
+    private static boolean soportaNumeroDocumentoAnalizado(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' AND column_name = 'NUMERO_DOCUMENTO'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private static boolean soportaDetalleObservacionDocumentoAnalizado(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' AND column_name = 'DETALLE_OBSERVACION'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private static void setStringOrNull(PreparedStatement ps, int index, String value) throws SQLException {
+        if (!hasText(value)) {
+            ps.setNull(index, Types.VARCHAR);
+        } else {
+            ps.setString(index, value.trim());
+        }
+    }
+
+    private static List<CatalogoItemDTO> filtrarEstadosDocumentoAnalizado(List<CatalogoItemDTO> estados) {
+        List<CatalogoItemDTO> filtrados = new ArrayList<CatalogoItemDTO>();
+        if (estados == null) {
+            return filtrados;
+        }
+        for (CatalogoItemDTO estado : estados) {
+            if (estado != null && esEstadoDocumentoAnalizadoPermitido(estado.getCodigo())) {
+                filtrados.add(estado);
+            }
+        }
+        return filtrados;
+    }
+
+    private static boolean esEstadoDocumentoAnalizadoPermitido(String codigo) {
+        String value = codigo == null ? "" : codigo.trim().toUpperCase();
+        return "EN_PROYECTO".equals(value)
+                || "EN_DESPACHO".equals(value)
+                || "EMITIDO".equals(value)
+                || "OBSERVADO".equals(value);
+    }
+
+    private static boolean esEstadoObservado(String codigo) {
+        return "OBSERVADO".equalsIgnoreCase(codigo == null ? "" : codigo.trim());
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private static String limitar(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 }

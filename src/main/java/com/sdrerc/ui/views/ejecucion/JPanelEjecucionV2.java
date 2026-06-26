@@ -9,6 +9,7 @@ import com.sdrerc.domain.dto.sdrercapp.EjecucionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.EjecucionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EjecucionReversionDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
@@ -127,6 +128,7 @@ public class JPanelEjecucionV2 extends JPanel {
             table,
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
+    private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -479,6 +481,12 @@ public class JPanelEjecucionV2 extends JPanel {
         table.getColumnModel().getColumn(0).setPreferredWidth(0);
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        columnFilterSupport = AppV2ColumnFilterSupport.install(
+                table,
+                tablePanel.getScrollPane(),
+                tablePanel,
+                null,
+                0);
     }
 
     private void configurarDocumentosTabla() {
@@ -642,6 +650,9 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private void limpiar() {
+        if (columnFilterSupport != null) {
+            columnFilterSupport.clearFilters();
+        }
         txtBusqueda.setText("");
         restaurarFechasBusqueda();
         cmbEstadoFiltro.setSelectedIndex(0);

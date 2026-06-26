@@ -133,6 +133,16 @@ public class AnalisisExpedienteService {
                 resolverUsuarioActualSdrercApp());
     }
 
+    public AnalisisResultadoDTO guardarDocumentoAnalisis(
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento) throws SQLException {
+        List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
+        if (documento != null) {
+            documentos.add(documento);
+        }
+        return guardarDocumentosAnalisis(idExpediente, documentos);
+    }
+
     public AnalisisResultadoDTO enviarVerificacion(Long idExpediente, String comentario) throws SQLException {
         validacionService.validarExpedienteSeleccionado(idExpediente);
         return analisisExpedienteDAO.enviarVerificacion(idExpediente, comentario, resolverUsuarioActualSdrercApp());

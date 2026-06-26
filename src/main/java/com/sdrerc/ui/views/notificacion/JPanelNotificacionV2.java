@@ -11,6 +11,7 @@ import com.sdrerc.domain.dto.sdrercapp.NotificacionRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionRequeridaDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -134,6 +135,7 @@ public class JPanelNotificacionV2 extends JPanel {
             table,
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
+    private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -479,6 +481,11 @@ public class JPanelNotificacionV2 extends JPanel {
         table.getColumnModel().getColumn(8).setMaxWidth(92);
         table.getColumnModel().getColumn(11).setMaxWidth(105);
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        columnFilterSupport = AppV2ColumnFilterSupport.install(
+                table,
+                tablePanel.getScrollPane(),
+                tablePanel,
+                null);
     }
 
     private void configurarDocumentosTabla() {
@@ -642,6 +649,9 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void limpiar() {
+        if (columnFilterSupport != null) {
+            columnFilterSupport.clearFilters();
+        }
         txtBusqueda.setText("");
         seleccionarPrimero(cmbEstadoFiltro);
         seleccionarPrimero(cmbTipoNotificacionFiltro);

@@ -16,6 +16,8 @@ public class AnalisisRegistroDTO {
     private final boolean cumpleMediosProbatorios;
     private final String fundamento;
     private final String motivoNoCorrespondeCodigo;
+    private final String tipoDocumentoNoCorrespondeCodigo;
+    private final String tipoDocumentoNoCorrespondeNombre;
     private final String numeroDocumentoProveido;
     private final ObservacionAnalisisDTO observacion;
     private final List<DocumentoAnalizadoDTO> documentosAnalizados;
@@ -34,6 +36,40 @@ public class AnalisisRegistroDTO {
             String numeroDocumentoProveido,
             ObservacionAnalisisDTO observacion,
             List<DocumentoAnalizadoDTO> documentosAnalizados) {
+        this(
+                idExpediente,
+                resultadoCodigo,
+                resultadoNombre,
+                corresponde,
+                incorporado,
+                requiereReconstitucion,
+                tieneLegitimidad,
+                cumpleMediosProbatorios,
+                fundamento,
+                motivoNoCorrespondeCodigo,
+                "PROVEIDO",
+                "Proveido",
+                numeroDocumentoProveido,
+                observacion,
+                documentosAnalizados);
+    }
+
+    public AnalisisRegistroDTO(
+            Long idExpediente,
+            String resultadoCodigo,
+            String resultadoNombre,
+            Boolean corresponde,
+            Boolean incorporado,
+            boolean requiereReconstitucion,
+            boolean tieneLegitimidad,
+            boolean cumpleMediosProbatorios,
+            String fundamento,
+            String motivoNoCorrespondeCodigo,
+            String tipoDocumentoNoCorrespondeCodigo,
+            String tipoDocumentoNoCorrespondeNombre,
+            String numeroDocumentoProveido,
+            ObservacionAnalisisDTO observacion,
+            List<DocumentoAnalizadoDTO> documentosAnalizados) {
         this.idExpediente = idExpediente;
         this.resultadoCodigo = safe(resultadoCodigo);
         this.resultadoNombre = safe(resultadoNombre);
@@ -44,6 +80,8 @@ public class AnalisisRegistroDTO {
         this.cumpleMediosProbatorios = cumpleMediosProbatorios;
         this.fundamento = safe(fundamento);
         this.motivoNoCorrespondeCodigo = safe(motivoNoCorrespondeCodigo);
+        this.tipoDocumentoNoCorrespondeCodigo = safe(tipoDocumentoNoCorrespondeCodigo);
+        this.tipoDocumentoNoCorrespondeNombre = safe(tipoDocumentoNoCorrespondeNombre);
         this.numeroDocumentoProveido = safe(numeroDocumentoProveido);
         this.observacion = observacion;
         this.documentosAnalizados = documentosAnalizados == null
@@ -89,6 +127,14 @@ public class AnalisisRegistroDTO {
 
     public String getMotivoNoCorrespondeCodigo() {
         return motivoNoCorrespondeCodigo;
+    }
+
+    public String getTipoDocumentoNoCorrespondeCodigo() {
+        return tipoDocumentoNoCorrespondeCodigo;
+    }
+
+    public String getTipoDocumentoNoCorrespondeNombre() {
+        return tipoDocumentoNoCorrespondeNombre;
     }
 
     public String getNumeroDocumentoProveido() {

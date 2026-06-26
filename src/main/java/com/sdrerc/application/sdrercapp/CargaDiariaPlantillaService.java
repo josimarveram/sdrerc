@@ -33,7 +33,6 @@ public class CargaDiariaPlantillaService {
     private static final String HOJA_CARGA = "CARGA_DIARIA";
     private static final String HOJA_INSTRUCCIONES = "INSTRUCCIONES";
     private static final String HOJA_CATALOGOS = "CATALOGOS";
-    private static final String PROTECCION_FORMATO = "SDRERC_FORMATO";
     private static final int ULTIMA_FILA_VALIDACION = 1000;
 
     private static final int COL_TIPO_SOLICITUD = 0;
@@ -158,7 +157,6 @@ public class CargaDiariaPlantillaService {
         sheet.createFreezePane(0, 1);
         sheet.setAutoFilter(new CellRangeAddress(0, 0, 0, COLUMNAS.length - 1));
         aplicarValidaciones(sheet);
-        protegerFormatoPlantilla(sheet);
     }
 
     private void aplicarFormatoFilasEntrada(Sheet sheet, CellStyle textStyle, CellStyle dateStyle) {
@@ -187,7 +185,6 @@ public class CargaDiariaPlantillaService {
         for (int i = 0; i < 8; i++) {
             sheet.autoSizeColumn(i);
         }
-        sheet.protectSheet(PROTECCION_FORMATO);
     }
 
     private void crearCatalogo(Workbook workbook, Sheet sheet, int column, String nombreRango, String titulo, String[] valores) {
@@ -283,10 +280,6 @@ public class CargaDiariaPlantillaService {
                 + ")";
     }
 
-    private void protegerFormatoPlantilla(Sheet sheet) {
-        sheet.protectSheet(PROTECCION_FORMATO);
-    }
-
     private void crearHojaInstrucciones(Workbook workbook, CellStyle titleStyle, CellStyle textStyle) {
         Sheet sheet = workbook.createSheet(HOJA_INSTRUCCIONES);
         int rowIndex = 0;
@@ -305,7 +298,7 @@ public class CargaDiariaPlantillaService {
             "Complete la informacion en la hoja CARGA_DIARIA desde la fila 2.",
             "No cambie los nombres de las columnas.",
             "No elimine columnas. Puede dejar OBSERVACION INICIAL vacia si no aplica.",
-            "La hoja CARGA_DIARIA protege el formato y las listas desplegables; puede escribir o pegar valores en las celdas de carga, pero no modificar las opciones de los combos.",
+            "La hoja CARGA_DIARIA mantiene las listas desplegables y permite escribir, pegar o arrastrar valores en las celdas de carga sin modificar las opciones de los combos.",
             "FECHA DE SOLICITUD debe ingresarse en formato dd/MM/yyyy.",
             "TIPO DOCUMENTO IDENTIDAD SOLICITANTE permite SIN DNI, DNI, RUC, CE o PASAPORTE.",
             "N° DOCUMENTO IDENTIDAD SOLICITANTE reemplaza al campo DNI SOLICITANTE. Si no existe DNI, puede usar SIN DNI y el importador lo guardara vacio.",

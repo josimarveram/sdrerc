@@ -4,6 +4,7 @@ import com.sdrerc.ui.appv2.components.AppV2CopyTextSupport;
 import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2SidebarCollapseButton;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import com.sdrerc.ui.appv2.util.AppV2DisplayScale;
 import com.sdrerc.ui.views.administracion.equipojuridico.JPanelEquipoJuridicoV2;
 import com.sdrerc.ui.views.administracion.feriados.JPanelFeriadosV2;
 import com.sdrerc.ui.views.administracion.plazos.JPanelPlazosV2;
@@ -32,15 +33,13 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class MenuPrincipalV2 extends JFrame {
-
-    private static final int SIDEBAR_EXPANDED_WIDTH = 304;
-    private static final int SIDEBAR_COLLAPSED_WIDTH = 72;
 
     private final JPanel body = new JPanel(new BorderLayout());
     private final JLabel lblTitulo = new JLabel("Inicio");
@@ -81,8 +80,8 @@ public class MenuPrincipalV2 extends JFrame {
     private void configurarVentana() {
         setTitle("SDRERC");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setMinimumSize(new Dimension(1120, 720));
-        setSize(1240, 800);
+        setMinimumSize(AppV2DisplayScale.minimumWindowSize());
+        setSize(AppV2DisplayScale.initialWindowSize());
     }
 
     private void configurarLayout() {
@@ -96,7 +95,7 @@ public class MenuPrincipalV2 extends JFrame {
 
     private JPanel crearMenuLateral() {
         sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(SIDEBAR_EXPANDED_WIDTH, 0));
+        sidebar.setPreferredSize(new Dimension(AppV2DisplayScale.sidebarExpandedWidth(), 0));
         sidebar.setBackground(AppV2Theme.SIDEBAR);
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 12));
 
@@ -295,7 +294,8 @@ public class MenuPrincipalV2 extends JFrame {
     }
 
     private void actualizarSidebar() {
-        sidebar.setPreferredSize(new Dimension(sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH, 0));
+        sidebar.setPreferredSize(new Dimension(
+                sidebarCollapsed ? AppV2DisplayScale.sidebarCollapsedWidth() : AppV2DisplayScale.sidebarExpandedWidth(), 0));
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 12));
         marca.setText(sidebarCollapsed
                 ? ""
@@ -346,6 +346,19 @@ public class MenuPrincipalV2 extends JFrame {
         }));
         if (btnInicio != null) {
             aplicarEstadoActivo(btnInicio);
+        }
+    }
+
+    @Override
+    public void setVisible(boolean b) {
+        super.setVisible(b);
+        if (b) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    setExtendedState(getExtendedState() | JFrame.MAXIMIZED_BOTH);
+                }
+            });
         }
     }
 

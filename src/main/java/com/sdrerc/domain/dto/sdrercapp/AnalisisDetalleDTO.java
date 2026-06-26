@@ -18,6 +18,8 @@ public class AnalisisDetalleDTO {
     private final String fundamento;
     private final String motivoNoCorrespondeCodigo;
     private final String motivoNoCorrespondeNombre;
+    private final String tipoDocumentoNoCorrespondeCodigo;
+    private final String tipoDocumentoNoCorrespondeNombre;
     private final String numeroDocumentoProveido;
     private final LocalDate fechaEvaluacion;
     private final ObservacionAnalisisDTO observacion;
@@ -39,6 +41,44 @@ public class AnalisisDetalleDTO {
             LocalDate fechaEvaluacion,
             ObservacionAnalisisDTO observacion,
             List<DocumentoAnalizadoDTO> documentosAnalizados) {
+        this(
+                registrado,
+                resultadoCodigo,
+                resultadoNombre,
+                corresponde,
+                incorporado,
+                requiereReconstitucion,
+                tieneLegitimidad,
+                cumpleMediosProbatorios,
+                fundamento,
+                motivoNoCorrespondeCodigo,
+                motivoNoCorrespondeNombre,
+                "PROVEIDO",
+                "Proveido",
+                numeroDocumentoProveido,
+                fechaEvaluacion,
+                observacion,
+                documentosAnalizados);
+    }
+
+    public AnalisisDetalleDTO(
+            boolean registrado,
+            String resultadoCodigo,
+            String resultadoNombre,
+            Boolean corresponde,
+            Boolean incorporado,
+            boolean requiereReconstitucion,
+            boolean tieneLegitimidad,
+            boolean cumpleMediosProbatorios,
+            String fundamento,
+            String motivoNoCorrespondeCodigo,
+            String motivoNoCorrespondeNombre,
+            String tipoDocumentoNoCorrespondeCodigo,
+            String tipoDocumentoNoCorrespondeNombre,
+            String numeroDocumentoProveido,
+            LocalDate fechaEvaluacion,
+            ObservacionAnalisisDTO observacion,
+            List<DocumentoAnalizadoDTO> documentosAnalizados) {
         this.registrado = registrado;
         this.resultadoCodigo = safe(resultadoCodigo);
         this.resultadoNombre = safe(resultadoNombre);
@@ -50,6 +90,8 @@ public class AnalisisDetalleDTO {
         this.fundamento = safe(fundamento);
         this.motivoNoCorrespondeCodigo = safe(motivoNoCorrespondeCodigo);
         this.motivoNoCorrespondeNombre = safe(motivoNoCorrespondeNombre);
+        this.tipoDocumentoNoCorrespondeCodigo = safe(tipoDocumentoNoCorrespondeCodigo);
+        this.tipoDocumentoNoCorrespondeNombre = safe(tipoDocumentoNoCorrespondeNombre);
         this.numeroDocumentoProveido = safe(numeroDocumentoProveido);
         this.fechaEvaluacion = fechaEvaluacion;
         this.observacion = observacion;
@@ -100,6 +142,14 @@ public class AnalisisDetalleDTO {
 
     public String getMotivoNoCorrespondeNombre() {
         return motivoNoCorrespondeNombre;
+    }
+
+    public String getTipoDocumentoNoCorrespondeCodigo() {
+        return tipoDocumentoNoCorrespondeCodigo;
+    }
+
+    public String getTipoDocumentoNoCorrespondeNombre() {
+        return tipoDocumentoNoCorrespondeNombre;
     }
 
     public String getNumeroDocumentoProveido() {

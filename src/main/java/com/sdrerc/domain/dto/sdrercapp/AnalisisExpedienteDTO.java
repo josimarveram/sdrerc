@@ -16,6 +16,8 @@ public class AnalisisExpedienteDTO {
     private final String tipoActa;
     private final String numeroActa;
     private final String titular;
+    private final String solicitante;
+    private final String numeroDocumentoSolicitante;
     private final LocalDate fechaRecepcion;
     private final Long diasRestantes;
     private final LocalDateTime fechaRegistro;
@@ -41,6 +43,8 @@ public class AnalisisExpedienteDTO {
             String tipoActa,
             String numeroActa,
             String titular,
+            String solicitante,
+            String numeroDocumentoSolicitante,
             LocalDate fechaRecepcion,
             Long diasRestantes,
             LocalDateTime fechaRegistro,
@@ -64,6 +68,8 @@ public class AnalisisExpedienteDTO {
         this.tipoActa = safe(tipoActa);
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
+        this.solicitante = safe(solicitante);
+        this.numeroDocumentoSolicitante = safe(numeroDocumentoSolicitante);
         this.fechaRecepcion = fechaRecepcion;
         this.diasRestantes = diasRestantes;
         this.fechaRegistro = fechaRegistro;
@@ -117,6 +123,14 @@ public class AnalisisExpedienteDTO {
 
     public String getTitular() {
         return titular;
+    }
+
+    public String getSolicitante() {
+        return solicitante;
+    }
+
+    public String getNumeroDocumentoSolicitante() {
+        return numeroDocumentoSolicitante;
     }
 
     public LocalDate getFechaRecepcion() {

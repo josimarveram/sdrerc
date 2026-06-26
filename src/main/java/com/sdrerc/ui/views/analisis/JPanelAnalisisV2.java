@@ -1,6 +1,7 @@
 package com.sdrerc.ui.views.analisis;
 
 import com.sdrerc.application.sdrercapp.AnalisisExpedienteService;
+import com.sdrerc.application.sdrercapp.AnalisisPlantillaDocumentoService;
 import com.sdrerc.application.sdrercapp.DocumentoAnalisisService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
@@ -12,11 +13,12 @@ import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ObservacionAnalisisDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2AssociatedDocumentIconCell;
 import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
-import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
+import com.sdrerc.ui.appv2.components.AppV2ReceiveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
@@ -39,16 +41,22 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -62,6 +70,8 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.DefaultCellEditor;
+import javax.swing.Icon;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -80,6 +90,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class JPanelAnalisisV2 extends JPanel {
 
@@ -92,18 +103,21 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_ID = 12;
     private static final int COL_DOCUMENTO_TIPO = 0;
     private static final int COL_DOCUMENTO_ESTADO = 1;
-    private static final int COL_DOCUMENTO_FECHA = 2;
-    private static final int COL_DOCUMENTO_DESCRIPCION = 3;
-    private static final int COL_DOCUMENTO_NOTIFICADO = 4;
-    private static final int COL_DOCUMENTO_FECHA_ACUSE = 5;
+    private static final int COL_DOCUMENTO_DETALLE_OBS = 2;
+    private static final int COL_DOCUMENTO_FECHA = 3;
+    private static final int COL_DOCUMENTO_NUMERO = 4;
+    private static final int COL_DOCUMENTO_DESCRIPCION = 5;
     private static final int COL_DOCUMENTO_REQUIERE_RESPUESTA = 6;
-    private static final int COL_DOCUMENTO_CONFIRMACION_RESPUESTA = 7;
-    private static final int COL_DOCUMENTO_FECHA_RESPUESTA = 8;
-    private static final int COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA = 9;
-    private static final int COL_DOCUMENTO_ACCION = 10;
-    private static final int COL_DOCUMENTO_TIPO_CODIGO = 11;
-    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 12;
-    private static final int COL_DOCUMENTO_ID = 13;
+    private static final int COL_DOCUMENTO_FECHA_ACUSE = 7;
+    private static final int COL_DOCUMENTO_CONFIRMACION_RESPUESTA = 8;
+    private static final int COL_DOCUMENTO_FECHA_RESPUESTA = 9;
+    private static final int COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA = 10;
+    private static final int COL_DOCUMENTO_NOTIFICADO = 11;
+    private static final int COL_DOCUMENTO_PLANTILLA = 12;
+    private static final int COL_DOCUMENTO_ACCION = 13;
+    private static final int COL_DOCUMENTO_TIPO_CODIGO = 14;
+    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 15;
+    private static final int COL_DOCUMENTO_ID = 16;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 18;
@@ -113,6 +127,10 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
     private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;
     private static final Color ASSOCIATED_ROW_BACKGROUND = new Color(238, 250, 252);
+    private static final Color DOCUMENTO_ANALISIS_BACKGROUND = new Color(238, 247, 252);
+    private static final Color DOCUMENTO_ASIGNACION_BACKGROUND = new Color(239, 249, 246);
+    private static final Color DOCUMENTO_NOTIFICACION_BACKGROUND = new Color(248, 245, 253);
+    private static final Color DOCUMENTO_ACTION_BACKGROUND = new Color(247, 249, 252);
     private static final Color GRID_ACTION_ICON_BLUE = AppV2Theme.PRIMARY;
     private static final Color[] GROUP_STRIPE_COLORS = new Color[]{
         new Color(30, 59, 97),
@@ -131,6 +149,7 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private final AnalisisExpedienteService analisisService;
     private final DocumentoAnalisisService documentoService;
+    private final AnalisisPlantillaDocumentoService plantillaDocumentoService = new AnalisisPlantillaDocumentoService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
 
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
@@ -143,7 +162,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnRefrescar = new JButton("Refrescar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnRecibir = new JButton("Recibir expediente");
-    private final JButton btnGuardarDocumentos = new JButton("Guardar documentos");
     private final JButton btnRegistrarAnalisis = new JButton("Registrar resultado final");
     private final JButton btnEnviarVerificacion = new JButton("Enviar a verificación");
     private final JButton btnArchivarNoCorresponde = new JButton("Archivar no corresponde");
@@ -171,12 +189,15 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JComboBox<SimpleItem> cmbEstadoDocumento = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbTipoObservacion = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbMotivoNoCorresponde = new JComboBox<SimpleItem>();
+    private final JComboBox<SimpleItem> cmbTipoDocumentoNoCorresponde = new JComboBox<SimpleItem>();
     private final JTextField txtNumeroDocumentoProveido = new JTextField();
     private final JCheckBox chkReconstitucion = new JCheckBox("Reconstitución");
     private final JCheckBox chkLegitimidad = new JCheckBox("Legitimidad");
     private final JCheckBox chkMediosProbatorios = new JCheckBox("Medios probatorios");
     private final JCheckBox chkRegistrarObservacion = new JCheckBox("Registrar observación");
+    private final JCheckBox chkDocumentoRequiereRespuesta = new JCheckBox("¿Requiere respuesta?");
     private final JTextArea txtFundamento = new JTextArea(4, 22);
+    private final PremiumDateFieldV2 fechaDocumentoAnalizado = new PremiumDateFieldV2();
     private final JTextArea txtDescripcionDocumento = new JTextArea(2, 20);
     private final JTextArea txtObservacion = new JTextArea(3, 22);
     private final JTextArea txtComentarioMovimiento = new JTextArea(3, 22);
@@ -188,18 +209,22 @@ public class JPanelAnalisisV2 extends JPanel {
             table,
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
+    private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final DefaultTableModel documentoModel = new DefaultTableModel(
             new Object[]{
                 "Tipo",
                 "Estado",
-                "Fecha",
+                "Detalle Obs.",
+                "Fecha Emisión",
+                "N° Documento",
                 "Descripción",
-                "Notificado",
-                "Fecha Acuse",
                 "¿Requiere respuesta?",
+                "Fecha Acuse",
                 "Confirmación de respuesta",
                 "Fecha Respuesta",
                 "Hoja de Envío",
+                "Notificado",
+                "",
                 "",
                 "tipo_codigo",
                 "estado_codigo",
@@ -208,7 +233,11 @@ public class JPanelAnalisisV2 extends JPanel {
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return (column >= COL_DOCUMENTO_TIPO && column <= COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA)
+            if (column == COL_DOCUMENTO_DETALLE_OBS) {
+                return esEstadoDocumentoObservadoPorFila(row);
+            }
+            return (column >= COL_DOCUMENTO_TIPO && column <= COL_DOCUMENTO_NOTIFICADO)
+                    || column == COL_DOCUMENTO_PLANTILLA
                     || column == COL_DOCUMENTO_ACCION;
         }
 
@@ -226,6 +255,7 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     };
     private final JTable documentosAsociadosTable = new AppV2Table(documentosAsociadosModel);
+    private JPanel panelSolicitudesAsociadas;
     private final List<AnalisisExpedienteDTO> expedientes = new ArrayList<AnalisisExpedienteDTO>();
     private final List<AnalisisTableRow> filasTabla = new ArrayList<AnalisisTableRow>();
     private final Map<Long, List<ExpedienteRelacionadoDTO>> asociadosCache = new HashMap<Long, List<ExpedienteRelacionadoDTO>>();
@@ -244,6 +274,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private Long idExpedienteDocumentosAsociados;
     private Long idExpedienteDetalleSolicitado;
     private Long idExpedienteDetalleCargado;
+    private Long idExpedienteRecepcionPreguntada;
 
     private boolean cargandoCatalogos;
     private boolean cargandoDetalleAnalisis;
@@ -341,9 +372,11 @@ public class JPanelAnalisisV2 extends JPanel {
         tabPanelAnalisis.setToolTipText("Ampliar panel de análisis");
         tabPanelAnalisis.addActionListener(e -> alternarExpansionPanelAnalisis());
         panel.addSection(crearResumenSeleccion());
-        panel.addSection(crearDocumentosAsociadosPanel());
-        panel.addSection(crearFormularioAnalisis());
+        panelSolicitudesAsociadas = crearDocumentosAsociadosPanel();
+        panelSolicitudesAsociadas.setVisible(false);
+        panel.addSection(panelSolicitudesAsociadas);
         panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearFormularioAnalisis());
         panel.addSection(crearPublicacionLecturaPanel());
         panel.addSection(crearExpedienteDigitalPanel());
         panel.addSection(crearObservacionPanel());
@@ -383,8 +416,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private JPanel crearAccionesPanelAnalisis() {
         JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
         panel.setOpaque(false);
-        panel.add(btnRecibir);
-        panel.add(btnGuardarDocumentos);
         panel.add(btnRegistrarAnalisis);
         panel.add(btnEnviarVerificacion);
         panel.add(btnArchivarNoCorresponde);
@@ -415,7 +446,8 @@ public class JPanelAnalisisV2 extends JPanel {
         addRow(grid, row++, "Resultado", cmbResultado);
         addRow(grid, row++, "¿Acta incorporada?", cmbIncorporado);
         addRow(grid, row++, "Motivo no corresponde", cmbMotivoNoCorresponde);
-        addRow(grid, row++, "N° Documento (Proveído)", txtNumeroDocumentoProveido);
+        addRow(grid, row++, "Tipo Documento", cmbTipoDocumentoNoCorresponde);
+        addRow(grid, row++, "N° Documento", txtNumeroDocumentoProveido);
 
         JPanel checks = new JPanel(new GridLayout(0, 1, 4, 4));
         checks.setOpaque(false);
@@ -431,22 +463,17 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private JPanel crearDocumentosPanel() {
         JPanel panel = section("Documentos de análisis y cartas intermedias");
-        JTextArea ayuda = new JTextArea(
-                "Use Guardar documentos para registrar cartas intermedias o documentos de análisis sin cerrar el resultado final. "
-                        + "Los documentos asociados no se convierten automáticamente en documentos analizados.");
-        ayuda.setEditable(false);
-        ayuda.setFocusable(false);
-        ayuda.setOpaque(false);
-        ayuda.setLineWrap(true);
-        ayuda.setWrapStyleWord(true);
-        ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
+        JLabel tituloDocumentos = new JLabel("Documentos Analizados");
+        tituloDocumentos.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        tituloDocumentos.setForeground(AppV2Theme.TEXT_PRIMARY);
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         int row = 0;
         addRow(form, row++, "Tipo", cmbTipoDocumento);
         addRow(form, row++, "Estado", cmbEstadoDocumento);
+        addRow(form, row++, "Fecha", fechaDocumentoAnalizado);
         addRow(form, row++, "Descripción", scrollText(txtDescripcionDocumento, 58));
+        addRow(form, row++, "", chkDocumentoRequiereRespuesta);
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnAgregarDocumento);
         acciones.add(btnQuitarDocumento);
@@ -461,7 +488,7 @@ public class JPanelAnalisisV2 extends JPanel {
 
         JPanel top = new JPanel(new BorderLayout(0, 8));
         top.setOpaque(false);
-        top.add(ayuda, BorderLayout.NORTH);
+        top.add(tituloDocumentos, BorderLayout.NORTH);
         top.add(form, BorderLayout.CENTER);
 
         panel.add(top, BorderLayout.NORTH);
@@ -503,13 +530,14 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private JPanel crearDocumentosAsociadosPanel() {
-        JPanel panel = section("Documentos asociados");
+        JPanel panel = section("Solicitudes asociadas");
         lblDocumentosAsociados.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblDocumentosAsociados.setForeground(AppV2Theme.TEXT_SECONDARY);
 
         JScrollPane scroll = new JScrollPane(documentosAsociadosTable);
-        scroll.setPreferredSize(new Dimension(300, 112));
-        scroll.setMinimumSize(new Dimension(250, 88));
+        scroll.setPreferredSize(new Dimension(320, 112));
+        scroll.setMinimumSize(new Dimension(270, 88));
+        scroll.setMaximumSize(new Dimension(330, 150));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -517,7 +545,10 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel content = new JPanel(new BorderLayout(0, 6));
         content.setOpaque(false);
         content.add(lblDocumentosAsociados, BorderLayout.NORTH);
-        content.add(scroll, BorderLayout.CENTER);
+        JPanel tablaCompacta = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        tablaCompacta.setOpaque(false);
+        tablaCompacta.add(scroll);
+        content.add(tablaCompacta, BorderLayout.CENTER);
         panel.add(content, BorderLayout.CENTER);
         return panel;
     }
@@ -604,15 +635,19 @@ public class JPanelAnalisisV2 extends JPanel {
         cmbIncorporado.setPreferredSize(new Dimension(260, 34));
         cmbMotivoNoCorresponde.setPreferredSize(new Dimension(260, 34));
         cmbMotivoNoCorresponde.setEnabled(false);
+        cmbTipoDocumentoNoCorresponde.setPreferredSize(new Dimension(260, 34));
+        cmbTipoDocumentoNoCorresponde.setEnabled(false);
         txtNumeroDocumentoProveido.setPreferredSize(new Dimension(260, 34));
-        txtNumeroDocumentoProveido.setToolTipText("Ingrese el número del proveído.");
-        txtNumeroDocumentoProveido.setEnabled(true);
+        txtNumeroDocumentoProveido.setToolTipText("Ingrese el número del documento para No corresponde.");
+        txtNumeroDocumentoProveido.setEnabled(false);
         cmbTipoDocumento.setPreferredSize(new Dimension(260, 34));
         cmbEstadoDocumento.setPreferredSize(new Dimension(260, 34));
+        fechaDocumentoAnalizado.setPreferredSize(new Dimension(260, 40));
+        fechaDocumentoAnalizado.setMinimumSize(new Dimension(220, 40));
+        fechaDocumentoAnalizado.setDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         cmbTipoObservacion.setPreferredSize(new Dimension(260, 34));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRecibir.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnGuardarDocumentos.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRegistrarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEnviarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnArchivarNoCorresponde.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -620,6 +655,7 @@ public class JPanelAnalisisV2 extends JPanel {
         chkLegitimidad.setOpaque(false);
         chkMediosProbatorios.setOpaque(false);
         chkRegistrarObservacion.setOpaque(false);
+        chkDocumentoRequiereRespuesta.setOpaque(false);
     }
 
     private void configurarTabla() {
@@ -642,6 +678,13 @@ public class JPanelAnalisisV2 extends JPanel {
         table.getColumnModel().getColumn(COL_EXPANDIR).setMaxWidth(48);
         table.getColumnModel().getColumn(COL_EXPANDIR).setCellRenderer(new ExpandirRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        columnFilterSupport = AppV2ColumnFilterSupport.install(
+                table,
+                tablePanel.getScrollPane(),
+                tablePanel,
+                () -> contraerTodosExcepto(null),
+                COL_EXPANDIR,
+                12);
     }
 
     private void configurarDocumentoTabla() {
@@ -664,12 +707,17 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_ACUSE).setCellEditor(new FechaDocumentoCellEditor());
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_CONFIRMACION_RESPUESTA).setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_RESPUESTA).setCellEditor(new FechaDocumentoCellEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new EditarEstadoDocumentoRenderer());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new EditarEstadoDocumentoEditor());
-        int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 42, 0, 0, 0};
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellRenderer(new PlantillaDocumentoRenderer());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellEditor(new PlantillaDocumentoEditor());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new GuardarDocumentoRenderer());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new GuardarDocumentoEditor());
+        int[] widths = new int[]{120, 120, 180, 110, 120, 220, 145, 105, 165, 115, 145, 95, 42, 42, 0, 0, 0};
         for (int i = 0; i < widths.length; i++) {
             configurarColumnaDocumento(i, widths[i], i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : Math.min(widths[i], 90), i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : widths[i] + 90);
         }
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMinWidth(42);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setPreferredWidth(42);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMaxWidth(48);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMinWidth(42);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setPreferredWidth(42);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMaxWidth(48);
@@ -719,7 +767,6 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRefrescar.addActionListener(e -> buscar());
         btnVerDetalle.addActionListener(e -> abrirDetalle());
         btnRecibir.addActionListener(e -> recibir());
-        btnGuardarDocumentos.addActionListener(e -> guardarDocumentosAnalisis());
         btnRegistrarAnalisis.addActionListener(e -> registrarAnalisis());
         btnEnviarVerificacion.addActionListener(e -> enviarVerificacion());
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
@@ -762,6 +809,10 @@ public class JPanelAnalisisV2 extends JPanel {
         cmbIncorporado.addItem(new SimpleItem("", "Seleccione"));
         cmbIncorporado.addItem(new SimpleItem("SI", "Sí"));
         cmbIncorporado.addItem(new SimpleItem("NO", "No"));
+        cmbTipoDocumentoNoCorresponde.removeAllItems();
+        cmbTipoDocumentoNoCorresponde.addItem(new SimpleItem("", "Seleccione tipo"));
+        cmbTipoDocumentoNoCorresponde.addItem(new SimpleItem("PROVEIDO", "Proveido"));
+        cmbTipoDocumentoNoCorresponde.addItem(new SimpleItem("HOJA_ENVIO", "Hoja de Envío"));
     }
 
     private void cargarCatalogos() {
@@ -853,6 +904,10 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void buscar() {
+        buscar(null);
+    }
+
+    private void buscar(Long idExpedienteASeleccionar) {
         busquedaInicialEjecutada = true;
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
@@ -874,6 +929,9 @@ public class JPanelAnalisisV2 extends JPanel {
             protected void done() {
                 try {
                     cargarTabla(get());
+                    if (idExpedienteASeleccionar != null) {
+                        seleccionarFilaPorId(idExpedienteASeleccionar);
+                    }
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de análisis.", ex);
                 } finally {
@@ -930,6 +988,9 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void limpiar() {
+        if (columnFilterSupport != null) {
+            columnFilterSupport.clearFilters();
+        }
         txtBusqueda.setText("");
         cmbEstadoFiltro.setSelectedIndex(0);
         spnLimite.setValue(200);
@@ -1112,6 +1173,24 @@ public class JPanelAnalisisV2 extends JPanel {
         worker.execute();
     }
 
+    private boolean seleccionarFilaPorId(Long idExpediente) {
+        if (idExpediente == null) {
+            return false;
+        }
+        for (int i = 0; i < filasTabla.size(); i++) {
+            AnalisisTableRow row = filasTabla.get(i);
+            if (row != null && idExpediente.equals(row.getIdExpediente())) {
+                int viewRow = table.convertRowIndexToView(i);
+                if (viewRow >= 0 && viewRow < table.getRowCount()) {
+                    table.setRowSelectionInterval(viewRow, viewRow);
+                    table.scrollRectToVisible(table.getCellRect(viewRow, 0, true));
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void insertarAsociados(int principalRow, AnalisisExpedienteDTO principal, List<ExpedienteRelacionadoDTO> asociados) {
         if (principal == null || principal.getIdExpediente() == null || principalesExpandidos.contains(principal.getIdExpediente())) {
             return;
@@ -1212,7 +1291,6 @@ public class JPanelAnalisisV2 extends JPanel {
         boolean asociado = fila != null && fila.esAsociada();
         btnVerDetalle.setEnabled(has);
         btnRecibir.setEnabled(has && !asociado && item.isRecibible());
-        btnGuardarDocumentos.setEnabled(has && !asociado && puedeGuardarDocumentos(item));
         btnRegistrarAnalisis.setEnabled(has && !asociado && item.isRegistrable());
         btnEnviarVerificacion.setEnabled(has && !asociado && item.isEnviableVerificacion());
         btnArchivarNoCorresponde.setEnabled(has && !asociado && item.isArchivableNoCorresponde());
@@ -1231,9 +1309,11 @@ public class JPanelAnalisisV2 extends JPanel {
             limpiarPublicacionLectura();
             lblExpedienteDigital.setText("Pendiente para módulo Expediente digital.");
             limpiarFormulario();
+            idExpedienteRecepcionPreguntada = null;
             return;
         }
         if (asociado) {
+            idExpedienteRecepcionPreguntada = null;
             idExpedienteDetalleSolicitado = null;
             idExpedienteDetalleCargado = null;
             limpiarFormulario();
@@ -1262,6 +1342,7 @@ public class JPanelAnalisisV2 extends JPanel {
         lblExpedienteDigital.setText("Registro de enlace/carpeta se gestiona desde el módulo Expediente digital.");
         cargarDocumentosAsociadosPanel(item);
         cargarAnalisisRegistrado(item);
+        preguntarRecepcionSiCorresponde(item);
     }
 
     private boolean puedeGuardarDocumentos(AnalisisExpedienteDTO item) {
@@ -1336,6 +1417,7 @@ public class JPanelAnalisisV2 extends JPanel {
                             ? ""
                             : Boolean.TRUE.equals(detalle.getIncorporado()) ? "SI" : "NO");
             seleccionarSimpleItem(cmbMotivoNoCorresponde, detalle.getMotivoNoCorrespondeCodigo());
+            seleccionarSimpleItem(cmbTipoDocumentoNoCorresponde, detalle.getTipoDocumentoNoCorrespondeCodigo());
             txtFundamento.setText(detalle.getFundamento());
             txtNumeroDocumentoProveido.setText(detalle.getNumeroDocumentoProveido());
             chkReconstitucion.setSelected(detalle.isRequiereReconstitucion());
@@ -1374,14 +1456,17 @@ public class JPanelAnalisisV2 extends JPanel {
             documentoModel.addRow(new Object[]{
                 new SimpleItem(documento.getTipoDocumentoCodigo(), documento.getTipoDocumentoNombre()),
                 new SimpleItem(documento.getEstadoDocumentoCodigo(), documento.getEstadoDocumentoNombre()),
+                documento.getDetalleObservacion(),
                 documento.getFechaDocumento() == null ? "-" : DATE_FORMAT.format(documento.getFechaDocumento()),
+                valueOrEmpty(documento.getNumeroDocumento()),
                 documento.getDescripcion(),
-                documento.isNotificado() ? "Si" : "No",
-                documento.getFechaAcuse() == null ? "" : DATE_FORMAT.format(documento.getFechaAcuse()),
                 documento.isRequiereRespuesta(),
+                documento.getFechaAcuse() == null ? "" : DATE_FORMAT.format(documento.getFechaAcuse()),
                 confirmacionRespuestaUi(documento.getConfirmacionRespuesta(), documento.isRequiereRespuesta()),
                 documento.getFechaRespuesta() == null ? "" : DATE_FORMAT.format(documento.getFechaRespuesta()),
                 valueOrEmpty(documento.getNumeroHojaEnvioRespuesta()),
+                documento.isNotificado() ? "Si" : "No",
+                "",
                 "",
                 documento.getTipoDocumentoCodigo(),
                 documento.getEstadoDocumentoCodigo(),
@@ -1500,6 +1585,7 @@ public class JPanelAnalisisV2 extends JPanel {
             limpiarDocumentosAsociadosPanel("Sin documentos asociados.");
             return;
         }
+        mostrarSolicitudesAsociadas(true);
         Long idPrincipal = principal.getIdExpediente();
         List<ExpedienteRelacionadoDTO> cache = asociadosCache.get(idPrincipal);
         if (cache != null) {
@@ -1561,13 +1647,16 @@ public class JPanelAnalisisV2 extends JPanel {
             }
         }
         if (documentosAsociadosPanel.isEmpty()) {
+            mostrarSolicitudesAsociadas(false);
             lblDocumentosAsociados.setForeground(AppV2Theme.TEXT_SECONDARY);
             lblDocumentosAsociados.setText("Sin documentos asociados.");
         } else if (pendientes > 0) {
+            mostrarSolicitudesAsociadas(true);
             lblDocumentosAsociados.setForeground(AppV2Theme.WARNING);
             lblDocumentosAsociados.setText(
                     pendientes + " documento(s) asociado(s) pendiente(s) de recibir.");
         } else {
+            mostrarSolicitudesAsociadas(true);
             lblDocumentosAsociados.setForeground(AppV2Theme.SUCCESS);
             lblDocumentosAsociados.setText("Todos los documentos asociados fueron recibidos.");
         }
@@ -1594,10 +1683,22 @@ public class JPanelAnalisisV2 extends JPanel {
         idExpedienteDocumentosAsociados = null;
         documentosAsociadosPanel.clear();
         documentosAsociadosModel.setRowCount(0);
+        mostrarSolicitudesAsociadas(false);
         lblDocumentosAsociados.setForeground(AppV2Theme.TEXT_SECONDARY);
         lblDocumentosAsociados.setText(mensaje == null || mensaje.trim().isEmpty()
                 ? "Sin documentos asociados."
                 : mensaje);
+    }
+
+    private void mostrarSolicitudesAsociadas(boolean visible) {
+        if (panelSolicitudesAsociadas == null) {
+            return;
+        }
+        panelSolicitudesAsociadas.setVisible(visible);
+        if (panelAnalisis != null) {
+            panelAnalisis.revalidate();
+            panelAnalisis.repaint();
+        }
     }
 
     private boolean puedeRecibirDocumentoAsociado(int modelRow) {
@@ -1646,6 +1747,52 @@ public class JPanelAnalisisV2 extends JPanel {
                 () -> analisisService.recibirExpediente(item.getIdExpediente(), txtComentarioMovimiento.getText()));
     }
 
+    private void preguntarRecepcionSiCorresponde(AnalisisExpedienteDTO item) {
+        if (item == null || item.getIdExpediente() == null || !item.isRecibible()) {
+            return;
+        }
+        if (item.getIdExpediente().equals(idExpedienteRecepcionPreguntada)) {
+            return;
+        }
+        idExpedienteRecepcionPreguntada = item.getIdExpediente();
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "¿Está seguro de recibir el expediente asignado?",
+                "Recibir expediente",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.OK_OPTION) {
+            idExpedienteRecepcionPreguntada = null;
+            return;
+        }
+        setTrabajando(true, "Recibiendo expediente asignado...");
+        SwingWorker<AnalisisResultadoDTO, Void> worker = new SwingWorker<AnalisisResultadoDTO, Void>() {
+            @Override
+            protected AnalisisResultadoDTO doInBackground() throws Exception {
+                return analisisService.recibirExpediente(item.getIdExpediente(), txtComentarioMovimiento.getText());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    AnalisisResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAnalisisV2.this,
+                            resultado.getMensaje(),
+                            "Análisis",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar(item.getIdExpediente());
+                } catch (Exception ex) {
+                    idExpedienteRecepcionPreguntada = null;
+                    mostrarError("No se pudo recibir el expediente asignado.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void registrarAnalisis() {
         AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para registrar el resultado final.");
         if (item == null) {
@@ -1656,29 +1803,6 @@ public class JPanelAnalisisV2 extends JPanel {
                 "Registrar resultado final",
                 "Se registrará el resultado final del expediente " + item.getNumeroExpediente() + ". ¿Desea continuar?",
                 () -> analisisService.registrarAnalisis(registro));
-    }
-
-    private void guardarDocumentosAnalisis() {
-        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para guardar documentos de análisis.");
-        if (item == null) {
-            return;
-        }
-        if (!puedeGuardarDocumentos(item)) {
-            mostrarInfo("El expediente debe estar en Análisis para guardar documentos.");
-            return;
-        }
-        if (esResultadoNoCorrespondeSeleccionado()) {
-            mostrarInfo("Para No corresponde no se registran documentos de análisis.");
-            return;
-        }
-        List<DocumentoAnalizadoDTO> documentos = obtenerDocumentosFormulario();
-        confirmarYEjecutar(
-                "Guardar documentos de análisis",
-                "Se guardarán los documentos de análisis del expediente "
-                        + item.getNumeroExpediente()
-                        + " sin registrar resultado final ni enviarlo a Verificación. ¿Desea continuar?",
-                () -> analisisService.guardarDocumentosAnalisis(item.getIdExpediente(), documentos),
-                false);
     }
 
     private void enviarVerificacion() {
@@ -1772,6 +1896,7 @@ public class JPanelAnalisisV2 extends JPanel {
                     txtObservacion.getText());
         }
         SimpleItem motivo = (SimpleItem) cmbMotivoNoCorresponde.getSelectedItem();
+        SimpleItem tipoDocumentoNoCorresponde = (SimpleItem) cmbTipoDocumentoNoCorresponde.getSelectedItem();
         return new AnalisisRegistroDTO(
                 item.getIdExpediente(),
                 resultado == null ? "" : resultado.codigo,
@@ -1785,7 +1910,9 @@ public class JPanelAnalisisV2 extends JPanel {
                 !noCorresponde && chkMediosProbatorios.isSelected(),
                 txtFundamento.getText(),
                 motivo == null ? "" : motivo.codigo,
-                txtNumeroDocumentoProveido.getText(),
+                noCorresponde && tipoDocumentoNoCorresponde != null ? tipoDocumentoNoCorresponde.codigo : "",
+                noCorresponde && tipoDocumentoNoCorresponde != null ? tipoDocumentoNoCorresponde.nombre : "",
+                noCorresponde ? txtNumeroDocumentoProveido.getText() : "",
                 observacion,
                 noCorresponde
                         ? new ArrayList<DocumentoAnalizadoDTO>()
@@ -1795,28 +1922,39 @@ public class JPanelAnalisisV2 extends JPanel {
     private List<DocumentoAnalizadoDTO> obtenerDocumentosFormulario() {
         List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
         for (int i = 0; i < documentoModel.getRowCount(); i++) {
-            documentos.add(new DocumentoAnalizadoDTO(
-                    longValue(documentoModel.getValueAt(i, COL_DOCUMENTO_ID)),
-                    null,
-                    codigoDocumentoFila(i, COL_DOCUMENTO_TIPO, COL_DOCUMENTO_TIPO_CODIGO, cmbTipoDocumento),
-                    nombreDocumentoFila(i, COL_DOCUMENTO_TIPO),
-                    codigoDocumentoFila(i, COL_DOCUMENTO_ESTADO, COL_DOCUMENTO_ESTADO_CODIGO, cmbEstadoDocumento),
-                    nombreDocumentoFila(i, COL_DOCUMENTO_ESTADO),
-                    localDateValue(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA)),
-                    value(documentoModel.getValueAt(i, COL_DOCUMENTO_DESCRIPCION)),
-                    esSi(documentoModel.getValueAt(i, COL_DOCUMENTO_NOTIFICADO)),
-                    localDateOptional(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA_ACUSE)),
-                    Boolean.TRUE.equals(documentoModel.getValueAt(i, COL_DOCUMENTO_REQUIERE_RESPUESTA)),
-                    confirmacionRespuestaDb(documentoModel.getValueAt(i, COL_DOCUMENTO_CONFIRMACION_RESPUESTA)),
-                    localDateOptional(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA_RESPUESTA)),
-                    valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA))));
+            documentos.add(documentoDesdeFila(i));
         }
         return documentos;
+    }
+
+    private DocumentoAnalizadoDTO documentoDesdeFila(int i) {
+        return new DocumentoAnalizadoDTO(
+                longValue(documentoModel.getValueAt(i, COL_DOCUMENTO_ID)),
+                null,
+                codigoDocumentoFila(i, COL_DOCUMENTO_TIPO, COL_DOCUMENTO_TIPO_CODIGO, cmbTipoDocumento),
+                nombreDocumentoFila(i, COL_DOCUMENTO_TIPO),
+                codigoDocumentoFila(i, COL_DOCUMENTO_ESTADO, COL_DOCUMENTO_ESTADO_CODIGO, cmbEstadoDocumento),
+                nombreDocumentoFila(i, COL_DOCUMENTO_ESTADO),
+                localDateValue(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA)),
+                valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_NUMERO)),
+                value(documentoModel.getValueAt(i, COL_DOCUMENTO_DESCRIPCION)),
+                esSi(documentoModel.getValueAt(i, COL_DOCUMENTO_NOTIFICADO)),
+                localDateOptional(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA_ACUSE)),
+                Boolean.TRUE.equals(documentoModel.getValueAt(i, COL_DOCUMENTO_REQUIERE_RESPUESTA)),
+                confirmacionRespuestaDb(documentoModel.getValueAt(i, COL_DOCUMENTO_CONFIRMACION_RESPUESTA)),
+                localDateOptional(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA_RESPUESTA)),
+                valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA)),
+                false,
+                null,
+                esEstadoDocumentoObservadoPorFila(i)
+                        ? valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_DETALLE_OBS))
+                        : "");
     }
 
     private void agregarDocumento() {
         SimpleItem tipo = (SimpleItem) cmbTipoDocumento.getSelectedItem();
         SimpleItem estado = (SimpleItem) cmbEstadoDocumento.getSelectedItem();
+        LocalDate fechaDocumento = fechaSeleccionada(fechaDocumentoAnalizado);
         String descripcion = txtDescripcionDocumento.getText() == null ? "" : txtDescripcionDocumento.getText().trim();
         if (tipo == null || tipo.codigo.isEmpty()) {
             mostrarInfo("Seleccione el tipo de documento analizado.");
@@ -1833,13 +1971,16 @@ public class JPanelAnalisisV2 extends JPanel {
         documentoModel.addRow(new Object[]{
             tipo,
             estado,
-            DATE_FORMAT.format(LocalDate.now()),
-            descripcion,
-            "No",
             "",
-            Boolean.FALSE,
+            DATE_FORMAT.format(fechaDocumento == null ? LocalDate.now() : fechaDocumento),
+            "",
+            descripcion,
+            chkDocumentoRequiereRespuesta.isSelected(),
+            "",
             "Pendiente",
             "",
+            "",
+            "No",
             "",
             "",
             tipo.codigo,
@@ -1847,6 +1988,18 @@ public class JPanelAnalisisV2 extends JPanel {
             null
         });
         txtDescripcionDocumento.setText("");
+        resetearDocumentoFormulario();
+    }
+
+    private void resetearDocumentoFormulario() {
+        if (cmbTipoDocumento.getItemCount() > 0) {
+            cmbTipoDocumento.setSelectedIndex(0);
+        }
+        if (cmbEstadoDocumento.getItemCount() > 0) {
+            cmbEstadoDocumento.setSelectedIndex(0);
+        }
+        fechaDocumentoAnalizado.setDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        chkDocumentoRequiereRespuesta.setSelected(false);
     }
 
     private void quitarDocumento() {
@@ -1858,46 +2011,114 @@ public class JPanelAnalisisV2 extends JPanel {
         documentoModel.removeRow(documentosTable.convertRowIndexToModel(row));
     }
 
-    private void editarEstadoDocumento(int modelRow) {
+    private void guardarDocumentoFila(int modelRow) {
         if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
             return;
         }
-        JComboBox<SimpleItem> estados = new JComboBox<SimpleItem>();
-        String codigoActual = value(documentoModel.getValueAt(modelRow, COL_DOCUMENTO_ESTADO_CODIGO));
-        int indiceActual = -1;
-        for (int i = 0; i < cmbEstadoDocumento.getItemCount(); i++) {
-            SimpleItem item = cmbEstadoDocumento.getItemAt(i);
-            if (item == null || item.codigo.isEmpty()) {
-                continue;
+        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para guardar el documento.");
+        if (item == null) {
+            return;
+        }
+        if (!puedeGuardarDocumentos(item)) {
+            mostrarInfo("El expediente seleccionado no permite guardar documentos de análisis.");
+            return;
+        }
+        DocumentoAnalizadoDTO documento = documentoDesdeFila(modelRow);
+        setTrabajando(true, "Guardando documento de análisis...");
+        SwingWorker<AnalisisResultadoDTO, Void> worker = new SwingWorker<AnalisisResultadoDTO, Void>() {
+            @Override
+            protected AnalisisResultadoDTO doInBackground() throws Exception {
+                return analisisService.guardarDocumentoAnalisis(item.getIdExpediente(), documento);
             }
-            estados.addItem(item);
-            if (item.codigo.equalsIgnoreCase(codigoActual)) {
-                indiceActual = estados.getItemCount() - 1;
+
+            @Override
+            protected void done() {
+                try {
+                    AnalisisResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAnalisisV2.this,
+                            resultado.getMensaje(),
+                            "Análisis",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    recargarDetalleSeleccionado();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo guardar el documento de análisis.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void descargarPlantillaDocumento(int modelRow) {
+        if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
+            return;
+        }
+        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para descargar la plantilla.");
+        if (item == null) {
+            return;
+        }
+        DocumentoAnalizadoDTO documento = documentoDesdeFila(modelRow);
+        if (documento.getTipoDocumentoNombre().trim().isEmpty()) {
+            mostrarInfo("Seleccione el tipo de documento para descargar la plantilla.");
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Descargar plantilla Word");
+        chooser.setSelectedFile(Paths.get(plantillaDocumentoService.nombreSugerido(item, documento)).toFile());
+        chooser.setFileFilter(new FileNameExtensionFilter("Documentos Word (*.docx, *.doc)", "docx", "doc"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        Path destino = chooser.getSelectedFile().toPath();
+        if (!tieneExtensionWord(destino)) {
+            destino = Paths.get(destino.toString() + ".docx");
+        }
+        if (destino.toFile().exists()) {
+            int respuesta = JOptionPane.showConfirmDialog(
+                    this,
+                    "El archivo ya existe. ¿Desea reemplazarlo?",
+                    "Descargar plantilla",
+                    JOptionPane.YES_NO_OPTION);
+            if (respuesta != JOptionPane.YES_OPTION) {
+                return;
             }
         }
-        if (estados.getItemCount() == 0) {
-            mostrarInfo("No hay estados de documento disponibles.");
-            return;
-        }
-        if (indiceActual >= 0) {
-            estados.setSelectedIndex(indiceActual);
-        }
-        estados.setPreferredSize(new Dimension(280, 34));
-        int opcion = JOptionPane.showConfirmDialog(
-                this,
-                estados,
-                "Editar estado del documento",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
-        if (opcion != JOptionPane.OK_OPTION) {
-            return;
-        }
-        SimpleItem seleccionado = (SimpleItem) estados.getSelectedItem();
-        if (seleccionado == null || seleccionado.codigo.isEmpty()) {
-            return;
-        }
-        documentoModel.setValueAt(seleccionado, modelRow, COL_DOCUMENTO_ESTADO);
-        documentoModel.setValueAt(seleccionado.codigo, modelRow, COL_DOCUMENTO_ESTADO_CODIGO);
+
+        final Path destinoFinal = destino;
+        setTrabajando(true, "Generando plantilla Word...");
+        SwingWorker<Path, Void> worker = new SwingWorker<Path, Void>() {
+            @Override
+            protected Path doInBackground() throws Exception {
+                return plantillaDocumentoService.generarDocumento(item, documento, destinoFinal);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Path generado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAnalisisV2.this,
+                            "Plantilla descargada en:\n" + generado.toAbsolutePath(),
+                            "Descargar plantilla",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo descargar la plantilla del documento.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private boolean tieneExtensionWord(Path path) {
+        String nombre = path == null || path.getFileName() == null
+                ? ""
+                : path.getFileName().toString().toLowerCase();
+        return nombre.endsWith(".docx") || nombre.endsWith(".doc");
     }
 
     private void abrirDetalle() {
@@ -1974,18 +2195,27 @@ public class JPanelAnalisisV2 extends JPanel {
         ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
         boolean noCorresponde = esResultadoNoCorresponde(resultado);
         cmbMotivoNoCorresponde.setEnabled(noCorresponde);
-        txtNumeroDocumentoProveido.setEnabled(true);
+        cmbTipoDocumentoNoCorresponde.setEnabled(noCorresponde);
+        txtNumeroDocumentoProveido.setEnabled(noCorresponde);
         cmbIncorporado.setEnabled(!noCorresponde);
         if (noCorresponde) {
             chkReconstitucion.setEnabled(false);
             chkLegitimidad.setEnabled(false);
             chkMediosProbatorios.setEnabled(false);
+            if (cmbTipoDocumentoNoCorresponde.getSelectedIndex() <= 0
+                    && cmbTipoDocumentoNoCorresponde.getItemCount() > 1) {
+                cmbTipoDocumentoNoCorresponde.setSelectedIndex(1);
+            }
         } else {
             actualizarChecksIncorporado();
         }
         actualizarBloquesComplementarios(noCorresponde);
         if (!noCorresponde && cmbMotivoNoCorresponde.getItemCount() > 0) {
             cmbMotivoNoCorresponde.setSelectedIndex(0);
+        }
+        if (!noCorresponde && cmbTipoDocumentoNoCorresponde.getItemCount() > 0) {
+            cmbTipoDocumentoNoCorresponde.setSelectedIndex(0);
+            txtNumeroDocumentoProveido.setText("");
         }
         if (resultadoRequiereObservacion(resultado)) {
             chkRegistrarObservacion.setSelected(true);
@@ -2005,7 +2235,9 @@ public class JPanelAnalisisV2 extends JPanel {
         boolean habilitar = !noCorresponde;
         cmbTipoDocumento.setEnabled(habilitar);
         cmbEstadoDocumento.setEnabled(habilitar);
+        fechaDocumentoAnalizado.setEnabled(habilitar);
         txtDescripcionDocumento.setEnabled(habilitar);
+        chkDocumentoRequiereRespuesta.setEnabled(habilitar);
         documentosTable.setEnabled(habilitar);
         btnAgregarDocumento.setEnabled(habilitar);
         btnQuitarDocumento.setEnabled(habilitar);
@@ -2038,6 +2270,9 @@ public class JPanelAnalisisV2 extends JPanel {
         if (cmbMotivoNoCorresponde.getItemCount() > 0) {
             cmbMotivoNoCorresponde.setSelectedIndex(0);
         }
+        if (cmbTipoDocumentoNoCorresponde.getItemCount() > 0) {
+            cmbTipoDocumentoNoCorresponde.setSelectedIndex(0);
+        }
         if (cmbTipoDocumento.getItemCount() > 0) {
             cmbTipoDocumento.setSelectedIndex(0);
         }
@@ -2052,11 +2287,13 @@ public class JPanelAnalisisV2 extends JPanel {
         txtComentarioMovimiento.setText("");
         txtDescripcionDocumento.setText("");
         txtObservacion.setText("");
+        fechaDocumentoAnalizado.setDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         lblFechaAnalisis.setText(DATE_FORMAT.format(LocalDate.now()));
         chkReconstitucion.setSelected(false);
         chkLegitimidad.setSelected(false);
         chkMediosProbatorios.setSelected(false);
         chkRegistrarObservacion.setSelected(false);
+        chkDocumentoRequiereRespuesta.setSelected(false);
         documentoModel.setRowCount(0);
         limpiarPublicacionLectura();
         actualizarResultadoSeleccionado();
@@ -2071,7 +2308,6 @@ public class JPanelAnalisisV2 extends JPanel {
         AnalisisExpedienteDTO item = fila == null || !fila.esPrincipal() ? null : fila.principal;
         btnVerDetalle.setEnabled(!trabajando && fila != null);
         btnRecibir.setEnabled(!trabajando && item != null && item.isRecibible());
-        btnGuardarDocumentos.setEnabled(!trabajando && puedeGuardarDocumentos(item));
         btnRegistrarAnalisis.setEnabled(!trabajando && item != null && item.isRegistrable());
         btnEnviarVerificacion.setEnabled(!trabajando && item != null && item.isEnviableVerificacion());
         btnArchivarNoCorresponde.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
@@ -2405,8 +2641,11 @@ public class JPanelAnalisisV2 extends JPanel {
                 setBackground(TABLE_SELECTION_BACKGROUND);
                 setForeground(TABLE_SELECTION_FOREGROUND);
             } else {
-                setBackground(row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
-                setForeground(AppV2Theme.TEXT_PRIMARY);
+                setBackground(colorDocumentoAnalizado(column));
+                setForeground(column == COL_DOCUMENTO_DETALLE_OBS
+                        && !esEstadoDocumentoObservadoPorFila(table.convertRowIndexToModel(row))
+                        ? AppV2Theme.TEXT_SECONDARY
+                        : AppV2Theme.TEXT_PRIMARY);
             }
             return component;
         }
@@ -2425,15 +2664,41 @@ public class JPanelAnalisisV2 extends JPanel {
                 Object value,
                 boolean isSelected,
                 boolean hasFocus,
-                int row,
-                int column) {
+            int row,
+            int column) {
             setSelected(Boolean.TRUE.equals(value));
-            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : colorDocumentoAnalizado(column));
             setToolTipText(Boolean.TRUE.equals(value)
                     ? "Requiere respuesta."
                     : "No requiere respuesta.");
             return this;
         }
+    }
+
+    private Color colorDocumentoAnalizado(int viewColumn) {
+        int modelColumn = documentosTable.convertColumnIndexToModel(viewColumn);
+        if (modelColumn >= COL_DOCUMENTO_TIPO && modelColumn <= COL_DOCUMENTO_REQUIERE_RESPUESTA) {
+            return DOCUMENTO_ANALISIS_BACKGROUND;
+        }
+        if (modelColumn >= COL_DOCUMENTO_FECHA_ACUSE && modelColumn <= COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA) {
+            return DOCUMENTO_ASIGNACION_BACKGROUND;
+        }
+        if (modelColumn == COL_DOCUMENTO_NOTIFICADO) {
+            return DOCUMENTO_NOTIFICACION_BACKGROUND;
+        }
+        return DOCUMENTO_ACTION_BACKGROUND;
+    }
+
+    private boolean esEstadoDocumentoObservadoPorFila(int modelRow) {
+        if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
+            return false;
+        }
+        Object estado = documentoModel.getValueAt(modelRow, COL_DOCUMENTO_ESTADO);
+        String codigo = estado instanceof SimpleItem ? ((SimpleItem) estado).codigo : "";
+        if (codigo.isEmpty()) {
+            codigo = valueOrEmpty(documentoModel.getValueAt(modelRow, COL_DOCUMENTO_ESTADO_CODIGO));
+        }
+        return "OBSERVADO".equalsIgnoreCase(codigo);
     }
 
     private class FechaDocumentoCellEditor extends AbstractCellEditor implements TableCellEditor {
@@ -2491,11 +2756,11 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
-    private class EditarEstadoDocumentoRenderer extends JButton implements TableCellRenderer {
-        private EditarEstadoDocumentoRenderer() {
+    private class GuardarDocumentoRenderer extends JButton implements TableCellRenderer {
+        private GuardarDocumentoRenderer() {
             setText("");
-            setIcon(AppV2IconProvider.action(AppV2IconProvider.PENCIL));
-            setToolTipText("Editar estado del documento");
+            setIcon(new SaveDocumentIcon());
+            setToolTipText("Guardar documento de análisis");
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setFocusPainted(false);
             setBorderPainted(false);
@@ -2516,14 +2781,39 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
-    private class EditarEstadoDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
+    private class PlantillaDocumentoRenderer extends JButton implements TableCellRenderer {
+        private PlantillaDocumentoRenderer() {
+            setText("");
+            setIcon(new WordDocumentIcon());
+            setToolTipText("Descargar plantilla Word");
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setFocusPainted(false);
+            setBorderPainted(false);
+            setContentAreaFilled(false);
+            setOpaque(false);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setEnabled(table.isEnabled());
+            return this;
+        }
+    }
+
+    private class PlantillaDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
         private final JButton button = new JButton();
         private int modelRow = -1;
 
-        private EditarEstadoDocumentoEditor() {
+        private PlantillaDocumentoEditor() {
             button.setText("");
-            button.setIcon(AppV2IconProvider.action(AppV2IconProvider.PENCIL));
-            button.setToolTipText("Editar estado del documento");
+            button.setIcon(new WordDocumentIcon());
+            button.setToolTipText("Descargar plantilla Word");
             button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             button.setFocusPainted(false);
             button.setBorderPainted(false);
@@ -2531,7 +2821,7 @@ public class JPanelAnalisisV2 extends JPanel {
             button.addActionListener(e -> {
                 int row = modelRow;
                 fireEditingStopped();
-                editarEstadoDocumento(row);
+                descargarPlantillaDocumento(row);
             });
         }
 
@@ -2553,12 +2843,122 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
-    private class RecibirAsociadoRenderer extends JButton implements TableCellRenderer {
+    private class GuardarDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JButton button = new JButton();
+        private int modelRow = -1;
+
+        private GuardarDocumentoEditor() {
+            button.setText("");
+            button.setIcon(new SaveDocumentIcon());
+            button.setToolTipText("Guardar documento de análisis");
+            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            button.setFocusPainted(false);
+            button.setBorderPainted(false);
+            button.setContentAreaFilled(false);
+            button.addActionListener(e -> {
+                int row = modelRow;
+                fireEditingStopped();
+                guardarDocumentoFila(row);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            modelRow = table.convertRowIndexToModel(row);
+            button.setEnabled(table.isEnabled());
+            return button;
+        }
+    }
+
+    private static class WordDocumentIcon implements Icon {
+        private static final int SIZE = 18;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = AppV2Theme.PRIMARY;
+                Color fill = new Color(232, 244, 252);
+                g2.setColor(fill);
+                g2.fillRoundRect(x + 3, y + 1, 12, 16, 3, 3);
+                g2.setColor(stroke);
+                g2.drawRoundRect(x + 3, y + 1, 12, 16, 3, 3);
+                g2.drawLine(x + 6, y + 6, x + 12, y + 6);
+                g2.drawLine(x + 6, y + 9, x + 12, y + 9);
+                g2.drawLine(x + 6, y + 12, x + 10, y + 12);
+                g2.setColor(new Color(29, 92, 151));
+                g2.fillRoundRect(x + 1, y + 5, 8, 8, 2, 2);
+                g2.setColor(Color.WHITE);
+                g2.drawLine(x + 3, y + 7, x + 4, y + 11);
+                g2.drawLine(x + 4, y + 11, x + 5, y + 8);
+                g2.drawLine(x + 5, y + 8, x + 6, y + 11);
+                g2.drawLine(x + 6, y + 11, x + 7, y + 7);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private static class SaveDocumentIcon implements Icon {
+        private static final int SIZE = 18;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = AppV2Theme.PRIMARY;
+                Color fill = new Color(238, 247, 252);
+                g2.setColor(fill);
+                g2.fillRoundRect(x + 2, y + 2, 14, 14, 4, 4);
+                g2.setColor(stroke);
+                g2.drawRoundRect(x + 2, y + 2, 14, 14, 4, 4);
+                g2.fillRect(x + 5, y + 3, 7, 4);
+                g2.setColor(Color.WHITE);
+                g2.fillRect(x + 6, y + 4, 4, 2);
+                g2.setColor(stroke);
+                g2.fillRoundRect(x + 5, y + 10, 8, 5, 2, 2);
+                g2.setColor(Color.WHITE);
+                g2.drawLine(x + 7, y + 12, x + 11, y + 12);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private class RecibirAsociadoRenderer extends AppV2ReceiveActionButton implements TableCellRenderer {
         private RecibirAsociadoRenderer() {
-            setText("");
-            setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
-            setFocusPainted(false);
-            setOpaque(true);
         }
 
         @Override
@@ -2575,12 +2975,7 @@ public class JPanelAnalisisV2 extends JPanel {
                     : null;
             boolean recibido = asociado != null && asociado.isRecibidoPorAbogado();
             boolean permitido = puedeRecibirDocumentoAsociado(modelRow);
-            setIcon(AppV2IconProvider.action(
-                    recibido ? AppV2IconProvider.VERIFICACION : AppV2IconProvider.BANDEJA));
-            setEnabled(permitido);
-            setBackground(recibido
-                    ? AppV2Theme.SOFT_GREEN
-                    : permitido ? AppV2Theme.SOFT_BLUE : AppV2Theme.SURFACE_ALT);
+            configure(recibido, permitido);
             setToolTipText(recibido
                     ? "Documento recibido por el abogado."
                     : permitido
@@ -2591,14 +2986,10 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private class RecibirAsociadoEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JButton button = new JButton();
+        private final AppV2ReceiveActionButton button = new AppV2ReceiveActionButton();
         private int modelRow = -1;
 
         private RecibirAsociadoEditor() {
-            button.setText("");
-            button.setIcon(AppV2IconProvider.action(AppV2IconProvider.BANDEJA));
-            button.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
-            button.setFocusPainted(false);
             button.addActionListener(e -> {
                 int row = modelRow;
                 fireEditingStopped();
@@ -2620,8 +3011,7 @@ public class JPanelAnalisisV2 extends JPanel {
                 int column) {
             modelRow = table.convertRowIndexToModel(row);
             boolean permitido = puedeRecibirDocumentoAsociado(modelRow);
-            button.setEnabled(permitido);
-            button.setBackground(permitido ? AppV2Theme.SOFT_BLUE : AppV2Theme.SURFACE_ALT);
+            button.configure(false, permitido);
             button.setToolTipText(permitido
                     ? "Recibir documento asociado."
                     : "Solo el abogado responsable puede registrar la recepción.");

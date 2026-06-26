@@ -12,7 +12,6 @@ public class MainV2 {
             @Override
             public void run() {
                 MenuPrincipalV2 menu = new MenuPrincipalV2();
-                menu.setLocationRelativeTo(null);
                 menu.setVisible(true);
             }
         });

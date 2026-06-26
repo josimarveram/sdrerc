@@ -8,6 +8,7 @@ import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaPreviewDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaDiariaResumenDTO;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -64,14 +65,15 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JLabel lblArchivo = new JLabel("Sin archivo seleccionado");
     private final JLabel lblEstado = new JLabel("Seleccione un archivo .xlsx o .csv para iniciar.");
+    private AppV2ColumnFilterSupport.Controller columnFilterSupport;
 
     private final ResumenCard cardTotal = new ResumenCard("Total leídos", "0", "Pendiente de archivo", AppV2Theme.INFO);
     private final ResumenCard cardValidos = new ResumenCard("Válidos", "0", "Pendiente de validación", AppV2Theme.SUCCESS);
     private final ResumenCard cardErrores = new ResumenCard("Con alertas", "0", "No bloqueantes", AppV2Theme.WARNING);
+    private final ResumenCard cardListos = new ResumenCard("Listos para registrar", "0", "Confirmación requerida", AppV2Theme.TEAL);
     private final ResumenCard cardDuplicados = new ResumenCard("Posibles duplicados", "0", "Acta + titular", AppV2Theme.WARNING);
     private final ResumenCard cardGrupoFamiliar = new ResumenCard("Grupo familiar", "0", "Marca o alerta", AppV2Theme.TEAL);
     private final ResumenCard cardPendientesNumero = new ResumenCard("Pendientes de número", "0", "Asignación decide", AppV2Theme.WARNING);
-    private final ResumenCard cardListos = new ResumenCard("Listos para registrar", "0", "Confirmación requerida", AppV2Theme.TEAL);
     private final ResumenCard cardRegistrados = new ResumenCard("Registrados", "0", "Pendiente", AppV2Theme.INDIGO);
 
     private final DefaultTableModel tableModel = new DefaultTableModel(
@@ -171,16 +173,12 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         mensajes.add(ayuda, BorderLayout.NORTH);
         mensajes.add(lblEstado, BorderLayout.SOUTH);
 
-        JPanel metricas = new JPanel(new GridLayout(2, 4, 10, 8));
+        JPanel metricas = new JPanel(new GridLayout(1, 4, 10, 8));
         metricas.setOpaque(false);
         metricas.add(cardTotal);
         metricas.add(cardValidos);
         metricas.add(cardErrores);
-        metricas.add(cardDuplicados);
-        metricas.add(cardGrupoFamiliar);
-        metricas.add(cardPendientesNumero);
         metricas.add(cardListos);
-        metricas.add(cardRegistrados);
 
         wrapper.add(toolbar, BorderLayout.NORTH);
         wrapper.add(mensajes, BorderLayout.CENTER);
@@ -188,9 +186,12 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         return wrapper;
     }
 
-    private JScrollPane crearTablaPreview() {
+    private JPanel crearTablaPreview() {
+        JPanel container = new JPanel(new BorderLayout(0, 0));
+        container.setOpaque(false);
+
         table.setRowHeight(32);
-        table.setAutoCreateRowSorter(true);
+        table.setAutoCreateRowSorter(false);
         table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         table.setSurrendersFocusOnKeystroke(true);
         table.getTableHeader().setReorderingAllowed(false);
@@ -228,10 +229,18 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 420);
 
         JScrollPane scroll = new JScrollPane(table);
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        return scroll;
+
+        columnFilterSupport = AppV2ColumnFilterSupport.install(
+                table,
+                scroll,
+                null,
+                null);
+
+        container.add(scroll, BorderLayout.CENTER);
+        return container;
     }
 
     private JPanel crearPanelNotas() {
@@ -691,12 +700,14 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
         cardTotal.actualizar(String.valueOf(resumen.getTotalLeidos()), resumen.getTotalLeidos() == 0 ? "Pendiente de archivo" : "Archivo leído");
         cardValidos.actualizar(String.valueOf(resumen.getValidos()), "Sin errores críticos");
-        cardErrores.actualizar(String.valueOf(resumen.getConErrores()), "No bloqueantes");
-        cardDuplicados.actualizar(String.valueOf(resumen.getPosiblesDuplicados()), "Acta + titular");
-        cardGrupoFamiliar.actualizar(String.valueOf(resumen.getConGrupoFamiliar()), "Marca o alerta");
-        cardPendientesNumero.actualizar(String.valueOf(resumen.getPendientesNumero()), "Asignación decide");
-        cardListos.actualizar(String.valueOf(resumen.getListosParaRegistrar()), "Confirmación requerida");
-        cardRegistrados.actualizar(String.valueOf(resumen.getRegistrados()), "En SDRERC_APP");
+        cardErrores.actualizar(
+                String.valueOf(resumen.getConErrores()),
+                "Duplicados: " + resumen.getPosiblesDuplicados()
+                        + " | Grupo familiar: " + resumen.getConGrupoFamiliar()
+                        + " | Pendientes de número: " + resumen.getPendientesNumero());
+        cardListos.actualizar(
+                String.valueOf(resumen.getListosParaRegistrar()),
+                "Registrados: " + resumen.getRegistrados() + " | Confirmación requerida");
         actualizarBotones();
     }
 
@@ -874,12 +885,14 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createMatteBorder(0, 4, 0, 0, accent),
                     AppV2Theme.cardBorder()));
+            setPreferredSize(new Dimension(0, 64));
+            setMinimumSize(new Dimension(0, 60));
 
             JLabel lblTitle = new JLabel(title);
             lblTitle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
             lblTitle.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-            lblValue.setFont(AppV2Theme.fontBold(22));
+            lblValue.setFont(AppV2Theme.fontBold(18));
             lblValue.setForeground(AppV2Theme.TEXT_PRIMARY);
 
             lblCaption.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));

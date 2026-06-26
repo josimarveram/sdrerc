@@ -43,17 +43,24 @@ public class AnalisisValidacionService {
                 errores.add("Ingrese la descripción de cada documento analizado.");
                 break;
             }
+            if (documento.getNumeroDocumento().length() > 120) {
+                errores.add("El N° Documento de análisis no debe exceder 120 caracteres.");
+                break;
+            }
         }
         if (noCorresponde) {
             if (!hasText(registro.getMotivoNoCorrespondeCodigo())) {
                 errores.add("Seleccione el motivo por el que no corresponde a SDRERC.");
             }
+            if (!hasText(registro.getTipoDocumentoNoCorrespondeCodigo())) {
+                errores.add("Seleccione el tipo de documento.");
+            }
             if (!hasText(registro.getNumeroDocumentoProveido())) {
-                errores.add("Ingrese el N° Documento (Proveído).");
+                errores.add("Ingrese el N° Documento.");
             }
         }
         if (registro.getNumeroDocumentoProveido().length() > 100) {
-            errores.add("El N° Documento (Proveído) no debe exceder 100 caracteres.");
+            errores.add("El N° Documento no debe exceder 100 caracteres.");
         }
         String resultado = registro.getResultadoCodigo();
         if (("OBSERVADO".equalsIgnoreCase(resultado)
@@ -87,6 +94,10 @@ public class AnalisisValidacionService {
             }
             if (!hasText(documento.getDescripcion())) {
                 errores.add("Ingrese la descripción de cada documento de análisis.");
+                break;
+            }
+            if (documento.getNumeroDocumento().length() > 120) {
+                errores.add("El N° Documento de análisis no debe exceder 120 caracteres.");
                 break;
             }
         }

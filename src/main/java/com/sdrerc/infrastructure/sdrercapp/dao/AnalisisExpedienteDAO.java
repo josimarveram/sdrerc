@@ -82,11 +82,17 @@ public class AnalisisExpedienteDAO {
             EvaluacionRegistrada evaluacion = obtenerEvaluacionRegistrada(conn, idExpediente);
             List<DocumentoAnalizadoDTO> documentos = documentoAnalisisDAO.listarPorExpediente(conn, idExpediente);
             ObservacionAnalisisDTO observacion = obtenerUltimaObservacionAnalisis(conn, idExpediente);
-            String numeroProveido = obtenerUltimoNumeroProveido(conn, idExpediente);
+            DocumentoNoCorrespondeInfo documentoNoCorresponde = obtenerUltimoDocumentoNoCorresponde(conn, idExpediente);
             if (evaluacion == null) {
                 return new AnalisisDetalleDTO(
                         false, "", "", null, null, false, false, false, "",
-                        "", "", numeroProveido, null, observacion, documentos);
+                        "", "",
+                        documentoNoCorresponde.codigo,
+                        documentoNoCorresponde.nombre,
+                        documentoNoCorresponde.numero,
+                        null,
+                        observacion,
+                        documentos);
             }
             String resultadoCodigo = resolverResultadoRegistrado(evaluacion);
             String resultadoNombre = resolverNombreResultadoRegistrado(evaluacion, resultadoCodigo);
@@ -102,7 +108,9 @@ public class AnalisisExpedienteDAO {
                     evaluacion.fundamento,
                     evaluacion.motivoNoCorrespondeCodigo,
                     evaluacion.motivoNoCorrespondeNombre,
-                    numeroProveido,
+                    documentoNoCorresponde.codigo,
+                    documentoNoCorresponde.nombre,
+                    documentoNoCorresponde.numero,
                     evaluacion.fechaEvaluacion,
                     observacion,
                     documentos);
@@ -121,6 +129,7 @@ public class AnalisisExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
+        sql.append(nombrePersona("ps")).append(" AS solicitante, ps.numero_documento AS numero_documento_solicitante, ");
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_registro, asig.fecha_asignacion, e.fecha_ultimo_movimiento, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
@@ -143,6 +152,7 @@ public class AnalisisExpedienteDAO {
         sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
+        sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
         sql.append("WHERE e.activo = 1 ");
         sql.append("AND (");
         sql.append("(et.codigo = ? AND est.codigo = ?) ");
@@ -176,9 +186,11 @@ public class AnalisisExpedienteDAO {
             sql.append("OR UPPER(NVL(ea.numero_acta, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(p.numero_documento, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(").append(nombrePersona("p")).append(", '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(ps.numero_documento, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(").append(nombrePersona("ps")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(esol.numero_expediente_sgd, '')) LIKE ? ");
             sql.append(") ");
-            for (int i = 0; i < 7; i++) {
+            for (int i = 0; i < 9; i++) {
                 params.add(pattern);
             }
         }
@@ -360,7 +372,7 @@ public class AnalisisExpedienteDAO {
                         : null;
 
                 Long idEvaluacion = guardarEvaluacion(conn, registro, idResultado, idMotivoNoCorresponde, idUsuario);
-                registrarProveidoSiInformado(conn, registro, idUsuario);
+                registrarDocumentoNoCorrespondeSiInformado(conn, registro, idUsuario);
                 for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
                     if (documento.getIdDocumentoAnalizado() == null) {
                         documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documento, idUsuario);
@@ -704,6 +716,8 @@ public class AnalisisExpedienteDAO {
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
+                rs.getString("solicitante"),
+                rs.getString("numero_documento_solicitante"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
@@ -805,20 +819,26 @@ public class AnalisisExpedienteDAO {
         }
     }
 
-    private String obtenerUltimoNumeroProveido(Connection conn, Long idExpediente) throws SQLException {
-        String sql = "SELECT numero_documento FROM ("
-                + "SELECT d.numero_documento "
+    private DocumentoNoCorrespondeInfo obtenerUltimoDocumentoNoCorresponde(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT codigo, nombre, numero_documento FROM ("
+                + "SELECT td.codigo, td.nombre, d.numero_documento "
                 + "FROM expediente_documento d "
                 + "JOIN tipo_documento_adjunto td "
                 + "ON td.id_tipo_documento_adjunto = d.id_tipo_documento_adjunto "
-                + "WHERE d.id_expediente = ? AND d.activo = 1 AND UPPER(td.codigo) = ? "
+                + "WHERE d.id_expediente = ? AND d.activo = 1 "
+                + "AND UPPER(td.codigo) IN ('PROVEIDO', 'HOJA_ENVIO') "
                 + "ORDER BY NVL(d.modificado_en, d.creado_en) DESC, d.id_expediente_documento DESC"
                 + ") WHERE ROWNUM = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
-            ps.setString(2, TIPO_DOCUMENTO_PROVEIDO);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getString("numero_documento") : "";
+                if (!rs.next()) {
+                    return DocumentoNoCorrespondeInfo.proveidoVacio();
+                }
+                return new DocumentoNoCorrespondeInfo(
+                        rs.getString("codigo"),
+                        rs.getString("nombre"),
+                        rs.getString("numero_documento"));
             }
         }
     }
@@ -954,17 +974,21 @@ public class AnalisisExpedienteDAO {
         }
     }
 
-    private void registrarProveidoSiInformado(
+    private void registrarDocumentoNoCorrespondeSiInformado(
             Connection conn,
             AnalisisRegistroDTO registro,
             Long idUsuario) throws SQLException {
         if (!hasText(registro.getNumeroDocumentoProveido())) {
             return;
         }
+        String codigoTipo = normalizarTipoDocumentoNoCorresponde(registro.getTipoDocumentoNoCorrespondeCodigo());
+        String nombreTipo = hasText(registro.getTipoDocumentoNoCorrespondeNombre())
+                ? registro.getTipoDocumentoNoCorrespondeNombre()
+                : nombreTipoDocumentoNoCorresponde(codigoTipo);
         Long idTipoDocumento = requerirId(
-                catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, TIPO_DOCUMENTO_PROVEIDO),
-                "tipo de documento PROVEIDO");
-        if (existeProveido(conn, registro.getIdExpediente(), idTipoDocumento, registro.getNumeroDocumentoProveido())) {
+                catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, codigoTipo),
+                "tipo de documento " + codigoTipo);
+        if (existeDocumentoNoCorresponde(conn, registro.getIdExpediente(), idTipoDocumento, registro.getNumeroDocumentoProveido())) {
             return;
         }
         String sql = "INSERT INTO expediente_documento ("
@@ -974,7 +998,7 @@ public class AnalisisExpedienteDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, registro.getIdExpediente());
             ps.setLong(2, idTipoDocumento);
-            ps.setString(3, "Proveído");
+            ps.setString(3, nombreTipo);
             ps.setString(4, limitar(registro.getNumeroDocumentoProveido(), 100));
             ps.setDate(5, Date.valueOf(LocalDate.now()));
             setLongOrNull(ps, 6, idUsuario);
@@ -982,7 +1006,7 @@ public class AnalisisExpedienteDAO {
         }
     }
 
-    private boolean existeProveido(
+    private boolean existeDocumentoNoCorresponde(
             Connection conn,
             Long idExpediente,
             Long idTipoDocumento,
@@ -998,6 +1022,20 @@ public class AnalisisExpedienteDAO {
                 return rs.next() && rs.getInt(1) > 0;
             }
         }
+    }
+
+    private static String normalizarTipoDocumentoNoCorresponde(String codigo) {
+        if ("HOJA_ENVIO".equalsIgnoreCase(codigo)) {
+            return "HOJA_ENVIO";
+        }
+        return TIPO_DOCUMENTO_PROVEIDO;
+    }
+
+    private static String nombreTipoDocumentoNoCorresponde(String codigo) {
+        if ("HOJA_ENVIO".equalsIgnoreCase(codigo)) {
+            return "Hoja de Envío";
+        }
+        return "Proveido";
     }
 
     private boolean tieneEvaluacionActiva(Connection conn, Long idExpediente) throws SQLException {
@@ -1228,7 +1266,10 @@ public class AnalisisExpedienteDAO {
                 ? base
                 : registro.getResultadoNombre() + ": " + base;
         if (hasText(registro.getNumeroDocumentoProveido())) {
-            comentario += " Proveído: " + registro.getNumeroDocumentoProveido() + ".";
+            String tipo = hasText(registro.getTipoDocumentoNoCorrespondeNombre())
+                    ? registro.getTipoDocumentoNoCorrespondeNombre()
+                    : nombreTipoDocumentoNoCorresponde(registro.getTipoDocumentoNoCorrespondeCodigo());
+            comentario += " " + tipo + ": " + registro.getNumeroDocumentoProveido() + ".";
         }
         return comentario;
     }
@@ -1362,6 +1403,23 @@ public class AnalisisExpedienteDAO {
         private ResultadoDestino(String estadoDestinoCodigo, boolean requiereResultadoCatalogo) {
             this.estadoDestinoCodigo = estadoDestinoCodigo;
             this.requiereResultadoCatalogo = requiereResultadoCatalogo;
+        }
+    }
+
+    private static class DocumentoNoCorrespondeInfo {
+
+        private final String codigo;
+        private final String nombre;
+        private final String numero;
+
+        private DocumentoNoCorrespondeInfo(String codigo, String nombre, String numero) {
+            this.codigo = hasText(codigo) ? codigo : TIPO_DOCUMENTO_PROVEIDO;
+            this.nombre = hasText(nombre) ? nombre : nombreTipoDocumentoNoCorresponde(this.codigo);
+            this.numero = numero == null ? "" : numero;
+        }
+
+        private static DocumentoNoCorrespondeInfo proveidoVacio() {
+            return new DocumentoNoCorrespondeInfo(TIPO_DOCUMENTO_PROVEIDO, "Proveido", "");
         }
     }
 

@@ -1,6 +1,7 @@
 package com.sdrerc.ui.appv2.components;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
+import com.sdrerc.ui.appv2.util.AppV2DisplayScale;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -50,7 +51,7 @@ public class AppV2Table extends JTable {
     private void configurarBase() {
         setFillsViewportHeight(true);
         setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-        setRowHeight(38);
+        setRowHeight(AppV2DisplayScale.scale(38));
         setShowVerticalLines(false);
         setGridColor(AppV2Theme.BORDER);
         setIntercellSpacing(new Dimension(0, 1));
@@ -60,7 +61,7 @@ public class AppV2Table extends JTable {
         getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
         getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
-        getTableHeader().setPreferredSize(new Dimension(0, 56));
+        getTableHeader().setPreferredSize(new Dimension(0, AppV2DisplayScale.scale(56)));
         getTableHeader().setDefaultRenderer(new MultilineHeaderRenderer());
         setDefaultRenderer(Object.class, new FriendlyCellRenderer());
         addComponentListener(new ComponentAdapter() {

@@ -200,7 +200,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private JPanel crearDatosSolicitud() {
         JPanel panel = seccion("Datos de solicitud");
         agregarFila(panel, 0, "Nro. trámite web *", txtNumeroTramite);
-        agregarFila(panel, 1, "N° documento *", txtNumeroDocumento);
+        agregarFila(panel, 1, "N° documento", txtNumeroDocumento);
         agregarFila(panel, 2, "N° expediente SGD", txtNumeroExpedienteSgd);
         agregarFila(panel, 3, "Tipo de solicitud *", cmbTipoSolicitud);
         agregarFila(panel, 4, "Fecha recepción *", fechaRecepcionField);
