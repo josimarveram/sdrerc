@@ -679,6 +679,7 @@ public class JPanelAnalisisV2 extends JPanel {
         table.getColumnModel().getColumn(COL_EXPANDIR).setCellRenderer(new ExpandirRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         columnFilterSupport = AppV2ColumnFilterSupport.install(
+                "Analisis",
                 table,
                 tablePanel.getScrollPane(),
                 tablePanel,

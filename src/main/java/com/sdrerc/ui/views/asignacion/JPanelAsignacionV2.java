@@ -723,6 +723,7 @@ public class JPanelAsignacionV2 extends JPanel {
         table.getColumnModel().getColumn(COL_EXPANDIR).setCellRenderer(new ExpandirRenderer());
         table.getColumnModel().getColumn(COL_SELECCION).setCellRenderer(new SeleccionRenderer());
         columnFilterSupport = AppV2ColumnFilterSupport.install(
+                "Asignacion",
                 table,
                 tablePanel.getScrollPane(),
                 tablePanel,

@@ -234,6 +234,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
 
         columnFilterSupport = AppV2ColumnFilterSupport.install(
+                "CargaDiariaRecepcion",
                 table,
                 scroll,
                 null,

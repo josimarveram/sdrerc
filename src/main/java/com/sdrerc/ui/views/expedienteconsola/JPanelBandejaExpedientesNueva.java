@@ -5,6 +5,7 @@ import com.sdrerc.application.sdrercapp.ExpedienteDetalleService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
@@ -26,12 +27,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
-import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -49,29 +46,17 @@ import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.RowFilter;
-import javax.swing.RowSorter;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SortOrder;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.event.TableColumnModelEvent;
-import javax.swing.event.TableColumnModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableColumn;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableRowSorter;
 
 public class JPanelBandejaExpedientesNueva extends JPanel {
 
@@ -106,9 +91,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final DefaultTableModel tableModel;
     private final JTable table;
     private final AppV2TablePanel tablePanel;
-    private TableRowSorter<DefaultTableModel> rowSorter;
-    private JTextField[] columnFilterFields;
-    private ColumnFilterPanel columnFilterPanel;
+    private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final AppV2NotebookToggleTab tabPanelRecepcion = new AppV2NotebookToggleTab();
     private AppV2OperationalSplitPanel splitBandeja;
     private AppV2SideActionPanel panelRecepcion;
@@ -523,9 +506,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void configurarTabla() {
         table.setRowHeight(34);
-        rowSorter = new TableRowSorter<DefaultTableModel>(tableModel);
-        rowSorter.setSortsOnUpdates(true);
-        table.setRowSorter(rowSorter);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.getTableHeader().setReorderingAllowed(false);
@@ -533,9 +513,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
         table.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
         table.getTableHeader().setPreferredSize(new Dimension(0, 30));
-        table.getTableHeader().setDefaultRenderer(
-                new BandejaHeaderRenderer(table.getTableHeader().getDefaultRenderer()));
-        rowSorter.addRowSorterListener(e -> table.getTableHeader().repaint());
         table.setGridColor(AppV2Theme.BORDER);
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new java.awt.Dimension(0, 1));
@@ -553,7 +530,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             table.getColumnModel().getColumn(9).setMaxWidth(0);
             table.getColumnModel().getColumn(10).setMinWidth(0);
             table.getColumnModel().getColumn(10).setMaxWidth(0);
-            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         } else {
             AppV2TableColumnSizer.applyWidths(table, 88, 175, 155, 155, 175, 145, 145, 125, 125, 0);
             table.getColumnModel().getColumn(0).setMaxWidth(90);
@@ -565,134 +542,27 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             table.getColumnModel().getColumn(8).setMaxWidth(120);
             table.getColumnModel().getColumn(9).setMinWidth(0);
             table.getColumnModel().getColumn(9).setMaxWidth(0);
-            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+            tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         }
         instalarFiltrosPorColumna();
     }
 
     private void instalarFiltrosPorColumna() {
-        columnFilterFields = new JTextField[tableModel.getColumnCount()];
-        for (int i = 0; i < columnFilterFields.length; i++) {
-            columnFilterFields[i] = crearCampoFiltroColumna(i);
-        }
-        columnFilterPanel = new ColumnFilterPanel();
-        tablePanel.add(columnFilterPanel, BorderLayout.NORTH);
-        tablePanel.getScrollPane().setColumnHeaderView(table.getTableHeader());
-        tablePanel.getScrollPane().getHorizontalScrollBar().addAdjustmentListener(e -> refrescarFiltrosPorColumna());
-        table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
-            @Override
-            public void columnAdded(TableColumnModelEvent e) {
-                refrescarFiltrosPorColumna();
-            }
-
-            @Override
-            public void columnRemoved(TableColumnModelEvent e) {
-                refrescarFiltrosPorColumna();
-            }
-
-            @Override
-            public void columnMoved(TableColumnModelEvent e) {
-                refrescarFiltrosPorColumna();
-            }
-
-            @Override
-            public void columnMarginChanged(javax.swing.event.ChangeEvent e) {
-                refrescarFiltrosPorColumna();
-            }
-
-            @Override
-            public void columnSelectionChanged(javax.swing.event.ListSelectionEvent e) {
-                // No aplica: la fila de filtros solo replica anchos de columnas.
-            }
-        });
-    }
-
-    private JTextField crearCampoFiltroColumna(final int modelColumn) {
-        String header = String.valueOf(tableModel.getColumnName(modelColumn));
-        final JTextField field = new ColumnFilterField("Filtrar");
-        boolean visible = !esColumnaTecnica(modelColumn);
-        field.setVisible(visible);
-        field.setEnabled(visible);
-        field.setFont(AppV2Theme.fontPlain(10));
-        field.setForeground(AppV2Theme.TEXT_PRIMARY);
-        field.setBackground(AppV2Theme.SURFACE);
-        field.setCaretColor(AppV2Theme.PRIMARY);
-        field.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppV2Theme.BORDER),
-                BorderFactory.createEmptyBorder(1, 6, 1, 6)));
-        field.setToolTipText("Filtrar " + DisplayNameMapperV2.valor(header));
-        field.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                aplicarFiltrosPorColumna();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                aplicarFiltrosPorColumna();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                aplicarFiltrosPorColumna();
-            }
-        });
-        return field;
-    }
-
-    private void refrescarFiltrosPorColumna() {
-        if (columnFilterPanel != null) {
-            columnFilterPanel.revalidate();
-            columnFilterPanel.repaint();
-        }
-    }
-
-    private void aplicarFiltrosPorColumna() {
-        if (rowSorter == null || columnFilterFields == null) {
-            return;
-        }
-        List<RowFilter<DefaultTableModel, Integer>> filtros = new ArrayList<RowFilter<DefaultTableModel, Integer>>();
-        for (int i = 0; i < columnFilterFields.length; i++) {
-            final int modelColumn = i;
-            JTextField field = columnFilterFields[i];
-            if (field == null || !field.isEnabled()) {
-                continue;
-            }
-            String text = field.getText();
-            if (text == null || text.trim().isEmpty()) {
-                continue;
-            }
-            final String criterio = normalizarFiltro(text);
-            filtros.add(new RowFilter<DefaultTableModel, Integer>() {
-                @Override
-                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
-                    Object value = entry.getValue(modelColumn);
-                    return normalizarFiltro(valorFiltro(value)).contains(criterio);
-                }
-            });
-        }
-        rowSorter.setRowFilter(filtros.isEmpty() ? null : RowFilter.andFilter(filtros));
-        btnVerDetalle.setEnabled(table.getSelectedRow() >= 0);
-        btnEditar.setEnabled(table.getSelectedRow() >= 0 && esRegistroSeleccionadoEditable());
+        columnFilterSupport = AppV2ColumnFilterSupport.install(
+                "BandejaExpedientes",
+                table,
+                tablePanel.getScrollPane(),
+                null,
+                () -> {
+                    btnVerDetalle.setEnabled(false);
+                    btnEditar.setEnabled(false);
+                });
     }
 
     private void limpiarFiltrosPorColumna() {
-        if (columnFilterFields == null) {
-            return;
+        if (columnFilterSupport != null) {
+            columnFilterSupport.clearFilters();
         }
-        for (JTextField field : columnFilterFields) {
-            if (field != null && field.getText().length() > 0) {
-                field.setText("");
-            }
-        }
-        if (rowSorter != null) {
-            rowSorter.setRowFilter(null);
-        }
-    }
-
-    private boolean esColumnaTecnica(int modelColumn) {
-        String name = tableModel.getColumnName(modelColumn);
-        return name != null && name.startsWith("_");
     }
 
     private JLabel crearLabelFiltro(String text) {
@@ -1378,179 +1248,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return "Vence hoy. Vencimiento: " + fecha;
         }
         return dias + " día(s) hábil(es) restantes. Vencimiento: " + fecha;
-    }
-
-    private class ColumnFilterPanel extends JPanel {
-
-        private static final int HEIGHT = 30;
-
-        private ColumnFilterPanel() {
-            setLayout(null);
-            setOpaque(true);
-            setBackground(AppV2Theme.SURFACE_ALT);
-            if (columnFilterFields != null) {
-                for (JTextField field : columnFilterFields) {
-                    add(field);
-                }
-            }
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            return new Dimension(1, HEIGHT);
-        }
-
-        @Override
-        public void doLayout() {
-            int x = -tablePanel.getScrollPane().getHorizontalScrollBar().getValue();
-            for (int viewColumn = 0; viewColumn < table.getColumnModel().getColumnCount(); viewColumn++) {
-                TableColumn column = table.getColumnModel().getColumn(viewColumn);
-                int width = column.getWidth();
-                int modelColumn = table.convertColumnIndexToModel(viewColumn);
-                JTextField field = modelColumn >= 0 && modelColumn < columnFilterFields.length
-                        ? columnFilterFields[modelColumn]
-                        : null;
-                if (field != null) {
-                    boolean visible = !esColumnaTecnica(modelColumn)
-                            && width > 28
-                            && x + width > 0
-                            && x < getWidth();
-                    field.setVisible(visible);
-                    if (visible) {
-                        field.setBounds(x + 4, 3, Math.max(0, width - 8), 23);
-                    } else {
-                        field.setBounds(x, 0, 0, 0);
-                    }
-                }
-                x += width;
-            }
-        }
-    }
-
-    private static class ColumnFilterField extends JTextField {
-
-        private final String prompt;
-
-        private ColumnFilterField(String prompt) {
-            this.prompt = prompt;
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            if (getText() != null && !getText().isEmpty()) {
-                return;
-            }
-            g.setColor(AppV2Theme.TEXT_SECONDARY);
-            g.setFont(getFont());
-            FontMetrics fm = g.getFontMetrics();
-            int x = getInsets().left;
-            int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-            g.drawString(prompt, x, y);
-        }
-    }
-
-    private class BandejaHeaderRenderer implements TableCellRenderer {
-
-        private final TableCellRenderer delegate;
-
-        private BandejaHeaderRenderer(TableCellRenderer delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            Component component = delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            if (component instanceof JLabel) {
-                JLabel label = (JLabel) component;
-                int modelColumn = table.convertColumnIndexToModel(column);
-                String text = value == null ? "" : value.toString();
-                SortOrder sortOrder = sortOrderFor(modelColumn);
-                label.setText(text);
-                label.setIcon(esColumnaTecnica(modelColumn) ? null : new SortIndicatorIcon(sortOrder));
-                label.setHorizontalTextPosition(JLabel.LEFT);
-                label.setIconTextGap(6);
-                label.setOpaque(true);
-                label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-                label.setForeground(AppV2Theme.TEXT_SECONDARY);
-                label.setBackground(AppV2Theme.SURFACE_ALT);
-                label.setHorizontalAlignment(JLabel.CENTER);
-                label.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
-                        BorderFactory.createEmptyBorder(0, 8, 0, 8)));
-            }
-            return component;
-        }
-
-        private SortOrder sortOrderFor(int modelColumn) {
-            if (rowSorter == null || rowSorter.getSortKeys().isEmpty()) {
-                return SortOrder.UNSORTED;
-            }
-            for (RowSorter.SortKey sortKey : rowSorter.getSortKeys()) {
-                if (sortKey.getColumn() == modelColumn) {
-                    return sortKey.getSortOrder();
-                }
-            }
-            return SortOrder.UNSORTED;
-        }
-    }
-
-    private static class SortIndicatorIcon implements Icon {
-
-        private final SortOrder order;
-
-        private SortIndicatorIcon(SortOrder order) {
-            this.order = order == null ? SortOrder.UNSORTED : order;
-        }
-
-        @Override
-        public int getIconWidth() {
-            return 9;
-        }
-
-        @Override
-        public int getIconHeight() {
-            return 14;
-        }
-
-        @Override
-        public void paintIcon(Component c, Graphics g, int x, int y) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                if (order == SortOrder.ASCENDING) {
-                    g2.setColor(AppV2Theme.PRIMARY);
-                    paintUp(g2, x, y + 3);
-                } else if (order == SortOrder.DESCENDING) {
-                    g2.setColor(AppV2Theme.PRIMARY);
-                    paintDown(g2, x, y + 6);
-                } else {
-                    g2.setColor(AppV2Theme.TEXT_SECONDARY);
-                    paintUp(g2, x, y + 2);
-                    paintDown(g2, x, y + 8);
-                }
-            } finally {
-                g2.dispose();
-            }
-        }
-
-        private void paintUp(Graphics2D g2, int x, int y) {
-            int[] xs = {x + 4, x + 1, x + 7};
-            int[] ys = {y, y + 5, y + 5};
-            g2.fillPolygon(xs, ys, 3);
-        }
-
-        private void paintDown(Graphics2D g2, int x, int y) {
-            int[] xs = {x + 1, x + 7, x + 4};
-            int[] ys = {y, y, y + 5};
-            g2.fillPolygon(xs, ys, 3);
-        }
     }
 
     private class BandejaCellRenderer extends DefaultTableCellRenderer {

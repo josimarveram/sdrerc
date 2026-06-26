@@ -482,6 +482,7 @@ public class JPanelNotificacionV2 extends JPanel {
         table.getColumnModel().getColumn(11).setMaxWidth(105);
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         columnFilterSupport = AppV2ColumnFilterSupport.install(
+                "Notificacion",
                 table,
                 tablePanel.getScrollPane(),
                 tablePanel,

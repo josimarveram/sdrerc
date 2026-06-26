@@ -34,6 +34,7 @@ import javax.swing.JTextField;
 import javax.swing.RowFilter;
 import javax.swing.RowSorter;
 import javax.swing.SortOrder;
+import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.TableColumnModelEvent;
@@ -58,7 +59,24 @@ public final class AppV2ColumnFilterSupport {
             JComponent filterHost,
             Runnable beforeViewChange,
             int... excludedModelColumns) {
-            Controller controller = new Controller(
+        return install(
+                "AppV2ColumnFilterSupport",
+                table,
+                scrollPane,
+                filterHost,
+                beforeViewChange,
+                excludedModelColumns);
+    }
+
+    public static Controller install(
+            String moduleName,
+            JTable table,
+            JScrollPane scrollPane,
+            JComponent filterHost,
+            Runnable beforeViewChange,
+            int... excludedModelColumns) {
+        Controller controller = new Controller(
+                moduleName,
                 table,
                 scrollPane,
                 beforeViewChange,
@@ -81,6 +99,7 @@ public final class AppV2ColumnFilterSupport {
 
         private final JTable table;
         private final JScrollPane scrollPane;
+        private final String moduleName;
         private final Runnable beforeViewChange;
         private final Set<Integer> excludedColumns;
         private final TableRowSorter<TableModel> sorter;
@@ -90,10 +109,13 @@ public final class AppV2ColumnFilterSupport {
         private boolean adjusting;
 
         private Controller(
+                String moduleName,
                 JTable table,
                 JScrollPane scrollPane,
                 Runnable beforeViewChange,
                 int... excludedModelColumns) {
+            this.moduleName = moduleName == null || moduleName.trim().isEmpty()
+                    ? "AppV2ColumnFilterSupport" : moduleName.trim();
             this.table = table;
             this.scrollPane = scrollPane;
             this.beforeViewChange = beforeViewChange;
@@ -203,6 +225,9 @@ public final class AppV2ColumnFilterSupport {
 
         private void configureAlignment() {
             scrollPane.setColumnHeaderView(headerPanel);
+            AppV2TableScrollDiagnostics.log(this.moduleName, table, scrollPane);
+            SwingUtilities.invokeLater(() -> AppV2TableScrollDiagnostics.log(
+                    this.moduleName + ".afterLayout", table, scrollPane));
             scrollPane.getHorizontalScrollBar().addAdjustmentListener(event -> refreshFilterPanel());
             table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
                 @Override

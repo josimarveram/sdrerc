@@ -482,6 +482,7 @@ public class JPanelEjecucionV2 extends JPanel {
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         columnFilterSupport = AppV2ColumnFilterSupport.install(
+                "Ejecucion",
                 table,
                 tablePanel.getScrollPane(),
                 tablePanel,

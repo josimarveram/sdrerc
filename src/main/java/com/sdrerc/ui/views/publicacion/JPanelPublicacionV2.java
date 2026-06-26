@@ -386,6 +386,7 @@ public class JPanelPublicacionV2 extends JPanel {
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         tableScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         columnFilterSupport = AppV2ColumnFilterSupport.install(
+                "Publicacion",
                 table,
                 tableScrollPane,
                 tableHost,

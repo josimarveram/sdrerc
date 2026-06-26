@@ -7,6 +7,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 
 public class AppV2TablePanel extends JPanel {
 
@@ -35,6 +36,9 @@ public class AppV2TablePanel extends JPanel {
         cards.add(scrollPane, CARD_TABLE);
         cards.add(emptyWrapper, CARD_EMPTY);
         add(cards, BorderLayout.CENTER);
+        AppV2TableScrollDiagnostics.log("AppV2TablePanel", table, scrollPane);
+        SwingUtilities.invokeLater(() -> AppV2TableScrollDiagnostics.log(
+                "AppV2TablePanel.afterLayout", table, scrollPane));
         setEmpty(true);
     }
 
