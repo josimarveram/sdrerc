@@ -20,14 +20,33 @@ public final class AppV2TableScrollDiagnostics {
     }
 
     public static void log(String module, JTable table, JScrollPane expectedScrollPane) {
+        log(module, table, expectedScrollPane, null, null);
+    }
+
+    public static void log(
+            String module,
+            JTable table,
+            JScrollPane expectedScrollPane,
+            Component headerView,
+            Component filterView) {
         if (!Boolean.getBoolean(PROPERTY) || table == null) {
             return;
         }
         JScrollPane enclosing = enclosingScrollPane(table);
         JScrollPane extraParent = extraParentScrollPane(expectedScrollPane != null ? expectedScrollPane : enclosing);
         JScrollPane scroll = expectedScrollPane != null ? expectedScrollPane : enclosing;
+        Component columnHeaderView = scroll == null || scroll.getColumnHeader() == null
+                ? null : scroll.getColumnHeader().getView();
+        boolean tableScroll = scroll != null && scroll == enclosing;
+        boolean externalHorizontalScroll = hasExternalHorizontalScroll(extraParent);
+        boolean filtersInsideColumnHeader = filterView != null
+                && columnHeaderView != null
+                && SwingUtilities.isDescendingFrom(filterView, columnHeaderView);
         StringBuilder out = new StringBuilder(512);
         out.append("[SDRERC table-scroll] module=").append(safe(module));
+        out.append(" tableScroll=").append(tableScroll);
+        out.append(" externalHorizontalScroll=").append(externalHorizontalScroll);
+        out.append(" filtersInsideColumnHeader=").append(filtersInsideColumnHeader);
         out.append(" tableName=").append(safe(table.getName()));
         out.append(" autoResizeMode=").append(table.getAutoResizeMode());
         out.append(" tableParent=").append(className(table.getParent()));
@@ -36,16 +55,23 @@ public final class AppV2TableScrollDiagnostics {
         out.append(" scrollViewport=").append(scroll == null ? "-" : className(scroll.getViewport()));
         out.append(" viewportView=").append(scroll == null ? "-" : className(scroll.getViewport().getView()));
         out.append(" hasColumnHeader=").append(scroll != null && scroll.getColumnHeader() != null);
-        out.append(" columnHeaderView=").append(scroll == null || scroll.getColumnHeader() == null
-                ? "-" : className(scroll.getColumnHeader().getView()));
+        out.append(" columnHeaderView=").append(className(columnHeaderView));
+        out.append(" headerView=").append(className(headerView));
+        out.append(" filterView=").append(className(filterView));
         out.append(" horizontalPolicy=").append(scroll == null ? "-" : scroll.getHorizontalScrollBarPolicy());
         out.append(" verticalPolicy=").append(scroll == null ? "-" : scroll.getVerticalScrollBarPolicy());
         out.append(" tablePreferred=").append(size(table.getPreferredSize()));
+        out.append(" tableMinimum=").append(size(table.getMinimumSize()));
+        out.append(" tableActual=").append(size(table.getSize()));
         out.append(" scrollPreferred=").append(scroll == null ? "-" : size(scroll.getPreferredSize()));
+        out.append(" scrollMinimum=").append(scroll == null ? "-" : size(scroll.getMinimumSize()));
         out.append(" scrollSize=").append(scroll == null ? "-" : size(scroll.getSize()));
         out.append(" viewportExtent=").append(scroll == null ? "-" : size(scroll.getViewport().getExtentSize()));
+        out.append(" columnHeaderPreferred=").append(columnHeaderView == null ? "-" : size(columnHeaderView.getPreferredSize()));
+        out.append(" columnHeaderActual=").append(columnHeaderView == null ? "-" : size(columnHeaderView.getSize()));
         out.append(" extraParentScroll=").append(className(extraParent));
         out.append(" extraParentHorizontalPolicy=").append(extraParent == null ? "-" : extraParent.getHorizontalScrollBarPolicy());
+        out.append(" parentChain=").append(parentChain(table, 10));
         System.out.println(out.toString());
     }
 
@@ -72,6 +98,30 @@ public final class AppV2TableScrollDiagnostics {
             parent = parent.getParent();
         }
         return null;
+    }
+
+    private static boolean hasExternalHorizontalScroll(JScrollPane scrollPane) {
+        if (scrollPane == null) {
+            return false;
+        }
+        return scrollPane.getHorizontalScrollBarPolicy() != JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+                && scrollPane.getHorizontalScrollBar() != null
+                && scrollPane.getHorizontalScrollBar().isVisible();
+    }
+
+    private static String parentChain(Component component, int maxDepth) {
+        StringBuilder out = new StringBuilder();
+        Component current = component;
+        int depth = 0;
+        while (current != null && depth < maxDepth) {
+            if (depth > 0) {
+                out.append(">");
+            }
+            out.append(current.getClass().getSimpleName());
+            current = current.getParent();
+            depth++;
+        }
+        return out.toString();
     }
 
     private static String className(Object value) {

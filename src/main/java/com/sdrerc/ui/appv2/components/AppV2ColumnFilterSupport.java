@@ -2,7 +2,6 @@ package com.sdrerc.ui.appv2.components;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -224,10 +223,11 @@ public final class AppV2ColumnFilterSupport {
         }
 
         private void configureAlignment() {
+            scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
             scrollPane.setColumnHeaderView(headerPanel);
-            AppV2TableScrollDiagnostics.log(this.moduleName, table, scrollPane);
+            AppV2TableScrollDiagnostics.log(this.moduleName, table, scrollPane, headerPanel, filterPanel);
             SwingUtilities.invokeLater(() -> AppV2TableScrollDiagnostics.log(
-                    this.moduleName + ".afterLayout", table, scrollPane));
+                    this.moduleName + ".afterLayout", table, scrollPane, headerPanel, filterPanel));
             scrollPane.getHorizontalScrollBar().addAdjustmentListener(event -> refreshFilterPanel());
             table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
                 @Override
@@ -288,6 +288,7 @@ public final class AppV2ColumnFilterSupport {
 
         private void refreshFilterPanel() {
             headerPanel.revalidate();
+            headerPanel.doLayout();
             headerPanel.repaint();
             filterPanel.revalidate();
             filterPanel.repaint();
@@ -334,19 +335,33 @@ public final class AppV2ColumnFilterSupport {
         private final class HeaderPanel extends JPanel {
 
             private HeaderPanel() {
-                super(new BorderLayout(0, 0));
+                setLayout(null);
                 setOpaque(true);
                 setBackground(AppV2Theme.SURFACE_ALT);
-                add(table.getTableHeader(), BorderLayout.NORTH);
-                add(filterPanel, BorderLayout.SOUTH);
+                add(table.getTableHeader());
+                add(filterPanel);
             }
 
             @Override
             public Dimension getPreferredSize() {
                 Dimension header = table.getTableHeader().getPreferredSize();
                 Dimension filter = filterPanel.getPreferredSize();
-                int width = Math.max(table.getPreferredSize().width, header.width);
+                int width = Math.max(table.getPreferredSize().width, table.getColumnModel().getTotalColumnWidth());
                 return new Dimension(width, header.height + filter.height);
+            }
+
+            @Override
+            public Dimension getMinimumSize() {
+                return getPreferredSize();
+            }
+
+            @Override
+            public void doLayout() {
+                Dimension header = table.getTableHeader().getPreferredSize();
+                Dimension filter = filterPanel.getPreferredSize();
+                int width = Math.max(table.getColumnModel().getTotalColumnWidth(), table.getPreferredSize().width);
+                table.getTableHeader().setBounds(0, 0, width, header.height);
+                filterPanel.setBounds(0, header.height, width, filter.height);
             }
         }
 
