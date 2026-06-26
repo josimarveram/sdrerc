@@ -129,7 +129,10 @@ public class AnalisisExpedienteDAO {
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
-        sql.append(nombrePersona("ps")).append(" AS solicitante, ps.numero_documento AS numero_documento_solicitante, ");
+        sql.append(nombrePersona("ps")).append(" AS solicitante, ps.tipo_documento AS solicitante_tipo_documento, ");
+        sql.append("ps.numero_documento AS numero_documento_solicitante, ps.correo_electronico AS solicitante_correo, ");
+        sql.append("ps.telefono AS solicitante_telefono, ps.direccion AS solicitante_direccion, ");
+        sql.append("ps.departamento AS solicitante_departamento, ps.provincia AS solicitante_provincia, ps.distrito AS solicitante_distrito, ");
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_registro, asig.fecha_asignacion, e.fecha_ultimo_movimiento, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
@@ -717,7 +720,14 @@ public class AnalisisExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 rs.getString("solicitante"),
+                rs.getString("solicitante_tipo_documento"),
                 rs.getString("numero_documento_solicitante"),
+                rs.getString("solicitante_correo"),
+                rs.getString("solicitante_telefono"),
+                rs.getString("solicitante_direccion"),
+                rs.getString("solicitante_departamento"),
+                rs.getString("solicitante_provincia"),
+                rs.getString("solicitante_distrito"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),

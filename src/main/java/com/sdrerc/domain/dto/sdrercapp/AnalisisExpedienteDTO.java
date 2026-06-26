@@ -17,7 +17,14 @@ public class AnalisisExpedienteDTO {
     private final String numeroActa;
     private final String titular;
     private final String solicitante;
+    private final String tipoDocumentoSolicitante;
     private final String numeroDocumentoSolicitante;
+    private final String correoSolicitante;
+    private final String telefonoSolicitante;
+    private final String direccionSolicitante;
+    private final String departamentoSolicitante;
+    private final String provinciaSolicitante;
+    private final String distritoSolicitante;
     private final LocalDate fechaRecepcion;
     private final Long diasRestantes;
     private final LocalDateTime fechaRegistro;
@@ -44,7 +51,14 @@ public class AnalisisExpedienteDTO {
             String numeroActa,
             String titular,
             String solicitante,
+            String tipoDocumentoSolicitante,
             String numeroDocumentoSolicitante,
+            String correoSolicitante,
+            String telefonoSolicitante,
+            String direccionSolicitante,
+            String departamentoSolicitante,
+            String provinciaSolicitante,
+            String distritoSolicitante,
             LocalDate fechaRecepcion,
             Long diasRestantes,
             LocalDateTime fechaRegistro,
@@ -69,7 +83,14 @@ public class AnalisisExpedienteDTO {
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
         this.solicitante = safe(solicitante);
+        this.tipoDocumentoSolicitante = safe(tipoDocumentoSolicitante);
         this.numeroDocumentoSolicitante = safe(numeroDocumentoSolicitante);
+        this.correoSolicitante = safe(correoSolicitante);
+        this.telefonoSolicitante = safe(telefonoSolicitante);
+        this.direccionSolicitante = safe(direccionSolicitante);
+        this.departamentoSolicitante = safe(departamentoSolicitante);
+        this.provinciaSolicitante = safe(provinciaSolicitante);
+        this.distritoSolicitante = safe(distritoSolicitante);
         this.fechaRecepcion = fechaRecepcion;
         this.diasRestantes = diasRestantes;
         this.fechaRegistro = fechaRegistro;
@@ -129,8 +150,36 @@ public class AnalisisExpedienteDTO {
         return solicitante;
     }
 
+    public String getTipoDocumentoSolicitante() {
+        return tipoDocumentoSolicitante;
+    }
+
     public String getNumeroDocumentoSolicitante() {
         return numeroDocumentoSolicitante;
+    }
+
+    public String getCorreoSolicitante() {
+        return correoSolicitante;
+    }
+
+    public String getTelefonoSolicitante() {
+        return telefonoSolicitante;
+    }
+
+    public String getDireccionSolicitante() {
+        return direccionSolicitante;
+    }
+
+    public String getDepartamentoSolicitante() {
+        return departamentoSolicitante;
+    }
+
+    public String getProvinciaSolicitante() {
+        return provinciaSolicitante;
+    }
+
+    public String getDistritoSolicitante() {
+        return distritoSolicitante;
     }
 
     public LocalDate getFechaRecepcion() {

@@ -16,13 +16,13 @@ import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2AssociatedDocumentIconCell;
 import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
-import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2ReceiveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
+import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
@@ -37,6 +37,7 @@ import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -120,8 +121,13 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_DOCUMENTO_ID = 16;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
-    private static final int PANEL_ANALISIS_TAB_OVERHANG = 18;
+    private static final int PANEL_ANALISIS_TAB_OVERHANG = 46;
     private static final int PANEL_ANALISIS_TAB_TOP = 18;
+    private static final int PANEL_ANALISIS_TAB_HEIGHT = 94;
+    private static final String TAB_ANALISIS_DATOS = "datos";
+    private static final String TAB_ANALISIS_DOCUMENTOS = "documentos";
+    private static final String TAB_ANALISIS_RESULTADO = "resultado";
+    private static final String TAB_ANALISIS_PLANTILLAS = "plantillas";
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
@@ -181,6 +187,27 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JLabel lblFechaPublicacion = new JLabel("-");
     private final JLabel lblFuentePublicacion = new JLabel("Dato de solo lectura registrado desde Asignación.");
     private final JLabel lblExpedienteDigital = new JLabel("Pendiente para módulo Expediente digital.");
+    private final JLabel lblDatosResultadoInicial = new JLabel("-");
+    private final JLabel lblDatosTramiteWeb = new JLabel("-");
+    private final JLabel lblDatosNumeroDocumentoTitular = new JLabel("-");
+    private final JLabel lblDatosExpedienteSgd = new JLabel("-");
+    private final JLabel lblDatosFechaRecepcion = new JLabel("-");
+    private final JLabel lblDatosTipoActa = new JLabel("-");
+    private final JLabel lblDatosNumeroActa = new JLabel("-");
+    private final JLabel lblDatosTipoDocumentoTitular = new JLabel("-");
+    private final JLabel lblDatosTipoDocumentoSolicitante = new JLabel("-");
+    private final JLabel lblDatosNumeroDocumentoSolicitante = new JLabel("-");
+    private final JLabel lblDatosSolicitante = new JLabel("-");
+    private final JLabel lblDatosCorreo = new JLabel("-");
+    private final JLabel lblDatosTelefono = new JLabel("-");
+    private final JLabel lblDatosDepartamento = new JLabel("-");
+    private final JLabel lblDatosProvincia = new JLabel("-");
+    private final JLabel lblDatosDistrito = new JLabel("-");
+    private final JLabel lblDatosDireccion = new JLabel("-");
+    private final JLabel lblDatosDias = new JLabel("-");
+    private final JLabel lblDatosEquipo = new JLabel("-");
+    private final JLabel lblPlantillaSeleccionada = new JLabel("Seleccione un documento analizado para descargar su plantilla.");
+    private final JLabel lblPlantillaAyuda = new JLabel("Las plantillas reutilizan la configuración documental del expediente en análisis.");
 
     private final JComboBox<ResultadoItem> cmbResultado = new JComboBox<ResultadoItem>();
     private final JComboBox<SimpleItem> cmbIncorporado = new JComboBox<SimpleItem>();
@@ -200,7 +227,11 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JTextArea txtDescripcionDocumento = new JTextArea(2, 20);
     private final JTextArea txtObservacion = new JTextArea(3, 22);
     private final JTextArea txtComentarioMovimiento = new JTextArea(3, 22);
-    private final AppV2NotebookToggleTab tabPanelAnalisis = new AppV2NotebookToggleTab();
+    private final JButton btnDescargarPlantillaSeleccionada = new JButton("Descargar plantilla seleccionada");
+    private final AppV2StackedSideTab tabDatosAnalisis = crearTabAnalisis("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
+    private final AppV2StackedSideTab tabDocumentosAnalisis = crearTabAnalisis("Análisis", new Color(224, 243, 240), new Color(10, 118, 145));
+    private final AppV2StackedSideTab tabResultadoAnalisis = crearTabAnalisis("Resultado", new Color(249, 239, 224), new Color(198, 121, 31));
+    private final AppV2StackedSideTab tabPlantillasAnalisis = crearTabAnalisis("Plantillas", new Color(240, 233, 249), new Color(110, 78, 164));
 
     private final AnalisisTableModel tableModel = new AnalisisTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -270,6 +301,12 @@ public class JPanelAnalisisV2 extends JPanel {
     private final MetricCardV2 cardVencimiento = new MetricCardV2("Por vencer / vencidos", "0", "Días hábiles críticos", AppV2Theme.ERROR);
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelAnalisis;
+    private AppV2SideActionPanel panelDatosAnalisis;
+    private AppV2SideActionPanel panelResultadoAnalisis;
+    private AppV2SideActionPanel panelPlantillasAnalisis;
+    private CardLayout panelAnalisisCardsLayout;
+    private JPanel panelAnalisisCards;
+    private String tabAnalisisActiva = TAB_ANALISIS_DATOS;
     private boolean panelAnalisisCerradoPorUsuario;
     private Long idExpedienteExpansionActiva;
     private Long idExpedienteDocumentosAsociados;
@@ -324,8 +361,15 @@ public class JPanelAnalisisV2 extends JPanel {
         contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
         contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
 
+        panelDatosAnalisis = crearPanelDatosAnalisis();
         panelAnalisis = crearPanelAnalisis();
-        JPanel panelAnalisisConTab = crearPanelAnalisisConTab(panelAnalisis);
+        panelResultadoAnalisis = crearPanelResultadoAnalisis();
+        panelPlantillasAnalisis = crearPanelPlantillasAnalisis();
+        JPanel panelAnalisisConTab = crearPanelAnalisisConTab(
+                panelDatosAnalisis,
+                panelAnalisis,
+                panelResultadoAnalisis,
+                panelPlantillasAnalisis);
         splitOperativo = new AppV2OperationalSplitPanel(
                 contenidoPrincipal,
                 panelAnalisisConTab,
@@ -366,50 +410,126 @@ public class JPanelAnalisisV2 extends JPanel {
                 cerrarPanelAnalisis();
             }
         });
-        panel.setAccentColor(AppV2Theme.PRIMARY);
-        tabPanelAnalisis.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
-        tabPanelAnalisis.setExpanded(false);
-        tabPanelAnalisis.setToolTipText("Ampliar panel de análisis");
-        tabPanelAnalisis.addActionListener(e -> alternarExpansionPanelAnalisis());
+        panel.setAccentColor(new Color(10, 118, 145));
+        panel.addSection(crearDocumentosPanel());
+        return panel;
+    }
+
+    private AppV2SideActionPanel crearPanelDatosAnalisis() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de análisis", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAnalisis();
+            }
+        });
+        panel.setAccentColor(new Color(57, 125, 199));
+        panel.addSection(crearDatosSolicitudAnalisis());
+        panel.addSection(crearDatosActaAnalisis());
+        panel.addSection(crearDatosTitularAnalisis());
+        panel.addSection(crearDatosSolicitanteAnalisis());
+        panel.addSection(crearDatosNotificacionAnalisis());
         panel.addSection(crearResumenSeleccion());
         panelSolicitudesAsociadas = crearDocumentosAsociadosPanel();
         panelSolicitudesAsociadas.setVisible(false);
         panel.addSection(panelSolicitudesAsociadas);
-        panel.addSection(crearDocumentosPanel());
+        return panel;
+    }
+
+    private AppV2SideActionPanel crearPanelResultadoAnalisis() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de análisis", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAnalisis();
+            }
+        });
+        panel.setAccentColor(new Color(198, 121, 31));
         panel.addSection(crearFormularioAnalisis());
         panel.addSection(crearPublicacionLecturaPanel());
-        panel.addSection(crearExpedienteDigitalPanel());
         panel.addSection(crearObservacionPanel());
         panel.addSection(crearComentarioMovimientoPanel());
         panel.setFooter(crearAccionesPanelAnalisis());
         return panel;
     }
 
-    private JPanel crearPanelAnalisisConTab(final AppV2SideActionPanel panel) {
+    private AppV2SideActionPanel crearPanelPlantillasAnalisis() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de análisis", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAnalisis();
+            }
+        });
+        panel.setAccentColor(new Color(110, 78, 164));
+        panel.addSection(crearPanelPlantillas());
+        panel.addSection(crearExpedienteDigitalPanel());
+        return panel;
+    }
+
+    private JPanel crearPanelAnalisisConTab(
+            final AppV2SideActionPanel panelDatos,
+            final AppV2SideActionPanel panelDocumentos,
+            final AppV2SideActionPanel panelResultado,
+            final AppV2SideActionPanel panelPlantillas) {
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
                 int width = getWidth();
                 int height = getHeight();
                 int panelX = PANEL_ANALISIS_TAB_OVERHANG;
-                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
-                int tabY = Math.min(PANEL_ANALISIS_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
-                tabPanelAnalisis.setBounds(
-                        0,
-                        tabY,
-                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
-                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+                int panelWidth = Math.max(0, width - panelX);
+                int[] positions = calcularPosicionesLenguetasAnalisis(4, PANEL_ANALISIS_TAB_HEIGHT, 8, height, PANEL_ANALISIS_TAB_TOP);
+                tabDatosAnalisis.setBounds(0, positions[0], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
+                tabDocumentosAnalisis.setBounds(0, positions[1], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
+                tabResultadoAnalisis.setBounds(0, positions[2], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
+                tabPlantillasAnalisis.setBounds(0, positions[3], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
+                panelAnalisisCards.setBounds(panelX, 0, panelWidth, height);
             }
         };
         wrapper.setOpaque(false);
-        wrapper.add(panel);
-        wrapper.add(tabPanelAnalisis);
+        panelAnalisisCardsLayout = new CardLayout();
+        panelAnalisisCards = new JPanel(panelAnalisisCardsLayout);
+        panelAnalisisCards.setOpaque(false);
+        panelAnalisisCards.add(panelDatos, TAB_ANALISIS_DATOS);
+        panelAnalisisCards.add(panelDocumentos, TAB_ANALISIS_DOCUMENTOS);
+        panelAnalisisCards.add(panelResultado, TAB_ANALISIS_RESULTADO);
+        panelAnalisisCards.add(panelPlantillas, TAB_ANALISIS_PLANTILLAS);
+
+        tabDatosAnalisis.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAnalisis(TAB_ANALISIS_DATOS);
+            }
+        });
+        tabDocumentosAnalisis.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAnalisis(TAB_ANALISIS_DOCUMENTOS);
+            }
+        });
+        tabResultadoAnalisis.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAnalisis(TAB_ANALISIS_RESULTADO);
+            }
+        });
+        tabPlantillasAnalisis.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAnalisis(TAB_ANALISIS_PLANTILLAS);
+            }
+        });
+
+        wrapper.add(tabDatosAnalisis);
+        wrapper.add(tabDocumentosAnalisis);
+        wrapper.add(tabResultadoAnalisis);
+        wrapper.add(tabPlantillasAnalisis);
+        wrapper.add(panelAnalisisCards);
         wrapper.setMinimumSize(new Dimension(
                 PANEL_ANALISIS_ANCHO_MINIMO + PANEL_ANALISIS_TAB_OVERHANG,
                 0));
         wrapper.setPreferredSize(new Dimension(
                 PANEL_ANALISIS_ANCHO_NORMAL + PANEL_ANALISIS_TAB_OVERHANG,
                 0));
+        seleccionarTabAnalisis(TAB_ANALISIS_DATOS);
         return wrapper;
     }
 
@@ -420,6 +540,93 @@ public class JPanelAnalisisV2 extends JPanel {
         panel.add(btnEnviarVerificacion);
         panel.add(btnArchivarNoCorresponde);
         return panel;
+    }
+
+    private AppV2StackedSideTab crearTabAnalisis(String label, Color idleColor, Color accentColor) {
+        return new AppV2StackedSideTab(
+                label,
+                PANEL_ANALISIS_TAB_OVERHANG - 6,
+                PANEL_ANALISIS_TAB_HEIGHT,
+                idleColor,
+                accentColor,
+                accentColor.darker());
+    }
+
+    private static int[] calcularPosicionesLenguetasAnalisis(int count, int tabHeight, int gap, int containerHeight, int topMargin) {
+        int[] positions = new int[Math.max(0, count)];
+        int totalHeight = count * tabHeight + Math.max(0, count - 1) * gap;
+        int startY = topMargin;
+        if (startY + totalHeight > containerHeight - 12) {
+            startY = Math.max(0, containerHeight - totalHeight - 12);
+        }
+        for (int i = 0; i < count; i++) {
+            positions[i] = startY + i * (tabHeight + gap);
+        }
+        return positions;
+    }
+
+    private AppV2SideSectionPanel crearDatosSolicitudAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de solicitud");
+        section.addRow("Resultado inicial", lblDatosResultadoInicial);
+        section.addRow("Nro. trámite web", lblDatosTramiteWeb);
+        section.addRow("N° documento", lblDatosNumeroDocumentoTitular);
+        section.addRow("N° expediente SGD", lblDatosExpedienteSgd);
+        section.addRow("Fecha recepción", lblDatosFechaRecepcion);
+        section.addRow("Procedimiento registral", lblProcedimiento);
+        section.addRow("Días hábiles", lblDatosDias);
+        section.addRow("Equipo actual", lblDatosEquipo);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosActaAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del acta");
+        section.addRow("Tipo de acta", lblDatosTipoActa);
+        section.addRow("N° de acta", lblDatosNumeroActa);
+        section.addRow("Acta", lblActa);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosTitularAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del titular");
+        section.addRow("Titular", lblTitular);
+        section.addRow("Tipo documento", lblDatosTipoDocumentoTitular);
+        section.addRow("N° documento", lblDatosNumeroDocumentoTitular);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosSolicitanteAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del solicitante");
+        section.addRow("Solicitante", lblDatosSolicitante);
+        section.addRow("Tipo documento", lblDatosTipoDocumentoSolicitante);
+        section.addRow("N° documento", lblDatosNumeroDocumentoSolicitante);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosNotificacionAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Notificación y ubicación");
+        section.addRow("Correo", lblDatosCorreo);
+        section.addRow("Teléfono", lblDatosTelefono);
+        section.addRow("Departamento", lblDatosDepartamento);
+        section.addRow("Provincia", lblDatosProvincia);
+        section.addRow("Distrito", lblDatosDistrito);
+        section.addRow("Dirección", lblDatosDireccion);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearPanelPlantillas() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Plantillas Word");
+        lblPlantillaSeleccionada.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        lblPlantillaSeleccionada.setForeground(AppV2Theme.TEXT_PRIMARY);
+        lblPlantillaAyuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblPlantillaAyuda.setForeground(AppV2Theme.TEXT_SECONDARY);
+        btnDescargarPlantillaSeleccionada.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        JPanel contenido = new JPanel(new BorderLayout(0, 8));
+        contenido.setOpaque(false);
+        contenido.add(lblPlantillaSeleccionada, BorderLayout.NORTH);
+        contenido.add(lblPlantillaAyuda, BorderLayout.CENTER);
+        contenido.add(btnDescargarPlantillaSeleccionada, BorderLayout.SOUTH);
+        section.addContent(contenido);
+        return section;
     }
 
     private JPanel crearResumenSeleccion() {
@@ -653,11 +860,53 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRegistrarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEnviarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnArchivarNoCorresponde.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnDescargarPlantillaSeleccionada.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         chkReconstitucion.setOpaque(false);
         chkLegitimidad.setOpaque(false);
         chkMediosProbatorios.setOpaque(false);
         chkRegistrarObservacion.setOpaque(false);
         chkDocumentoRequiereRespuesta.setOpaque(false);
+        configurarLabelsDatosAnalisis();
+    }
+
+    private void configurarLabelsDatosAnalisis() {
+        JLabel[] labels = new JLabel[]{
+            lblExpediente,
+            lblTitular,
+            lblActa,
+            lblProcedimiento,
+            lblResponsable,
+            lblEtapaEstado,
+            lblAlertas,
+            lblDatosResultadoInicial,
+            lblDatosTramiteWeb,
+            lblDatosNumeroDocumentoTitular,
+            lblDatosExpedienteSgd,
+            lblDatosFechaRecepcion,
+            lblDatosTipoActa,
+            lblDatosNumeroActa,
+            lblDatosTipoDocumentoTitular,
+            lblDatosTipoDocumentoSolicitante,
+            lblDatosNumeroDocumentoSolicitante,
+            lblDatosSolicitante,
+            lblDatosCorreo,
+            lblDatosTelefono,
+            lblDatosDepartamento,
+            lblDatosProvincia,
+            lblDatosDistrito,
+            lblDatosDireccion,
+            lblDatosDias,
+            lblDatosEquipo,
+            lblRequierePublicacion,
+            lblFechaPublicacion,
+            lblFuentePublicacion,
+            lblPlantillaSeleccionada,
+            lblPlantillaAyuda
+        };
+        for (JLabel label : labels) {
+            label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            label.setForeground(AppV2Theme.TEXT_PRIMARY);
+        }
     }
 
     private void configurarTabla() {
@@ -788,9 +1037,15 @@ public class JPanelAnalisisV2 extends JPanel {
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
         btnAgregarDocumento.addActionListener(e -> agregarDocumento());
         btnQuitarDocumento.addActionListener(e -> quitarDocumento());
+        btnDescargarPlantillaSeleccionada.addActionListener(e -> descargarPlantillaDocumentoSeleccionado());
         cmbIncorporado.addActionListener(e -> actualizarChecksIncorporado());
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         chkRegistrarObservacion.addActionListener(e -> actualizarObservacionHabilitada());
+        documentosTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                actualizarPlantillaSeleccionada();
+            }
+        });
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 panelAnalisisCerradoPorUsuario = false;
@@ -1320,6 +1575,7 @@ public class JPanelAnalisisV2 extends JPanel {
             lblResponsable.setText("-");
             lblEtapaEstado.setText("-");
             lblAlertas.setText("Sin alertas.");
+            limpiarDatosExpedienteAnalisis();
             limpiarDocumentosAsociadosPanel("Sin documentos asociados.");
             limpiarPublicacionLectura();
             lblExpedienteDigital.setText("Pendiente para módulo Expediente digital.");
@@ -1340,6 +1596,7 @@ public class JPanelAnalisisV2 extends JPanel {
             lblResponsable.setText(valorUi(relacionado.getAbogadoAsignado()));
             lblEtapaEstado.setText("Expediente principal: " + fila.numeroExpedientePrincipal());
             lblAlertas.setText(textoRelacionAsociada(relacionado) + " · Disponible para análisis");
+            cargarDatosExpedienteAnalisis(null);
             txtComentarioMovimiento.setText("Este documento está asociado al expediente principal y se muestra como contexto del caso.");
             limpiarPublicacionLectura();
             lblExpedienteDigital.setText("El documento asociado se muestra como contexto del expediente principal.");
@@ -1353,11 +1610,67 @@ public class JPanelAnalisisV2 extends JPanel {
         lblResponsable.setText(item.getResponsable().isEmpty() ? "-" : item.getResponsable());
         lblEtapaEstado.setText(DisplayNameMapperV2.etapa(item.getEtapaCodigo()) + " / " + DisplayNameMapperV2.estado(item.getEstadoCodigo()));
         lblAlertas.setText(alertas(item));
+        cargarDatosExpedienteAnalisis(item);
         txtComentarioMovimiento.setText("");
         lblExpedienteDigital.setText("Registro de enlace/carpeta se gestiona desde el módulo Expediente digital.");
         cargarDocumentosAsociadosPanel(item);
         cargarAnalisisRegistrado(item);
         preguntarRecepcionSiCorresponde(item);
+    }
+
+    private void limpiarDatosExpedienteAnalisis() {
+        JLabel[] labels = new JLabel[]{
+            lblDatosResultadoInicial,
+            lblDatosTramiteWeb,
+            lblDatosNumeroDocumentoTitular,
+            lblDatosExpedienteSgd,
+            lblDatosFechaRecepcion,
+            lblDatosTipoActa,
+            lblDatosNumeroActa,
+            lblDatosTipoDocumentoTitular,
+            lblDatosTipoDocumentoSolicitante,
+            lblDatosNumeroDocumentoSolicitante,
+            lblDatosSolicitante,
+            lblDatosCorreo,
+            lblDatosTelefono,
+            lblDatosDepartamento,
+            lblDatosProvincia,
+            lblDatosDistrito,
+            lblDatosDireccion,
+            lblDatosDias,
+            lblDatosEquipo
+        };
+        for (JLabel label : labels) {
+            label.setText("-");
+            label.setToolTipText(null);
+        }
+    }
+
+    private void cargarDatosExpedienteAnalisis(AnalisisExpedienteDTO item) {
+        if (item == null) {
+            limpiarDatosExpedienteAnalisis();
+            return;
+        }
+        lblDatosResultadoInicial.setText("Corresponde a SDRERC");
+        lblDatosTramiteWeb.setText(valorUi(item.getNumeroTramiteDocumentario()));
+        lblDatosNumeroDocumentoTitular.setText(valorUi(item.getNumeroDocumentoTitular()));
+        lblDatosExpedienteSgd.setText(valorUi(item.getNumeroExpedienteSgd()));
+        lblDatosFechaRecepcion.setText(formatDate(item.getFechaRecepcion()));
+        lblDatosTipoActa.setText(valorUi(item.getTipoActa()));
+        lblDatosNumeroActa.setText(valorUi(item.getNumeroActa()));
+        lblDatosTipoDocumentoTitular.setText(valorUi(item.getTipoDocumento()));
+        lblDatosTipoDocumentoSolicitante.setText(valorUi(item.getTipoDocumentoSolicitante()));
+        lblDatosNumeroDocumentoSolicitante.setText(valorUi(item.getNumeroDocumentoSolicitante()));
+        lblDatosSolicitante.setText(valorUi(item.getSolicitante()));
+        lblDatosCorreo.setText(valorUi(item.getCorreoSolicitante()));
+        lblDatosTelefono.setText(valorUi(item.getTelefonoSolicitante()));
+        lblDatosDepartamento.setText(valorUi(item.getDepartamentoSolicitante()));
+        lblDatosProvincia.setText(valorUi(item.getProvinciaSolicitante()));
+        lblDatosDistrito.setText(valorUi(item.getDistritoSolicitante()));
+        lblDatosDireccion.setText(valorUi(item.getDireccionSolicitante()));
+        lblDatosDireccion.setToolTipText(valorUi(item.getDireccionSolicitante()));
+        lblDatosDias.setText(item.getDiasEnEtapa() == null ? "-" : item.getDiasEnEtapa() + " día(s)");
+        lblDatosEquipo.setText(valorUi(item.getEquipo()));
     }
 
     private boolean puedeGuardarDocumentos(AnalisisExpedienteDTO item) {
@@ -1552,8 +1865,7 @@ public class JPanelAnalisisV2 extends JPanel {
         if (splitOperativo != null) {
             splitOperativo.setSideVisible(false);
         }
-        tabPanelAnalisis.setExpanded(false);
-        actualizarTooltipTabPanelAnalisis();
+        actualizarLenguetasAnalisis();
     }
 
     private void actualizarVisibilidadPanelAnalisis() {
@@ -1561,24 +1873,50 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         splitOperativo.setSideVisible(obtenerFilaSeleccionada() != null && !panelAnalisisCerradoPorUsuario);
-        tabPanelAnalisis.setExpanded(splitOperativo.isSideExpanded());
-        actualizarTooltipTabPanelAnalisis();
+        actualizarLenguetasAnalisis();
     }
 
     private void alternarExpansionPanelAnalisis() {
         if (splitOperativo == null || !splitOperativo.isSideVisible()) {
             return;
         }
-        boolean expandido = splitOperativo.toggleSideExpanded();
-        tabPanelAnalisis.setExpanded(expandido);
-        actualizarTooltipTabPanelAnalisis();
+        splitOperativo.toggleSideExpanded();
+        actualizarLenguetasAnalisis();
         revalidate();
         repaint();
     }
 
-    private void actualizarTooltipTabPanelAnalisis() {
+    private void seleccionarTabAnalisis(String tab) {
+        if (tab == null || panelAnalisisCardsLayout == null || panelAnalisisCards == null) {
+            return;
+        }
+        if (!TAB_ANALISIS_DATOS.equals(tab)
+                && !TAB_ANALISIS_DOCUMENTOS.equals(tab)
+                && !TAB_ANALISIS_RESULTADO.equals(tab)
+                && !TAB_ANALISIS_PLANTILLAS.equals(tab)) {
+            return;
+        }
+        boolean mismaTab = tab.equals(tabAnalisisActiva);
+        tabAnalisisActiva = tab;
+        panelAnalisisCardsLayout.show(panelAnalisisCards, tab);
+        if (splitOperativo != null && splitOperativo.isSideVisible()) {
+            splitOperativo.setSideExpanded(!mismaTab || !splitOperativo.isSideExpanded());
+        }
+        actualizarLenguetasAnalisis();
+        panelAnalisisCards.revalidate();
+        panelAnalisisCards.repaint();
+    }
+
+    private void actualizarLenguetasAnalisis() {
         boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
-        tabPanelAnalisis.setToolTipText(expandido ? "Restaurar panel de análisis" : "Ampliar panel de análisis");
+        tabDatosAnalisis.setState(TAB_ANALISIS_DATOS.equals(tabAnalisisActiva), TAB_ANALISIS_DATOS.equals(tabAnalisisActiva) && expandido);
+        tabDocumentosAnalisis.setState(TAB_ANALISIS_DOCUMENTOS.equals(tabAnalisisActiva), TAB_ANALISIS_DOCUMENTOS.equals(tabAnalisisActiva) && expandido);
+        tabResultadoAnalisis.setState(TAB_ANALISIS_RESULTADO.equals(tabAnalisisActiva), TAB_ANALISIS_RESULTADO.equals(tabAnalisisActiva) && expandido);
+        tabPlantillasAnalisis.setState(TAB_ANALISIS_PLANTILLAS.equals(tabAnalisisActiva), TAB_ANALISIS_PLANTILLAS.equals(tabAnalisisActiva) && expandido);
+        tabDatosAnalisis.setToolTipText("Datos del expediente");
+        tabDocumentosAnalisis.setToolTipText("Documentos analizados");
+        tabResultadoAnalisis.setToolTipText("Resultado del análisis");
+        tabPlantillasAnalisis.setToolTipText("Plantillas documentales");
     }
 
     private String alertas(AnalisisExpedienteDTO item) {
@@ -2002,8 +2340,13 @@ public class JPanelAnalisisV2 extends JPanel {
             estado.codigo,
             null
         });
+        int lastRow = documentoModel.getRowCount() - 1;
+        if (lastRow >= 0) {
+            documentosTable.getSelectionModel().setSelectionInterval(lastRow, lastRow);
+        }
         txtDescripcionDocumento.setText("");
         resetearDocumentoFormulario();
+        actualizarPlantillaSeleccionada();
     }
 
     private void resetearDocumentoFormulario() {
@@ -2024,6 +2367,7 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         documentoModel.removeRow(documentosTable.convertRowIndexToModel(row));
+        actualizarPlantillaSeleccionada();
     }
 
     private void guardarDocumentoFila(int modelRow) {
@@ -2127,6 +2471,29 @@ public class JPanelAnalisisV2 extends JPanel {
             }
         };
         worker.execute();
+    }
+
+    private void descargarPlantillaDocumentoSeleccionado() {
+        int row = documentosTable.getSelectedRow();
+        if (row < 0) {
+            mostrarInfo("Seleccione un documento analizado para descargar su plantilla.");
+            return;
+        }
+        descargarPlantillaDocumento(documentosTable.convertRowIndexToModel(row));
+    }
+
+    private void actualizarPlantillaSeleccionada() {
+        int row = documentosTable.getSelectedRow();
+        if (row < 0) {
+            lblPlantillaSeleccionada.setText("Seleccione un documento analizado para descargar su plantilla.");
+            return;
+        }
+        int modelRow = documentosTable.convertRowIndexToModel(row);
+        String tipo = valueOrEmpty(documentoModel.getValueAt(modelRow, COL_DOCUMENTO_TIPO));
+        String descripcion = valueOrEmpty(documentoModel.getValueAt(modelRow, COL_DOCUMENTO_DESCRIPCION));
+        lblPlantillaSeleccionada.setText(
+                tipo.isEmpty() ? "Documento analizado seleccionado"
+                        : "Plantilla: " + tipo + (descripcion.isEmpty() ? "" : " · " + descripcion));
     }
 
     private boolean tieneExtensionWord(Path path) {
@@ -2310,6 +2677,7 @@ public class JPanelAnalisisV2 extends JPanel {
         chkRegistrarObservacion.setSelected(false);
         chkDocumentoRequiereRespuesta.setSelected(false);
         documentoModel.setRowCount(0);
+        actualizarPlantillaSeleccionada();
         limpiarPublicacionLectura();
         actualizarResultadoSeleccionado();
         actualizarObservacionHabilitada();

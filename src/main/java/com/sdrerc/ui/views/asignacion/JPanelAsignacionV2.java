@@ -22,6 +22,7 @@ import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
+import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
@@ -45,7 +46,6 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -120,6 +120,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int PANEL_ASIGNACION_TAB_TOP = 18;
     private static final String TAB_DATOS_EXPEDIENTE = "datosExpediente";
     private static final String TAB_PANEL_ASIGNACION = "panelAsignacion";
+    private static final String TAB_PANEL_ASOCIAR = "panelAsociar";
+    private static final String TAB_PANEL_CARTAS = "panelCartas";
+    private static final String TAB_PANEL_CARGA = "panelCargaLaboral";
+    private static final int ASIGNACION_TAB_HEIGHT = 92;
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
@@ -275,10 +279,23 @@ public class JPanelAsignacionV2 extends JPanel {
     };
     private final JTable cartasRespuestaTable = new AppV2Table(cartasRespuestaModel);
     private JScrollPane cartasRespuestaScroll;
+    private final DefaultTableModel cargaLaboralModel = new DefaultTableModel(
+            new Object[]{"Abogado", "Equipo", "Activos", "Por vencer", "Vencidos", "En análisis"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable cargaLaboralTable = new AppV2Table(cargaLaboralModel);
+    private final JLabel lblCargaLaboralEquipo = new JLabel("Seleccione un equipo para consultar la carga laboral.");
+    private final JLabel lblCargaLaboralAyuda = new JLabel("Indicadores informativos para apoyar la asignación; no bloquean la decisión.");
     private final JTextField txtHojaEnvioAsignacion = new JTextField();
     private final JTextArea txtComentario = new JTextArea(3, 18);
-    private final AsignacionSideTab tabDatosExpediente = new AsignacionSideTab("Datos");
-    private final AsignacionSideTab tabPanelAsignacionOperativa = new AsignacionSideTab("Asignación");
+    private final AppV2StackedSideTab tabDatosExpediente = crearTabAsignacion("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
+    private final AppV2StackedSideTab tabPanelAsignacionOperativa = crearTabAsignacion("Asignación", new Color(224, 243, 240), new Color(10, 118, 145));
+    private final AppV2StackedSideTab tabPanelAsociar = crearTabAsignacion("Asociar", new Color(249, 239, 224), new Color(198, 121, 31));
+    private final AppV2StackedSideTab tabPanelCartas = crearTabAsignacion("Cartas", new Color(240, 233, 249), new Color(110, 78, 164));
+    private final AppV2StackedSideTab tabPanelCargaLaboral = crearTabAsignacion("Carga", new Color(228, 244, 233), new Color(46, 138, 88));
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
     private final AppV2TablePanel tablePanel = new AppV2TablePanel(
@@ -302,10 +319,12 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
     private AppV2SideActionPanel panelAsignacion;
     private AppV2SideActionPanel panelDatosExpediente;
+    private AppV2SideActionPanel panelAsociar;
+    private AppV2SideActionPanel panelCartasRespuesta;
+    private AppV2SideActionPanel panelCargaLaboral;
     private CardLayout panelAsignacionCardsLayout;
     private JPanel panelAsignacionCards;
     private String tabAsignacionActiva = TAB_DATOS_EXPEDIENTE;
-    private AppV2SideSectionPanel sectionDatosExpediente;
     private AppV2SideSectionPanel sectionDatosSolicitud;
     private AppV2SideSectionPanel sectionDatosActa;
     private AppV2SideSectionPanel sectionDatosTitular;
@@ -392,7 +411,15 @@ public class JPanelAsignacionV2 extends JPanel {
 
         panelDatosExpediente = crearPanelDatosExpediente();
         panelAsignacion = crearPanelAsignacionOperativa();
-        JPanel panelAsignacionConTab = crearPanelAsignacionConTab(panelDatosExpediente, panelAsignacion);
+        panelAsociar = crearPanelAsociar();
+        panelCartasRespuesta = crearPanelCartasRespuesta();
+        panelCargaLaboral = crearPanelCargaLaboral();
+        JPanel panelAsignacionConTab = crearPanelAsignacionConTab(
+                panelDatosExpediente,
+                panelAsignacion,
+                panelAsociar,
+                panelCartasRespuesta,
+                panelCargaLaboral);
         splitOperativo = new AppV2OperationalSplitPanel(
                 contenidoPrincipal,
                 panelAsignacionConTab,
@@ -452,18 +479,17 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideActionPanel crearPanelDatosExpediente() {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Datos del expediente");
+        panel.setAccentColor(new Color(57, 125, 199));
         sectionDatosSolicitud = crearDatosSolicitudAsignacion();
         sectionDatosActa = crearDatosActaAsignacion();
         sectionDatosTitular = crearDatosTitularAsignacion();
         sectionDatosSolicitante = crearDatosSolicitanteAsignacion();
         sectionDatosNotificacionUbicacion = crearDatosNotificacionUbicacionAsignacion();
-        sectionResumenAsignacion = crearResumenAsignacion();
         panel.addSection(sectionDatosSolicitud);
         panel.addSection(sectionDatosActa);
         panel.addSection(sectionDatosTitular);
         panel.addSection(sectionDatosSolicitante);
         panel.addSection(sectionDatosNotificacionUbicacion);
-        panel.addSection(sectionResumenAsignacion);
         return panel;
     }
 
@@ -474,32 +500,134 @@ public class JPanelAsignacionV2 extends JPanel {
                 cerrarPanelAsignacion();
             }
         });
+        panel.setAccentColor(new Color(10, 118, 145));
         sectionAsignacionMultiple = crearAsignacionMultiple();
-        sectionCartasRespuesta = crearCartasRespuesta();
-        sectionAccionesRelacionados = crearAccionesRelacionados();
-        sectionDecisionNumero = crearDecisionNumero();
         sectionFlujoAsignacion = crearFlujoAsignacion();
         sectionDestinoAsignacion = crearDestinoAsignacion();
         sectionHojaEnvioAsignacion = crearHojaEnvioAsignacion();
         sectionComentarioAsignacion = crearComentarioAsignacion();
         panel.addSection(sectionAsignacionMultiple);
-        panel.addSection(sectionCartasRespuesta);
-        panel.addSection(sectionAccionesRelacionados);
-        panel.addSection(sectionDecisionNumero);
         panel.addSection(sectionFlujoAsignacion);
         panel.addSection(sectionDestinoAsignacion);
         panel.addSection(sectionHojaEnvioAsignacion);
         panel.addSection(sectionComentarioAsignacion);
         sectionAsignacionMultiple.setVisible(false);
-        sectionCartasRespuesta.setVisible(false);
-        sectionDecisionNumero.setVisible(false);
         panel.setFooter(crearAccionesAsignacion());
         return panel;
     }
 
+    private AppV2SideActionPanel crearPanelAsociar() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de asociación", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAsignacion();
+            }
+        });
+        panel.setAccentColor(new Color(198, 121, 31));
+        sectionResumenAsignacion = crearResumenAsignacion();
+        sectionAccionesRelacionados = crearAccionesRelacionados();
+        sectionDecisionNumero = crearDecisionNumero();
+        panel.addSection(sectionResumenAsignacion);
+        panel.addSection(sectionAccionesRelacionados);
+        panel.addSection(sectionDecisionNumero);
+        sectionDecisionNumero.setVisible(false);
+        return panel;
+    }
+
+    private AppV2SideActionPanel crearPanelCartasRespuesta() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Cartas de respuesta", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAsignacion();
+            }
+        });
+        panel.setAccentColor(new Color(110, 78, 164));
+        sectionCartasRespuesta = crearCartasRespuesta();
+        panel.addSection(sectionCartasRespuesta);
+        sectionCartasRespuesta.setVisible(false);
+        return panel;
+    }
+
+    private AppV2SideActionPanel crearPanelCargaLaboral() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Carga laboral de abogados", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAsignacion();
+            }
+        });
+        panel.setAccentColor(new Color(46, 138, 88));
+        panel.addSection(crearSeccionCargaLaboral());
+        return panel;
+    }
+
+    private AppV2SideSectionPanel crearSeccionCargaLaboral() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Disponibilidad del equipo");
+        lblCargaLaboralEquipo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        lblCargaLaboralEquipo.setForeground(AppV2Theme.TEXT_PRIMARY);
+        lblCargaLaboralAyuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblCargaLaboralAyuda.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        cargaLaboralTable.setRowHeight(30);
+        cargaLaboralTable.setAutoCreateRowSorter(false);
+        cargaLaboralTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        cargaLaboralTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        cargaLaboralTable.getTableHeader().setReorderingAllowed(false);
+        cargaLaboralTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        cargaLaboralTable.setDefaultRenderer(Object.class, new CargaLaboralRenderer());
+        cargaLaboralTable.setGridColor(AppV2Theme.BORDER);
+        cargaLaboralTable.setShowVerticalLines(false);
+        cargaLaboralTable.setIntercellSpacing(new Dimension(0, 1));
+        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 210, 150, 78, 86, 78, 86);
+
+        JScrollPane scroll = new JScrollPane(cargaLaboralTable);
+        scroll.setPreferredSize(new Dimension(340, 230));
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        AppV2ColumnFilterSupport.install(
+                "Asignacion.CargaLaboral",
+                cargaLaboralTable,
+                scroll,
+                scroll,
+                null);
+
+        JPanel contenido = new JPanel(new BorderLayout(0, 8));
+        contenido.setOpaque(false);
+        contenido.add(lblCargaLaboralEquipo, BorderLayout.NORTH);
+        contenido.add(scroll, BorderLayout.CENTER);
+        contenido.add(lblCargaLaboralAyuda, BorderLayout.SOUTH);
+        section.addContent(contenido);
+        return section;
+    }
+
+    private static int[] calcularPosicionesLenguetas(int count, int tabHeight, int gap, int containerHeight, int topMargin) {
+        int[] positions = new int[Math.max(0, count)];
+        int totalHeight = count * tabHeight + Math.max(0, count - 1) * gap;
+        int startY = topMargin;
+        if (startY + totalHeight > containerHeight - 12) {
+            startY = Math.max(0, containerHeight - totalHeight - 12);
+        }
+        for (int i = 0; i < count; i++) {
+            positions[i] = startY + i * (tabHeight + gap);
+        }
+        return positions;
+    }
+
+    private AppV2StackedSideTab crearTabAsignacion(String label, Color idleColor, Color accentColor) {
+        return new AppV2StackedSideTab(
+                label,
+                PANEL_ASIGNACION_TAB_OVERHANG - 6,
+                ASIGNACION_TAB_HEIGHT,
+                idleColor,
+                accentColor,
+                accentColor.darker());
+    }
+
     private JPanel crearPanelAsignacionConTab(
             final AppV2SideActionPanel panelDatos,
-            final AppV2SideActionPanel panelOperativo) {
+            final AppV2SideActionPanel panelOperativo,
+            final AppV2SideActionPanel panelAsociarActual,
+            final AppV2SideActionPanel panelCartasActual,
+            final AppV2SideActionPanel panelCargaActual) {
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
@@ -507,19 +635,14 @@ public class JPanelAsignacionV2 extends JPanel {
                 int height = getHeight();
                 int railWidth = PANEL_ASIGNACION_TAB_OVERHANG;
                 int availableWidth = Math.max(0, width - railWidth);
-                int tabHeight = AsignacionSideTab.PREFERRED_HEIGHT;
-                int gap = 10;
-                int firstY = Math.min(PANEL_ASIGNACION_TAB_TOP, Math.max(0, height - (tabHeight * 2 + gap)));
-                tabDatosExpediente.setBounds(
-                        0,
-                        firstY,
-                        AsignacionSideTab.PREFERRED_WIDTH,
-                        tabHeight);
-                tabPanelAsignacionOperativa.setBounds(
-                        0,
-                        firstY + tabHeight + gap,
-                        AsignacionSideTab.PREFERRED_WIDTH,
-                        tabHeight);
+                int tabHeight = ASIGNACION_TAB_HEIGHT;
+                int gap = 8;
+                int[] positions = calcularPosicionesLenguetas(5, tabHeight, gap, height, PANEL_ASIGNACION_TAB_TOP);
+                tabDatosExpediente.setBounds(0, positions[0], PANEL_ASIGNACION_TAB_OVERHANG - 6, tabHeight);
+                tabPanelAsignacionOperativa.setBounds(0, positions[1], PANEL_ASIGNACION_TAB_OVERHANG - 6, tabHeight);
+                tabPanelAsociar.setBounds(0, positions[2], PANEL_ASIGNACION_TAB_OVERHANG - 6, tabHeight);
+                tabPanelCartas.setBounds(0, positions[3], PANEL_ASIGNACION_TAB_OVERHANG - 6, tabHeight);
+                tabPanelCargaLaboral.setBounds(0, positions[4], PANEL_ASIGNACION_TAB_OVERHANG - 6, tabHeight);
                 panelAsignacionCards.setBounds(railWidth, 0, availableWidth, Math.max(0, height));
             }
         };
@@ -529,8 +652,14 @@ public class JPanelAsignacionV2 extends JPanel {
         panelAsignacionCards.setOpaque(false);
         panelAsignacionCards.add(panelDatos, TAB_DATOS_EXPEDIENTE);
         panelAsignacionCards.add(panelOperativo, TAB_PANEL_ASIGNACION);
+        panelAsignacionCards.add(panelAsociarActual, TAB_PANEL_ASOCIAR);
+        panelAsignacionCards.add(panelCartasActual, TAB_PANEL_CARTAS);
+        panelAsignacionCards.add(panelCargaActual, TAB_PANEL_CARGA);
         tabDatosExpediente.setToolTipText("Ver datos del expediente");
         tabPanelAsignacionOperativa.setToolTipText("Ver panel de asignación");
+        tabPanelAsociar.setToolTipText("Ver panel para asociar expedientes");
+        tabPanelCartas.setToolTipText("Ver cartas de respuesta");
+        tabPanelCargaLaboral.setToolTipText("Ver carga laboral del equipo");
         tabDatosExpediente.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -543,8 +672,29 @@ public class JPanelAsignacionV2 extends JPanel {
                 seleccionarTabAsignacion(TAB_PANEL_ASIGNACION);
             }
         });
+        tabPanelAsociar.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAsignacion(TAB_PANEL_ASOCIAR);
+            }
+        });
+        tabPanelCartas.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAsignacion(TAB_PANEL_CARTAS);
+            }
+        });
+        tabPanelCargaLaboral.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAsignacion(TAB_PANEL_CARGA);
+            }
+        });
         wrapper.add(tabDatosExpediente);
         wrapper.add(tabPanelAsignacionOperativa);
+        wrapper.add(tabPanelAsociar);
+        wrapper.add(tabPanelCartas);
+        wrapper.add(tabPanelCargaLaboral);
         wrapper.add(panelAsignacionCards);
         wrapper.setMinimumSize(new Dimension(
                 PANEL_ASIGNACION_ANCHO_MINIMO + PANEL_ASIGNACION_TAB_OVERHANG,
@@ -992,7 +1142,7 @@ public class JPanelAsignacionV2 extends JPanel {
         btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpedienteSeleccionado());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
         btnAsignarSeleccionados.addActionListener(e -> asignarMarcados());
-        btnVerCargaLaboral.addActionListener(e -> mostrarCargaLaboralAbogados());
+        btnVerCargaLaboral.addActionListener(e -> abrirTabCargaLaboral());
         cmbEquipo.addActionListener(e -> {
             if (!cargandoCombos) {
                 idEquipoPendienteSeleccion = null;
@@ -2160,12 +2310,23 @@ public class JPanelAsignacionV2 extends JPanel {
         lblSupervisor.setText(abogado == null || abogado.getSupervisorNombre().isEmpty() ? "-" : abogado.getSupervisorNombre());
     }
 
-    private void mostrarCargaLaboralAbogados() {
+    private void abrirTabCargaLaboral() {
+        if (contarSeleccionOperativa() == 0) {
+            mostrarInfo("Seleccione un expediente para revisar la carga laboral del equipo.");
+            return;
+        }
+        abrirPanelAsignacion();
+        seleccionarTabAsignacion(TAB_PANEL_CARGA);
+    }
+
+    private void cargarCargaLaboralEnPanel() {
         EquipoAsignacionDTO equipo = obtenerEquipoSeleccionado();
         if (equipo == null) {
+            limpiarCargaLaboral();
             mostrarInfo("Seleccione un equipo para consultar la carga laboral.");
             return;
         }
+        lblCargaLaboralEquipo.setText("Carga laboral - " + equipo.getNombre());
         setTrabajando(true, "Consultando carga laboral del equipo...");
         SwingWorker<List<CargaLaboralAbogadoDTO>, Void> worker = new SwingWorker<List<CargaLaboralAbogadoDTO>, Void>() {
             @Override
@@ -2176,8 +2337,9 @@ public class JPanelAsignacionV2 extends JPanel {
             @Override
             protected void done() {
                 try {
-                    mostrarDialogoCargaLaboral(equipo, get());
+                    cargarCargaLaboralModel(get());
                 } catch (Exception ex) {
+                    limpiarCargaLaboral();
                     mostrarError("No se pudo consultar la carga laboral.", ex);
                 } finally {
                     setTrabajando(false, null);
@@ -2187,17 +2349,11 @@ public class JPanelAsignacionV2 extends JPanel {
         worker.execute();
     }
 
-    private void mostrarDialogoCargaLaboral(EquipoAsignacionDTO equipo, List<CargaLaboralAbogadoDTO> cargas) {
-        DefaultTableModel model = new DefaultTableModel(
-                new Object[]{"Abogado", "Equipo", "Activos", "Por vencer", "Vencidos", "En análisis"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+    private void cargarCargaLaboralModel(List<CargaLaboralAbogadoDTO> cargas) {
+        cargaLaboralModel.setRowCount(0);
         if (cargas != null) {
             for (CargaLaboralAbogadoDTO carga : cargas) {
-                model.addRow(new Object[]{
+                cargaLaboralModel.addRow(new Object[]{
                     valorUi(carga.getAbogado()),
                     valorUi(carga.getEquipo()),
                     carga.getExpedientesActivos(),
@@ -2207,29 +2363,21 @@ public class JPanelAsignacionV2 extends JPanel {
                 });
             }
         }
-        JTable cargaTable = new AppV2Table(model);
-        cargaTable.setRowHeight(30);
-        cargaTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        cargaTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        cargaTable.setDefaultRenderer(Object.class, new CargaLaboralRenderer());
-        AppV2TableColumnSizer.applyWidths(cargaTable, 230, 170, 80, 90, 80, 90);
-        JScrollPane scroll = new JScrollPane(cargaTable);
-        scroll.setPreferredSize(new Dimension(760, 280));
-        JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setBackground(AppV2Theme.SURFACE);
-        JLabel titulo = new JLabel("Carga laboral - " + equipo.getNombre());
-        titulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
-        JLabel ayuda = new JLabel("Indicadores informativos para apoyar la asignación; no bloquean la decisión.");
-        ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
-        JPanel header = new JPanel(new BorderLayout(4, 4));
-        header.setOpaque(false);
-        header.add(titulo, BorderLayout.NORTH);
-        header.add(ayuda, BorderLayout.SOUTH);
-        panel.add(header, BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
-        JOptionPane.showMessageDialog(this, panel, "Carga laboral", JOptionPane.PLAIN_MESSAGE);
+        if (cargaLaboralModel.getRowCount() == 0) {
+            lblCargaLaboralAyuda.setText("No hay abogados activos asociados al equipo seleccionado.");
+        } else {
+            lblCargaLaboralAyuda.setText("Indicadores informativos para apoyar la asignación; no bloquean la decisión.");
+        }
+        if (panelCargaLaboral != null) {
+            panelCargaLaboral.revalidate();
+            panelCargaLaboral.repaint();
+        }
+    }
+
+    private void limpiarCargaLaboral() {
+        cargaLaboralModel.setRowCount(0);
+        lblCargaLaboralEquipo.setText("Seleccione un equipo para consultar la carga laboral.");
+        lblCargaLaboralAyuda.setText("Indicadores informativos para apoyar la asignación; no bloquean la decisión.");
     }
 
     private void actualizarPanelSeleccion() {
@@ -2377,6 +2525,15 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         if (panelDatosExpediente != null) {
             panelDatosExpediente.setTitle(titulo);
+        }
+        if (panelAsociar != null) {
+            panelAsociar.setTitle(titulo);
+        }
+        if (panelCartasRespuesta != null) {
+            panelCartasRespuesta.setTitle(titulo);
+        }
+        if (panelCargaLaboral != null) {
+            panelCargaLaboral.setTitle(titulo);
         }
     }
 
@@ -2616,9 +2773,6 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void actualizarModoPanelAsignacion(boolean multiple) {
-        if (panelAsignacion != null) {
-            panelAsignacion.setTitle(multiple ? "Panel de asignación múltiple" : "Panel de asignación");
-        }
         if (sectionAsignacionMultiple != null) {
             sectionAsignacionMultiple.setVisible(multiple);
         }
@@ -3059,7 +3213,11 @@ public class JPanelAsignacionV2 extends JPanel {
         if (tab == null || panelAsignacionCardsLayout == null || panelAsignacionCards == null) {
             return;
         }
-        if (!TAB_DATOS_EXPEDIENTE.equals(tab) && !TAB_PANEL_ASIGNACION.equals(tab)) {
+        if (!TAB_DATOS_EXPEDIENTE.equals(tab)
+                && !TAB_PANEL_ASIGNACION.equals(tab)
+                && !TAB_PANEL_ASOCIAR.equals(tab)
+                && !TAB_PANEL_CARTAS.equals(tab)
+                && !TAB_PANEL_CARGA.equals(tab)) {
             return;
         }
         boolean mismaTab = tab.equals(tabAsignacionActiva);
@@ -3068,18 +3226,26 @@ public class JPanelAsignacionV2 extends JPanel {
         if (splitOperativo != null && panelAsignacionVisible) {
             splitOperativo.setSideExpanded(!mismaTab || !splitOperativo.isSideExpanded());
         }
+        if (TAB_PANEL_CARGA.equals(tab)) {
+            cargarCargaLaboralEnPanel();
+        }
         actualizarLenguetasAsignacion();
         panelAsignacionCards.revalidate();
         panelAsignacionCards.repaint();
     }
 
     private void actualizarLenguetasAsignacion() {
-        boolean datosActivo = TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva);
         boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
-        tabDatosExpediente.setState(datosActivo, datosActivo && expandido);
-        tabPanelAsignacionOperativa.setState(!datosActivo, !datosActivo && expandido);
+        tabDatosExpediente.setState(TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva), TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva) && expandido);
+        tabPanelAsignacionOperativa.setState(TAB_PANEL_ASIGNACION.equals(tabAsignacionActiva), TAB_PANEL_ASIGNACION.equals(tabAsignacionActiva) && expandido);
+        tabPanelAsociar.setState(TAB_PANEL_ASOCIAR.equals(tabAsignacionActiva), TAB_PANEL_ASOCIAR.equals(tabAsignacionActiva) && expandido);
+        tabPanelCartas.setState(TAB_PANEL_CARTAS.equals(tabAsignacionActiva), TAB_PANEL_CARTAS.equals(tabAsignacionActiva) && expandido);
+        tabPanelCargaLaboral.setState(TAB_PANEL_CARGA.equals(tabAsignacionActiva), TAB_PANEL_CARGA.equals(tabAsignacionActiva) && expandido);
         tabDatosExpediente.setToolTipText("Datos del expediente · " + contextoChip);
         tabPanelAsignacionOperativa.setToolTipText("Panel de asignación · " + contextoChip);
+        tabPanelAsociar.setToolTipText("Asociar expedientes · " + contextoChip);
+        tabPanelCartas.setToolTipText("Cartas de respuesta · " + contextoChip);
+        tabPanelCargaLaboral.setToolTipText("Carga laboral del equipo · " + contextoChip);
     }
 
     private int indicePaleta(Long idExpediente) {
@@ -4009,59 +4175,6 @@ public class JPanelAsignacionV2 extends JPanel {
                     ? "Recibir documento y asociarlo al expediente principal."
                     : "Solo el abogado responsable puede registrar la recepción.");
             return button;
-        }
-    }
-
-    private static final class AsignacionSideTab extends JPanel {
-
-        private static final int PREFERRED_WIDTH = 40;
-        private static final int PREFERRED_HEIGHT = 136;
-        private final String label;
-        private boolean selected;
-        private boolean expanded;
-
-        private AsignacionSideTab(String label) {
-            this.label = label;
-            setOpaque(false);
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
-            setMinimumSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
-            setMaximumSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
-        }
-
-        private void setState(boolean selected, boolean expanded) {
-            this.selected = selected;
-            this.expanded = expanded;
-            repaint();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color bg = expanded ? AppV2Theme.PRIMARY_DARK
-                        : (selected ? PANEL_ASSIGNMENT_ACCENT : new Color(230, 241, 245));
-                Color border = expanded ? AppV2Theme.PRIMARY_DARK
-                        : (selected ? PANEL_ASSIGNMENT_ACCENT.darker() : AppV2Theme.BORDER);
-                Color text = selected ? Color.WHITE : AppV2Theme.PRIMARY_DARK;
-                g2.setColor(bg);
-                g2.fillRoundRect(2, 2, getWidth() - 3, getHeight() - 4, 18, 18);
-                g2.setColor(border);
-                g2.drawRoundRect(2, 2, getWidth() - 3, getHeight() - 4, 18, 18);
-
-                g2.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-                g2.setColor(text);
-                FontMetrics fm = g2.getFontMetrics();
-                int textWidth = fm.stringWidth(label);
-                int x = -((getHeight() + textWidth) / 2);
-                int y = (getWidth() + fm.getAscent() - fm.getDescent()) / 2;
-                g2.rotate(-Math.PI / 2);
-                g2.drawString(label, x, y);
-            } finally {
-                g2.dispose();
-            }
         }
     }
 
