@@ -90,6 +90,8 @@ public final class AppV2ColumnFilterSupport {
 
     public static final class Controller {
 
+        private static final int HEADER_HEIGHT = 30;
+        private static final int FILTER_HEIGHT = 30;
         private static final DateTimeFormatter[] DATE_FORMATS = new DateTimeFormatter[]{
             DateTimeFormatter.ofPattern("dd/MM/yyyy"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd"),
@@ -170,7 +172,8 @@ public final class AppV2ColumnFilterSupport {
 
         private void configureHeader() {
             TableCellRenderer delegate = table.getTableHeader().getDefaultRenderer();
-            table.getTableHeader().setPreferredSize(new Dimension(0, 30));
+            table.getTableHeader().setPreferredSize(new Dimension(0, HEADER_HEIGHT));
+            table.getTableHeader().setMinimumSize(new Dimension(0, HEADER_HEIGHT));
             table.getTableHeader().setDefaultRenderer(new HeaderRenderer(delegate));
             table.getTableHeader().addMouseListener(new MouseAdapter() {
                 @Override
@@ -366,10 +369,8 @@ public final class AppV2ColumnFilterSupport {
 
             @Override
             public Dimension getPreferredSize() {
-                Dimension header = table.getTableHeader().getPreferredSize();
-                Dimension filter = filterPanel.getPreferredSize();
                 int width = Math.max(table.getPreferredSize().width, table.getColumnModel().getTotalColumnWidth());
-                return new Dimension(width, header.height + filter.height);
+                return new Dimension(width, HEADER_HEIGHT + FILTER_HEIGHT);
             }
 
             @Override
@@ -379,11 +380,9 @@ public final class AppV2ColumnFilterSupport {
 
             @Override
             public void doLayout() {
-                Dimension header = table.getTableHeader().getPreferredSize();
-                Dimension filter = filterPanel.getPreferredSize();
                 int width = Math.max(table.getColumnModel().getTotalColumnWidth(), table.getPreferredSize().width);
-                table.getTableHeader().setBounds(0, 0, width, header.height);
-                filterPanel.setBounds(0, header.height, width, filter.height);
+                table.getTableHeader().setBounds(0, 0, width, HEADER_HEIGHT);
+                filterPanel.setBounds(0, HEADER_HEIGHT, width, FILTER_HEIGHT);
             }
         }
 
@@ -394,7 +393,8 @@ public final class AppV2ColumnFilterSupport {
                 setOpaque(true);
                 setBackground(AppV2Theme.SURFACE_ALT);
                 setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER));
-                setPreferredSize(new Dimension(0, 30));
+                setPreferredSize(new Dimension(0, FILTER_HEIGHT));
+                setMinimumSize(new Dimension(0, FILTER_HEIGHT));
                 for (JTextField field : fields) {
                     add(field);
                 }
