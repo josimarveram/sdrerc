@@ -23,6 +23,8 @@ public class AppV2SideActionPanel extends JPanel {
     private final JPanel footer = new JPanel(new BorderLayout());
     private final JPanel leadingSlot = new JPanel(new BorderLayout());
     private final JLabel lblTitle = new JLabel();
+    private final JScrollPane scroll;
+    private boolean bodyVisible = true;
 
     public AppV2SideActionPanel(String title) {
         this(title, null);
@@ -74,7 +76,7 @@ public class AppV2SideActionPanel extends JPanel {
         sections.setOpaque(false);
         sections.setLayout(new BoxLayout(sections, BoxLayout.Y_AXIS));
 
-        JScrollPane scroll = new JScrollPane(sections);
+        scroll = new JScrollPane(sections);
         scroll.setBorder(null);
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
@@ -96,6 +98,18 @@ public class AppV2SideActionPanel extends JPanel {
     public void setFooter(Component component) {
         footer.removeAll();
         footer.add(component, BorderLayout.CENTER);
+    }
+
+    public void setBodyVisible(boolean visible) {
+        bodyVisible = visible;
+        scroll.setVisible(visible);
+        footer.setVisible(visible);
+        revalidate();
+        repaint();
+    }
+
+    public boolean isBodyVisible() {
+        return bodyVisible;
     }
 
     public void setHeaderLeadingComponent(Component component) {

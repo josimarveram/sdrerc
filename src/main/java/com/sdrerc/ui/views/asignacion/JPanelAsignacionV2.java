@@ -252,6 +252,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable cartasRespuestaTable = new AppV2Table(cartasRespuestaModel);
     private final JTextField txtHojaEnvioAsignacion = new JTextField();
     private final JTextArea txtComentario = new JTextArea(3, 18);
+    private final AppV2NotebookToggleTab tabDatosExpediente = new AppV2NotebookToggleTab();
+    private final AppV2NotebookToggleTab tabPanelAsignacionOperativa = new AppV2NotebookToggleTab();
     private final AppV2NotebookToggleTab tabPanelAsignacion = new AppV2NotebookToggleTab();
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -275,6 +277,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardPorVencer = new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
     private final MetricCardV2 cardVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
     private AppV2SideActionPanel panelAsignacion;
+    private AppV2SideActionPanel panelDatosExpediente;
     private AppV2SideSectionPanel sectionDatosExpediente;
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
@@ -361,8 +364,9 @@ public class JPanelAsignacionV2 extends JPanel {
         contenidoOperativo.add(bandeja, BorderLayout.CENTER);
         contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
 
-        panelAsignacion = crearPanelAsignacion();
-        JPanel panelAsignacionConTab = crearPanelAsignacionConTab(panelAsignacion);
+        panelDatosExpediente = crearPanelDatosExpediente();
+        panelAsignacion = crearPanelAsignacionOperativa();
+        JPanel panelAsignacionConTab = crearPanelAsignacionConTab(panelDatosExpediente, panelAsignacion);
         splitOperativo = new AppV2OperationalSplitPanel(
                 contenidoPrincipal,
                 panelAsignacionConTab,
@@ -420,18 +424,40 @@ public class JPanelAsignacionV2 extends JPanel {
         return section;
     }
 
-    private AppV2SideActionPanel crearPanelAsignacion() {
+    private AppV2SideActionPanel crearPanelDatosExpediente() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Datos del expediente");
+        panel.setHeaderLeadingComponent(tabDatosExpediente);
+        tabDatosExpediente.setExpanded(true);
+        tabDatosExpediente.setToolTipText("Contraer o expandir datos del expediente");
+        tabDatosExpediente.addActionListener(e -> {
+            panel.setBodyVisible(!panel.isBodyVisible());
+            tabDatosExpediente.setExpanded(panel.isBodyVisible());
+        });
+        sectionDatosExpediente = crearDatosExpedienteAsignacion();
+        sectionResumenAsignacion = crearResumenAsignacion();
+        panel.addSection(sectionDatosExpediente);
+        panel.addSection(sectionResumenAsignacion);
+        panel.setBodyVisible(true);
+        return panel;
+    }
+
+    private AppV2SideActionPanel crearPanelAsignacionOperativa() {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de asignación", new Runnable() {
             @Override
             public void run() {
                 cerrarPanelAsignacion();
             }
         });
+        panel.setHeaderLeadingComponent(tabPanelAsignacionOperativa);
+        tabPanelAsignacionOperativa.setExpanded(true);
+        tabPanelAsignacionOperativa.setToolTipText("Contraer o expandir el panel de asignación");
+        tabPanelAsignacionOperativa.addActionListener(e -> {
+            panel.setBodyVisible(!panel.isBodyVisible());
+            tabPanelAsignacionOperativa.setExpanded(panel.isBodyVisible());
+        });
         tabPanelAsignacion.setExpanded(false);
         tabPanelAsignacion.setToolTipText("Expandir panel de asignación");
         tabPanelAsignacion.addActionListener(e -> alternarExpansionPanelAsignacion());
-        sectionResumenAsignacion = crearResumenAsignacion();
-        sectionDatosExpediente = crearDatosExpedienteAsignacion();
         sectionAsignacionMultiple = crearAsignacionMultiple();
         sectionDatosRegistro = crearDatosRegistroAsignacion();
         sectionCartasRespuesta = crearCartasRespuesta();
@@ -441,8 +467,6 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionDestinoAsignacion = crearDestinoAsignacion();
         sectionHojaEnvioAsignacion = crearHojaEnvioAsignacion();
         sectionComentarioAsignacion = crearComentarioAsignacion();
-        panel.addSection(sectionDatosExpediente);
-        panel.addSection(sectionResumenAsignacion);
         panel.addSection(sectionAsignacionMultiple);
         panel.addSection(sectionDatosRegistro);
         panel.addSection(sectionCartasRespuesta);
@@ -457,17 +481,33 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionCartasRespuesta.setVisible(false);
         sectionDecisionNumero.setVisible(false);
         panel.setFooter(crearAccionesAsignacion());
+        panel.setBodyVisible(true);
         return panel;
     }
 
-    private JPanel crearPanelAsignacionConTab(final AppV2SideActionPanel panel) {
+    private JPanel crearPanelAsignacionConTab(
+            final AppV2SideActionPanel panelDatos,
+            final AppV2SideActionPanel panelOperativo) {
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
                 int width = getWidth();
                 int height = getHeight();
                 int panelX = PANEL_ASIGNACION_TAB_OVERHANG;
-                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int availableWidth = Math.max(0, width - panelX);
+                int availableHeight = Math.max(0, height);
+                int gap = 12;
+                int panelHeight = Math.max(0, (availableHeight - gap) / 2);
+                int firstHeight = panelDatos.isBodyVisible() ? panelHeight : Math.min(panelDatos.getPreferredSize().height, 130);
+                int secondHeight = panelOperativo.isBodyVisible() ? Math.max(0, availableHeight - firstHeight - gap) : Math.min(panelOperativo.getPreferredSize().height, 130);
+                if (!panelDatos.isBodyVisible() && !panelOperativo.isBodyVisible()) {
+                    firstHeight = Math.min(panelDatos.getPreferredSize().height, 130);
+                    secondHeight = Math.min(panelOperativo.getPreferredSize().height, 130);
+                }
+                int y = 0;
+                panelDatos.setBounds(panelX, y, availableWidth, firstHeight);
+                y += firstHeight + gap;
+                panelOperativo.setBounds(panelX, y, availableWidth, Math.max(0, availableHeight - y));
                 int tabY = Math.min(PANEL_ASIGNACION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
                 tabPanelAsignacion.setBounds(
                         0,
@@ -477,7 +517,8 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         };
         wrapper.setOpaque(false);
-        wrapper.add(panel);
+        wrapper.add(panelDatos);
+        wrapper.add(panelOperativo);
         wrapper.add(tabPanelAsignacion);
         wrapper.setMinimumSize(new Dimension(
                 PANEL_ASIGNACION_ANCHO_MINIMO + PANEL_ASIGNACION_TAB_OVERHANG,
