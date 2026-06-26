@@ -7,6 +7,7 @@ import com.sdrerc.domain.dto.sdrercapp.RolDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -73,6 +74,8 @@ public class JPanelRolesV2 extends JPanel {
     private final JTable tblRoles = new AppV2Table(rolesModel);
     private final PermisosTableModel permisosModel = new PermisosTableModel();
     private final JTable tblPermisos = new AppV2Table(permisosModel);
+    private JScrollPane scrollRoles;
+    private JScrollPane scrollPermisos;
 
     private final MetricCardV2 cardRoles = new MetricCardV2("Roles", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Habilitados para uso", AppV2Theme.SUCCESS);
@@ -176,7 +179,8 @@ public class JPanelRolesV2 extends JPanel {
         barra.add(lblEstado, BorderLayout.SOUTH);
 
         panel.add(barra, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblRoles), BorderLayout.CENTER);
+        scrollRoles = new JScrollPane(tblRoles);
+        panel.add(scrollRoles, BorderLayout.CENTER);
         return panel;
     }
 
@@ -255,7 +259,8 @@ public class JPanelRolesV2 extends JPanel {
         acciones.add(btnGuardarPermisos);
 
         panel.add(header, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblPermisos), BorderLayout.CENTER);
+        scrollPermisos = new JScrollPane(tblPermisos);
+        panel.add(scrollPermisos, BorderLayout.CENTER);
         panel.add(acciones, BorderLayout.SOUTH);
         return panel;
     }
@@ -312,7 +317,7 @@ public class JPanelRolesV2 extends JPanel {
         tblRoles.setRowHeight(30);
         tblRoles.setFillsViewportHeight(true);
         tblRoles.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tblRoles.setAutoCreateRowSorter(true);
+        tblRoles.setAutoCreateRowSorter(false);
         tblRoles.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.getColumnModel().getColumn(0).setMaxWidth(70);
@@ -320,15 +325,18 @@ public class JPanelRolesV2 extends JPanel {
         tblRoles.getColumnModel().getColumn(5).setMaxWidth(80);
         tblRoles.getColumnModel().getColumn(6).setMaxWidth(80);
         AppV2TableColumnSizer.applyFriendlyDefaults(tblRoles);
+        AppV2ColumnFilterSupport.install("Administracion.Roles", tblRoles, scrollRoles, null, null);
 
         tblPermisos.setRowHeight(30);
         tblPermisos.setFillsViewportHeight(true);
+        tblPermisos.setAutoCreateRowSorter(false);
         tblPermisos.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblPermisos.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblPermisos.getColumnModel().getColumn(0).setMaxWidth(72);
         tblPermisos.getColumnModel().getColumn(0).setCellRenderer(tblPermisos.getDefaultRenderer(Boolean.class));
         tblPermisos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         AppV2TableColumnSizer.applyFriendlyDefaults(tblPermisos);
+        AppV2ColumnFilterSupport.install("Administracion.Roles.Permisos", tblPermisos, scrollPermisos, null, null);
     }
 
     private void configurarEventos() {

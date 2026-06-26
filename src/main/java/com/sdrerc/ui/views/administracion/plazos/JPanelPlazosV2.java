@@ -3,6 +3,7 @@ package com.sdrerc.ui.views.administracion.plazos;
 import com.sdrerc.application.sdrercapp.PlazoConfiguracionService;
 import com.sdrerc.domain.dto.sdrercapp.PlazoConfiguracionDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
@@ -66,6 +67,7 @@ public class JPanelPlazosV2 extends JPanel {
 
     private final PlazosTableModel tableModel = new PlazosTableModel();
     private final JTable tblPlazos = new AppV2Table(tableModel);
+    private JScrollPane scrollPlazos;
     private final MetricCardV2 cardTotal = new MetricCardV2("Plazos", "0", "Configuraciones", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Disponibles para cálculo", AppV2Theme.SUCCESS);
     private final MetricCardV2 cardSolicitud = new MetricCardV2("Solicitud SDRERC", "No configurado", "Configuración oficial", AppV2Theme.WARNING);
@@ -164,7 +166,8 @@ public class JPanelPlazosV2 extends JPanel {
         barra.add(lblEstado, BorderLayout.SOUTH);
 
         panel.add(barra, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblPlazos), BorderLayout.CENTER);
+        scrollPlazos = new JScrollPane(tblPlazos);
+        panel.add(scrollPlazos, BorderLayout.CENTER);
         return panel;
     }
 
@@ -215,8 +218,10 @@ public class JPanelPlazosV2 extends JPanel {
 
     private void configurarTabla() {
         tblPlazos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblPlazos.setAutoCreateRowSorter(false);
         tblPlazos.setDefaultRenderer(Object.class, new PlazoCellRenderer());
         AppV2TableColumnSizer.applyWidths(tblPlazos, 160, 260, 130, 90, 130, 110, 120, 120);
+        AppV2ColumnFilterSupport.install("Administracion.Plazos", tblPlazos, scrollPlazos, null, null);
     }
 
     private void configurarEventos() {

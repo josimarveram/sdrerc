@@ -7,6 +7,7 @@ import com.sdrerc.domain.dto.sdrercapp.UsuarioDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -80,6 +81,8 @@ public class JPanelUsuariosV2 extends JPanel {
     private final JTable tblUsuarios = new AppV2Table(usuariosModel);
     private final RolesUsuarioTableModel rolesUsuarioModel = new RolesUsuarioTableModel();
     private final JTable tblRoles = new AppV2Table(rolesUsuarioModel);
+    private JScrollPane scrollUsuarios;
+    private JScrollPane scrollRoles;
 
     private final MetricCardV2 cardUsuarios = new MetricCardV2("Usuarios", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Acceso habilitado", AppV2Theme.SUCCESS);
@@ -201,7 +204,8 @@ public class JPanelUsuariosV2 extends JPanel {
         barra.add(lblEstado, BorderLayout.SOUTH);
 
         panel.add(barra, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblUsuarios), BorderLayout.CENTER);
+        scrollUsuarios = new JScrollPane(tblUsuarios);
+        panel.add(scrollUsuarios, BorderLayout.CENTER);
         return panel;
     }
 
@@ -291,7 +295,8 @@ public class JPanelUsuariosV2 extends JPanel {
         header.add(subtitle, BorderLayout.CENTER);
 
         panel.add(header, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblRoles), BorderLayout.CENTER);
+        scrollRoles = new JScrollPane(tblRoles);
+        panel.add(scrollRoles, BorderLayout.CENTER);
         return panel;
     }
 
@@ -337,20 +342,23 @@ public class JPanelUsuariosV2 extends JPanel {
         tblUsuarios.setRowHeight(30);
         tblUsuarios.setFillsViewportHeight(true);
         tblUsuarios.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tblUsuarios.setAutoCreateRowSorter(true);
+        tblUsuarios.setAutoCreateRowSorter(false);
         tblUsuarios.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblUsuarios.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblUsuarios.getColumnModel().getColumn(0).setMaxWidth(70);
         tblUsuarios.getColumnModel().getColumn(6).setCellRenderer(new EstadoUsuarioRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(tblUsuarios);
+        AppV2ColumnFilterSupport.install("Administracion.Usuarios", tblUsuarios, scrollUsuarios, null, null);
 
         tblRoles.setRowHeight(30);
         tblRoles.setFillsViewportHeight(true);
+        tblRoles.setAutoCreateRowSorter(false);
         tblRoles.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.getColumnModel().getColumn(0).setMaxWidth(72);
         tblRoles.getColumnModel().getColumn(0).setCellRenderer(tblRoles.getDefaultRenderer(Boolean.class));
         AppV2TableColumnSizer.applyFriendlyDefaults(tblRoles);
+        AppV2ColumnFilterSupport.install("Administracion.Usuarios.Roles", tblRoles, scrollRoles, null, null);
     }
 
     private void configurarEventos() {

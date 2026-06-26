@@ -8,6 +8,7 @@ import com.sdrerc.domain.dto.sdrercapp.EquipoJuridicoResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoMiembroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableEquipoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -85,6 +86,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private final MiembrosTableModel miembrosModel = new MiembrosTableModel();
     private final JTable tblMiembros = new AppV2Table(miembrosModel);
     private final JTabbedPane tabsDetalle = new JTabbedPane();
+    private JScrollPane scrollEquipos;
+    private JScrollPane scrollMiembros;
 
     private final MetricCardV2 cardEquipos = new MetricCardV2("Equipos", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Estructura habilitada", AppV2Theme.SUCCESS);
@@ -207,7 +210,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         barra.add(lblEstado, BorderLayout.SOUTH);
 
         panel.add(barra, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblEquipos), BorderLayout.CENTER);
+        scrollEquipos = new JScrollPane(tblEquipos);
+        panel.add(scrollEquipos, BorderLayout.CENTER);
         return panel;
     }
 
@@ -301,7 +305,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         top.add(acciones, BorderLayout.CENTER);
 
         panel.add(top, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblMiembros), BorderLayout.CENTER);
+        scrollMiembros = new JScrollPane(tblMiembros);
+        panel.add(scrollMiembros, BorderLayout.CENTER);
         return panel;
     }
 
@@ -325,6 +330,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         tblEquipos.setRowHeight(30);
         tblEquipos.setFillsViewportHeight(true);
         tblEquipos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblEquipos.setAutoCreateRowSorter(false);
         tblEquipos.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblEquipos.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         tblEquipos.getColumnModel().getColumn(0).setPreferredWidth(54);
@@ -337,11 +343,13 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         tblEquipos.getColumnModel().getColumn(7).setPreferredWidth(80);
         tblEquipos.getColumnModel().getColumn(5).setCellRenderer(new EstadoRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(tblEquipos);
+        AppV2ColumnFilterSupport.install("Administracion.EquipoJuridico", tblEquipos, scrollEquipos, null, null);
 
         tblMiembros.setModel(miembrosModel);
         tblMiembros.setRowHeight(28);
         tblMiembros.setFillsViewportHeight(true);
         tblMiembros.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblMiembros.setAutoCreateRowSorter(false);
         tblMiembros.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblMiembros.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         tblMiembros.getColumnModel().getColumn(0).setPreferredWidth(110);
@@ -351,6 +359,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         tblMiembros.getColumnModel().getColumn(4).setPreferredWidth(92);
         tblMiembros.getColumnModel().getColumn(5).setPreferredWidth(76);
         AppV2TableColumnSizer.applyFriendlyDefaults(tblMiembros);
+        AppV2ColumnFilterSupport.install("Administracion.EquipoJuridico.Miembros", tblMiembros, scrollMiembros, null, null);
     }
 
     private void configurarEventos() {

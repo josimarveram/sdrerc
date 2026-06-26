@@ -267,6 +267,7 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     };
     private final JTable cartasRespuestaTable = new AppV2Table(cartasRespuestaModel);
+    private JScrollPane cartasRespuestaScroll;
     private final JTextField txtHojaEnvioAsignacion = new JTextField();
     private final JTextArea txtComentario = new JTextArea(3, 18);
     private final AsignacionSideTab tabDatosExpediente = new AsignacionSideTab("Datos");
@@ -605,13 +606,13 @@ public class JPanelAsignacionV2 extends JPanel {
         JPanel content = new JPanel(new BorderLayout(6, 6));
         content.setOpaque(false);
         content.add(ayuda, BorderLayout.NORTH);
-        JScrollPane scroll = new JScrollPane(cartasRespuestaTable);
-        scroll.setPreferredSize(new Dimension(330, 185));
-        scroll.setMinimumSize(new Dimension(290, 135));
-        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        content.add(scroll, BorderLayout.CENTER);
+        cartasRespuestaScroll = new JScrollPane(cartasRespuestaTable);
+        cartasRespuestaScroll.setPreferredSize(new Dimension(330, 185));
+        cartasRespuestaScroll.setMinimumSize(new Dimension(290, 135));
+        cartasRespuestaScroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        cartasRespuestaScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        cartasRespuestaScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        content.add(cartasRespuestaScroll, BorderLayout.CENTER);
         section.addContent(content);
         return section;
     }
@@ -895,6 +896,15 @@ public class JPanelAsignacionV2 extends JPanel {
         int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 150, 125, 82};
         for (int i = 0; i < widths.length; i++) {
             configurarColumna(cartasRespuestaTable.getColumnModel().getColumn(i), widths[i], Math.min(widths[i], 90), Math.max(widths[i] + 70, widths[i]));
+        }
+        if (cartasRespuestaScroll != null) {
+            AppV2ColumnFilterSupport.install(
+                    "Asignacion.CartasRespuesta",
+                    cartasRespuestaTable,
+                    cartasRespuestaScroll,
+                    null,
+                    null,
+                    CARTA_COL_ACCION);
         }
         cartasRespuestaModel.addTableModelListener(e -> {
             if (!actualizandoCartasRespuesta) {

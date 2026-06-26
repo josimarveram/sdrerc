@@ -3,6 +3,7 @@ package com.sdrerc.ui.views.administracion.feriados;
 import com.sdrerc.application.sdrercapp.FeriadoNacionalService;
 import com.sdrerc.domain.dto.sdrercapp.FeriadoNacionalDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
@@ -72,6 +73,7 @@ public class JPanelFeriadosV2 extends JPanel {
 
     private final FeriadosTableModel tableModel = new FeriadosTableModel();
     private final JTable tblFeriados = new AppV2Table(tableModel);
+    private JScrollPane scrollFeriados;
     private final MetricCardV2 cardTotal = new MetricCardV2("Feriados", "0", "Resultado del año", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Excluidos del plazo", AppV2Theme.SUCCESS);
     private final MetricCardV2 cardInactivos = new MetricCardV2("Inactivos", "0", "Sin efecto en el cálculo", AppV2Theme.WARNING);
@@ -166,7 +168,8 @@ public class JPanelFeriadosV2 extends JPanel {
         barra.add(lblEstado, BorderLayout.SOUTH);
 
         panel.add(barra, BorderLayout.NORTH);
-        panel.add(new JScrollPane(tblFeriados), BorderLayout.CENTER);
+        scrollFeriados = new JScrollPane(tblFeriados);
+        panel.add(scrollFeriados, BorderLayout.CENTER);
         return panel;
     }
 
@@ -214,8 +217,10 @@ public class JPanelFeriadosV2 extends JPanel {
 
     private void configurarTabla() {
         tblFeriados.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblFeriados.setAutoCreateRowSorter(false);
         tblFeriados.setDefaultRenderer(Object.class, new FeriadoCellRenderer());
         AppV2TableColumnSizer.applyWidths(tblFeriados, 120, 240, 120, 110, 260);
+        AppV2ColumnFilterSupport.install("Administracion.Feriados", tblFeriados, scrollFeriados, null, null);
     }
 
     private void configurarEventos() {
