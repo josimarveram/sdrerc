@@ -78,7 +78,7 @@ public class UsuarioAsignacionDAO {
     public List<CargaLaboralAbogadoDTO> listarCargaLaboralAbogados(Long idEquipo) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT u.id_usuario, u.nombre_completo AS abogado, eq.nombre AS equipo, ");
+        sql.append("SELECT u.id_usuario, u.nombre_completo AS abogado, eq.nombre AS equipo, sup.nombre_completo AS supervisor, ");
         sql.append("(SELECT COUNT(*) FROM expediente e ");
         sql.append(" JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 ");
         sql.append(" WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 ");
@@ -105,6 +105,8 @@ public class UsuarioAsignacionDAO {
         sql.append("JOIN rol r ON r.id_rol = ur.id_rol AND r.activo = 1 ");
         sql.append("LEFT JOIN equipo_usuario eu ON eu.id_usuario = u.id_usuario AND eu.activo = 1 ");
         sql.append("LEFT JOIN equipo eq ON eq.id_equipo = eu.id_equipo AND eq.activo = 1 ");
+        sql.append("LEFT JOIN usuario_supervision us ON us.id_abogado = u.id_usuario AND us.activo = 1 ");
+        sql.append("LEFT JOIN usuario sup ON sup.id_usuario = us.id_supervisor AND sup.activo = 1 ");
         sql.append("WHERE u.activo = 1 ");
         sql.append("AND UPPER(u.estado) = 'ACTIVO' ");
         sql.append("AND UPPER(r.codigo) IN ('ABOGADO', 'ANALISTA') ");
@@ -126,6 +128,7 @@ public class UsuarioAsignacionDAO {
                             getLongOrNull(rs, "id_usuario"),
                             rs.getString("abogado"),
                             rs.getString("equipo"),
+                            rs.getString("supervisor"),
                             rs.getInt("expedientes_activos"),
                             rs.getInt("por_vencer"),
                             rs.getInt("vencidos"),

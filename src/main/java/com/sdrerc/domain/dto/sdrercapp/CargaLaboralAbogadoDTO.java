@@ -5,6 +5,7 @@ public class CargaLaboralAbogadoDTO {
     private final Long idUsuario;
     private final String abogado;
     private final String equipo;
+    private final String supervisor;
     private final int expedientesActivos;
     private final int porVencer;
     private final int vencidos;
@@ -14,6 +15,7 @@ public class CargaLaboralAbogadoDTO {
             Long idUsuario,
             String abogado,
             String equipo,
+            String supervisor,
             int expedientesActivos,
             int porVencer,
             int vencidos,
@@ -21,6 +23,7 @@ public class CargaLaboralAbogadoDTO {
         this.idUsuario = idUsuario;
         this.abogado = safe(abogado);
         this.equipo = safe(equipo);
+        this.supervisor = safe(supervisor);
         this.expedientesActivos = expedientesActivos;
         this.porVencer = porVencer;
         this.vencidos = vencidos;
@@ -37,6 +40,10 @@ public class CargaLaboralAbogadoDTO {
 
     public String getEquipo() {
         return equipo;
+    }
+
+    public String getSupervisor() {
+        return supervisor;
     }
 
     public int getExpedientesActivos() {

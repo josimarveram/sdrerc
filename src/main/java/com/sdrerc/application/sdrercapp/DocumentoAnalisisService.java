@@ -1,5 +1,6 @@
 package com.sdrerc.application.sdrercapp;
 
+import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.DocumentoAnalisisDAO;
@@ -37,6 +38,10 @@ public class DocumentoAnalisisService {
 
     public List<DocumentoAnalizadoDTO> listarDocumentosAnalizados(Long idExpediente) throws SQLException {
         return documentoAnalisisDAO.listarPorExpediente(idExpediente);
+    }
+
+    public List<AsignacionCartaRespuestaDTO> listarCartasRespuestaPendientes() throws SQLException {
+        return documentoAnalisisDAO.listarCartasRespuestaPendientes();
     }
 
     public void guardarRespuestaDocumentoAnalizado(

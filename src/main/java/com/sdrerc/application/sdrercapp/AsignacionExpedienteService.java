@@ -71,6 +71,10 @@ public class AsignacionExpedienteService {
         return asignacionExpedienteDAO.listarEstadosExpediente();
     }
 
+    public AsignacionExpedienteDTO obtenerExpedientePorId(Long idExpediente) throws SQLException {
+        return asignacionExpedienteDAO.obtenerExpedientePorId(idExpediente);
+    }
+
     public AsignacionResultadoDTO asignar(
             List<Long> idsExpediente,
             EquipoAsignacionDTO equipo,

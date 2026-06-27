@@ -229,6 +229,15 @@ public class AsignacionExpedienteDAO {
         return catalogoLookupDAO.listarEstadosExpediente();
     }
 
+    public AsignacionExpedienteDTO obtenerExpedientePorId(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return null;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return buscarExpedientePorId(conn, idExpediente);
+        }
+    }
+
     public AsignacionResultadoDTO asignarExpedientes(
             List<Long> idsExpediente,
             Long idEquipoDestino,
@@ -455,6 +464,90 @@ public class AsignacionExpedienteDAO {
                 throw new SQLException(ex.getMessage(), ex);
             }
         }
+    }
+
+    private AsignacionExpedienteDTO buscarExpedientePorId(Connection conn, Long idExpediente) throws SQLException {
+        boolean soportaNumeroHojaEnvio = soportaNumeroHojaEnvio(conn);
+        boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+        boolean soportaUbigeoPersona = soportaUbigeoPersona(conn);
+        List<Object> params = new ArrayList<Object>();
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
+        if (soportaNumeroHojaEnvio) {
+            sql.append("(SELECT MAX(axa.numero_hoja_envio) KEEP (DENSE_RANK LAST ORDER BY axa.fecha_asignacion, axa.id_expediente_asignacion) ");
+            sql.append(" FROM expediente_asignacion axa ");
+            sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS numero_hoja_envio_asignacion, ");
+        } else {
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_asignacion, ");
+        }
+        sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed ");
+        sql.append(" WHERE ed.id_expediente = e.id_expediente AND ed.activo = 1 ");
+        sql.append(" AND TRIM(ed.numero_documento) IS NOT NULL) AS numero_documento, ");
+        sql.append("(SELECT MIN(ed.nombre_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed ");
+        sql.append(" WHERE ed.id_expediente = e.id_expediente AND ed.activo = 1 ");
+        sql.append(" AND TRIM(ed.nombre_documento) IS NOT NULL) AS tipo_documento, ");
+        sql.append("esol.asunto AS procedimiento, ta.nombre AS tipo_acta, ea.numero_acta, ");
+        sql.append(nombrePersona("p")).append(" AS titular, ");
+        sql.append(nombrePersona("ps")).append(" AS solicitante, ");
+        sql.append("ps.tipo_documento AS solicitante_tipo_documento, ps.numero_documento AS solicitante_numero_documento, ");
+        sql.append("ps.correo_electronico AS solicitante_correo, ps.telefono AS solicitante_telefono, ps.direccion AS solicitante_direccion, ");
+        if (soportaUbigeoPersona) {
+            sql.append("ps.departamento AS solicitante_departamento, ps.provincia AS solicitante_provincia, ps.distrito AS solicitante_distrito, ");
+        } else {
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS solicitante_departamento, ");
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS solicitante_provincia, ");
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS solicitante_distrito, ");
+        }
+        sql.append("p.tipo_documento AS tipo_documento_titular, p.numero_documento AS numero_documento_titular, ");
+        sql.append("eqr.nombre AS equipo_asignado, e.id_equipo_responsable_actual AS id_equipo_responsable, ");
+        sql.append("NVL(ur.nombre_completo, (SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa ");
+        sql.append(" JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado ");
+        sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1)) AS abogado_asignado, ");
+        sql.append("e.id_usuario_responsable_actual AS id_abogado_responsable, ");
+        sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
+        sql.append("esol.potencial_duplicado, esol.observacion AS observacion_solicitud, ");
+        if (soportaGrupoFamiliar) {
+            sql.append("NVL(esol.grupo_familiar, 0) AS grupo_familiar, ");
+            sql.append("esol.criterio_grupo_familiar, esol.observacion_grupo_familiar, ");
+        } else {
+            sql.append("0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
+            sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
+        }
+        sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
+        sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
+        sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa, ");
+        sql.append("(SELECT COUNT(*) FROM expediente_relacion rc ");
+        sql.append(" WHERE rc.activo = 1 ");
+        sql.append(" AND rc.id_expediente_principal = e.id_expediente ");
+        sql.append(" AND UPPER(rc.tipo_relacion) IN (?, ?)) AS asociados_confirmados ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
+        sql.append("FROM expediente e ");
+        sql.append("JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual ");
+        sql.append("JOIN estado_expediente est ON est.id_estado = e.id_estado_actual ");
+        sql.append("LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 ");
+        sql.append("LEFT JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 ");
+        sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
+        sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
+        sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
+        sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
+        sql.append("LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual ");
+        sql.append("LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ");
+        sql.append("WHERE e.activo = 1 AND e.id_expediente = ? ");
+        params.add(idExpediente);
+        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapPendiente(conn, rs);
+                }
+            }
+        }
+        return null;
     }
 
     private AsignacionExpedienteDTO mapPendiente(Connection conn, ResultSet rs) throws SQLException {

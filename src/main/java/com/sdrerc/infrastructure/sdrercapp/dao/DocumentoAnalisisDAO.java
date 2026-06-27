@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
@@ -40,6 +41,71 @@ public class DocumentoAnalisisDAO {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             return listarPorExpediente(conn, idExpediente);
         }
+    }
+
+    public List<AsignacionCartaRespuestaDTO> listarCartasRespuestaPendientes() throws SQLException {
+        List<AsignacionCartaRespuestaDTO> items = new ArrayList<AsignacionCartaRespuestaDTO>();
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaRespuestaDocumentoAnalizado(conn)) {
+                return items;
+            }
+            boolean soportaPublicacion = soportaPublicacionPreparada(conn);
+            boolean soportaNumeroDocumento = soportaNumeroDocumentoAnalizado(conn);
+            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
+                    + "esol.numero_expediente_sgd, "
+                    + nombrePersona("p") + " AS titular, "
+                    + "tda.nombre AS tipo_documento_nombre, ed.nombre AS estado_documento_nombre, "
+                    + "da.fecha_documento, "
+                    + (soportaNumeroDocumento
+                            ? "da.numero_documento, "
+                            : "CAST(NULL AS VARCHAR2(120)) AS numero_documento, ")
+                    + "da.descripcion, NVL(da.requiere_respuesta, 0) AS requiere_respuesta, "
+                    + "NVL(da.notificado, 0) AS notificado, da.fecha_acuse, da.confirmacion_respuesta, "
+                    + "da.fecha_respuesta, da.numero_hoja_envio_respuesta "
+                    + (soportaPublicacion
+                            ? ", NVL(e.requiere_publicacion, 0) AS requiere_publicacion, "
+                            + "(SELECT fecha_publicacion FROM ("
+                            + " SELECT p2.fecha_publicacion FROM expediente_publicacion p2 "
+                            + " WHERE p2.id_expediente = da.id_expediente AND p2.activo = 1 "
+                            + " ORDER BY p2.creado_en DESC, p2.id_expediente_publicacion DESC"
+                            + ") WHERE ROWNUM = 1) AS fecha_publicacion "
+                            : ", 0 AS requiere_publicacion, CAST(NULL AS DATE) AS fecha_publicacion ")
+                    + "FROM expediente_documento_analizado da "
+                    + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
+                    + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                    + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                    + " AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                    + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                    + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                    + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
+                    + "WHERE da.activo = 1 AND NVL(da.requiere_respuesta, 0) = 1 "
+                    + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    items.add(new AsignacionCartaRespuestaDTO(
+                            getLongOrNull(rs, "id_documento_analizado"),
+                            getLongOrNull(rs, "id_expediente"),
+                            rs.getString("numero_expediente"),
+                            rs.getString("numero_expediente_sgd"),
+                            rs.getString("titular"),
+                            rs.getString("tipo_documento_nombre"),
+                            rs.getString("estado_documento_nombre"),
+                            toLocalDate(rs.getDate("fecha_documento")),
+                            rs.getString("numero_documento"),
+                            rs.getString("descripcion"),
+                            rs.getInt("requiere_respuesta") == 1,
+                            rs.getInt("notificado") == 1,
+                            toLocalDate(rs.getDate("fecha_acuse")),
+                            rs.getString("confirmacion_respuesta"),
+                            toLocalDate(rs.getDate("fecha_respuesta")),
+                            rs.getString("numero_hoja_envio_respuesta"),
+                            rs.getInt("requiere_publicacion") == 1,
+                            toLocalDate(rs.getDate("fecha_publicacion"))));
+                }
+            }
+        }
+        return items;
     }
 
     public List<DocumentoAnalizadoDTO> listarPorExpediente(Connection conn, Long idExpediente) throws SQLException {
@@ -628,6 +694,11 @@ public class DocumentoAnalisisDAO {
 
     private static boolean esEstadoObservado(String codigo) {
         return "OBSERVADO".equalsIgnoreCase(codigo == null ? "" : codigo.trim());
+    }
+
+    private static String nombrePersona(String alias) {
+        return "TRIM(REGEXP_REPLACE(NVL(" + alias + ".nombres, '') || ' ' || "
+                + "NVL(" + alias + ".apellido_paterno, '') || ' ' || NVL(" + alias + ".apellido_materno, ''), '\\s+', ' '))";
     }
 
     private static void rollbackSilencioso(Connection conn) {
