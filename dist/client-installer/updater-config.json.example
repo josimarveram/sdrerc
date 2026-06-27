@@ -1,5 +1,9 @@
 {
+  "remoteReleaseMode": "FILE_SHARE",
   "remoteReleasePath": "\\\\DESKTOP-TEOGE91\\SDRERC_RELEASES\\latest",
+  "remoteVersionUrl": "",
+  "remoteZipUrl": "",
+  "remoteChecksumsUrl": "",
   "localBasePath": "C:\\SDRERC_CLIENTE",
   "javaPath": "",
   "mainJar": "SDRERC-V2.jar",

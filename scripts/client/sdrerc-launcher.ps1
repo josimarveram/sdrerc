@@ -39,6 +39,14 @@ function Read-JsonFile {
     return (Get-Content -LiteralPath $PathValue -Raw -Encoding UTF8 | ConvertFrom-Json)
 }
 
+function Read-JsonText {
+    param([string]$JsonText)
+    if ([string]::IsNullOrWhiteSpace($JsonText)) {
+        throw "El contenido JSON remoto esta vacio."
+    }
+    return ($JsonText | ConvertFrom-Json)
+}
+
 function Compare-VersionText {
     param(
         [string]$Left,
@@ -113,7 +121,68 @@ function Test-ZipFile {
     }
 }
 
-function Get-ExpectedChecksum {
+function Invoke-HttpTextRequest {
+    param([string]$Url)
+    try {
+        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 20
+        return [string]$response.Content
+    }
+    catch {
+        Write-Log "Invoke-WebRequest fallo para $Url: $($_.Exception.Message)" "WARN"
+        $client = $null
+        try {
+            $client = New-Object System.Net.WebClient
+            return $client.DownloadString($Url)
+        }
+        finally {
+            if ($client) {
+                $client.Dispose()
+            }
+        }
+    }
+}
+
+function Download-HttpFile {
+    param(
+        [string]$Url,
+        [string]$DestinationPath
+    )
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $DestinationPath -UseBasicParsing -TimeoutSec 120
+        return
+    }
+    catch {
+        Write-Log "Invoke-WebRequest fallo al descargar $Url: $($_.Exception.Message)" "WARN"
+        $client = $null
+        try {
+            $client = New-Object System.Net.WebClient
+            $client.DownloadFile($Url, $DestinationPath)
+        }
+        finally {
+            if ($client) {
+                $client.Dispose()
+            }
+        }
+    }
+}
+
+function Get-ExpectedChecksumFromText {
+    param(
+        [string]$ChecksumText,
+        [string]$ZipFileName
+    )
+    if ([string]::IsNullOrWhiteSpace($ChecksumText)) {
+        return $null
+    }
+    foreach ($line in ($ChecksumText -split "`r?`n")) {
+        if ($line -match [Regex]::Escape($ZipFileName) -and $line -match "([A-Fa-f0-9]{64})") {
+            return $matches[1].ToUpperInvariant()
+        }
+    }
+    return $null
+}
+
+function Get-ExpectedChecksumFromFile {
     param(
         [string]$ChecksumFile,
         [string]$ZipFileName
@@ -121,13 +190,7 @@ function Get-ExpectedChecksum {
     if (-not (Test-Path -LiteralPath $ChecksumFile)) {
         return $null
     }
-    $lines = Get-Content -LiteralPath $ChecksumFile -Encoding UTF8
-    foreach ($line in $lines) {
-        if ($line -match [Regex]::Escape($ZipFileName) -and $line -match "([A-Fa-f0-9]{64})") {
-            return $matches[1].ToUpperInvariant()
-        }
-    }
-    return $null
+    return Get-ExpectedChecksumFromText -ChecksumText (Get-Content -LiteralPath $ChecksumFile -Raw -Encoding UTF8) -ZipFileName $ZipFileName
 }
 
 function Restore-Backup {
@@ -144,11 +207,107 @@ function Restore-Backup {
     Move-Item -LiteralPath $BackupDir -Destination $AppDir -Force
 }
 
+function Get-ReleaseMode {
+    param($Config)
+    $mode = [string]$Config.remoteReleaseMode
+    if ([string]::IsNullOrWhiteSpace($mode)) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$Config.remoteVersionUrl)) {
+            return "HTTP"
+        }
+        return "FILE_SHARE"
+    }
+    return $mode.Trim().ToUpperInvariant()
+}
+
+function Get-RemoteReleaseMetadata {
+    param($Config)
+    $mode = Get-ReleaseMode -Config $Config
+    $metadata = [ordered]@{
+        Mode = $mode
+        RemoteReleasePath = $null
+        VersionSource = $null
+        ZipSource = $null
+        ChecksumSource = $null
+        Version = $null
+    }
+
+    if ($mode -eq "HTTP" -or $mode -eq "HTTPS") {
+        $versionUrl = [string]$Config.remoteVersionUrl
+        $zipUrl = [string]$Config.remoteZipUrl
+        $checksumsUrl = [string]$Config.remoteChecksumsUrl
+        if ([string]::IsNullOrWhiteSpace($versionUrl)) {
+            throw "remoteVersionUrl es obligatorio cuando remoteReleaseMode = HTTP."
+        }
+        if ([string]::IsNullOrWhiteSpace($zipUrl)) {
+            throw "remoteZipUrl es obligatorio cuando remoteReleaseMode = HTTP."
+        }
+        $versionText = Invoke-HttpTextRequest -Url $versionUrl
+        $metadata.Version = Read-JsonText -JsonText $versionText
+        $metadata.VersionSource = $versionUrl
+        $metadata.ZipSource = $zipUrl
+        $metadata.ChecksumSource = $checksumsUrl
+        return [pscustomobject]$metadata
+    }
+
+    $remoteReleasePath = [Environment]::ExpandEnvironmentVariables([string]$Config.remoteReleasePath)
+    if ([string]::IsNullOrWhiteSpace($remoteReleasePath)) {
+        throw "remoteReleasePath es obligatorio cuando remoteReleaseMode = FILE_SHARE."
+    }
+    $remoteVersionPath = Join-Path $remoteReleasePath "version.json"
+    if (-not (Test-Path -LiteralPath $remoteVersionPath)) {
+        throw "No se pudo acceder a version.json en la ruta remota: $remoteVersionPath"
+    }
+    $metadata.RemoteReleasePath = $remoteReleasePath
+    $metadata.VersionSource = $remoteVersionPath
+    $metadata.Version = Read-JsonFile -PathValue $remoteVersionPath
+    $metadata.ChecksumSource = Join-Path $remoteReleasePath "checksums.txt"
+    return [pscustomobject]$metadata
+}
+
+function Copy-RemoteZipToLocal {
+    param(
+        $RemoteMetadata,
+        [string]$ZipFileName,
+        [string]$DestinationPath
+    )
+    if ($RemoteMetadata.Mode -eq "HTTP" -or $RemoteMetadata.Mode -eq "HTTPS") {
+        Write-Log "Descargando release remoto por HTTP: $($RemoteMetadata.ZipSource)"
+        Download-HttpFile -Url $RemoteMetadata.ZipSource -DestinationPath $DestinationPath
+        return
+    }
+    $remoteZip = Join-Path $RemoteMetadata.RemoteReleasePath $ZipFileName
+    if (-not (Test-Path -LiteralPath $remoteZip)) {
+        throw "No existe el paquete remoto: $remoteZip"
+    }
+    Write-Log "Copiando release remoto: $remoteZip"
+    Copy-Item -LiteralPath $remoteZip -Destination $DestinationPath -Force
+}
+
+function Get-RemoteChecksum {
+    param(
+        $RemoteMetadata,
+        [string]$ZipFileName
+    )
+    if ($RemoteMetadata.Mode -eq "HTTP" -or $RemoteMetadata.Mode -eq "HTTPS") {
+        if ([string]::IsNullOrWhiteSpace([string]$RemoteMetadata.ChecksumSource)) {
+            return $null
+        }
+        try {
+            $checksumText = Invoke-HttpTextRequest -Url $RemoteMetadata.ChecksumSource
+            return Get-ExpectedChecksumFromText -ChecksumText $checksumText -ZipFileName $ZipFileName
+        }
+        catch {
+            Write-Log "No se pudo leer checksums remoto: $($_.Exception.Message)" "WARN"
+            return $null
+        }
+    }
+    return Get-ExpectedChecksumFromFile -ChecksumFile $RemoteMetadata.ChecksumSource -ZipFileName $ZipFileName
+}
+
 function Invoke-Update {
     param(
         $Config,
-        $RemoteVersion,
-        [string]$RemoteReleasePath,
+        $RemoteMetadata,
         [string]$LocalBasePath,
         [string]$AppDir,
         [string]$UpdatesDir,
@@ -156,14 +315,10 @@ function Invoke-Update {
         [string]$LocalVersionPath
     )
 
-    $zipFileName = $RemoteVersion.zipFile
+    $remoteVersion = $RemoteMetadata.Version
+    $zipFileName = $remoteVersion.zipFile
     if ([string]::IsNullOrWhiteSpace($zipFileName)) {
         throw "version.json remoto no define zipFile."
-    }
-
-    $remoteZip = Join-Path $RemoteReleasePath $zipFileName
-    if (-not (Test-Path -LiteralPath $remoteZip)) {
-        throw "No existe el paquete remoto: $remoteZip"
     }
 
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -173,11 +328,9 @@ function Invoke-Update {
     $previousConfig = $null
     $configFile = Resolve-FullPath $Config.configFile
 
-    Write-Log "Copiando release remoto: $remoteZip"
-    Copy-Item -LiteralPath $remoteZip -Destination $downloadZip -Force
+    Copy-RemoteZipToLocal -RemoteMetadata $RemoteMetadata -ZipFileName $zipFileName -DestinationPath $downloadZip
 
-    $checksumFile = Join-Path $RemoteReleasePath "checksums.txt"
-    $expectedChecksum = Get-ExpectedChecksum -ChecksumFile $checksumFile -ZipFileName $zipFileName
+    $expectedChecksum = Get-RemoteChecksum -RemoteMetadata $RemoteMetadata -ZipFileName $zipFileName
     if ($expectedChecksum) {
         $actualChecksum = (Get-FileHash -LiteralPath $downloadZip -Algorithm SHA256).Hash.ToUpperInvariant()
         if ($actualChecksum -ne $expectedChecksum) {
@@ -214,8 +367,8 @@ function Invoke-Update {
             Write-Log "Configuracion local preservada: $configFile"
         }
 
-        $RemoteVersion | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $LocalVersionPath -Encoding UTF8
-        Write-Log "Actualizacion aplicada. Version local: $($RemoteVersion.version)"
+        $remoteVersion | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $LocalVersionPath -Encoding UTF8
+        Write-Log "Actualizacion aplicada. Version local: $($remoteVersion.version)"
     }
     catch {
         Write-Log "Fallo la actualizacion. Restaurando backup si existe. Error: $($_.Exception.Message)" "ERROR"
@@ -281,7 +434,6 @@ try {
         $localBasePath = "C:\SDRERC_CLIENTE"
     }
 
-    $remoteReleasePath = [Environment]::ExpandEnvironmentVariables([string]$config.remoteReleasePath)
     $appDirectoryName = [string]$config.appDirectoryName
     if ([string]::IsNullOrWhiteSpace($appDirectoryName)) {
         $appDirectoryName = "app"
@@ -302,9 +454,17 @@ try {
     Ensure-Directory $logsDir
     $script:LogFile = Join-Path $logsDir ("launcher-{0}.log" -f (Get-Date -Format "yyyyMMdd"))
 
+    $releaseMode = Get-ReleaseMode -Config $config
     Write-Log "Launcher SDRERC iniciado."
     Write-Log "Base local: $localBasePath"
-    Write-Log "Release remoto: $remoteReleasePath"
+    Write-Log "Modo remoto: $releaseMode"
+    if ($releaseMode -eq "HTTP" -or $releaseMode -eq "HTTPS") {
+        Write-Log "Version URL: $($config.remoteVersionUrl)"
+        Write-Log "ZIP URL: $($config.remoteZipUrl)"
+    }
+    else {
+        Write-Log "Release remoto: $([string]$config.remoteReleasePath)"
+    }
 
     if (Test-SdrercAlreadyOpen -JarName $mainJarName) {
         Write-Log "SDRERC ya esta abierto. No se aplicara actualizacion mientras la aplicacion este en uso." "WARN"
@@ -323,14 +483,14 @@ try {
     }
 
     $remoteAvailable = $false
-    $remoteVersion = $null
-    $remoteVersionPath = Join-Path $remoteReleasePath "version.json"
-    if (-not [string]::IsNullOrWhiteSpace($remoteReleasePath) -and (Test-Path -LiteralPath $remoteVersionPath)) {
-        $remoteVersion = Read-JsonFile -PathValue $remoteVersionPath
+    $remoteMetadata = $null
+    try {
+        $remoteMetadata = Get-RemoteReleaseMetadata -Config $config
         $remoteAvailable = $true
+        Write-Log "Version remota detectada: $($remoteMetadata.Version.version)"
     }
-    else {
-        Write-Log "No se pudo acceder a version remota. Se intentara abrir la version local." "WARN"
+    catch {
+        Write-Log "No se pudo acceder a la version remota: $($_.Exception.Message)" "WARN"
     }
 
     $localJar = Join-Path $appDir $mainJarName
@@ -340,18 +500,19 @@ try {
             $needsUpdate = $true
         }
         else {
-            $cmp = Compare-VersionText -Left ([string]$remoteVersion.version) -Right ([string]$localVersion.version)
+            $cmp = Compare-VersionText -Left ([string]$remoteMetadata.Version.version) -Right ([string]$localVersion.version)
             $needsUpdate = $cmp -gt 0
         }
     }
 
     if ($needsUpdate) {
-        Write-Log "Nueva version disponible: $($remoteVersion.version)"
-        Invoke-Update -Config $config -RemoteVersion $remoteVersion -RemoteReleasePath $remoteReleasePath -LocalBasePath $localBasePath -AppDir $appDir -UpdatesDir $updatesDir -BackupRoot $backupRoot -LocalVersionPath $localVersionPath
+        Write-Log "Nueva version disponible: $($remoteMetadata.Version.version)"
+        Invoke-Update -Config $config -RemoteMetadata $remoteMetadata -LocalBasePath $localBasePath -AppDir $appDir -UpdatesDir $updatesDir -BackupRoot $backupRoot -LocalVersionPath $localVersionPath
     }
     else {
         if ($remoteAvailable) {
-            Write-Log "No hay actualizacion pendiente. Version local: $($localVersion.version)"
+            $localVersionText = if ($localVersion) { [string]$localVersion.version } else { "sin version local registrada" }
+            Write-Log "No hay actualizacion pendiente. Version local: $localVersionText"
         }
         else {
             Write-Host "No hay conexion con el servidor de releases. Se abrira la ultima version local disponible."

@@ -1,6 +1,10 @@
 param(
     [string]$InstallDir = "C:\SDRERC_CLIENTE",
+    [string]$RemoteReleaseMode = "FILE_SHARE",
     [string]$RemoteReleasePath = "",
+    [string]$RemoteVersionUrl = "",
+    [string]$RemoteZipUrl = "",
+    [string]$RemoteChecksumsUrl = "",
     [string]$JavaPath = ""
 )
 
@@ -48,10 +52,27 @@ if (Test-Path -LiteralPath $configTarget) {
 }
 Copy-Item -LiteralPath $configSource -Destination $configTarget -Force
 
-if (-not [string]::IsNullOrWhiteSpace($RemoteReleasePath) -or -not [string]::IsNullOrWhiteSpace($JavaPath)) {
+if (-not [string]::IsNullOrWhiteSpace($RemoteReleasePath)
+    -or -not [string]::IsNullOrWhiteSpace($RemoteVersionUrl)
+    -or -not [string]::IsNullOrWhiteSpace($RemoteZipUrl)
+    -or -not [string]::IsNullOrWhiteSpace($RemoteChecksumsUrl)
+    -or -not [string]::IsNullOrWhiteSpace($JavaPath)
+    -or -not [string]::IsNullOrWhiteSpace($RemoteReleaseMode)) {
     $json = Get-Content -LiteralPath $configTarget -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not [string]::IsNullOrWhiteSpace($RemoteReleaseMode)) {
+        $json.remoteReleaseMode = $RemoteReleaseMode
+    }
     if (-not [string]::IsNullOrWhiteSpace($RemoteReleasePath)) {
         $json.remoteReleasePath = $RemoteReleasePath
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RemoteVersionUrl)) {
+        $json.remoteVersionUrl = $RemoteVersionUrl
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RemoteZipUrl)) {
+        $json.remoteZipUrl = $RemoteZipUrl
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RemoteChecksumsUrl)) {
+        $json.remoteChecksumsUrl = $RemoteChecksumsUrl
     }
     if (-not [string]::IsNullOrWhiteSpace($JavaPath)) {
         $json.javaPath = $JavaPath

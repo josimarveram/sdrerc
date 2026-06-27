@@ -6,6 +6,8 @@ param(
 
     [string]$Notes = "Release SDRERC V2 LAN",
 
+    [int]$HttpPort = 8088,
+
     [switch]$SkipBuild
 )
 
@@ -117,3 +119,12 @@ Write-Host "Version: $Version"
 Write-Host "Latest:  $latestDir"
 Write-Host "Archivo: SDRERC-V2.zip"
 Write-Host "SHA256:  $hash"
+Write-Host ""
+Write-Host "Ejemplo de publicacion HTTP local/VPN:"
+Write-Host "  cd $latestDir"
+Write-Host "  python -m http.server $HttpPort"
+Write-Host ""
+Write-Host "URLs esperadas:"
+Write-Host "  http://IP_O_NOMBRE_SERVIDOR:$HttpPort/version.json"
+Write-Host "  http://IP_O_NOMBRE_SERVIDOR:$HttpPort/SDRERC-V2.zip"
+Write-Host "  http://IP_O_NOMBRE_SERVIDOR:$HttpPort/checksums.txt"

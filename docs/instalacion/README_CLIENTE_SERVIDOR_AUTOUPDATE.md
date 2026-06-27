@@ -1,6 +1,9 @@
-# SDRERC V2 - Instalacion y actualizacion automatica en LAN
+# SDRERC V2 - Actualizacion automatica cliente-servidor
 
-Esta guia describe el esquema cliente-servidor para distribuir SDRERC V2 en laptops Windows dentro de una red LAN o hotspot movil.
+Esta guia describe el esquema cliente-servidor para distribuir SDRERC V2 en laptops Windows, usando:
+
+- `FILE_SHARE` por carpeta compartida SMB/UNC
+- `HTTP` o `HTTPS` para acceso remoto por VPN
 
 ## Arquitectura
 
@@ -37,17 +40,43 @@ C:\SDRERC_CLIENTE
   logs
 ```
 
-El cliente nunca ejecuta el JAR desde la carpeta compartida. El launcher copia la version remota a `C:\SDRERC_CLIENTE\app` y ejecuta siempre la version local.
+El cliente nunca ejecuta el JAR desde la ruta remota. Siempre descarga o copia la release a `C:\SDRERC_CLIENTE\app` y ejecuta la version local.
 
-## Servidor
+## Publicacion desde servidor
 
-### 1. Crear carpeta de releases
+Desde la raiz del proyecto:
 
 ```powershell
-New-Item -ItemType Directory -Force -Path D:\SDRERC_RELEASES\latest
+.\scripts\server\publish-sdrerc-release.ps1 -Version "1.0.12"
 ```
 
-Comparta `D:\SDRERC_RELEASES` en la red, por ejemplo como:
+El script:
+
+- ejecuta `mvn clean compile`
+- ejecuta `mvn clean package`
+- genera `SDRERC-V2.zip`
+- genera `version.json`
+- genera `checksums.txt`
+- publica en `D:\SDRERC_RELEASES\latest`
+
+Verificacion rapida:
+
+```powershell
+Get-Content D:\SDRERC_RELEASES\latest\version.json
+Get-Content D:\SDRERC_RELEASES\latest\checksums.txt
+```
+
+## Modo 1: FILE_SHARE / UNC
+
+### Servidor
+
+Comparta:
+
+```text
+D:\SDRERC_RELEASES
+```
+
+por ejemplo como:
 
 ```text
 \\NOMBRE_SERVIDOR\SDRERC_RELEASES
@@ -55,171 +84,187 @@ Comparta `D:\SDRERC_RELEASES` en la red, por ejemplo como:
 
 Permisos recomendados:
 
-- Usuarios cliente: lectura.
-- Responsable de despliegue: lectura/escritura.
-- Evitar permisos de escritura para usuarios finales.
+- clientes: lectura
+- responsable de despliegue: lectura/escritura
 
-### 2. Publicar primera version
+### Cliente
 
-Desde la raiz del proyecto:
+`updater-config.json`:
 
-```powershell
-.\scripts\server\publish-sdrerc-release.ps1 -Version "1.0.0"
+```json
+{
+  "remoteReleaseMode": "FILE_SHARE",
+  "remoteReleasePath": "\\\\DESKTOP-TEOGE91\\SDRERC_RELEASES\\latest",
+  "remoteVersionUrl": "",
+  "remoteZipUrl": "",
+  "remoteChecksumsUrl": "",
+  "localBasePath": "C:\\SDRERC_CLIENTE",
+  "javaPath": "C:\\Program Files\\Java\\jre1.8.0_491\\bin\\java.exe",
+  "mainJar": "SDRERC-V2.jar",
+  "appDirectoryName": "app",
+  "configFile": "C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties",
+  "javaArgs": [
+    "-Dsdrerc.app.config=C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties"
+  ]
+}
 ```
 
-El script ejecuta:
+Prueba de conectividad:
 
-- `mvn clean compile`
-- `mvn clean package`
+```powershell
+Test-NetConnection NOMBRE_SERVIDOR -Port 445
+Test-Path "\\NOMBRE_SERVIDOR\SDRERC_RELEASES\latest\version.json"
+```
 
-Luego publica en:
+## Modo 2: HTTP / HTTPS por VPN
+
+Este modo sirve para clientes remotos conectados por VPN, por ejemplo Tailscale o ZeroTier.
+
+### Servidor
+
+Publique la release como siempre:
+
+```powershell
+.\scripts\server\publish-sdrerc-release.ps1 -Version "1.0.12"
+```
+
+Luego exponga la carpeta `latest` por HTTP solo dentro de la red VPN.
+
+Ejemplo rapido con Python:
+
+```powershell
+cd D:\SDRERC_RELEASES\latest
+python -m http.server 8088
+```
+
+URLs esperadas:
 
 ```text
-D:\SDRERC_RELEASES\latest
+http://IP_VPN_SERVIDOR:8088/version.json
+http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip
+http://IP_VPN_SERVIDOR:8088/checksums.txt
 ```
 
-Archivos generados:
+### Firewall del servidor
 
-- `SDRERC-V2.zip`
-- `version.json`
-- `checksums.txt`
-
-### 3. Publicar una actualizacion
-
-Use una version mayor a la instalada:
+Permitir Oracle y releases HTTP solo en la red privada/VPN:
 
 ```powershell
-.\scripts\server\publish-sdrerc-release.ps1 -Version "1.0.1"
+New-NetFirewallRule -DisplayName "SDRERC Oracle 1521 VPN" -Direction Inbound -Protocol TCP -LocalPort 1521 -Action Allow
+New-NetFirewallRule -DisplayName "SDRERC Releases HTTP 8088 VPN" -Direction Inbound -Protocol TCP -LocalPort 8088 -Action Allow
 ```
 
-La laptop cliente detectara la nueva version al abrir SDRERC desde el acceso directo.
+### Cliente
 
-### 4. Verificar release
+`updater-config.json`:
 
-Revise:
+```json
+{
+  "remoteReleaseMode": "HTTP",
+  "remoteReleasePath": "",
+  "remoteVersionUrl": "http://IP_VPN_SERVIDOR:8088/version.json",
+  "remoteZipUrl": "http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip",
+  "remoteChecksumsUrl": "http://IP_VPN_SERVIDOR:8088/checksums.txt",
+  "localBasePath": "C:\\SDRERC_CLIENTE",
+  "javaPath": "C:\\Program Files\\Java\\jre1.8.0_491\\bin\\java.exe",
+  "mainJar": "SDRERC-V2.jar",
+  "appDirectoryName": "app",
+  "configFile": "C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties",
+  "javaArgs": [
+    "-Dsdrerc.app.config=C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties"
+  ]
+}
+```
+
+Pruebas desde cliente:
 
 ```powershell
-Get-Content D:\SDRERC_RELEASES\latest\version.json
-Get-Content D:\SDRERC_RELEASES\latest\checksums.txt
+Test-NetConnection IP_VPN_SERVIDOR -Port 1521
+Test-NetConnection IP_VPN_SERVIDOR -Port 8088
+Invoke-WebRequest http://IP_VPN_SERVIDOR:8088/version.json
+Get-Content C:\SDRERC_CLIENTE\app\version-local.json
 ```
 
-`version.json` debe indicar la version publicada y `checksums.txt` debe contener el SHA256 de `SDRERC-V2.zip`.
+## Conexion Oracle por VPN
 
-## Cliente
+En `C:\SDRERC_CLIENTE\app\config\sdrerc-app.properties`:
 
-### 1. Instalar launcher
+```properties
+sdrerc.db.url=jdbc:oracle:thin:@IP_VPN_SERVIDOR:1521/XEPDB1
+sdrerc.db.user=SDRERC_APP
+sdrerc.db.password=
+```
 
-Copie la carpeta:
+No guardar credenciales reales en el repositorio ni en la release compartida.
+
+## Instalacion cliente
+
+### Instalador copiable
+
+Carpeta:
 
 ```text
 dist\client-installer
 ```
 
-a la laptop cliente y ejecute:
+#### Instalacion FILE_SHARE
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.ps1 -RemoteReleasePath "\\NOMBRE_SERVIDOR\SDRERC_RELEASES\latest"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.ps1 -RemoteReleaseMode "FILE_SHARE" -RemoteReleasePath "\\SERVIDOR\SDRERC_RELEASES\latest"
 ```
 
-El instalador crea:
+#### Instalacion HTTP / VPN
 
-```text
-C:\SDRERC_CLIENTE
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.ps1 -RemoteReleaseMode "HTTP" -RemoteVersionUrl "http://IP_VPN_SERVIDOR:8088/version.json" -RemoteZipUrl "http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip" -RemoteChecksumsUrl "http://IP_VPN_SERVIDOR:8088/checksums.txt"
 ```
 
-y un acceso directo en el escritorio llamado:
+## Flujo del launcher
 
-```text
-SDRERC Cliente
-```
+Al abrir `run-sdrerc-client.bat`, el launcher:
 
-No requiere permisos de administrador salvo que las politicas locales restrinjan escritura en `C:\`.
+1. lee `updater-config.json`
+2. detecta `remoteReleaseMode`
+3. intenta leer `version.json` remoto
+4. compara contra `version-local.json`
+5. si hay nueva version:
+   - descarga o copia `SDRERC-V2.zip`
+   - valida checksum si existe
+   - valida ZIP
+   - crea backup de `app`
+   - reemplaza archivos locales
+   - preserva `sdrerc-app.properties`
+   - actualiza `version-local.json`
+6. inicia la version local
 
-### 2. Configurar updater
+## Comportamiento ante fallas
 
-Archivo:
+### Sin SMB / sin VPN / sin HTTP
 
-```text
-C:\SDRERC_CLIENTE\launcher\updater-config.json
-```
+Si no se puede acceder a `version.json` remoto:
 
-Campos principales:
+- registra advertencia en logs
+- intenta abrir la ultima version local
 
-```json
-{
-  "remoteReleasePath": "\\\\NOMBRE_SERVIDOR\\SDRERC_RELEASES\\latest",
-  "localBasePath": "C:\\SDRERC_CLIENTE",
-  "javaPath": "",
-  "mainJar": "SDRERC-V2.jar",
-  "configFile": "C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties"
-}
-```
+Si no existe version local:
 
-Si Java no esta en `PATH`, configure `javaPath`, por ejemplo:
+- termina con error claro
 
-```json
-"javaPath": "C:\\Program Files\\Java\\jre1.8.0_491\\bin\\java.exe"
-```
+### Falla en actualizacion
 
-### 3. Configurar conexion SDRERC
+Si falla copia, descarga, checksum, ZIP o reemplazo:
 
-Archivo local:
-
-```text
-C:\SDRERC_CLIENTE\app\config\sdrerc-app.properties
-```
-
-El instalador crea este archivo si no existe, con password vacio.
-
-Contenido sugerido:
-
-```properties
-sdrerc.db.url=jdbc:oracle:thin:@//192.168.43.120:1521/XEPDB1
-sdrerc.db.user=SDRERC_APP
-sdrerc.db.password=
-```
-
-No guarde contrasenas reales en el repositorio ni en la carpeta compartida de releases.
-
-### 4. Primera ejecucion
-
-Abra el acceso directo:
-
-```text
-SDRERC Cliente
-```
-
-El launcher:
-
-1. Lee `updater-config.json`.
-2. Consulta `version.json` en la carpeta LAN.
-3. Descarga `SDRERC-V2.zip` a `updates`.
-4. Valida SHA256 si existe.
-5. Descomprime en staging.
-6. Crea backup de `app`.
-7. Reemplaza la version local.
-8. Preserva `sdrerc-app.properties` local si ya existia.
-9. Inicia `SDRERC-V2.jar`.
-
-## Comportamiento ante errores
-
-### Sin red
-
-Si no se puede acceder a `remoteReleasePath`, el launcher muestra un aviso y abre la ultima version local disponible.
-
-Si no existe version local, muestra error claro y no inicia.
-
-### Falla de actualizacion
-
-Si falla la copia, checksum, ZIP o reemplazo:
-
-1. Registra el error en `C:\SDRERC_CLIENTE\logs`.
-2. Restaura el backup de `C:\SDRERC_CLIENTE\backup`.
-3. Intenta dejar disponible la version anterior.
+- registra error en `C:\SDRERC_CLIENTE\logs`
+- restaura backup desde `C:\SDRERC_CLIENTE\backup`
+- deja operativa la version anterior si existe
 
 ### Aplicacion ya abierta
 
-Si detecta un proceso usando `SDRERC-V2.jar`, no actualiza. El usuario debe cerrar SDRERC y volver a abrirlo.
+Si detecta `SDRERC-V2.jar` en uso:
+
+- no actualiza
+- devuelve codigo 2
+- el usuario debe cerrar la app y volver a abrirla
 
 ## Logs
 
@@ -229,44 +274,26 @@ Ruta:
 C:\SDRERC_CLIENTE\logs
 ```
 
-Formato:
+Archivo:
 
 ```text
 launcher-yyyyMMdd.log
 ```
 
-Los logs no deben incluir passwords.
+Los logs no incluyen passwords.
 
-## Prueba rapida de conectividad
+## Archivos involucrados
 
-Desde la laptop cliente:
+- launcher cliente: `scripts/client/sdrerc-launcher.ps1`
+- bat cliente: `scripts/client/run-sdrerc-client.bat`
+- config cliente: `scripts/client/updater-config.json`
+- publicador servidor: `scripts/server/publish-sdrerc-release.ps1`
+- instalador copiable: `dist/client-installer`
 
-```powershell
-Test-NetConnection NOMBRE_SERVIDOR -Port 445
-Test-NetConnection 192.168.43.120 -Port 1521
-```
+## Seguridad
 
-El puerto 445 valida acceso SMB a la carpeta compartida. El puerto 1521 valida conectividad hacia Oracle.
-
-## Convertir a instalador EXE
-
-No se incluye un EXE para evitar dependencias externas. Cuando se requiera, puede empaquetarse `dist\client-installer` con Inno Setup o una herramienta institucional equivalente.
-
-El instalador EXE debe ejecutar `install-sdrerc-client.ps1` y no debe incrustar credenciales reales.
-
-## Archivos del proyecto
-
-- Cliente launcher: `scripts/client/sdrerc-launcher.ps1`
-- BAT cliente: `scripts/client/run-sdrerc-client.bat`
-- Config ejemplo: `scripts/client/updater-config.json`
-- Publicador servidor: `scripts/server/publish-sdrerc-release.ps1`
-- Plantilla de version: `scripts/server/version-template.json`
-- Instalador copiable: `dist/client-installer`
-
-## Notas de seguridad
-
-- No ejecutar el JAR desde la carpeta compartida.
-- No guardar contrasenas reales en repositorio.
-- No dar permisos de escritura sobre releases a usuarios finales.
-- Mantener backups locales para rollback.
-- Usar versiones semanticas simples como `1.0.0`, `1.0.1`.
+- no ejecutar el JAR desde la ruta remota
+- no publicar Oracle a internet publico
+- no guardar contraseñas reales en archivos versionados
+- usar VPN privada para clientes remotos
+- mantener el puerto 8088 expuesto solo en el segmento VPN o red privada
