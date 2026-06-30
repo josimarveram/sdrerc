@@ -633,6 +633,7 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel panel = section("Expediente seleccionado");
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         int row = 0;
         addRow(grid, row++, "Expediente", lblExpediente);
         addRow(grid, row++, "Titular", lblTitular);
@@ -649,6 +650,7 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel panel = section("Resultado del análisis");
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         int row = 0;
         addRow(grid, row++, "Resultado", cmbResultado);
         addRow(grid, row++, "¿Acta incorporada?", cmbIncorporado);
@@ -675,6 +677,7 @@ public class JPanelAnalisisV2 extends JPanel {
         tituloDocumentos.setForeground(AppV2Theme.TEXT_PRIMARY);
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
+        form.setAlignmentX(Component.LEFT_ALIGNMENT);
         int row = 0;
         addRow(form, row++, "Tipo", cmbTipoDocumento);
         addRow(form, row++, "Estado", cmbEstadoDocumento);
@@ -707,6 +710,7 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel panel = section("Publicación prevista");
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         int row = 0;
         addRow(grid, row++, "Requiere publicación", lblRequierePublicacion);
         addRow(grid, row++, "Fecha de publicación", lblFechaPublicacion);
@@ -786,6 +790,8 @@ public class JPanelAnalisisV2 extends JPanel {
     private JPanel section(String title) {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBackground(AppV2Theme.SURFACE);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, AppV2Theme.BORDER),
                 BorderFactory.createEmptyBorder(12, 0, 12, 0)));
