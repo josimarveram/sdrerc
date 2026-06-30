@@ -8,6 +8,7 @@ import com.sdrerc.domain.dto.sdrercapp.UsuarioFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -32,7 +33,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -72,7 +72,7 @@ public class JPanelUsuariosV2 extends JPanel {
     private final JTextField txtNombres = new JTextField(22);
     private final JTextField txtApellidos = new JTextField(22);
     private final JTextField txtCorreo = new JTextField(24);
-    private final JTextField txtTipoDocumento = new JTextField(8);
+    private final JComboBox<TipoDocumentoIdentidadItem> cmbTipoDocumento = new JComboBox<TipoDocumentoIdentidadItem>();
     private final JTextField txtNumeroDocumento = new JTextField(16);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JCheckBox chkActivo = new JCheckBox("Usuario activo");
@@ -83,6 +83,7 @@ public class JPanelUsuariosV2 extends JPanel {
     private final JTable tblRoles = new AppV2Table(rolesUsuarioModel);
     private JScrollPane scrollUsuarios;
     private JScrollPane scrollRoles;
+    private AppV2OperationalSplitPanel splitDetalle;
 
     private final MetricCardV2 cardUsuarios = new MetricCardV2("Usuarios", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Acceso habilitado", AppV2Theme.SUCCESS);
@@ -122,12 +123,8 @@ public class JPanelUsuariosV2 extends JPanel {
     }
 
     private Component crearCentro() {
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, crearPanelListado(), crearPanelDetalle());
-        split.setBorder(null);
-        split.setResizeWeight(0.67);
-        split.setDividerSize(8);
-        split.setOpaque(false);
-        return split;
+        splitDetalle = new AppV2OperationalSplitPanel(crearPanelListado(), crearPanelDetalle(), 540, 380, 440);
+        return splitDetalle;
     }
 
     private JPanel crearPanelListado() {
@@ -247,7 +244,7 @@ public class JPanelUsuariosV2 extends JPanel {
         agregarFila(form, row++, "Nombres", txtNombres);
         agregarFila(form, row++, "Apellidos", txtApellidos);
         agregarFila(form, row++, "Correo institucional", txtCorreo);
-        agregarFila(form, row++, "Tipo documento", txtTipoDocumento);
+        agregarFila(form, row++, "Tipo documento", cmbTipoDocumento);
         agregarFila(form, row++, "Nro. documento", txtNumeroDocumento);
         agregarFila(form, row++, "Equipo", cmbEquipo);
         agregarFila(form, row++, "Área", lblArea);
@@ -322,6 +319,11 @@ public class JPanelUsuariosV2 extends JPanel {
         cmbEstado.addItem(new EstadoFiltroItem("Todos", null));
         cmbEstado.addItem(new EstadoFiltroItem("Activos", Boolean.TRUE));
         cmbEstado.addItem(new EstadoFiltroItem("Inactivos", Boolean.FALSE));
+        cmbTipoDocumento.addItem(new TipoDocumentoIdentidadItem("", "Seleccione"));
+        cmbTipoDocumento.addItem(new TipoDocumentoIdentidadItem("SIN DNI", "SIN DNI"));
+        cmbTipoDocumento.addItem(new TipoDocumentoIdentidadItem("DNI", "DNI"));
+        cmbTipoDocumento.addItem(new TipoDocumentoIdentidadItem("CE", "CE"));
+        cmbTipoDocumento.addItem(new TipoDocumentoIdentidadItem("PASAPORTE", "Pasaporte"));
         chkActivo.setOpaque(false);
         chkActivo.setSelected(true);
         btnRestablecerClave.setEnabled(false);
@@ -343,6 +345,8 @@ public class JPanelUsuariosV2 extends JPanel {
         tblUsuarios.setFillsViewportHeight(true);
         tblUsuarios.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblUsuarios.setAutoCreateRowSorter(false);
+        tblUsuarios.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollUsuarios.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblUsuarios.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblUsuarios.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblUsuarios.getColumnModel().getColumn(0).setMaxWidth(70);
@@ -353,6 +357,8 @@ public class JPanelUsuariosV2 extends JPanel {
         tblRoles.setRowHeight(30);
         tblRoles.setFillsViewportHeight(true);
         tblRoles.setAutoCreateRowSorter(false);
+        tblRoles.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollRoles.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblRoles.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.getColumnModel().getColumn(0).setMaxWidth(72);
@@ -365,7 +371,10 @@ public class JPanelUsuariosV2 extends JPanel {
         btnBuscar.addActionListener(e -> cargarUsuarios());
         btnLimpiar.addActionListener(e -> limpiarFiltros());
         btnRefrescar.addActionListener(e -> cargarUsuarios());
-        btnNuevo.addActionListener(e -> nuevoUsuario());
+        btnNuevo.addActionListener(e -> {
+            nuevoUsuario();
+            mostrarPanelDetalle();
+        });
         btnEditar.addActionListener(e -> editarSeleccionado());
         btnCancelar.addActionListener(e -> nuevoUsuario());
         btnGuardar.addActionListener(e -> guardarUsuario());
@@ -380,6 +389,7 @@ public class JPanelUsuariosV2 extends JPanel {
                     UsuarioDTO usuario = obtenerUsuarioSeleccionado();
                     if (usuario != null) {
                         cargarFormulario(usuario);
+                        mostrarPanelDetalle();
                     }
                     actualizarBotones();
                 }
@@ -487,7 +497,7 @@ public class JPanelUsuariosV2 extends JPanel {
         txtNombres.setText("");
         txtApellidos.setText("");
         txtCorreo.setText("");
-        txtTipoDocumento.setText("");
+        seleccionarTipoDocumento(null);
         txtNumeroDocumento.setText("");
         if (cmbEquipo.getItemCount() > 0) {
             cmbEquipo.setSelectedIndex(0);
@@ -508,6 +518,7 @@ public class JPanelUsuariosV2 extends JPanel {
             return;
         }
         cargarFormulario(usuario);
+        mostrarPanelDetalle();
         txtNombres.requestFocusInWindow();
     }
 
@@ -521,7 +532,7 @@ public class JPanelUsuariosV2 extends JPanel {
         txtNombres.setText(nullToEmpty(usuario.getNombres()));
         txtApellidos.setText(nullToEmpty(usuario.getApellidos()));
         txtCorreo.setText(nullToEmpty(usuario.getCorreo()));
-        txtTipoDocumento.setText(nullToEmpty(usuario.getTipoDocumento()));
+        seleccionarTipoDocumento(usuario.getTipoDocumento());
         txtNumeroDocumento.setText(nullToEmpty(usuario.getNumeroDocumento()));
         chkActivo.setSelected(usuario.isActivo());
         seleccionarEquipo(usuario.getIdEquipo());
@@ -539,7 +550,7 @@ public class JPanelUsuariosV2 extends JPanel {
         usuario.setNombres(txtNombres.getText());
         usuario.setApellidos(txtApellidos.getText());
         usuario.setCorreo(txtCorreo.getText());
-        usuario.setTipoDocumento(txtTipoDocumento.getText());
+        usuario.setTipoDocumento(obtenerTipoDocumentoSeleccionado());
         usuario.setNumeroDocumento(txtNumeroDocumento.getText());
         usuario.setActivo(chkActivo.isSelected());
 
@@ -671,6 +682,29 @@ public class JPanelUsuariosV2 extends JPanel {
             }
         }
         cmbEquipo.setSelectedIndex(0);
+    }
+
+    private void seleccionarTipoDocumento(String codigo) {
+        String normalized = codigo == null ? "" : codigo.trim();
+        for (int i = 0; i < cmbTipoDocumento.getItemCount(); i++) {
+            TipoDocumentoIdentidadItem item = cmbTipoDocumento.getItemAt(i);
+            if (item.codigo.equalsIgnoreCase(normalized)) {
+                cmbTipoDocumento.setSelectedIndex(i);
+                return;
+            }
+        }
+        cmbTipoDocumento.setSelectedIndex(0);
+    }
+
+    private String obtenerTipoDocumentoSeleccionado() {
+        TipoDocumentoIdentidadItem item = (TipoDocumentoIdentidadItem) cmbTipoDocumento.getSelectedItem();
+        return item == null || item.codigo.trim().isEmpty() ? null : item.codigo;
+    }
+
+    private void mostrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(true);
+        }
     }
 
     private void actualizarAreaSeleccionada() {
@@ -976,6 +1010,21 @@ public class JPanelUsuariosV2 extends JPanel {
 
         Long getIdEquipo() {
             return equipo == null ? null : equipo.getIdEquipo();
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private static class TipoDocumentoIdentidadItem {
+        private final String codigo;
+        private final String label;
+
+        private TipoDocumentoIdentidadItem(String codigo, String label) {
+            this.codigo = codigo == null ? "" : codigo;
+            this.label = label == null ? this.codigo : label;
         }
 
         @Override

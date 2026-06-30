@@ -9,6 +9,7 @@ import com.sdrerc.domain.dto.sdrercapp.EquipoMiembroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableEquipoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -33,7 +34,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -88,6 +88,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private final JTabbedPane tabsDetalle = new JTabbedPane();
     private JScrollPane scrollEquipos;
     private JScrollPane scrollMiembros;
+    private AppV2OperationalSplitPanel splitDetalle;
 
     private final MetricCardV2 cardEquipos = new MetricCardV2("Equipos", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Estructura habilitada", AppV2Theme.SUCCESS);
@@ -128,12 +129,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     }
 
     private Component crearCentro() {
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, crearPanelListado(), crearPanelDetalle());
-        split.setBorder(null);
-        split.setResizeWeight(0.66);
-        split.setDividerSize(8);
-        split.setOpaque(false);
-        return split;
+        splitDetalle = new AppV2OperationalSplitPanel(crearPanelListado(), crearPanelDetalle(), 540, 380, 460);
+        return splitDetalle;
     }
 
     private JPanel crearPanelListado() {
@@ -317,6 +314,18 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         chkActivo.setOpaque(false);
         chkActivo.setSelected(true);
         txtCodigo.setToolTipText("Mayúsculas, números y guion bajo. Ejemplo: EQUIPO_ANALISIS");
+        estilizarBotonPrimario(btnBuscar);
+        estilizarBotonSecundario(btnLimpiar);
+        estilizarBotonPrimario(btnNuevo);
+        estilizarBotonSecundario(btnEditar);
+        estilizarBotonSecundario(btnActivarInactivar);
+        estilizarBotonSecundario(btnVerMiembros);
+        estilizarBotonSecundario(btnRefrescar);
+        estilizarBotonPrimario(btnGuardar);
+        estilizarBotonSecundario(btnCancelar);
+        estilizarBotonPrimario(btnAgregarMiembro);
+        estilizarBotonSecundario(btnQuitarMiembro);
+        estilizarBotonPrimario(btnMarcarResponsable);
         btnEditar.setEnabled(false);
         btnActivarInactivar.setEnabled(false);
         btnVerMiembros.setEnabled(false);
@@ -331,6 +340,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         tblEquipos.setFillsViewportHeight(true);
         tblEquipos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblEquipos.setAutoCreateRowSorter(false);
+        tblEquipos.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollEquipos.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblEquipos.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblEquipos.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         tblEquipos.getColumnModel().getColumn(0).setPreferredWidth(54);
@@ -350,6 +361,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         tblMiembros.setFillsViewportHeight(true);
         tblMiembros.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblMiembros.setAutoCreateRowSorter(false);
+        tblMiembros.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollMiembros.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblMiembros.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblMiembros.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         tblMiembros.getColumnModel().getColumn(0).setPreferredWidth(110);
@@ -366,7 +379,10 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         btnBuscar.addActionListener(e -> buscarEquipos(null));
         btnLimpiar.addActionListener(e -> limpiarFiltros());
         btnRefrescar.addActionListener(e -> buscarEquipos(idEquipoEditando));
-        btnNuevo.addActionListener(e -> nuevoEquipo());
+        btnNuevo.addActionListener(e -> {
+            nuevoEquipo();
+            mostrarPanelDetalle();
+        });
         btnEditar.addActionListener(e -> editarSeleccionado());
         btnActivarInactivar.addActionListener(e -> cambiarEstadoEquipo());
         btnVerMiembros.addActionListener(e -> tabsDetalle.setSelectedIndex(1));
@@ -383,6 +399,9 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                     EquipoJuridicoDTO equipo = obtenerEquipoSeleccionado();
                     llenarFormulario(equipo);
                     cargarMiembros(equipo == null ? null : equipo.getIdEquipo());
+                    if (equipo != null) {
+                        mostrarPanelDetalle();
+                    }
                     actualizarBotonesSeleccion();
                 }
             }
@@ -585,7 +604,14 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
             return;
         }
         tabsDetalle.setSelectedIndex(0);
+        mostrarPanelDetalle();
         txtNombre.requestFocusInWindow();
+    }
+
+    private void mostrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(true);
+        }
     }
 
     private void llenarFormulario(EquipoJuridicoDTO equipo) {
@@ -949,6 +975,24 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         label.setForeground(AppV2Theme.TEXT_SECONDARY);
         return label;
+    }
+
+    private void estilizarBotonPrimario(JButton button) {
+        button.setFocusPainted(false);
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.PRIMARY);
+        button.setForeground(java.awt.Color.WHITE);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+    }
+
+    private void estilizarBotonSecundario(JButton button) {
+        button.setFocusPainted(false);
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.SURFACE_ALT);
+        button.setForeground(AppV2Theme.TEXT_PRIMARY);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
     private static String nullToEmpty(String value) {

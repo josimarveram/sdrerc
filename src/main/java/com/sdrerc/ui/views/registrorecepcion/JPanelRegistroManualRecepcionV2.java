@@ -146,7 +146,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         text.add(subtitle, BorderLayout.CENTER);
         panel.add(text, BorderLayout.CENTER);
         panel.add(new BadgeV2(
-                modoEdicion() ? "Edición controlada" : "Escritura controlada",
+                modoEdicion() ? "Edición manual" : "Registro manual",
                 AppV2Theme.SOFT_GREEN,
                 AppV2Theme.SUCCESS), BorderLayout.EAST);
         return panel;

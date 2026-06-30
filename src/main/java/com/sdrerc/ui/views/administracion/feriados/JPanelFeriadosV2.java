@@ -4,6 +4,7 @@ import com.sdrerc.application.sdrercapp.FeriadoNacionalService;
 import com.sdrerc.domain.dto.sdrercapp.FeriadoNacionalDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
@@ -35,7 +36,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -57,7 +57,7 @@ public class JPanelFeriadosV2 extends JPanel {
     private final JComboBox<EstadoFiltroItem> cmbEstado = new JComboBox<EstadoFiltroItem>();
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
-    private final JButton btnNuevo = new JButton("Nuevo");
+    private final JButton btnNuevo = new JButton("Nuevo feriado");
     private final JButton btnEditar = new JButton("Editar");
     private final JButton btnGuardar = new JButton("Guardar feriado");
     private final JButton btnActivarInactivar = new JButton("Activar / Inactivar");
@@ -74,6 +74,7 @@ public class JPanelFeriadosV2 extends JPanel {
     private final FeriadosTableModel tableModel = new FeriadosTableModel();
     private final JTable tblFeriados = new AppV2Table(tableModel);
     private JScrollPane scrollFeriados;
+    private AppV2OperationalSplitPanel splitDetalle;
     private final MetricCardV2 cardTotal = new MetricCardV2("Feriados", "0", "Resultado del año", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Excluidos del plazo", AppV2Theme.SUCCESS);
     private final MetricCardV2 cardInactivos = new MetricCardV2("Inactivos", "0", "Sin efecto en el cálculo", AppV2Theme.WARNING);
@@ -110,12 +111,8 @@ public class JPanelFeriadosV2 extends JPanel {
     }
 
     private Component crearCentro() {
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, crearPanelListado(), crearPanelDetalle());
-        split.setBorder(null);
-        split.setResizeWeight(0.68);
-        split.setDividerSize(8);
-        split.setOpaque(false);
-        return split;
+        splitDetalle = new AppV2OperationalSplitPanel(crearPanelListado(), crearPanelDetalle(), 540, 360, 430);
+        return splitDetalle;
     }
 
     private JPanel crearPanelListado() {
@@ -213,11 +210,21 @@ public class JPanelFeriadosV2 extends JPanel {
         chkActivo.setSelected(true);
         txtObservacion.setLineWrap(true);
         txtObservacion.setWrapStyleWord(true);
+        estilizarBotonPrimario(btnBuscar);
+        estilizarBotonSecundario(btnLimpiar);
+        estilizarBotonPrimario(btnNuevo);
+        estilizarBotonSecundario(btnEditar);
+        estilizarBotonSecundario(btnActivarInactivar);
+        estilizarBotonPrimario(btnImportarXml);
+        estilizarBotonSecundario(btnRefrescar);
+        estilizarBotonPrimario(btnGuardar);
     }
 
     private void configurarTabla() {
         tblFeriados.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblFeriados.setAutoCreateRowSorter(false);
+        tblFeriados.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollFeriados.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblFeriados.setDefaultRenderer(Object.class, new FeriadoCellRenderer());
         AppV2TableColumnSizer.applyWidths(tblFeriados, 120, 240, 120, 110, 260);
         AppV2ColumnFilterSupport.install("Administracion.Feriados", tblFeriados, scrollFeriados, null, null);
@@ -226,7 +233,10 @@ public class JPanelFeriadosV2 extends JPanel {
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> cargarFeriados());
         btnLimpiar.addActionListener(e -> limpiarFiltros());
-        btnNuevo.addActionListener(e -> nuevoFeriado());
+        btnNuevo.addActionListener(e -> {
+            nuevoFeriado();
+            mostrarPanelDetalle();
+        });
         btnEditar.addActionListener(e -> cargarSeleccion());
         btnGuardar.addActionListener(e -> guardarFeriado());
         btnActivarInactivar.addActionListener(e -> cambiarActivoSeleccionado());
@@ -429,6 +439,7 @@ public class JPanelFeriadosV2 extends JPanel {
             txtTipo.setText(dto.getTipo());
             txtObservacion.setText(dto.getObservacion());
             chkActivo.setSelected(dto.isActivo());
+            mostrarPanelDetalle();
         } finally {
             cargandoFormulario = false;
         }
@@ -443,6 +454,12 @@ public class JPanelFeriadosV2 extends JPanel {
         txtObservacion.setText("");
         chkActivo.setSelected(true);
         fechaFeriadoField.requestFocusInWindow();
+    }
+
+    private void mostrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(true);
+        }
     }
 
     private void limpiarFiltros() {
@@ -486,6 +503,24 @@ public class JPanelFeriadosV2 extends JPanel {
         label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         label.setForeground(AppV2Theme.TEXT_SECONDARY);
         return label;
+    }
+
+    private void estilizarBotonPrimario(JButton button) {
+        button.setFocusPainted(false);
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.PRIMARY);
+        button.setForeground(java.awt.Color.WHITE);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+    }
+
+    private void estilizarBotonSecundario(JButton button) {
+        button.setFocusPainted(false);
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.SURFACE_ALT);
+        button.setForeground(AppV2Theme.TEXT_PRIMARY);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
     private void mostrarError(String mensaje, Exception ex) {

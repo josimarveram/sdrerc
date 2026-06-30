@@ -1,5 +1,6 @@
 package com.sdrerc.ui.appv2;
 
+import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.ui.appv2.components.AppV2CopyTextSupport;
 import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2SidebarCollapseButton;
@@ -233,7 +234,7 @@ public class MenuPrincipalV2 extends JFrame {
         tituloPanel.add(Box.createVerticalStrut(2));
         tituloPanel.add(lblSubtitulo);
 
-        JLabel lblModo = new JLabel("SDRERC_APP · lectura");
+        JLabel lblModo = new JLabel(obtenerUsernameVisible());
         lblModo.setHorizontalAlignment(SwingConstants.RIGHT);
         lblModo.setOpaque(true);
         lblModo.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
@@ -244,6 +245,15 @@ public class MenuPrincipalV2 extends JFrame {
         header.add(tituloPanel, BorderLayout.WEST);
         header.add(lblModo, BorderLayout.EAST);
         return header;
+    }
+
+    private String obtenerUsernameVisible() {
+        try {
+            String username = SessionContext.getUsername();
+            return username == null || username.trim().isEmpty() ? "Usuario" : username.trim();
+        } catch (Exception ex) {
+            return "Usuario";
+        }
     }
 
     private JButton crearBotonMenu(String texto, String iconCode) {

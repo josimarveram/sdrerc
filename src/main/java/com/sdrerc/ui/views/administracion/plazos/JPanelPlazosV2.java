@@ -4,6 +4,7 @@ import com.sdrerc.application.sdrercapp.PlazoConfiguracionService;
 import com.sdrerc.domain.dto.sdrercapp.PlazoConfiguracionDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
@@ -48,7 +49,7 @@ public class JPanelPlazosV2 extends JPanel {
     private final JComboBox<EstadoFiltroItem> cmbEstado = new JComboBox<EstadoFiltroItem>();
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
-    private final JButton btnNuevo = new JButton("Nuevo");
+    private final JButton btnNuevo = new JButton("Nuevo plazo");
     private final JButton btnEditar = new JButton("Editar");
     private final JButton btnActivarInactivar = new JButton("Activar / Inactivar");
     private final JButton btnRefrescar = new JButton("Refrescar");
@@ -68,6 +69,7 @@ public class JPanelPlazosV2 extends JPanel {
     private final PlazosTableModel tableModel = new PlazosTableModel();
     private final JTable tblPlazos = new AppV2Table(tableModel);
     private JScrollPane scrollPlazos;
+    private AppV2OperationalSplitPanel splitDetalle;
     private final MetricCardV2 cardTotal = new MetricCardV2("Plazos", "0", "Configuraciones", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Disponibles para cálculo", AppV2Theme.SUCCESS);
     private final MetricCardV2 cardSolicitud = new MetricCardV2("Solicitud SDRERC", "No configurado", "Configuración oficial", AppV2Theme.WARNING);
@@ -104,15 +106,8 @@ public class JPanelPlazosV2 extends JPanel {
     }
 
     private Component crearCentro() {
-        javax.swing.JSplitPane split = new javax.swing.JSplitPane(
-                javax.swing.JSplitPane.HORIZONTAL_SPLIT,
-                crearPanelListado(),
-                crearPanelDetalle());
-        split.setBorder(null);
-        split.setResizeWeight(0.68);
-        split.setDividerSize(8);
-        split.setOpaque(false);
-        return split;
+        splitDetalle = new AppV2OperationalSplitPanel(crearPanelListado(), crearPanelDetalle(), 540, 380, 460);
+        return splitDetalle;
     }
 
     private JPanel crearPanelListado() {
@@ -214,11 +209,20 @@ public class JPanelPlazosV2 extends JPanel {
         txtVigenciaHasta.setToolTipText("Formato dd/MM/yyyy; opcional");
         txtObservacion.setLineWrap(true);
         txtObservacion.setWrapStyleWord(true);
+        estilizarBotonPrimario(btnBuscar);
+        estilizarBotonSecundario(btnLimpiar);
+        estilizarBotonPrimario(btnNuevo);
+        estilizarBotonSecundario(btnEditar);
+        estilizarBotonSecundario(btnActivarInactivar);
+        estilizarBotonSecundario(btnRefrescar);
+        estilizarBotonPrimario(btnGuardar);
     }
 
     private void configurarTabla() {
         tblPlazos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblPlazos.setAutoCreateRowSorter(false);
+        tblPlazos.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollPlazos.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblPlazos.setDefaultRenderer(Object.class, new PlazoCellRenderer());
         AppV2TableColumnSizer.applyWidths(tblPlazos, 160, 260, 130, 90, 130, 110, 120, 120);
         AppV2ColumnFilterSupport.install("Administracion.Plazos", tblPlazos, scrollPlazos, null, null);
@@ -228,7 +232,10 @@ public class JPanelPlazosV2 extends JPanel {
         btnBuscar.addActionListener(e -> cargarPlazos());
         btnLimpiar.addActionListener(e -> limpiarFiltros());
         btnRefrescar.addActionListener(e -> cargarPlazos());
-        btnNuevo.addActionListener(e -> nuevoPlazo());
+        btnNuevo.addActionListener(e -> {
+            nuevoPlazo();
+            mostrarPanelDetalle();
+        });
         btnEditar.addActionListener(e -> cargarSeleccion());
         btnGuardar.addActionListener(e -> guardarPlazo());
         btnActivarInactivar.addActionListener(e -> cambiarActivoSeleccionado());
@@ -378,6 +385,7 @@ public class JPanelPlazosV2 extends JPanel {
             txtVigenciaHasta.setText(dto.getFechaVigenciaHasta() == null ? "" : DATE_FORMAT.format(dto.getFechaVigenciaHasta()));
             txtObservacion.setText(dto.getObservacion());
             chkActivo.setSelected(dto.isActivo());
+            mostrarPanelDetalle();
         } finally {
             cargandoFormulario = false;
         }
@@ -407,6 +415,12 @@ public class JPanelPlazosV2 extends JPanel {
         txtObservacion.setText("");
         chkActivo.setSelected(true);
         txtCodigo.requestFocusInWindow();
+    }
+
+    private void mostrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(true);
+        }
     }
 
     private void limpiarFiltros() {
@@ -450,6 +464,24 @@ public class JPanelPlazosV2 extends JPanel {
         label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         label.setForeground(AppV2Theme.TEXT_SECONDARY);
         return label;
+    }
+
+    private void estilizarBotonPrimario(JButton button) {
+        button.setFocusPainted(false);
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.PRIMARY);
+        button.setForeground(java.awt.Color.WHITE);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+    }
+
+    private void estilizarBotonSecundario(JButton button) {
+        button.setFocusPainted(false);
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.SURFACE_ALT);
+        button.setForeground(AppV2Theme.TEXT_PRIMARY);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
     private void mostrarError(String mensaje, Exception ex) {

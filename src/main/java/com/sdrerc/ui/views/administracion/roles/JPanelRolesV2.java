@@ -8,6 +8,7 @@ import com.sdrerc.domain.dto.sdrercapp.RolFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.RolResultadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
+import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
@@ -30,7 +31,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -76,6 +76,7 @@ public class JPanelRolesV2 extends JPanel {
     private final JTable tblPermisos = new AppV2Table(permisosModel);
     private JScrollPane scrollRoles;
     private JScrollPane scrollPermisos;
+    private AppV2OperationalSplitPanel splitDetalle;
 
     private final MetricCardV2 cardRoles = new MetricCardV2("Roles", "0", "Resultado de búsqueda", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardActivos = new MetricCardV2("Activos", "0", "Habilitados para uso", AppV2Theme.SUCCESS);
@@ -115,12 +116,8 @@ public class JPanelRolesV2 extends JPanel {
     }
 
     private Component crearCentro() {
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, crearPanelListado(), crearPanelDetalle());
-        split.setBorder(null);
-        split.setResizeWeight(0.68);
-        split.setDividerSize(8);
-        split.setOpaque(false);
-        return split;
+        splitDetalle = new AppV2OperationalSplitPanel(crearPanelListado(), crearPanelDetalle(), 540, 360, 430);
+        return splitDetalle;
     }
 
     private JPanel crearPanelListado() {
@@ -318,6 +315,8 @@ public class JPanelRolesV2 extends JPanel {
         tblRoles.setFillsViewportHeight(true);
         tblRoles.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblRoles.setAutoCreateRowSorter(false);
+        tblRoles.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollRoles.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblRoles.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.getColumnModel().getColumn(0).setMaxWidth(70);
@@ -330,6 +329,8 @@ public class JPanelRolesV2 extends JPanel {
         tblPermisos.setRowHeight(30);
         tblPermisos.setFillsViewportHeight(true);
         tblPermisos.setAutoCreateRowSorter(false);
+        tblPermisos.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollPermisos.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblPermisos.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblPermisos.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         tblPermisos.getColumnModel().getColumn(0).setMaxWidth(72);
@@ -343,7 +344,10 @@ public class JPanelRolesV2 extends JPanel {
         btnBuscar.addActionListener(e -> cargarRoles());
         btnLimpiar.addActionListener(e -> limpiarFiltros());
         btnRefrescar.addActionListener(e -> cargarRoles());
-        btnNuevo.addActionListener(e -> nuevoRol());
+        btnNuevo.addActionListener(e -> {
+            nuevoRol();
+            mostrarPanelDetalle();
+        });
         btnEditar.addActionListener(e -> editarSeleccionado());
         btnCancelar.addActionListener(e -> nuevoRol());
         btnGuardar.addActionListener(e -> guardarRol());
@@ -358,6 +362,7 @@ public class JPanelRolesV2 extends JPanel {
                     RolDTO rol = obtenerRolSeleccionado();
                     if (rol != null) {
                         cargarFormulario(rol);
+                        mostrarPanelDetalle();
                     }
                     actualizarBotones();
                 }
@@ -427,7 +432,14 @@ public class JPanelRolesV2 extends JPanel {
             return;
         }
         cargarFormulario(rol);
+        mostrarPanelDetalle();
         txtNombre.requestFocusInWindow();
+    }
+
+    private void mostrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(true);
+        }
     }
 
     private void cargarFormulario(RolDTO rol) {

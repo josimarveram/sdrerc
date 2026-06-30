@@ -129,8 +129,6 @@ public class HomeV2 extends JPanel {
         page.add(Box.createVerticalStrut(AppV2Theme.SPACE_LARGE));
         page.add(fullWidth(crearAccesosRapidos()));
         page.add(Box.createVerticalStrut(AppV2Theme.SPACE_LARGE));
-        page.add(fullWidth(crearFlujoOperativo()));
-        page.add(Box.createVerticalStrut(AppV2Theme.SPACE_LARGE));
         page.add(fullWidth(crearModulos()));
         page.add(Box.createVerticalStrut(AppV2Theme.SPACE_XL));
 
