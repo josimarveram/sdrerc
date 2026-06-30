@@ -104,24 +104,25 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_ESTADO = 10;
     private static final int COL_ASOCIADOS = 11;
     private static final int COL_ID = 12;
-    private static final int COL_DOCUMENTO_TIPO = 0;
-    private static final int COL_DOCUMENTO_ESTADO = 1;
-    private static final int COL_DOCUMENTO_DETALLE_OBS = 2;
-    private static final int COL_DOCUMENTO_FECHA = 3;
-    private static final int COL_DOCUMENTO_NUMERO = 4;
-    private static final int COL_DOCUMENTO_DESCRIPCION = 5;
-    private static final int COL_DOCUMENTO_REQUIERE_RESPUESTA = 6;
-    private static final int COL_DOCUMENTO_FECHA_ACUSE = 7;
-    private static final int COL_DOCUMENTO_CONFIRMACION_RESPUESTA = 8;
-    private static final int COL_DOCUMENTO_FECHA_RESPUESTA = 9;
-    private static final int COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA = 10;
-    private static final int COL_DOCUMENTO_NOTIFICADO = 11;
-    private static final int COL_DOCUMENTO_PLANTILLA = 12;
-    private static final int COL_DOCUMENTO_GUARDAR = 13;
-    private static final int COL_DOCUMENTO_ACCION = 14;
-    private static final int COL_DOCUMENTO_TIPO_CODIGO = 15;
-    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 16;
-    private static final int COL_DOCUMENTO_ID = 17;
+    private static final int COL_DOCUMENTO_NUMERO_ANALISIS = 0;
+    private static final int COL_DOCUMENTO_TIPO = 1;
+    private static final int COL_DOCUMENTO_ESTADO = 2;
+    private static final int COL_DOCUMENTO_DETALLE_OBS = 3;
+    private static final int COL_DOCUMENTO_FECHA = 4;
+    private static final int COL_DOCUMENTO_NUMERO = 5;
+    private static final int COL_DOCUMENTO_DESCRIPCION = 6;
+    private static final int COL_DOCUMENTO_REQUIERE_RESPUESTA = 7;
+    private static final int COL_DOCUMENTO_FECHA_ACUSE = 8;
+    private static final int COL_DOCUMENTO_CONFIRMACION_RESPUESTA = 9;
+    private static final int COL_DOCUMENTO_FECHA_RESPUESTA = 10;
+    private static final int COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA = 11;
+    private static final int COL_DOCUMENTO_NOTIFICADO = 12;
+    private static final int COL_DOCUMENTO_PLANTILLA = 13;
+    private static final int COL_DOCUMENTO_GUARDAR = 14;
+    private static final int COL_DOCUMENTO_ACCION = 15;
+    private static final int COL_DOCUMENTO_TIPO_CODIGO = 16;
+    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 17;
+    private static final int COL_DOCUMENTO_ID = 18;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 46;
@@ -243,6 +244,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final DefaultTableModel documentoModel = new DefaultTableModel(
             new Object[]{
+                "N° Análisis",
                 "Tipo",
                 "Estado",
                 "Detalle Obs.",
@@ -280,6 +282,7 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     };
     private final JTable documentosTable = new AppV2Table(documentoModel);
+    private final JTable documentosFijosTable = new AppV2Table(documentoModel);
     private JScrollPane documentosScrollPane;
     private AppV2ColumnFilterSupport.Controller documentosColumnFilterSupport;
     private final DefaultTableModel documentosAsociadosModel = new DefaultTableModel(
@@ -681,6 +684,8 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosScrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         documentosScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
         documentosScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        documentosScrollPane.setRowHeaderView(documentosFijosTable);
+        documentosScrollPane.setCorner(JScrollPane.UPPER_LEFT_CORNER, documentosFijosTable.getTableHeader());
         documentoModel.addTableModelListener(e -> actualizarAlturaDocumentosAnalizados(documentosScrollPane));
         actualizarAlturaDocumentosAnalizados(documentosScrollPane);
 
@@ -937,52 +942,10 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void configurarDocumentoTabla() {
-        documentosTable.setRowHeight(30);
-        documentosTable.setAutoCreateRowSorter(false);
-        documentosTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        documentosTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        documentosTable.getTableHeader().setReorderingAllowed(false);
-        documentosTable.getTableHeader().setResizingAllowed(true);
-        documentosTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        documentosTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
-        documentosTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
-        documentosTable.setGridColor(AppV2Theme.BORDER);
-        documentosTable.setShowVerticalLines(false);
-        documentosTable.setIntercellSpacing(new Dimension(0, 1));
-        documentosTable.setDefaultRenderer(Object.class, new DocumentoAnalizadoRenderer());
-        documentosTable.setDefaultRenderer(Boolean.class, new DocumentoAnalizadoCheckRenderer());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_NOTIFICADO).setCellEditor(new DefaultCellEditor(comboSiNo()));
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA).setCellEditor(new FechaDocumentoCellEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_ACUSE).setCellEditor(new FechaDocumentoCellEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_CONFIRMACION_RESPUESTA).setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_RESPUESTA).setCellEditor(new FechaDocumentoCellEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellRenderer(new DescripcionDocumentoRenderer());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellEditor(new DescripcionDocumentoCellEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellRenderer(new PlantillaDocumentoRenderer());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellEditor(new PlantillaDocumentoEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellRenderer(new GuardarDocumentoRenderer());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellEditor(new GuardarDocumentoEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new EliminarDocumentoRenderer());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new EliminarDocumentoEditor());
-        int[] widths = new int[]{120, 120, 180, 110, 120, 240, 145, 105, 165, 115, 145, 95, 42, 42, 42, 0, 0, 0};
-        for (int i = 0; i < widths.length; i++) {
-            configurarColumnaDocumento(i, widths[i], i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : Math.min(widths[i], 90), i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : widths[i] + 90);
-        }
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMinWidth(42);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setPreferredWidth(42);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMaxWidth(48);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMinWidth(42);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setPreferredWidth(42);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMaxWidth(48);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMinWidth(42);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setPreferredWidth(42);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMaxWidth(48);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMinWidth(0);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMaxWidth(0);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMinWidth(0);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMaxWidth(0);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMinWidth(0);
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMaxWidth(0);
+        configurarDocumentoTablaBase(documentosTable, true);
+        configurarDocumentoTablaBase(documentosFijosTable, false);
+        documentosTable.setSelectionModel(documentosFijosTable.getSelectionModel());
+        documentosFijosTable.setSelectionModel(documentosTable.getSelectionModel());
         if (documentosScrollPane != null) {
             documentosColumnFilterSupport = AppV2ColumnFilterSupport.install(
                     "Analisis.DocumentosAnalizados",
@@ -996,15 +959,87 @@ public class JPanelAnalisisV2 extends JPanel {
                     COL_DOCUMENTO_TIPO_CODIGO,
                     COL_DOCUMENTO_ESTADO_CODIGO,
                     COL_DOCUMENTO_ID);
+            documentosFijosTable.setRowSorter(documentosTable.getRowSorter());
+            documentosScrollPane.setRowHeaderView(documentosFijosTable);
+            documentosScrollPane.setCorner(JScrollPane.UPPER_LEFT_CORNER, documentosFijosTable.getTableHeader());
             actualizarAlturaDocumentosAnalizados(documentosScrollPane);
         }
     }
 
-    private void configurarColumnaDocumento(int index, int preferred, int min, int max) {
-        TableColumn column = documentosTable.getColumnModel().getColumn(index);
+    private void configurarDocumentoTablaBase(JTable tabla, boolean principal) {
+        tabla.setRowHeight(30);
+        tabla.setAutoCreateRowSorter(false);
+        tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tabla.getTableHeader().setReorderingAllowed(false);
+        tabla.getTableHeader().setResizingAllowed(true);
+        tabla.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tabla.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        tabla.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        tabla.setGridColor(AppV2Theme.BORDER);
+        tabla.setShowVerticalLines(false);
+        tabla.setIntercellSpacing(new Dimension(0, 1));
+        tabla.setDefaultRenderer(Object.class, new DocumentoAnalizadoRenderer());
+        tabla.setDefaultRenderer(Boolean.class, new DocumentoAnalizadoCheckRenderer());
+        if (principal) {
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_NOTIFICADO).setCellEditor(new DefaultCellEditor(comboSiNo()));
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_FECHA).setCellEditor(new FechaDocumentoCellEditor());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_ACUSE).setCellEditor(new FechaDocumentoCellEditor());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_CONFIRMACION_RESPUESTA).setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_RESPUESTA).setCellEditor(new FechaDocumentoCellEditor());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellRenderer(new DescripcionDocumentoRenderer());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellEditor(new DescripcionDocumentoCellEditor());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellRenderer(new PlantillaDocumentoRenderer());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellEditor(new PlantillaDocumentoEditor());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellRenderer(new GuardarDocumentoRenderer());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellEditor(new GuardarDocumentoEditor());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new EliminarDocumentoRenderer());
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new EliminarDocumentoEditor());
+        }
+        int[] widths = principal
+                ? new int[]{0, 0, 120, 180, 110, 120, 240, 145, 105, 165, 115, 145, 95, 42, 42, 42, 0, 0, 0}
+                : new int[]{92, 150};
+        int visibleCount = tabla.getColumnModel().getColumnCount();
+        for (int i = 0; i < visibleCount && i < widths.length; i++) {
+            int preferred = widths[i];
+            int min = principal && i < 2 ? 0 : Math.min(preferred, 90);
+            int max = principal && i < 2 ? 0 : preferred + 90;
+            configurarColumnaDocumento(tabla, i, preferred, min, max);
+        }
+        if (principal) {
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMinWidth(42);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setPreferredWidth(42);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMaxWidth(48);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMinWidth(42);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setPreferredWidth(42);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMaxWidth(48);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMinWidth(42);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setPreferredWidth(42);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMaxWidth(48);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMinWidth(0);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMaxWidth(0);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMinWidth(0);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMaxWidth(0);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMinWidth(0);
+            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMaxWidth(0);
+        } else {
+            for (int i = tabla.getColumnModel().getColumnCount() - 1; i >= 2; i--) {
+                tabla.getColumnModel().removeColumn(tabla.getColumnModel().getColumn(i));
+            }
+            tabla.setPreferredScrollableViewportSize(new Dimension(250, 0));
+        }
+    }
+
+    private void configurarColumnaDocumento(JTable tabla, int index, int preferred, int min, int max) {
+        TableColumn column = tabla.getColumnModel().getColumn(index);
         column.setPreferredWidth(preferred);
         column.setMinWidth(min);
         column.setMaxWidth(max);
+    }
+
+    private void ajustarAlturaDocumentoFila(int viewRow, int height) {
+        documentosTable.setRowHeight(viewRow, height);
+        documentosFijosTable.setRowHeight(viewRow, height);
     }
 
     private void configurarDocumentosAsociadosTabla() {
@@ -1789,6 +1824,7 @@ public class JPanelAnalisisV2 extends JPanel {
         }
         for (DocumentoAnalizadoDTO documento : documentos) {
             documentoModel.addRow(new Object[]{
+                etiquetaAnalisisDocumento(documento),
                 new SimpleItem(documento.getTipoDocumentoCodigo(), documento.getTipoDocumentoNombre()),
                 new SimpleItem(documento.getEstadoDocumentoCodigo(), documento.getEstadoDocumentoNombre()),
                 documento.getDetalleObservacion(),
@@ -2380,6 +2416,7 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         documentoModel.addRow(new Object[]{
+            etiquetaAnalisisActual(),
             tipo,
             estado,
             "",
@@ -2564,6 +2601,40 @@ public class JPanelAnalisisV2 extends JPanel {
         AnalisisItemDTO item = (AnalisisItemDTO) cmbBloquesAnalisis.getSelectedItem();
         idAnalisisSeleccionado = item == null ? null : item.getIdExpedienteAnalisis();
         aplicarAnalisisRegistrado(item == null ? null : item.getDetalle());
+    }
+
+    private String etiquetaAnalisisActual() {
+        return etiquetaAnalisisDocumento(idAnalisisSeleccionado);
+    }
+
+    private String etiquetaAnalisisDocumento(DocumentoAnalizadoDTO documento) {
+        return documento == null
+                ? etiquetaAnalisisActual()
+                : etiquetaAnalisisDocumento(documento.getIdExpedienteAnalisis());
+    }
+
+    private String etiquetaAnalisisDocumento(Long idExpedienteAnalisis) {
+        AnalisisItemDTO item = buscarBloqueAnalisis(idExpedienteAnalisis);
+        if (item != null) {
+            return item.getTitulo();
+        }
+        if (idExpedienteAnalisis != null) {
+            return "Análisis " + idExpedienteAnalisis;
+        }
+        AnalisisItemDTO seleccionado = (AnalisisItemDTO) cmbBloquesAnalisis.getSelectedItem();
+        return seleccionado == null ? "Análisis 1" : seleccionado.getTitulo();
+    }
+
+    private AnalisisItemDTO buscarBloqueAnalisis(Long idExpedienteAnalisis) {
+        if (idExpedienteAnalisis == null) {
+            return null;
+        }
+        for (AnalisisItemDTO item : bloquesAnalisis) {
+            if (item != null && idExpedienteAnalisis.equals(item.getIdExpedienteAnalisis())) {
+                return item;
+            }
+        }
+        return null;
     }
 
     private void descargarPlantillaDocumentoSeleccionado() {
@@ -3105,7 +3176,8 @@ public class JPanelAnalisisV2 extends JPanel {
             String text = value instanceof SimpleItem ? ((SimpleItem) value).toString() : value(value);
             setText(text == null || text.trim().isEmpty() ? "-" : text);
             setToolTipText(getText());
-            setHorizontalAlignment(column == COL_DOCUMENTO_FECHA
+            setHorizontalAlignment(column == COL_DOCUMENTO_NUMERO_ANALISIS
+                    || column == COL_DOCUMENTO_FECHA
                     || column == COL_DOCUMENTO_NOTIFICADO
                     || column == COL_DOCUMENTO_FECHA_ACUSE
                     || column == COL_DOCUMENTO_CONFIRMACION_RESPUESTA
@@ -3116,7 +3188,7 @@ public class JPanelAnalisisV2 extends JPanel {
                 setBackground(TABLE_SELECTION_BACKGROUND);
                 setForeground(TABLE_SELECTION_FOREGROUND);
             } else {
-                setBackground(colorDocumentoAnalizado(column));
+                setBackground(colorDocumentoAnalizado(table, column));
                 setForeground(column == COL_DOCUMENTO_DETALLE_OBS
                         && !esEstadoDocumentoObservadoPorFila(table.convertRowIndexToModel(row))
                         ? AppV2Theme.TEXT_SECONDARY
@@ -3142,20 +3214,20 @@ public class JPanelAnalisisV2 extends JPanel {
                 Object value,
                 boolean isSelected,
                 boolean hasFocus,
-                int row,
-                int column) {
+            int row,
+            int column) {
             String text = value == null ? "" : value.toString();
             setText(text.isEmpty() ? "-" : text);
             setSize(table.getColumnModel().getColumn(column).getWidth(), Short.MAX_VALUE);
             int height = Math.max(30, getPreferredSize().height + 8);
-            if (table.getRowHeight(row) != height) {
-                table.setRowHeight(row, height);
+            if (documentosTable.getRowHeight(row) != height || documentosFijosTable.getRowHeight(row) != height) {
+                ajustarAlturaDocumentoFila(row, height);
             }
             if (isSelected) {
                 setBackground(TABLE_SELECTION_BACKGROUND);
                 setForeground(TABLE_SELECTION_FOREGROUND);
             } else {
-                setBackground(colorDocumentoAnalizado(column));
+                setBackground(colorDocumentoAnalizado(table, column));
                 setForeground(AppV2Theme.TEXT_PRIMARY);
             }
             setToolTipText(text.isEmpty() ? null : text);
@@ -3179,7 +3251,7 @@ public class JPanelAnalisisV2 extends JPanel {
             int row,
             int column) {
             setSelected(Boolean.TRUE.equals(value));
-            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : colorDocumentoAnalizado(column));
+            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : colorDocumentoAnalizado(table, column));
             setToolTipText(Boolean.TRUE.equals(value)
                     ? "Requiere respuesta."
                     : "No requiere respuesta.");
@@ -3187,9 +3259,9 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
-    private Color colorDocumentoAnalizado(int viewColumn) {
-        int modelColumn = documentosTable.convertColumnIndexToModel(viewColumn);
-        if (modelColumn >= COL_DOCUMENTO_TIPO && modelColumn <= COL_DOCUMENTO_REQUIERE_RESPUESTA) {
+    private Color colorDocumentoAnalizado(JTable table, int viewColumn) {
+        int modelColumn = table.convertColumnIndexToModel(viewColumn);
+        if (modelColumn >= COL_DOCUMENTO_NUMERO_ANALISIS && modelColumn <= COL_DOCUMENTO_REQUIERE_RESPUESTA) {
             return DOCUMENTO_ANALISIS_BACKGROUND;
         }
         if (modelColumn >= COL_DOCUMENTO_FECHA_ACUSE && modelColumn <= COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA) {
@@ -3623,11 +3695,13 @@ public class JPanelAnalisisV2 extends JPanel {
             int columnWidth = documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).getWidth();
             int lines = Math.max(2, Math.min(10, area.getLineCount() + 1));
             int height = Math.max(54, lines * 19 + 18);
-            documentosTable.setRowHeight(viewRow, height);
+            ajustarAlturaDocumentoFila(viewRow, height);
             scroll.setPreferredSize(new Dimension(Math.max(220, columnWidth), height));
             scroll.revalidate();
             documentosTable.revalidate();
+            documentosFijosTable.revalidate();
             documentosTable.repaint();
+            documentosFijosTable.repaint();
         }
     }
 
