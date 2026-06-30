@@ -1036,9 +1036,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void restaurarFechasBandejaGeneral() {
-        Date hoy = new Date();
-        fechaSolicitudDesde.setDate(hoy);
-        fechaSolicitudHasta.setDate(hoy);
+        LocalDate inicio = LocalDate.of(2026, 1, 1);
+        Date desde = Date.from(inicio.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date hasta = new Date();
+        fechaSolicitudDesde.setDate(desde);
+        fechaSolicitudHasta.setDate(hasta);
     }
 
     private void seleccionarEtapaInicial() {

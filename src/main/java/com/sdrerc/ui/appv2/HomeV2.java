@@ -17,6 +17,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -32,6 +33,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 
 public class HomeV2 extends JPanel {
@@ -138,6 +140,10 @@ public class HomeV2 extends JPanel {
         scroll.getViewport().setBackground(AppV2Theme.BACKGROUND);
         scroll.getVerticalScrollBar().setUnitIncrement(18);
         add(scroll, BorderLayout.CENTER);
+        SwingUtilities.invokeLater(() -> {
+            scroll.getViewport().setViewPosition(new Point(0, 0));
+            scroll.getVerticalScrollBar().setValue(0);
+        });
     }
 
     private JPanel crearHero() {
