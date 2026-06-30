@@ -117,10 +117,11 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA = 10;
     private static final int COL_DOCUMENTO_NOTIFICADO = 11;
     private static final int COL_DOCUMENTO_PLANTILLA = 12;
-    private static final int COL_DOCUMENTO_ACCION = 13;
-    private static final int COL_DOCUMENTO_TIPO_CODIGO = 14;
-    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 15;
-    private static final int COL_DOCUMENTO_ID = 16;
+    private static final int COL_DOCUMENTO_GUARDAR = 13;
+    private static final int COL_DOCUMENTO_ACCION = 14;
+    private static final int COL_DOCUMENTO_TIPO_CODIGO = 15;
+    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 16;
+    private static final int COL_DOCUMENTO_ID = 17;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 46;
@@ -256,6 +257,7 @@ public class JPanelAnalisisV2 extends JPanel {
                 "Notificado",
                 "",
                 "",
+                "",
                 "tipo_codigo",
                 "estado_codigo",
                 "_id_documento"
@@ -268,6 +270,7 @@ public class JPanelAnalisisV2 extends JPanel {
             }
             return (column >= COL_DOCUMENTO_TIPO && column <= COL_DOCUMENTO_NOTIFICADO)
                     || column == COL_DOCUMENTO_PLANTILLA
+                    || column == COL_DOCUMENTO_GUARDAR
                     || column == COL_DOCUMENTO_ACCION;
         }
 
@@ -953,17 +956,24 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_ACUSE).setCellEditor(new FechaDocumentoCellEditor());
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_CONFIRMACION_RESPUESTA).setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_RESPUESTA).setCellEditor(new FechaDocumentoCellEditor());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellRenderer(new DescripcionDocumentoRenderer());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellEditor(new DescripcionDocumentoCellEditor());
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellRenderer(new PlantillaDocumentoRenderer());
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellEditor(new PlantillaDocumentoEditor());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new GuardarDocumentoRenderer());
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new GuardarDocumentoEditor());
-        int[] widths = new int[]{120, 120, 180, 110, 120, 220, 145, 105, 165, 115, 145, 95, 42, 42, 0, 0, 0};
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellRenderer(new GuardarDocumentoRenderer());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellEditor(new GuardarDocumentoEditor());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new EliminarDocumentoRenderer());
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new EliminarDocumentoEditor());
+        int[] widths = new int[]{120, 120, 180, 110, 120, 240, 145, 105, 165, 115, 145, 95, 42, 42, 42, 0, 0, 0};
         for (int i = 0; i < widths.length; i++) {
             configurarColumnaDocumento(i, widths[i], i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : Math.min(widths[i], 90), i >= COL_DOCUMENTO_TIPO_CODIGO ? 0 : widths[i] + 90);
         }
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMinWidth(42);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setPreferredWidth(42);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMaxWidth(48);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMinWidth(42);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setPreferredWidth(42);
+        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMaxWidth(48);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMinWidth(42);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setPreferredWidth(42);
         documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMaxWidth(48);
@@ -981,6 +991,7 @@ public class JPanelAnalisisV2 extends JPanel {
                     documentosScrollPane,
                     null,
                     COL_DOCUMENTO_PLANTILLA,
+                    COL_DOCUMENTO_GUARDAR,
                     COL_DOCUMENTO_ACCION,
                     COL_DOCUMENTO_TIPO_CODIGO,
                     COL_DOCUMENTO_ESTADO_CODIGO,
@@ -1792,6 +1803,7 @@ public class JPanelAnalisisV2 extends JPanel {
                 documento.isNotificado() ? "Si" : "No",
                 "",
                 "",
+                "",
                 documento.getTipoDocumentoCodigo(),
                 documento.getEstadoDocumentoCodigo(),
                 documento.getIdDocumentoAnalizado()
@@ -2380,6 +2392,7 @@ public class JPanelAnalisisV2 extends JPanel {
             "",
             "",
             "No",
+            "",
             "",
             "",
             tipo.codigo,
@@ -3113,6 +3126,43 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
+    private class DescripcionDocumentoRenderer extends JTextArea implements TableCellRenderer {
+
+        private DescripcionDocumentoRenderer() {
+            setLineWrap(true);
+            setWrapStyleWord(true);
+            setOpaque(true);
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            String text = value == null ? "" : value.toString();
+            setText(text.isEmpty() ? "-" : text);
+            setSize(table.getColumnModel().getColumn(column).getWidth(), Short.MAX_VALUE);
+            int height = Math.max(30, getPreferredSize().height + 8);
+            if (table.getRowHeight(row) != height) {
+                table.setRowHeight(row, height);
+            }
+            if (isSelected) {
+                setBackground(TABLE_SELECTION_BACKGROUND);
+                setForeground(TABLE_SELECTION_FOREGROUND);
+            } else {
+                setBackground(colorDocumentoAnalizado(column));
+                setForeground(AppV2Theme.TEXT_PRIMARY);
+            }
+            setToolTipText(text.isEmpty() ? null : text);
+            return this;
+        }
+    }
+
     private class DocumentoAnalizadoCheckRenderer extends JCheckBox implements TableCellRenderer {
 
         private DocumentoAnalizadoCheckRenderer() {
@@ -3221,8 +3271,8 @@ public class JPanelAnalisisV2 extends JPanel {
     private class GuardarDocumentoRenderer extends JButton implements TableCellRenderer {
         private GuardarDocumentoRenderer() {
             setText("");
-            setIcon(new DeleteDocumentIcon());
-            setToolTipText("Quitar documento");
+            setIcon(new SaveDocumentIcon());
+            setToolTipText("Guardar documento");
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setFocusPainted(false);
             setBorderPainted(false);
@@ -3305,14 +3355,39 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
+    private class EliminarDocumentoRenderer extends JButton implements TableCellRenderer {
+        private EliminarDocumentoRenderer() {
+            setText("");
+            setIcon(new DeleteDocumentIcon());
+            setToolTipText("Quitar documento");
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setFocusPainted(false);
+            setBorderPainted(false);
+            setContentAreaFilled(false);
+            setOpaque(false);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setEnabled(table.isEnabled());
+            return this;
+        }
+    }
+
     private class GuardarDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
         private final JButton button = new JButton();
         private int modelRow = -1;
 
         private GuardarDocumentoEditor() {
             button.setText("");
-            button.setIcon(new DeleteDocumentIcon());
-            button.setToolTipText("Quitar documento");
+            button.setIcon(new SaveDocumentIcon());
+            button.setToolTipText("Guardar documento");
             button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             button.setFocusPainted(false);
             button.setBorderPainted(false);
@@ -3320,7 +3395,7 @@ public class JPanelAnalisisV2 extends JPanel {
             button.addActionListener(e -> {
                 int row = modelRow;
                 fireEditingStopped();
-                quitarDocumentoFila(row);
+                guardarDocumentoFila(row);
             });
         }
 
@@ -3449,6 +3524,110 @@ public class JPanelAnalisisV2 extends JPanel {
             } finally {
                 g2.dispose();
             }
+        }
+    }
+
+    private class EliminarDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JButton button = new JButton();
+        private int modelRow = -1;
+
+        private EliminarDocumentoEditor() {
+            button.setText("");
+            button.setIcon(new DeleteDocumentIcon());
+            button.setToolTipText("Quitar documento");
+            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            button.setFocusPainted(false);
+            button.setBorderPainted(false);
+            button.setContentAreaFilled(false);
+            button.addActionListener(e -> {
+                int row = modelRow;
+                fireEditingStopped();
+                quitarDocumentoFila(row);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            modelRow = table.convertRowIndexToModel(row);
+            button.setEnabled(table.isEnabled());
+            return button;
+        }
+    }
+
+    private class DescripcionDocumentoCellEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JTextArea area = new JTextArea();
+        private final JScrollPane scroll = new JScrollPane(area);
+        private int viewRow = -1;
+
+        private DescripcionDocumentoCellEditor() {
+            area.setLineWrap(true);
+            area.setWrapStyleWord(true);
+            area.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            area.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+            scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            area.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                @Override
+                public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                    ajustarAltura();
+                }
+
+                @Override
+                public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                    ajustarAltura();
+                }
+
+                @Override
+                public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                    ajustarAltura();
+                }
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return area.getText();
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            viewRow = row;
+            area.setText(value == null ? "" : value.toString());
+            SwingUtilities.invokeLater(() -> {
+                area.setCaretPosition(area.getDocument().getLength());
+                ajustarAltura();
+            });
+            return scroll;
+        }
+
+        private void ajustarAltura() {
+            if (viewRow < 0) {
+                return;
+            }
+            int columnWidth = documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).getWidth();
+            int lines = Math.max(2, Math.min(10, area.getLineCount() + 1));
+            int height = Math.max(54, lines * 19 + 18);
+            documentosTable.setRowHeight(viewRow, height);
+            scroll.setPreferredSize(new Dimension(Math.max(220, columnWidth), height));
+            scroll.revalidate();
+            documentosTable.revalidate();
+            documentosTable.repaint();
         }
     }
 
