@@ -42,6 +42,17 @@ public class ExpedienteRelacionadoService {
                 descripcion);
     }
 
+    public String desasociarRelacionado(
+            Long idExpedientePrincipal,
+            Long idExpedienteRelacionado,
+            String descripcion) throws SQLException {
+        return expedienteRelacionadoDAO.desasociarRelacionado(
+                idExpedientePrincipal,
+                idExpedienteRelacionado,
+                resolverUsuarioActualSdrercApp(),
+                descripcion);
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();

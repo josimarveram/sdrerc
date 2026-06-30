@@ -384,6 +384,69 @@ public class ExpedienteRelacionadoDAO {
                 mensaje);
     }
 
+    public String desasociarRelacionado(
+            Long idExpedientePrincipal,
+            Long idExpedienteRelacionado,
+            Long idUsuarioCreador,
+            String descripcion) throws SQLException {
+        if (idExpedientePrincipal == null || idExpedienteRelacionado == null) {
+            throw new IllegalArgumentException("Seleccione el expediente principal y el expediente relacionado.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                if (!existeExpedienteActivo(conn, idExpedientePrincipal) || !existeExpedienteActivo(conn, idExpedienteRelacionado)) {
+                    throw new SQLException("Uno de los expedientes seleccionados ya no existe o no está activo.");
+                }
+                if (!existeRelacionActiva(conn, idExpedientePrincipal, idExpedienteRelacionado)) {
+                    throw new SQLException("El expediente ya no está asociado al expediente principal.");
+                }
+                Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, MOVIMIENTO_ASOCIACION_DUPLICADO);
+                Date fechaVencimientoRelacionado = resolverFechaVencimientoPrincipal(
+                        conn,
+                        idExpedienteRelacionado,
+                        idUsuarioCreador);
+                desactivarRelacionActiva(conn, idExpedientePrincipal, idExpedienteRelacionado, idUsuarioCreador);
+                limpiarNumeroExpedienteRelacionado(conn, idExpedienteRelacionado, idUsuarioCreador);
+                sincronizarFechaVencimientoRelacionado(
+                        conn,
+                        idExpedienteRelacionado,
+                        fechaVencimientoRelacionado,
+                        idUsuarioCreador);
+                if (idMovimiento != null) {
+                    String comentario = descripcion == null || descripcion.trim().isEmpty()
+                            ? "Asociación eliminada del expediente principal."
+                            : descripcion.trim();
+                    insertarHistorialRelacion(
+                            conn,
+                            idExpedientePrincipal,
+                            idMovimiento,
+                            idUsuarioCreador,
+                            null,
+                            comentario);
+                    insertarHistorialRelacion(
+                            conn,
+                            idExpedienteRelacionado,
+                            idMovimiento,
+                            idUsuarioCreador,
+                            null,
+                            comentario);
+                }
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return "Se eliminó la asociación del expediente relacionado. El expediente volvió a mostrarse de forma independiente.";
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
     public int sincronizarAsignacionAsociados(
             Connection conn,
             Long idExpedientePrincipal,
@@ -742,13 +805,54 @@ public class ExpedienteRelacionadoDAO {
             ps.setLong(1, idExpediente);
             ps.setLong(2, idMovimiento);
             setLongOrNull(ps, 3, idUsuarioCreador);
-            ps.setLong(4, idRelacion);
+            setLongOrNull(ps, 4, idRelacion);
             ps.setString(5, descripcion == null || descripcion.trim().isEmpty()
                     ? "Documento duplicado asociado al expediente principal. Será evaluado en Análisis si corresponde."
                     : descripcion.trim());
             ps.setString(6, TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO);
             setLongOrNull(ps, 7, idUsuarioCreador);
             ps.executeUpdate();
+        }
+    }
+
+    private void desactivarRelacionActiva(
+            Connection conn,
+            Long idExpedientePrincipal,
+            Long idExpedienteRelacionado,
+            Long idUsuarioCreador) throws SQLException {
+        String sql = "UPDATE expediente_relacion "
+                + "SET activo = 0, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE activo = 1 AND ("
+                + "(id_expediente_principal = ? AND id_expediente_relacionado = ?) "
+                + "OR (id_expediente_principal = ? AND id_expediente_relacionado = ?))";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setLongOrNull(ps, 1, idUsuarioCreador);
+            ps.setLong(2, idExpedientePrincipal);
+            ps.setLong(3, idExpedienteRelacionado);
+            ps.setLong(4, idExpedienteRelacionado);
+            ps.setLong(5, idExpedientePrincipal);
+            if (ps.executeUpdate() < 1) {
+                throw new SQLException("No se pudo eliminar la relación del expediente seleccionado.");
+            }
+        }
+    }
+
+    private void limpiarNumeroExpedienteRelacionado(
+            Connection conn,
+            Long idExpedienteRelacionado,
+            Long idUsuarioCreador) throws SQLException {
+        if (idExpedienteRelacionado == null) {
+            return;
+        }
+        String sql = "UPDATE expediente "
+                + "SET numero_expediente = NULL, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setLongOrNull(ps, 1, idUsuarioCreador);
+            ps.setLong(2, idExpedienteRelacionado);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("No se pudo limpiar el número del expediente relacionado.");
+            }
         }
     }
 
