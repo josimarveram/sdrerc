@@ -93,6 +93,10 @@ public class ExpedienteRelacionadoDAO {
                 + "AND " + normalizarPersona("p") + " = b.titular_norm "
                 + "AND NOT EXISTS ("
                 + "SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND r.id_expediente_relacionado = e.id_expediente"
+                + ") "
+                + "AND NOT EXISTS ("
+                + "SELECT 1 FROM expediente_relacion r "
                 + "WHERE r.activo = 1 AND ("
                 + "(r.id_expediente_principal = b.id_expediente AND r.id_expediente_relacionado = e.id_expediente) "
                 + "OR (r.id_expediente_principal = e.id_expediente AND r.id_expediente_relacionado = b.id_expediente)"
@@ -136,6 +140,10 @@ public class ExpedienteRelacionadoDAO {
                 + "WHERE b.numero_acta_norm IS NOT NULL "
                 + "AND b.titular_norm IS NOT NULL "
                 + "AND " + normalizarPersona("p") + " = b.titular_norm "
+                + "AND NOT EXISTS ("
+                + "SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND r.id_expediente_relacionado = e.id_expediente"
+                + ") "
                 + "AND NOT EXISTS ("
                 + "SELECT 1 FROM expediente_relacion r "
                 + "WHERE r.activo = 1 AND ("
@@ -292,6 +300,9 @@ public class ExpedienteRelacionadoDAO {
                     if (!coincidenPorActaYTitular(conn, idExpedientePrincipal, idSeleccionado)) {
                         omitidos++;
                         continue;
+                    }
+                    if (estaRelacionadoComoHijoEnOtroPrincipal(conn, idSeleccionado, idExpedientePrincipal)) {
+                        throw new SQLException("El expediente " + idSeleccionado + " ya está asociado a otro expediente principal. Desasócielo antes de volver a relacionarlo.");
                     }
                     OrientacionRelacion orientacion = resolverOrientacionRelacion(
                             conn,
@@ -929,14 +940,37 @@ public class ExpedienteRelacionadoDAO {
         }
         String sqlUpdate = "UPDATE expediente "
                 + "SET numero_expediente = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
-                + "WHERE id_expediente = ? AND activo = 1 "
-                + "AND (numero_expediente IS NULL OR TRIM(numero_expediente) IS NULL)";
+                + "WHERE id_expediente = ? AND activo = 1";
         try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
             ps.setString(1, numeroPrincipal.trim());
             setLongOrNull(ps, 2, idUsuarioModificador);
             ps.setLong(3, idRelacionado);
-            ps.executeUpdate();
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo sincronizar el número del expediente relacionado.");
+            }
         }
+    }
+
+    private boolean estaRelacionadoComoHijoEnOtroPrincipal(Connection conn, Long idRelacionado, Long idPrincipalPermitido) throws SQLException {
+        if (idRelacionado == null) {
+            return false;
+        }
+        String sql = "SELECT id_expediente_principal "
+                + "FROM expediente_relacion "
+                + "WHERE activo = 1 AND id_expediente_relacionado = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idRelacionado);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Long idPrincipal = getLongOrNull(rs, "id_expediente_principal");
+                    if (idPrincipal != null && !idPrincipal.equals(idPrincipalPermitido)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private boolean existeExpedienteActivo(Connection conn, Long idExpediente) throws SQLException {
