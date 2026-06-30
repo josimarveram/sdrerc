@@ -2,6 +2,7 @@ package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.AnalisisItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
@@ -86,6 +87,16 @@ public class AnalisisExpedienteService {
         return analisisExpedienteDAO.obtenerAnalisisRegistrado(idExpediente);
     }
 
+    public List<AnalisisItemDTO> listarAnalisisPorExpediente(Long idExpediente) throws SQLException {
+        validacionService.validarExpedienteSeleccionado(idExpediente);
+        return analisisExpedienteDAO.listarAnalisisPorExpediente(idExpediente);
+    }
+
+    public AnalisisItemDTO crearBloqueAnalisis(Long idExpediente) throws SQLException {
+        validacionService.validarExpedienteSeleccionado(idExpediente);
+        return analisisExpedienteDAO.crearBloqueAnalisis(idExpediente, resolverUsuarioActualSdrercApp());
+    }
+
     public AnalisisResultadoDTO recibirExpediente(Long idExpediente, String comentario) throws SQLException {
         validacionService.validarExpedienteSeleccionado(idExpediente);
         return analisisExpedienteDAO.recibirExpediente(idExpediente, comentario, resolverUsuarioActualSdrercApp());
@@ -131,6 +142,17 @@ public class AnalisisExpedienteService {
                 idExpediente,
                 documentos,
                 resolverUsuarioActualSdrercApp());
+    }
+
+    public AnalisisResultadoDTO guardarDocumentoAnalisis(
+            Long idExpediente,
+            Long idExpedienteAnalisis,
+            DocumentoAnalizadoDTO documento) throws SQLException {
+        List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
+        if (documento != null) {
+            documentos.add(documento);
+        }
+        return guardarDocumentosAnalisis(idExpediente, documentos);
     }
 
     public AnalisisResultadoDTO guardarDocumentoAnalisis(

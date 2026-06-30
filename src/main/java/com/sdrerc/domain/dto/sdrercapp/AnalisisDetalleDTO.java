@@ -8,6 +8,7 @@ import java.util.List;
 public class AnalisisDetalleDTO {
 
     private final boolean registrado;
+    private final Long idExpedienteAnalisis;
     private final String resultadoCodigo;
     private final String resultadoNombre;
     private final Boolean corresponde;
@@ -42,6 +43,7 @@ public class AnalisisDetalleDTO {
             ObservacionAnalisisDTO observacion,
             List<DocumentoAnalizadoDTO> documentosAnalizados) {
         this(
+                null,
                 registrado,
                 resultadoCodigo,
                 resultadoNombre,
@@ -62,6 +64,7 @@ public class AnalisisDetalleDTO {
     }
 
     public AnalisisDetalleDTO(
+            Long idExpedienteAnalisis,
             boolean registrado,
             String resultadoCodigo,
             String resultadoNombre,
@@ -79,6 +82,7 @@ public class AnalisisDetalleDTO {
             LocalDate fechaEvaluacion,
             ObservacionAnalisisDTO observacion,
             List<DocumentoAnalizadoDTO> documentosAnalizados) {
+        this.idExpedienteAnalisis = idExpedienteAnalisis;
         this.registrado = registrado;
         this.resultadoCodigo = safe(resultadoCodigo);
         this.resultadoNombre = safe(resultadoNombre);
@@ -102,6 +106,10 @@ public class AnalisisDetalleDTO {
 
     public boolean isRegistrado() {
         return registrado;
+    }
+
+    public Long getIdExpedienteAnalisis() {
+        return idExpedienteAnalisis;
     }
 
     public String getResultadoCodigo() {

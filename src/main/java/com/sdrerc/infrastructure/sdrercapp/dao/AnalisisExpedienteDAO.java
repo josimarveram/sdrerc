@@ -3,6 +3,7 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.AnalisisItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
@@ -79,41 +80,112 @@ public class AnalisisExpedienteDAO {
             return analisisVacio();
         }
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            EvaluacionRegistrada evaluacion = obtenerEvaluacionRegistrada(conn, idExpediente);
-            List<DocumentoAnalizadoDTO> documentos = documentoAnalisisDAO.listarPorExpediente(conn, idExpediente);
-            ObservacionAnalisisDTO observacion = obtenerUltimaObservacionAnalisis(conn, idExpediente);
-            DocumentoNoCorrespondeInfo documentoNoCorresponde = obtenerUltimoDocumentoNoCorresponde(conn, idExpediente);
-            if (evaluacion == null) {
-                return new AnalisisDetalleDTO(
-                        false, "", "", null, null, false, false, false, "",
-                        "", "",
-                        documentoNoCorresponde.codigo,
-                        documentoNoCorresponde.nombre,
-                        documentoNoCorresponde.numero,
-                        null,
-                        observacion,
-                        documentos);
-            }
-            String resultadoCodigo = resolverResultadoRegistrado(evaluacion);
-            String resultadoNombre = resolverNombreResultadoRegistrado(evaluacion, resultadoCodigo);
+            return obtenerAnalisisRegistrado(conn, idExpediente, null);
+        }
+    }
+
+    private AnalisisDetalleDTO obtenerAnalisisRegistrado(
+            Connection conn,
+            Long idExpediente,
+            Long idExpedienteAnalisis) throws SQLException {
+        EvaluacionRegistrada evaluacion = obtenerEvaluacionRegistrada(conn, idExpediente, idExpedienteAnalisis);
+        List<DocumentoAnalizadoDTO> documentos = documentoAnalisisDAO.listarPorExpediente(conn, idExpediente, idExpedienteAnalisis);
+        ObservacionAnalisisDTO observacion = obtenerUltimaObservacionAnalisis(conn, idExpediente);
+        DocumentoNoCorrespondeInfo documentoNoCorresponde = obtenerUltimoDocumentoNoCorresponde(conn, idExpediente);
+        if (evaluacion == null) {
             return new AnalisisDetalleDTO(
-                    true,
-                    resultadoCodigo,
-                    resultadoNombre,
-                    evaluacion.corresponde,
-                    evaluacion.incorporado,
-                    evaluacion.requiereReconstitucion,
-                    evaluacion.tieneLegitimidad,
-                    evaluacion.cumpleMediosProbatorios,
-                    evaluacion.fundamento,
-                    evaluacion.motivoNoCorrespondeCodigo,
-                    evaluacion.motivoNoCorrespondeNombre,
+                    idExpedienteAnalisis,
+                    false, "", "", null, null, false, false, false, "",
+                    "", "",
                     documentoNoCorresponde.codigo,
                     documentoNoCorresponde.nombre,
                     documentoNoCorresponde.numero,
-                    evaluacion.fechaEvaluacion,
+                    null,
                     observacion,
                     documentos);
+        }
+        String resultadoCodigo = resolverResultadoRegistrado(evaluacion);
+        String resultadoNombre = resolverNombreResultadoRegistrado(evaluacion, resultadoCodigo);
+        return new AnalisisDetalleDTO(
+                idExpedienteAnalisis,
+                true,
+                resultadoCodigo,
+                resultadoNombre,
+                evaluacion.corresponde,
+                evaluacion.incorporado,
+                evaluacion.requiereReconstitucion,
+                evaluacion.tieneLegitimidad,
+                evaluacion.cumpleMediosProbatorios,
+                evaluacion.fundamento,
+                evaluacion.motivoNoCorrespondeCodigo,
+                evaluacion.motivoNoCorrespondeNombre,
+                documentoNoCorresponde.codigo,
+                documentoNoCorresponde.nombre,
+                documentoNoCorresponde.numero,
+                evaluacion.fechaEvaluacion,
+                observacion,
+                documentos);
+    }
+
+    public List<AnalisisItemDTO> listarAnalisisPorExpediente(Long idExpediente) throws SQLException {
+        List<AnalisisItemDTO> items = new ArrayList<AnalisisItemDTO>();
+        if (idExpediente == null) {
+            return items;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaAnalisisMultiple(conn)) {
+                items.add(new AnalisisItemDTO(null, 1, "Análisis 1", "COMPATIBLE", obtenerAnalisisRegistrado(idExpediente)));
+                return items;
+            }
+            String sql = "SELECT id_expediente_analisis, numero_analisis, titulo, estado_analisis "
+                    + "FROM expediente_analisis "
+                    + "WHERE id_expediente = ? AND activo = 1 "
+                    + "ORDER BY numero_analisis ASC, id_expediente_analisis ASC";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Long idAnalisis = getLongOrNull(rs, "id_expediente_analisis");
+                        int numero = rs.getInt("numero_analisis");
+                        items.add(new AnalisisItemDTO(
+                                idAnalisis,
+                                numero,
+                                rs.getString("titulo"),
+                                rs.getString("estado_analisis"),
+                                obtenerAnalisisRegistrado(conn, idExpediente, idAnalisis)));
+                    }
+                }
+            }
+            if (items.isEmpty()) {
+                items.add(new AnalisisItemDTO(null, 1, "Análisis 1", "TEMPORAL", obtenerAnalisisRegistrado(conn, idExpediente, null)));
+            }
+            return items;
+        }
+    }
+
+    public AnalisisItemDTO crearBloqueAnalisis(Long idExpediente, Long idUsuario) throws SQLException {
+        if (idExpediente == null) {
+            throw new SQLException("Seleccione un expediente para crear el análisis.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                if (!soportaAnalisisMultiple(conn)) {
+                    throw new SQLException("La base de datos no tiene soporte para análisis múltiple. Ejecute el script 38_analisis_multiple.sql.");
+                }
+                AnalisisItemDTO item = crearBloqueAnalisis(conn, idExpediente, idUsuario);
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return item;
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
         }
     }
 
@@ -374,16 +446,18 @@ public class AnalisisExpedienteDAO {
                         ? catalogoLookupDAO.obtenerMotivoNoCorrespondeId(conn, registro.getMotivoNoCorrespondeCodigo())
                         : null;
 
-                Long idEvaluacion = guardarEvaluacion(conn, registro, idResultado, idMotivoNoCorresponde, idUsuario);
+                Long idAnalisis = resolverIdAnalisisParaEscritura(conn, registro.getIdExpediente(), registro.getIdExpedienteAnalisis(), idUsuario);
+                Long idEvaluacion = guardarEvaluacion(conn, registro, idAnalisis, idResultado, idMotivoNoCorresponde, idUsuario);
                 registrarDocumentoNoCorrespondeSiInformado(conn, registro, idUsuario);
                 for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
+                    DocumentoAnalizadoDTO documentoPersistencia = documentoConAnalisis(documento, idAnalisis);
                     if (documento.getIdDocumentoAnalizado() == null) {
-                        documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documento, idUsuario);
+                        documentoAnalisisDAO.insertarDocumentoAnalizado(conn, registro.getIdExpediente(), documentoPersistencia, idUsuario);
                     } else {
                         documentoAnalisisDAO.actualizarDocumentoAnalizado(
                                 conn,
                                 registro.getIdExpediente(),
-                                documento,
+                                documentoPersistencia,
                                 idUsuario);
                     }
                 }
@@ -761,6 +835,14 @@ public class AnalisisExpedienteDAO {
     }
 
     private EvaluacionRegistrada obtenerEvaluacionRegistrada(Connection conn, Long idExpediente) throws SQLException {
+        return obtenerEvaluacionRegistrada(conn, idExpediente, null);
+    }
+
+    private EvaluacionRegistrada obtenerEvaluacionRegistrada(
+            Connection conn,
+            Long idExpediente,
+            Long idExpedienteAnalisis) throws SQLException {
+        boolean soportaMultiple = soportaAnalisisMultiple(conn);
         String sql = "SELECT * FROM ("
                 + "SELECT ev.corresponde, ev.incorporado, ev.requiere_reconstitucion, "
                 + "ev.tiene_legitimidad, ev.cumple_medios_probatorios, ev.fundamento, "
@@ -780,10 +862,16 @@ public class AnalisisExpedienteDAO {
                 + "LEFT JOIN motivo_no_corresponde mnc "
                 + "ON mnc.id_motivo_no_corresponde = ev.id_motivo_no_corresponde "
                 + "WHERE ev.id_expediente = ? AND ev.activo = 1 "
+                + (soportaMultiple && idExpedienteAnalisis != null
+                        ? "AND ev.id_expediente_analisis = ? "
+                        : "")
                 + "ORDER BY NVL(ev.modificado_en, ev.creado_en) DESC, ev.id_expediente_evaluacion DESC"
                 + ") WHERE ROWNUM = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
+            if (soportaMultiple && idExpedienteAnalisis != null) {
+                ps.setLong(2, idExpedienteAnalisis);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
                     return null;
@@ -899,39 +987,48 @@ public class AnalisisExpedienteDAO {
     private Long guardarEvaluacion(
             Connection conn,
             AnalisisRegistroDTO registro,
+            Long idExpedienteAnalisis,
             Long idResultado,
             Long idMotivoNoCorresponde,
             Long idUsuario) throws SQLException {
-        Long idEvaluacion = obtenerEvaluacionActiva(conn, registro.getIdExpediente());
+        Long idEvaluacion = obtenerEvaluacionActiva(conn, registro.getIdExpediente(), idExpedienteAnalisis);
         if (idEvaluacion == null) {
-            return insertarEvaluacion(conn, registro, idResultado, idMotivoNoCorresponde, idUsuario);
+            return insertarEvaluacion(conn, registro, idExpedienteAnalisis, idResultado, idMotivoNoCorresponde, idUsuario);
         }
-        actualizarEvaluacion(conn, idEvaluacion, registro, idResultado, idMotivoNoCorresponde, idUsuario);
+        actualizarEvaluacion(conn, idEvaluacion, registro, idExpedienteAnalisis, idResultado, idMotivoNoCorresponde, idUsuario);
         return idEvaluacion;
     }
 
     private Long insertarEvaluacion(
             Connection conn,
             AnalisisRegistroDTO registro,
+            Long idExpedienteAnalisis,
             Long idResultado,
             Long idMotivoNoCorresponde,
             Long idUsuario) throws SQLException {
+        boolean soportaMultiple = soportaAnalisisMultiple(conn);
         String sql = "INSERT INTO expediente_evaluacion ("
-                + "id_expediente, id_tipo_resultado_evaluacion, corresponde, id_motivo_no_corresponde, "
+                + "id_expediente, "
+                + (soportaMultiple ? "id_expediente_analisis, " : "")
+                + "id_tipo_resultado_evaluacion, corresponde, id_motivo_no_corresponde, "
                 + "incorporado, requiere_reconstitucion, tiene_legitimidad, cumple_medios_probatorios, "
                 + "fundamento, fecha_evaluacion, activo, creado_por, creado_en"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, SYSTIMESTAMP, 1, ?, SYSTIMESTAMP)";
+                + ") VALUES (?, " + (soportaMultiple ? "?, " : "") + "?, ?, ?, ?, ?, ?, ?, ?, SYSTIMESTAMP, 1, ?, SYSTIMESTAMP)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_EVALUACION"})) {
-            ps.setLong(1, registro.getIdExpediente());
-            setLongOrNull(ps, 2, idResultado);
-            setBooleanNumberOrNull(ps, 3, registro.getCorresponde());
-            setLongOrNull(ps, 4, idMotivoNoCorresponde);
-            ps.setInt(5, Boolean.TRUE.equals(registro.getIncorporado()) ? 1 : 0);
-            ps.setInt(6, registro.isRequiereReconstitucion() ? 1 : 0);
-            ps.setInt(7, registro.isTieneLegitimidad() ? 1 : 0);
-            ps.setInt(8, registro.isCumpleMediosProbatorios() ? 1 : 0);
-            ps.setString(9, limitar(registro.getFundamento(), 2000));
-            setLongOrNull(ps, 10, idUsuario);
+            int index = 1;
+            ps.setLong(index++, registro.getIdExpediente());
+            if (soportaMultiple) {
+                setLongOrNull(ps, index++, idExpedienteAnalisis);
+            }
+            setLongOrNull(ps, index++, idResultado);
+            setBooleanNumberOrNull(ps, index++, registro.getCorresponde());
+            setLongOrNull(ps, index++, idMotivoNoCorresponde);
+            ps.setInt(index++, Boolean.TRUE.equals(registro.getIncorporado()) ? 1 : 0);
+            ps.setInt(index++, registro.isRequiereReconstitucion() ? 1 : 0);
+            ps.setInt(index++, registro.isTieneLegitimidad() ? 1 : 0);
+            ps.setInt(index++, registro.isCumpleMediosProbatorios() ? 1 : 0);
+            ps.setString(index++, limitar(registro.getFundamento(), 2000));
+            setLongOrNull(ps, index, idUsuario);
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente_evaluacion");
         }
@@ -941,25 +1038,32 @@ public class AnalisisExpedienteDAO {
             Connection conn,
             Long idEvaluacion,
             AnalisisRegistroDTO registro,
+            Long idExpedienteAnalisis,
             Long idResultado,
             Long idMotivoNoCorresponde,
             Long idUsuario) throws SQLException {
+        boolean soportaMultiple = soportaAnalisisMultiple(conn);
         String sql = "UPDATE expediente_evaluacion SET "
+                + (soportaMultiple ? "id_expediente_analisis = ?, " : "")
                 + "id_tipo_resultado_evaluacion = ?, corresponde = ?, id_motivo_no_corresponde = ?, "
                 + "incorporado = ?, requiere_reconstitucion = ?, tiene_legitimidad = ?, cumple_medios_probatorios = ?, "
                 + "fundamento = ?, fecha_evaluacion = SYSTIMESTAMP, modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente_evaluacion = ? AND activo = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            setLongOrNull(ps, 1, idResultado);
-            setBooleanNumberOrNull(ps, 2, registro.getCorresponde());
-            setLongOrNull(ps, 3, idMotivoNoCorresponde);
-            ps.setInt(4, Boolean.TRUE.equals(registro.getIncorporado()) ? 1 : 0);
-            ps.setInt(5, registro.isRequiereReconstitucion() ? 1 : 0);
-            ps.setInt(6, registro.isTieneLegitimidad() ? 1 : 0);
-            ps.setInt(7, registro.isCumpleMediosProbatorios() ? 1 : 0);
-            ps.setString(8, limitar(registro.getFundamento(), 2000));
-            setLongOrNull(ps, 9, idUsuario);
-            ps.setLong(10, idEvaluacion);
+            int index = 1;
+            if (soportaMultiple) {
+                setLongOrNull(ps, index++, idExpedienteAnalisis);
+            }
+            setLongOrNull(ps, index++, idResultado);
+            setBooleanNumberOrNull(ps, index++, registro.getCorresponde());
+            setLongOrNull(ps, index++, idMotivoNoCorresponde);
+            ps.setInt(index++, Boolean.TRUE.equals(registro.getIncorporado()) ? 1 : 0);
+            ps.setInt(index++, registro.isRequiereReconstitucion() ? 1 : 0);
+            ps.setInt(index++, registro.isTieneLegitimidad() ? 1 : 0);
+            ps.setInt(index++, registro.isCumpleMediosProbatorios() ? 1 : 0);
+            ps.setString(index++, limitar(registro.getFundamento(), 2000));
+            setLongOrNull(ps, index++, idUsuario);
+            ps.setLong(index, idEvaluacion);
             int updated = ps.executeUpdate();
             if (updated != 1) {
                 throw new SQLException("No se pudo actualizar la evaluación del expediente.");
@@ -968,12 +1072,24 @@ public class AnalisisExpedienteDAO {
     }
 
     private Long obtenerEvaluacionActiva(Connection conn, Long idExpediente) throws SQLException {
+        return obtenerEvaluacionActiva(conn, idExpediente, null);
+    }
+
+    private Long obtenerEvaluacionActiva(Connection conn, Long idExpediente, Long idExpedienteAnalisis) throws SQLException {
+        boolean soportaMultiple = soportaAnalisisMultiple(conn);
         String sql = "SELECT id_expediente_evaluacion FROM ("
                 + "SELECT id_expediente_evaluacion FROM expediente_evaluacion "
-                + "WHERE id_expediente = ? AND activo = 1 ORDER BY creado_en DESC"
+                + "WHERE id_expediente = ? AND activo = 1 "
+                + (soportaMultiple && idExpedienteAnalisis != null
+                        ? "AND id_expediente_analisis = ? "
+                        : "")
+                + "ORDER BY creado_en DESC"
                 + ") WHERE ROWNUM = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
+            if (soportaMultiple && idExpedienteAnalisis != null) {
+                ps.setLong(2, idExpedienteAnalisis);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
                     return null;
@@ -1302,6 +1418,93 @@ public class AnalisisExpedienteDAO {
 
     private static String nombrePersona(String alias) {
         return "TRIM(NVL(" + alias + ".razon_social, TRIM(NVL(" + alias + ".nombres, '') || ' ' || NVL(" + alias + ".apellidos, ''))))";
+    }
+
+    private static DocumentoAnalizadoDTO documentoConAnalisis(DocumentoAnalizadoDTO documento, Long idExpedienteAnalisis) {
+        if (documento == null || idExpedienteAnalisis == null) {
+            return documento;
+        }
+        return new DocumentoAnalizadoDTO(
+                documento.getIdDocumentoAnalizado(),
+                documento.getIdExpediente(),
+                idExpedienteAnalisis,
+                documento.getTipoDocumentoCodigo(),
+                documento.getTipoDocumentoNombre(),
+                documento.getEstadoDocumentoCodigo(),
+                documento.getEstadoDocumentoNombre(),
+                documento.getFechaDocumento(),
+                documento.getNumeroDocumento(),
+                documento.getDescripcion(),
+                documento.isNotificado(),
+                documento.getFechaAcuse(),
+                documento.isRequiereRespuesta(),
+                documento.getConfirmacionRespuesta(),
+                documento.getFechaRespuesta(),
+                documento.getNumeroHojaEnvioRespuesta(),
+                documento.isRequierePublicacion(),
+                documento.getFechaPublicacion(),
+                documento.getDetalleObservacion());
+    }
+
+    private AnalisisItemDTO crearBloqueAnalisis(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        int numero = siguienteNumeroAnalisis(conn, idExpediente);
+        String titulo = "Análisis " + numero;
+        String sql = "INSERT INTO expediente_analisis ("
+                + "id_expediente, numero_analisis, titulo, estado_analisis, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, ?, 'EN_PROCESO', 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_ANALISIS"})) {
+            ps.setLong(1, idExpediente);
+            ps.setInt(2, numero);
+            ps.setString(3, titulo);
+            setLongOrNull(ps, 4, idUsuario);
+            ps.executeUpdate();
+            Long id = obtenerGeneratedKey(ps, "expediente_analisis");
+            return new AnalisisItemDTO(id, numero, titulo, "EN_PROCESO", analisisVacioConId(id));
+        }
+    }
+
+    private Long resolverIdAnalisisParaEscritura(
+            Connection conn,
+            Long idExpediente,
+            Long idExpedienteAnalisis,
+            Long idUsuario) throws SQLException {
+        if (!soportaAnalisisMultiple(conn)) {
+            return null;
+        }
+        if (idExpedienteAnalisis != null) {
+            return idExpedienteAnalisis;
+        }
+        return crearBloqueAnalisis(conn, idExpediente, idUsuario).getIdExpedienteAnalisis();
+    }
+
+    private int siguienteNumeroAnalisis(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT NVL(MAX(numero_analisis), 0) + 1 FROM expediente_analisis "
+                + "WHERE id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 1;
+            }
+        }
+    }
+
+    private static AnalisisDetalleDTO analisisVacioConId(Long idExpedienteAnalisis) {
+        return new AnalisisDetalleDTO(
+                idExpedienteAnalisis,
+                false, "", "", null, null, false, false, false, "",
+                "", "", "", "", "", null, null, new ArrayList<DocumentoAnalizadoDTO>());
+    }
+
+    private static boolean soportaAnalisisMultiple(Connection conn) throws SQLException {
+        String sql = "SELECT "
+                + "(SELECT COUNT(1) FROM user_tables WHERE table_name = 'EXPEDIENTE_ANALISIS') + "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' AND column_name = 'ID_EXPEDIENTE_ANALISIS') + "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE_EVALUACION' AND column_name = 'ID_EXPEDIENTE_ANALISIS') "
+                + "AS total FROM dual";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt("total") == 3;
+        }
     }
 
     private static boolean hasText(String value) {

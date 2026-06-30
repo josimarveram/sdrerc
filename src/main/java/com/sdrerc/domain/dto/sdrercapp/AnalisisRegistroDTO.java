@@ -7,6 +7,7 @@ import java.util.List;
 public class AnalisisRegistroDTO {
 
     private final Long idExpediente;
+    private final Long idExpedienteAnalisis;
     private final String resultadoCodigo;
     private final String resultadoNombre;
     private final Boolean corresponde;
@@ -70,7 +71,44 @@ public class AnalisisRegistroDTO {
             String numeroDocumentoProveido,
             ObservacionAnalisisDTO observacion,
             List<DocumentoAnalizadoDTO> documentosAnalizados) {
+        this(
+                idExpediente,
+                null,
+                resultadoCodigo,
+                resultadoNombre,
+                corresponde,
+                incorporado,
+                requiereReconstitucion,
+                tieneLegitimidad,
+                cumpleMediosProbatorios,
+                fundamento,
+                motivoNoCorrespondeCodigo,
+                tipoDocumentoNoCorrespondeCodigo,
+                tipoDocumentoNoCorrespondeNombre,
+                numeroDocumentoProveido,
+                observacion,
+                documentosAnalizados);
+    }
+
+    public AnalisisRegistroDTO(
+            Long idExpediente,
+            Long idExpedienteAnalisis,
+            String resultadoCodigo,
+            String resultadoNombre,
+            Boolean corresponde,
+            Boolean incorporado,
+            boolean requiereReconstitucion,
+            boolean tieneLegitimidad,
+            boolean cumpleMediosProbatorios,
+            String fundamento,
+            String motivoNoCorrespondeCodigo,
+            String tipoDocumentoNoCorrespondeCodigo,
+            String tipoDocumentoNoCorrespondeNombre,
+            String numeroDocumentoProveido,
+            ObservacionAnalisisDTO observacion,
+            List<DocumentoAnalizadoDTO> documentosAnalizados) {
         this.idExpediente = idExpediente;
+        this.idExpedienteAnalisis = idExpedienteAnalisis;
         this.resultadoCodigo = safe(resultadoCodigo);
         this.resultadoNombre = safe(resultadoNombre);
         this.corresponde = corresponde;
@@ -91,6 +129,10 @@ public class AnalisisRegistroDTO {
 
     public Long getIdExpediente() {
         return idExpediente;
+    }
+
+    public Long getIdExpedienteAnalisis() {
+        return idExpedienteAnalisis;
     }
 
     public String getResultadoCodigo() {

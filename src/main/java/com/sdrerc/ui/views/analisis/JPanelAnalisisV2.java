@@ -6,6 +6,7 @@ import com.sdrerc.application.sdrercapp.DocumentoAnalisisService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisDetalleDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.AnalisisItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisRegistroDTO;
 import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
@@ -127,8 +128,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int PANEL_ANALISIS_TAB_HEIGHT = 94;
     private static final String TAB_ANALISIS_DATOS = "datos";
     private static final String TAB_ANALISIS_DOCUMENTOS = "documentos";
-    private static final String TAB_ANALISIS_RESULTADO = "resultado";
-    private static final String TAB_ANALISIS_PLANTILLAS = "plantillas";
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
@@ -171,8 +170,9 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnRegistrarAnalisis = new JButton("Registrar resultado final");
     private final JButton btnEnviarVerificacion = new JButton("Enviar a verificación");
     private final JButton btnArchivarNoCorresponde = new JButton("Archivar no corresponde");
-    private final JButton btnAgregarDocumento = new JButton("Agregar documento");
+    private final JButton btnAgregarDocumento = new JButton("+");
     private final JButton btnQuitarDocumento = new JButton("Quitar documento");
+    private final JButton btnNuevoBloqueAnalisis = new JButton("+ Nuevo análisis");
 
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes de análisis.");
     private final JLabel lblExpediente = new JLabel("-");
@@ -229,10 +229,9 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JTextArea txtObservacion = new JTextArea(3, 22);
     private final JTextArea txtComentarioMovimiento = new JTextArea(3, 22);
     private final JButton btnDescargarPlantillaSeleccionada = new JButton("Descargar plantilla seleccionada");
+    private final JComboBox<AnalisisItemDTO> cmbBloquesAnalisis = new JComboBox<AnalisisItemDTO>();
     private final AppV2StackedSideTab tabDatosAnalisis = crearTabAnalisis("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
     private final AppV2StackedSideTab tabDocumentosAnalisis = crearTabAnalisis("Análisis", new Color(224, 243, 240), new Color(10, 118, 145));
-    private final AppV2StackedSideTab tabResultadoAnalisis = crearTabAnalisis("Resultado", new Color(249, 239, 224), new Color(198, 121, 31));
-    private final AppV2StackedSideTab tabPlantillasAnalisis = crearTabAnalisis("Plantillas", new Color(240, 233, 249), new Color(110, 78, 164));
 
     private final AnalisisTableModel tableModel = new AnalisisTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -295,6 +294,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final Set<Long> principalesExpandidos = new HashSet<Long>();
     private final Set<Long> principalesCargando = new HashSet<Long>();
     private final List<ExpedienteRelacionadoDTO> documentosAsociadosPanel = new ArrayList<ExpedienteRelacionadoDTO>();
+    private final List<AnalisisItemDTO> bloquesAnalisis = new ArrayList<AnalisisItemDTO>();
     private final MetricCardV2 cardPorRecibir = new MetricCardV2("Por recibir", "0", "Asignación / Asignado", AppV2Theme.INFO);
     private final MetricCardV2 cardEnAnalisis = new MetricCardV2("En análisis", "0", "Recibidos y observados", AppV2Theme.TEAL);
     private final MetricCardV2 cardCartaIntermedia = new MetricCardV2("Con carta intermedia", "0", "Documentos guardados", AppV2Theme.INDIGO);
@@ -303,8 +303,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelAnalisis;
     private AppV2SideActionPanel panelDatosAnalisis;
-    private AppV2SideActionPanel panelResultadoAnalisis;
-    private AppV2SideActionPanel panelPlantillasAnalisis;
     private CardLayout panelAnalisisCardsLayout;
     private JPanel panelAnalisisCards;
     private String tabAnalisisActiva = TAB_ANALISIS_DATOS;
@@ -314,9 +312,11 @@ public class JPanelAnalisisV2 extends JPanel {
     private Long idExpedienteDetalleSolicitado;
     private Long idExpedienteDetalleCargado;
     private Long idExpedienteRecepcionPreguntada;
+    private Long idAnalisisSeleccionado;
 
     private boolean cargandoCatalogos;
     private boolean cargandoDetalleAnalisis;
+    private boolean cargandoBloquesAnalisis;
     private boolean busquedaInicialEjecutada;
 
     public JPanelAnalisisV2() {
@@ -363,13 +363,9 @@ public class JPanelAnalisisV2 extends JPanel {
 
         panelDatosAnalisis = crearPanelDatosAnalisis();
         panelAnalisis = crearPanelAnalisis();
-        panelResultadoAnalisis = crearPanelResultadoAnalisis();
-        panelPlantillasAnalisis = crearPanelPlantillasAnalisis();
         JPanel panelAnalisisConTab = crearPanelAnalisisConTab(
                 panelDatosAnalisis,
-                panelAnalisis,
-                panelResultadoAnalisis,
-                panelPlantillasAnalisis);
+                panelAnalisis);
         splitOperativo = new AppV2OperationalSplitPanel(
                 contenidoPrincipal,
                 panelAnalisisConTab,
@@ -411,7 +407,10 @@ public class JPanelAnalisisV2 extends JPanel {
             }
         });
         panel.setAccentColor(new Color(10, 118, 145));
+        panel.addSection(crearSelectorAnalisisPanel());
         panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearFormularioAnalisis());
+        panel.setFooter(crearAccionesPanelAnalisis());
         return panel;
     }
 
@@ -466,9 +465,7 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private JPanel crearPanelAnalisisConTab(
             final AppV2SideActionPanel panelDatos,
-            final AppV2SideActionPanel panelDocumentos,
-            final AppV2SideActionPanel panelResultado,
-            final AppV2SideActionPanel panelPlantillas) {
+            final AppV2SideActionPanel panelDocumentos) {
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
@@ -476,11 +473,9 @@ public class JPanelAnalisisV2 extends JPanel {
                 int height = getHeight();
                 int panelX = PANEL_ANALISIS_TAB_OVERHANG;
                 int panelWidth = Math.max(0, width - panelX);
-                int[] positions = calcularPosicionesLenguetasAnalisis(4, PANEL_ANALISIS_TAB_HEIGHT, 8, height, PANEL_ANALISIS_TAB_TOP);
+                int[] positions = calcularPosicionesLenguetasAnalisis(2, PANEL_ANALISIS_TAB_HEIGHT, 8, height, PANEL_ANALISIS_TAB_TOP);
                 tabDatosAnalisis.setBounds(0, positions[0], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
                 tabDocumentosAnalisis.setBounds(0, positions[1], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
-                tabResultadoAnalisis.setBounds(0, positions[2], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
-                tabPlantillasAnalisis.setBounds(0, positions[3], PANEL_ANALISIS_TAB_OVERHANG - 6, PANEL_ANALISIS_TAB_HEIGHT);
                 panelAnalisisCards.setBounds(panelX, 0, panelWidth, height);
             }
         };
@@ -490,8 +485,6 @@ public class JPanelAnalisisV2 extends JPanel {
         panelAnalisisCards.setOpaque(false);
         panelAnalisisCards.add(panelDatos, TAB_ANALISIS_DATOS);
         panelAnalisisCards.add(panelDocumentos, TAB_ANALISIS_DOCUMENTOS);
-        panelAnalisisCards.add(panelResultado, TAB_ANALISIS_RESULTADO);
-        panelAnalisisCards.add(panelPlantillas, TAB_ANALISIS_PLANTILLAS);
 
         tabDatosAnalisis.addMouseListener(new MouseAdapter() {
             @Override
@@ -505,23 +498,8 @@ public class JPanelAnalisisV2 extends JPanel {
                 seleccionarTabAnalisis(TAB_ANALISIS_DOCUMENTOS);
             }
         });
-        tabResultadoAnalisis.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                seleccionarTabAnalisis(TAB_ANALISIS_RESULTADO);
-            }
-        });
-        tabPlantillasAnalisis.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                seleccionarTabAnalisis(TAB_ANALISIS_PLANTILLAS);
-            }
-        });
-
         wrapper.add(tabDatosAnalisis);
         wrapper.add(tabDocumentosAnalisis);
-        wrapper.add(tabResultadoAnalisis);
-        wrapper.add(tabPlantillasAnalisis);
         wrapper.add(panelAnalisisCards);
         wrapper.setMinimumSize(new Dimension(
                 PANEL_ANALISIS_ANCHO_MINIMO + PANEL_ANALISIS_TAB_OVERHANG,
@@ -670,24 +648,31 @@ public class JPanelAnalisisV2 extends JPanel {
         return panel;
     }
 
+    private JPanel crearSelectorAnalisisPanel() {
+        JPanel panel = section("Bloques de análisis");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cmbBloquesAnalisis.setPreferredSize(new Dimension(240, 34));
+        btnNuevoBloqueAnalisis.setToolTipText("Crear un nuevo bloque de análisis para el expediente seleccionado.");
+        addRow(grid, 0, "Análisis", cmbBloquesAnalisis);
+        JPanel acciones = AppV2ActionPanel.left();
+        acciones.add(btnNuevoBloqueAnalisis);
+        addRow(grid, 1, "", acciones);
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
     private JPanel crearDocumentosPanel() {
         JPanel panel = section("Documentos de análisis y cartas intermedias");
         JLabel tituloDocumentos = new JLabel("Documentos Analizados");
         tituloDocumentos.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         tituloDocumentos.setForeground(AppV2Theme.TEXT_PRIMARY);
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setOpaque(false);
-        form.setAlignmentX(Component.LEFT_ALIGNMENT);
-        int row = 0;
-        addRow(form, row++, "Tipo", cmbTipoDocumento);
-        addRow(form, row++, "Estado", cmbEstadoDocumento);
-        addRow(form, row++, "Fecha", fechaDocumentoAnalizado);
-        addRow(form, row++, "Descripción", scrollText(txtDescripcionDocumento, 58));
-        addRow(form, row++, "", chkDocumentoRequiereRespuesta);
-        JPanel acciones = AppV2ActionPanel.right();
-        acciones.add(btnAgregarDocumento);
-        acciones.add(btnQuitarDocumento);
-        addRow(form, row, "", acciones);
+        btnAgregarDocumento.setPreferredSize(new Dimension(42, 34));
+        btnAgregarDocumento.setToolTipText("Agregar documento analizado");
+        btnAgregarDocumento.setBackground(AppV2Theme.PRIMARY);
+        btnAgregarDocumento.setForeground(Color.WHITE);
+        btnAgregarDocumento.setFocusPainted(false);
 
         documentosScrollPane = new JScrollPane(documentosTable);
         documentosScrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
@@ -698,8 +683,11 @@ public class JPanelAnalisisV2 extends JPanel {
 
         JPanel top = new JPanel(new BorderLayout(0, 8));
         top.setOpaque(false);
-        top.add(tituloDocumentos, BorderLayout.NORTH);
-        top.add(form, BorderLayout.CENTER);
+        JPanel barra = new JPanel(new BorderLayout(8, 0));
+        barra.setOpaque(false);
+        barra.add(btnAgregarDocumento, BorderLayout.WEST);
+        barra.add(tituloDocumentos, BorderLayout.CENTER);
+        top.add(barra, BorderLayout.NORTH);
 
         panel.add(top, BorderLayout.NORTH);
         panel.add(documentosScrollPane, BorderLayout.CENTER);
@@ -1041,9 +1029,11 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRegistrarAnalisis.addActionListener(e -> registrarAnalisis());
         btnEnviarVerificacion.addActionListener(e -> enviarVerificacion());
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
-        btnAgregarDocumento.addActionListener(e -> agregarDocumento());
+        btnAgregarDocumento.addActionListener(e -> mostrarDialogoAgregarDocumento());
         btnQuitarDocumento.addActionListener(e -> quitarDocumento());
+        btnNuevoBloqueAnalisis.addActionListener(e -> crearNuevoBloqueAnalisis());
         btnDescargarPlantillaSeleccionada.addActionListener(e -> descargarPlantillaDocumentoSeleccionado());
+        cmbBloquesAnalisis.addActionListener(e -> seleccionarBloqueAnalisisActual());
         cmbIncorporado.addActionListener(e -> actualizarChecksIncorporado());
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         chkRegistrarObservacion.addActionListener(e -> actualizarObservacionHabilitada());
@@ -1701,10 +1691,10 @@ public class JPanelAnalisisV2 extends JPanel {
         idExpedienteDetalleSolicitado = idExpediente;
         limpiarFormulario();
         lblFechaAnalisis.setText("Cargando...");
-        SwingWorker<AnalisisDetalleDTO, Void> worker = new SwingWorker<AnalisisDetalleDTO, Void>() {
+        SwingWorker<List<AnalisisItemDTO>, Void> worker = new SwingWorker<List<AnalisisItemDTO>, Void>() {
             @Override
-            protected AnalisisDetalleDTO doInBackground() throws Exception {
-                return analisisService.obtenerAnalisisRegistrado(idExpediente);
+            protected List<AnalisisItemDTO> doInBackground() throws Exception {
+                return analisisService.listarAnalisisPorExpediente(idExpediente);
             }
 
             @Override
@@ -1714,7 +1704,7 @@ public class JPanelAnalisisV2 extends JPanel {
                     return;
                 }
                 try {
-                    aplicarAnalisisRegistrado(get());
+                    aplicarBloquesAnalisis(get());
                     idExpedienteDetalleCargado = idExpediente;
                 } catch (Exception ex) {
                     limpiarFormulario();
@@ -1897,9 +1887,7 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         if (!TAB_ANALISIS_DATOS.equals(tab)
-                && !TAB_ANALISIS_DOCUMENTOS.equals(tab)
-                && !TAB_ANALISIS_RESULTADO.equals(tab)
-                && !TAB_ANALISIS_PLANTILLAS.equals(tab)) {
+                && !TAB_ANALISIS_DOCUMENTOS.equals(tab)) {
             return;
         }
         boolean mismaTab = tab.equals(tabAnalisisActiva);
@@ -1917,12 +1905,8 @@ public class JPanelAnalisisV2 extends JPanel {
         boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
         tabDatosAnalisis.setState(TAB_ANALISIS_DATOS.equals(tabAnalisisActiva), TAB_ANALISIS_DATOS.equals(tabAnalisisActiva) && expandido);
         tabDocumentosAnalisis.setState(TAB_ANALISIS_DOCUMENTOS.equals(tabAnalisisActiva), TAB_ANALISIS_DOCUMENTOS.equals(tabAnalisisActiva) && expandido);
-        tabResultadoAnalisis.setState(TAB_ANALISIS_RESULTADO.equals(tabAnalisisActiva), TAB_ANALISIS_RESULTADO.equals(tabAnalisisActiva) && expandido);
-        tabPlantillasAnalisis.setState(TAB_ANALISIS_PLANTILLAS.equals(tabAnalisisActiva), TAB_ANALISIS_PLANTILLAS.equals(tabAnalisisActiva) && expandido);
         tabDatosAnalisis.setToolTipText("Datos del expediente");
-        tabDocumentosAnalisis.setToolTipText("Documentos analizados");
-        tabResultadoAnalisis.setToolTipText("Resultado del análisis");
-        tabPlantillasAnalisis.setToolTipText("Plantillas documentales");
+        tabDocumentosAnalisis.setToolTipText("Documentos y resultado del análisis");
     }
 
     private String alertas(AnalisisExpedienteDTO item) {
@@ -2258,6 +2242,7 @@ public class JPanelAnalisisV2 extends JPanel {
         SimpleItem tipoDocumentoNoCorresponde = (SimpleItem) cmbTipoDocumentoNoCorresponde.getSelectedItem();
         return new AnalisisRegistroDTO(
                 item.getIdExpediente(),
+                idAnalisisSeleccionado,
                 resultado == null ? "" : resultado.codigo,
                 resultado == null ? "" : resultado.nombre,
                 resultado == null || resultado.codigo.isEmpty() ? null : !noCorresponde,
@@ -2290,6 +2275,7 @@ public class JPanelAnalisisV2 extends JPanel {
         return new DocumentoAnalizadoDTO(
                 longValue(documentoModel.getValueAt(i, COL_DOCUMENTO_ID)),
                 null,
+                idAnalisisSeleccionado,
                 codigoDocumentoFila(i, COL_DOCUMENTO_TIPO, COL_DOCUMENTO_TIPO_CODIGO, cmbTipoDocumento),
                 nombreDocumentoFila(i, COL_DOCUMENTO_TIPO),
                 codigoDocumentoFila(i, COL_DOCUMENTO_ESTADO, COL_DOCUMENTO_ESTADO_CODIGO, cmbEstadoDocumento),
@@ -2308,6 +2294,60 @@ public class JPanelAnalisisV2 extends JPanel {
                 esEstadoDocumentoObservadoPorFila(i)
                         ? valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_DETALLE_OBS))
                         : "");
+    }
+
+    private void mostrarDialogoAgregarDocumento() {
+        resetearDocumentoFormulario();
+        txtDescripcionDocumento.setText("");
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+        int row = 0;
+        addRow(form, row++, "Tipo", cmbTipoDocumento);
+        addRow(form, row++, "Estado", cmbEstadoDocumento);
+        addRow(form, row++, "Fecha", fechaDocumentoAnalizado);
+        addRow(form, row++, "Descripción", scrollText(txtDescripcionDocumento, 58));
+        addRow(form, row, "", chkDocumentoRequiereRespuesta);
+        int respuesta = JOptionPane.showConfirmDialog(
+                this,
+                form,
+                "Agregar documento analizado",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+        if (respuesta == JOptionPane.OK_OPTION) {
+            agregarDocumento();
+        }
+    }
+
+    private void crearNuevoBloqueAnalisis() {
+        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para crear un nuevo análisis.");
+        if (item == null) {
+            return;
+        }
+        setTrabajando(true, "Creando nuevo análisis...");
+        SwingWorker<AnalisisItemDTO, Void> worker = new SwingWorker<AnalisisItemDTO, Void>() {
+            @Override
+            protected AnalisisItemDTO doInBackground() throws Exception {
+                return analisisService.crearBloqueAnalisis(item.getIdExpediente());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    AnalisisItemDTO nuevo = get();
+                    recargarDetalleSeleccionado();
+                    JOptionPane.showMessageDialog(
+                            JPanelAnalisisV2.this,
+                            "Se creó " + nuevo.getTitulo() + ".",
+                            "Análisis",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo crear el nuevo análisis. Verifique que el script 38_analisis_multiple.sql esté aplicado.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void agregarDocumento() {
@@ -2372,7 +2412,14 @@ public class JPanelAnalisisV2 extends JPanel {
             mostrarInfo("Seleccione un documento para quitarlo del registro.");
             return;
         }
-        documentoModel.removeRow(documentosTable.convertRowIndexToModel(row));
+        quitarDocumentoFila(documentosTable.convertRowIndexToModel(row));
+    }
+
+    private void quitarDocumentoFila(int modelRow) {
+        if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
+            return;
+        }
+        documentoModel.removeRow(modelRow);
         actualizarPlantillaSeleccionada();
     }
 
@@ -2477,6 +2524,33 @@ public class JPanelAnalisisV2 extends JPanel {
             }
         };
         worker.execute();
+    }
+
+    private void aplicarBloquesAnalisis(List<AnalisisItemDTO> items) {
+        cargandoBloquesAnalisis = true;
+        bloquesAnalisis.clear();
+        cmbBloquesAnalisis.removeAllItems();
+        if (items != null) {
+            bloquesAnalisis.addAll(items);
+        }
+        if (bloquesAnalisis.isEmpty()) {
+            bloquesAnalisis.add(new AnalisisItemDTO(null, 1, "Análisis 1", "TEMPORAL", null));
+        }
+        for (AnalisisItemDTO item : bloquesAnalisis) {
+            cmbBloquesAnalisis.addItem(item);
+        }
+        cmbBloquesAnalisis.setSelectedIndex(0);
+        cargandoBloquesAnalisis = false;
+        seleccionarBloqueAnalisisActual();
+    }
+
+    private void seleccionarBloqueAnalisisActual() {
+        if (cargandoBloquesAnalisis) {
+            return;
+        }
+        AnalisisItemDTO item = (AnalisisItemDTO) cmbBloquesAnalisis.getSelectedItem();
+        idAnalisisSeleccionado = item == null ? null : item.getIdExpedienteAnalisis();
+        aplicarAnalisisRegistrado(item == null ? null : item.getDetalle());
     }
 
     private void descargarPlantillaDocumentoSeleccionado() {
@@ -3147,8 +3221,8 @@ public class JPanelAnalisisV2 extends JPanel {
     private class GuardarDocumentoRenderer extends JButton implements TableCellRenderer {
         private GuardarDocumentoRenderer() {
             setText("");
-            setIcon(new SaveDocumentIcon());
-            setToolTipText("Guardar documento de análisis");
+            setIcon(new DeleteDocumentIcon());
+            setToolTipText("Quitar documento");
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setFocusPainted(false);
             setBorderPainted(false);
@@ -3237,8 +3311,8 @@ public class JPanelAnalisisV2 extends JPanel {
 
         private GuardarDocumentoEditor() {
             button.setText("");
-            button.setIcon(new SaveDocumentIcon());
-            button.setToolTipText("Guardar documento de análisis");
+            button.setIcon(new DeleteDocumentIcon());
+            button.setToolTipText("Quitar documento");
             button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             button.setFocusPainted(false);
             button.setBorderPainted(false);
@@ -3246,7 +3320,7 @@ public class JPanelAnalisisV2 extends JPanel {
             button.addActionListener(e -> {
                 int row = modelRow;
                 fireEditingStopped();
-                guardarDocumentoFila(row);
+                quitarDocumentoFila(row);
             });
         }
 
@@ -3339,6 +3413,39 @@ public class JPanelAnalisisV2 extends JPanel {
                 g2.fillRoundRect(x + 5, y + 10, 8, 5, 2, 2);
                 g2.setColor(Color.WHITE);
                 g2.drawLine(x + 7, y + 12, x + 11, y + 12);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private static class DeleteDocumentIcon implements Icon {
+        private static final int SIZE = 18;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = new Color(196, 53, 53);
+                Color fill = new Color(253, 237, 237);
+                g2.setColor(fill);
+                g2.fillRoundRect(x + 2, y + 2, 14, 14, 7, 7);
+                g2.setColor(stroke);
+                g2.drawRoundRect(x + 2, y + 2, 14, 14, 7, 7);
+                g2.setStroke(new java.awt.BasicStroke(2f));
+                g2.drawLine(x + 6, y + 6, x + 12, y + 12);
+                g2.drawLine(x + 12, y + 6, x + 6, y + 12);
             } finally {
                 g2.dispose();
             }

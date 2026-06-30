@@ -6,6 +6,7 @@ public class DocumentoAnalizadoDTO {
 
     private final Long idDocumentoAnalizado;
     private final Long idExpediente;
+    private final Long idExpedienteAnalisis;
     private final String tipoDocumentoCodigo;
     private final String tipoDocumentoNombre;
     private final String estadoDocumentoCodigo;
@@ -253,8 +254,51 @@ public class DocumentoAnalizadoDTO {
             boolean requierePublicacion,
             LocalDate fechaPublicacion,
             String detalleObservacion) {
+        this(
+                idDocumentoAnalizado,
+                idExpediente,
+                null,
+                tipoDocumentoCodigo,
+                tipoDocumentoNombre,
+                estadoDocumentoCodigo,
+                estadoDocumentoNombre,
+                fechaDocumento,
+                numeroDocumento,
+                descripcion,
+                notificado,
+                fechaAcuse,
+                requiereRespuesta,
+                confirmacionRespuesta,
+                fechaRespuesta,
+                numeroHojaEnvioRespuesta,
+                requierePublicacion,
+                fechaPublicacion,
+                detalleObservacion);
+    }
+
+    public DocumentoAnalizadoDTO(
+            Long idDocumentoAnalizado,
+            Long idExpediente,
+            Long idExpedienteAnalisis,
+            String tipoDocumentoCodigo,
+            String tipoDocumentoNombre,
+            String estadoDocumentoCodigo,
+            String estadoDocumentoNombre,
+            LocalDate fechaDocumento,
+            String numeroDocumento,
+            String descripcion,
+            boolean notificado,
+            LocalDate fechaAcuse,
+            boolean requiereRespuesta,
+            String confirmacionRespuesta,
+            LocalDate fechaRespuesta,
+            String numeroHojaEnvioRespuesta,
+            boolean requierePublicacion,
+            LocalDate fechaPublicacion,
+            String detalleObservacion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
+        this.idExpedienteAnalisis = idExpedienteAnalisis;
         this.tipoDocumentoCodigo = safe(tipoDocumentoCodigo);
         this.tipoDocumentoNombre = safe(tipoDocumentoNombre);
         this.estadoDocumentoCodigo = safe(estadoDocumentoCodigo);
@@ -298,6 +342,10 @@ public class DocumentoAnalizadoDTO {
 
     public Long getIdExpediente() {
         return idExpediente;
+    }
+
+    public Long getIdExpedienteAnalisis() {
+        return idExpedienteAnalisis;
     }
 
     public String getTipoDocumentoCodigo() {

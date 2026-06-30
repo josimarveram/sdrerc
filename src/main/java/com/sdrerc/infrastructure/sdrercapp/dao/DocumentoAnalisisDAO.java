@@ -109,6 +109,13 @@ public class DocumentoAnalisisDAO {
     }
 
     public List<DocumentoAnalizadoDTO> listarPorExpediente(Connection conn, Long idExpediente) throws SQLException {
+        return listarPorExpediente(conn, idExpediente, null);
+    }
+
+    public List<DocumentoAnalizadoDTO> listarPorExpediente(
+            Connection conn,
+            Long idExpediente,
+            Long idExpedienteAnalisis) throws SQLException {
         List<DocumentoAnalizadoDTO> documentos = new ArrayList<>();
         if (conn == null || idExpediente == null) {
             return documentos;
@@ -117,7 +124,11 @@ public class DocumentoAnalisisDAO {
         boolean soportaPublicacion = soportaPublicacionPreparada(conn);
         boolean soportaNumeroDocumento = soportaNumeroDocumentoAnalizado(conn);
         boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
+        boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
         String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
+                + (soportaAnalisisMultiple
+                        ? "da.id_expediente_analisis, "
+                        : "CAST(NULL AS NUMBER) AS id_expediente_analisis, ")
                 + "td.codigo AS tipo_documento_codigo, td.nombre AS tipo_documento_nombre, "
                 + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
                 + "da.fecha_documento, "
@@ -149,14 +160,21 @@ public class DocumentoAnalisisDAO {
                 + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                 + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                 + "WHERE da.id_expediente = ? AND da.activo = 1 "
+                + (soportaAnalisisMultiple && idExpedienteAnalisis != null
+                        ? "AND da.id_expediente_analisis = ? "
+                        : "")
                 + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
+            if (soportaAnalisisMultiple && idExpedienteAnalisis != null) {
+                ps.setLong(2, idExpedienteAnalisis);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     documentos.add(new DocumentoAnalizadoDTO(
                             getLongOrNull(rs, "id_documento_analizado"),
                             getLongOrNull(rs, "id_expediente"),
+                            getLongOrNull(rs, "id_expediente_analisis"),
                             rs.getString("tipo_documento_codigo"),
                             rs.getString("tipo_documento_nombre"),
                             rs.getString("estado_documento_codigo"),
@@ -320,6 +338,7 @@ public class DocumentoAnalisisDAO {
         boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
         boolean soportaNumeroDocumento = soportaNumeroDocumentoAnalizado(conn);
         boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
+        boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
         if (!soportaNumeroDocumento && hasText(documento.getNumeroDocumento())) {
             throw new SQLException("Falta la columna NUMERO_DOCUMENTO en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 32_patch_documento_analizado_numero_documento.sql.");
         }
@@ -331,26 +350,33 @@ public class DocumentoAnalisisDAO {
         }
         String sql = soportaRespuesta
                 ? "INSERT INTO expediente_documento_analizado ("
-                + "id_expediente, id_tipo_documento_adjunto, id_estado_documento, fecha_documento, "
+                + "id_expediente, "
+                + (soportaAnalisisMultiple ? "id_expediente_analisis, " : "")
+                + "id_tipo_documento_adjunto, id_estado_documento, fecha_documento, "
                 + (soportaNumeroDocumento ? "numero_documento, " : "")
                 + (soportaDetalleObservacion ? "detalle_observacion, " : "")
                 + "descripcion, notificado, fecha_acuse, requiere_respuesta, confirmacion_respuesta, "
                 + "fecha_respuesta, numero_hoja_envio_respuesta, activo, creado_por, creado_en"
-                + ") VALUES (?, ?, ?, ?, " + (soportaNumeroDocumento ? "?, " : "")
+                + ") VALUES (?, " + (soportaAnalisisMultiple ? "?, " : "") + "?, ?, ?, " + (soportaNumeroDocumento ? "?, " : "")
                 + (soportaDetalleObservacion ? "?, " : "") + "?, ?, ?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)"
                 : "INSERT INTO expediente_documento_analizado ("
-                + "id_expediente, id_tipo_documento_adjunto, id_estado_documento, fecha_documento, "
+                + "id_expediente, "
+                + (soportaAnalisisMultiple ? "id_expediente_analisis, " : "")
+                + "id_tipo_documento_adjunto, id_estado_documento, fecha_documento, "
                 + (soportaNumeroDocumento ? "numero_documento, " : "")
                 + (soportaDetalleObservacion ? "detalle_observacion, " : "")
                 + "descripcion, activo, creado_por, creado_en"
-                + ") VALUES (?, ?, ?, ?, " + (soportaNumeroDocumento ? "?, " : "")
+                + ") VALUES (?, " + (soportaAnalisisMultiple ? "?, " : "") + "?, ?, ?, " + (soportaNumeroDocumento ? "?, " : "")
                 + (soportaDetalleObservacion ? "?, " : "") + "?, 1, ?, SYSTIMESTAMP)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, idExpediente);
-            ps.setLong(2, idTipoDocumento);
-            ps.setLong(3, idEstadoDocumento);
-            setDateOrNull(ps, 4, documento.getFechaDocumento());
-            int index = 5;
+            int index = 1;
+            ps.setLong(index++, idExpediente);
+            if (soportaAnalisisMultiple) {
+                setLongOrNull(ps, index++, documento.getIdExpedienteAnalisis());
+            }
+            ps.setLong(index++, idTipoDocumento);
+            ps.setLong(index++, idEstadoDocumento);
+            setDateOrNull(ps, index++, documento.getFechaDocumento());
             if (soportaNumeroDocumento) {
                 ps.setString(index++, limitar(documento.getNumeroDocumento(), 120));
             }
@@ -396,6 +422,7 @@ public class DocumentoAnalisisDAO {
         boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
         boolean soportaNumeroDocumento = soportaNumeroDocumentoAnalizado(conn);
         boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
+        boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
         if (!soportaNumeroDocumento && hasText(documento.getNumeroDocumento())) {
             throw new SQLException("Falta la columna NUMERO_DOCUMENTO en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 32_patch_documento_analizado_numero_documento.sql.");
         }
@@ -407,6 +434,7 @@ public class DocumentoAnalisisDAO {
         }
         String sql = soportaRespuesta
                 ? "UPDATE expediente_documento_analizado SET "
+                + (soportaAnalisisMultiple ? "id_expediente_analisis = ?, " : "")
                 + "id_tipo_documento_adjunto = ?, id_estado_documento = ?, fecha_documento = ?, "
                 + (soportaNumeroDocumento ? "numero_documento = ?, " : "")
                 + (soportaDetalleObservacion ? "detalle_observacion = ?, " : "")
@@ -416,6 +444,7 @@ public class DocumentoAnalisisDAO {
                 + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1"
                 : "UPDATE expediente_documento_analizado SET "
+                + (soportaAnalisisMultiple ? "id_expediente_analisis = ?, " : "")
                 + "id_tipo_documento_adjunto = ?, id_estado_documento = ?, fecha_documento = ?, "
                 + (soportaNumeroDocumento ? "numero_documento = ?, " : "")
                 + (soportaDetalleObservacion ? "detalle_observacion = ?, " : "")
@@ -423,10 +452,13 @@ public class DocumentoAnalisisDAO {
                 + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, idTipoDocumento);
-            ps.setLong(2, idEstadoDocumento);
-            setDateOrNull(ps, 3, documento.getFechaDocumento());
-            int index = 4;
+            int index = 1;
+            if (soportaAnalisisMultiple) {
+                setLongOrNull(ps, index++, documento.getIdExpedienteAnalisis());
+            }
+            ps.setLong(index++, idTipoDocumento);
+            ps.setLong(index++, idEstadoDocumento);
+            setDateOrNull(ps, index++, documento.getFechaDocumento());
             if (soportaNumeroDocumento) {
                 ps.setString(index++, limitar(documento.getNumeroDocumento(), 120));
             }
@@ -517,6 +549,14 @@ public class DocumentoAnalisisDAO {
         }
     }
 
+    private static void setLongOrNull(PreparedStatement ps, int index, Long value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.NUMERIC);
+        } else {
+            ps.setLong(index, value);
+        }
+    }
+
     private static boolean soportaRespuestaDocumentoAnalizado(Connection conn) throws SQLException {
         String sql = "SELECT COUNT(DISTINCT column_name) FROM user_tab_columns "
                 + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
@@ -547,6 +587,17 @@ public class DocumentoAnalisisDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private static boolean soportaAnalisisMultiple(Connection conn) throws SQLException {
+        String sql = "SELECT "
+                + "(SELECT COUNT(1) FROM user_tables WHERE table_name = 'EXPEDIENTE_ANALISIS') + "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' AND column_name = 'ID_EXPEDIENTE_ANALISIS') "
+                + "AS total FROM dual";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt("total") == 2;
         }
     }
 
