@@ -409,7 +409,7 @@ public class ExpedienteRelacionadoDAO {
                             getLongOrNull(rs, "id_expediente_relacionado"),
                             idUsuarioModificador,
                             idMovimiento,
-                            false)) {
+                            true)) {
                         sincronizados++;
                     }
                 }
@@ -469,9 +469,7 @@ public class ExpedienteRelacionadoDAO {
             Connection conn,
             AsignacionActual asignacionPrincipal,
             boolean sincronizarEstadoOperativo) throws SQLException {
-        if (!sincronizarEstadoOperativo
-                || asignacionPrincipal.esAsignado()
-                || !CODIGO_ETAPA_ANALISIS.equalsIgnoreCase(asignacionPrincipal.etapaCodigo)) {
+        if (!sincronizarEstadoOperativo) {
             return asignacionPrincipal;
         }
         Long idEtapaAsignacion = catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_ASIGNACION);
