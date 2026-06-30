@@ -1,9 +1,6 @@
-# SDRERC V2 - Actualizacion automatica cliente-servidor
+# SDRERC V2 - Actualizacion cliente-servidor por red local
 
-Esta guia describe el esquema cliente-servidor para distribuir SDRERC V2 en laptops Windows, usando:
-
-- `FILE_SHARE` por carpeta compartida SMB/UNC
-- `HTTP` o `HTTPS` para acceso remoto por VPN
+Esta guia describe el esquema vigente para distribuir SDRERC V2 en laptops Windows dentro de la misma LAN, usando una carpeta compartida SMB/UNC.
 
 ## Arquitectura
 
@@ -40,7 +37,7 @@ C:\SDRERC_CLIENTE
   logs
 ```
 
-El cliente nunca ejecuta el JAR desde la ruta remota. Siempre descarga o copia la release a `C:\SDRERC_CLIENTE\app` y ejecuta la version local.
+El cliente nunca ejecuta el JAR desde la ruta remota. Siempre copia o actualiza la release a `C:\SDRERC_CLIENTE\app` y ejecuta la version local.
 
 ## Publicacion desde servidor
 
@@ -66,7 +63,7 @@ Get-Content D:\SDRERC_RELEASES\latest\version.json
 Get-Content D:\SDRERC_RELEASES\latest\checksums.txt
 ```
 
-## Modo 1: FILE_SHARE / UNC
+## Modo vigente: FILE_SHARE / UNC
 
 ### Servidor
 
@@ -116,87 +113,6 @@ Test-NetConnection NOMBRE_SERVIDOR -Port 445
 Test-Path "\\NOMBRE_SERVIDOR\SDRERC_RELEASES\latest\version.json"
 ```
 
-## Modo 2: HTTP / HTTPS por VPN
-
-Este modo sirve para clientes remotos conectados por VPN, por ejemplo Tailscale o ZeroTier.
-
-### Servidor
-
-Publique la release como siempre:
-
-```powershell
-.\scripts\server\publish-sdrerc-release.ps1 -Version "1.0.12"
-```
-
-Luego exponga la carpeta `latest` por HTTP solo dentro de la red VPN.
-
-Ejemplo rapido con Python:
-
-```powershell
-cd D:\SDRERC_RELEASES\latest
-python -m http.server 8088
-```
-
-URLs esperadas:
-
-```text
-http://IP_VPN_SERVIDOR:8088/version.json
-http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip
-http://IP_VPN_SERVIDOR:8088/checksums.txt
-```
-
-### Firewall del servidor
-
-Permitir Oracle y releases HTTP solo en la red privada/VPN:
-
-```powershell
-New-NetFirewallRule -DisplayName "SDRERC Oracle 1521 VPN" -Direction Inbound -Protocol TCP -LocalPort 1521 -Action Allow
-New-NetFirewallRule -DisplayName "SDRERC Releases HTTP 8088 VPN" -Direction Inbound -Protocol TCP -LocalPort 8088 -Action Allow
-```
-
-### Cliente
-
-`updater-config.json`:
-
-```json
-{
-  "remoteReleaseMode": "HTTP",
-  "remoteReleasePath": "",
-  "remoteVersionUrl": "http://IP_VPN_SERVIDOR:8088/version.json",
-  "remoteZipUrl": "http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip",
-  "remoteChecksumsUrl": "http://IP_VPN_SERVIDOR:8088/checksums.txt",
-  "localBasePath": "C:\\SDRERC_CLIENTE",
-  "javaPath": "C:\\Program Files\\Java\\jre1.8.0_491\\bin\\java.exe",
-  "mainJar": "SDRERC-V2.jar",
-  "appDirectoryName": "app",
-  "configFile": "C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties",
-  "javaArgs": [
-    "-Dsdrerc.app.config=C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties"
-  ]
-}
-```
-
-Pruebas desde cliente:
-
-```powershell
-Test-NetConnection IP_VPN_SERVIDOR -Port 1521
-Test-NetConnection IP_VPN_SERVIDOR -Port 8088
-Invoke-WebRequest http://IP_VPN_SERVIDOR:8088/version.json
-Get-Content C:\SDRERC_CLIENTE\app\version-local.json
-```
-
-## Conexion Oracle por VPN
-
-En `C:\SDRERC_CLIENTE\app\config\sdrerc-app.properties`:
-
-```properties
-sdrerc.db.url=jdbc:oracle:thin:@IP_VPN_SERVIDOR:1521/XEPDB1
-sdrerc.db.user=SDRERC_APP
-sdrerc.db.password=
-```
-
-No guardar credenciales reales en el repositorio ni en la release compartida.
-
 ## Instalacion cliente
 
 ### Instalador copiable
@@ -207,16 +123,10 @@ Carpeta:
 dist\client-installer
 ```
 
-#### Instalacion FILE_SHARE
+Ejemplo:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.ps1 -RemoteReleaseMode "FILE_SHARE" -RemoteReleasePath "\\SERVIDOR\SDRERC_RELEASES\latest"
-```
-
-#### Instalacion HTTP / VPN
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.ps1 -RemoteReleaseMode "HTTP" -RemoteVersionUrl "http://IP_VPN_SERVIDOR:8088/version.json" -RemoteZipUrl "http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip" -RemoteChecksumsUrl "http://IP_VPN_SERVIDOR:8088/checksums.txt"
 ```
 
 ## Flujo del launcher
@@ -224,11 +134,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.
 Al abrir `run-sdrerc-client.bat`, el launcher:
 
 1. lee `updater-config.json`
-2. detecta `remoteReleaseMode`
-3. intenta leer `version.json` remoto
+2. valida `remoteReleaseMode`
+3. lee `version.json` remoto desde UNC
 4. compara contra `version-local.json`
 5. si hay nueva version:
-   - descarga o copia `SDRERC-V2.zip`
+   - copia `SDRERC-V2.zip`
    - valida checksum si existe
    - valida ZIP
    - crea backup de `app`
@@ -239,7 +149,7 @@ Al abrir `run-sdrerc-client.bat`, el launcher:
 
 ## Comportamiento ante fallas
 
-### Sin SMB / sin VPN / sin HTTP
+### Sin SMB
 
 Si no se puede acceder a `version.json` remoto:
 
@@ -252,7 +162,7 @@ Si no existe version local:
 
 ### Falla en actualizacion
 
-Si falla copia, descarga, checksum, ZIP o reemplazo:
+Si falla copia, checksum, ZIP o reemplazo:
 
 - registra error en `C:\SDRERC_CLIENTE\logs`
 - restaura backup desde `C:\SDRERC_CLIENTE\backup`
@@ -282,18 +192,9 @@ launcher-yyyyMMdd.log
 
 Los logs no incluyen passwords.
 
-## Archivos involucrados
-
-- launcher cliente: `scripts/client/sdrerc-launcher.ps1`
-- bat cliente: `scripts/client/run-sdrerc-client.bat`
-- config cliente: `scripts/client/updater-config.json`
-- publicador servidor: `scripts/server/publish-sdrerc-release.ps1`
-- instalador copiable: `dist/client-installer`
-
 ## Seguridad
 
 - no ejecutar el JAR desde la ruta remota
 - no publicar Oracle a internet publico
 - no guardar contraseñas reales en archivos versionados
-- usar VPN privada para clientes remotos
-- mantener el puerto 8088 expuesto solo en el segmento VPN o red privada
+- usar solo la carpeta compartida SMB/UNC en la red local

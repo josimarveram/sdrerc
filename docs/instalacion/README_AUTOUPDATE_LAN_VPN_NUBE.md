@@ -1,27 +1,15 @@
-# SDRERC V2 - Resumen operativo LAN / VPN
+# SDRERC V2 - Resumen operativo LAN
 
-## Escenarios soportados
+Este documento resume el modo operativo vigente para cliente-servidor en la misma red local.
 
-### LAN / misma red
+## Escenario soportado
 
 - Release en `D:\SDRERC_RELEASES\latest`
 - Cliente por `FILE_SHARE`
-- Ruta remota:
+- Ruta remota UNC:
 
 ```text
 \\SERVIDOR\SDRERC_RELEASES\latest
-```
-
-### VPN privada
-
-- Release en `D:\SDRERC_RELEASES\latest`
-- Cliente por `HTTP`
-- URLs:
-
-```text
-http://IP_VPN_SERVIDOR:8088/version.json
-http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip
-http://IP_VPN_SERVIDOR:8088/checksums.txt
 ```
 
 ## Publicar release
@@ -30,39 +18,38 @@ http://IP_VPN_SERVIDOR:8088/checksums.txt
 .\scripts\server\publish-sdrerc-release.ps1 -Version "1.0.12"
 ```
 
-## Servir release por HTTP
+## Verificacion
 
 ```powershell
-cd D:\SDRERC_RELEASES\latest
-python -m http.server 8088
+Get-Content D:\SDRERC_RELEASES\latest\version.json
+Get-Content D:\SDRERC_RELEASES\latest\checksums.txt
+Test-NetConnection NOMBRE_SERVIDOR -Port 445
+Test-Path "\\NOMBRE_SERVIDOR\SDRERC_RELEASES\latest\version.json"
 ```
 
-## Firewall recomendado
+## Config cliente
 
-```powershell
-New-NetFirewallRule -DisplayName "SDRERC Oracle 1521 VPN" -Direction Inbound -Protocol TCP -LocalPort 1521 -Action Allow
-New-NetFirewallRule -DisplayName "SDRERC Releases HTTP 8088 VPN" -Direction Inbound -Protocol TCP -LocalPort 8088 -Action Allow
-```
-
-## Cliente: prueba minima
-
-```powershell
-Test-NetConnection IP_VPN_SERVIDOR -Port 1521
-Test-NetConnection IP_VPN_SERVIDOR -Port 8088
-Invoke-WebRequest http://IP_VPN_SERVIDOR:8088/version.json
-Get-Content C:\SDRERC_CLIENTE\app\version-local.json
-```
-
-## Config Oracle cliente por VPN
-
-```properties
-sdrerc.db.url=jdbc:oracle:thin:@IP_VPN_SERVIDOR:1521/XEPDB1
-sdrerc.db.user=SDRERC_APP
-sdrerc.db.password=
+```json
+{
+  "remoteReleaseMode": "FILE_SHARE",
+  "remoteReleasePath": "\\\\SERVIDOR\\SDRERC_RELEASES\\latest",
+  "remoteVersionUrl": "",
+  "remoteZipUrl": "",
+  "remoteChecksumsUrl": "",
+  "localBasePath": "C:\\SDRERC_CLIENTE",
+  "javaPath": "C:\\Program Files\\Java\\jre1.8.0_491\\bin\\java.exe",
+  "mainJar": "SDRERC-V2.jar",
+  "appDirectoryName": "app",
+  "configFile": "C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties",
+  "javaArgs": [
+    "-Dsdrerc.app.config=C:\\SDRERC_CLIENTE\\app\\config\\sdrerc-app.properties"
+  ]
+}
 ```
 
 ## Regla operativa
 
 - el cliente siempre ejecuta desde `C:\SDRERC_CLIENTE\app`
-- si no hay conectividad remota, abre la ultima version local
+- si no hay conectividad SMB, abre la ultima version local
 - si falla una actualizacion, hace rollback desde `backup`
+- no usar modos alternos; este esquema es solo SMB/UNC en la LAN

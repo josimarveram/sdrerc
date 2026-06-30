@@ -1,24 +1,16 @@
-SDRERC Cliente - Instalador LAN / VPN
-=====================================
+SDRERC Cliente - Instalador LAN
+================================
 
 1. Copie esta carpeta a la laptop cliente.
 2. Ejecute PowerShell en esta carpeta:
 
-   Modo LAN / carpeta compartida:
-
    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.ps1 -RemoteReleaseMode "FILE_SHARE" -RemoteReleasePath "\\SERVIDOR\SDRERC_RELEASES\latest"
-
-   Modo VPN / HTTP:
-
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-sdrerc-client.ps1 -RemoteReleaseMode "HTTP" -RemoteVersionUrl "http://IP_VPN_SERVIDOR:8088/version.json" -RemoteZipUrl "http://IP_VPN_SERVIDOR:8088/SDRERC-V2.zip" -RemoteChecksumsUrl "http://IP_VPN_SERVIDOR:8088/checksums.txt"
 
 3. Edite:
 
    C:\SDRERC_CLIENTE\launcher\updater-config.json
 
-   Configure el origen remoto segun corresponda:
-   - FILE_SHARE con remoteReleasePath
-   - HTTP con remoteVersionUrl, remoteZipUrl y remoteChecksumsUrl
+   Configure el origen remoto con FILE_SHARE y remoteReleasePath.
 
 4. Edite o cree:
 
