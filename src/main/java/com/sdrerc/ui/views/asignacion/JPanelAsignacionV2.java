@@ -2517,15 +2517,12 @@ public class JPanelAsignacionV2 extends JPanel {
                 lblIngreso.setToolTipText(item.getObservacionSolicitud().isEmpty() ? item.getAlertaIngreso() : item.getObservacionSolicitud());
             }
             lblRelacionados.setText(item.getPosiblesRelacionados() > 0
-                    ? item.getPosiblesRelacionados() + " posibles relacionados por misma acta y titular."
+                    ? item.getPosiblesRelacionados() + " posibles relacionados para este expediente principal."
                     : (item.getAsociadosConfirmados() > 0
-                            ? item.getAsociadosConfirmados() + " documento(s) asociado(s) confirmado(s)."
-                            : "Sin alerta de relacionados."));
+                            ? item.getAsociadosConfirmados() + " documento(s) asociado(s) confirmado(s) al principal."
+                            : "Sin alerta de relacionados para el expediente principal."));
             cargarDocumentosRelacionadosPanel(item);
-            btnAsociarRelacionados.setText(item.getPosiblesRelacionados() > 0
-                    ? "Asociar " + item.getPosiblesRelacionados() + " relacionado(s)"
-                    : "Sin relacionados pendientes");
-            btnAsociarRelacionados.setEnabled(item.getPosiblesRelacionados() > 0);
+            actualizarAccionRelacionadosParaPrincipal(item);
             actualizarDecisionNumero(item);
         } else if (filaPanel != null && filaPanel.esAsociada()) {
             prepararHojaEnvioSimple(null);
@@ -2550,9 +2547,8 @@ public class JPanelAsignacionV2 extends JPanel {
             lblDestino.setText(filaPanel.numeroExpedientePrincipal());
             lblIngreso.setText("Duplicado confirmado");
             lblIngreso.setToolTipText("Este documento está asociado al expediente principal y no requiere asignación independiente.");
-            limpiarDocumentosRelacionadosPanel("Asociado a expediente principal " + filaPanel.numeroExpedientePrincipal() + ".");
-            btnAsociarRelacionados.setText("Relación confirmada");
-            btnAsociarRelacionados.setEnabled(false);
+            limpiarDocumentosRelacionadosPanel("Asociado al expediente principal " + filaPanel.numeroExpedientePrincipal() + ". La asociación se gestiona desde el principal.");
+            actualizarAccionRelacionadosParaAsociado(filaPanel);
         } else if (modoMultiple) {
             prepararHojaEnvioSimple(null);
             actualizarDecisionNumero(null);
@@ -2573,9 +2569,8 @@ public class JPanelAsignacionV2 extends JPanel {
             lblDestino.setText("Asignación / Asignado");
             lblIngreso.setText("Múltiple");
             lblIngreso.setToolTipText("Selección múltiple de expedientes marcados.");
-            limpiarDocumentosRelacionadosPanel("Puede asociar la selección si comparte número de acta y titular.");
-            btnAsociarRelacionados.setText("Asociar selección relacionada");
-            btnAsociarRelacionados.setEnabled(true);
+            limpiarDocumentosRelacionadosPanel("Puede asociar la selección al expediente principal elegido automáticamente.");
+            actualizarAccionRelacionadosParaSeleccionMultiple();
         } else {
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(null, false);
@@ -3740,8 +3735,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblIngreso.setText("Normal");
         lblIngreso.setToolTipText(null);
         limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
-        btnAsociarRelacionados.setText("Sin relacionados pendientes");
-        btnAsociarRelacionados.setEnabled(false);
+        actualizarAccionRelacionadosSinSeleccion();
         actualizarDecisionNumero(null);
         idExpedienteHojaEnvioSimple = null;
         txtHojaEnvioAsignacion.setText("");
@@ -3901,6 +3895,40 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean puedeRecibirDocumentoRelacionado(int modelRow) {
         DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
         return fila != null && !fila.esAsociado();
+    }
+
+    private void actualizarAccionRelacionadosParaPrincipal(AsignacionExpedienteDTO item) {
+        if (item == null || item.getPosiblesRelacionados() <= 0) {
+            actualizarAccionRelacionadosSinSeleccion();
+            return;
+        }
+        btnAsociarRelacionados.setText("Asociar al principal (" + item.getPosiblesRelacionados() + ")");
+        btnAsociarRelacionados.setEnabled(true);
+        btnAsociarRelacionados.setToolTipText(
+                "Asocia los expedientes detectados con el expediente principal actualmente seleccionado.");
+    }
+
+    private void actualizarAccionRelacionadosParaAsociado(AsignacionTableRow filaPanel) {
+        String numeroPrincipal = filaPanel != null ? filaPanel.numeroExpedientePrincipal() : null;
+        btnAsociarRelacionados.setText("Relación confirmada");
+        btnAsociarRelacionados.setEnabled(false);
+        btnAsociarRelacionados.setToolTipText(
+                numeroPrincipal == null || numeroPrincipal.trim().isEmpty()
+                        ? "Este expediente ya está asociado a un expediente principal. La asociación se gestiona desde el principal."
+                        : "Este expediente ya está asociado al expediente principal " + numeroPrincipal + ". La asociación se gestiona desde el principal.");
+    }
+
+    private void actualizarAccionRelacionadosParaSeleccionMultiple() {
+        btnAsociarRelacionados.setText("Asociar selección al principal");
+        btnAsociarRelacionados.setEnabled(true);
+        btnAsociarRelacionados.setToolTipText(
+                "Asocia la selección marcada al expediente principal elegido automáticamente.");
+    }
+
+    private void actualizarAccionRelacionadosSinSeleccion() {
+        btnAsociarRelacionados.setText("Sin relacionados pendientes");
+        btnAsociarRelacionados.setEnabled(false);
+        btnAsociarRelacionados.setToolTipText("Seleccione un expediente principal para asociar los relacionados detectados.");
     }
 
     private boolean puedeEliminarDocumentoRelacionado(int modelRow) {
