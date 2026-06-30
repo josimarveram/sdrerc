@@ -158,6 +158,7 @@ public class ExpedienteRelacionadoDAO {
         }
 
         String sql = "SELECT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, "
+                + "esol.numero_expediente_sgd, "
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
@@ -210,6 +211,7 @@ public class ExpedienteRelacionadoDAO {
         }
 
         String sql = "SELECT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, "
+                + "esol.numero_expediente_sgd, "
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
@@ -865,6 +867,7 @@ public class ExpedienteRelacionadoDAO {
         return new ExpedienteRelacionadoDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("numero_documento"),
                 rs.getString("tipo_acta"),
@@ -890,6 +893,7 @@ public class ExpedienteRelacionadoDAO {
         return new ExpedienteRelacionadoDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("numero_documento"),
                 rs.getString("tipo_acta"),

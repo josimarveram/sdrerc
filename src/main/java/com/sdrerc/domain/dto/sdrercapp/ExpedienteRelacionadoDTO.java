@@ -8,6 +8,7 @@ public class ExpedienteRelacionadoDTO {
 
     private final Long idExpediente;
     private final String numeroExpediente;
+    private final String numeroExpedienteSgd;
     private final String numeroTramiteDocumentario;
     private final String numeroDocumento;
     private final String tipoActa;
@@ -31,6 +32,7 @@ public class ExpedienteRelacionadoDTO {
     public ExpedienteRelacionadoDTO(
             Long idExpediente,
             String numeroExpediente,
+            String numeroExpedienteSgd,
             String numeroTramiteDocumentario,
             String numeroDocumento,
             String tipoActa,
@@ -52,6 +54,7 @@ public class ExpedienteRelacionadoDTO {
             String usuarioRelacion) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
+        this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.numeroDocumento = safe(numeroDocumento);
         this.tipoActa = safe(tipoActa);
@@ -79,6 +82,10 @@ public class ExpedienteRelacionadoDTO {
 
     public String getNumeroExpediente() {
         return numeroExpediente;
+    }
+
+    public String getNumeroExpedienteSgd() {
+        return numeroExpedienteSgd;
     }
 
     public String getNumeroTramiteDocumentario() {

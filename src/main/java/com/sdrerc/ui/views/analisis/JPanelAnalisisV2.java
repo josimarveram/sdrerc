@@ -1712,7 +1712,7 @@ public class JPanelAnalisisV2 extends JPanel {
             "",
             "",
             valorUi(principal.getNumeroExpediente()),
-            valorUi(principal.getNumeroExpedienteSgd()),
+            valorUi(asociado.getNumeroExpedienteSgd()),
             formatDate(asociado.getFechaRecepcion()),
             procedimientoAsociado(asociado),
             valorUi(asociado.getTipoActa()),
