@@ -913,16 +913,12 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.add(titulo, BorderLayout.NORTH);
 
         JScrollPane scroll = new JScrollPane(documentosRelacionadosTable);
-        scroll.setPreferredSize(new Dimension(300, 104));
-        scroll.setMinimumSize(new Dimension(260, 84));
-        scroll.setMaximumSize(new Dimension(320, 140));
+        scroll.setPreferredSize(new Dimension(320, 104));
+        scroll.setMinimumSize(new Dimension(280, 84));
         scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        JPanel tablaCompacta = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        tablaCompacta.setOpaque(false);
-        tablaCompacta.add(scroll);
-        panel.add(tablaCompacta, BorderLayout.CENTER);
+        panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }
 
