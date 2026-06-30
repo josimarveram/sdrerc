@@ -1,10 +1,10 @@
 package com.sdrerc.ui.views.registrorecepcion;
 
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
 import java.awt.BorderLayout;
-import java.awt.GridLayout;
 import java.util.function.Consumer;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
@@ -44,8 +44,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(12, 12));
         panel.setBackground(AppV2Theme.BACKGROUND);
 
-        metricasRegistro = new JPanel(new GridLayout(1, 4, 12, 0));
-        metricasRegistro.setOpaque(false);
+        metricasRegistro = new AppV2ResponsiveGridPanel(190, 4, 12, 0);
         metricasRegistro.add(new MetricCardV2("En registro", "-", "Pendiente de métrica", AppV2Theme.INFO));
         metricasRegistro.add(new MetricCardV2("Recepcionados", "-", "Preparado para SDRERC_APP", AppV2Theme.TEAL));
         metricasRegistro.add(new MetricCardV2("Observados", "-", "Validación futura", AppV2Theme.WARNING));
@@ -57,7 +56,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 "Expedientes registrados o recibidos pendientes de gestión",
                 true,
                 false,
-                null,
+                metricasRegistro,
                 new Consumer<Long>() {
                     @Override
                     public void accept(Long idExpediente) {
@@ -65,7 +64,6 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                     }
                 });
 
-        panel.add(metricasRegistro, BorderLayout.NORTH);
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;
     }

@@ -24,6 +24,7 @@ import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
+import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
@@ -433,8 +434,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new JPanel(new GridLayout(1, 5, 12, 0));
-        metricas.setOpaque(false);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 5, 12, 0);
         metricas.add(cardPendientes);
         metricas.add(cardSinNumero);
         metricas.add(cardGrupoFamiliar);
@@ -444,8 +444,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeaderCartasRespuesta() {
-        JPanel metricas = new JPanel(new GridLayout(1, 4, 12, 0));
-        metricas.setOpaque(false);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 0);
         metricas.add(cardCartasTotal);
         metricas.add(cardCartasNotificadas);
         metricas.add(cardCartasPendientes);
@@ -454,8 +453,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeaderCargaAbogados() {
-        JPanel metricas = new JPanel(new GridLayout(1, 4, 12, 0));
-        metricas.setOpaque(false);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 0);
         metricas.add(cardCargaAbogados);
         metricas.add(cardCargaConAsignacion);
         metricas.add(cardCargaSinAsignacion);
