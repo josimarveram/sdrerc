@@ -376,11 +376,6 @@ public class AnalisisExpedienteDAO {
                     throw new SQLException("El documento asociado ya fue recibido por el abogado.");
                 }
                 validarPendienteRecepcion(asociado);
-                if (idUsuario == null
-                        || asociado.idUsuarioResponsable == null
-                        || !idUsuario.equals(asociado.idUsuarioResponsable)) {
-                    throw new SQLException("Solo el abogado responsable puede registrar la recepción.");
-                }
 
                 Transicion transicion = requerirTransicionRecepcion(conn);
                 Long idMovimiento = requerirId(

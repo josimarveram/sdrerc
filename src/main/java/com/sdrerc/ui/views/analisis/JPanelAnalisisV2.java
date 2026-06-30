@@ -2456,8 +2456,7 @@ public class JPanelAnalisisV2 extends JPanel {
         ExpedienteRelacionadoDTO asociado = documentosAsociadosPanel.get(modelRow);
         return !asociado.isRecibidoPorAbogado()
                 && "ASIGNACION".equalsIgnoreCase(asociado.getEtapaCodigo())
-                && "ASIGNADO".equalsIgnoreCase(asociado.getEstadoCodigo())
-                && analisisService.usuarioActualEsResponsable(asociado.getIdAbogadoResponsable());
+                && "ASIGNADO".equalsIgnoreCase(asociado.getEstadoCodigo());
     }
 
     private void recibirDocumentoAsociado(int modelRow) {
@@ -2471,7 +2470,7 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         if (!puedeRecibirDocumentoAsociado(modelRow)) {
-            mostrarInfo("Solo el abogado responsable puede registrar la recepción.");
+            mostrarInfo("El documento asociado no se encuentra disponible para recibir.");
             return;
         }
         confirmarYEjecutar(
@@ -4105,7 +4104,7 @@ public class JPanelAnalisisV2 extends JPanel {
                     ? "Documento recibido por el abogado."
                     : permitido
                             ? "Recibir documento asociado."
-                            : "Solo el abogado responsable puede registrar la recepción.");
+                            : "Documento asociado no disponible para recibir.");
             return this;
         }
     }
@@ -4139,7 +4138,7 @@ public class JPanelAnalisisV2 extends JPanel {
             button.configure(false, permitido);
             button.setToolTipText(permitido
                     ? "Recibir documento asociado."
-                    : "Solo el abogado responsable puede registrar la recepción.");
+                    : "Documento asociado no disponible para recibir.");
             return button;
         }
     }
