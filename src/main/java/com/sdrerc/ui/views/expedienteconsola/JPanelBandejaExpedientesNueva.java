@@ -280,7 +280,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
-        acciones.add(btnVerDetalle);
+        if (!perfilRegistroRecepcion) {
+            acciones.add(btnVerDetalle);
+        }
         if (editarExpedienteHandler != null) {
             acciones.add(btnEditar);
         }
@@ -349,7 +351,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
 
         btnVerDetalle.setEnabled(false);
-        btnVerDetalle.setToolTipText("Seleccione un expediente para abrir la consola de expediente");
+        btnVerDetalle.setToolTipText("Disponible en bandeja general");
         btnEditar.setEnabled(false);
         btnEditar.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado");
 
@@ -370,7 +372,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
 
         lblResultado.setText(etapaBloqueada
-                ? "Seleccione un expediente y presione Ver detalle para abrir la consola."
+                ? "Seleccione un expediente para abrir la consola."
                 : "Seleccione filtros y presione Buscar. Doble clic o Ver detalle abre la consola.");
         lblResultado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblResultado.setForeground(AppV2Theme.TEXT_SECONDARY);
@@ -577,8 +579,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             txtBusqueda.setPlaceholder("Buscar expediente, trámite/SGD, acta, titular o documento");
         }
         txtBusqueda.setColumns(34);
-        txtBusqueda.setPreferredSize(new Dimension(perfilRegistroRecepcion ? 460 : 360, 34));
-        txtBusqueda.setMinimumSize(new Dimension(perfilRegistroRecepcion ? 340 : 280, 34));
+        txtBusqueda.setPreferredSize(new Dimension(perfilRegistroRecepcion ? 720 : 360, 34));
+        txtBusqueda.setMinimumSize(new Dimension(perfilRegistroRecepcion ? 360 : 280, 34));
 
         cmbEtapa.setPreferredSize(new Dimension(190, 34));
         cmbEtapa.setMinimumSize(new Dimension(180, 34));

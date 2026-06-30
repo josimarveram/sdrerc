@@ -15,6 +15,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
 
     private JPanelBandejaExpedientesNueva bandejaRegistro;
     private JTabbedPane tabs;
+    private JPanel metricasRegistro;
 
     public JPanelRegistroRecepcionV2() {
         setLayout(new BorderLayout(14, 14));
@@ -43,12 +44,12 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(12, 12));
         panel.setBackground(AppV2Theme.BACKGROUND);
 
-        JPanel metricas = new JPanel(new GridLayout(1, 4, 12, 0));
-        metricas.setOpaque(false);
-        metricas.add(new MetricCardV2("En registro", "-", "Pendiente de métrica", AppV2Theme.INFO));
-        metricas.add(new MetricCardV2("Recepcionados", "-", "Preparado para SDRERC_APP", AppV2Theme.TEAL));
-        metricas.add(new MetricCardV2("Observados", "-", "Validación futura", AppV2Theme.WARNING));
-        metricas.add(new MetricCardV2("Duplicados", "-", "Conservados para revisión", AppV2Theme.INDIGO));
+        metricasRegistro = new JPanel(new GridLayout(1, 4, 12, 0));
+        metricasRegistro.setOpaque(false);
+        metricasRegistro.add(new MetricCardV2("En registro", "-", "Pendiente de métrica", AppV2Theme.INFO));
+        metricasRegistro.add(new MetricCardV2("Recepcionados", "-", "Preparado para SDRERC_APP", AppV2Theme.TEAL));
+        metricasRegistro.add(new MetricCardV2("Observados", "-", "Validación futura", AppV2Theme.WARNING));
+        metricasRegistro.add(new MetricCardV2("Duplicados", "-", "Conservados para revisión", AppV2Theme.INDIGO));
 
         bandejaRegistro = new JPanelBandejaExpedientesNueva(
                 "REGISTRO",
@@ -56,7 +57,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 "Expedientes registrados o recibidos pendientes de gestión",
                 true,
                 false,
-                metricas,
+                null,
                 new Consumer<Long>() {
                     @Override
                     public void accept(Long idExpediente) {
@@ -64,6 +65,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                     }
                 });
 
+        panel.add(metricasRegistro, BorderLayout.NORTH);
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;
     }
