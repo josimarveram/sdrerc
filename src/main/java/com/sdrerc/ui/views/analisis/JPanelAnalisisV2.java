@@ -73,6 +73,7 @@ import javax.swing.AbstractCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.CellRendererPane;
 import javax.swing.DefaultCellEditor;
 import javax.swing.Icon;
 import javax.swing.JFileChooser;
@@ -89,6 +90,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.SwingConstants;
+import javax.swing.SortOrder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.AbstractTableModel;
@@ -815,43 +817,17 @@ public class JPanelAnalisisV2 extends JPanel {
         JTextField filtroTipo = crearCampoFiltroDocumentoFijo("Filtrar");
         filtroDocumentoAnalisis = filtroAnalisis;
         filtroDocumentoTipo = filtroTipo;
-        JPanel filtroPanel = new JPanel(new GridBagLayout());
-        filtroPanel.setOpaque(true);
-        filtroPanel.setBackground(AppV2Theme.SURFACE_ALT);
-        filtroPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, AppV2Theme.BORDER));
         filtroAnalisis.setPreferredSize(new Dimension(92, 24));
         filtroTipo.setPreferredSize(new Dimension(150, 24));
-        GridBagConstraints filtroConstraints = new GridBagConstraints();
-        filtroConstraints.gridy = 0;
-        filtroConstraints.fill = GridBagConstraints.BOTH;
-        filtroConstraints.weighty = 1.0;
-        filtroConstraints.gridx = 0;
-        filtroConstraints.weightx = 0.0;
-        filtroPanel.add(filtroAnalisis, filtroConstraints);
-        filtroConstraints.gridx = 1;
-        filtroPanel.add(filtroTipo, filtroConstraints);
-        JPanel header = new JPanel(new BorderLayout(0, 0));
-        header.setOpaque(true);
-        header.setBackground(AppV2Theme.SURFACE_ALT);
-        header.add(documentosFijosTable.getTableHeader(), BorderLayout.NORTH);
-        header.add(filtroPanel, BorderLayout.SOUTH);
-        header.setPreferredSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, 60));
-        header.setMinimumSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, 60));
+        FrozenDocumentHeaderPanel header = new FrozenDocumentHeaderPanel(
+                documentosFijosTable,
+                documentosColumnFilterSupport,
+                filtroAnalisis,
+                filtroTipo);
         scroll.setColumnHeaderView(header);
         scroll.getVerticalScrollBar().setModel(documentosScrollPane.getVerticalScrollBar().getModel());
         documentosFijosTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         documentosFijosTable.setSelectionModel(documentosTable.getSelectionModel());
-        documentosFijosTable.getTableHeader().addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent event) {
-                int viewColumn = documentosFijosTable.getTableHeader().columnAtPoint(event.getPoint());
-                if (documentosColumnFilterSupport != null && viewColumn >= 0) {
-                    documentosColumnFilterSupport.getSorter().toggleSortOrder(viewColumn == 0
-                            ? COL_DOCUMENTO_NUMERO_ANALISIS
-                            : COL_DOCUMENTO_TIPO);
-                }
-            }
-        });
         filtroAnalisis.getDocument().addDocumentListener(simpleDocumentListener(() ->
                 aplicarFiltroDocumentoFijo(COL_DOCUMENTO_NUMERO_ANALISIS, filtroAnalisis.getText())));
         filtroTipo.getDocument().addDocumentListener(simpleDocumentListener(() ->
@@ -873,11 +849,205 @@ public class JPanelAnalisisV2 extends JPanel {
         return field;
     }
 
+    private SortOrder sortOrderDocumentoFijo(int modelColumn) {
+        if (documentosColumnFilterSupport == null || documentosColumnFilterSupport.getSorter() == null) {
+            return SortOrder.UNSORTED;
+        }
+        for (javax.swing.RowSorter.SortKey key : documentosColumnFilterSupport.getSorter().getSortKeys()) {
+            if (key.getColumn() == modelColumn) {
+                return key.getSortOrder();
+            }
+        }
+        return SortOrder.UNSORTED;
+    }
+
     private void aplicarFiltroDocumentoFijo(int modelColumn, String text) {
         if (documentosColumnFilterSupport == null) {
             return;
         }
         documentosColumnFilterSupport.setFilterText(modelColumn, text);
+    }
+
+    private final class FrozenDocumentHeaderPanel extends JPanel {
+
+        private static final int FIXED_HEADER_HEIGHT = 30;
+        private static final int FIXED_FILTER_HEIGHT = 30;
+        private final CellRendererPane rendererPane = new CellRendererPane();
+        private final JTable tableRef;
+        private final AppV2ColumnFilterSupport.Controller sorterSupport;
+        private final JTextField filtroAnalisisRef;
+        private final JTextField filtroTipoRef;
+
+        private FrozenDocumentHeaderPanel(
+                JTable tableRef,
+                AppV2ColumnFilterSupport.Controller sorterSupport,
+                JTextField filtroAnalisisRef,
+                JTextField filtroTipoRef) {
+            this.tableRef = tableRef;
+            this.sorterSupport = sorterSupport;
+            this.filtroAnalisisRef = filtroAnalisisRef;
+            this.filtroTipoRef = filtroTipoRef;
+            setLayout(null);
+            setOpaque(true);
+            setBackground(AppV2Theme.SURFACE_ALT);
+            add(rendererPane);
+            add(filtroAnalisisRef);
+            add(filtroTipoRef);
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent event) {
+                    if (event.getY() >= FIXED_HEADER_HEIGHT) {
+                        return;
+                    }
+                    int viewColumn = viewColumnAt(event.getX());
+                    if (viewColumn < 0) {
+                        return;
+                    }
+                    int modelColumn = viewColumn == 0 ? COL_DOCUMENTO_NUMERO_ANALISIS : COL_DOCUMENTO_TIPO;
+                    if (sorterSupport != null && sorterSupport.getSorter() != null) {
+                        sorterSupport.getSorter().toggleSortOrder(modelColumn);
+                        repaint();
+                    }
+                }
+            });
+            addMouseMotionListener(new MouseAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent event) {
+                    setCursor(event.getY() < FIXED_HEADER_HEIGHT
+                            ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                            : Cursor.getDefaultCursor());
+                }
+            });
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, FIXED_HEADER_HEIGHT + FIXED_FILTER_HEIGHT);
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public void doLayout() {
+            int analisisWidth = tableRef.getColumnModel().getColumn(0).getWidth();
+            int tipoWidth = tableRef.getColumnModel().getColumn(1).getWidth();
+            rendererPane.setBounds(0, 0, analisisWidth + tipoWidth, FIXED_HEADER_HEIGHT);
+            filtroAnalisisRef.setBounds(2, FIXED_HEADER_HEIGHT + 3, Math.max(0, analisisWidth - 4), 24);
+            filtroTipoRef.setBounds(analisisWidth + 2, FIXED_HEADER_HEIGHT + 3, Math.max(0, tipoWidth - 4), 24);
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            super.paintComponent(graphics);
+            paintHeaderCell(graphics, 0, 92, COL_DOCUMENTO_NUMERO_ANALISIS);
+            paintHeaderCell(graphics, 92, 150, COL_DOCUMENTO_TIPO);
+        }
+
+        private void paintHeaderCell(Graphics graphics, int x, int width, int modelColumn) {
+            TableCellRenderer renderer = tableRef.getTableHeader().getDefaultRenderer();
+            Component component = renderer.getTableCellRendererComponent(
+                    tableRef,
+                    tableRef.getColumnModel().getColumn(modelColumn).getHeaderValue(),
+                    false,
+                    false,
+                    -1,
+                    modelColumn);
+            if (component instanceof JLabel) {
+                JLabel label = (JLabel) component;
+                label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+                label.setForeground(AppV2Theme.TEXT_SECONDARY);
+                label.setBackground(AppV2Theme.SURFACE_ALT);
+                label.setHorizontalAlignment(JLabel.CENTER);
+                label.setHorizontalTextPosition(JLabel.LEFT);
+                label.setIconTextGap(6);
+                label.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
+                        BorderFactory.createEmptyBorder(0, 8, 0, 8)));
+                label.setIcon(new SortIndicatorIcon(sortOrderDocumentoFijo(modelColumn)));
+                rendererPane.paintComponent(
+                        graphics,
+                        label,
+                        this,
+                        x,
+                        0,
+                        width,
+                        FIXED_HEADER_HEIGHT,
+                        true);
+                return;
+            }
+            rendererPane.paintComponent(graphics, component, this, x, 0, width, FIXED_HEADER_HEIGHT, true);
+        }
+
+        private int viewColumnAt(int x) {
+            if (x >= 0 && x < 92) {
+                return 0;
+            }
+            if (x >= 92 && x < 242) {
+                return 1;
+            }
+            return -1;
+        }
+    }
+
+    private static final class SortIndicatorIcon implements Icon {
+
+        private final SortOrder order;
+
+        private SortIndicatorIcon(SortOrder order) {
+            this.order = order == null ? SortOrder.UNSORTED : order;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 9;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 14;
+        }
+
+        @Override
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (order == SortOrder.ASCENDING) {
+                    g2.setColor(AppV2Theme.PRIMARY);
+                    paintUp(g2, x, y + 3);
+                } else if (order == SortOrder.DESCENDING) {
+                    g2.setColor(AppV2Theme.PRIMARY);
+                    paintDown(g2, x, y + 6);
+                } else {
+                    g2.setColor(new Color(
+                            AppV2Theme.TEXT_SECONDARY.getRed(),
+                            AppV2Theme.TEXT_SECONDARY.getGreen(),
+                            AppV2Theme.TEXT_SECONDARY.getBlue(),
+                            150));
+                    paintUp(g2, x, y + 2);
+                    paintDown(g2, x, y + 8);
+                }
+            } finally {
+                g2.dispose();
+            }
+        }
+
+        private static void paintUp(Graphics2D g2, int x, int y) {
+            g2.fillPolygon(
+                    new int[]{x + 4, x + 1, x + 7},
+                    new int[]{y, y + 5, y + 5},
+                    3);
+        }
+
+        private static void paintDown(Graphics2D g2, int x, int y) {
+            g2.fillPolygon(
+                    new int[]{x + 1, x + 7, x + 4},
+                    new int[]{y, y, y + 5},
+                    3);
+        }
     }
 
     private javax.swing.event.DocumentListener simpleDocumentListener(Runnable action) {
