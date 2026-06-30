@@ -155,10 +155,10 @@ Por defecto V2 sigue siendo lectura/consulta. Las escrituras reales solo son val
 - `Analisis`: al recibir un expediente principal, recibir en la misma transaccion los documentos asociados que ya se encuentren en `ASIGNACION / ASIGNADO`. Si un documento se asocia despues de la recepcion del principal, debe quedar pendiente y solo el abogado responsable puede recibirlo individualmente desde la seccion `Documentos asociados`; esta accion no lo convierte automaticamente en documento analizado.
 - `Analisis`: la derivacion externa no debe mostrarse como boton o accion preparada en el panel de Analisis; si se requiere en el futuro, debe definirse el flujo funcional completo de entidad destino, tipo de derivacion y datos documentales antes de habilitar escritura.
 - `Verificacion`: consultar expedientes en `VERIFICACION`, revisar analisis y documentos, aprobar verificacion, observar, marcar documento inconsistente, devolver a Analisis y enviar a `FIRMA_EMISION / PARA_FIRMA` si el flujo `SDRERC_TO_BE` lo permite.
-- `Verificacion`: desde la UI V2 tambien concentra los controles de firma, emision, numeracion y envio a Ejecucion para expedientes en `FIRMA_EMISION`, sin crear rutas paralelas ni cambiar las transiciones reales.
+- `Verificacion`: desde la UI V2 tambien concentra los controles de firma, emision, numeracion y ruteo posterior para expedientes en `FIRMA_EMISION`; las resoluciones pasan a Ejecucion y los documentos no resolutivos pueden pasar a Notificacion cuando exista transicion real, sin crear rutas paralelas ni cambiar las transiciones reales.
 - `Verificacion`: no crear tabla paralela de verificacion si el modelo no la define; usar `EXPEDIENTE`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_OBSERVACION`, `EXPEDIENTE_EVALUACION` y `EXPEDIENTE_DOCUMENTO_ANALIZADO` segun corresponda.
 - `Verificacion`: las acciones autorizadas deben resolver transiciones reales por codigo, como `APROBACION_VERIFICACION`, `ENVIO_FIRMA`, `REGISTRO_OBSERVACION_VERIFICACION`, `REVERSION_ESTADO_DOCUMENTO` y `DEVOLUCION_A_ANALISIS`; si falta una transicion, catalogo, evaluacion o documento requerido, bloquear con diagnostico sin escritura parcial.
-- `Firma / Emision`: consultar expedientes en `FIRMA_EMISION`, revisar analisis, verificacion, documentos y observaciones, registrar firma, registrar emision, registrar numero de resolucion/documento y enviar a `EJECUCION / EN_EJECUCION` si el flujo `SDRERC_TO_BE` lo permite.
+- `Firma / Emision`: consultar expedientes en `FIRMA_EMISION`, revisar analisis, verificacion, documentos y observaciones, registrar firma, registrar emision, registrar numero de resolucion/documento y enrutar segun tipo documental: resoluciones hacia `EJECUCION / EN_EJECUCION`, y oficios, cartas u otros documentos no resolutivos hacia `NOTIFICACION / EN_NOTIFICACION` si el flujo `SDRERC_TO_BE` lo permite.
 - `Firma / Emision`: usar `EXPEDIENTE_RESOLUCION` para metadata del documento resolutivo cuando exista, incluyendo `NUMERO_RESOLUCION`, `FECHA_RESOLUCION` y `FECHA_FIRMA`; no implementar carga fisica de archivo salvo autorizacion y estructura clara.
 - `Firma / Emision`: las acciones autorizadas deben resolver transiciones reales por codigo, como `FIRMA_DOCUMENTO` y `REGISTRO_NUMERO_RESOLUCION`; no inventar `EMISION_DOCUMENTO` ni otra accion si el flujo real no la define.
 - `Firma / Emision`: validar estado actual antes de registrar firma, emision, numeracion o envio a Ejecucion; si falta tabla, columna, catalogo, transicion o constraint, bloquear con diagnostico sin escritura parcial.
@@ -202,6 +202,33 @@ Toda escritura V2 autorizada debe:
 - Usar transaccion completa con commit/rollback.
 - Registrar historial/movimiento cuando el modelo lo soporte.
 - Bloquear la accion y reportar diagnostico exacto si falta tabla, columna, catalogo, transicion o constraint.
+
+## 4.2.1 Flujo operativo Verificacion, Ejecucion y Notificacion
+
+Esta seccion consolida el criterio funcional vigente para documentos generados, firmados, ejecutados y notificados. Cuando exista tension con una regla general anterior, prevalece este ruteo documentado sin inventar etapas, estados ni transiciones.
+
+- `Verificacion` valida el documento generado. Si el documento presenta observacion, no debe firmarse y debe devolverse al modulo correspondiente para subsanacion, conservando trazabilidad e historial.
+- Si el documento es correcto, en `Verificacion` se firma, se registra el numero del documento y se registra el estado documental como firmado o emitido segun corresponda. El numero puede corresponder a resolucion, oficio o carta de notificacion.
+- Despues de `Verificacion`, solo las resoluciones pasan a `Ejecucion`. Los oficios, cartas intermedias u otros documentos firmados que no requieren ejecucion pueden pasar directamente a `Notificacion`, siempre que exista transicion real activa.
+- `Ejecucion` no es una reasignacion manual general. Cuando en `Verificacion` se firma una resolucion y se registra su numero, el expediente o documento debe pasar a la bandeja de `Ejecucion` y conservar como responsable al mismo abogado que realizo el `Analisis`, salvo que una regla funcional futura autorice reasignacion.
+- En `Ejecucion`, las resoluciones `Procedente` o `Procedente en parte` requieren que el abogado ejecute la anotacion textual y luego elabore o genere la carta de notificacion.
+- En `Ejecucion`, las resoluciones `Improcedente` no requieren anotacion textual; solo se genera la carta de notificacion.
+- Despues de generar la carta de notificacion final, el documento debe pasar al flujo de `Notificacion` mediante transicion real activa y con historial.
+- `Notificacion` debe operar con una bandeja interna. El supervisor de notificacion puede asignar documentos a un grupo de abogados o personas validadoras cuando el modelo lo soporte.
+- El validador de `Notificacion` revisa el documento antes de notificar y debe poder marcarlo como `Validado` u `Observado`, con comentario obligatorio cuando exista observacion.
+- Si el documento observado corresponde al documento o analisis, debe volver a `Analisis`; si corresponde a ejecucion o carta final, debe volver a `Ejecucion`. Toda devolucion debe conservar trazabilidad e historial.
+- Si el documento esta correcto, el supervisor firma el documento y luego se procede a notificar, sin reactivar `Firma / Emision` como modulo lateral independiente.
+- Las cartas intermedias no siguen el flujo de cartas finales: las genera el abogado, las firma el supervisor de `Analisis` y luego pasan a `Notificacion`.
+- Las cartas intermedias no deben pasar por `Ejecucion`, no deben ser firmadas por la supervisora de `Notificacion` como carta final y deben mantener el expediente como `Pendiente de respuesta` cuando corresponda, no como atendido.
+- La validacion de documentos para notificacion pertenece operativamente a `Notificacion` como bandeja o asignacion interna; no crear una etapa visual independiente llamada `VALIDACION`.
+- `Firma / Emision` no debe volver como modulo lateral independiente. Sus controles se mantienen integrados dentro de `Verificacion`.
+- No hardcodear IDs de catalogo, no ejecutar SQL sin autorizacion, no tocar legacy ni `OracleConnection.java`, y no cambiar estas reglas funcionales sin documentar la decision.
+
+### Pendientes funcionales no implementables aun
+
+- Queda pendiente confirmar quien marca como culminados los casos `ORE`, `Culminacion en linea` y otros casos especiales por definir.
+- No implementar cierre automatico ni cambio definitivo a `Culminado` para esos casos hasta confirmar responsable, modulo y regla de negocio.
+- No asumir que `Notificacion` culmina esos casos especiales sin acuerdo funcional explicito.
 
 ## 4.3 Lenguaje visual vigente
 
