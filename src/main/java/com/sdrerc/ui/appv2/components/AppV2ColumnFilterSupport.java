@@ -143,6 +143,24 @@ public final class AppV2ColumnFilterSupport {
             return filterPanel;
         }
 
+        public TableRowSorter<TableModel> getSorter() {
+            return sorter;
+        }
+
+        public JTextField getFilterField(int modelColumn) {
+            if (modelColumn < 0 || modelColumn >= fields.length) {
+                return null;
+            }
+            return fields[modelColumn];
+        }
+
+        public void setFilterText(int modelColumn, String text) {
+            JTextField field = getFilterField(modelColumn);
+            if (field != null) {
+                field.setText(text == null ? "" : text);
+            }
+        }
+
         public void clearFilters() {
             adjusting = true;
             try {

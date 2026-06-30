@@ -55,6 +55,7 @@ import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.ItemEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -284,7 +285,10 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JTable documentosTable = new AppV2Table(documentoModel);
     private final JTable documentosFijosTable = new AppV2Table(documentoModel);
     private JScrollPane documentosScrollPane;
+    private JScrollPane documentosFijosScrollPane;
     private AppV2ColumnFilterSupport.Controller documentosColumnFilterSupport;
+    private JTextField filtroDocumentoAnalisis;
+    private JTextField filtroDocumentoTipo;
     private final DefaultTableModel documentosAsociadosModel = new DefaultTableModel(
             new Object[]{"N° documento", "Estado", ""}, 0) {
         @Override
@@ -682,12 +686,11 @@ public class JPanelAnalisisV2 extends JPanel {
 
         documentosScrollPane = new JScrollPane(documentosTable);
         documentosScrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        documentosScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        documentosScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         documentosScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        documentosScrollPane.setRowHeaderView(documentosFijosTable);
-        documentosScrollPane.setCorner(JScrollPane.UPPER_LEFT_CORNER, documentosFijosTable.getTableHeader());
         documentoModel.addTableModelListener(e -> actualizarAlturaDocumentosAnalizados(documentosScrollPane));
         actualizarAlturaDocumentosAnalizados(documentosScrollPane);
+        documentosFijosScrollPane = construirScrollFijoDocumentos();
 
         JPanel top = new JPanel(new BorderLayout(0, 8));
         top.setOpaque(false);
@@ -697,8 +700,13 @@ public class JPanelAnalisisV2 extends JPanel {
         barra.add(tituloDocumentos, BorderLayout.CENTER);
         top.add(barra, BorderLayout.NORTH);
 
+        JPanel contenedorTablas = new JPanel(new BorderLayout(0, 0));
+        contenedorTablas.setOpaque(false);
+        contenedorTablas.add(documentosFijosScrollPane, BorderLayout.WEST);
+        contenedorTablas.add(documentosScrollPane, BorderLayout.CENTER);
+
         panel.add(top, BorderLayout.NORTH);
-        panel.add(documentosScrollPane, BorderLayout.CENTER);
+        panel.add(contenedorTablas, BorderLayout.CENTER);
         return panel;
     }
 
@@ -736,6 +744,93 @@ public class JPanelAnalisisV2 extends JPanel {
         scroll.setMinimumSize(new Dimension(280, height));
         scroll.revalidate();
         scroll.repaint();
+    }
+
+    private JScrollPane construirScrollFijoDocumentos() {
+        JScrollPane scroll = new JScrollPane(documentosFijosTable);
+        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scroll.setPreferredSize(new Dimension(300, 0));
+        scroll.setMinimumSize(new Dimension(300, 0));
+        scroll.setMaximumSize(new Dimension(300, Integer.MAX_VALUE));
+        documentosFijosTable.setShowHorizontalLines(false);
+        documentosFijosTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        documentosFijosTable.setPreferredScrollableViewportSize(new Dimension(300, 0));
+        documentosFijosTable.setRowHeight(30);
+        TableColumn colAnalisis = documentosFijosTable.getColumnModel().getColumn(COL_DOCUMENTO_NUMERO_ANALISIS);
+        colAnalisis.setPreferredWidth(92);
+        colAnalisis.setMinWidth(92);
+        colAnalisis.setMaxWidth(92);
+        TableColumn colTipo = documentosFijosTable.getColumnModel().getColumn(COL_DOCUMENTO_TIPO);
+        colTipo.setPreferredWidth(150);
+        colTipo.setMinWidth(150);
+        colTipo.setMaxWidth(150);
+        JTextField filtroAnalisis = crearCampoFiltroDocumentoFijo("Filtrar");
+        JTextField filtroTipo = crearCampoFiltroDocumentoFijo("Filtrar");
+        filtroDocumentoAnalisis = filtroAnalisis;
+        filtroDocumentoTipo = filtroTipo;
+        JPanel filtroPanel = new JPanel(new GridLayout(1, 2, 0, 0));
+        filtroPanel.setOpaque(true);
+        filtroPanel.setBackground(AppV2Theme.SURFACE_ALT);
+        filtroPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, AppV2Theme.BORDER));
+        filtroPanel.add(filtroAnalisis);
+        filtroPanel.add(filtroTipo);
+        JPanel header = new JPanel(new BorderLayout(0, 0));
+        header.setOpaque(true);
+        header.setBackground(AppV2Theme.SURFACE_ALT);
+        header.add(documentosFijosTable.getTableHeader(), BorderLayout.NORTH);
+        header.add(filtroPanel, BorderLayout.SOUTH);
+        scroll.setColumnHeaderView(header);
+        scroll.getVerticalScrollBar().setModel(documentosScrollPane.getVerticalScrollBar().getModel());
+        documentosFijosTable.setRowSorter(documentosColumnFilterSupport == null ? null : documentosColumnFilterSupport.getSorter());
+        documentosFijosTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        documentosFijosTable.setSelectionModel(documentosTable.getSelectionModel());
+        filtroAnalisis.getDocument().addDocumentListener(simpleDocumentListener(() ->
+                aplicarFiltroDocumentoFijo(COL_DOCUMENTO_NUMERO_ANALISIS, filtroAnalisis.getText())));
+        filtroTipo.getDocument().addDocumentListener(simpleDocumentListener(() ->
+                aplicarFiltroDocumentoFijo(COL_DOCUMENTO_TIPO, filtroTipo.getText())));
+        return scroll;
+    }
+
+    private JTextField crearCampoFiltroDocumentoFijo(String prompt) {
+        JTextField field = new JTextField();
+        field.setFont(AppV2Theme.fontPlain(10));
+        field.setForeground(AppV2Theme.TEXT_PRIMARY);
+        field.setBackground(AppV2Theme.SURFACE);
+        field.setCaretColor(AppV2Theme.PRIMARY);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(1, 6, 1, 6)));
+        field.setPreferredSize(new Dimension(100, 24));
+        field.setToolTipText(prompt);
+        return field;
+    }
+
+    private void aplicarFiltroDocumentoFijo(int modelColumn, String text) {
+        if (documentosColumnFilterSupport == null) {
+            return;
+        }
+        documentosColumnFilterSupport.setFilterText(modelColumn, text);
+    }
+
+    private javax.swing.event.DocumentListener simpleDocumentListener(Runnable action) {
+        return new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                action.run();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                action.run();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                action.run();
+            }
+        };
     }
 
     private JPanel crearDocumentosAsociadosPanel() {
@@ -959,9 +1054,9 @@ public class JPanelAnalisisV2 extends JPanel {
                     COL_DOCUMENTO_TIPO_CODIGO,
                     COL_DOCUMENTO_ESTADO_CODIGO,
                     COL_DOCUMENTO_ID);
-            documentosFijosTable.setRowSorter(documentosTable.getRowSorter());
-            documentosScrollPane.setRowHeaderView(documentosFijosTable);
-            documentosScrollPane.setCorner(JScrollPane.UPPER_LEFT_CORNER, documentosFijosTable.getTableHeader());
+            documentosColumnFilterSupport.getFilterField(COL_DOCUMENTO_NUMERO_ANALISIS).setVisible(false);
+            documentosColumnFilterSupport.getFilterField(COL_DOCUMENTO_TIPO).setVisible(false);
+            documentosFijosTable.setRowSorter(documentosColumnFilterSupport.getSorter());
             actualizarAlturaDocumentosAnalizados(documentosScrollPane);
         }
     }
@@ -1079,7 +1174,11 @@ public class JPanelAnalisisV2 extends JPanel {
         btnQuitarDocumento.addActionListener(e -> quitarDocumento());
         btnNuevoBloqueAnalisis.addActionListener(e -> crearNuevoBloqueAnalisis());
         btnDescargarPlantillaSeleccionada.addActionListener(e -> descargarPlantillaDocumentoSeleccionado());
-        cmbBloquesAnalisis.addActionListener(e -> seleccionarBloqueAnalisisActual());
+        cmbBloquesAnalisis.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                SwingUtilities.invokeLater(this::seleccionarBloqueAnalisisActual);
+            }
+        });
         cmbIncorporado.addActionListener(e -> actualizarChecksIncorporado());
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         chkRegistrarObservacion.addActionListener(e -> actualizarObservacionHabilitada());
@@ -2577,6 +2676,7 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void aplicarBloquesAnalisis(List<AnalisisItemDTO> items) {
+        Long idAnterior = idAnalisisSeleccionado;
         cargandoBloquesAnalisis = true;
         bloquesAnalisis.clear();
         cmbBloquesAnalisis.removeAllItems();
@@ -2589,7 +2689,10 @@ public class JPanelAnalisisV2 extends JPanel {
         for (AnalisisItemDTO item : bloquesAnalisis) {
             cmbBloquesAnalisis.addItem(item);
         }
-        cmbBloquesAnalisis.setSelectedIndex(0);
+        seleccionarBloquePorId(idAnterior);
+        if (cmbBloquesAnalisis.getSelectedIndex() < 0 && cmbBloquesAnalisis.getItemCount() > 0) {
+            cmbBloquesAnalisis.setSelectedIndex(0);
+        }
         cargandoBloquesAnalisis = false;
         seleccionarBloqueAnalisisActual();
     }
@@ -2601,6 +2704,19 @@ public class JPanelAnalisisV2 extends JPanel {
         AnalisisItemDTO item = (AnalisisItemDTO) cmbBloquesAnalisis.getSelectedItem();
         idAnalisisSeleccionado = item == null ? null : item.getIdExpedienteAnalisis();
         aplicarAnalisisRegistrado(item == null ? null : item.getDetalle());
+    }
+
+    private void seleccionarBloquePorId(Long idExpedienteAnalisis) {
+        if (idExpedienteAnalisis == null) {
+            return;
+        }
+        for (int i = 0; i < cmbBloquesAnalisis.getItemCount(); i++) {
+            AnalisisItemDTO item = cmbBloquesAnalisis.getItemAt(i);
+            if (item != null && idExpedienteAnalisis.equals(item.getIdExpedienteAnalisis())) {
+                cmbBloquesAnalisis.setSelectedIndex(i);
+                return;
+            }
+        }
     }
 
     private String etiquetaAnalisisActual() {
