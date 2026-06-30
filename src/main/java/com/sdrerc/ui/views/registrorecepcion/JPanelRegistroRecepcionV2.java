@@ -56,7 +56,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 "Expedientes registrados o recibidos pendientes de gestión",
                 true,
                 false,
-                metricasRegistro,
+                null,
                 new Consumer<Long>() {
                     @Override
                     public void accept(Long idExpediente) {
@@ -64,6 +64,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                     }
                 });
 
+        panel.add(metricasRegistro, BorderLayout.NORTH);
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;
     }
