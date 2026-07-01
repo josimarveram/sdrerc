@@ -62,6 +62,7 @@ public class ExpedienteRelacionadoDAO {
                 + "WHERE e.id_expediente = ? AND e.activo = 1 "
                 + ") "
                 + "SELECT DISTINCT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, "
+                + "esol.numero_expediente_sgd, "
                 + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
                 + "ta.nombre AS tipo_acta, ea.numero_acta, "
                 + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "

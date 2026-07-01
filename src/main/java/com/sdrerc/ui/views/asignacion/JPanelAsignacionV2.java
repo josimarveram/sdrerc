@@ -2101,6 +2101,12 @@ public class JPanelAsignacionV2 extends JPanel {
         int confirm = JOptionPane.showConfirmDialog(
                 this,
                 detalle
+                        + "Expediente principal destino: "
+                        + valorUi(seleccion.expedienteFoco.getNumeroExpediente())
+                        + (seleccion.expedienteFoco.getNumeroExpedienteSgd() == null || seleccion.expedienteFoco.getNumeroExpedienteSgd().trim().isEmpty()
+                                ? ""
+                                : " / SGD " + seleccion.expedienteFoco.getNumeroExpedienteSgd().trim())
+                        + "\n"
                         + "Si un relacionado no tiene número de expediente, tomará el número del expediente principal.\n"
                         + "No se registrará como documento analizado; esa decisión corresponde al módulo Análisis.\n"
                         + "¿Desea continuar?",
@@ -2521,6 +2527,13 @@ public class JPanelAsignacionV2 extends JPanel {
                     : (item.getAsociadosConfirmados() > 0
                             ? item.getAsociadosConfirmados() + " documento(s) asociado(s) confirmado(s) al principal."
                             : "Sin alerta de relacionados para el expediente principal."));
+            if (item.getPosiblesRelacionados() > 0) {
+                lblRelacionados.setToolTipText("Se asociarán al expediente principal " + valorUi(item.getNumeroExpediente())
+                        + (item.getNumeroExpedienteSgd() == null || item.getNumeroExpedienteSgd().trim().isEmpty()
+                                ? ""
+                                : " / SGD " + item.getNumeroExpedienteSgd().trim())
+                        + ".");
+            }
             cargarDocumentosRelacionadosPanel(item);
             actualizarAccionRelacionadosParaPrincipal(item);
             actualizarDecisionNumero(item);
