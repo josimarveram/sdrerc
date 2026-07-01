@@ -330,10 +330,10 @@ public class JPanelAnalisisV2 extends JPanel {
     private JTextField filtroDocumentoAnalisis;
     private JTextField filtroDocumentoTipo;
     private final DefaultTableModel documentosAsociadosModel = new DefaultTableModel(
-            new Object[]{"N° documento", "Estado", ""}, 0) {
+            new Object[]{"N° expediente SGD", "Estado"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return column == 2 && puedeRecibirDocumentoAsociado(row);
+            return false;
         }
     };
     private final JTable documentosAsociadosTable = new AppV2Table(documentosAsociadosModel);
@@ -1407,15 +1407,10 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosAsociadosTable.setShowVerticalLines(false);
         documentosAsociadosTable.setIntercellSpacing(new Dimension(0, 1));
         documentosAsociadosTable.setDefaultRenderer(Object.class, new DocumentoAsociadoPanelRenderer());
-        documentosAsociadosTable.getColumnModel().getColumn(0).setPreferredWidth(145);
-        documentosAsociadosTable.getColumnModel().getColumn(0).setMinWidth(110);
+        documentosAsociadosTable.getColumnModel().getColumn(0).setPreferredWidth(170);
+        documentosAsociadosTable.getColumnModel().getColumn(0).setMinWidth(140);
         documentosAsociadosTable.getColumnModel().getColumn(1).setPreferredWidth(125);
         documentosAsociadosTable.getColumnModel().getColumn(1).setMinWidth(105);
-        documentosAsociadosTable.getColumnModel().getColumn(2).setPreferredWidth(42);
-        documentosAsociadosTable.getColumnModel().getColumn(2).setMinWidth(42);
-        documentosAsociadosTable.getColumnModel().getColumn(2).setMaxWidth(48);
-        documentosAsociadosTable.getColumnModel().getColumn(2).setCellRenderer(new RecibirAsociadoRenderer());
-        documentosAsociadosTable.getColumnModel().getColumn(2).setCellEditor(new RecibirAsociadoEditor());
     }
 
     private void configurarEventos() {
@@ -2388,9 +2383,8 @@ public class JPanelAnalisisV2 extends JPanel {
                     pendientes++;
                 }
                 documentosAsociadosModel.addRow(new Object[]{
-                    valorUi(asociado.getNumeroDocumento()),
-                    recibido ? "Recibido" : "Pendiente de recibir",
-                    recibido ? "Recibido" : "Recibir"
+                    valorUi(asociado.getNumeroExpedienteSgd()),
+                    recibido ? "Recibido" : "Pendiente de recibir"
                 });
             }
         }

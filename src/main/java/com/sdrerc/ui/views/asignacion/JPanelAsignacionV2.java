@@ -18,7 +18,6 @@ import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
-import com.sdrerc.ui.appv2.components.AppV2ReceiveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2RemoveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
@@ -231,11 +230,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
     private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
     private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
-            new Object[]{"N° documento", "Estado", "", ""}, 0) {
+            new Object[]{"N° expediente SGD", "Estado", ""}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return (column == 2 && puedeRecibirDocumentoRelacionado(row))
-                    || (column == 3 && puedeEliminarDocumentoRelacionado(row));
+            return column == 2 && puedeEliminarDocumentoRelacionado(row);
         }
     };
     private final JTable documentosRelacionadosTable = new AppV2Table(documentosRelacionadosModel);
@@ -1123,20 +1121,15 @@ public class JPanelAsignacionV2 extends JPanel {
         documentosRelacionadosTable.setShowVerticalLines(false);
         documentosRelacionadosTable.setIntercellSpacing(new Dimension(0, 1));
         documentosRelacionadosTable.setDefaultRenderer(Object.class, new DocumentoRelacionadoRenderer());
-        documentosRelacionadosTable.getColumnModel().getColumn(0).setPreferredWidth(190);
+        documentosRelacionadosTable.getColumnModel().getColumn(0).setPreferredWidth(180);
         documentosRelacionadosTable.getColumnModel().getColumn(0).setMinWidth(150);
         documentosRelacionadosTable.getColumnModel().getColumn(1).setPreferredWidth(130);
         documentosRelacionadosTable.getColumnModel().getColumn(1).setMinWidth(110);
         documentosRelacionadosTable.getColumnModel().getColumn(2).setPreferredWidth(58);
         documentosRelacionadosTable.getColumnModel().getColumn(2).setMinWidth(54);
         documentosRelacionadosTable.getColumnModel().getColumn(2).setMaxWidth(64);
-        documentosRelacionadosTable.getColumnModel().getColumn(3).setPreferredWidth(58);
-        documentosRelacionadosTable.getColumnModel().getColumn(3).setMinWidth(54);
-        documentosRelacionadosTable.getColumnModel().getColumn(3).setMaxWidth(64);
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setCellRenderer(new RecibirDocumentoRenderer());
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setCellEditor(new RecibirDocumentoEditor());
-        documentosRelacionadosTable.getColumnModel().getColumn(3).setCellRenderer(new EliminarDocumentoRenderer());
-        documentosRelacionadosTable.getColumnModel().getColumn(3).setCellEditor(new EliminarDocumentoEditor());
+        documentosRelacionadosTable.getColumnModel().getColumn(2).setCellRenderer(new EliminarDocumentoRenderer());
+        documentosRelacionadosTable.getColumnModel().getColumn(2).setCellEditor(new EliminarDocumentoEditor());
     }
 
     private void configurarTablaAsignacionMultiple() {
@@ -3209,7 +3202,6 @@ public class JPanelAsignacionV2 extends JPanel {
                         documentosRelacionadosModel.addRow(new Object[]{
                             textoDocumentoRelacionado(fila),
                             estadoDocumentoRelacionado(fila),
-                            fila.esAsociado() ? "" : "Recibir",
                             fila.esAsociado() ? "Eliminar" : ""
                         });
                     }
@@ -3258,6 +3250,14 @@ public class JPanelAsignacionV2 extends JPanel {
     private String textoDocumentoRelacionado(ExpedienteRelacionadoDTO relacionado) {
         if (relacionado == null) {
             return "-";
+        }
+        String sgd = valorUi(relacionado.getNumeroExpedienteSgd());
+        if (!"-".equals(sgd)) {
+            return sgd;
+        }
+        String numeroExpediente = valorUi(relacionado.getNumeroExpediente());
+        if (!"-".equals(numeroExpediente)) {
+            return numeroExpediente;
         }
         return valorUi(relacionado.getNumeroDocumento());
     }
@@ -3447,61 +3447,6 @@ public class JPanelAsignacionV2 extends JPanel {
         } else {
             label.setForeground(AppV2Theme.TEXT_SECONDARY);
         }
-    }
-
-    private void recibirDocumentoRelacionado(int modelRow) {
-        DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
-        if (fila == null || fila.getExpediente() == null || fila.getExpediente().getIdExpediente() == null) {
-            mostrarInfo("Seleccione un documento relacionado válido para recibir.");
-            return;
-        }
-        Long idPrincipal = idExpedienteDocumentosRelacionados;
-        ExpedienteRelacionadoDTO relacionado = fila.getExpediente();
-        if (idPrincipal == null) {
-            mostrarInfo("Seleccione un documento relacionado válido para recibir.");
-            return;
-        }
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Se recibirá el documento " + textoDocumentoRelacionado(relacionado)
-                        + " como documento duplicado asociado al expediente principal.\n"
-                        + "La evidencia quedará registrada en la relación e historial del expediente.\n"
-                        + "¿Desea continuar?",
-                "Recibir documento relacionado",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        setTrabajando(true, "Recibiendo documento relacionado...");
-        SwingWorker<ExpedienteRelacionResultadoDTO, Void> worker = new SwingWorker<ExpedienteRelacionResultadoDTO, Void>() {
-            @Override
-            protected ExpedienteRelacionResultadoDTO doInBackground() throws Exception {
-                return relacionadoService.asociarRelacionados(
-                        idPrincipal,
-                        Collections.singletonList(relacionado.getIdExpediente()),
-                        "Documento recibido y asociado al expediente principal desde Asignación.");
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    ExpedienteRelacionResultadoDTO resultado = get();
-                    JOptionPane.showMessageDialog(
-                            JPanelAsignacionV2.this,
-                            resultado.getMensaje(),
-                            "Documento recibido",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    buscar();
-                } catch (Exception ex) {
-                    mostrarError("No se pudo recibir el documento relacionado.", ex);
-                } finally {
-                    setTrabajando(false, null);
-                }
-            }
-        };
-        worker.execute();
     }
 
     private void eliminarDocumentoRelacionado(int modelRow) {
@@ -3910,11 +3855,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean asignacionFocoConNumero() {
         AsignacionExpedienteDTO item = obtenerExpedienteFoco();
         return item != null && item.isAsignable() && item.tieneNumeroExpediente();
-    }
-
-    private boolean puedeRecibirDocumentoRelacionado(int modelRow) {
-        DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
-        return fila != null && !fila.esAsociado();
     }
 
     private void actualizarAccionRelacionadosParaPrincipal(AsignacionExpedienteDTO item) {
@@ -4642,64 +4582,6 @@ public class JPanelAsignacionV2 extends JPanel {
             String text = value == null ? "" : value.toString();
             setToolTipText(text);
             return c;
-        }
-    }
-
-    private class RecibirDocumentoRenderer extends AppV2ReceiveActionButton implements TableCellRenderer {
-
-        private RecibirDocumentoRenderer() {
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            int modelRow = table.convertRowIndexToModel(row);
-            boolean permitido = puedeRecibirDocumentoRelacionado(modelRow);
-            configure(false, permitido);
-            setToolTipText(permitido
-                    ? "Recibir documento y asociarlo al expediente principal."
-                    : "Recibir documento y asociarlo al expediente principal.");
-            return this;
-        }
-    }
-
-    private class RecibirDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
-
-        private final AppV2ReceiveActionButton button = new AppV2ReceiveActionButton();
-        private int modelRow = -1;
-
-        private RecibirDocumentoEditor() {
-            button.addActionListener(e -> {
-                int row = modelRow;
-                fireEditingStopped();
-                recibirDocumentoRelacionado(row);
-            });
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return "Recibir";
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            modelRow = table.convertRowIndexToModel(row);
-            boolean permitido = puedeRecibirDocumentoRelacionado(modelRow);
-            button.configure(false, permitido);
-            button.setToolTipText(permitido
-                    ? "Recibir documento y asociarlo al expediente principal."
-                    : "Recibir documento y asociarlo al expediente principal.");
-            return button;
         }
     }
 
