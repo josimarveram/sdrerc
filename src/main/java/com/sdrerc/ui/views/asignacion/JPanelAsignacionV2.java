@@ -229,6 +229,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblEquipoActual = new JLabel("-");
     private final JLabel lblAbogadoActual = new JLabel("-");
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
+    private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
     private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
             new Object[]{"N° documento", "Estado", "", ""}, 0) {
         @Override
@@ -924,6 +925,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideSectionPanel crearAccionesRelacionados() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Asociación rápida");
+        section.addRow("Expediente principal", lblExpedientePrincipalAsociacion);
         btnAsociarRelacionados.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnAsociarRelacionados.setEnabled(false);
         btnAsociarRelacionados.setToolTipText("Asociar expedientes con el mismo número de acta y titular.");
@@ -2534,6 +2536,7 @@ public class JPanelAsignacionV2 extends JPanel {
                                 : " / SGD " + item.getNumeroExpedienteSgd().trim())
                         + ".");
             }
+            actualizarExpedientePrincipalAsociacion(item);
             cargarDocumentosRelacionadosPanel(item);
             actualizarAccionRelacionadosParaPrincipal(item);
             actualizarDecisionNumero(item);
@@ -2561,6 +2564,7 @@ public class JPanelAsignacionV2 extends JPanel {
             lblIngreso.setText("Duplicado confirmado");
             lblIngreso.setToolTipText("Este documento está asociado al expediente principal y no requiere asignación independiente.");
             limpiarDocumentosRelacionadosPanel("Asociado al expediente principal " + filaPanel.numeroExpedientePrincipal() + ". La asociación se gestiona desde el principal.");
+            actualizarExpedientePrincipalAsociacion(filaPanel.principal);
             actualizarAccionRelacionadosParaAsociado(filaPanel);
         } else if (modoMultiple) {
             prepararHojaEnvioSimple(null);
@@ -2583,6 +2587,8 @@ public class JPanelAsignacionV2 extends JPanel {
             lblIngreso.setText("Múltiple");
             lblIngreso.setToolTipText("Selección múltiple de expedientes marcados.");
             limpiarDocumentosRelacionadosPanel("Puede asociar la selección al expediente principal elegido automáticamente.");
+            AsociacionRapidaSeleccion seleccionMultiple = obtenerSeleccionAsociacionRapida();
+            actualizarExpedientePrincipalAsociacion(seleccionMultiple == null ? null : seleccionMultiple.expedienteFoco);
             actualizarAccionRelacionadosParaSeleccionMultiple();
         } else {
             actualizarDecisionNumero(null);
@@ -3748,6 +3754,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblIngreso.setText("Normal");
         lblIngreso.setToolTipText(null);
         limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
+        actualizarExpedientePrincipalAsociacion(null);
         actualizarAccionRelacionadosSinSeleccion();
         actualizarDecisionNumero(null);
         idExpedienteHojaEnvioSimple = null;
@@ -3942,6 +3949,25 @@ public class JPanelAsignacionV2 extends JPanel {
         btnAsociarRelacionados.setText("Sin relacionados pendientes");
         btnAsociarRelacionados.setEnabled(false);
         btnAsociarRelacionados.setToolTipText("Seleccione un expediente principal para asociar los relacionados detectados.");
+    }
+
+    private void actualizarExpedientePrincipalAsociacion(AsignacionExpedienteDTO item) {
+        if (item == null) {
+            lblExpedientePrincipalAsociacion.setText("-");
+            lblExpedientePrincipalAsociacion.setToolTipText("Seleccione un expediente principal para ver el destino de la asociación.");
+            return;
+        }
+        StringBuilder texto = new StringBuilder();
+        if (item.getNumeroExpediente() != null && !item.getNumeroExpediente().trim().isEmpty()) {
+            texto.append(item.getNumeroExpediente().trim());
+        } else {
+            texto.append("-");
+        }
+        if (item.getNumeroExpedienteSgd() != null && !item.getNumeroExpedienteSgd().trim().isEmpty()) {
+            texto.append(" / SGD ").append(item.getNumeroExpedienteSgd().trim());
+        }
+        lblExpedientePrincipalAsociacion.setText(texto.toString());
+        lblExpedientePrincipalAsociacion.setToolTipText("Expediente principal destino de la asociación.");
     }
 
     private boolean puedeEliminarDocumentoRelacionado(int modelRow) {
