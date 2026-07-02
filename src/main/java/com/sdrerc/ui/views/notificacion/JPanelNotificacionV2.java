@@ -53,6 +53,7 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
@@ -67,6 +68,16 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 public class JPanelNotificacionV2 extends JPanel {
+
+    private enum FiltroKpi {
+        TODOS,
+        PENDIENTES,
+        EN_REVISION,
+        NOTIFICADOS,
+        FALLIDOS,
+        PUBLICACION,
+        PLAZO_CRITICO
+    }
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -115,6 +126,9 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JLabel lblAnalisis = new JLabel("-");
     private final JLabel lblVerificacion = new JLabel("-");
     private final JLabel lblEjecucion = new JLabel("-");
+    private final JLabel lblCierreDestino = new JLabel("-");
+    private final JLabel lblCierrePublicacion = new JLabel("-");
+    private final JLabel lblCierreAlertas = new JLabel("Sin alertas.");
 
     private final JComboBox<SimpleItem> cmbTipoNotificacion = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbEstadoCargo = new JComboBox<SimpleItem>();
@@ -126,7 +140,9 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JTextArea txtComentario = new JTextArea(4, 22);
     private final JTextArea txtMotivoPublicacion = new JTextArea(3, 22);
     private final JTextArea txtObservacion = new JTextArea(3, 22);
+    private final JTextArea txtComentarioCierre = new JTextArea(4, 22);
     private final AppV2NotebookToggleTab tabPanelNotificacion = new AppV2NotebookToggleTab();
+    private final JTabbedPane tabsNotificacion = new JTabbedPane();
 
     private final NotificacionTableModel tableModel = new NotificacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -152,8 +168,11 @@ public class JPanelNotificacionV2 extends JPanel {
     private final MetricCardV2 cardFallidos = new MetricCardV2("Fallidos", "0", "Intentos agotados", AppV2Theme.ERROR);
     private final MetricCardV2 cardPublicacion = new MetricCardV2("Requieren publicación", "0", "Publicación prevista", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardVencidos = new MetricCardV2("Por vencer", "0", "Vencidos o críticos", AppV2Theme.WARNING);
+    private FiltroKpi kpiActivo = FiltroKpi.TODOS;
+    private final List<NotificacionExpedienteDTO> expedientesVisibles = new ArrayList<NotificacionExpedienteDTO>();
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelNotificacion;
+    private AppV2SideActionPanel panelCierre;
     private boolean panelNotificacionCerradoPorUsuario;
 
     public JPanelNotificacionV2() {
@@ -172,6 +191,7 @@ public class JPanelNotificacionV2 extends JPanel {
         configurarTabla();
         configurarDocumentosTabla();
         configurarEventos();
+        configurarKpisInteractivos();
         cargarFiltrosBase();
         cargarCatalogos();
         inicializarFechas();
@@ -203,7 +223,8 @@ public class JPanelNotificacionV2 extends JPanel {
         contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
 
         panelNotificacion = crearPanelNotificacion();
-        JPanel panelConTab = crearPanelNotificacionConTab(panelNotificacion);
+        panelCierre = crearPanelCierre();
+        JPanel panelConTab = crearPanelNotificacionConTab(panelNotificacion, panelCierre);
         splitOperativo = new AppV2OperationalSplitPanel(
                 contenidoPrincipal,
                 panelConTab,
@@ -261,14 +282,34 @@ public class JPanelNotificacionV2 extends JPanel {
         return panel;
     }
 
-    private JPanel crearPanelNotificacionConTab(final AppV2SideActionPanel panel) {
+    private AppV2SideActionPanel crearPanelCierre() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Cierre", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelNotificacion();
+            }
+        });
+        panel.setAccentColor(AppV2Theme.PRIMARY);
+        tabPanelNotificacion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
+        panel.addSection(crearCierreResumenPanel());
+        panel.addSection(crearCierrePanel());
+        panel.setFooter(crearAccionesCierrePanel());
+        return panel;
+    }
+
+    private JPanel crearPanelNotificacionConTab(final AppV2SideActionPanel panelNotificacion, final AppV2SideActionPanel panelCierre) {
+        tabsNotificacion.setOpaque(false);
+        tabsNotificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        tabsNotificacion.addTab("Notificación", panelNotificacion);
+        tabsNotificacion.addTab("Cierre", panelCierre);
+
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
                 int width = getWidth();
                 int height = getHeight();
                 int panelX = PANEL_NOTIFICACION_TAB_OVERHANG;
-                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                tabsNotificacion.setBounds(panelX, 0, Math.max(0, width - panelX), height);
                 int tabY = Math.min(PANEL_NOTIFICACION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
                 tabPanelNotificacion.setBounds(
                         0,
@@ -278,7 +319,7 @@ public class JPanelNotificacionV2 extends JPanel {
             }
         };
         wrapper.setOpaque(false);
-        wrapper.add(panel);
+        wrapper.add(tabsNotificacion);
         wrapper.add(tabPanelNotificacion);
         wrapper.setMinimumSize(new Dimension(PANEL_NOTIFICACION_ANCHO_MINIMO + PANEL_NOTIFICACION_TAB_OVERHANG, 0));
         wrapper.setPreferredSize(new Dimension(PANEL_NOTIFICACION_ANCHO_NORMAL + PANEL_NOTIFICACION_TAB_OVERHANG, 0));
@@ -292,6 +333,40 @@ public class JPanelNotificacionV2 extends JPanel {
         panel.add(btnRegistrarCargo);
         panel.add(btnMarcarNotificado);
         panel.add(btnRequierePublicacion);
+        return panel;
+    }
+
+    private JPanel crearCierrePanel() {
+        JPanel panel = section("Cierre terminal");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Destino siguiente", lblCierreDestino);
+        addRow(grid, row++, "Publicación prevista", lblCierrePublicacion);
+        addRow(grid, row++, "Alertas", lblCierreAlertas);
+        addRow(grid, row, "Comentario", scrollText(txtComentarioCierre, 86));
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearCierreResumenPanel() {
+        JPanel panel = section("Resumen de cierre");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        int row = 0;
+        addRow(grid, row++, "Expediente", lblExpediente);
+        addRow(grid, row++, "N° expediente SGD", lblExpedienteSgd);
+        addRow(grid, row++, "Titular", lblTitular);
+        addRow(grid, row++, "Procedimiento", lblProcedimiento);
+        addRow(grid, row++, "Etapa / Estado", lblEtapaEstado);
+        addRow(grid, row, "Documento a notificar", lblDocumentoNotificar);
+        panel.add(grid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearAccionesCierrePanel() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
+        panel.setOpaque(false);
         panel.add(btnCerrarExpediente);
         return panel;
     }
@@ -626,16 +701,19 @@ public class JPanelNotificacionV2 extends JPanel {
                 try {
                     expedientes.clear();
                     expedientes.addAll(get());
+                    expedientesVisibles.clear();
+                    expedientesVisibles.addAll(filtrarKpi(expedientes));
                     tableModel.fireTableDataChanged();
                     table.clearSelection();
-                    tablePanel.setEmpty(expedientes.isEmpty());
+                    tablePanel.setEmpty(expedientesVisibles.isEmpty());
                     actualizarMetricas();
-                    lblEstado.setText(expedientes.size() + " expediente(s) en Notificación encontrados.");
-                    if (expedientes.isEmpty()) {
+                    lblEstado.setText(expedientesVisibles.size() + " expediente(s) en Notificación encontrados.");
+                    if (expedientesVisibles.isEmpty()) {
                         actualizarSeleccion();
                     } else {
                         actualizarSeleccion();
                     }
+                    marcarKpis();
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de Notificación.", ex);
                 } finally {
@@ -657,6 +735,7 @@ public class JPanelNotificacionV2 extends JPanel {
         seleccionarPrimero(cmbPublicacionFiltro);
         inicializarFechasFiltro();
         expedientes.clear();
+        expedientesVisibles.clear();
         tableModel.fireTableDataChanged();
         table.clearSelection();
         tablePanel.setEmpty(true);
@@ -664,6 +743,77 @@ public class JPanelNotificacionV2 extends JPanel {
         actualizarSeleccion();
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar Notificación.");
         panelNotificacionCerradoPorUsuario = false;
+        kpiActivo = FiltroKpi.TODOS;
+        marcarKpis();
+    }
+
+    private void configurarKpisInteractivos() {
+        cardPendientes.setOnClick(() -> activarKpi(FiltroKpi.PENDIENTES));
+        cardRevision.setOnClick(() -> activarKpi(FiltroKpi.EN_REVISION));
+        cardNotificados.setOnClick(() -> activarKpi(FiltroKpi.NOTIFICADOS));
+        cardFallidos.setOnClick(() -> activarKpi(FiltroKpi.FALLIDOS));
+        cardPublicacion.setOnClick(() -> activarKpi(FiltroKpi.PUBLICACION));
+        cardVencidos.setOnClick(() -> activarKpi(FiltroKpi.PLAZO_CRITICO));
+        marcarKpis();
+    }
+
+    private void activarKpi(FiltroKpi filtro) {
+        kpiActivo = kpiActivo == filtro ? FiltroKpi.TODOS : filtro;
+        expedientesVisibles.clear();
+        expedientesVisibles.addAll(filtrarKpi(expedientes));
+        tableModel.fireTableDataChanged();
+        tablePanel.setEmpty(expedientesVisibles.isEmpty());
+        if (expedientesVisibles.isEmpty()) {
+            limpiarResumen();
+        } else {
+            actualizarSeleccion();
+        }
+        marcarKpis();
+    }
+
+    private void marcarKpis() {
+        cardPendientes.setSelected(kpiActivo == FiltroKpi.PENDIENTES);
+        cardRevision.setSelected(kpiActivo == FiltroKpi.EN_REVISION);
+        cardNotificados.setSelected(kpiActivo == FiltroKpi.NOTIFICADOS);
+        cardFallidos.setSelected(kpiActivo == FiltroKpi.FALLIDOS);
+        cardPublicacion.setSelected(kpiActivo == FiltroKpi.PUBLICACION);
+        cardVencidos.setSelected(kpiActivo == FiltroKpi.PLAZO_CRITICO);
+    }
+
+    private List<NotificacionExpedienteDTO> filtrarKpi(List<NotificacionExpedienteDTO> items) {
+        List<NotificacionExpedienteDTO> filtrados = new ArrayList<NotificacionExpedienteDTO>();
+        if (items == null || items.isEmpty() || kpiActivo == FiltroKpi.TODOS) {
+            if (items != null) {
+                filtrados.addAll(items);
+            }
+            return filtrados;
+        }
+        for (NotificacionExpedienteDTO item : items) {
+            if (coincideKpi(item)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean coincideKpi(NotificacionExpedienteDTO item) {
+        switch (kpiActivo) {
+            case PENDIENTES:
+                return item.isEnNotificacion();
+            case EN_REVISION:
+                return item.isCargoPendiente();
+            case NOTIFICADOS:
+                return item.isNotificado();
+            case FALLIDOS:
+                return item.isFallida();
+            case PUBLICACION:
+                return item.isRequierePublicacion() || item.isRequierePublicacionEstado();
+            case PLAZO_CRITICO:
+                return item.getDiasEnEtapa() != null && item.getDiasEnEtapa() <= 3;
+            case TODOS:
+            default:
+                return true;
+        }
     }
 
     private void actualizarMetricas() {
@@ -699,6 +849,7 @@ public class JPanelNotificacionV2 extends JPanel {
         cardFallidos.setValue(String.valueOf(fallidos));
         cardPublicacion.setValue(String.valueOf(publicacion));
         cardVencidos.setValue(String.valueOf(vencidos));
+        marcarKpis();
     }
 
     private void actualizarSeleccion() {
@@ -727,6 +878,9 @@ public class JPanelNotificacionV2 extends JPanel {
         lblAnalisis.setText(valor(expediente.getResultadoAnalisis()));
         lblVerificacion.setText(valor(expediente.getResultadoVerificacion()));
         lblEjecucion.setText(valor(expediente.getResultadoEjecucion()));
+        lblCierreDestino.setText(destinoTexto(expediente));
+        lblCierrePublicacion.setText(publicacionTexto(expediente));
+        lblCierreAlertas.setText(alertasTexto(expediente));
         txtObservacion.setText(valor(expediente.getUltimaObservacion()));
         if (hasText(expediente.getTitular())) {
             txtDestinatario.setText(expediente.getTitular());
@@ -756,12 +910,19 @@ public class JPanelNotificacionV2 extends JPanel {
         lblAnalisis.setText("-");
         lblVerificacion.setText("-");
         lblEjecucion.setText("-");
+        lblCierreDestino.setText("-");
+        lblCierrePublicacion.setText("-");
+        lblCierreAlertas.setText("Sin alertas.");
+        if (tabsNotificacion != null && tabsNotificacion.getSelectedIndex() < 0 && tabsNotificacion.getTabCount() > 0) {
+            tabsNotificacion.setSelectedIndex(0);
+        }
         txtDestinatario.setText("");
         txtResultado.setText("");
         txtRecibidoPor.setText("");
         txtComentario.setText("");
         txtMotivoPublicacion.setText("");
         txtObservacion.setText("");
+        txtComentarioCierre.setText("");
         inicializarFechas();
         documentosModel.setRowCount(0);
         actualizarAcciones(null);
@@ -1068,10 +1229,10 @@ public class JPanelNotificacionV2 extends JPanel {
             return null;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        if (modelRow < 0 || modelRow >= expedientes.size()) {
+        if (modelRow < 0 || modelRow >= expedientesVisibles.size()) {
             return null;
         }
-        return expedientes.get(modelRow);
+        return expedientesVisibles.get(modelRow);
     }
 
     private NotificacionExpedienteDTO requerirSeleccion() {
@@ -1293,7 +1454,7 @@ public class JPanelNotificacionV2 extends JPanel {
 
         @Override
         public int getRowCount() {
-            return expedientes.size();
+            return expedientesVisibles.size();
         }
 
         @Override
@@ -1308,7 +1469,7 @@ public class JPanelNotificacionV2 extends JPanel {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            NotificacionExpedienteDTO item = expedientes.get(rowIndex);
+            NotificacionExpedienteDTO item = expedientesVisibles.get(rowIndex);
             switch (columnIndex) {
                 case 0:
                     return item.getDiasEnEtapa();

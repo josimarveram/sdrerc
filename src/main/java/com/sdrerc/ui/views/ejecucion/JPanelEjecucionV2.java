@@ -65,6 +65,16 @@ import javax.swing.table.DefaultTableModel;
 
 public class JPanelEjecucionV2 extends JPanel {
 
+    private enum FiltroKpi {
+        TODOS,
+        PENDIENTES,
+        EN_REVISION,
+        ERROR_MATERIAL,
+        LISTOS_NOTIFICACION,
+        EJECUTADOS,
+        PLAZO_CRITICO
+    }
+
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final int PANEL_EJECUCION_ANCHO_MINIMO = 380;
@@ -138,6 +148,7 @@ public class JPanelEjecucionV2 extends JPanel {
     };
     private final JTable documentosTable = new JTable(documentosModel);
     private final List<EjecucionExpedienteDTO> expedientes = new ArrayList<EjecucionExpedienteDTO>();
+    private final List<EjecucionExpedienteDTO> expedientesVisibles = new ArrayList<EjecucionExpedienteDTO>();
 
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "En ejecución", AppV2Theme.INFO);
     private final MetricCardV2 cardEnRevision = new MetricCardV2("En revisión", "0", "Documento emitido", AppV2Theme.TEAL);
@@ -145,6 +156,7 @@ public class JPanelEjecucionV2 extends JPanel {
     private final MetricCardV2 cardListosNotificacion = new MetricCardV2("Listos para notificación", "0", "Con transición activa", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardEjecutados = new MetricCardV2("Ejecutados", "0", "Resultado registrado", AppV2Theme.SUCCESS);
     private final MetricCardV2 cardPlazoCritico = new MetricCardV2("Por vencer / vencidos", "0", "Días hábiles críticos", AppV2Theme.WARNING);
+    private FiltroKpi kpiActivo = FiltroKpi.TODOS;
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelEjecucion;
     private boolean panelEjecucionCerradoPorUsuario;
@@ -165,6 +177,7 @@ public class JPanelEjecucionV2 extends JPanel {
         configurarTabla();
         configurarDocumentosTabla();
         configurarEventos();
+        configurarKpisInteractivos();
         restaurarFechasBusqueda();
         cargarFiltrosBase();
         cargarCatalogos();
@@ -599,16 +612,89 @@ public class JPanelEjecucionV2 extends JPanel {
     private void cargarTabla(List<EjecucionExpedienteDTO> items) {
         expedientes.clear();
         expedientes.addAll(items);
+        List<EjecucionExpedienteDTO> visibles = filtrarKpi(items);
+        expedientesVisibles.clear();
+        expedientesVisibles.addAll(visibles);
         tableModel.fireTableDataChanged();
         table.clearSelection();
-        tablePanel.setEmpty(items.isEmpty());
+        tablePanel.setEmpty(visibles.isEmpty());
         actualizarMetricas();
-        if (items.isEmpty()) {
+        if (visibles.isEmpty()) {
             limpiarDetalle();
         } else {
             actualizarSeleccion();
         }
-        lblEstado.setText(items.size() + " expediente(s) en Ejecución.");
+        lblEstado.setText(visibles.size() + " expediente(s) en Ejecución.");
+        marcarKpis();
+    }
+
+    private List<EjecucionExpedienteDTO> filtrarKpi(List<EjecucionExpedienteDTO> items) {
+        List<EjecucionExpedienteDTO> filtrados = new ArrayList<EjecucionExpedienteDTO>();
+        if (items == null || items.isEmpty() || kpiActivo == FiltroKpi.TODOS) {
+            if (items != null) {
+                filtrados.addAll(items);
+            }
+            return filtrados;
+        }
+        for (EjecucionExpedienteDTO item : items) {
+            if (coincideKpi(item)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean coincideKpi(EjecucionExpedienteDTO item) {
+        switch (kpiActivo) {
+            case PENDIENTES:
+                return item.isEnEjecucion();
+            case EN_REVISION:
+                return item.isDocumentoEmitido();
+            case ERROR_MATERIAL:
+                return item.isCorregible();
+            case LISTOS_NOTIFICACION:
+                return item.isListoParaNotificacion();
+            case EJECUTADOS:
+                return item.isEjecutado();
+            case PLAZO_CRITICO:
+                return item.getDiasEnEtapa() != null && item.getDiasEnEtapa() <= 3L;
+            case TODOS:
+            default:
+                return true;
+        }
+    }
+
+    private void configurarKpisInteractivos() {
+        cardPendientes.setOnClick(() -> activarKpi(FiltroKpi.PENDIENTES));
+        cardEnRevision.setOnClick(() -> activarKpi(FiltroKpi.EN_REVISION));
+        cardErrorMaterial.setOnClick(() -> activarKpi(FiltroKpi.ERROR_MATERIAL));
+        cardListosNotificacion.setOnClick(() -> activarKpi(FiltroKpi.LISTOS_NOTIFICACION));
+        cardEjecutados.setOnClick(() -> activarKpi(FiltroKpi.EJECUTADOS));
+        cardPlazoCritico.setOnClick(() -> activarKpi(FiltroKpi.PLAZO_CRITICO));
+        marcarKpis();
+    }
+
+    private void activarKpi(FiltroKpi filtro) {
+        kpiActivo = kpiActivo == filtro ? FiltroKpi.TODOS : filtro;
+        expedientesVisibles.clear();
+        expedientesVisibles.addAll(filtrarKpi(expedientes));
+        tableModel.fireTableDataChanged();
+        tablePanel.setEmpty(expedientesVisibles.isEmpty());
+        if (expedientesVisibles.isEmpty()) {
+            limpiarDetalle();
+        } else {
+            actualizarSeleccion();
+        }
+        marcarKpis();
+    }
+
+    private void marcarKpis() {
+        cardPendientes.setSelected(kpiActivo == FiltroKpi.PENDIENTES);
+        cardEnRevision.setSelected(kpiActivo == FiltroKpi.EN_REVISION);
+        cardErrorMaterial.setSelected(kpiActivo == FiltroKpi.ERROR_MATERIAL);
+        cardListosNotificacion.setSelected(kpiActivo == FiltroKpi.LISTOS_NOTIFICACION);
+        cardEjecutados.setSelected(kpiActivo == FiltroKpi.EJECUTADOS);
+        cardPlazoCritico.setSelected(kpiActivo == FiltroKpi.PLAZO_CRITICO);
     }
 
     private void actualizarMetricas() {
@@ -656,6 +742,7 @@ public class JPanelEjecucionV2 extends JPanel {
         cmbEstadoFiltro.setSelectedIndex(0);
         spnLimite.setValue(200);
         expedientes.clear();
+        expedientesVisibles.clear();
         tableModel.fireTableDataChanged();
         table.clearSelection();
         tablePanel.setEmpty(true);
@@ -663,6 +750,8 @@ public class JPanelEjecucionV2 extends JPanel {
         limpiarDetalle();
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes.");
         panelEjecucionCerradoPorUsuario = false;
+        kpiActivo = FiltroKpi.TODOS;
+        marcarKpis();
     }
 
     private void restaurarFechasBusqueda() {
@@ -953,10 +1042,10 @@ public class JPanelEjecucionV2 extends JPanel {
             return null;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        if (modelRow < 0 || modelRow >= expedientes.size()) {
+        if (modelRow < 0 || modelRow >= expedientesVisibles.size()) {
             return null;
         }
-        return expedientes.get(modelRow);
+        return expedientesVisibles.get(modelRow);
     }
 
     private EjecucionExpedienteDTO requerirSeleccion() {
@@ -1191,7 +1280,7 @@ public class JPanelEjecucionV2 extends JPanel {
 
         @Override
         public int getRowCount() {
-            return expedientes.size();
+            return expedientesVisibles.size();
         }
 
         @Override
@@ -1206,7 +1295,7 @@ public class JPanelEjecucionV2 extends JPanel {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            EjecucionExpedienteDTO item = expedientes.get(rowIndex);
+            EjecucionExpedienteDTO item = expedientesVisibles.get(rowIndex);
             switch (columnIndex) {
                 case 0:
                     return item.getIdExpediente();

@@ -14,11 +14,14 @@ import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.Cursor;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseAdapter;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -41,6 +44,17 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
 public class JPanelCargaDiariaRecepcionV2 extends JPanel {
+
+    private enum FiltroKpi {
+        TODOS,
+        VALIDOS,
+        ALERTAS,
+        LISTOS,
+        DUPLICADOS,
+        GRUPO_FAMILIAR,
+        PENDIENTES_NUMERO,
+        REGISTRADOS
+    }
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_INPUT_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -120,6 +134,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private boolean trabajando;
     private boolean cargandoTabla;
     private boolean edicionPendienteValidacion;
+    private FiltroKpi kpiActivo = FiltroKpi.TODOS;
 
     public JPanelCargaDiariaRecepcionV2() {
         this(null);
@@ -133,6 +148,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         add(crearTablaPreview(), BorderLayout.CENTER);
         add(crearPanelNotas(), BorderLayout.SOUTH);
         configurarEventos();
+        configurarKpisInteractivos();
         cargarPrevisualizacion(Collections.<CargaDiariaPreviewDTO>emptyList());
         actualizarResumen();
         actualizarBotones();
@@ -483,6 +499,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         archivoSeleccionado = null;
         registros = new ArrayList<>();
         edicionPendienteValidacion = false;
+        kpiActivo = FiltroKpi.TODOS;
         lblArchivo.setText("Sin archivo seleccionado");
         lblEstado.setText("Seleccione un archivo .xlsx o .csv para iniciar.");
         cargarPrevisualizacion(registros);
@@ -494,7 +511,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         cargandoTabla = true;
         try {
             tableModel.setRowCount(0);
-            for (CargaDiariaPreviewDTO item : items) {
+            for (CargaDiariaPreviewDTO item : filtrarPorKpi(items)) {
                 tableModel.addRow(crearFilaTabla(item));
             }
         } finally {
@@ -710,6 +727,83 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 String.valueOf(resumen.getListosParaRegistrar()),
                 "Registrados: " + resumen.getRegistrados() + " | Confirmación requerida");
         actualizarBotones();
+        marcarKpisSeleccionados();
+    }
+
+    private void configurarKpisInteractivos() {
+        cardTotal.setOnClick(() -> activarFiltroKpi(FiltroKpi.TODOS));
+        cardValidos.setOnClick(() -> activarFiltroKpi(FiltroKpi.VALIDOS));
+        cardErrores.setOnClick(() -> activarFiltroKpi(FiltroKpi.ALERTAS));
+        cardListos.setOnClick(() -> activarFiltroKpi(FiltroKpi.LISTOS));
+        cardDuplicados.setOnClick(() -> activarFiltroKpi(FiltroKpi.DUPLICADOS));
+        cardGrupoFamiliar.setOnClick(() -> activarFiltroKpi(FiltroKpi.GRUPO_FAMILIAR));
+        cardPendientesNumero.setOnClick(() -> activarFiltroKpi(FiltroKpi.PENDIENTES_NUMERO));
+        cardRegistrados.setOnClick(() -> activarFiltroKpi(FiltroKpi.REGISTRADOS));
+        marcarKpisSeleccionados();
+    }
+
+    private void activarFiltroKpi(FiltroKpi filtro) {
+        if (filtro == null) {
+            filtro = FiltroKpi.TODOS;
+        }
+        kpiActivo = kpiActivo == filtro ? FiltroKpi.TODOS : filtro;
+        cargarPrevisualizacion(registros);
+        marcarKpisSeleccionados();
+    }
+
+    private void marcarKpisSeleccionados() {
+        cardTotal.setSelected(kpiActivo == FiltroKpi.TODOS);
+        cardValidos.setSelected(kpiActivo == FiltroKpi.VALIDOS);
+        cardErrores.setSelected(kpiActivo == FiltroKpi.ALERTAS);
+        cardListos.setSelected(kpiActivo == FiltroKpi.LISTOS);
+        cardDuplicados.setSelected(kpiActivo == FiltroKpi.DUPLICADOS);
+        cardGrupoFamiliar.setSelected(kpiActivo == FiltroKpi.GRUPO_FAMILIAR);
+        cardPendientesNumero.setSelected(kpiActivo == FiltroKpi.PENDIENTES_NUMERO);
+        cardRegistrados.setSelected(kpiActivo == FiltroKpi.REGISTRADOS);
+    }
+
+    private List<CargaDiariaPreviewDTO> filtrarPorKpi(List<CargaDiariaPreviewDTO> items) {
+        List<CargaDiariaPreviewDTO> filtrados = new ArrayList<CargaDiariaPreviewDTO>();
+        if (items == null || items.isEmpty() || kpiActivo == FiltroKpi.TODOS) {
+            if (items != null) {
+                filtrados.addAll(items);
+            }
+            return filtrados;
+        }
+        for (CargaDiariaPreviewDTO item : items) {
+            if (coincideKpi(item)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean coincideKpi(CargaDiariaPreviewDTO item) {
+        switch (kpiActivo) {
+            case VALIDOS:
+                return "VALIDO".equalsIgnoreCase(safe(item.getEstadoValidacion()))
+                        || "VÁLIDO".equalsIgnoreCase(safe(item.getEstadoValidacion()))
+                        || item.isListoParaRegistrar();
+            case ALERTAS:
+                return hasText(item.getMensajeValidacion())
+                        || hasText(item.getObservacionInicial())
+                        || item.isPosibleDuplicado()
+                        || item.isGrupoFamiliar()
+                        || item.isPosibleGrupoFamiliar();
+            case LISTOS:
+                return item.isListoParaRegistrar();
+            case DUPLICADOS:
+                return item.isPosibleDuplicado();
+            case GRUPO_FAMILIAR:
+                return item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar();
+            case PENDIENTES_NUMERO:
+                return !item.isRegistrado() && !hasText(item.getNumeroExpedienteGenerado());
+            case REGISTRADOS:
+                return item.isRegistrado();
+            case TODOS:
+            default:
+                return true;
+        }
     }
 
     private void actualizarBotones() {
@@ -879,10 +973,14 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
         private final JLabel lblValue = new JLabel();
         private final JLabel lblCaption = new JLabel();
+        private final Color baseBackground = AppV2Theme.SURFACE;
+        private final Color selectedBackground = AppV2Theme.SURFACE_ALT;
+        private Runnable clickAction;
+        private boolean selected;
 
         private ResumenCard(String title, String value, String caption, Color accent) {
             super(new BorderLayout(6, 4));
-            setBackground(AppV2Theme.SURFACE);
+            setBackground(baseBackground);
             setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createMatteBorder(0, 4, 0, 0, accent),
                     AppV2Theme.cardBorder()));
@@ -903,11 +1001,54 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             add(lblValue, BorderLayout.CENTER);
             add(lblCaption, BorderLayout.SOUTH);
             actualizar(value, caption);
+            MouseAdapter mouseAdapter = new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    if (clickAction != null) {
+                        clickAction.run();
+                    }
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    setCursor(Cursor.getDefaultCursor());
+                }
+            };
+            instalarMouseRecursivo(this, mouseAdapter);
         }
 
         private void actualizar(String value, String caption) {
             lblValue.setText(value);
             lblCaption.setText(caption);
+        }
+
+        private void setOnClick(Runnable clickAction) {
+            this.clickAction = clickAction;
+        }
+
+        private void setSelected(boolean selected) {
+            this.selected = selected;
+            setBackground(selected ? selectedBackground : baseBackground);
+            setOpaque(true);
+            repaint();
+        }
+
+        private boolean isSelected() {
+            return selected;
+        }
+
+        private void instalarMouseRecursivo(Component component, MouseAdapter mouseAdapter) {
+            component.addMouseListener(mouseAdapter);
+            if (component instanceof JPanel) {
+                for (Component child : ((JPanel) component).getComponents()) {
+                    instalarMouseRecursivo(child, mouseAdapter);
+                }
+            }
         }
     }
 }

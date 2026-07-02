@@ -97,6 +97,28 @@ import javax.swing.table.TableColumn;
 
 public class JPanelAsignacionV2 extends JPanel {
 
+    private enum FiltroKpiBandeja {
+        TODOS,
+        PENDIENTES,
+        SIN_NUMERO,
+        GRUPO_FAMILIAR,
+        POR_VENCER,
+        VENCIDOS
+    }
+
+    private enum FiltroKpiCartas {
+        TODOS,
+        CON_ACUSE,
+        PENDIENTES,
+        PUBLICACION
+    }
+
+    private enum FiltroKpiCarga {
+        TODOS,
+        CON_CARGA,
+        SIN_CARGA
+    }
+
     private static final int COL_EXPANDIR = 0;
     private static final int COL_SELECCION = 1;
     private static final int COL_DIAS = 2;
@@ -346,6 +368,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final Set<Long> principalesExpandidos = new HashSet<>();
     private final Set<Long> principalesCargando = new HashSet<>();
     private final List<DocumentoRelacionadoFila> documentosRelacionadosPanel = new ArrayList<>();
+    private final List<CargaLaboralAbogadoDTO> cargasLaborales = new ArrayList<>();
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Para asignación", AppV2Theme.INFO);
     private final MetricCardV2 cardSinNumero = new MetricCardV2("Sin número", "0", "Requieren decisión", AppV2Theme.TEAL);
     private final MetricCardV2 cardGrupoFamiliar = new MetricCardV2("Grupo familiar", "0", "Sugerencia operativa", AppV2Theme.PRIMARY);
@@ -397,7 +420,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private Long idExpedienteCartasRespuesta;
     private final Map<Integer, DocumentoAnalizadoDTO> documentosCartasRespuesta = new HashMap<>();
     private final List<AsignacionCartaRespuestaDTO> cartasRespuestaPendientes = new ArrayList<AsignacionCartaRespuestaDTO>();
+    private final List<AsignacionCartaRespuestaDTO> cartasRespuestaVisibles = new ArrayList<AsignacionCartaRespuestaDTO>();
     private AsignacionCartaRespuestaDTO cartaRespuestaSeleccionada;
+    private FiltroKpiBandeja kpiBandejaActiva = FiltroKpiBandeja.TODOS;
+    private FiltroKpiCartas kpiCartasActiva = FiltroKpiCartas.TODOS;
+    private FiltroKpiCarga kpiCargaActiva = FiltroKpiCarga.TODOS;
 
     private boolean cargandoCombos;
     private boolean actualizandoSeleccion;
@@ -427,6 +454,7 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarTablaBandejaCartasRespuesta();
         configurarTablaCargaLaboral();
         configurarEventos();
+        configurarKpisInteractivos();
         restaurarFechasBusqueda();
         cargarEstados();
         cargarEquipos();
@@ -1529,6 +1557,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private void cargarTabla(List<AsignacionExpedienteDTO> items) {
         expedientes.clear();
         expedientes.addAll(items);
+        List<AsignacionExpedienteDTO> visibles = filtrarBandejaKpi(items);
         filasTabla.clear();
         asociadosCache.clear();
         hojasEnvioAsignacionMultiple.clear();
@@ -1537,39 +1566,214 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteExpansionActiva = null;
         tableModel.setRowCount(0);
         table.clearSelection();
+        actualizarMetricasBandeja(expedientes);
+        cargarTablaVisible(visibles);
+        lblEstado.setText(items.isEmpty()
+                ? "No se encontraron expedientes con los filtros ingresados."
+                : visibles.size() + " expediente(s) encontrado(s).");
+        tablePanel.setEmpty(visibles.isEmpty());
+        actualizarPanelSeleccion();
+    }
+
+    private void cargarTablaVisible(List<AsignacionExpedienteDTO> items) {
+        tableModel.setRowCount(0);
+        if (items == null) {
+            return;
+        }
+        for (AsignacionExpedienteDTO item : items) {
+            agregarFilaPrincipal(item);
+        }
+    }
+
+    private List<AsignacionExpedienteDTO> filtrarBandejaKpi(List<AsignacionExpedienteDTO> items) {
+        List<AsignacionExpedienteDTO> filtrados = new ArrayList<AsignacionExpedienteDTO>();
+        if (items == null || items.isEmpty() || kpiBandejaActiva == FiltroKpiBandeja.TODOS) {
+            if (items != null) {
+                filtrados.addAll(items);
+            }
+            return filtrados;
+        }
+        for (AsignacionExpedienteDTO item : items) {
+            if (coincideBandeja(item)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean coincideBandeja(AsignacionExpedienteDTO item) {
+        switch (kpiBandejaActiva) {
+            case PENDIENTES:
+                return item.isAsignable();
+            case SIN_NUMERO:
+                return !item.tieneNumeroExpediente() || item.requiereDecisionNumeroAsignacion();
+            case GRUPO_FAMILIAR:
+                return item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar();
+            case POR_VENCER:
+                Long dias = item.getDiasRestantes();
+                return dias != null && dias >= 0 && dias <= 5;
+            case VENCIDOS:
+                return item.getDiasRestantes() != null && item.getDiasRestantes() < 0;
+            case TODOS:
+            default:
+                return true;
+        }
+    }
+
+    private void configurarKpisInteractivos() {
+        cardPendientes.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.PENDIENTES));
+        cardSinNumero.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.SIN_NUMERO));
+        cardGrupoFamiliar.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.GRUPO_FAMILIAR));
+        cardPorVencer.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.POR_VENCER));
+        cardVencidos.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.VENCIDOS));
+
+        cardCartasTotal.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.TODOS));
+        cardCartasNotificadas.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.CON_ACUSE));
+        cardCartasPendientes.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.PENDIENTES));
+        cardCartasPublicacion.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.PUBLICACION));
+
+        cardCargaAbogados.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.TODOS));
+        cardCargaConAsignacion.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.CON_CARGA));
+        cardCargaSinAsignacion.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.SIN_CARGA));
+        cardCargaSolicitudes.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.TODOS));
+
+        marcarKpisBandeja();
+        marcarKpisCartas();
+        marcarKpisCarga();
+    }
+
+    private void activarKpiBandeja(FiltroKpiBandeja filtro) {
+        kpiBandejaActiva = kpiBandejaActiva == filtro ? FiltroKpiBandeja.TODOS : filtro;
+        cargarTablaVisible(filtrarBandejaKpi(expedientes));
+        table.clearSelection();
+        tablePanel.setEmpty(tableModel.getRowCount() == 0);
+        lblEstado.setText(tableModel.getRowCount() == 0
+                ? "No se encontraron expedientes con el filtro KPI seleccionado."
+                : tableModel.getRowCount() + " expediente(s) encontrado(s).");
+        actualizarPanelSeleccion();
+        marcarKpisBandeja();
+    }
+
+    private void activarKpiCartas(FiltroKpiCartas filtro) {
+        kpiCartasActiva = kpiCartasActiva == filtro ? FiltroKpiCartas.TODOS : filtro;
+        cargarBandejaCartasRespuestaModel(filtrarCartasKpi(cartasRespuestaPendientes));
+        marcarKpisCartas();
+    }
+
+    private void activarKpiCarga(FiltroKpiCarga filtro) {
+        kpiCargaActiva = kpiCargaActiva == filtro ? FiltroKpiCarga.TODOS : filtro;
+        List<CargaLaboralAbogadoDTO> visibles = filtrarCargaLaboralKpi(cargasLaborales);
+        cargarCargaLaboralModel(visibles);
+        marcarKpisCarga();
+    }
+
+    private void marcarKpisBandeja() {
+        cardPendientes.setSelected(kpiBandejaActiva == FiltroKpiBandeja.PENDIENTES);
+        cardSinNumero.setSelected(kpiBandejaActiva == FiltroKpiBandeja.SIN_NUMERO);
+        cardGrupoFamiliar.setSelected(kpiBandejaActiva == FiltroKpiBandeja.GRUPO_FAMILIAR);
+        cardPorVencer.setSelected(kpiBandejaActiva == FiltroKpiBandeja.POR_VENCER);
+        cardVencidos.setSelected(kpiBandejaActiva == FiltroKpiBandeja.VENCIDOS);
+    }
+
+    private void marcarKpisCartas() {
+        cardCartasTotal.setSelected(kpiCartasActiva == FiltroKpiCartas.TODOS);
+        cardCartasNotificadas.setSelected(kpiCartasActiva == FiltroKpiCartas.CON_ACUSE);
+        cardCartasPendientes.setSelected(kpiCartasActiva == FiltroKpiCartas.PENDIENTES);
+        cardCartasPublicacion.setSelected(kpiCartasActiva == FiltroKpiCartas.PUBLICACION);
+    }
+
+    private void marcarKpisCarga() {
+        cardCargaAbogados.setSelected(kpiCargaActiva == FiltroKpiCarga.TODOS);
+        cardCargaConAsignacion.setSelected(kpiCargaActiva == FiltroKpiCarga.CON_CARGA);
+        cardCargaSinAsignacion.setSelected(kpiCargaActiva == FiltroKpiCarga.SIN_CARGA);
+        cardCargaSolicitudes.setSelected(kpiCargaActiva == FiltroKpiCarga.TODOS);
+    }
+
+    private List<AsignacionCartaRespuestaDTO> filtrarCartasKpi(List<AsignacionCartaRespuestaDTO> items) {
+        List<AsignacionCartaRespuestaDTO> filtrados = new ArrayList<AsignacionCartaRespuestaDTO>();
+        if (items == null || items.isEmpty() || kpiCartasActiva == FiltroKpiCartas.TODOS) {
+            if (items != null) {
+                filtrados.addAll(items);
+            }
+            return filtrados;
+        }
+        for (AsignacionCartaRespuestaDTO item : items) {
+            if (coincideCarta(item)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean coincideCarta(AsignacionCartaRespuestaDTO item) {
+        switch (kpiCartasActiva) {
+            case CON_ACUSE:
+                return item != null && item.getFechaAcuse() != null;
+            case PENDIENTES:
+                if (item == null) {
+                    return false;
+                }
+                String confirmacion = item.getConfirmacionRespuesta() == null
+                        ? ""
+                        : item.getConfirmacionRespuesta().trim().toUpperCase(Locale.ROOT);
+                return !"SI".equals(confirmacion) && !"NO".equals(confirmacion);
+            case PUBLICACION:
+                return item != null && item.isRequierePublicacion();
+            case TODOS:
+            default:
+                return true;
+        }
+    }
+
+    private List<CargaLaboralAbogadoDTO> filtrarCargaLaboralKpi(List<CargaLaboralAbogadoDTO> items) {
+        List<CargaLaboralAbogadoDTO> filtrados = new ArrayList<CargaLaboralAbogadoDTO>();
+        if (items == null || items.isEmpty() || kpiCargaActiva == FiltroKpiCarga.TODOS) {
+            if (items != null) {
+                filtrados.addAll(items);
+            }
+            return filtrados;
+        }
+        for (CargaLaboralAbogadoDTO item : items) {
+            if (kpiCargaActiva == FiltroKpiCarga.CON_CARGA && item.getExpedientesActivos() > 0) {
+                filtrados.add(item);
+            } else if (kpiCargaActiva == FiltroKpiCarga.SIN_CARGA && item.getExpedientesActivos() == 0) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private void actualizarMetricasBandeja(List<AsignacionExpedienteDTO> items) {
         int pendientes = 0;
         int sinNumero = 0;
         int grupoFamiliar = 0;
         int porVencer = 0;
         int vencidos = 0;
-        for (AsignacionExpedienteDTO item : expedientes) {
-            if (item.isAsignable()) {
-                pendientes++;
+        if (items != null) {
+            for (AsignacionExpedienteDTO item : items) {
+                if (item.isAsignable()) {
+                    pendientes++;
+                }
+                if (!item.tieneNumeroExpediente()) {
+                    sinNumero++;
+                }
+                if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+                    grupoFamiliar++;
+                }
+                Long dias = item.getDiasRestantes();
+                if (dias != null && dias < 0) {
+                    vencidos++;
+                } else if (dias != null && dias <= 5) {
+                    porVencer++;
+                }
             }
-            if (!item.tieneNumeroExpediente()) {
-                sinNumero++;
-            }
-            if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
-                grupoFamiliar++;
-            }
-            Long dias = item.getDiasRestantes();
-            if (dias != null && dias < 0) {
-                vencidos++;
-            } else if (dias != null && dias <= 5) {
-                porVencer++;
-            }
-            agregarFilaPrincipal(item);
         }
         cardPendientes.setValue(String.valueOf(pendientes));
         cardSinNumero.setValue(String.valueOf(sinNumero));
         cardGrupoFamiliar.setValue(String.valueOf(grupoFamiliar));
         cardPorVencer.setValue(String.valueOf(porVencer));
         cardVencidos.setValue(String.valueOf(vencidos));
-        lblEstado.setText(items.isEmpty()
-                ? "No se encontraron expedientes con los filtros ingresados."
-                : items.size() + " expediente(s) encontrado(s).");
-        tablePanel.setEmpty(items.isEmpty());
-        actualizarPanelSeleccion();
+        marcarKpisBandeja();
     }
 
     private void agregarFilaPrincipal(AsignacionExpedienteDTO item) {
@@ -1745,7 +1949,11 @@ public class JPanelAsignacionV2 extends JPanel {
         asociadosCache.clear();
         principalesExpandidos.clear();
         principalesCargando.clear();
+        cargasLaborales.clear();
         idExpedienteExpansionActiva = null;
+        kpiBandejaActiva = FiltroKpiBandeja.TODOS;
+        kpiCartasActiva = FiltroKpiCartas.TODOS;
+        kpiCargaActiva = FiltroKpiCarga.TODOS;
         tableModel.setRowCount(0);
         table.clearSelection();
         tablePanel.setEmpty(true);
@@ -1755,6 +1963,9 @@ public class JPanelAsignacionV2 extends JPanel {
         cardGrupoFamiliar.setValue("0");
         cardPorVencer.setValue("0");
         cardVencidos.setValue("0");
+        marcarKpisBandeja();
+        marcarKpisCartas();
+        marcarKpisCarga();
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes.");
         actualizarPanelSeleccion();
     }
@@ -2654,9 +2865,14 @@ public class JPanelAsignacionV2 extends JPanel {
             protected void done() {
                 try {
                     List<AsignacionCartaRespuestaDTO> items = get();
-                    cargarBandejaCartasRespuestaModel(items);
+                    cartasRespuestaPendientes.clear();
+                    if (items != null) {
+                        cartasRespuestaPendientes.addAll(items);
+                    }
+                    cargarBandejaCartasRespuestaModel(filtrarCartasKpi(cartasRespuestaPendientes));
                 } catch (Exception ex) {
                     cartasRespuestaPendientes.clear();
+                    cartasRespuestaVisibles.clear();
                     bandejaCartasRespuestaModel.setRowCount(0);
                     bandejaCartasRespuestaTablePanel.setEmpty(true);
                     lblEstadoCartas.setText("No se pudo cargar la bandeja de cartas de respuesta.");
@@ -2667,11 +2883,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void cargarBandejaCartasRespuestaModel(List<AsignacionCartaRespuestaDTO> items) {
-        cartasRespuestaPendientes.clear();
+        cartasRespuestaVisibles.clear();
         bandejaCartasRespuestaModel.setRowCount(0);
         if (items != null) {
-            cartasRespuestaPendientes.addAll(items);
-            for (AsignacionCartaRespuestaDTO item : items) {
+            cartasRespuestaVisibles.addAll(items);
+            for (AsignacionCartaRespuestaDTO item : cartasRespuestaVisibles) {
                 bandejaCartasRespuestaModel.addRow(new Object[]{
                     valorUi(item.getNumeroExpediente()),
                     valorUi(item.getNumeroExpedienteSgd()),
@@ -2685,7 +2901,7 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
         bandejaCartasRespuestaTablePanel.setEmpty(bandejaCartasRespuestaModel.getRowCount() == 0);
-        actualizarMetricasCartasRespuesta(items);
+        actualizarMetricasCartasRespuesta(cartasRespuestaPendientes);
         lblEstadoCartas.setText(bandejaCartasRespuestaModel.getRowCount() == 0
                 ? "No hay cartas con respuesta pendiente."
                 : bandejaCartasRespuestaModel.getRowCount() + " carta(s) disponibles para respuesta.");
@@ -2717,6 +2933,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardCartasNotificadas.setValue(String.valueOf(conAcuse));
         cardCartasPendientes.setValue(String.valueOf(pendientes));
         cardCartasPublicacion.setValue(String.valueOf(publicacion));
+        marcarKpisCartas();
     }
 
     private void actualizarPanelCartasRespuestaSeleccion() {
@@ -2733,10 +2950,10 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         int modelRow = bandejaCartasRespuestaTable.convertRowIndexToModel(viewRow);
-        if (modelRow < 0 || modelRow >= cartasRespuestaPendientes.size()) {
+        if (modelRow < 0 || modelRow >= cartasRespuestaVisibles.size()) {
             return;
         }
-        cartaRespuestaSeleccionada = cartasRespuestaPendientes.get(modelRow);
+        cartaRespuestaSeleccionada = cartasRespuestaVisibles.get(modelRow);
         if (cartaRespuestaSeleccionada == null || cartaRespuestaSeleccionada.getIdExpediente() == null) {
             return;
         }
@@ -2787,7 +3004,9 @@ public class JPanelAsignacionV2 extends JPanel {
             protected void done() {
                 try {
                     List<CargaLaboralAbogadoDTO> cargas = get();
-                    cargarCargaLaboralModel(cargas);
+                    cargasLaborales.clear();
+                    cargasLaborales.addAll(cargas);
+                    cargarCargaLaboralModel(filtrarCargaLaboralKpi(cargas));
                     actualizarMetricasCargaLaboral(cargas);
                 } catch (Exception ex) {
                     cargaLaboralModel.setRowCount(0);
@@ -2819,6 +3038,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardCargaConAsignacion.setValue(String.valueOf(conCarga));
         cardCargaSinAsignacion.setValue(String.valueOf(sinCarga));
         cardCargaSolicitudes.setValue(String.valueOf(totalSolicitudes));
+        marcarKpisCarga();
     }
 
     private void actualizarTituloPanelAsignacion(AsignacionTableRow filaPanel, boolean modoMultiple) {
