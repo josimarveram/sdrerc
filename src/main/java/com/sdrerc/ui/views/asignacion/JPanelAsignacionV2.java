@@ -1576,6 +1576,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void cargarTablaVisible(List<AsignacionExpedienteDTO> items) {
+        filasTabla.clear();
+        asociadosCache.clear();
+        principalesExpandidos.clear();
+        principalesCargando.clear();
+        idExpedienteExpansionActiva = null;
         tableModel.setRowCount(0);
         if (items == null) {
             return;
@@ -1583,6 +1588,7 @@ public class JPanelAsignacionV2 extends JPanel {
         for (AsignacionExpedienteDTO item : items) {
             agregarFilaPrincipal(item);
         }
+        table.clearSelection();
     }
 
     private List<AsignacionExpedienteDTO> filtrarBandejaKpi(List<AsignacionExpedienteDTO> items) {
