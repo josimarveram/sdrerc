@@ -1805,8 +1805,7 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private void activarKpi(FiltroKpi filtro) {
         kpiActivo = kpiActivo == filtro ? FiltroKpi.TODOS : filtro;
-        cargarTablaVisible(filtrarKpi(expedientes));
-        tablePanel.setEmpty(tableModel.getRowCount() == 0);
+        cargarTabla(new java.util.ArrayList<AnalisisExpedienteDTO>(expedientes));
         marcarKpis();
     }
 

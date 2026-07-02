@@ -1650,19 +1650,13 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void activarKpiBandeja(FiltroKpiBandeja filtro) {
         kpiBandejaActiva = kpiBandejaActiva == filtro ? FiltroKpiBandeja.TODOS : filtro;
-        cargarTablaVisible(filtrarBandejaKpi(expedientes));
-        table.clearSelection();
-        tablePanel.setEmpty(tableModel.getRowCount() == 0);
-        lblEstado.setText(tableModel.getRowCount() == 0
-                ? "No se encontraron expedientes con el filtro KPI seleccionado."
-                : tableModel.getRowCount() + " expediente(s) encontrado(s).");
-        actualizarPanelSeleccion();
+        cargarTabla(new ArrayList<AsignacionExpedienteDTO>(expedientes));
         marcarKpisBandeja();
     }
 
     private void activarKpiCartas(FiltroKpiCartas filtro) {
         kpiCartasActiva = kpiCartasActiva == filtro ? FiltroKpiCartas.TODOS : filtro;
-        cargarBandejaCartasRespuestaModel(filtrarCartasKpi(cartasRespuestaPendientes));
+        cargarBandejaCartasRespuestaModel(new ArrayList<AsignacionCartaRespuestaDTO>(cartasRespuestaPendientes));
         marcarKpisCartas();
     }
 
