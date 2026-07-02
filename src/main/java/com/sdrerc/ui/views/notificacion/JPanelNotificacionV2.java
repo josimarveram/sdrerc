@@ -758,7 +758,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void activarKpi(FiltroKpi filtro) {
-        kpiActivo = kpiActivo == filtro ? FiltroKpi.TODOS : filtro;
+        kpiActivo = filtro;
         expedientesVisibles.clear();
         expedientesVisibles.addAll(filtrarKpi(expedientes));
         tableModel.fireTableDataChanged();

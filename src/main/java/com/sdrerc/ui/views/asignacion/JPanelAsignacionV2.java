@@ -1649,19 +1649,19 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void activarKpiBandeja(FiltroKpiBandeja filtro) {
-        kpiBandejaActiva = kpiBandejaActiva == filtro ? FiltroKpiBandeja.TODOS : filtro;
+        kpiBandejaActiva = filtro;
         cargarTabla(new ArrayList<AsignacionExpedienteDTO>(expedientes));
         marcarKpisBandeja();
     }
 
     private void activarKpiCartas(FiltroKpiCartas filtro) {
-        kpiCartasActiva = kpiCartasActiva == filtro ? FiltroKpiCartas.TODOS : filtro;
+        kpiCartasActiva = filtro;
         cargarBandejaCartasRespuestaModel(new ArrayList<AsignacionCartaRespuestaDTO>(cartasRespuestaPendientes));
         marcarKpisCartas();
     }
 
     private void activarKpiCarga(FiltroKpiCarga filtro) {
-        kpiCargaActiva = kpiCargaActiva == filtro ? FiltroKpiCarga.TODOS : filtro;
+        kpiCargaActiva = filtro;
         List<CargaLaboralAbogadoDTO> visibles = filtrarCargaLaboralKpi(cargasLaborales);
         cargarCargaLaboralModel(visibles);
         marcarKpisCarga();

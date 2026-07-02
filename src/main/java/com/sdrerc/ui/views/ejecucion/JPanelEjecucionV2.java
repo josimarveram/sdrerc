@@ -675,7 +675,7 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private void activarKpi(FiltroKpi filtro) {
-        kpiActivo = kpiActivo == filtro ? FiltroKpi.TODOS : filtro;
+        kpiActivo = filtro;
         cargarTabla(new java.util.ArrayList<EjecucionExpedienteDTO>(expedientes));
         marcarKpis();
     }
