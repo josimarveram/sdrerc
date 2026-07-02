@@ -90,6 +90,7 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Grupo familiar no debe confundirse con duplicidad: la duplicidad en Registro / Recepcion sigue siendo exclusivamente por la combinacion `numero de acta + titular`.
 - En fase 1, grupo familiar se persiste como marca simple en `EXPEDIENTE_SOLICITUD`; no crear relaciones automaticas en `EXPEDIENTE_RELACION`, tabla formal de grupo familiar ni catalogo de parentesco sin autorizacion explicita.
 - La deteccion automatica de posible grupo familiar por coincidencia conservadora de apellidos es solo alerta operativa y no confirma grupo familiar por si sola.
+- Las alertas o incidencias operativas del expediente deben persistirse en `EXPEDIENTE_ALERTA`; pueden ser multiples por expediente, deben mostrar concatenacion en UI y no depender solo de `EXPEDIENTE_SOLICITUD.OBSERVACION`.
 - `Asignacion` puede mostrar grupo familiar como sugerencia para asignacion coordinada, pero no debe forzar abogado ni equipo automaticamente por esa marca.
 - El plazo de atencion debe resolverse mediante `PLAZO_CONFIGURACION` o administracion equivalente; un fallback fijo en Java es solo contingencia tecnica y no debe ser la fuente funcional oficial.
 - La configuracion oficial inicial de plazos SDRERC debe contemplar `SOLICITUD_RECTIFICACION_ADMINISTRATIVA = 30 dias habiles`, `SOLICITUD_RECONSIDERACION = 15 dias habiles` y `SOLICITUD_APELACION = 30 dias habiles`; `SOLICITUD_SDRERC = 30 dias habiles` queda como plazo general de contingencia.
@@ -116,7 +117,6 @@ Modulos V2 ya incorporados o en uso dentro de la app nueva:
 - Notificacion.
 - Publicacion.
 - Expediente digital.
-- Cierre / Archivo.
 - Administracion / Usuarios.
 - Administracion / Equipo Juridico.
 - Administracion / Roles.
@@ -131,7 +131,7 @@ Reglas por modulo:
 - `Ver detalle` en bandejas operativas debe abrir la consola unica `DlgConsolaExpedienteV2`, no crear consolas paralelas.
 - Los modulos administrativos `Roles`, `Usuarios` y `Equipo Juridico` no deben mostrar columnas `Creado` ni `Modificado` en sus listados principales, salvo que el usuario lo pida explicitamente.
 - Los modulos V2 deben evitar bloques de cabecera duplicados dentro del panel cuando `MenuPrincipalV2` ya muestra titulo y subtitulo. Si el panel interno necesita un bloque superior, debe aportar contexto operativo nuevo y no repetir titulo/subtitulo.
-- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Ejecucion`, `Notificacion`, `Publicacion`, `Expediente digital`, `Cierre / Archivo` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
+- En los bloques superiores de `Registro / Recepcion`, `Asignacion`, `Analisis`, `Verificacion`, `Ejecucion`, `Notificacion`, `Publicacion`, `Expediente digital` y `Bandeja de Expedientes`, usar textos descriptivos que definan el modulo y su proposito operativo; evitar textos genericos o repetidos.
 
 ## 4.2 Escritura controlada ya autorizada en V2
 
@@ -172,25 +172,21 @@ Por defecto V2 sigue siendo lectura/consulta. Las escrituras reales solo son val
 - `Notificacion`: las acciones autorizadas deben resolver transiciones reales por codigo, como `NOTIFICACION_VIRTUAL`, `NOTIFICACION_PRESENCIAL_1`, `NOTIFICACION_PRESENCIAL_2`, `RECEPCION_CARGO_ACUSE`, `CONFIRMACION_NOTIFICACION`, `REGISTRO_NOTIFICACION_FALLIDA`, `GENERACION_PUBLICACION` y `CIERRE`; si falta transicion, catalogo, documento requerido o constraint, bloquear con diagnostico sin escritura parcial.
 - `Notificacion`: no implementar envio real de correos, SMS, WhatsApp ni integraciones externas de notificacion sin autorizacion explicita; el modulo registra metadata y trazabilidad funcional, no comunicaciones externas.
 - `Notificacion`: para publicacion condicional, primero registrar notificacion fallida o estado `REQUIERE_PUBLICACION` si el flujo lo exige, y luego derivar a `PUBLICACION_CONDICIONAL / PENDIENTE_PUBLICACION` solo con transicion activa.
-- `Notificacion`: el cierre desde `NOTIFICACION / NOTIFICADO` hacia `CIERRE_ARCHIVO / CERRADO` debe marcar el expediente como cerrado cuando el modelo lo soporte, registrar historial y nunca eliminar datos fisicamente.
+- `Notificacion`: puede incorporar una pestaña interna de `Cierre / Seguimiento` para control terminal y trazabilidad del estado final; no debe exponerse como modulo lateral independiente ni como pantalla separada.
+- `Notificacion`: el cierre terminal desde `NOTIFICACION / NOTIFICADO` debe marcar el expediente como cerrado cuando el modelo lo soporte, registrar historial y nunca eliminar datos fisicamente.
 - `Publicacion`: consultar expedientes en `PUBLICACION_CONDICIONAL`, revisar resolucion/documento, notificacion previa, cargo de acuse, documentos, historial, observaciones y expedientes asociados.
 - `Publicacion`: registrar datos de publicacion, marcar publicacion registrada y cerrar expediente publicado solo cuando el flujo `SDRERC_TO_BE` exponga una transicion real activa.
 - `Publicacion`: usar las tablas reales `EXPEDIENTE_PUBLICACION`, `EXPEDIENTE_NOTIFICACION`, `EXPEDIENTE_CARGO_ACUSE`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_RESOLUCION` y `EXPEDIENTE` segun corresponda; no crear tablas paralelas ni guardar datos no soportados por el modelo.
 - `Publicacion`: las acciones autorizadas deben resolver transiciones reales por codigo, como `REGISTRO_PUBLICACION` y `CIERRE`; si falta transicion, catalogo, documento requerido, tabla, columna o constraint, bloquear con diagnostico sin escritura parcial.
 - `Publicacion`: no implementar publicacion real en portales externos ni integraciones externas sin autorizacion explicita; el modulo registra metadata y trazabilidad funcional, no publicaciones externas.
-- `Publicacion`: el cierre desde `PUBLICACION_CONDICIONAL / PUBLICACION_REGISTRADA` hacia `CIERRE_ARCHIVO / CERRADO` debe marcar el expediente como cerrado cuando el modelo lo soporte, registrar historial y nunca eliminar datos fisicamente.
+- `Publicacion`: si el flujo de publicacion requiere cierre terminal, debe derivarse a la pestaña interna de `Cierre / Seguimiento` dentro de `Notificacion`, con historial y sin exponer un modulo lateral independiente.
 - `Expediente digital`: consultar expedientes en `EXPEDIENTE_DIGITAL`, revisar documentos, resolucion/documento, notificacion/publicacion si existe, historial, observaciones y expedientes asociados.
 - `Expediente digital`: registrar o actualizar metadata de carpeta/ruta/enlace digital y marcar completitud digital solo mediante DAO/Service transaccional y cuando el flujo `SDRERC_TO_BE` exponga una transicion real activa.
 - `Expediente digital`: usar las tablas reales `EXPEDIENTE_DIGITAL`, `EXPEDIENTE`, `EXPEDIENTE_DOCUMENTO`, `EXPEDIENTE_DOCUMENTO_ANALIZADO`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_RESOLUCION`, `EXPEDIENTE_NOTIFICACION` y `EXPEDIENTE_PUBLICACION` segun corresponda; no crear tablas paralelas ni guardar datos no soportados por el modelo.
 - `Expediente digital`: las acciones autorizadas deben resolver transiciones reales por codigo, como `CREACION_CARPETA_EXPEDIENTE_DIGITAL` y `CARGA_DOCUMENTOS_EXPEDIENTE_DIGITAL`; si `REGISTRO_LINK_EXPEDIENTE_DIGITAL` existe como catalogo pero no como transicion activa, usar la transicion real configurada y reportar el diagnostico.
 - `Expediente digital`: al marcar completo, actualizar `EXPEDIENTE.EXPEDIENTE_DIGITAL_COMPLETO` cuando el modelo lo soporte, validar documentos o metadata requerida, registrar historial y no hacer escritura parcial si falta tabla, columna, catalogo, transicion o constraint.
 - `Expediente digital`: no mover archivos fisicamente, no eliminar archivos, no implementar carga masiva documental ni integraciones externas con NAS, SharePoint, Drive, MinIO u otros repositorios sin autorizacion explicita.
-- `Cierre / Archivo`: consultar expedientes en `CIERRE_ARCHIVO` y expedientes candidatos con acciones activas `CIERRE` o `ARCHIVO`, revisar antecedentes completos, documentos, resolucion, notificacion, publicacion, expediente digital, historial y expedientes asociados.
-- `Cierre / Archivo`: registrar cierre hacia `CIERRE_ARCHIVO / CERRADO` y archivo hacia `CIERRE_ARCHIVO / ARCHIVADO` solo cuando el flujo `SDRERC_TO_BE` exponga transicion real activa.
-- `Cierre / Archivo`: usar las tablas reales `EXPEDIENTE`, `EXPEDIENTE_HISTORIAL`, `EXPEDIENTE_OBSERVACION`, `EXPEDIENTE_RESOLUCION`, `EXPEDIENTE_NOTIFICACION`, `EXPEDIENTE_PUBLICACION`, `EXPEDIENTE_DIGITAL` y `EXPEDIENTE_DERIVACION_EXTERNA` segun corresponda; no crear tablas paralelas ni guardar datos no soportados por el modelo.
-- `Cierre / Archivo`: las acciones autorizadas deben resolver transiciones reales por codigo, como `CIERRE` y `ARCHIVO`; si falta transicion, catalogo, documento requerido, tabla, columna o constraint, bloquear con diagnostico sin escritura parcial.
-- `Cierre / Archivo`: marcar `EXPEDIENTE.CERRADO` o `EXPEDIENTE.ARCHIVADO` cuando el modelo lo soporte, registrar historial/movimiento y nunca eliminar fisicamente expedientes, documentos ni archivos.
-- `Cierre / Archivo`: la derivacion externa pendiente puede mostrarse en consulta/preparacion; no registrar derivaciones externas desde este modulo salvo autorizacion explicita y estructura completa de entidad destino, tipo de derivacion y documento soporte.
+- `Notificacion`: la pestaña interna de `Cierre / Seguimiento` puede consultar expedientes candidatos con cierre terminal, revisar antecedentes completos, documentos, resolucion, notificacion, publicacion, expediente digital, historial y expedientes asociados; cualquier accion de archivo o derivacion externa debe seguir la regla funcional aprobada dentro de `Notificacion` y no como modulo lateral independiente.
 - `Roles`: crear, editar, activar e inactivar roles. Nunca eliminar fisicamente roles.
 - `Usuarios`: crear, editar, activar e inactivar usuarios, y asociar roles/equipo si el modelo lo permite. Nunca mostrar ni guardar passwords en texto plano.
 - `Equipo Juridico`: crear, editar, activar e inactivar equipos, y gestionar miembros/supervisor si el modelo lo permite. Nunca eliminar fisicamente equipos ni usuarios.
@@ -250,7 +246,7 @@ Esta seccion consolida el criterio funcional vigente para documentos proyectados
 - El Home debe evitar scroll horizontal global. Las metricas, accesos rapidos, flujo operativo y modulos principales deben reacomodarse segun el ancho disponible.
 - El bloque `Flujo operativo` del Home debe verse como una secuencia premium de etapas, no como una lista plana. Debe mantener flechas o conectores visibles, tarjetas/chips de etapa, numeracion o jerarquia clara, y nombres amigables.
 - El flujo operativo puede usar colores sobrios por etapa para mejorar lectura, siempre dentro de la paleta institucional. Evitar colores brillantes, saturados o ajenos al estilo SDRERC.
-- El flujo operativo debe usar estas etapas amigables y en este orden: Registro, Asignacion, Analisis, Verificacion, Firma / Emision, Ejecucion, Notificacion, Publicacion, Expediente digital, Cierre / Archivo.
+- El flujo operativo debe usar estas etapas amigables y en este orden: Registro, Asignacion, Analisis, Verificacion, Firma / Emision, Ejecucion, Notificacion, Publicacion, Expediente digital; el cierre terminal se maneja dentro de `Notificacion` como pestaña interna de seguimiento, no como etapa visual lateral independiente.
 - El flujo operativo no debe mostrar codigos tecnicos como `FIRMA_EMISION`, `PUBLICACION_CONDICIONAL`, `EXPEDIENTE_DIGITAL` o `CIERRE_ARCHIVO`.
 - El menu lateral V2 debe mantener iconos locales, tooltips en modo colapsado, agrupacion visual clara y navegacion funcional. No usar abreviaturas como reemplazo principal de iconos en modo colapsado.
 
@@ -297,7 +293,7 @@ Esta seccion consolida el criterio funcional vigente para documentos proyectados
 - El archivo `docs/arquitectura_bd/TO BE V2.bpmn` es referencia funcional para validar el flujo operativo SDRERC V2, junto con `SDRERC_APP`.
 - El BPMN TO BE V2 no autoriza crear una etapa visual `VALIDACION`; las validaciones del BPMN se implementan como acciones, observaciones, evaluaciones, estados o reglas dentro de las macroetapas existentes.
 - Los actores BPMN externos como OGD, SDPRC y Ciudadano/Entidad no deben convertirse automaticamente en usuarios, equipos o modulos internos V2 salvo autorizacion explicita.
-- La app V2 mantiene estas macroetapas como estructura visual principal: Registro, Asignacion, Analisis, Verificacion, Firma / Emision, Ejecucion, Notificacion, Publicacion, Expediente digital y Cierre / Archivo.
+- La app V2 mantiene estas macroetapas como estructura visual principal: Registro, Asignacion, Analisis, Verificacion, Firma / Emision, Ejecucion, Notificacion, Publicacion y Expediente digital. El seguimiento/cierre terminal se implementa dentro de `Notificacion` como pestaña interna, no como macroetapa o modulo lateral separado.
 - Los ajustes de flujo derivados del BPMN deben aplicarse como scripts idempotentes correlativos en `db/sdrerc_app/scripts/`, sin `DROP`, `DELETE` ni `TRUNCATE`, y sin modificar expedientes transaccionales.
 - En `SDRERC_APP`, `estado_expediente.codigo` es unico globalmente. No duplicar el mismo codigo de estado por etapa; si una accion reutiliza un estado en mas de una etapa, resolverlo por la transicion activa y documentar el criterio.
 - `Analisis` debe soportar `REGISTRO_RESULTADO_ANALISIS` desde `RECIBIDO_POR_ABOGADO`, `OBSERVADO` y `SUBSANADO` hacia `ATENDIDO`, `OBSERVADO`, `NO_CORRESPONDE`, `EN_ABANDONO` y `OBSERVACION_ADMINISTRATIVA`, siempre mediante transicion activa.
@@ -497,7 +493,6 @@ El flujo visual y funcional base de SDRERC V2 debe respetar estas macroetapas:
 - Notificacion.
 - Publicacion condicional.
 - Expediente digital.
-- Cierre / Archivo.
 
 Rutas especiales que deben considerarse en el diseno y en futuros incrementos autorizados:
 
@@ -564,7 +559,6 @@ Mapeo visual obligatorio de macroetapas:
 - `NOTIFICACION` -> `Notificacion`
 - `PUBLICACION_CONDICIONAL` -> `Publicacion`
 - `EXPEDIENTE_DIGITAL` -> `Expediente digital`
-- `CIERRE_ARCHIVO` -> `Cierre / Archivo`
 
 Reglas:
 

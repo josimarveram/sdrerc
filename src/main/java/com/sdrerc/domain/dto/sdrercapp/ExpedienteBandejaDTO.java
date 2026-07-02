@@ -27,6 +27,7 @@ public class ExpedienteBandejaDTO {
     private final String tipoActa;
     private final String numeroActa;
     private final String grupoFamiliar;
+    private final String alertas;
     private final String titular;
 
     public ExpedienteBandejaDTO(
@@ -64,6 +65,7 @@ public class ExpedienteBandejaDTO {
                 "",
                 "",
                 "",
+                "",
                 "");
     }
 
@@ -87,6 +89,7 @@ public class ExpedienteBandejaDTO {
             String tipoActa,
             String numeroActa,
             String grupoFamiliar,
+            String alertas,
             String titular) {
         this(
                 idExpediente,
@@ -108,6 +111,7 @@ public class ExpedienteBandejaDTO {
                 tipoActa,
                 numeroActa,
                 grupoFamiliar,
+                alertas,
                 titular,
                 null);
     }
@@ -132,6 +136,7 @@ public class ExpedienteBandejaDTO {
             String tipoActa,
             String numeroActa,
             String grupoFamiliar,
+            String alertas,
             String titular,
             Long diasRestantes) {
         this.idExpediente = idExpediente;
@@ -154,6 +159,7 @@ public class ExpedienteBandejaDTO {
         this.tipoActa = safe(tipoActa);
         this.numeroActa = safe(numeroActa);
         this.grupoFamiliar = safe(grupoFamiliar);
+        this.alertas = safe(alertas);
         this.titular = safe(titular);
     }
 
@@ -231,6 +237,10 @@ public class ExpedienteBandejaDTO {
 
     public String getGrupoFamiliar() {
         return grupoFamiliar;
+    }
+
+    public String getAlertas() {
+        return alertas;
     }
 
     public String getTitular() {

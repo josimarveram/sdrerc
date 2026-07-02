@@ -7,6 +7,7 @@ import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteEdicionManualDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
+import com.sdrerc.shared.session.SessionContext;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -15,16 +16,20 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class ExpedienteEdicionManualDAO {
 
     private static final String CODIGO_ETAPA_REGISTRO = "REGISTRO";
+    private static final String CODIGO_ETAPA_ANALISIS = "ANALISIS";
     private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
     private static final String CODIGO_MOVIMIENTO_EDICION = "RECEPCION_DOCUMENTO";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService;
+    private final ExpedienteAlertaDAO expedienteAlertaDAO = new ExpedienteAlertaDAO();
 
     public ExpedienteEdicionManualDAO() {
         this(new CatalogoLookupDAO(), new CalendarioLaboralService());
@@ -38,6 +43,14 @@ public class ExpedienteEdicionManualDAO {
     }
 
     public ExpedienteEdicionManualDTO obtenerParaEdicion(Long idExpediente) throws SQLException {
+        return obtenerParaEdicionInterno(idExpediente, true);
+    }
+
+    public ExpedienteEdicionManualDTO obtenerParaEdicionDesdeAnalisis(Long idExpediente) throws SQLException {
+        return obtenerParaEdicionInterno(idExpediente, false);
+    }
+
+    private ExpedienteEdicionManualDTO obtenerParaEdicionInterno(Long idExpediente, boolean validarEstadoRegistro) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para editar.");
         }
@@ -116,7 +129,17 @@ public class ExpedienteEdicionManualDAO {
                     throw new SQLException("No se encontró el expediente seleccionado.");
                 }
                 ExpedienteEdicionManualDTO dto = map(rs);
-                validarEditable(dto, tieneAsignacionActiva(conn, idExpediente));
+                if (validarEstadoRegistro) {
+                    validarEditable(new ExpedienteEstado(
+                            null,
+                            null,
+                            dto.getEtapaCodigo(),
+                            dto.getEstadoCodigo(),
+                            dto.getNumeroExpediente(),
+                            null),
+                            tieneAsignacionActiva(conn, idExpediente),
+                            false);
+                }
                 return dto;
             }
         }
@@ -124,6 +147,14 @@ public class ExpedienteEdicionManualDAO {
     }
 
     public RegistroManualResultadoDTO guardar(ExpedienteEdicionManualDTO dto) throws SQLException {
+        return guardarInterno(dto, false);
+    }
+
+    public RegistroManualResultadoDTO guardarDesdeAnalisis(ExpedienteEdicionManualDTO dto) throws SQLException {
+        return guardarInterno(dto, true);
+    }
+
+    private RegistroManualResultadoDTO guardarInterno(ExpedienteEdicionManualDTO dto, boolean desdeAnalisis) throws SQLException {
         if (dto == null || dto.getIdExpediente() == null) {
             throw new IllegalArgumentException("Seleccione un expediente para editar.");
         }
@@ -132,7 +163,7 @@ public class ExpedienteEdicionManualDAO {
             conn.setAutoCommit(false);
             try {
                 ExpedienteEstado estado = bloquearYObtenerEstado(conn, dto.getIdExpediente());
-                validarEditable(estado, tieneAsignacionActiva(conn, dto.getIdExpediente()));
+                validarEditable(estado, tieneAsignacionActiva(conn, dto.getIdExpediente()), desdeAnalisis);
 
                 Long idTitular = upsertPersonaRelacion(conn, dto.getIdExpediente(), "TITULAR", dto.getTitular());
                 Long idRemitente = upsertPersonaRelacion(conn, dto.getIdExpediente(), "REMITENTE", dto.getRemitente());
@@ -142,7 +173,8 @@ public class ExpedienteEdicionManualDAO {
                 upsertSolicitud(conn, dto, idSolicitante);
                 upsertActa(conn, dto);
                 upsertDocumento(conn, dto);
-                insertarHistorial(conn, dto, estado);
+                insertarHistorial(conn, dto, estado, desdeAnalisis);
+                registrarAlertasEdicion(conn, dto, desdeAnalisis);
 
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);
@@ -469,11 +501,15 @@ public class ExpedienteEdicionManualDAO {
     private void insertarHistorial(
             Connection conn,
             ExpedienteEdicionManualDTO dto,
-            ExpedienteEstado estado) throws SQLException {
+            ExpedienteEstado estado,
+            boolean desdeAnalisis) throws SQLException {
         Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_EDICION);
         if (idMovimiento == null) {
             throw new SQLException("No se encontró el movimiento RECEPCION_DOCUMENTO para registrar la edición manual.");
         }
+        String comentarioBase = desdeAnalisis
+                ? "Edición de datos desde Análisis. "
+                : "Edición manual de datos de recepción. ";
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_etapa_origen, id_estado_origen, "
                 + "id_etapa_destino, id_estado_destino, tabla_relacionada, id_registro_relacionado, "
@@ -487,7 +523,7 @@ public class ExpedienteEdicionManualDAO {
             ps.setLong(5, estado.idEtapa);
             ps.setLong(6, estado.idEstado);
             ps.setLong(7, dto.getIdExpediente());
-            ps.setString(8, limitar("Edición manual de datos de recepción. Expediente: "
+            ps.setString(8, limitar(comentarioBase + "Expediente: "
                     + textoNumeroExpediente(dto.getNumeroExpediente())
                     + ". No se modificó el número de expediente.", 2000));
             ps.executeUpdate();
@@ -530,6 +566,13 @@ public class ExpedienteEdicionManualDAO {
     }
 
     private void validarEditable(ExpedienteEstado estado, boolean tieneAsignacionActiva) throws SQLException {
+        validarEditable(estado, tieneAsignacionActiva, false);
+    }
+
+    private void validarEditable(ExpedienteEstado estado, boolean tieneAsignacionActiva, boolean desdeAnalisis) throws SQLException {
+        if (desdeAnalisis) {
+            return;
+        }
         if (!CODIGO_ETAPA_REGISTRO.equalsIgnoreCase(safe(estado.etapaCodigo))
                 || !CODIGO_ESTADO_REGISTRADO.equalsIgnoreCase(safe(estado.estadoCodigo))) {
             throw new SQLException("Solo se permite editar expedientes en estado Registrado de Registro / Recepción.");
@@ -601,6 +644,59 @@ public class ExpedienteEdicionManualDAO {
             return solicitud.getCriterioGrupoFamiliar();
         }
         return solicitud.isGrupoFamiliar() ? "MANUAL" : null;
+    }
+
+    private void registrarAlertasEdicion(Connection conn, ExpedienteEdicionManualDTO dto, boolean desdeAnalisis) throws SQLException {
+        List<String> alertas = new ArrayList<>();
+        if (desdeAnalisis) {
+            alertas.add("Edición manual desde Análisis: datos actualizados.");
+        } else {
+            alertas.add("Edición manual de Recepción: datos actualizados.");
+        }
+        if (hasText(dto.getObservacionesGenerales())) {
+            alertas.add("Edición manual: " + dto.getObservacionesGenerales().trim());
+        }
+        if (hasText(dto.getSolicitud().getValidacionInicial())
+                && !"Sí corresponde a la SDRERC".equalsIgnoreCase(dto.getSolicitud().getValidacionInicial().trim())) {
+            alertas.add("Edición manual: Validación inicial: " + dto.getSolicitud().getValidacionInicial().trim());
+        }
+        if (dto.getSolicitud() != null) {
+            if (dto.getSolicitud().isGrupoFamiliar()) {
+                String detalle = "Grupo familiar";
+                String contexto = hasText(dto.getSolicitud().getObservacionGrupoFamiliar())
+                        ? dto.getSolicitud().getObservacionGrupoFamiliar().trim()
+                        : dto.getSolicitud().getCriterioGrupoFamiliar();
+                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
+                    detalle += ": " + contexto.trim();
+                }
+                alertas.add("Edición manual: " + detalle);
+            } else if (hasText(dto.getSolicitud().getCriterioGrupoFamiliar())
+                    || hasText(dto.getSolicitud().getObservacionGrupoFamiliar())) {
+                String detalle = "Posible grupo familiar";
+                String contexto = hasText(dto.getSolicitud().getObservacionGrupoFamiliar())
+                        ? dto.getSolicitud().getObservacionGrupoFamiliar().trim()
+                        : dto.getSolicitud().getCriterioGrupoFamiliar();
+                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
+                    detalle += ": " + contexto.trim();
+                }
+                alertas.add("Edición manual: " + detalle);
+            }
+        }
+        expedienteAlertaDAO.registrarAlertas(
+                conn,
+                dto.getIdExpediente(),
+                "EDICION_MANUAL",
+                "ALERTA",
+                alertas,
+                resolverUsuarioActual());
+    }
+
+    private Long resolverUsuarioActual() {
+        try {
+            return SessionContext.getUserId();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private void append(StringBuilder sb, String etiqueta, String valor) {

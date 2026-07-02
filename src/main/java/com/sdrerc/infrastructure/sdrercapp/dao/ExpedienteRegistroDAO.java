@@ -12,6 +12,7 @@ import com.sdrerc.domain.dto.sdrercapp.DatosSolicitudDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
+import com.sdrerc.shared.session.SessionContext;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -36,6 +37,7 @@ public class ExpedienteRegistroDAO {
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService;
     private final GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService = new GrupoFamiliarHeuristicaService();
+    private final ExpedienteAlertaDAO expedienteAlertaDAO = new ExpedienteAlertaDAO();
 
     public ExpedienteRegistroDAO() {
         this(new CatalogoLookupDAO(), new CalendarioLaboralService());
@@ -187,6 +189,7 @@ public class ExpedienteRegistroDAO {
                     insertarActa(conn, item, idExpediente);
                     insertarDocumento(conn, item, idExpediente);
                     insertarHistorial(conn, item, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado);
+                    registrarAlertasCargaDiaria(conn, idExpediente, item, motivoSinNumero, soportaGrupoFamiliar);
 
                     confirmados.add(new RegistroConfirmado(item, idExpediente, numeroExpediente, motivoSinNumero));
                 }
@@ -282,6 +285,7 @@ public class ExpedienteRegistroDAO {
                 insertarActaManual(conn, registro.getActa(), idExpediente);
                 insertarDocumentoManual(conn, registro.getSolicitud(), idExpediente);
                 insertarHistorialManual(conn, registro, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado, numeroExpediente);
+                registrarAlertasManual(conn, idExpediente, registro, motivoSinNumero, soportaGrupoFamiliar);
 
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);
@@ -922,6 +926,113 @@ public class ExpedienteRegistroDAO {
             return criterioActual;
         }
         return grupoFamiliar ? "MANUAL" : null;
+    }
+
+    private void registrarAlertasCargaDiaria(
+            Connection conn,
+            Long idExpediente,
+            CargaDiariaPreviewDTO item,
+            String motivoSinNumero,
+            boolean soportaGrupoFamiliar) throws SQLException {
+        List<String> alertas = new ArrayList<>();
+        if (hasText(item.getMensajeValidacion()) && !"Válido".equalsIgnoreCase(item.getEstadoValidacion())) {
+            alertas.add("Carga diaria: " + item.getMensajeValidacion().trim());
+        }
+        if (hasText(item.getObservacionInicial())) {
+            alertas.add("Carga diaria: Observación inicial: " + item.getObservacionInicial().trim());
+        }
+        if (hasText(item.getMotivoDuplicado())) {
+            alertas.add("Carga diaria: Potencial duplicado: " + item.getMotivoDuplicado().trim());
+        }
+        if (soportaGrupoFamiliar) {
+            String detalleGrupo = item.isGrupoFamiliar() ? item.getGrupoFamiliarTexto() : null;
+            if (!hasText(detalleGrupo) && (hasText(item.getCriterioGrupoFamiliar()) || hasText(item.getObservacionGrupoFamiliar()))) {
+                detalleGrupo = "Posible grupo familiar";
+            }
+            if (hasText(detalleGrupo)) {
+                String detalle = detalleGrupo.trim();
+                String contexto = hasText(item.getObservacionGrupoFamiliar())
+                        ? item.getObservacionGrupoFamiliar().trim()
+                        : item.getCriterioGrupoFamiliar();
+                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
+                    detalle += ": " + contexto.trim();
+                }
+                alertas.add("Carga diaria: " + detalle);
+            }
+        }
+        if (motivoSinNumero != null) {
+            String detalle = ProcedimientoRegistralRules.etiquetaSinNumero().equals(motivoSinNumero)
+                    ? "Sin número por procedimiento"
+                    : "Sin número por duplicidad";
+            alertas.add("Carga diaria: " + detalle);
+        }
+        expedienteAlertaDAO.registrarAlertas(
+                conn,
+                idExpediente,
+                "REGISTRO_CARGA_DIARIA",
+                "ALERTA",
+                alertas,
+                resolverUsuarioActual());
+    }
+
+    private void registrarAlertasManual(
+            Connection conn,
+            Long idExpediente,
+            RegistroManualExpedienteDTO registro,
+            String motivoSinNumero,
+            boolean soportaGrupoFamiliar) throws SQLException {
+        List<String> alertas = new ArrayList<>();
+        if (hasText(registro.getSolicitud().getValidacionInicial())
+                && !"Sí corresponde a la SDRERC".equalsIgnoreCase(registro.getSolicitud().getValidacionInicial().trim())) {
+            alertas.add("Registro manual: Validación inicial: " + registro.getSolicitud().getValidacionInicial().trim());
+        }
+        if (hasText(registro.getObservacionesGenerales())) {
+            alertas.add("Registro manual: Observaciones de registro: " + registro.getObservacionesGenerales().trim());
+        }
+        if (hasText(registro.getMotivoDuplicado())) {
+            alertas.add("Registro manual: Potencial duplicado: " + registro.getMotivoDuplicado().trim());
+        }
+        if (soportaGrupoFamiliar) {
+            String detalleGrupo = registro.getSolicitud().isGrupoFamiliar()
+                    ? registro.getSolicitud().getGrupoFamiliarTexto()
+                    : null;
+            if (!hasText(detalleGrupo)
+                    && (hasText(registro.getSolicitud().getCriterioGrupoFamiliar())
+                    || hasText(registro.getSolicitud().getObservacionGrupoFamiliar()))) {
+                detalleGrupo = "Posible grupo familiar";
+            }
+            if (hasText(detalleGrupo)) {
+                String detalle = detalleGrupo.trim();
+                String contexto = hasText(registro.getSolicitud().getObservacionGrupoFamiliar())
+                        ? registro.getSolicitud().getObservacionGrupoFamiliar().trim()
+                        : registro.getSolicitud().getCriterioGrupoFamiliar();
+                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
+                    detalle += ": " + contexto.trim();
+                }
+                alertas.add("Registro manual: " + detalle);
+            }
+        }
+        if (motivoSinNumero != null) {
+            String detalle = ProcedimientoRegistralRules.etiquetaSinNumero().equals(motivoSinNumero)
+                    ? "Sin número por procedimiento"
+                    : "Sin número por duplicidad";
+            alertas.add("Registro manual: " + detalle);
+        }
+        expedienteAlertaDAO.registrarAlertas(
+                conn,
+                idExpediente,
+                "REGISTRO_MANUAL",
+                "ALERTA",
+                alertas,
+                resolverUsuarioActual());
+    }
+
+    private Long resolverUsuarioActual() {
+        try {
+            return SessionContext.getUserId();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private boolean soportaGrupoFamiliar(Connection conn) throws SQLException {

@@ -85,6 +85,10 @@ public class ExpedienteBandejaDAO {
             sql.append("0 AS grupo_familiar_marca, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
             sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
         }
+        sql.append("(SELECT LISTAGG(ea.mensaje, ' / ') WITHIN GROUP (ORDER BY ea.creado_en, ea.id_expediente_alerta) ");
+        sql.append("FROM expediente_alerta ea WHERE ea.id_expediente = b.id_expediente AND ea.activo = 1 AND ea.atendida = 0) AS alertas_persistidas, ");
+        sql.append("(SELECT observacion FROM (SELECT s.observacion FROM expediente_solicitud s ");
+        sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) WHERE ROWNUM = 1) AS observacion_solicitud, ");
         sql.append("fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, ");
         sql.append("requiere_publicacion, expediente_digital_completo ");
         sql.append("FROM vw_expediente_bandeja b WHERE 1 = 1 ");
@@ -161,6 +165,13 @@ public class ExpedienteBandejaDAO {
 
     private ExpedienteBandejaDTO map(Connection conn, ResultSet rs) throws SQLException {
         Date fechaVencimiento = rs.getDate("fecha_vencimiento");
+        String alertasPersistidas = rs.getString("alertas_persistidas");
+        String observacionSolicitud = rs.getString("observacion_solicitud");
+        String alertasVisuales = grupoFamiliar(
+                rs.getInt("cantidad_relaciones"),
+                rs.getInt("grupo_familiar_marca") == 1,
+                rs.getString("criterio_grupo_familiar"),
+                rs.getString("observacion_grupo_familiar"));
         return new ExpedienteBandejaDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
@@ -180,11 +191,8 @@ public class ExpedienteBandejaDAO {
                 rs.getString("procedimiento"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
-                grupoFamiliar(
-                        rs.getInt("cantidad_relaciones"),
-                        rs.getInt("grupo_familiar_marca") == 1,
-                        rs.getString("criterio_grupo_familiar"),
-                        rs.getString("observacion_grupo_familiar")),
+                alertasVisuales,
+                unirAlertas(alertasPersistidas, alertasVisuales, observacionSolicitud),
                 rs.getString("titular"),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
         );
@@ -199,6 +207,20 @@ public class ExpedienteBandejaDAO {
             alertas.add("Grupo familiar");
         } else if (hasText(criterio) || hasText(observacion)) {
             alertas.add("Posible grupo familiar");
+        }
+        return alertas.isEmpty() ? "Sin alerta" : String.join(" / ", alertas);
+    }
+
+    private static String unirAlertas(String persistidas, String derivadas, String observacionSolicitud) {
+        List<String> alertas = new ArrayList<>();
+        if (hasText(persistidas)) {
+            alertas.add(persistidas.trim());
+        }
+        if (hasText(derivadas) && !"Sin alerta".equalsIgnoreCase(derivadas.trim())) {
+            alertas.add(derivadas.trim());
+        }
+        if (alertas.isEmpty() && hasText(observacionSolicitud)) {
+            alertas.add(observacionSolicitud.trim());
         }
         return alertas.isEmpty() ? "Sin alerta" : String.join(" / ", alertas);
     }

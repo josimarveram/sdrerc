@@ -737,7 +737,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     item.getTipoActa(),
                     item.getNumeroActa(),
                     item.getTitular(),
-                    item.getGrupoFamiliar(),
+                    item.getAlertas(),
                     item.getEstadoCodigo(),
                     item.getIdExpediente()
                 });
