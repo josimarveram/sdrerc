@@ -51,6 +51,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -159,6 +160,8 @@ public class JPanelEjecucionV2 extends JPanel {
     private FiltroKpi kpiActivo = FiltroKpi.TODOS;
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelEjecucion;
+    private JTabbedPane tabsBandejasEjecucion;
+    private JPanel bandejaEjecucionTab;
     private boolean panelEjecucionCerradoPorUsuario;
 
     public JPanelEjecucionV2() {
@@ -215,7 +218,24 @@ public class JPanelEjecucionV2 extends JPanel {
                 0,
                 PANEL_EJECUCION_ANCHO_MINIMO + PANEL_EJECUCION_TAB_OVERHANG,
                 PANEL_EJECUCION_ANCHO_NORMAL + PANEL_EJECUCION_TAB_OVERHANG);
-        return splitOperativo;
+        return crearContenedorBandejasTop("Bandeja Ejecución", splitOperativo);
+    }
+
+    private JPanel crearContenedorBandejasTop(String titulo, JPanel contenido) {
+        tabsBandejasEjecucion = new JTabbedPane();
+        tabsBandejasEjecucion.setOpaque(false);
+        tabsBandejasEjecucion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        tabsBandejasEjecucion.setBackground(AppV2Theme.BACKGROUND);
+        tabsBandejasEjecucion.setBorder(BorderFactory.createEmptyBorder());
+
+        bandejaEjecucionTab = new JPanel(new BorderLayout());
+        bandejaEjecucionTab.setOpaque(false);
+        bandejaEjecucionTab.add(contenido, BorderLayout.CENTER);
+        tabsBandejasEjecucion.addTab(titulo, bandejaEjecucionTab);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(tabsBandejasEjecucion, BorderLayout.CENTER);
+        return wrapper;
     }
 
     private JPanel crearBuscador() {

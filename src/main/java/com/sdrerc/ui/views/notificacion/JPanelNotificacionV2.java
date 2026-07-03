@@ -173,6 +173,16 @@ public class JPanelNotificacionV2 extends JPanel {
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelNotificacion;
     private AppV2SideActionPanel panelCierre;
+    private JTabbedPane tabsBandejasTop;
+    private JPanel bandejaAsignacionTab;
+    private JPanel bandejaValidacionTab;
+    private JPanel bandejaNotificacionTab;
+    private enum ModoBandejaNotificacion {
+        ASIGNACION,
+        VALIDACION,
+        NOTIFICACION
+    }
+    private ModoBandejaNotificacion modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
     private boolean panelNotificacionCerradoPorUsuario;
 
     public JPanelNotificacionV2() {
@@ -231,7 +241,81 @@ public class JPanelNotificacionV2 extends JPanel {
                 0,
                 PANEL_NOTIFICACION_ANCHO_MINIMO + PANEL_NOTIFICACION_TAB_OVERHANG,
                 PANEL_NOTIFICACION_ANCHO_NORMAL + PANEL_NOTIFICACION_TAB_OVERHANG);
-        return splitOperativo;
+        return crearContenedorBandejasTop(splitOperativo);
+    }
+
+    private JPanel crearContenedorBandejasTop(final JPanel contenido) {
+        tabsBandejasTop = new JTabbedPane();
+        tabsBandejasTop.setOpaque(false);
+        tabsBandejasTop.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        tabsBandejasTop.setBackground(AppV2Theme.BACKGROUND);
+        tabsBandejasTop.setBorder(BorderFactory.createEmptyBorder());
+
+        bandejaAsignacionTab = new JPanel(new BorderLayout());
+        bandejaAsignacionTab.setOpaque(false);
+        bandejaValidacionTab = new JPanel(new BorderLayout());
+        bandejaValidacionTab.setOpaque(false);
+        bandejaNotificacionTab = new JPanel(new BorderLayout());
+        bandejaNotificacionTab.setOpaque(false);
+
+        tabsBandejasTop.addTab("Bandeja Asignación", bandejaAsignacionTab);
+        tabsBandejasTop.addTab("Bandeja Validación", bandejaValidacionTab);
+        tabsBandejasTop.addTab("Bandeja Notificación", bandejaNotificacionTab);
+        tabsBandejasTop.addChangeListener(e -> actualizarTabBandejaNotificacion());
+
+        moverContenidoATabSeleccionada(contenido);
+        actualizarTabBandejaNotificacion();
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(tabsBandejasTop, BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private void moverContenidoATabSeleccionada(JPanel contenido) {
+        JPanel destino = panelParaModoBandejaNotificacion();
+        if (destino == null) {
+            return;
+        }
+        if (contenido.getParent() == destino) {
+            return;
+        }
+        if (contenido.getParent() != null) {
+            contenido.getParent().remove(contenido);
+        }
+        destino.removeAll();
+        destino.add(contenido, BorderLayout.CENTER);
+        destino.revalidate();
+        destino.repaint();
+    }
+
+    private JPanel panelParaModoBandejaNotificacion() {
+        if (tabsBandejasTop == null) {
+            return bandejaNotificacionTab;
+        }
+        int index = tabsBandejasTop.getSelectedIndex();
+        if (index == 0) {
+            modoBandejaNotificacion = ModoBandejaNotificacion.ASIGNACION;
+            return bandejaAsignacionTab;
+        }
+        if (index == 1) {
+            modoBandejaNotificacion = ModoBandejaNotificacion.VALIDACION;
+            return bandejaValidacionTab;
+        }
+        modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
+        return bandejaNotificacionTab;
+    }
+
+    private void actualizarTabBandejaNotificacion() {
+        if (tabsNotificacion != null && tabsNotificacion.getTabCount() > 0) {
+            if (modoBandejaNotificacion == ModoBandejaNotificacion.VALIDACION) {
+                tabsNotificacion.setSelectedIndex(Math.min(1, tabsNotificacion.getTabCount() - 1));
+            } else {
+                tabsNotificacion.setSelectedIndex(0);
+            }
+        }
+        if (splitOperativo != null) {
+            moverContenidoATabSeleccionada(splitOperativo);
+        }
     }
 
     private JPanel crearBuscador() {

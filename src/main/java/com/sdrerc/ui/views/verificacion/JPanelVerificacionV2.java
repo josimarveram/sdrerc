@@ -75,6 +75,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -324,6 +325,8 @@ public class JPanelVerificacionV2 extends JPanel {
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelVerificacion;
     private AppV2SideActionPanel panelDatosVerificacion;
+    private JTabbedPane tabsBandejasVerificacion;
+    private JPanel bandejaVerificacionTab;
     private AppV2StackedSideTab tabDatosVerificacion = crearTabVerificacion("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
     private AppV2StackedSideTab tabOperacionVerificacion = crearTabVerificacion("Verificar", new Color(224, 243, 240), new Color(10, 118, 145));
     private CardLayout panelVerificacionCardsLayout;
@@ -399,7 +402,24 @@ public class JPanelVerificacionV2 extends JPanel {
                 0,
                 PANEL_VERIFICACION_ANCHO_MINIMO + PANEL_VERIFICACION_TAB_OVERHANG,
                 PANEL_VERIFICACION_ANCHO_NORMAL + PANEL_VERIFICACION_TAB_OVERHANG);
-        return splitOperativo;
+        return crearContenedorBandejasTop("Bandeja Verificación", splitOperativo);
+    }
+
+    private JPanel crearContenedorBandejasTop(String titulo, JPanel contenido) {
+        tabsBandejasVerificacion = new JTabbedPane();
+        tabsBandejasVerificacion.setOpaque(false);
+        tabsBandejasVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        tabsBandejasVerificacion.setBackground(AppV2Theme.BACKGROUND);
+        tabsBandejasVerificacion.setBorder(BorderFactory.createEmptyBorder());
+
+        bandejaVerificacionTab = new JPanel(new BorderLayout());
+        bandejaVerificacionTab.setOpaque(false);
+        bandejaVerificacionTab.add(contenido, BorderLayout.CENTER);
+        tabsBandejasVerificacion.addTab(titulo, bandejaVerificacionTab);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(tabsBandejasVerificacion, BorderLayout.CENTER);
+        return wrapper;
     }
 
     private JPanel crearBuscador() {
