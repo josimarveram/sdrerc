@@ -22,13 +22,17 @@ import java.awt.Cursor;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseAdapter;
+import java.io.FileOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -42,6 +46,17 @@ import javax.swing.SwingWorker;
 import javax.swing.event.TableModelEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
@@ -76,6 +91,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private final JButton btnPrevisualizar = new JButton("Previsualizar");
     private final JButton btnValidar = new JButton("Validar");
     private final JButton btnConfirmar = new JButton("Confirmar carga");
+    private final JButton btnExportar = new JButton("Exportar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JLabel lblArchivo = new JLabel("Sin archivo seleccionado");
     private final JLabel lblEstado = new JLabel("Seleccione un archivo .xlsx o .csv para iniciar.");
@@ -113,7 +129,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 "DUPLICIDAD",
                 "NÚMERO EXPEDIENTE",
                 "OBSERVACIÓN DEL ARCHIVO",
-                "OBSERVACIONES DE VALIDACIÓN"
+                "OBSERVACIÓN"
             },
             0) {
         @Override
@@ -146,7 +162,6 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         setBackground(AppV2Theme.BACKGROUND);
         add(crearPanelSuperior(), BorderLayout.NORTH);
         add(crearTablaPreview(), BorderLayout.CENTER);
-        add(crearPanelNotas(), BorderLayout.SOUTH);
         configurarEventos();
         configurarKpisInteractivos();
         cargarPrevisualizacion(Collections.<CargaDiariaPreviewDTO>emptyList());
@@ -169,6 +184,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         acciones.add(btnPrevisualizar);
         acciones.add(btnValidar);
         acciones.add(btnConfirmar);
+        acciones.add(btnExportar);
         acciones.add(btnLimpiar);
 
         lblArchivo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
@@ -304,6 +320,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         btnPrevisualizar.addActionListener(e -> previsualizar());
         btnValidar.addActionListener(e -> validar());
         btnConfirmar.addActionListener(e -> confirmarCarga());
+        btnExportar.addActionListener(e -> exportarPrevisualizacion());
         btnLimpiar.addActionListener(e -> limpiar());
         tableModel.addTableModelListener(e -> {
             if (cargandoTabla || e.getType() != TableModelEvent.UPDATE || e.getFirstRow() < 0) {
@@ -495,6 +512,46 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         worker.execute();
     }
 
+    private void exportarPrevisualizacion() {
+        List<Integer> filasExportacion = obtenerFilasExportacion();
+        if (filasExportacion.isEmpty()) {
+            mostrarInfo("No hay registros para exportar.");
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Exportar previsualización a Excel");
+        chooser.setFileFilter(new FileNameExtensionFilter("Archivos Excel (*.xlsx)", "xlsx"));
+        chooser.setSelectedFile(new File(nombreArchivoExcelPrevisualizacion()));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File destino = asegurarExtensionXlsx(chooser.getSelectedFile());
+        if (destino.exists()) {
+            int confirmar = JOptionPane.showConfirmDialog(
+                    this,
+                    "El archivo ya existe. ¿Desea reemplazarlo?",
+                    "Confirmar reemplazo",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (confirmar != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            escribirExcelPrevisualizacion(destino, filasExportacion);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Archivo Excel generado correctamente:\n" + destino.getAbsolutePath(),
+                    "Exportar previsualización",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            mostrarError("No se pudo exportar la previsualización.", ex);
+        }
+    }
+
     private void limpiar() {
         archivoSeleccionado = null;
         registros = new ArrayList<>();
@@ -529,11 +586,72 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             return;
         }
         aplicarValorEditado(item, column, valorTabla(modelRow, column));
-        item.reiniciarValidacion();
+        actualizarValidacionLocal(item);
         actualizarFilaTabla(modelRow, item);
         edicionPendienteValidacion = true;
         actualizarBotones();
         lblEstado.setText("Celda actualizada. Presione Validar para recalcular observaciones, duplicidad y número de expediente.");
+    }
+
+    private void actualizarValidacionLocal(CargaDiariaPreviewDTO item) {
+        if (item == null) {
+            return;
+        }
+        List<String> observaciones = new ArrayList<>();
+        if (!hasText(item.getNumeroTramite())) {
+            observaciones.add("Dato incompleto: Número de trámite");
+        }
+        if (!hasText(item.getNumeroDocumento())) {
+            observaciones.add("Dato incompleto: N° Documento");
+        }
+        if (!hasText(item.getTipoProcedimiento())) {
+            observaciones.add("Dato incompleto: Procedimiento registral");
+        }
+        if (!hasText(item.getTipoSolicitud())) {
+            observaciones.add("Dato incompleto: Tipo de solicitud");
+        }
+        if (!hasText(item.getTipoDocumento())) {
+            observaciones.add("Dato incompleto: Tipo documento");
+        }
+        if (!hasText(item.getTipoActa())) {
+            observaciones.add("Dato incompleto: Tipo de acta");
+        }
+        if (!hasText(item.getNumeroActa())) {
+            observaciones.add("Dato incompleto: N° Acta");
+        }
+        if (!hasText(item.getTitular())) {
+            observaciones.add("Dato incompleto: Titular");
+        }
+        if (item.getFechaRecepcion() == null && !hasText(item.getFechaRecepcionTexto())) {
+            observaciones.add("Dato incompleto: Fecha de solicitud");
+        }
+        if (!hasText(item.getCanalRecepcion())) {
+            observaciones.add("Dato incompleto: Canal recepción");
+        }
+        if (!hasText(item.getTipoDocumentoIdentidadSolicitante()) && hasText(item.getNumeroDocumentoIdentidadSolicitante())) {
+            observaciones.add("Dato incompleto: Tipo documento identidad solicitante");
+        }
+        if (!hasText(item.getNumeroDocumentoIdentidadSolicitante())
+                && hasText(item.getTipoDocumentoIdentidadSolicitante())
+                && !"SIN DNI".equalsIgnoreCase(item.getTipoDocumentoIdentidadSolicitante())) {
+            observaciones.add("Dato incompleto: N° documento identidad solicitante");
+        }
+        if (!hasText(item.getTipoDocumentoIdentidadTitular()) && hasText(item.getNumeroDocumentoIdentidadTitular())) {
+            observaciones.add("Dato incompleto: Tipo documento identidad titular");
+        }
+        if (!hasText(item.getNumeroDocumentoIdentidadTitular())
+                && hasText(item.getTipoDocumentoIdentidadTitular())
+                && !"SIN DNI".equalsIgnoreCase(item.getTipoDocumentoIdentidadTitular())) {
+            observaciones.add("Dato incompleto: N° documento identidad titular");
+        }
+        item.setMensajeValidacion(observaciones.isEmpty() ? null : String.join(" | ", observaciones));
+        if (item.isPosibleDuplicado()) {
+            item.setEstadoValidacion("Duplicado");
+        } else if (!observaciones.isEmpty() || item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+            item.setEstadoValidacion("Con observaciones");
+        } else {
+            item.setEstadoValidacion("Válido");
+        }
     }
 
     private void aplicarValorEditado(CargaDiariaPreviewDTO item, int column, String value) {
@@ -656,7 +774,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             item.isPosibleDuplicado() ? "Sí" : "No",
             numeroExpedientePreview(item),
             observacionArchivoTabla(item),
-            observacionesValidacionTabla(item)
+            observacionValidacionTabla(item)
         };
     }
 
@@ -707,7 +825,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         } else if (modelColumn == COL_OBSERVACION_ARCHIVO) {
             text = item.getObservacionInicial();
         } else if (modelColumn == COL_OBSERVACIONES_VALIDACION) {
-            text = observacionesValidacionTabla(item);
+            text = observacionValidacionTabla(item);
         } else if (modelColumn == COL_NUMERO_EXPEDIENTE_GENERADO && item.isRegistrado()) {
             text = "Expediente registrado correctamente.";
         }
@@ -809,8 +927,9 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private void actualizarBotones() {
         CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
         btnPrevisualizar.setEnabled(!trabajando && archivoSeleccionado != null);
-        btnValidar.setEnabled(!trabajando && !registros.isEmpty());
-        btnConfirmar.setEnabled(!trabajando && !edicionPendienteValidacion && resumen.getListosParaRegistrar() > 0);
+        btnValidar.setEnabled(!trabajando && archivoSeleccionado != null);
+        btnConfirmar.setEnabled(!trabajando && archivoSeleccionado != null && !registros.isEmpty());
+        btnExportar.setEnabled(!trabajando && !registros.isEmpty());
         btnDescargarPlantilla.setEnabled(!trabajando);
         btnArchivo.setEnabled(!trabajando);
         btnLimpiar.setEnabled(!trabajando && (archivoSeleccionado != null || !registros.isEmpty()));
@@ -861,27 +980,196 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         return safe(item.getObservacionInicial());
     }
 
-    private static String observacionesValidacionTabla(CargaDiariaPreviewDTO item) {
-        String observacion = appendObservacion("", item.getObservacionGrupoFamiliar());
-        observacion = appendObservacion(observacion, item.getMensajeValidacion());
-        return observacion;
+    private static String observacionValidacionTabla(CargaDiariaPreviewDTO item) {
+        List<String> observaciones = new ArrayList<>();
+        if (item == null) {
+            return "Sin observación";
+        }
+        if (item.isPosibleDuplicado()) {
+            observaciones.add("Potencial duplicado");
+        }
+        if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+            observaciones.add("Posible Grupo Familiar");
+        }
+        observaciones.addAll(observacionesIncompletas(item.getMensajeValidacion()));
+        if (observaciones.isEmpty()) {
+            return "Sin observación";
+        }
+        return String.join(" | ", observaciones);
     }
 
-    private static String appendObservacion(String actual, String nueva) {
-        if (!hasText(nueva)) {
-            return safe(actual);
+    private static List<String> observacionesIncompletas(String mensajeValidacion) {
+        List<String> observaciones = new ArrayList<>();
+        if (!hasText(mensajeValidacion)) {
+            return observaciones;
         }
-        if (!hasText(actual)) {
-            return nueva.trim();
+        String[] partes = mensajeValidacion.split("\\s*\\|\\s*");
+        for (String parte : partes) {
+            String observacion = convertirADatoIncompleto(parte);
+            if (hasText(observacion) && !observaciones.contains(observacion)) {
+                observaciones.add(observacion);
+            }
         }
-        if (actual.contains(nueva.trim())) {
-            return actual;
+        return observaciones;
+    }
+
+    private static String convertirADatoIncompleto(String mensaje) {
+        if (!hasText(mensaje)) {
+            return null;
         }
-        return actual + " | " + nueva.trim();
+        String texto = mensaje.trim();
+        String lower = texto.toLowerCase(Locale.ROOT);
+        if (!lower.contains("obligatorio") && !lower.contains("inválida") && !lower.contains("invalida") && !lower.contains("determinar")) {
+            return null;
+        }
+        if (lower.contains("número de trámite")) {
+            return "Dato incompleto: Número de trámite";
+        }
+        if (lower.contains("número de documento")) {
+            return "Dato incompleto: N° Documento";
+        }
+        if (lower.contains("tipo de procedimiento")) {
+            return "Dato incompleto: Procedimiento registral";
+        }
+        if (lower.contains("tipo de solicitud")) {
+            return "Dato incompleto: Tipo de solicitud";
+        }
+        if (lower.contains("tipo de documento de identidad del solicitante")) {
+            return "Dato incompleto: Tipo documento identidad solicitante";
+        }
+        if (lower.contains("número de documento de identidad del solicitante")) {
+            return "Dato incompleto: N° documento identidad solicitante";
+        }
+        if (lower.contains("tipo de documento de identidad del titular")) {
+            return "Dato incompleto: Tipo documento identidad titular";
+        }
+        if (lower.contains("número de documento de identidad del titular")) {
+            return "Dato incompleto: N° documento identidad titular";
+        }
+        if (lower.contains("tipo de documento")) {
+            return "Dato incompleto: Tipo documento";
+        }
+        if (lower.contains("tipo de acta")) {
+            return "Dato incompleto: Tipo de acta";
+        }
+        if (lower.contains("número de acta")) {
+            return "Dato incompleto: N° Acta";
+        }
+        if (lower.contains("titular")) {
+            return "Dato incompleto: Titular";
+        }
+        if (lower.contains("fecha de solicitud")) {
+            return "Dato incompleto: Fecha de solicitud";
+        }
+        if (lower.contains("canal de recepción") || lower.contains("canal de recepcion")) {
+            return "Dato incompleto: Canal recepción";
+        }
+        return null;
     }
 
     private static boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private List<Integer> obtenerFilasExportacion() {
+        List<Integer> filas = new ArrayList<>();
+        for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
+            filas.add(table.convertRowIndexToModel(viewRow));
+        }
+        return filas;
+    }
+
+    private String nombreArchivoExcelPrevisualizacion() {
+        return "previsualizacion_carga_diaria_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx";
+    }
+
+    private File asegurarExtensionXlsx(File archivo) {
+        if (archivo.getName().toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            return archivo;
+        }
+        return new File(archivo.getParentFile(), archivo.getName() + ".xlsx");
+    }
+
+    private void escribirExcelPrevisualizacion(File archivo, List<Integer> filasExportacion) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); FileOutputStream out = new FileOutputStream(archivo)) {
+            Sheet sheet = workbook.createSheet("Previsualización");
+            CellStyle headerStyle = crearEstiloCabeceraExcel(workbook);
+            CellStyle textStyle = crearEstiloTextoExcel(workbook);
+            CellStyle dateStyle = crearEstiloFechaExcel(workbook);
+
+            Row header = sheet.createRow(0);
+            for (int col = 0; col < tableModel.getColumnCount(); col++) {
+                Cell cell = header.createCell(col);
+                cell.setCellValue(tableModel.getColumnName(col));
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int i = 0; i < filasExportacion.size(); i++) {
+                int modelRow = filasExportacion.get(i);
+                Row row = sheet.createRow(i + 1);
+                for (int col = 0; col < tableModel.getColumnCount(); col++) {
+                    Object value = tableModel.getValueAt(modelRow, col);
+                    Cell cell = row.createCell(col);
+                    escribirValorExcel(cell, value, col, dateStyle, textStyle);
+                }
+            }
+
+            sheet.createFreezePane(0, 1);
+            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, filasExportacion.size(), 0, tableModel.getColumnCount() - 1));
+            for (int col = 0; col < tableModel.getColumnCount(); col++) {
+                sheet.autoSizeColumn(col);
+                int width = sheet.getColumnWidth(col);
+                sheet.setColumnWidth(col, Math.min(Math.max(width + 512, 2800), 18000));
+            }
+            workbook.write(out);
+        }
+    }
+
+    private CellStyle crearEstiloCabeceraExcel(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private CellStyle crearEstiloTextoExcel(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setAlignment(HorizontalAlignment.LEFT);
+        style.setVerticalAlignment(VerticalAlignment.TOP);
+        aplicarBordesExcel(style);
+        return style;
+    }
+
+    private CellStyle crearEstiloFechaExcel(Workbook workbook) {
+        CellStyle style = crearEstiloTextoExcel(workbook);
+        style.setDataFormat(workbook.createDataFormat().getFormat("dd/MM/yyyy"));
+        return style;
+    }
+
+    private void aplicarBordesExcel(CellStyle style) {
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+    }
+
+    private void escribirValorExcel(Cell cell, Object value, int modelColumn, CellStyle dateStyle, CellStyle textStyle) {
+        if (modelColumn == 1) {
+            LocalDate fecha = parseFechaTabla(value == null ? null : value.toString());
+            if (fecha != null) {
+                cell.setCellValue(java.sql.Date.valueOf(fecha));
+                cell.setCellStyle(dateStyle);
+                return;
+            }
+        }
+        cell.setCellValue(value == null ? "" : value.toString());
+        cell.setCellStyle(textStyle);
     }
 
     private static String numeroExpedientePreview(CargaDiariaPreviewDTO item) {
@@ -959,14 +1247,6 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             return "OR Pasivo";
         }
         return value.trim();
-    }
-
-    private static File asegurarExtensionXlsx(File file) {
-        String path = file.getAbsolutePath();
-        if (path.toLowerCase().endsWith(".xlsx")) {
-            return file;
-        }
-        return new File(path + ".xlsx");
     }
 
     private static class ResumenCard extends JPanel {
