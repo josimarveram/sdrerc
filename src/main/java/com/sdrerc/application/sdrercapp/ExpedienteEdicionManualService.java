@@ -30,6 +30,13 @@ public class ExpedienteEdicionManualService {
         return edicionManualDAO.obtenerParaEdicion(idExpediente);
     }
 
+    public ExpedienteEdicionManualDTO obtenerParaEdicionDesdeAnalisis(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para editar.");
+        }
+        return edicionManualDAO.obtenerParaEdicionDesdeAnalisis(idExpediente);
+    }
+
     public List<String> validar(ExpedienteEdicionManualDTO dto) {
         List<String> errores = new ArrayList<String>();
         if (dto == null || dto.getIdExpediente() == null) {
@@ -46,5 +53,13 @@ public class ExpedienteEdicionManualService {
             throw new IllegalArgumentException(String.join(" | ", errores));
         }
         return edicionManualDAO.guardar(dto);
+    }
+
+    public RegistroManualResultadoDTO guardarDesdeAnalisis(ExpedienteEdicionManualDTO dto) throws SQLException {
+        List<String> errores = validar(dto);
+        if (!errores.isEmpty()) {
+            throw new IllegalArgumentException(String.join(" | ", errores));
+        }
+        return edicionManualDAO.guardarDesdeAnalisis(dto);
     }
 }

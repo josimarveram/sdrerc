@@ -58,6 +58,8 @@ public class DocumentoVerificacionDAO {
             Long idDocumentoAnalizado,
             String estadoCodigo,
             String detalleObservacion,
+            LocalDate fechaEmision,
+            String numeroDocumento,
             Long idUsuarioModificador) throws SQLException {
         if (idExpediente == null || idDocumentoAnalizado == null) {
             throw new SQLException("Documento analizado no identificado.");
@@ -71,19 +73,35 @@ public class DocumentoVerificacionDAO {
                     throw new SQLException("No se encontró el estado de documento: " + estadoCodigo + ".");
                 }
                 boolean soportaDetalle = soportaDetalleObservacionDocumentoAnalizado(conn);
+                boolean soportaNumero = soportaNumeroDocumentoAnalizado(conn);
+                boolean soportaFecha = soportaFechaDocumentoAnalizado(conn);
                 if (!soportaDetalle && hasText(detalleObservacion)) {
                     throw new SQLException("Falta la columna DETALLE_OBSERVACION en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 33_patch_documento_analizado_detalle_observacion.sql.");
                 }
+                if (!soportaNumero && hasText(numeroDocumento)) {
+                    throw new SQLException("Falta la columna NUMERO_DOCUMENTO en EXPEDIENTE_DOCUMENTO_ANALIZADO.");
+                }
+                if (!soportaFecha && fechaEmision != null) {
+                    throw new SQLException("Falta la columna FECHA_DOCUMENTO en EXPEDIENTE_DOCUMENTO_ANALIZADO.");
+                }
                 String sql = "UPDATE expediente_documento_analizado SET "
                         + "id_estado_documento = ?, "
+                        + (soportaFecha ? "fecha_documento = ?, " : "")
+                        + (soportaNumero ? "numero_documento = ?, " : "")
                         + (soportaDetalle ? "detalle_observacion = ?, " : "")
                         + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                         + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setLong(1, idEstadoDocumento);
                     int index = 2;
+                    if (soportaFecha) {
+                        setDateOrNull(ps, index++, fechaEmision);
+                    }
+                    if (soportaNumero) {
+                        setStringOrNull(ps, index++, limitar(numeroDocumento, 120));
+                    }
                     if (soportaDetalle) {
-                        setStringOrNull(ps, index++, esEstadoObservado(estadoCodigo) ? limitar(detalleObservacion, 1000) : null);
+                        setStringOrNull(ps, index++, limitar(detalleObservacion, 1000));
                     }
                     if (idUsuarioModificador == null) {
                         ps.setNull(index++, java.sql.Types.NUMERIC);
@@ -160,6 +178,15 @@ public class DocumentoVerificacionDAO {
         }
     }
 
+    private static boolean soportaFechaDocumentoAnalizado(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' AND column_name = 'FECHA_DOCUMENTO'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
     private static boolean soportaDetalleObservacionDocumentoAnalizado(Connection conn) throws SQLException {
         String sql = "SELECT COUNT(1) FROM user_tab_columns "
                 + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' AND column_name = 'DETALLE_OBSERVACION'";
@@ -174,6 +201,14 @@ public class DocumentoVerificacionDAO {
             ps.setNull(index, Types.VARCHAR);
         } else {
             ps.setString(index, value.trim());
+        }
+    }
+
+    private static void setDateOrNull(PreparedStatement ps, int index, LocalDate value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.DATE);
+        } else {
+            ps.setDate(index, Date.valueOf(value));
         }
     }
 
@@ -196,10 +231,6 @@ public class DocumentoVerificacionDAO {
                 || "EN_DESPACHO".equals(value)
                 || "EMITIDO".equals(value)
                 || "OBSERVADO".equals(value);
-    }
-
-    private static boolean esEstadoObservado(String codigo) {
-        return "OBSERVADO".equalsIgnoreCase(codigo == null ? "" : codigo.trim());
     }
 
     private static boolean hasText(String value) {

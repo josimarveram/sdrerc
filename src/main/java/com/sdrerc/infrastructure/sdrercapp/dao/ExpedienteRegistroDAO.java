@@ -88,11 +88,65 @@ public class ExpedienteRegistroDAO {
             Map<String, String> existentes = buscarClavesGrupoFamiliarExistentes(conn, null);
             for (CargaDiariaPreviewDTO item : registros) {
                 String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(item.getTitular());
-                String descripcion = clave == null ? null : existentes.get(clave);
+                String valor = clave == null ? null : existentes.get(clave);
+                if (!hasText(valor)) {
+                    continue;
+                }
+                String[] partes = valor.split("\\|\\|", 2);
+                if (partes.length < 2) {
+                    continue;
+                }
+                if (!grupoFamiliarHeuristicaService.coincideExactamente(item.getTitular(), partes[0])) {
+                    coincidencias.put(
+                            item.getFila(),
+                            "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + partes[1] + ".");
+                }
+            }
+        }
+        return coincidencias;
+    }
+
+    public Map<Integer, String> detectarPosiblesDuplicadosPorTitularContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> coincidencias = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return coincidencias;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            Map<String, String> existentes = buscarClavesGrupoFamiliarExistentes(conn, null);
+            for (CargaDiariaPreviewDTO item : registros) {
+                String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(item.getTitular());
+                String valor = clave == null ? null : existentes.get(clave);
+                if (!hasText(valor)) {
+                    continue;
+                }
+                String[] partes = valor.split("\\|\\|", 2);
+                if (partes.length < 2) {
+                    continue;
+                }
+                if (grupoFamiliarHeuristicaService.coincideExactamente(item.getTitular(), partes[0])) {
+                    coincidencias.put(
+                            item.getFila(),
+                            "Potencial duplicado con solicitud existente por coincidencia exacta de titular: " + partes[1] + ".");
+                }
+            }
+        }
+        return coincidencias;
+    }
+
+    public Map<Integer, String> detectarDuplicadosPorTitularExactoContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> coincidencias = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return coincidencias;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            Map<String, String> existentes = buscarTitularesExactosExistentes(conn, null);
+            for (CargaDiariaPreviewDTO item : registros) {
+                String clave = grupoFamiliarHeuristicaService.normalizarTitular(item.getTitular());
+                String descripcion = hasText(clave) ? existentes.get(clave) : null;
                 if (hasText(descripcion)) {
                     coincidencias.put(
                             item.getFila(),
-                            "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + descripcion + ".");
+                            "Titular repetido exactamente en solicitudes existentes: " + descripcion + ".");
                 }
             }
         }
@@ -105,10 +159,20 @@ public class ExpedienteRegistroDAO {
             return null;
         }
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            String descripcion = buscarClavesGrupoFamiliarExistentes(conn, idExpedienteExcluir).get(clave);
-            return hasText(descripcion)
-                    ? "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + descripcion + "."
-                    : null;
+            String valor = buscarClavesGrupoFamiliarExistentes(conn, idExpedienteExcluir).get(clave);
+            if (!hasText(valor)) {
+                return null;
+            }
+            String[] partes = valor.split("\\|\\|", 2);
+            if (partes.length < 2) {
+                return null;
+            }
+            String normalizadoExistente = partes[0];
+            String descripcion = partes[1];
+            if (grupoFamiliarHeuristicaService.coincideExactamente(titular, normalizadoExistente)) {
+                return null;
+            }
+            return "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + descripcion + ".";
         }
     }
 
@@ -401,6 +465,42 @@ public class ExpedienteRegistroDAO {
                 while (rs.next()) {
                     String titular = rs.getString("titular");
                     String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(titular);
+                    if (!hasText(clave) || existentes.containsKey(clave)) {
+                        continue;
+                    }
+                    String normalizado = grupoFamiliarHeuristicaService.normalizarTitular(titular);
+                    String numero = rs.getString("numero_expediente");
+                    String descripcion = hasText(numero)
+                            ? numero
+                            : "expediente ID " + rs.getLong("id_expediente") + " sin número";
+                    existentes.put(clave, normalizado + "||" + descripcion);
+                }
+            }
+        }
+        return existentes;
+    }
+
+    private Map<String, String> buscarTitularesExactosExistentes(Connection conn, Long idExpedienteExcluir) throws SQLException {
+        Map<String, String> existentes = new LinkedHashMap<>();
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + "COALESCE(NULLIF(TRIM(p.razon_social), ''), "
+                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
+                + "p.numero_documento) AS titular "
+                + "FROM expediente e "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                + "JOIN persona p ON p.id_persona = ep.id_persona "
+                + "WHERE e.activo = 1 AND ep.activo = 1 "
+                + "AND ep.tipo_relacion_persona = 'TITULAR' "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
+                + "AND ROWNUM <= 3000";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (idExpedienteExcluir != null) {
+                ps.setLong(1, idExpedienteExcluir);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String titular = rs.getString("titular");
+                    String clave = grupoFamiliarHeuristicaService.normalizarTitular(titular);
                     if (!hasText(clave) || existentes.containsKey(clave)) {
                         continue;
                     }
@@ -935,36 +1035,14 @@ public class ExpedienteRegistroDAO {
             String motivoSinNumero,
             boolean soportaGrupoFamiliar) throws SQLException {
         List<String> alertas = new ArrayList<>();
-        if (hasText(item.getMensajeValidacion()) && !"Válido".equalsIgnoreCase(item.getEstadoValidacion())) {
-            alertas.add("Carga diaria: " + item.getMensajeValidacion().trim());
-        }
-        if (hasText(item.getObservacionInicial())) {
-            alertas.add("Carga diaria: Observación inicial: " + item.getObservacionInicial().trim());
-        }
-        if (hasText(item.getMotivoDuplicado())) {
-            alertas.add("Carga diaria: Potencial duplicado: " + item.getMotivoDuplicado().trim());
-        }
-        if (soportaGrupoFamiliar) {
-            String detalleGrupo = item.isGrupoFamiliar() ? item.getGrupoFamiliarTexto() : null;
-            if (!hasText(detalleGrupo) && (hasText(item.getCriterioGrupoFamiliar()) || hasText(item.getObservacionGrupoFamiliar()))) {
-                detalleGrupo = "Posible grupo familiar";
+        if (item.isPosibleDuplicado() || hasText(item.getMotivoDuplicado())) {
+            alertas.add("Potencial duplicado");
+        } else if (soportaGrupoFamiliar) {
+            if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()
+                    || hasText(item.getCriterioGrupoFamiliar())
+                    || hasText(item.getObservacionGrupoFamiliar())) {
+                alertas.add("Posible Grupo Familiar");
             }
-            if (hasText(detalleGrupo)) {
-                String detalle = detalleGrupo.trim();
-                String contexto = hasText(item.getObservacionGrupoFamiliar())
-                        ? item.getObservacionGrupoFamiliar().trim()
-                        : item.getCriterioGrupoFamiliar();
-                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
-                    detalle += ": " + contexto.trim();
-                }
-                alertas.add("Carga diaria: " + detalle);
-            }
-        }
-        if (motivoSinNumero != null) {
-            String detalle = ProcedimientoRegistralRules.etiquetaSinNumero().equals(motivoSinNumero)
-                    ? "Sin número por procedimiento"
-                    : "Sin número por duplicidad";
-            alertas.add("Carga diaria: " + detalle);
         }
         expedienteAlertaDAO.registrarAlertas(
                 conn,
@@ -982,41 +1060,14 @@ public class ExpedienteRegistroDAO {
             String motivoSinNumero,
             boolean soportaGrupoFamiliar) throws SQLException {
         List<String> alertas = new ArrayList<>();
-        if (hasText(registro.getSolicitud().getValidacionInicial())
-                && !"Sí corresponde a la SDRERC".equalsIgnoreCase(registro.getSolicitud().getValidacionInicial().trim())) {
-            alertas.add("Registro manual: Validación inicial: " + registro.getSolicitud().getValidacionInicial().trim());
-        }
-        if (hasText(registro.getObservacionesGenerales())) {
-            alertas.add("Registro manual: Observaciones de registro: " + registro.getObservacionesGenerales().trim());
-        }
         if (hasText(registro.getMotivoDuplicado())) {
-            alertas.add("Registro manual: Potencial duplicado: " + registro.getMotivoDuplicado().trim());
-        }
-        if (soportaGrupoFamiliar) {
-            String detalleGrupo = registro.getSolicitud().isGrupoFamiliar()
-                    ? registro.getSolicitud().getGrupoFamiliarTexto()
-                    : null;
-            if (!hasText(detalleGrupo)
-                    && (hasText(registro.getSolicitud().getCriterioGrupoFamiliar())
-                    || hasText(registro.getSolicitud().getObservacionGrupoFamiliar()))) {
-                detalleGrupo = "Posible grupo familiar";
+            alertas.add("Potencial duplicado");
+        } else if (soportaGrupoFamiliar) {
+            if (registro.getSolicitud().isGrupoFamiliar()
+                    || hasText(registro.getSolicitud().getCriterioGrupoFamiliar())
+                    || hasText(registro.getSolicitud().getObservacionGrupoFamiliar())) {
+                alertas.add("Posible Grupo Familiar");
             }
-            if (hasText(detalleGrupo)) {
-                String detalle = detalleGrupo.trim();
-                String contexto = hasText(registro.getSolicitud().getObservacionGrupoFamiliar())
-                        ? registro.getSolicitud().getObservacionGrupoFamiliar().trim()
-                        : registro.getSolicitud().getCriterioGrupoFamiliar();
-                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
-                    detalle += ": " + contexto.trim();
-                }
-                alertas.add("Registro manual: " + detalle);
-            }
-        }
-        if (motivoSinNumero != null) {
-            String detalle = ProcedimientoRegistralRules.etiquetaSinNumero().equals(motivoSinNumero)
-                    ? "Sin número por procedimiento"
-                    : "Sin número por duplicidad";
-            alertas.add("Registro manual: " + detalle);
         }
         expedienteAlertaDAO.registrarAlertas(
                 conn,

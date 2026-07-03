@@ -38,7 +38,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE expediente_analisis ADD CONSTRAINT uq_exp_analisis_numero UNIQUE (id_expediente, numero_analisis)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -54,7 +54,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE expediente_documento_analizado ADD CONSTRAINT fk_doc_analizado_analisis FOREIGN KEY (id_expediente_analisis) REFERENCES expediente_analisis(id_expediente_analisis)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -70,7 +70,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE expediente_evaluacion ADD CONSTRAINT fk_eval_analisis FOREIGN KEY (id_expediente_analisis) REFERENCES expediente_analisis(id_expediente_analisis)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -84,7 +84,7 @@ BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX ix_exp_analisis_expediente ON expediente_analisis(id_expediente, activo, numero_analisis)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -98,5 +98,5 @@ BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX ix_doc_analizado_analisis ON expediente_documento_analizado(id_expediente_analisis, activo)';
   END IF;
 END;
-/
+
 

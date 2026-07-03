@@ -10,6 +10,7 @@ public class AnalisisExpedienteDTO {
     private final String numeroExpediente;
     private final String numeroExpedienteSgd;
     private final String numeroTramiteDocumentario;
+    private final String numeroHojaEnvioAsignacion;
     private final String procedimiento;
     private final String tipoDocumento;
     private final String numeroDocumentoTitular;
@@ -25,6 +26,12 @@ public class AnalisisExpedienteDTO {
     private final String departamentoSolicitante;
     private final String provinciaSolicitante;
     private final String distritoSolicitante;
+    private final String canalIngreso;
+    private final String prioridad;
+    private final String observacionSolicitud;
+    private final boolean grupoFamiliar;
+    private final String criterioGrupoFamiliar;
+    private final String observacionGrupoFamiliar;
     private final LocalDate fechaRecepcion;
     private final Long diasRestantes;
     private final LocalDateTime fechaRegistro;
@@ -44,6 +51,7 @@ public class AnalisisExpedienteDTO {
             String numeroExpediente,
             String numeroExpedienteSgd,
             String numeroTramiteDocumentario,
+            String numeroHojaEnvioAsignacion,
             String procedimiento,
             String tipoDocumento,
             String numeroDocumentoTitular,
@@ -59,6 +67,12 @@ public class AnalisisExpedienteDTO {
             String departamentoSolicitante,
             String provinciaSolicitante,
             String distritoSolicitante,
+            String canalIngreso,
+            String prioridad,
+            String observacionSolicitud,
+            boolean grupoFamiliar,
+            String criterioGrupoFamiliar,
+            String observacionGrupoFamiliar,
             LocalDate fechaRecepcion,
             Long diasRestantes,
             LocalDateTime fechaRegistro,
@@ -76,6 +90,7 @@ public class AnalisisExpedienteDTO {
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
+        this.numeroHojaEnvioAsignacion = safe(numeroHojaEnvioAsignacion);
         this.procedimiento = safeProcedimiento(procedimiento);
         this.tipoDocumento = safe(tipoDocumento);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
@@ -91,6 +106,12 @@ public class AnalisisExpedienteDTO {
         this.departamentoSolicitante = safe(departamentoSolicitante);
         this.provinciaSolicitante = safe(provinciaSolicitante);
         this.distritoSolicitante = safe(distritoSolicitante);
+        this.canalIngreso = safe(canalIngreso);
+        this.prioridad = safe(prioridad);
+        this.observacionSolicitud = safe(observacionSolicitud);
+        this.grupoFamiliar = grupoFamiliar;
+        this.criterioGrupoFamiliar = safe(criterioGrupoFamiliar);
+        this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
         this.fechaRecepcion = fechaRecepcion;
         this.diasRestantes = diasRestantes;
         this.fechaRegistro = fechaRegistro;
@@ -120,6 +141,10 @@ public class AnalisisExpedienteDTO {
 
     public String getNumeroTramiteDocumentario() {
         return numeroTramiteDocumentario;
+    }
+
+    public String getNumeroHojaEnvioAsignacion() {
+        return numeroHojaEnvioAsignacion;
     }
 
     public String getProcedimiento() {
@@ -180,6 +205,40 @@ public class AnalisisExpedienteDTO {
 
     public String getDistritoSolicitante() {
         return distritoSolicitante;
+    }
+
+    public String getCanalIngreso() {
+        return canalIngreso;
+    }
+
+    public String getPrioridad() {
+        return prioridad;
+    }
+
+    public String getObservacionSolicitud() {
+        return observacionSolicitud;
+    }
+
+    public boolean isGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public String getCriterioGrupoFamiliar() {
+        return criterioGrupoFamiliar;
+    }
+
+    public String getObservacionGrupoFamiliar() {
+        return observacionGrupoFamiliar;
+    }
+
+    public String getGrupoFamiliarEstado() {
+        if (grupoFamiliar) {
+            return "Sí";
+        }
+        if (!criterioGrupoFamiliar.isEmpty() || !observacionGrupoFamiliar.isEmpty()) {
+            return "Posible";
+        }
+        return "No";
     }
 
     public LocalDate getFechaRecepcion() {
@@ -247,7 +306,10 @@ public class AnalisisExpedienteDTO {
 
     public boolean isEnviableVerificacion() {
         return "ANALISIS".equalsIgnoreCase(etapaCodigo)
-                && ("ATENDIDO".equalsIgnoreCase(estadoCodigo) || "SUBSANADO".equalsIgnoreCase(estadoCodigo));
+                && ("RECIBIDO_POR_ABOGADO".equalsIgnoreCase(estadoCodigo)
+                || "OBSERVADO".equalsIgnoreCase(estadoCodigo)
+                || "SUBSANADO".equalsIgnoreCase(estadoCodigo)
+                || "ATENDIDO".equalsIgnoreCase(estadoCodigo));
     }
 
     public boolean isDerivableNotificacionEspecial() {

@@ -94,7 +94,7 @@ public class AnalisisExpedienteService {
 
     public AnalisisItemDTO crearBloqueAnalisis(Long idExpediente) throws SQLException {
         validacionService.validarExpedienteSeleccionado(idExpediente);
-        return analisisExpedienteDAO.crearBloqueAnalisis(idExpediente, resolverUsuarioActualSdrercApp());
+        throw new SQLException("El módulo de Análisis quedó configurado con un único análisis por expediente.");
     }
 
     public AnalisisResultadoDTO recibirExpediente(Long idExpediente, String comentario) throws SQLException {

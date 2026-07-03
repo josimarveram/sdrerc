@@ -396,16 +396,6 @@ public class JPanelVerificacionV2 extends JPanel {
         JPanel panelVerificacionConTab = crearPanelVerificacionConTab(
                 panelDatosVerificacion,
                 panelVerificacion);
-        splitOperativo = new AppV2OperationalSplitPanel(
-                contenidoPrincipal,
-                panelVerificacionConTab,
-                0,
-                PANEL_VERIFICACION_ANCHO_MINIMO + PANEL_VERIFICACION_TAB_OVERHANG,
-                PANEL_VERIFICACION_ANCHO_NORMAL + PANEL_VERIFICACION_TAB_OVERHANG);
-        return crearContenedorBandejasTop("Bandeja Verificación", splitOperativo);
-    }
-
-    private JPanel crearContenedorBandejasTop(String titulo, JPanel contenido) {
         tabsBandejasVerificacion = new JTabbedPane();
         tabsBandejasVerificacion.setOpaque(false);
         tabsBandejasVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -414,11 +404,18 @@ public class JPanelVerificacionV2 extends JPanel {
 
         bandejaVerificacionTab = new JPanel(new BorderLayout());
         bandejaVerificacionTab.setOpaque(false);
-        bandejaVerificacionTab.add(contenido, BorderLayout.CENTER);
-        tabsBandejasVerificacion.addTab(titulo, bandejaVerificacionTab);
+        bandejaVerificacionTab.add(contenidoPrincipal, BorderLayout.CENTER);
+        tabsBandejasVerificacion.addTab("Bandeja Verificación", bandejaVerificacionTab);
+
+        splitOperativo = new AppV2OperationalSplitPanel(
+                tabsBandejasVerificacion,
+                panelVerificacionConTab,
+                0,
+                PANEL_VERIFICACION_ANCHO_MINIMO + PANEL_VERIFICACION_TAB_OVERHANG,
+                PANEL_VERIFICACION_ANCHO_NORMAL + PANEL_VERIFICACION_TAB_OVERHANG);
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
-        wrapper.add(tabsBandejasVerificacion, BorderLayout.CENTER);
+        wrapper.add(splitOperativo, BorderLayout.CENTER);
         return wrapper;
     }
 

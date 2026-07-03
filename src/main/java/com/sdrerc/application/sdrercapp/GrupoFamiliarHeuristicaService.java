@@ -28,10 +28,18 @@ public class GrupoFamiliarHeuristicaService {
             }
             significativos.add(limpio);
         }
-        if (significativos.size() < 3) {
+        if (significativos.size() < 2) {
             return null;
         }
         return significativos.get(0) + "|" + significativos.get(1);
+    }
+
+    public String normalizarTitular(String titular) {
+        return normalizar(titular);
+    }
+
+    public boolean coincideExactamente(String titularA, String titularB) {
+        return normalizarTitular(titularA).equals(normalizarTitular(titularB));
     }
 
     public String normalizar(String value) {

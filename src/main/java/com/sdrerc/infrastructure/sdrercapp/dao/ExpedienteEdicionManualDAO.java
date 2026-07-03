@@ -648,39 +648,13 @@ public class ExpedienteEdicionManualDAO {
 
     private void registrarAlertasEdicion(Connection conn, ExpedienteEdicionManualDTO dto, boolean desdeAnalisis) throws SQLException {
         List<String> alertas = new ArrayList<>();
-        if (desdeAnalisis) {
-            alertas.add("Edición manual desde Análisis: datos actualizados.");
-        } else {
-            alertas.add("Edición manual de Recepción: datos actualizados.");
-        }
-        if (hasText(dto.getObservacionesGenerales())) {
-            alertas.add("Edición manual: " + dto.getObservacionesGenerales().trim());
-        }
-        if (hasText(dto.getSolicitud().getValidacionInicial())
-                && !"Sí corresponde a la SDRERC".equalsIgnoreCase(dto.getSolicitud().getValidacionInicial().trim())) {
-            alertas.add("Edición manual: Validación inicial: " + dto.getSolicitud().getValidacionInicial().trim());
-        }
-        if (dto.getSolicitud() != null) {
-            if (dto.getSolicitud().isGrupoFamiliar()) {
-                String detalle = "Grupo familiar";
-                String contexto = hasText(dto.getSolicitud().getObservacionGrupoFamiliar())
-                        ? dto.getSolicitud().getObservacionGrupoFamiliar().trim()
-                        : dto.getSolicitud().getCriterioGrupoFamiliar();
-                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
-                    detalle += ": " + contexto.trim();
-                }
-                alertas.add("Edición manual: " + detalle);
-            } else if (hasText(dto.getSolicitud().getCriterioGrupoFamiliar())
-                    || hasText(dto.getSolicitud().getObservacionGrupoFamiliar())) {
-                String detalle = "Posible grupo familiar";
-                String contexto = hasText(dto.getSolicitud().getObservacionGrupoFamiliar())
-                        ? dto.getSolicitud().getObservacionGrupoFamiliar().trim()
-                        : dto.getSolicitud().getCriterioGrupoFamiliar();
-                if (hasText(contexto) && !detalle.toUpperCase(Locale.ROOT).contains(contexto.trim().toUpperCase(Locale.ROOT))) {
-                    detalle += ": " + contexto.trim();
-                }
-                alertas.add("Edición manual: " + detalle);
-            }
+        if (hasText(dto.getMotivoDuplicado())) {
+            alertas.add("Potencial duplicado");
+        } else if (dto.getSolicitud() != null
+                && (dto.getSolicitud().isGrupoFamiliar()
+                || hasText(dto.getSolicitud().getCriterioGrupoFamiliar())
+                || hasText(dto.getSolicitud().getObservacionGrupoFamiliar()))) {
+            alertas.add("Posible Grupo Familiar");
         }
         expedienteAlertaDAO.registrarAlertas(
                 conn,

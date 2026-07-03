@@ -5,6 +5,7 @@ import com.sdrerc.domain.dto.sdrercapp.DocumentoVerificacionDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.DocumentoVerificacionDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 
 public class DocumentoVerificacionService {
@@ -35,12 +36,16 @@ public class DocumentoVerificacionService {
             Long idExpediente,
             Long idDocumentoAnalizado,
             String estadoCodigo,
-            String detalleObservacion) throws SQLException {
+            String detalleObservacion,
+            LocalDate fechaEmision,
+            String numeroDocumento) throws SQLException {
         documentoVerificacionDAO.actualizarEstadoDocumentoAnalizado(
                 idExpediente,
                 idDocumentoAnalizado,
                 estadoCodigo,
                 detalleObservacion,
+                fechaEmision,
+                numeroDocumento,
                 resolverUsuarioActualSdrercApp());
     }
 

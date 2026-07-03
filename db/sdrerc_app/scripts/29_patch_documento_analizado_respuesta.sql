@@ -16,7 +16,7 @@ BEGIN
     'Indica si el documento analizado/carta fue notificado: 1=Si, 0=No.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -36,7 +36,7 @@ BEGIN
     'Fecha de acuse de notificacion del documento analizado/carta.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -56,7 +56,7 @@ BEGIN
     'Indica si el documento requiere respuesta del administrado segun Analisis: 1=Si, 0=No.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -76,7 +76,7 @@ BEGIN
     'Confirmacion de respuesta recibida: SI, NO o PENDIENTE.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -96,7 +96,7 @@ BEGIN
     'Fecha de recepcion de la respuesta del administrado.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -116,7 +116,6 @@ BEGIN
     'Numero de hoja de envio de la respuesta asociada al documento analizado/carta.'
   ]';
 END;
-/
 
 DECLARE
   v_count NUMBER;
@@ -135,7 +134,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -154,7 +153,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -173,7 +172,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 SELECT column_name, data_type, data_length, nullable, data_default
   FROM user_tab_columns

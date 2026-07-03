@@ -7,11 +7,11 @@ import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
-import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
+import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
@@ -62,8 +62,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private static final int PANEL_RECEPCION_ANCHO_MINIMO = 380;
     private static final int PANEL_RECEPCION_ANCHO_NORMAL = 430;
-    private static final int PANEL_RECEPCION_TAB_OVERHANG = 18;
+    private static final int PANEL_RECEPCION_TAB_OVERHANG = 46;
     private static final int PANEL_RECEPCION_TAB_TOP = 18;
+    private static final int PANEL_RECEPCION_TAB_HEIGHT = 94;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ExpedienteConsultaService consultaService;
@@ -75,6 +76,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final boolean mostrarEncabezado;
     private final Component encabezadoOperativo;
     private final Consumer<Long> editarExpedienteHandler;
+    private final boolean usarSplitExterno;
     private final boolean perfilRegistroRecepcion;
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
@@ -92,9 +94,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JTable table;
     private final AppV2TablePanel tablePanel;
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
-    private final AppV2NotebookToggleTab tabPanelRecepcion = new AppV2NotebookToggleTab();
+    private final AppV2StackedSideTab tabPanelRecepcion = crearTabRecepcion();
     private AppV2OperationalSplitPanel splitBandeja;
     private AppV2SideActionPanel panelRecepcion;
+    private JPanel panelRecepcionWrapper;
     private final JLabel lblRecepcionExpediente = valueLabel();
     private final JLabel lblRecepcionFecha = valueLabel();
     private final JLabel lblRecepcionCanal = valueLabel();
@@ -104,11 +107,27 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JLabel lblRecepcionTipoDocumento = valueLabel();
     private final JLabel lblRecepcionNumeroDocumento = valueLabel();
     private final JLabel lblRecepcionGrupoFamiliar = valueLabel();
+    private final JLabel lblRecepcionResultadoInicial = valueLabel();
+    private final JLabel lblRecepcionHojaEnvio = valueLabel();
+    private final JLabel lblRecepcionCorreo = valueLabel();
+    private final JLabel lblRecepcionTelefono = valueLabel();
+    private final JLabel lblRecepcionDepartamento = valueLabel();
+    private final JLabel lblRecepcionProvincia = valueLabel();
+    private final JLabel lblRecepcionDistrito = valueLabel();
+    private final JLabel lblRecepcionDireccion = valueLabel();
     private final JLabel lblRecepcionProcedimiento = valueLabel();
     private final JLabel lblRecepcionTitular = valueLabel();
     private final JLabel lblRecepcionRemitente = valueLabel();
+    private final JLabel lblRecepcionTipoDocumentoTitular = valueLabel();
+    private final JLabel lblRecepcionNumeroDocumentoTitular = valueLabel();
+    private final JLabel lblRecepcionTipoDocumentoSolicitante = valueLabel();
+    private final JLabel lblRecepcionNumeroDocumentoSolicitante = valueLabel();
     private final JLabel lblRecepcionTipoActa = valueLabel();
     private final JLabel lblRecepcionNumeroActa = valueLabel();
+    private final JLabel lblRecepcionPrioridad = valueLabel();
+    private final JLabel lblRecepcionMarcaOperativa = valueLabel();
+    private final JLabel lblRecepcionObservacion = valueLabel();
+    private final JLabel lblRecepcionResumenActa = valueLabel();
     private final JLabel lblRecepcionVencimiento = valueLabel();
     private final JLabel lblRecepcionDias = valueLabel();
     private final JLabel lblRecepcionResponsable = valueLabel();
@@ -160,6 +179,18 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, encabezadoOperativo, editarExpedienteHandler);
     }
 
+    public JPanelBandejaExpedientesNueva(
+            String etapaInicial,
+            String tituloBandeja,
+            String subtituloBandeja,
+            boolean etapaBloqueada,
+            boolean mostrarEncabezado,
+            Component encabezadoOperativo,
+            Consumer<Long> editarExpedienteHandler,
+            boolean usarSplitExterno) {
+        this(new ExpedienteConsultaService(), etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, encabezadoOperativo, editarExpedienteHandler, usarSplitExterno);
+    }
+
     public JPanelBandejaExpedientesNueva(ExpedienteConsultaService consultaService) {
         this(consultaService, null, "Bandeja de Expedientes", "Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención", false, true, null, null);
     }
@@ -173,6 +204,19 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             boolean mostrarEncabezado,
             Component encabezadoOperativo,
             Consumer<Long> editarExpedienteHandler) {
+        this(consultaService, etapaInicial, tituloBandeja, subtituloBandeja, etapaBloqueada, mostrarEncabezado, encabezadoOperativo, editarExpedienteHandler, false);
+    }
+
+    private JPanelBandejaExpedientesNueva(
+            ExpedienteConsultaService consultaService,
+            String etapaInicial,
+            String tituloBandeja,
+            String subtituloBandeja,
+            boolean etapaBloqueada,
+            boolean mostrarEncabezado,
+            Component encabezadoOperativo,
+            Consumer<Long> editarExpedienteHandler,
+            boolean usarSplitExterno) {
         this.consultaService = consultaService;
         this.etapaInicial = normalizar(etapaInicial);
         this.tituloBandeja = textoConDefault(tituloBandeja, "Bandeja de Expedientes");
@@ -181,6 +225,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         this.mostrarEncabezado = mostrarEncabezado;
         this.encabezadoOperativo = encabezadoOperativo;
         this.editarExpedienteHandler = editarExpedienteHandler;
+        this.usarSplitExterno = usarSplitExterno;
         this.perfilRegistroRecepcion = this.etapaBloqueada && "REGISTRO".equals(this.etapaInicial);
         this.tableModel = crearTableModel(this.perfilRegistroRecepcion);
         this.table = new AppV2Table(tableModel);
@@ -394,46 +439,79 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         if (perfilRegistroRecepcion) {
             panelRecepcion = crearPanelRecepcion();
-            splitBandeja = new AppV2OperationalSplitPanel(
-                    contenidoPrincipal,
-                    crearPanelRecepcionConTab(panelRecepcion),
-                    0,
-                    PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
-                    PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG);
-            add(splitBandeja, BorderLayout.CENTER);
+            panelRecepcionWrapper = crearPanelRecepcionConTab(panelRecepcion);
+            if (usarSplitExterno) {
+                add(contenidoPrincipal, BorderLayout.CENTER);
+            } else {
+                splitBandeja = new AppV2OperationalSplitPanel(
+                        contenidoPrincipal,
+                        panelRecepcionWrapper,
+                        0,
+                        PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG,
+                        PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG);
+                add(splitBandeja, BorderLayout.CENTER);
+            }
         } else {
             add(contenidoPrincipal, BorderLayout.CENTER);
         }
     }
 
     private AppV2SideActionPanel crearPanelRecepcion() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Recepción", this::ocultarPanelRecepcion);
-        panel.setAccentColor(AppV2Theme.PRIMARY);
-        tabPanelRecepcion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
-        tabPanelRecepcion.setExpanded(false);
-        tabPanelRecepcion.setToolTipText("Expandir panel de recepción");
-        tabPanelRecepcion.addActionListener(e -> alternarExpansionPanelRecepcion());
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de recepción", this::ocultarPanelRecepcion);
+        panel.setAccentColor(new Color(57, 125, 199));
+        actualizarTabRecepcion(false, false);
+        tabPanelRecepcion.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                alternarExpansionPanelRecepcion();
+            }
+        });
 
-        AppV2SideSectionPanel expediente = new AppV2SideSectionPanel("Expediente seleccionado");
-        expediente.addRow("Expediente", lblRecepcionExpediente);
-        expediente.addRow("Etapa / estado", lblRecepcionEtapaEstado);
-
-        AppV2SideSectionPanel solicitud = new AppV2SideSectionPanel("Solicitud recibida");
-        solicitud.addRow("Fecha", lblRecepcionFecha);
-        solicitud.addRow("Canal", lblRecepcionCanal);
-        solicitud.addRow("Tipo solicitud", lblRecepcionTipoSolicitud);
-        solicitud.addRow("Trámite Web", lblRecepcionTramite);
+        AppV2SideSectionPanel solicitud = new AppV2SideSectionPanel("Datos de solicitud");
+        solicitud.addRow("Expediente", lblRecepcionExpediente);
+        solicitud.addRow("Resultado inicial", lblRecepcionResultadoInicial);
+        solicitud.addRow("Hoja de envío", lblRecepcionHojaEnvio);
+        solicitud.addRow("Nro. trámite web", lblRecepcionTramite);
+        solicitud.addRow("N° documento", lblRecepcionNumeroDocumento);
         solicitud.addRow("N° expediente SGD", lblRecepcionNumeroExpedienteSgd);
+        solicitud.addRow("Tipo solicitud", lblRecepcionTipoSolicitud);
+        solicitud.addRow("Fecha recepción", lblRecepcionFecha);
+        solicitud.addRow("Procedimiento registral", lblRecepcionProcedimiento);
         solicitud.addRow("Tipo documento", lblRecepcionTipoDocumento);
-        solicitud.addRow("N° Documento", lblRecepcionNumeroDocumento);
-        solicitud.addRow("Grupo familiar", lblRecepcionGrupoFamiliar);
+        solicitud.addRow("Canal de ingreso", lblRecepcionCanal);
+        solicitud.addRow("Prioridad", lblRecepcionPrioridad);
+        solicitud.addRow("Marca operativa", lblRecepcionMarcaOperativa);
+        solicitud.addRow("Expediente", lblRecepcionExpediente);
+        solicitud.addRow("Días hábiles", lblRecepcionDias);
+        solicitud.addRow("Estado", lblRecepcionEtapaEstado);
+        solicitud.addRow("Observación", lblRecepcionObservacion);
 
-        AppV2SideSectionPanel datos = new AppV2SideSectionPanel("Datos registrales");
-        datos.addRow("Procedimiento", lblRecepcionProcedimiento);
-        datos.addRow("Titular", lblRecepcionTitular);
-        datos.addRow("Remitente", lblRecepcionRemitente);
-        datos.addRow("Tipo acta", lblRecepcionTipoActa);
-        datos.addRow("N° Acta", lblRecepcionNumeroActa);
+        AppV2SideSectionPanel datos = new AppV2SideSectionPanel("Datos del acta");
+        datos.addRow("Tipo de acta", lblRecepcionTipoActa);
+        datos.addRow("Nro. acta", lblRecepcionNumeroActa);
+        datos.addRow("Resumen acta", lblRecepcionResumenActa);
+
+        AppV2SideSectionPanel titular = new AppV2SideSectionPanel("Datos del titular");
+        titular.addRow("Titular", lblRecepcionTitular);
+        titular.addRow("Tipo documento titular", lblRecepcionTipoDocumentoTitular);
+        titular.addRow("Número documento titular", lblRecepcionNumeroDocumentoTitular);
+
+        AppV2SideSectionPanel solicitante = new AppV2SideSectionPanel("Datos del solicitante");
+        solicitante.addRow("Solicitante", lblRecepcionRemitente);
+        solicitante.addRow("Tipo documento solicitante", lblRecepcionTipoDocumentoSolicitante);
+        solicitante.addRow("Número documento solicitante", lblRecepcionNumeroDocumentoSolicitante);
+
+        AppV2SideSectionPanel notificacion = new AppV2SideSectionPanel("Datos de notificación y ubicación");
+        notificacion.addRow("Correo", lblRecepcionCorreo);
+        notificacion.addRow("Teléfono", lblRecepcionTelefono);
+        notificacion.addRow("Departamento", lblRecepcionDepartamento);
+        notificacion.addRow("Provincia", lblRecepcionProvincia);
+        notificacion.addRow("Distrito", lblRecepcionDistrito);
+        notificacion.addRow("Dirección", lblRecepcionDireccion);
+
+        AppV2SideSectionPanel datosRegistrales = new AppV2SideSectionPanel("Datos registrales");
+        datosRegistrales.addRow("Procedimiento", lblRecepcionProcedimiento);
+        datosRegistrales.addRow("Grupo familiar", lblRecepcionGrupoFamiliar);
 
         AppV2SideSectionPanel plazo = new AppV2SideSectionPanel("Plazo");
         plazo.addRow("Vencimiento", lblRecepcionVencimiento);
@@ -443,12 +521,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         gestion.addRow("Responsable", lblRecepcionResponsable);
         gestion.addRow("Equipo", lblRecepcionEquipo);
 
-        panel.addSection(expediente);
         panel.addSection(solicitud);
         panel.addSection(datos);
+        panel.addSection(titular);
+        panel.addSection(solicitante);
+        panel.addSection(notificacion);
+        panel.addSection(datosRegistrales);
         panel.addSection(plazo);
         panel.addSection(gestion);
-        panel.setFooter(crearFooterRecepcion());
         return panel;
     }
 
@@ -460,12 +540,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int height = getHeight();
                 int panelX = PANEL_RECEPCION_TAB_OVERHANG;
                 panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
-                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
+                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - PANEL_RECEPCION_TAB_HEIGHT));
                 tabPanelRecepcion.setBounds(
                         0,
                         tabY,
-                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
-                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+                        PANEL_RECEPCION_TAB_OVERHANG - 6,
+                        PANEL_RECEPCION_TAB_HEIGHT);
             }
         };
         wrapper.setOpaque(false);
@@ -476,15 +556,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return wrapper;
     }
 
-    private JPanel crearFooterRecepcion() {
-        JPanel footer = new JPanel(new BorderLayout());
-        footer.setOpaque(false);
-        JLabel lbl = new JLabel("Panel informativo de solo lectura");
-        lbl.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lbl.setForeground(AppV2Theme.TEXT_SECONDARY);
-        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppV2Theme.BORDER));
-        footer.add(lbl, BorderLayout.CENTER);
-        return footer;
+    public JPanel getPanelRecepcionWrapper() {
+        return panelRecepcionWrapper;
+    }
+
+    public void vincularSplitRecepcion(AppV2OperationalSplitPanel split) {
+        this.splitBandeja = split;
     }
 
     private void aplicarConfiguracionInicial() {
@@ -814,6 +891,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (splitBandeja != null) {
             splitBandeja.setSideVisible(true);
         }
+        actualizarTabRecepcion(true, splitBandeja != null && splitBandeja.isSideExpanded());
         if (idExpediente.equals(idPanelRecepcionActual) && panelRecepcionCargado) {
             return;
         }
@@ -849,6 +927,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (panelRecepcion == null) {
             return;
         }
+        actualizarTituloPanelRecepcion(expediente);
         setValue(lblRecepcionExpediente, expediente.getNumeroExpediente());
         setValue(lblRecepcionFecha, formatDate(expediente.getFechaRecepcion()));
         setValue(lblRecepcionCanal, expediente.getCanalRecepcion());
@@ -859,11 +938,30 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionNumeroDocumento, expediente.getNumeroDocumento());
         setValue(lblRecepcionGrupoFamiliar, expediente.getGrupoFamiliarEstado());
         lblRecepcionGrupoFamiliar.setToolTipText(toolTipGrupoFamiliar(expediente));
+        setValue(lblRecepcionResultadoInicial,
+                DisplayNameMapperV2.etapa(expediente.getEtapaCodigo())
+                + " / "
+                + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()));
+        setValue(lblRecepcionHojaEnvio, safe(expediente.getNumeroTramiteDocumentario()));
+        setValue(lblRecepcionCorreo, "-");
+        setValue(lblRecepcionTelefono, "-");
+        setValue(lblRecepcionDepartamento, "-");
+        setValue(lblRecepcionProvincia, "-");
+        setValue(lblRecepcionDistrito, "-");
+        setValue(lblRecepcionDireccion, "-");
+        setValue(lblRecepcionTipoDocumentoTitular, safe(expediente.getTitularDocumento()));
+        setValue(lblRecepcionNumeroDocumentoTitular, safe(expediente.getTitularDocumento()));
+        setValue(lblRecepcionTipoDocumentoSolicitante, safe(expediente.getRemitenteDocumento()));
+        setValue(lblRecepcionNumeroDocumentoSolicitante, safe(expediente.getRemitenteDocumento()));
         setValue(lblRecepcionProcedimiento, expediente.getProcedimiento());
         setValue(lblRecepcionTitular, expediente.getTitular());
         setValue(lblRecepcionRemitente, expediente.getRemitente());
         setValue(lblRecepcionTipoActa, expediente.getTipoActa());
         setValue(lblRecepcionNumeroActa, expediente.getNumeroActa());
+        setValue(lblRecepcionPrioridad, "-");
+        setValue(lblRecepcionMarcaOperativa, "-");
+        setValue(lblRecepcionObservacion, "-");
+        setValue(lblRecepcionResumenActa, safe(expediente.getTipoActa()) + " " + safe(expediente.getNumeroActa()));
         setValue(lblRecepcionVencimiento, formatDate(expediente.getFechaVencimiento()));
         setValue(lblRecepcionDias, descripcionPlazo(expediente.getDiasRestantes(), expediente.getFechaVencimiento()));
         lblRecepcionDias.setForeground(colorPlazo(expediente.getDiasRestantes()));
@@ -878,6 +976,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void setPanelRecepcionLoading() {
+        actualizarTituloPanelRecepcion(null);
         setValue(lblRecepcionExpediente, "Cargando...");
         setValue(lblRecepcionEtapaEstado, "");
         setValue(lblRecepcionFecha, "");
@@ -888,6 +987,22 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionTipoDocumento, "");
         setValue(lblRecepcionNumeroDocumento, "");
         setValue(lblRecepcionGrupoFamiliar, "");
+        setValue(lblRecepcionResultadoInicial, "");
+        setValue(lblRecepcionHojaEnvio, "");
+        setValue(lblRecepcionCorreo, "");
+        setValue(lblRecepcionTelefono, "");
+        setValue(lblRecepcionDepartamento, "");
+        setValue(lblRecepcionProvincia, "");
+        setValue(lblRecepcionDistrito, "");
+        setValue(lblRecepcionDireccion, "");
+        setValue(lblRecepcionTipoDocumentoTitular, "");
+        setValue(lblRecepcionNumeroDocumentoTitular, "");
+        setValue(lblRecepcionTipoDocumentoSolicitante, "");
+        setValue(lblRecepcionNumeroDocumentoSolicitante, "");
+        setValue(lblRecepcionPrioridad, "");
+        setValue(lblRecepcionMarcaOperativa, "");
+        setValue(lblRecepcionObservacion, "");
+        setValue(lblRecepcionResumenActa, "");
         setValue(lblRecepcionProcedimiento, "");
         setValue(lblRecepcionTitular, "");
         setValue(lblRecepcionRemitente, "");
@@ -906,22 +1021,55 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         panelRecepcionCargado = false;
         idPanelRecepcionActual = null;
         panelRecepcionLoadSequence++;
-        tabPanelRecepcion.setExpanded(false);
-        tabPanelRecepcion.setToolTipText("Expandir panel de recepción");
         if (splitBandeja != null) {
             splitBandeja.setSideVisible(false);
         }
+        actualizarTabRecepcion(false, false);
+    }
+
+    private void actualizarTituloPanelRecepcion(ExpedienteConsolaDTO expediente) {
+        if (panelRecepcion == null) {
+            return;
+        }
+        String titulo = "Panel de recepción";
+        if (expediente != null) {
+            String titular = expediente.getTitular();
+            if (titular == null || titular.trim().isEmpty()) {
+                titular = expediente.getNumeroExpediente();
+            }
+            if (titular != null && !titular.trim().isEmpty()) {
+                titulo = titulo + " - " + titular.trim();
+            }
+        }
+        panelRecepcion.setTitle(titulo);
     }
 
     private void alternarExpansionPanelRecepcion() {
         if (splitBandeja == null) {
             return;
         }
+        if (!splitBandeja.isSideVisible()) {
+            splitBandeja.setSideVisible(true);
+        }
         boolean expandido = splitBandeja.toggleSideExpanded();
-        tabPanelRecepcion.setExpanded(expandido);
+        actualizarTabRecepcion(true, expandido);
+    }
+
+    private AppV2StackedSideTab crearTabRecepcion() {
+        return new AppV2StackedSideTab(
+                "Datos",
+                PANEL_RECEPCION_TAB_OVERHANG - 6,
+                PANEL_RECEPCION_TAB_HEIGHT,
+                new Color(230, 241, 245),
+                new Color(57, 125, 199),
+                new Color(33, 99, 174));
+    }
+
+    private void actualizarTabRecepcion(boolean seleccionado, boolean expandido) {
+        tabPanelRecepcion.setState(seleccionado, expandido);
         tabPanelRecepcion.setToolTipText(expandido
-                ? "Restaurar panel de recepción"
-                : "Expandir panel de recepción");
+                ? "Restaurar datos de recepción"
+                : "Expandir datos de recepción");
     }
 
     private void abrirDetalleSeleccionado() {

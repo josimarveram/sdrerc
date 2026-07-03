@@ -19,8 +19,10 @@ import javax.swing.border.Border;
 
 public class AppV2SideActionPanel extends JPanel {
 
-    private final JPanel sections = new JPanel();
+    private final StretchableSectionsPanel sections = new StretchableSectionsPanel();
+    private final JPanel bodySpacer = new JPanel();
     private final JPanel footer = new JPanel(new BorderLayout());
+    private final JPanel footerSpacer = new JPanel();
     private final JPanel leadingSlot = new JPanel(new BorderLayout());
     private final JLabel lblTitle = new JLabel();
     private final JScrollPane scroll;
@@ -75,6 +77,9 @@ public class AppV2SideActionPanel extends JPanel {
 
         sections.setOpaque(false);
         sections.setLayout(new BoxLayout(sections, BoxLayout.Y_AXIS));
+        bodySpacer.setOpaque(false);
+        bodySpacer.setPreferredSize(new Dimension(0, 0));
+        sections.add(bodySpacer);
 
         scroll = new JScrollPane(sections);
         scroll.setBorder(null);
@@ -84,6 +89,9 @@ public class AppV2SideActionPanel extends JPanel {
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         footer.setOpaque(false);
+        footerSpacer.setOpaque(false);
+        footerSpacer.setPreferredSize(new Dimension(0, 0));
+        footer.add(footerSpacer, BorderLayout.SOUTH);
 
         add(header, BorderLayout.NORTH);
         add(scroll, BorderLayout.CENTER);
@@ -91,13 +99,36 @@ public class AppV2SideActionPanel extends JPanel {
     }
 
     public void addSection(Component section) {
+        sections.remove(bodySpacer);
         sections.add(section);
         sections.add(Box.createVerticalStrut(12));
+        sections.add(bodySpacer);
+        sections.revalidate();
+        sections.repaint();
     }
 
     public void setFooter(Component component) {
         footer.removeAll();
+        footer.add(footerSpacer, BorderLayout.SOUTH);
         footer.add(component, BorderLayout.CENTER);
+    }
+
+    public void setFooterSpacerHeight(int height) {
+        int safeHeight = Math.max(0, height);
+        footerSpacer.setPreferredSize(new Dimension(0, safeHeight));
+        footerSpacer.setMinimumSize(new Dimension(0, safeHeight));
+        footerSpacer.setMaximumSize(new Dimension(Integer.MAX_VALUE, safeHeight));
+        footer.revalidate();
+        footer.repaint();
+    }
+
+    public void setBodySpacerHeight(int height) {
+        int safeHeight = Math.max(0, height);
+        bodySpacer.setPreferredSize(new Dimension(0, safeHeight));
+        bodySpacer.setMinimumSize(new Dimension(0, safeHeight));
+        bodySpacer.setMaximumSize(new Dimension(Integer.MAX_VALUE, safeHeight));
+        sections.revalidate();
+        sections.repaint();
     }
 
     public void setBodyVisible(boolean visible) {
@@ -148,6 +179,38 @@ public class AppV2SideActionPanel extends JPanel {
                         AppV2Theme.SPACE_LARGE,
                         AppV2Theme.SPACE_LARGE,
                         AppV2Theme.SPACE_LARGE,
-                        AppV2Theme.SPACE_LARGE)));
+                AppV2Theme.SPACE_LARGE)));
+    }
+
+    private static final class StretchableSectionsPanel extends JPanel implements javax.swing.Scrollable {
+
+        private StretchableSectionsPanel() {
+            super();
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+            return 64;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return true;
+        }
     }
 }

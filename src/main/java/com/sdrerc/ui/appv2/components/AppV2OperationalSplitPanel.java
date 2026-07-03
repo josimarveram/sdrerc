@@ -123,6 +123,7 @@ public class AppV2OperationalSplitPanel extends JPanel {
         revalidate();
         repaint();
         applyDividerLocationLater();
+        refreshChildLayouts();
     }
 
     private void hideSide() {
@@ -138,6 +139,7 @@ public class AppV2OperationalSplitPanel extends JPanel {
         sideVisible = false;
         revalidate();
         repaint();
+        refreshChildLayouts();
     }
 
     private void configureMinimums() {
@@ -177,6 +179,7 @@ public class AppV2OperationalSplitPanel extends JPanel {
         adjustingDivider = true;
         splitPane.setDividerLocation(dividerLocation);
         adjustingDivider = false;
+        refreshChildLayouts();
     }
 
     private void rememberDividerWidth() {
@@ -218,6 +221,21 @@ public class AppV2OperationalSplitPanel extends JPanel {
         int availableAfterSideMin = Math.max(0, available - Math.min(sideMinWidth, available));
         int effectiveMainMin = Math.min(Math.max(0, mainMinWidth), availableAfterSideMin);
         return Math.max(0, available - effectiveMainMin);
+    }
+
+    private void refreshChildLayouts() {
+        if (mainComponent != null) {
+            mainComponent.invalidate();
+            mainComponent.revalidate();
+            mainComponent.repaint();
+        }
+        if (sideComponent != null) {
+            sideComponent.invalidate();
+            sideComponent.revalidate();
+            sideComponent.repaint();
+        }
+        revalidate();
+        repaint();
     }
 
     private static class SubtleSplitPaneUI extends BasicSplitPaneUI {

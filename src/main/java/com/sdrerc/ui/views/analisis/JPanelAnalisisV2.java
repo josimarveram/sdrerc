@@ -60,7 +60,6 @@ import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.ItemEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -197,7 +196,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnArchivarNoCorresponde = new JButton("Archivar no corresponde");
     private final JButton btnAgregarDocumento = new JButton("+");
     private final JButton btnQuitarDocumento = new JButton("Quitar documento");
-    private final JButton btnNuevoBloqueAnalisis = new JButton("+ Nuevo análisis");
 
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes de análisis.");
     private final JLabel lblExpediente = new JLabel("-");
@@ -262,7 +260,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JTextArea txtObservacion = new JTextArea(3, 22);
     private final JTextArea txtComentarioMovimiento = new JTextArea(3, 22);
     private final JButton btnDescargarPlantillaSeleccionada = new JButton("Descargar plantilla seleccionada");
-    private final JComboBox<AnalisisItemDTO> cmbBloquesAnalisis = new JComboBox<AnalisisItemDTO>();
     private final AppV2StackedSideTab tabDatosAnalisis = crearTabAnalisis("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
     private final AppV2StackedSideTab tabDocumentosAnalisis = crearTabAnalisis("Análisis", new Color(224, 243, 240), new Color(10, 118, 145));
     private JTabbedPane tabsAnalisis;
@@ -445,18 +442,18 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel panelAnalisisConTab = crearPanelAnalisisConTab(
                 panelDatosAnalisis,
                 panelAnalisis);
+        tabsAnalisis = new JTabbedPane();
+        tabsAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        tabsAnalisis.addTab("Bandeja Análisis", contenidoPrincipal);
         splitOperativo = new AppV2OperationalSplitPanel(
-                contenidoPrincipal,
+                tabsAnalisis,
                 panelAnalisisConTab,
                 0,
                 PANEL_ANALISIS_ANCHO_MINIMO + PANEL_ANALISIS_TAB_OVERHANG,
                 PANEL_ANALISIS_ANCHO_NORMAL + PANEL_ANALISIS_TAB_OVERHANG);
-        tabsAnalisis = new JTabbedPane();
-        tabsAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        tabsAnalisis.addTab("Bandeja Análisis", splitOperativo);
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
-        wrapper.add(tabsAnalisis, BorderLayout.CENTER);
+        wrapper.add(splitOperativo, BorderLayout.CENTER);
         return wrapper;
     }
 
@@ -493,7 +490,7 @@ public class JPanelAnalisisV2 extends JPanel {
             }
         });
         panel.setAccentColor(new Color(10, 118, 145));
-        panel.addSection(crearSelectorAnalisisPanel());
+        panel.addSection(crearResumenAnalisisUnico());
         panel.addSection(crearDocumentosPanel());
         panel.addSection(crearFormularioAnalisis());
         panel.setFooter(crearAccionesPanelAnalisis());
@@ -793,17 +790,15 @@ public class JPanelAnalisisV2 extends JPanel {
         return panel;
     }
 
-    private JPanel crearSelectorAnalisisPanel() {
-        JPanel panel = section("Bloques de análisis");
+    private JPanel crearResumenAnalisisUnico() {
+        JPanel panel = section("Análisis");
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        cmbBloquesAnalisis.setPreferredSize(new Dimension(240, 34));
-        btnNuevoBloqueAnalisis.setToolTipText("Crear un nuevo bloque de análisis para el expediente seleccionado.");
-        addRow(grid, 0, "Análisis", cmbBloquesAnalisis);
-        JPanel acciones = AppV2ActionPanel.left();
-        acciones.add(btnNuevoBloqueAnalisis);
-        addRow(grid, 1, "", acciones);
+        JLabel lblUnico = new JLabel("El expediente se gestiona con un único análisis.");
+        lblUnico.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        lblUnico.setForeground(AppV2Theme.TEXT_SECONDARY);
+        addRow(grid, 0, "Análisis actual", lblUnico);
         panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
@@ -1520,13 +1515,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
         btnAgregarDocumento.addActionListener(e -> mostrarDialogoAgregarDocumento());
         btnQuitarDocumento.addActionListener(e -> quitarDocumento());
-        btnNuevoBloqueAnalisis.addActionListener(e -> crearNuevoBloqueAnalisis());
         btnDescargarPlantillaSeleccionada.addActionListener(e -> descargarPlantillaDocumentoSeleccionado());
-        cmbBloquesAnalisis.addItemListener(e -> {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
-                SwingUtilities.invokeLater(this::seleccionarBloqueAnalisisActual);
-            }
-        });
         cmbIncorporado.addActionListener(e -> actualizarChecksIncorporado());
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         chkRegistrarObservacion.addActionListener(e -> actualizarObservacionHabilitada());
@@ -2917,35 +2906,7 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void crearNuevoBloqueAnalisis() {
-        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para crear un nuevo análisis.");
-        if (item == null) {
-            return;
-        }
-        setTrabajando(true, "Creando nuevo análisis...");
-        SwingWorker<AnalisisItemDTO, Void> worker = new SwingWorker<AnalisisItemDTO, Void>() {
-            @Override
-            protected AnalisisItemDTO doInBackground() throws Exception {
-                return analisisService.crearBloqueAnalisis(item.getIdExpediente());
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    AnalisisItemDTO nuevo = get();
-                    recargarDetalleSeleccionado();
-                    JOptionPane.showMessageDialog(
-                            JPanelAnalisisV2.this,
-                            "Se creó " + nuevo.getTitulo() + ".",
-                            "Análisis",
-                            JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    mostrarError("No se pudo crear el nuevo análisis. Verifique que el script 38_analisis_multiple.sql esté aplicado.", ex);
-                } finally {
-                    setTrabajando(false, null);
-                }
-            }
-        };
-        worker.execute();
+        mostrarInfo("El módulo de Análisis quedó configurado con un único análisis por expediente.");
     }
 
     private void agregarDocumento() {
@@ -3127,24 +3088,18 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void aplicarBloquesAnalisis(List<AnalisisItemDTO> items) {
-        Long idAnterior = idAnalisisSeleccionado;
         cargandoBloquesAnalisis = true;
         bloquesAnalisis.clear();
-        cmbBloquesAnalisis.removeAllItems();
-        if (items != null) {
-            bloquesAnalisis.addAll(items);
+        AnalisisItemDTO unico = null;
+        if (items != null && !items.isEmpty()) {
+            unico = items.get(0);
         }
-        if (bloquesAnalisis.isEmpty()) {
-            bloquesAnalisis.add(new AnalisisItemDTO(null, 1, "Análisis 1", "TEMPORAL", null));
+        if (unico == null) {
+            unico = new AnalisisItemDTO(null, 1, "Análisis 1", "TEMPORAL", null);
         }
-        for (AnalisisItemDTO item : bloquesAnalisis) {
-            cmbBloquesAnalisis.addItem(item);
-        }
-        seleccionarBloquePorId(idAnterior);
-        if (cmbBloquesAnalisis.getSelectedIndex() < 0 && cmbBloquesAnalisis.getItemCount() > 0) {
-            cmbBloquesAnalisis.setSelectedIndex(0);
-        }
+        bloquesAnalisis.add(unico);
         cargandoBloquesAnalisis = false;
+        idAnalisisSeleccionado = unico.getIdExpedienteAnalisis();
         seleccionarBloqueAnalisisActual();
     }
 
@@ -3152,26 +3107,16 @@ public class JPanelAnalisisV2 extends JPanel {
         if (cargandoBloquesAnalisis) {
             return;
         }
-        AnalisisItemDTO item = (AnalisisItemDTO) cmbBloquesAnalisis.getSelectedItem();
+        AnalisisItemDTO item = bloquesAnalisis.isEmpty() ? null : bloquesAnalisis.get(0);
         idAnalisisSeleccionado = item == null ? null : item.getIdExpedienteAnalisis();
         aplicarAnalisisRegistrado(item == null ? null : item.getDetalle());
     }
 
-    private void seleccionarBloquePorId(Long idExpedienteAnalisis) {
-        if (idExpedienteAnalisis == null) {
-            return;
-        }
-        for (int i = 0; i < cmbBloquesAnalisis.getItemCount(); i++) {
-            AnalisisItemDTO item = cmbBloquesAnalisis.getItemAt(i);
-            if (item != null && idExpedienteAnalisis.equals(item.getIdExpedienteAnalisis())) {
-                cmbBloquesAnalisis.setSelectedIndex(i);
-                return;
-            }
-        }
-    }
-
     private String etiquetaAnalisisActual() {
-        return etiquetaAnalisisDocumento(idAnalisisSeleccionado);
+        if (!bloquesAnalisis.isEmpty() && bloquesAnalisis.get(0) != null) {
+            return bloquesAnalisis.get(0).getTitulo();
+        }
+        return "Análisis 1";
     }
 
     private String etiquetaAnalisisDocumento(DocumentoAnalizadoDTO documento) {
@@ -3181,27 +3126,10 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private String etiquetaAnalisisDocumento(Long idExpedienteAnalisis) {
-        AnalisisItemDTO item = buscarBloqueAnalisis(idExpedienteAnalisis);
-        if (item != null) {
-            return item.getTitulo();
+        if (!bloquesAnalisis.isEmpty() && bloquesAnalisis.get(0) != null) {
+            return bloquesAnalisis.get(0).getTitulo();
         }
-        if (idExpedienteAnalisis != null) {
-            return "Análisis " + idExpedienteAnalisis;
-        }
-        AnalisisItemDTO seleccionado = (AnalisisItemDTO) cmbBloquesAnalisis.getSelectedItem();
-        return seleccionado == null ? "Análisis 1" : seleccionado.getTitulo();
-    }
-
-    private AnalisisItemDTO buscarBloqueAnalisis(Long idExpedienteAnalisis) {
-        if (idExpedienteAnalisis == null) {
-            return null;
-        }
-        for (AnalisisItemDTO item : bloquesAnalisis) {
-            if (item != null && idExpedienteAnalisis.equals(item.getIdExpedienteAnalisis())) {
-                return item;
-            }
-        }
-        return null;
+        return "Análisis 1";
     }
 
     private void descargarPlantillaDocumentoSeleccionado() {

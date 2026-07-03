@@ -87,8 +87,6 @@ public class ExpedienteBandejaDAO {
         }
         sql.append("(SELECT LISTAGG(ea.mensaje, ' / ') WITHIN GROUP (ORDER BY ea.creado_en, ea.id_expediente_alerta) ");
         sql.append("FROM expediente_alerta ea WHERE ea.id_expediente = b.id_expediente AND ea.activo = 1 AND ea.atendida = 0) AS alertas_persistidas, ");
-        sql.append("(SELECT observacion FROM (SELECT s.observacion FROM expediente_solicitud s ");
-        sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) WHERE ROWNUM = 1) AS observacion_solicitud, ");
         sql.append("fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, ");
         sql.append("requiere_publicacion, expediente_digital_completo ");
         sql.append("FROM vw_expediente_bandeja b WHERE 1 = 1 ");
@@ -166,7 +164,6 @@ public class ExpedienteBandejaDAO {
     private ExpedienteBandejaDTO map(Connection conn, ResultSet rs) throws SQLException {
         Date fechaVencimiento = rs.getDate("fecha_vencimiento");
         String alertasPersistidas = rs.getString("alertas_persistidas");
-        String observacionSolicitud = rs.getString("observacion_solicitud");
         String alertasVisuales = grupoFamiliar(
                 rs.getInt("cantidad_relaciones"),
                 rs.getInt("grupo_familiar_marca") == 1,
@@ -192,37 +189,44 @@ public class ExpedienteBandejaDAO {
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
                 alertasVisuales,
-                unirAlertas(alertasPersistidas, alertasVisuales, observacionSolicitud),
+                unirAlertas(alertasPersistidas, alertasVisuales),
                 rs.getString("titular"),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
         );
     }
 
     private static String grupoFamiliar(int cantidadRelaciones, boolean grupoFamiliar, String criterio, String observacion) {
-        List<String> alertas = new ArrayList<>();
         if (cantidadRelaciones > 0) {
-            alertas.add(cantidadRelaciones == 1 ? "1 asociado" : cantidadRelaciones + " asociados");
+            return "Potencial duplicado";
         }
         if (grupoFamiliar) {
-            alertas.add("Grupo familiar");
+            return "Posible Grupo Familiar";
         } else if (hasText(criterio) || hasText(observacion)) {
-            alertas.add("Posible grupo familiar");
+            return "Posible Grupo Familiar";
         }
-        return alertas.isEmpty() ? "Sin alerta" : String.join(" / ", alertas);
+        return "Sin Alerta";
     }
 
-    private static String unirAlertas(String persistidas, String derivadas, String observacionSolicitud) {
-        List<String> alertas = new ArrayList<>();
-        if (hasText(persistidas)) {
-            alertas.add(persistidas.trim());
+    private static String unirAlertas(String persistidas, String derivadas) {
+        String combinado = (hasText(persistidas) ? persistidas.trim() : "")
+                + " | "
+                + (hasText(derivadas) ? derivadas.trim() : "");
+        String normalizado = alertaCategoriaDesdeTexto(combinado);
+        return hasText(normalizado) ? normalizado : "Sin Alerta";
+    }
+
+    private static String alertaCategoriaDesdeTexto(String texto) {
+        if (!hasText(texto)) {
+            return null;
         }
-        if (hasText(derivadas) && !"Sin alerta".equalsIgnoreCase(derivadas.trim())) {
-            alertas.add(derivadas.trim());
+        String lower = texto.toLowerCase(java.util.Locale.ROOT);
+        if (lower.contains("potencial duplicado") || lower.contains("duplicidad") || lower.contains("duplicado")) {
+            return "Potencial duplicado";
         }
-        if (alertas.isEmpty() && hasText(observacionSolicitud)) {
-            alertas.add(observacionSolicitud.trim());
+        if (lower.contains("posible grupo familiar") || lower.contains("grupo familiar")) {
+            return "Posible Grupo Familiar";
         }
-        return alertas.isEmpty() ? "Sin alerta" : String.join(" / ", alertas);
+        return null;
     }
 
     private boolean soportaGrupoFamiliar(Connection conn) throws SQLException {

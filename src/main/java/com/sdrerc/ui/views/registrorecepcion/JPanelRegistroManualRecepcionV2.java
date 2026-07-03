@@ -54,6 +54,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private final Runnable onRegistroConfirmado;
     private final Runnable onCancelarEdicion;
     private final Long idExpedienteEdicion;
+    private final boolean edicionDesdeAnalisis;
 
     private final JTextField txtNumeroTramite = new JTextField();
     private final JTextField txtNumeroDocumento = new JTextField();
@@ -107,13 +108,22 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private ExpedienteEdicionManualDTO edicionValidada;
 
     public JPanelRegistroManualRecepcionV2(Runnable onRegistroConfirmado) {
-        this(null, onRegistroConfirmado, null);
+        this(null, onRegistroConfirmado, null, false);
     }
 
     public JPanelRegistroManualRecepcionV2(Long idExpedienteEdicion, Runnable onRegistroConfirmado, Runnable onCancelarEdicion) {
+        this(idExpedienteEdicion, onRegistroConfirmado, onCancelarEdicion, false);
+    }
+
+    public JPanelRegistroManualRecepcionV2(
+            Long idExpedienteEdicion,
+            Runnable onRegistroConfirmado,
+            Runnable onCancelarEdicion,
+            boolean edicionDesdeAnalisis) {
         this.onRegistroConfirmado = onRegistroConfirmado;
         this.onCancelarEdicion = onCancelarEdicion;
         this.idExpedienteEdicion = idExpedienteEdicion;
+        this.edicionDesdeAnalisis = edicionDesdeAnalisis;
         setLayout(new BorderLayout(12, 12));
         setBackground(AppV2Theme.BACKGROUND);
         add(crearHeader(), BorderLayout.NORTH);
@@ -707,7 +717,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         SwingWorker<ExpedienteEdicionManualDTO, Void> worker = new SwingWorker<ExpedienteEdicionManualDTO, Void>() {
             @Override
             protected ExpedienteEdicionManualDTO doInBackground() throws Exception {
-                return edicionService.obtenerParaEdicion(idExpedienteEdicion);
+                return edicionDesdeAnalisis
+                        ? edicionService.obtenerParaEdicionDesdeAnalisis(idExpedienteEdicion)
+                        : edicionService.obtenerParaEdicion(idExpedienteEdicion);
             }
 
             @Override
@@ -855,7 +867,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         SwingWorker<RegistroManualResultadoDTO, Void> worker = new SwingWorker<RegistroManualResultadoDTO, Void>() {
             @Override
             protected RegistroManualResultadoDTO doInBackground() throws Exception {
-                return edicionService.guardar(edicionValidada);
+                return edicionDesdeAnalisis
+                        ? edicionService.guardarDesdeAnalisis(edicionValidada)
+                        : edicionService.guardar(edicionValidada);
             }
 
             @Override

@@ -133,32 +133,7 @@ public class AnalisisExpedienteDAO {
             return items;
         }
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            if (!soportaAnalisisMultiple(conn)) {
-                items.add(new AnalisisItemDTO(null, 1, "Análisis 1", "COMPATIBLE", obtenerAnalisisRegistrado(idExpediente)));
-                return items;
-            }
-            String sql = "SELECT id_expediente_analisis, numero_analisis, titulo, estado_analisis "
-                    + "FROM expediente_analisis "
-                    + "WHERE id_expediente = ? AND activo = 1 "
-                    + "ORDER BY numero_analisis ASC, id_expediente_analisis ASC";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setLong(1, idExpediente);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        Long idAnalisis = getLongOrNull(rs, "id_expediente_analisis");
-                        int numero = rs.getInt("numero_analisis");
-                        items.add(new AnalisisItemDTO(
-                                idAnalisis,
-                                numero,
-                                rs.getString("titulo"),
-                                rs.getString("estado_analisis"),
-                                obtenerAnalisisRegistrado(conn, idExpediente, idAnalisis)));
-                    }
-                }
-            }
-            if (items.isEmpty()) {
-                items.add(new AnalisisItemDTO(null, 1, "Análisis 1", "TEMPORAL", obtenerAnalisisRegistrado(conn, idExpediente, null)));
-            }
+            items.add(new AnalisisItemDTO(null, 1, "Análisis 1", "UNICO", obtenerAnalisisRegistrado(conn, idExpediente, null)));
             return items;
         }
     }
@@ -167,26 +142,7 @@ public class AnalisisExpedienteDAO {
         if (idExpediente == null) {
             throw new SQLException("Seleccione un expediente para crear el análisis.");
         }
-        try (Connection conn = SdrercAppConnection.getConnection()) {
-            boolean previousAutoCommit = conn.getAutoCommit();
-            conn.setAutoCommit(false);
-            try {
-                if (!soportaAnalisisMultiple(conn)) {
-                    throw new SQLException("La base de datos no tiene soporte para análisis múltiple. Ejecute el script 38_analisis_multiple.sql.");
-                }
-                AnalisisItemDTO item = crearBloqueAnalisis(conn, idExpediente, idUsuario);
-                conn.commit();
-                conn.setAutoCommit(previousAutoCommit);
-                return item;
-            } catch (Exception ex) {
-                rollbackSilencioso(conn);
-                conn.setAutoCommit(previousAutoCommit);
-                if (ex instanceof SQLException) {
-                    throw (SQLException) ex;
-                }
-                throw new SQLException(ex.getMessage(), ex);
-            }
-        }
+        throw new SQLException("El módulo de Análisis quedó configurado con un único análisis por expediente.");
     }
 
     public List<AnalisisExpedienteDTO> buscarExpedientes(
@@ -197,21 +153,60 @@ public class AnalisisExpedienteDAO {
             int limite) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
+        boolean soportaNumeroHojaEnvio;
+        boolean soportaGrupoFamiliar;
+        try (Connection connSoporte = SdrercAppConnection.getConnection()) {
+            soportaNumeroHojaEnvio = soportaNumeroHojaEnvio(connSoporte);
+            soportaGrupoFamiliar = soportaGrupoFamiliar(connSoporte);
+        }
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
+        if (soportaNumeroHojaEnvio) {
+            sql.append("(SELECT MAX(axa.numero_hoja_envio) KEEP (DENSE_RANK LAST ORDER BY axa.fecha_asignacion, axa.id_expediente_asignacion) ");
+            sql.append(" FROM expediente_asignacion axa ");
+            sql.append(" WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1) AS numero_hoja_envio_asignacion, ");
+        } else {
+            sql.append("CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_asignacion, ");
+        }
         sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
         sql.append(nombrePersona("ps")).append(" AS solicitante, ps.tipo_documento AS solicitante_tipo_documento, ");
         sql.append("ps.numero_documento AS numero_documento_solicitante, ps.correo_electronico AS solicitante_correo, ");
         sql.append("ps.telefono AS solicitante_telefono, ps.direccion AS solicitante_direccion, ");
         sql.append("ps.departamento AS solicitante_departamento, ps.provincia AS solicitante_provincia, ps.distrito AS solicitante_distrito, ");
+        sql.append("cr.nombre AS canal_ingreso, e.prioridad, esol.observacion AS observacion_solicitud, ");
+        if (soportaGrupoFamiliar) {
+            sql.append("NVL(esol.grupo_familiar, 0) AS grupo_familiar, ");
+            sql.append("esol.criterio_grupo_familiar, esol.observacion_grupo_familiar, ");
+        } else {
+            sql.append("0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
+            sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
+        }
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_registro, asig.fecha_asignacion, e.fecha_ultimo_movimiento, ");
         sql.append("ur.nombre_completo AS responsable, eq.nombre AS equipo, ");
         sql.append("et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT COUNT(*) FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.subsanada = 0 AND o.activo = 1) AS observaciones_pendientes, ");
-        sql.append("(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, ");
+        sql.append("(SELECT COUNT(DISTINCT canon.id_asociado) FROM (");
+        sql.append("SELECT ");
+        sql.append("CASE ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') <> '' AND NVL(TRIM(orrel.numero_expediente), '') = '' THEN op.id_expediente ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') = '' AND NVL(TRIM(orrel.numero_expediente), '') <> '' THEN orrel.id_expediente ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') <> '' AND NVL(TRIM(orrel.numero_expediente), '') <> '' THEN ");
+        sql.append("CASE WHEN NVL(op.fecha_registro, DATE '1900-01-01') <= NVL(orrel.fecha_registro, DATE '1900-01-01') THEN op.id_expediente ELSE orrel.id_expediente END ");
+        sql.append("ELSE CASE WHEN NVL(op.fecha_registro, DATE '1900-01-01') <= NVL(orrel.fecha_registro, DATE '1900-01-01') THEN op.id_expediente ELSE orrel.id_expediente END ");
+        sql.append("END AS id_canonico, ");
+        sql.append("CASE WHEN r_canon.id_expediente_principal = e.id_expediente THEN r_canon.id_expediente_relacionado ELSE r_canon.id_expediente_principal END AS id_asociado ");
+        sql.append("FROM expediente_relacion r_canon ");
+        sql.append("JOIN expediente op ON op.id_expediente = r_canon.id_expediente_principal AND op.activo = 1 ");
+        sql.append("JOIN expediente orrel ON orrel.id_expediente = r_canon.id_expediente_relacionado AND orrel.activo = 1 ");
+        sql.append("WHERE r_canon.activo = 1 ");
+        sql.append("AND UPPER(r_canon.tipo_relacion) IN (?, ?) ");
+        sql.append("AND (r_canon.id_expediente_principal = e.id_expediente OR r_canon.id_expediente_relacionado = e.id_expediente)) canon ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
+        sql.append("WHERE canon.id_canonico = e.id_expediente) AS relaciones_confirmadas, ");
         sql.append("(SELECT COUNT(*) FROM expediente_documento_analizado da WHERE da.id_expediente = e.id_expediente AND da.activo = 1) AS documentos_analizados, ");
         sql.append("(SELECT MAX(tre.codigo) KEEP (DENSE_RANK LAST ORDER BY ev.creado_en) ");
         sql.append("FROM expediente_evaluacion ev LEFT JOIN tipo_resultado_evaluacion tre ON tre.id_tipo_resultado_evaluacion = ev.id_tipo_resultado_evaluacion ");
@@ -223,12 +218,14 @@ public class AnalisisExpedienteDAO {
         sql.append("LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ");
         sql.append("LEFT JOIN equipo eq ON eq.id_equipo = e.id_equipo_responsable_actual ");
         sql.append("LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 ");
+        sql.append("LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = esol.id_canal_recepcion ");
         sql.append("LEFT JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 ");
         sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
         sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
         sql.append("WHERE e.activo = 1 ");
+        appendFiltroPrincipalCanonico(sql, params, "e");
         sql.append("AND (");
         sql.append("(et.codigo = ? AND est.codigo = ?) ");
         params.add(ETAPA_ASIGNACION);
@@ -543,12 +540,11 @@ public class AnalisisExpedienteDAO {
                     ? ACCION_REENVIO_VERIFICACION
                     : ACCION_ENVIO_VERIFICACION;
             if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
-                    || !(ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo)
+                    || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
+                    || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                    || ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo)
                     || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo))) {
-                throw new SQLException("El expediente debe estar Atendido o Subsanado para enviarlo a verificación.");
-            }
-            if (!tieneEvaluacionActiva(conn, idExpediente)) {
-                throw new SQLException("Registre el análisis antes de enviar a verificación.");
+                throw new SQLException("El expediente debe estar Recibido, Observado, Atendido o Subsanado para enviarlo a verificación.");
             }
             if (documentoAnalisisDAO.contarPorExpediente(conn, idExpediente) <= 0) {
                 throw new SQLException("Registre al menos un documento analizado antes de enviar a verificación.");
@@ -776,12 +772,43 @@ public class AnalisisExpedienteDAO {
         }
     }
 
+    private void appendFiltroPrincipalCanonico(StringBuilder sql, List<Object> params, String aliasExpediente) {
+        sql.append("AND (");
+        sql.append("NOT EXISTS (SELECT 1 FROM expediente_relacion r_excl ");
+        sql.append("WHERE r_excl.activo = 1 ");
+        sql.append("AND UPPER(r_excl.tipo_relacion) IN (?, ?) ");
+        sql.append("AND r_excl.id_expediente_relacionado = ").append(aliasExpediente).append(".id_expediente) ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
+        sql.append("OR EXISTS (SELECT 1 FROM (");
+        sql.append("SELECT DISTINCT ");
+        sql.append("CASE ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') <> '' AND NVL(TRIM(orrel.numero_expediente), '') = '' THEN op.id_expediente ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') = '' AND NVL(TRIM(orrel.numero_expediente), '') <> '' THEN orrel.id_expediente ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') <> '' AND NVL(TRIM(orrel.numero_expediente), '') <> '' THEN ");
+        sql.append("CASE WHEN NVL(op.fecha_registro, DATE '1900-01-01') <= NVL(orrel.fecha_registro, DATE '1900-01-01') THEN op.id_expediente ELSE orrel.id_expediente END ");
+        sql.append("ELSE CASE WHEN NVL(op.fecha_registro, DATE '1900-01-01') <= NVL(orrel.fecha_registro, DATE '1900-01-01') THEN op.id_expediente ELSE orrel.id_expediente END ");
+        sql.append("END AS id_canonico ");
+        sql.append("FROM expediente_relacion r_canon ");
+        sql.append("JOIN expediente op ON op.id_expediente = r_canon.id_expediente_principal AND op.activo = 1 ");
+        sql.append("JOIN expediente orrel ON orrel.id_expediente = r_canon.id_expediente_relacionado AND orrel.activo = 1 ");
+        sql.append("WHERE r_canon.activo = 1 ");
+        sql.append("AND UPPER(r_canon.tipo_relacion) IN (?, ?) ");
+        sql.append("AND (r_canon.id_expediente_principal = ").append(aliasExpediente).append(".id_expediente ");
+        sql.append("OR r_canon.id_expediente_relacionado = ").append(aliasExpediente).append(".id_expediente)) canon ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
+        sql.append("WHERE canon.id_canonico = ").append(aliasExpediente).append(".id_expediente)");
+        sql.append(") ");
+    }
+
     private AnalisisExpedienteDTO map(Connection conn, ResultSet rs) throws SQLException {
         return new AnalisisExpedienteDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
                 rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
+                rs.getString("numero_hoja_envio_asignacion"),
                 rs.getString("procedimiento"),
                 rs.getString("tipo_documento"),
                 rs.getString("numero_documento_titular"),
@@ -797,6 +824,12 @@ public class AnalisisExpedienteDAO {
                 rs.getString("solicitante_departamento"),
                 rs.getString("solicitante_provincia"),
                 rs.getString("solicitante_distrito"),
+                rs.getString("canal_ingreso"),
+                rs.getString("prioridad"),
+                rs.getString("observacion_solicitud"),
+                getBooleanFromNumber(rs, "grupo_familiar"),
+                rs.getString("criterio_grupo_familiar"),
+                rs.getString("observacion_grupo_familiar"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
@@ -1500,6 +1533,30 @@ public class AnalisisExpedienteDAO {
                 ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt("total") == 3;
         }
+    }
+
+    private static boolean soportaNumeroHojaEnvio(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_ASIGNACION' AND column_name = 'NUMERO_HOJA_ENVIO'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private static boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name IN ('GRUPO_FAMILIAR', 'CRITERIO_GRUPO_FAMILIAR', 'OBSERVACION_GRUPO_FAMILIAR')";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 3;
+        }
+    }
+
+    private static boolean getBooleanFromNumber(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return !rs.wasNull() && value == 1;
     }
 
     private static boolean hasText(String value) {

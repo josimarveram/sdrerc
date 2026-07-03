@@ -38,6 +38,8 @@ public class CargaDiariaValidacionService {
         Map<String, Integer> actaTitular = new HashMap<>();
         Map<String, Integer> primeraFilaActaTitular = new HashMap<>();
         Map<String, Integer> apellidosTitular = new HashMap<>();
+        Map<String, Integer> titularesExactos = new HashMap<>();
+        Map<String, Integer> primeraFilaTitularExacto = new HashMap<>();
         for (CargaDiariaPreviewDTO item : registros) {
             item.reiniciarValidacion();
             item.limpiarDeteccionGrupoFamiliar();
@@ -47,9 +49,15 @@ public class CargaDiariaValidacionService {
                 primeraFilaActaTitular.put(claveActaTitular, item.getFila());
             }
             sumarClave(apellidosTitular, claveApellidosTitular(item));
+            String claveTitularExacto = claveTitularExacto(item);
+            sumarClave(titularesExactos, claveTitularExacto);
+            if (hasText(claveTitularExacto) && !primeraFilaTitularExacto.containsKey(claveTitularExacto)) {
+                primeraFilaTitularExacto.put(claveTitularExacto, item.getFila());
+            }
         }
 
         Map<Integer, String> duplicadosBase = expedienteRegistroDAO.detectarDuplicadosContraBase(registros);
+        Map<Integer, String> duplicadosTitularBase = expedienteRegistroDAO.detectarDuplicadosPorTitularExactoContraBase(registros);
         Map<Integer, String> posiblesGruposFamiliaresBase =
                 expedienteRegistroDAO.detectarPosiblesGruposFamiliaresContraBase(registros);
 
@@ -118,6 +126,10 @@ public class CargaDiariaValidacionService {
             if (duplicadoBd != null) {
                 motivosDuplicado.add(duplicadoBd);
             }
+            String duplicadoTitularBd = duplicadosTitularBase.get(item.getFila());
+            if (duplicadoTitularBd != null) {
+                motivosDuplicado.add(duplicadoTitularBd);
+            }
 
             if (!motivosDuplicado.isEmpty()) {
                 item.setPosibleDuplicado(true);
@@ -125,18 +137,32 @@ public class CargaDiariaValidacionService {
                 item.agregarMensaje(item.getMotivoDuplicado());
             }
 
-            String claveApellidos = claveApellidosTitular(item);
-            Integer cantidadApellidos = hasText(claveApellidos) ? apellidosTitular.get(claveApellidos) : null;
-            if (cantidadApellidos != null && cantidadApellidos > 1) {
-                item.agregarObservacionGrupoFamiliar(
-                        "COINCIDENCIA_APELLIDOS_EXCEL",
-                        "Posible grupo familiar por coincidencia de apellidos.");
-                item.agregarMensaje("Posible grupo familiar por coincidencia de apellidos.");
+            boolean duplicadoExacto = false;
+            String claveTitularExacto = claveTitularExacto(item);
+            Integer cantidadTitularExacto = hasText(claveTitularExacto) ? titularesExactos.get(claveTitularExacto) : null;
+            if (cantidadTitularExacto != null && cantidadTitularExacto > 1) {
+                duplicadoExacto = true;
+                item.setPosibleDuplicado(true);
+                Integer primeraFilaExacta = primeraFilaTitularExacto.get(claveTitularExacto);
+                String mensaje = primeraFilaExacta == null || item.getFila() == primeraFilaExacta
+                        ? "Titular repetido exactamente en el archivo."
+                        : "Titular repetido exactamente en el archivo. Ya existe una primera ocurrencia en la fila " + primeraFilaExacta + ".";
+                agregarMotivoDuplicado(item, mensaje);
             }
-            String grupoFamiliarBd = posiblesGruposFamiliaresBase.get(item.getFila());
-            if (hasText(grupoFamiliarBd)) {
-                item.agregarObservacionGrupoFamiliar("COINCIDENCIA_APELLIDOS_BD", grupoFamiliarBd);
-                item.agregarMensaje(grupoFamiliarBd);
+            if (!duplicadoExacto && !item.isPosibleDuplicado()) {
+                String claveApellidos = claveApellidosTitular(item);
+                Integer cantidadApellidos = hasText(claveApellidos) ? apellidosTitular.get(claveApellidos) : null;
+                if (cantidadApellidos != null && cantidadApellidos > 1) {
+                    item.agregarObservacionGrupoFamiliar(
+                            "COINCIDENCIA_APELLIDOS_EXCEL",
+                            "Posible grupo familiar por coincidencia de apellidos.");
+                    item.agregarMensaje("Posible grupo familiar por coincidencia de apellidos.");
+                }
+                String grupoFamiliarBd = posiblesGruposFamiliaresBase.get(item.getFila());
+                if (hasText(grupoFamiliarBd)) {
+                    item.agregarObservacionGrupoFamiliar("COINCIDENCIA_APELLIDOS_BD", grupoFamiliarBd);
+                    item.agregarMensaje(grupoFamiliarBd);
+                }
             }
 
             boolean requiereDecisionAsignacionNumero =
@@ -251,6 +277,26 @@ public class CargaDiariaValidacionService {
             return null;
         }
         return grupoFamiliarHeuristicaService.claveApellidosTitular(item.getTitular());
+    }
+
+    private String claveTitularExacto(CargaDiariaPreviewDTO item) {
+        if (item == null) {
+            return null;
+        }
+        return grupoFamiliarHeuristicaService.normalizarTitular(item.getTitular());
+    }
+
+    private void agregarMotivoDuplicado(CargaDiariaPreviewDTO item, String mensaje) {
+        if (!hasText(mensaje)) {
+            return;
+        }
+        String actual = item.getMotivoDuplicado();
+        if (!hasText(actual)) {
+            item.setMotivoDuplicado(mensaje);
+        } else if (!actual.contains(mensaje)) {
+            item.setMotivoDuplicado(actual + " | " + mensaje);
+        }
+        item.agregarMensaje(mensaje);
     }
 
     private String clave(String value) {

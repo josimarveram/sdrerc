@@ -63,7 +63,6 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnEjecucion;
     private JButton btnNotificacion;
     private JButton btnExpedienteDigital;
-    private JButton btnCierreArchivo;
     private JButton btnUsuarios;
     private JButton btnEquipoJuridico;
     private JButton btnRoles;
@@ -152,9 +151,6 @@ public class MenuPrincipalV2 extends JFrame {
         btnExpedienteDigital = crearBotonMenu("Expediente digital", AppV2IconProvider.EXPEDIENTE_DIGITAL);
         btnExpedienteDigital.addActionListener(e -> mostrarExpedienteDigital(btnExpedienteDigital));
         opciones.add(btnExpedienteDigital);
-        btnCierreArchivo = crearBotonMenu("Cierre / Archivo", AppV2IconProvider.CIERRE_ARCHIVO);
-        btnCierreArchivo.addActionListener(e -> mostrarCierreArchivo(btnCierreArchivo));
-        opciones.add(btnCierreArchivo);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Administración"));
@@ -425,13 +421,6 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Expediente digital");
         lblSubtitulo.setText("Gestión de carpeta, enlace y completitud digital del expediente");
         cambiarContenido(new JPanelExpedienteDigitalV2());
-        aplicarEstadoActivo(boton);
-    }
-
-    private void mostrarCierreArchivo(JButton boton) {
-        lblTitulo.setText("Cierre / Archivo");
-        lblSubtitulo.setText("Consulta y gestión final de expedientes cerrados, archivados o derivados");
-        cambiarContenido(new JPanelCierreArchivoV2());
         aplicarEstadoActivo(boton);
     }
 

@@ -212,16 +212,6 @@ public class JPanelEjecucionV2 extends JPanel {
 
         panelEjecucion = crearPanelEjecucion();
         JPanel panelConTab = crearPanelEjecucionConTab(panelEjecucion);
-        splitOperativo = new AppV2OperationalSplitPanel(
-                contenidoPrincipal,
-                panelConTab,
-                0,
-                PANEL_EJECUCION_ANCHO_MINIMO + PANEL_EJECUCION_TAB_OVERHANG,
-                PANEL_EJECUCION_ANCHO_NORMAL + PANEL_EJECUCION_TAB_OVERHANG);
-        return crearContenedorBandejasTop("Bandeja Ejecución", splitOperativo);
-    }
-
-    private JPanel crearContenedorBandejasTop(String titulo, JPanel contenido) {
         tabsBandejasEjecucion = new JTabbedPane();
         tabsBandejasEjecucion.setOpaque(false);
         tabsBandejasEjecucion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -230,11 +220,18 @@ public class JPanelEjecucionV2 extends JPanel {
 
         bandejaEjecucionTab = new JPanel(new BorderLayout());
         bandejaEjecucionTab.setOpaque(false);
-        bandejaEjecucionTab.add(contenido, BorderLayout.CENTER);
-        tabsBandejasEjecucion.addTab(titulo, bandejaEjecucionTab);
+        bandejaEjecucionTab.add(contenidoPrincipal, BorderLayout.CENTER);
+        tabsBandejasEjecucion.addTab("Bandeja Ejecución", bandejaEjecucionTab);
+
+        splitOperativo = new AppV2OperationalSplitPanel(
+                tabsBandejasEjecucion,
+                panelConTab,
+                0,
+                PANEL_EJECUCION_ANCHO_MINIMO + PANEL_EJECUCION_TAB_OVERHANG,
+                PANEL_EJECUCION_ANCHO_NORMAL + PANEL_EJECUCION_TAB_OVERHANG);
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
-        wrapper.add(tabsBandejasEjecucion, BorderLayout.CENTER);
+        wrapper.add(splitOperativo, BorderLayout.CENTER);
         return wrapper;
     }
 

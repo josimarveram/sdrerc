@@ -3,6 +3,8 @@ package com.sdrerc.ui.appv2.components;
 import java.awt.GridLayout;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.HierarchyBoundsAdapter;
+import java.awt.event.HierarchyEvent;
 import javax.swing.JPanel;
 
 public class AppV2ResponsiveGridPanel extends JPanel {
@@ -24,6 +26,12 @@ public class AppV2ResponsiveGridPanel extends JPanel {
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent event) {
+                updateColumns();
+            }
+        });
+        addHierarchyBoundsListener(new HierarchyBoundsAdapter() {
+            @Override
+            public void ancestorResized(HierarchyEvent e) {
                 updateColumns();
             }
         });
