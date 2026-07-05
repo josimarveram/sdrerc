@@ -40,6 +40,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -80,6 +81,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final Consumer<Long> editarExpedienteHandler;
     private final boolean usarSplitExterno;
     private final boolean perfilRegistroRecepcion;
+    private volatile List<ExpedienteBandejaDTO> ultimoResultadoBuscado = Collections.emptyList();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
@@ -736,7 +738,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     public void vincularMetricasAlertasRegistro(MetricCardV2 potencialDuplicado, MetricCardV2 posibleGrupoFamiliar) {
         this.cardPotencialDuplicadoRegistro = potencialDuplicado;
         this.cardPosibleGrupoFamiliarRegistro = posibleGrupoFamiliar;
-        actualizarMetricasAlertasRegistro(null);
+        actualizarMetricasAlertasRegistro(ultimoResultadoBuscado);
         marcarFiltroAlertaRegistro();
     }
 
@@ -786,6 +788,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 protected void done() {
                     try {
                         List<ExpedienteBandejaDTO> expedientes = get();
+                        ultimoResultadoBuscado = expedientes == null ? Collections.emptyList() : new ArrayList<>(expedientes);
                         if (perfilRegistroRecepcion && chkFiltroGrupoFamiliar.isSelected()) {
                             expedientes = filtrarGrupoFamiliar(expedientes);
                         }
