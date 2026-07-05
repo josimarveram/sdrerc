@@ -25,6 +25,7 @@ public class AppV2SideActionPanel extends JPanel {
     private final JPanel footerSpacer = new JPanel();
     private final JPanel leadingSlot = new JPanel(new BorderLayout());
     private final JLabel lblTitle = new JLabel();
+    private final JLabel lblSubtitle = new JLabel();
     private final JScrollPane scroll;
     private boolean bodyVisible = true;
 
@@ -43,13 +44,26 @@ public class AppV2SideActionPanel extends JPanel {
         lblTitle.setText(title);
         lblTitle.setFont(AppV2Theme.fontBold(18));
         lblTitle.setForeground(AppV2Theme.TEXT_PRIMARY);
+        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblSubtitle.setFont(AppV2Theme.fontBold(15));
+        lblSubtitle.setForeground(AppV2Theme.PRIMARY);
+        lblSubtitle.setVisible(false);
+        lblSubtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         leadingSlot.setOpaque(false);
         leadingSlot.setVisible(false);
+        JPanel titleText = new JPanel();
+        titleText.setOpaque(false);
+        titleText.setLayout(new BoxLayout(titleText, BoxLayout.Y_AXIS));
+        titleText.setAlignmentX(Component.LEFT_ALIGNMENT);
+        titleText.add(lblTitle);
+        titleText.add(Box.createVerticalStrut(4));
+        titleText.add(lblSubtitle);
+
         JPanel titleContent = new JPanel(new BorderLayout(10, 0));
         titleContent.setOpaque(false);
         titleContent.add(leadingSlot, BorderLayout.WEST);
-        titleContent.add(lblTitle, BorderLayout.CENTER);
+        titleContent.add(titleText, BorderLayout.CENTER);
 
         JPanel titleRow = new JPanel(new BorderLayout(8, 0));
         titleRow.setOpaque(false);
@@ -158,6 +172,14 @@ public class AppV2SideActionPanel extends JPanel {
 
     public void setTitle(String title) {
         lblTitle.setText(title == null || title.trim().isEmpty() ? "Panel" : title.trim());
+        revalidate();
+        repaint();
+    }
+
+    public void setSubtitle(String subtitle) {
+        String value = subtitle == null ? "" : subtitle.trim();
+        lblSubtitle.setText(value);
+        lblSubtitle.setVisible(!value.isEmpty());
         revalidate();
         repaint();
     }

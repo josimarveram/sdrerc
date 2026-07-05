@@ -635,7 +635,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelDatosExpediente() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de asignación", new Runnable() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Asignación", new Runnable() {
             @Override
             public void run() {
                 cerrarPanelAsignacion();
@@ -3211,19 +3211,18 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         String titulo = "Panel de Asignación";
+        String subtitulo = "";
         if (sufijoManual != null && !sufijoManual.trim().isEmpty()) {
-            titulo = titulo + " - " + sufijoManual.trim();
+            subtitulo = sufijoManual.trim();
         } else if (item != null) {
             String titular = titularPrincipalVisual(item);
             if (!titular.isEmpty() && !"-".equals(titular)) {
-                titulo = titulo + " - " + titular;
+                subtitulo = titular;
             }
-        }
-        if (panelAsignacion != null) {
-            panelAsignacion.setTitle(titulo);
         }
         if (panelDatosExpediente != null) {
             panelDatosExpediente.setTitle(titulo);
+            panelDatosExpediente.setSubtitle(subtitulo);
         }
         if (panelAsociar != null) {
             panelAsociar.setTitle(titulo);
