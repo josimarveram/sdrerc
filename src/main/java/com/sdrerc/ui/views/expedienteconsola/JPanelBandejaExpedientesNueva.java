@@ -28,9 +28,11 @@ import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
 import java.awt.BasicStroke;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.Graphics;
@@ -80,6 +82,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private static final int PANEL_RECEPCION_TAB_OVERHANG = 46;
     private static final int PANEL_RECEPCION_TAB_TOP = 18;
     private static final int PANEL_RECEPCION_TAB_HEIGHT = 94;
+    private static final String PANEL_RECEPCION_CARD_DATOS = "DATOS";
+    private static final String PANEL_RECEPCION_CARD_GF = "REGISTRAR_GF";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ExpedienteConsultaService consultaService;
@@ -114,9 +118,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final AppV2TablePanel tablePanel;
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final AppV2StackedSideTab tabPanelRecepcion = crearTabRecepcion();
+    private final AppV2StackedSideTab tabPanelRegistrarGF = crearTabRegistrarGF();
     private AppV2OperationalSplitPanel splitBandeja;
     private AppV2SideActionPanel panelRecepcion;
+    private JPanelRegistrarGrupoFamiliarV2 panelRegistrarGrupoFamiliar;
     private JPanel panelRecepcionWrapper;
+    private JPanel panelRecepcionCards;
+    private CardLayout panelRecepcionCardsLayout;
+    private String panelRecepcionActivo = PANEL_RECEPCION_CARD_DATOS;
     private final JLabel lblRecepcionExpediente = valueLabel();
     private final JLabel lblRecepcionFecha = valueLabel();
     private final JLabel lblRecepcionCanal = valueLabel();
@@ -508,13 +517,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private AppV2SideActionPanel crearPanelRecepcion() {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de recepción", this::ocultarPanelRecepcion);
         panel.setAccentColor(new Color(57, 125, 199));
-        actualizarTabRecepcion(false, false);
-        tabPanelRecepcion.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                alternarExpansionPanelRecepcion();
-            }
-        });
 
         AppV2SideSectionPanel solicitud = new AppV2SideSectionPanel("Datos de solicitud");
         solicitud.addRow("Expediente", lblRecepcionExpediente);
@@ -578,6 +580,29 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         panel.addSection(datosRegistrales);
         panel.addSection(plazo);
         panel.addSection(gestion);
+
+        panelRegistrarGrupoFamiliar = new JPanelRegistrarGrupoFamiliarV2();
+        panelRecepcionCardsLayout = new CardLayout();
+        panelRecepcionCards = new JPanel(panelRecepcionCardsLayout);
+        panelRecepcionCards.setOpaque(false);
+        panelRecepcionCards.add(panel, PANEL_RECEPCION_CARD_DATOS);
+        panelRecepcionCards.add(panelRegistrarGrupoFamiliar, PANEL_RECEPCION_CARD_GF);
+        panelRecepcionCardsLayout.show(panelRecepcionCards, PANEL_RECEPCION_CARD_DATOS);
+
+        actualizarTabRecepcion(false, false);
+        actualizarTabRegistrarGF(false, false);
+        tabPanelRecepcion.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                alternarPanelRecepcion(PANEL_RECEPCION_CARD_DATOS);
+            }
+        });
+        tabPanelRegistrarGF.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                alternarPanelRecepcion(PANEL_RECEPCION_CARD_GF);
+            }
+        });
         return panel;
     }
 
@@ -588,18 +613,24 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int width = getWidth();
                 int height = getHeight();
                 int panelX = PANEL_RECEPCION_TAB_OVERHANG;
-                panel.setBounds(panelX, 0, Math.max(0, width - panelX), height);
-                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - PANEL_RECEPCION_TAB_HEIGHT));
+                panelRecepcionCards.setBounds(panelX, 0, Math.max(0, width - panelX), height);
+                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - (PANEL_RECEPCION_TAB_HEIGHT * 2) - 18));
                 tabPanelRecepcion.setBounds(
                         0,
                         tabY,
                         PANEL_RECEPCION_TAB_OVERHANG - 6,
                         PANEL_RECEPCION_TAB_HEIGHT);
+                tabPanelRegistrarGF.setBounds(
+                        0,
+                        Math.min(height - PANEL_RECEPCION_TAB_HEIGHT - 8, tabY + PANEL_RECEPCION_TAB_HEIGHT + 10),
+                        PANEL_RECEPCION_TAB_OVERHANG - 6,
+                        PANEL_RECEPCION_TAB_HEIGHT);
             }
         };
         wrapper.setOpaque(false);
-        wrapper.add(panel);
+        wrapper.add(panelRecepcionCards);
         wrapper.add(tabPanelRecepcion);
+        wrapper.add(tabPanelRegistrarGF);
         wrapper.setMinimumSize(new Dimension(PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG, 0));
         wrapper.setPreferredSize(new Dimension(PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG, 0));
         return wrapper;
@@ -1121,7 +1152,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (splitBandeja != null) {
             splitBandeja.setSideVisible(true);
         }
-        actualizarTabRecepcion(true, splitBandeja != null && splitBandeja.isSideExpanded());
+        mostrarPanelRecepcion(PANEL_RECEPCION_CARD_DATOS, false);
         if (idExpediente.equals(idPanelRecepcionActual) && panelRecepcionCargado) {
             return;
         }
@@ -1251,10 +1282,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         panelRecepcionCargado = false;
         idPanelRecepcionActual = null;
         panelRecepcionLoadSequence++;
+        panelRecepcionActivo = PANEL_RECEPCION_CARD_DATOS;
         if (splitBandeja != null) {
             splitBandeja.setSideVisible(false);
         }
         actualizarTabRecepcion(false, false);
+        actualizarTabRegistrarGF(false, false);
     }
 
     private void actualizarTituloPanelRecepcion(ExpedienteConsolaDTO expediente) {
@@ -1283,6 +1316,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         boolean expandido = splitBandeja.toggleSideExpanded();
         actualizarTabRecepcion(true, expandido);
+        if (PANEL_RECEPCION_CARD_GF.equals(panelRecepcionActivo)) {
+            actualizarTabRegistrarGF(true, expandido);
+        }
     }
 
     private AppV2StackedSideTab crearTabRecepcion() {
@@ -1295,11 +1331,70 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 new Color(33, 99, 174));
     }
 
+    private AppV2StackedSideTab crearTabRegistrarGF() {
+        return new AppV2StackedSideTab(
+                "Registrar G.F",
+                PANEL_RECEPCION_TAB_OVERHANG - 6,
+                PANEL_RECEPCION_TAB_HEIGHT,
+                new Color(248, 240, 225),
+                new Color(201, 129, 42),
+                new Color(156, 96, 22));
+    }
+
     private void actualizarTabRecepcion(boolean seleccionado, boolean expandido) {
         tabPanelRecepcion.setState(seleccionado, expandido);
         tabPanelRecepcion.setToolTipText(expandido
                 ? "Restaurar datos de recepción"
                 : "Expandir datos de recepción");
+    }
+
+    private void actualizarTabRegistrarGF(boolean seleccionado, boolean expandido) {
+        tabPanelRegistrarGF.setState(seleccionado, expandido);
+        tabPanelRegistrarGF.setToolTipText(expandido
+                ? "Restaurar registrar grupo familiar"
+                : "Expandir registrar grupo familiar");
+    }
+
+    private void alternarPanelRecepcion(String panelId) {
+        if (panelId == null || splitBandeja == null || panelRecepcionCardsLayout == null) {
+            return;
+        }
+        boolean mismoPanel = panelId.equals(panelRecepcionActivo);
+        if (!splitBandeja.isSideVisible()) {
+            splitBandeja.setSideVisible(true);
+            mismoPanel = false;
+        }
+        panelRecepcionCardsLayout.show(panelRecepcionCards, panelId);
+        panelRecepcionActivo = panelId;
+        if (mismoPanel) {
+            splitBandeja.toggleSideExpanded();
+        }
+        boolean expandido = splitBandeja.isSideExpanded();
+        actualizarTabRecepcion(PANEL_RECEPCION_CARD_DATOS.equals(panelId), expandido && PANEL_RECEPCION_CARD_DATOS.equals(panelId));
+        actualizarTabRegistrarGF(PANEL_RECEPCION_CARD_GF.equals(panelId), expandido && PANEL_RECEPCION_CARD_GF.equals(panelId));
+        if (PANEL_RECEPCION_CARD_GF.equals(panelId) && panelRegistrarGrupoFamiliar != null) {
+            panelRegistrarGrupoFamiliar.actualizarEstado();
+        }
+    }
+
+    private void mostrarPanelRecepcion(String panelId, boolean forzarExpandido) {
+        if (splitBandeja == null || panelRecepcionCardsLayout == null) {
+            return;
+        }
+        if (!splitBandeja.isSideVisible()) {
+            splitBandeja.setSideVisible(true);
+        }
+        panelRecepcionActivo = panelId;
+        panelRecepcionCardsLayout.show(panelRecepcionCards, panelId);
+        if (forzarExpandido && !splitBandeja.isSideExpanded()) {
+            splitBandeja.setSideExpanded(true);
+        }
+        boolean expandido = splitBandeja.isSideExpanded();
+        actualizarTabRecepcion(PANEL_RECEPCION_CARD_DATOS.equals(panelId), expandido && PANEL_RECEPCION_CARD_DATOS.equals(panelId));
+        actualizarTabRegistrarGF(PANEL_RECEPCION_CARD_GF.equals(panelId), expandido && PANEL_RECEPCION_CARD_GF.equals(panelId));
+        if (PANEL_RECEPCION_CARD_GF.equals(panelId) && panelRegistrarGrupoFamiliar != null) {
+            panelRegistrarGrupoFamiliar.actualizarEstado();
+        }
     }
 
     private void abrirDetalleSeleccionado() {
@@ -1373,8 +1468,111 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void notificarCambioGrupoFamiliar() {
         actualizarEstadoHeaderSeleccionRegistro();
+        if (panelRegistrarGrupoFamiliar != null) {
+            panelRegistrarGrupoFamiliar.actualizarEstado();
+        }
         if (onGrupoFamiliarSelectionChanged != null) {
             SwingUtilities.invokeLater(onGrupoFamiliarSelectionChanged);
+        }
+    }
+
+    private final class JPanelRegistrarGrupoFamiliarV2 extends AppV2SideActionPanel {
+
+        private final JLabel lblSeleccionados = new JLabel("0");
+        private final JLabel lblEstado = new JLabel("Sin expedientes marcados");
+        private final JButton btnRegistrar = new JButton("Registrar G.F.");
+        private final JButton btnLimpiar = new JButton("Limpiar selección");
+
+        private JPanelRegistrarGrupoFamiliarV2() {
+            super("Registrar G.F.");
+            setAccentColor(AppV2Theme.TEAL);
+
+            AppV2SideSectionPanel resumen = new AppV2SideSectionPanel("Confirmación");
+            resumen.addRow("Seleccionados", lblSeleccionados);
+            resumen.addRow("Estado", lblEstado);
+            addSection(resumen);
+
+            JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+            acciones.setOpaque(false);
+            btnRegistrar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+            btnLimpiar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            btnRegistrar.addActionListener(e -> registrarGrupoFamiliar());
+            btnLimpiar.addActionListener(e -> limpiarSeleccion());
+            acciones.add(btnRegistrar);
+            acciones.add(btnLimpiar);
+            setFooter(acciones);
+            actualizarEstado();
+        }
+
+        private void actualizarEstado() {
+            int seleccionados = contarIdsGrupoFamiliarSeleccionados();
+            lblSeleccionados.setText(String.valueOf(seleccionados));
+            lblEstado.setText(seleccionados > 0 ? "Listo para confirmar" : "Sin expedientes marcados");
+            btnRegistrar.setEnabled(seleccionados > 0);
+            btnLimpiar.setEnabled(seleccionados > 0);
+        }
+
+        private void registrarGrupoFamiliar() {
+            if (contarIdsGrupoFamiliarSeleccionados() == 0) {
+                JOptionPane.showMessageDialog(
+                        JPanelBandejaExpedientesNueva.this,
+                        "Seleccione al menos un expediente marcado como posible grupo familiar.",
+                        "Registrar G.F.",
+                        JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    JPanelBandejaExpedientesNueva.this,
+                    "¿Registrar grupo familiar en los expedientes seleccionados?",
+                    "Registrar G.F.",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (confirmacion != JOptionPane.OK_OPTION) {
+                return;
+            }
+            setEnabled(false);
+            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    registrarGrupoFamiliarSeleccionados();
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        refrescar();
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                "Grupo familiar registrado y alerta desactivada.",
+                                "Registrar G.F.",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                ex.getMessage() == null ? "No se pudo registrar el grupo familiar." : ex.getMessage(),
+                                "Registrar G.F.",
+                                JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        setEnabled(true);
+                        actualizarEstado();
+                    }
+                }
+            };
+            worker.execute();
+        }
+
+        private void limpiarSeleccion() {
+            limpiarSeleccionGrupoFamiliar();
+            actualizarEstado();
+        }
+
+        @Override
+        public void setEnabled(boolean enabled) {
+            super.setEnabled(enabled);
+            btnRegistrar.setEnabled(enabled && contarIdsGrupoFamiliarSeleccionados() > 0);
+            btnLimpiar.setEnabled(enabled && contarIdsGrupoFamiliarSeleccionados() > 0);
         }
     }
 

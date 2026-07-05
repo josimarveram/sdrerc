@@ -22,7 +22,6 @@ import javax.swing.SwingWorker;
 public class JPanelRegistroRecepcionV2 extends JPanel {
 
     private static final int TAB_REGISTRO_MANUAL = 2;
-    private static final int TAB_REGISTRAR_GF = 3;
 
     private final MetricCardV2 cardPotencialDuplicado = new MetricCardV2("Potencial duplicado", "0", "Acta + titular", AppV2Theme.WARNING);
     private final MetricCardV2 cardPosibleGrupoFamiliar = new MetricCardV2("Posible Grupo Familiar", "0", "Apellidos coincidentes", AppV2Theme.TEAL);
@@ -65,12 +64,8 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
             }
         }));
         tabs.addTab("Registro manual", crearPanelRegistroManual());
-        tabs.addTab("Registrar G.F", crearPanelRegistrarGrupoFamiliar());
         tabs.addChangeListener(e -> {
             actualizarVisibilidadPanelRecepcion();
-            if (tabs.getSelectedIndex() == TAB_REGISTRAR_GF && panelRegistrarGrupoFamiliar != null) {
-                panelRegistrarGrupoFamiliar.actualizarEstado();
-            }
         });
         return tabs;
     }
@@ -100,11 +95,6 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         bandejaRegistro.vincularMetricasAlertasRegistro(cardPotencialDuplicado, cardPosibleGrupoFamiliar);
         cardPotencialDuplicado.setOnClick(() -> bandejaRegistro.alternarFiltroAlertaRegistro("POTENCIAL_DUPLICADO"));
         cardPosibleGrupoFamiliar.setOnClick(() -> bandejaRegistro.alternarFiltroAlertaRegistro("POSIBLE_GRUPO_FAMILIAR"));
-        bandejaRegistro.setOnGrupoFamiliarSelectionChanged(() -> {
-            if (panelRegistrarGrupoFamiliar != null) {
-                panelRegistrarGrupoFamiliar.actualizarEstado();
-            }
-        });
         bandejaRegistro.setBorder(BorderFactory.createEmptyBorder());
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;

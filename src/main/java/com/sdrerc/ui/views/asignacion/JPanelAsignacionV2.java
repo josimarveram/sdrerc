@@ -1128,9 +1128,9 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 46, 54, 84, 185, 155, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
-        configurarColumna(table.getColumnModel().getColumn(COL_EXPANDIR), 46, 42, 48);
-        configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 38, 38, 42);
+        AppV2TableColumnSizer.applyWidths(table, 42, 34, 84, 185, 155, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
+        configurarColumna(table.getColumnModel().getColumn(COL_EXPANDIR), 42, 40, 46);
+        configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 34, 32, 36);
         configurarColumna(table.getColumnModel().getColumn(COL_DIAS), 84, 78, 92);
         configurarColumna(table.getColumnModel().getColumn(3), 185, 165, 260);
         configurarColumna(table.getColumnModel().getColumn(4), 155, 140, 220);
@@ -1188,6 +1188,15 @@ public class JPanelAsignacionV2 extends JPanel {
                         return;
                     }
                     offset += width;
+                }
+            }
+        });
+        table.getTableHeader().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int column = table.columnAtPoint(e.getPoint());
+                if (column >= 0 && table.convertColumnIndexToModel(column) == COL_SELECCION) {
+                    alternarSeleccionVisibleDesdeHeader();
                 }
             }
         });
