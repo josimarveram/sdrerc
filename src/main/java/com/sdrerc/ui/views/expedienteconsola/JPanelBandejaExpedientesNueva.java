@@ -1322,16 +1322,17 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (panelRecepcion == null) {
             return;
         }
-        String titulo = "Panel de recepción";
+        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de Registro</div>";
         if (expediente != null) {
             String titular = expediente.getTitular();
             if (titular == null || titular.trim().isEmpty()) {
                 titular = expediente.getNumeroExpediente();
             }
             if (titular != null && !titular.trim().isEmpty()) {
-                titulo = titulo + " - " + titular.trim();
+                titulo = titulo + "<div style='font-size:12px;font-weight:600;color:rgb(21,71,117);margin-top:2px;'>" + escapeHtml(titular.trim()) + "</div>";
             }
         }
+        titulo += "</html>";
         panelRecepcion.setTitle(titulo);
     }
 
@@ -2090,6 +2091,19 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return "Coincidencia de apellidos con solicitud existente";
         }
         return DisplayNameMapperV2.valor(criterio);
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        String result = value;
+        result = result.replace("&", "&amp;");
+        result = result.replace("<", "&lt;");
+        result = result.replace(">", "&gt;");
+        result = result.replace("\"", "&quot;");
+        result = result.replace("'", "&#39;");
+        return result;
     }
 
     private static JLabel valueLabel() {
