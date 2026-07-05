@@ -36,9 +36,6 @@ public class RegistroManualValidacionService {
         if (esNoCorresponde(solicitud.getValidacionInicial()) && !hasText(solicitud.getHojaEnvio())) {
             errores.add("Hoja de envío obligatoria cuando no corresponde a la SDRERC.");
         }
-        if (!hasText(solicitud.getNumeroTramite())) {
-            errores.add("Número de trámite obligatorio.");
-        }
         if (!hasText(solicitud.getTipoSolicitudNombre())) {
             errores.add("Tipo de solicitud obligatorio.");
         }
