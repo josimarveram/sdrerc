@@ -97,7 +97,7 @@ public class MenuPrincipalV2 extends JFrame {
         sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(AppV2DisplayScale.sidebarExpandedWidth(), 0));
         sidebar.setBackground(AppV2Theme.SIDEBAR);
-        sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 12));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 8));
 
         marca = new JLabel("<html><b>SDRERC</b><br><span style='font-size:10px'>Gestión de expedientes</span></html>");
         marca.setForeground(Color.WHITE);
@@ -262,7 +262,7 @@ public class MenuPrincipalV2 extends JFrame {
         boton.setFocusPainted(false);
         boton.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 4, 0, 0, AppV2Theme.SIDEBAR),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+                BorderFactory.createEmptyBorder(10, 12, 10, 8)));
         boton.setForeground(Color.WHITE);
         boton.setBackground(AppV2Theme.SIDEBAR);
         boton.setOpaque(true);
@@ -302,7 +302,7 @@ public class MenuPrincipalV2 extends JFrame {
     private void actualizarSidebar() {
         sidebar.setPreferredSize(new Dimension(
                 sidebarCollapsed ? AppV2DisplayScale.sidebarCollapsedWidth() : AppV2DisplayScale.sidebarExpandedWidth(), 0));
-        sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 12));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 8));
         marca.setText(sidebarCollapsed
                 ? ""
                 : "<html><b>SDRERC</b><br><span style='font-size:10px'>Gestión de expedientes</span></html>");

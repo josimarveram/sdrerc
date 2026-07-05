@@ -23,6 +23,9 @@ public class PlazoConfiguracionDTO {
     private String tipoDocumentoCodigo;
     private String tipoDocumentoNombre;
     private Integer diasPlazo;
+    private Integer porcentajeVerdeDesde;
+    private Integer porcentajeAmarilloDesde;
+    private Integer porcentajeRojoDesde;
     private String unidadPlazo;
     private LocalDate fechaVigenciaDesde;
     private LocalDate fechaVigenciaHasta;
@@ -36,6 +39,9 @@ public class PlazoConfiguracionDTO {
         this.nombre = "Plazo de atención de solicitudes SDRERC";
         this.ambito = CODIGO_SOLICITUD_SDRERC;
         this.diasPlazo = Integer.valueOf(30);
+        this.porcentajeVerdeDesde = Integer.valueOf(51);
+        this.porcentajeAmarilloDesde = Integer.valueOf(21);
+        this.porcentajeRojoDesde = Integer.valueOf(0);
         this.unidadPlazo = UNIDAD_HABILES;
         this.activo = true;
     }
@@ -51,10 +57,13 @@ public class PlazoConfiguracionDTO {
             Long idTipoDocumento,
             String tipoDocumentoCodigo,
             String tipoDocumentoNombre,
-            Integer diasPlazo,
-            String unidadPlazo,
-            LocalDate fechaVigenciaDesde,
-            LocalDate fechaVigenciaHasta,
+        Integer diasPlazo,
+        Integer porcentajeVerdeDesde,
+        Integer porcentajeAmarilloDesde,
+        Integer porcentajeRojoDesde,
+        String unidadPlazo,
+        LocalDate fechaVigenciaDesde,
+        LocalDate fechaVigenciaHasta,
             boolean activo,
             String observacion,
             LocalDateTime creadoEn,
@@ -70,6 +79,9 @@ public class PlazoConfiguracionDTO {
         this.tipoDocumentoCodigo = normalizeCode(tipoDocumentoCodigo);
         this.tipoDocumentoNombre = safe(tipoDocumentoNombre);
         this.diasPlazo = diasPlazo;
+        this.porcentajeVerdeDesde = porcentajeVerdeDesde;
+        this.porcentajeAmarilloDesde = porcentajeAmarilloDesde;
+        this.porcentajeRojoDesde = porcentajeRojoDesde;
         this.unidadPlazo = normalizeUnit(unidadPlazo);
         this.fechaVigenciaDesde = fechaVigenciaDesde;
         this.fechaVigenciaHasta = fechaVigenciaHasta;
@@ -165,6 +177,30 @@ public class PlazoConfiguracionDTO {
 
     public void setDiasPlazo(Integer diasPlazo) {
         this.diasPlazo = diasPlazo;
+    }
+
+    public Integer getPorcentajeVerdeDesde() {
+        return porcentajeVerdeDesde;
+    }
+
+    public void setPorcentajeVerdeDesde(Integer porcentajeVerdeDesde) {
+        this.porcentajeVerdeDesde = porcentajeVerdeDesde;
+    }
+
+    public Integer getPorcentajeAmarilloDesde() {
+        return porcentajeAmarilloDesde;
+    }
+
+    public void setPorcentajeAmarilloDesde(Integer porcentajeAmarilloDesde) {
+        this.porcentajeAmarilloDesde = porcentajeAmarilloDesde;
+    }
+
+    public Integer getPorcentajeRojoDesde() {
+        return porcentajeRojoDesde;
+    }
+
+    public void setPorcentajeRojoDesde(Integer porcentajeRojoDesde) {
+        this.porcentajeRojoDesde = porcentajeRojoDesde;
     }
 
     public String getUnidadPlazo() {

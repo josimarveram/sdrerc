@@ -42,21 +42,32 @@ public final class StatusBadgeV2 {
         }
         try {
             long dias = Long.parseLong(value.toString());
+            PlazoVisualSupportV2.Nivel nivel = PlazoVisualSupportV2.clasificarDias(Long.valueOf(dias));
             String tooltip;
-            if (dias < 0) {
-                tooltip = "Vencido. Días hábiles restantes: " + dias;
-                BadgeV2 badge = pill(String.valueOf(dias), AppV2Theme.SOFT_RED, AppV2Theme.ERROR, cellBackground);
-                badge.setToolTipText(tooltip);
-                return badge;
+            switch (nivel) {
+                case VENCIDO:
+                    tooltip = "Vencido. Días hábiles restantes: " + dias;
+                    break;
+                case ROJO:
+                    tooltip = dias == 0 ? "Vence hoy. Días hábiles restantes: 0" : "Días hábiles restantes: " + dias;
+                    break;
+                case AMARILLO:
+                    tooltip = "Días hábiles restantes: " + dias;
+                    break;
+                case VERDE:
+                    tooltip = "Días hábiles restantes: " + dias;
+                    break;
+                case SIN_CONFIG:
+                default:
+                    tooltip = "Días hábiles restantes: " + dias;
+                    break;
             }
-            if (dias <= 3) {
-                tooltip = dias == 0 ? "Vence hoy. Días hábiles restantes: 0" : "Días hábiles restantes: " + dias;
-                BadgeV2 badge = pill(String.valueOf(dias), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING, cellBackground);
-                badge.setToolTipText(tooltip);
-                return badge;
-            }
-            BadgeV2 badge = pill(String.valueOf(dias), AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS, cellBackground);
-            badge.setToolTipText("Días hábiles restantes: " + dias);
+            BadgeV2 badge = pill(
+                    String.valueOf(dias),
+                    PlazoVisualSupportV2.backgroundFor(nivel),
+                    PlazoVisualSupportV2.foregroundFor(nivel),
+                    cellBackground);
+            badge.setToolTipText(tooltip);
             return badge;
         } catch (NumberFormatException ex) {
             return pill(value.toString(), AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED, cellBackground);

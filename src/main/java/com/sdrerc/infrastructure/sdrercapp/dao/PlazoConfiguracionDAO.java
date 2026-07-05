@@ -143,12 +143,13 @@ public class PlazoConfiguracionDAO {
 
     public PlazoConfiguracionDTO insertar(Connection conn, PlazoConfiguracionDTO plazo, Long idUsuario) throws SQLException {
         String sql = "INSERT INTO plazo_configuracion ("
-                + "codigo, nombre, ambito, id_etapa, id_tipo_documento, dias_plazo, unidad_plazo, "
-                + "fecha_vigencia_desde, fecha_vigencia_hasta, activo, observacion, creado_por, creado_en"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSTIMESTAMP)";
+                + "codigo, nombre, ambito, id_etapa, id_tipo_documento, dias_plazo, porcentaje_verde_desde, "
+                + "porcentaje_amarillo_desde, porcentaje_rojo_desde, unidad_plazo, fecha_vigencia_desde, "
+                + "fecha_vigencia_hasta, activo, observacion, creado_por, creado_en"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSTIMESTAMP)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PLAZO_CONFIGURACION"})) {
             bindEditable(ps, plazo);
-            setLongOrNull(ps, 12, idUsuario);
+            setLongOrNull(ps, 15, idUsuario);
             ps.executeUpdate();
             Long id = obtenerGeneratedKey(ps, "plazo_configuracion");
             return obtenerPorId(conn, id);
@@ -157,14 +158,15 @@ public class PlazoConfiguracionDAO {
 
     public PlazoConfiguracionDTO actualizar(Connection conn, PlazoConfiguracionDTO plazo, Long idUsuario) throws SQLException {
         String sql = "UPDATE plazo_configuracion SET "
-                + "codigo = ?, nombre = ?, ambito = ?, id_etapa = ?, id_tipo_documento = ?, dias_plazo = ?, unidad_plazo = ?, "
-                + "fecha_vigencia_desde = ?, fecha_vigencia_hasta = ?, activo = ?, observacion = ?, "
+                + "codigo = ?, nombre = ?, ambito = ?, id_etapa = ?, id_tipo_documento = ?, dias_plazo = ?, "
+                + "porcentaje_verde_desde = ?, porcentaje_amarillo_desde = ?, porcentaje_rojo_desde = ?, "
+                + "unidad_plazo = ?, fecha_vigencia_desde = ?, fecha_vigencia_hasta = ?, activo = ?, observacion = ?, "
                 + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_plazo_configuracion = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             bindEditable(ps, plazo);
-            setLongOrNull(ps, 12, idUsuario);
-            ps.setLong(13, plazo.getIdPlazoConfiguracion());
+            setLongOrNull(ps, 15, idUsuario);
+            ps.setLong(16, plazo.getIdPlazoConfiguracion());
             int updated = ps.executeUpdate();
             if (updated != 1) {
                 throw new SQLException("No se pudo actualizar la configuración de plazo seleccionada.");
@@ -213,7 +215,8 @@ public class PlazoConfiguracionDAO {
         return "SELECT pc.id_plazo_configuracion, pc.codigo, pc.nombre, pc.ambito, "
                 + "pc.id_etapa, et.codigo AS etapa_codigo, et.nombre AS etapa_nombre, "
                 + "pc.id_tipo_documento, td.codigo AS tipo_documento_codigo, td.nombre AS tipo_documento_nombre, "
-                + "pc.dias_plazo, pc.unidad_plazo, pc.fecha_vigencia_desde, pc.fecha_vigencia_hasta, "
+                + "pc.dias_plazo, pc.porcentaje_verde_desde, pc.porcentaje_amarillo_desde, pc.porcentaje_rojo_desde, "
+                + "pc.unidad_plazo, pc.fecha_vigencia_desde, pc.fecha_vigencia_hasta, "
                 + "pc.activo, pc.observacion, pc.creado_en, pc.modificado_en "
                 + "FROM plazo_configuracion pc "
                 + "LEFT JOIN etapa_expediente et ON et.id_etapa = pc.id_etapa "
@@ -227,11 +230,14 @@ public class PlazoConfiguracionDAO {
         setLongOrNull(ps, 4, plazo.getIdEtapa());
         setLongOrNull(ps, 5, plazo.getIdTipoDocumento());
         ps.setInt(6, plazo.getDiasPlazo() == null ? 0 : plazo.getDiasPlazo().intValue());
-        ps.setString(7, emptyToNull(plazo.getUnidadPlazo()));
-        setDateOrNull(ps, 8, plazo.getFechaVigenciaDesde());
-        setDateOrNull(ps, 9, plazo.getFechaVigenciaHasta());
-        ps.setInt(10, plazo.isActivo() ? 1 : 0);
-        ps.setString(11, emptyToNull(plazo.getObservacion()));
+        ps.setInt(7, plazo.getPorcentajeVerdeDesde() == null ? 0 : plazo.getPorcentajeVerdeDesde().intValue());
+        ps.setInt(8, plazo.getPorcentajeAmarilloDesde() == null ? 0 : plazo.getPorcentajeAmarilloDesde().intValue());
+        ps.setInt(9, plazo.getPorcentajeRojoDesde() == null ? 0 : plazo.getPorcentajeRojoDesde().intValue());
+        ps.setString(10, emptyToNull(plazo.getUnidadPlazo()));
+        setDateOrNull(ps, 11, plazo.getFechaVigenciaDesde());
+        setDateOrNull(ps, 12, plazo.getFechaVigenciaHasta());
+        ps.setInt(13, plazo.isActivo() ? 1 : 0);
+        ps.setString(14, emptyToNull(plazo.getObservacion()));
     }
 
     private PlazoConfiguracionDTO map(ResultSet rs) throws SQLException {
@@ -247,6 +253,9 @@ public class PlazoConfiguracionDAO {
                 rs.getString("tipo_documento_codigo"),
                 rs.getString("tipo_documento_nombre"),
                 getIntegerOrNull(rs, "dias_plazo"),
+                getIntegerOrNull(rs, "porcentaje_verde_desde"),
+                getIntegerOrNull(rs, "porcentaje_amarillo_desde"),
+                getIntegerOrNull(rs, "porcentaje_rojo_desde"),
                 rs.getString("unidad_plazo"),
                 toLocalDate(rs.getDate("fecha_vigencia_desde")),
                 toLocalDate(rs.getDate("fecha_vigencia_hasta")),

@@ -86,6 +86,7 @@ public class AppV2SideActionPanel extends JPanel {
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         footer.setOpaque(false);
@@ -210,7 +211,7 @@ public class AppV2SideActionPanel extends JPanel {
 
         @Override
         public boolean getScrollableTracksViewportHeight() {
-            return true;
+            return false;
         }
     }
 }

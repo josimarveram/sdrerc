@@ -12,6 +12,7 @@ import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.EmptyStatePanelV2;
 import com.sdrerc.ui.appv2.components.SideInfoPanelV2;
 import com.sdrerc.ui.appv2.components.StageProgressPanelV2;
+import com.sdrerc.ui.appv2.components.PlazoVisualSupportV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
@@ -893,29 +894,11 @@ public class DlgConsolaExpedienteV2 extends JDialog {
     }
 
     private static Color colorPlazo(Long dias) {
-        if (dias == null) {
-            return AppV2Theme.TEXT_SECONDARY;
-        }
-        if (dias < 0) {
-            return AppV2Theme.ERROR;
-        }
-        if (dias <= 3) {
-            return AppV2Theme.WARNING;
-        }
-        return AppV2Theme.SUCCESS;
+        return PlazoVisualSupportV2.foregroundFor(PlazoVisualSupportV2.clasificarDias(dias));
     }
 
     private static Color fondoPlazo(Long dias) {
-        if (dias == null) {
-            return AppV2Theme.SOFT_GRAY;
-        }
-        if (dias < 0) {
-            return AppV2Theme.SOFT_RED;
-        }
-        if (dias <= 3) {
-            return AppV2Theme.SOFT_ORANGE;
-        }
-        return AppV2Theme.SOFT_GREEN;
+        return PlazoVisualSupportV2.backgroundFor(PlazoVisualSupportV2.clasificarDias(dias));
     }
 
     private static String descripcionCortaPlazo(Long dias) {

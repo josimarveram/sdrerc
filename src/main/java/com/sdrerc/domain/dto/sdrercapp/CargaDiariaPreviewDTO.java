@@ -32,6 +32,7 @@ public class CargaDiariaPreviewDTO {
     private String mensajeValidacion;
     private boolean posibleDuplicado;
     private String motivoDuplicado;
+    private String motivoSinNumero;
     private String numeroExpedienteGenerado;
     private boolean listoParaRegistrar;
     private boolean registrado;
@@ -306,6 +307,14 @@ public class CargaDiariaPreviewDTO {
         this.numeroExpedienteGenerado = trimToNull(numeroExpedienteGenerado);
     }
 
+    public String getMotivoSinNumero() {
+        return motivoSinNumero;
+    }
+
+    public void setMotivoSinNumero(String motivoSinNumero) {
+        this.motivoSinNumero = trimToNull(motivoSinNumero);
+    }
+
     public boolean isListoParaRegistrar() {
         return listoParaRegistrar;
     }
@@ -335,6 +344,7 @@ public class CargaDiariaPreviewDTO {
         mensajeValidacion = null;
         posibleDuplicado = false;
         motivoDuplicado = null;
+        motivoSinNumero = null;
         numeroExpedienteGenerado = null;
         listoParaRegistrar = false;
         registrado = false;

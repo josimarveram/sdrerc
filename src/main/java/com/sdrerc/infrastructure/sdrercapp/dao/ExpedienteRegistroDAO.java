@@ -182,9 +182,7 @@ public class ExpedienteRegistroDAO {
         }
     }
 
-    public CargaDiariaResultadoDTO registrarCarga(
-            List<CargaDiariaPreviewDTO> registros,
-            CorrelativoExpedienteService correlativoService) throws SQLException {
+    public CargaDiariaResultadoDTO registrarCarga(List<CargaDiariaPreviewDTO> registros) throws SQLException {
         if (registros == null || registros.isEmpty()) {
             return new CargaDiariaResultadoDTO(0, 0, "No hay registros para confirmar.", registros);
         }
@@ -210,19 +208,9 @@ public class ExpedienteRegistroDAO {
                 Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
                 Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_CARGA_DIARIA), "movimiento IMPORTACION_CARGA_DIARIA");
-                int anioCorrelativo = correlativoService.anioActual();
-                int siguienteCorrelativo = obtenerUltimoCorrelativoExpediente(conn, anioCorrelativo) + 1;
                 boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
 
                 for (CargaDiariaPreviewDTO item : candidatos) {
-                    DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(conn, item.getNumeroActa(), item.getTitular());
-                    if (duplicadoActaTitular != null) {
-                        item.setPosibleDuplicado(true);
-                        item.setMotivoDuplicado(unirMotivoDuplicado(
-                                item.getMotivoDuplicado(),
-                                "Acta y titular ya existen en " + duplicadoActaTitular.descripcion()));
-                    }
-
                     Long idTitular = insertarPersona(
                             conn,
                             item.getTitular(),
@@ -238,10 +226,9 @@ public class ExpedienteRegistroDAO {
                     Long idSolicitante = idRemitente == null ? idTitular : idRemitente;
 
                     Long idExpediente = insertarExpediente(conn, item, idEtapaRegistro, idEstadoRegistrado);
-                    String motivoSinNumero = motivoSinNumero(duplicadoActaTitular, item.getTipoProcedimiento());
-                    String numeroExpediente = null;
-                    if (motivoSinNumero == null) {
-                        numeroExpediente = correlativoService.generar(anioCorrelativo, siguienteCorrelativo++);
+                    String numeroExpediente = item.getNumeroExpedienteGenerado();
+                    String motivoSinNumero = item.getMotivoSinNumero();
+                    if (hasText(numeroExpediente)) {
                         actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
                     }
 
@@ -1037,12 +1024,10 @@ public class ExpedienteRegistroDAO {
         List<String> alertas = new ArrayList<>();
         if (item.isPosibleDuplicado() || hasText(item.getMotivoDuplicado())) {
             alertas.add("Potencial duplicado");
-        } else if (soportaGrupoFamiliar) {
-            if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()
-                    || hasText(item.getCriterioGrupoFamiliar())
-                    || hasText(item.getObservacionGrupoFamiliar())) {
-                alertas.add("Posible Grupo Familiar");
-            }
+        } else if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()
+                || hasText(item.getCriterioGrupoFamiliar())
+                || hasText(item.getObservacionGrupoFamiliar())) {
+            alertas.add("Posible Grupo Familiar");
         }
         expedienteAlertaDAO.registrarAlertas(
                 conn,
@@ -1062,12 +1047,10 @@ public class ExpedienteRegistroDAO {
         List<String> alertas = new ArrayList<>();
         if (hasText(registro.getMotivoDuplicado())) {
             alertas.add("Potencial duplicado");
-        } else if (soportaGrupoFamiliar) {
-            if (registro.getSolicitud().isGrupoFamiliar()
-                    || hasText(registro.getSolicitud().getCriterioGrupoFamiliar())
-                    || hasText(registro.getSolicitud().getObservacionGrupoFamiliar())) {
-                alertas.add("Posible Grupo Familiar");
-            }
+        } else if (registro.getSolicitud().isGrupoFamiliar()
+                || hasText(registro.getSolicitud().getCriterioGrupoFamiliar())
+                || hasText(registro.getSolicitud().getObservacionGrupoFamiliar())) {
+            alertas.add("Posible Grupo Familiar");
         }
         expedienteAlertaDAO.registrarAlertas(
                 conn,

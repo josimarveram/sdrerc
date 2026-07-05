@@ -191,7 +191,8 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnRefrescar = new JButton("Refrescar");
     private final JButton btnRecibir = new JButton("Recibir expediente");
     private final JButton btnEditar = new JButton("Editar");
-    private final JButton btnRegistrarAnalisis = new JButton("Registrar resultado final");
+    private final JButton btnRegistrarAnalisis = new JButton("Registrar Análisis");
+    private final JButton btnCancelarAnalisis = new JButton("Cancelar");
     private final JButton btnEnviarVerificacion = new JButton("Enviar a verificación");
     private final JButton btnArchivarNoCorresponde = new JButton("Archivar no corresponde");
     private final JButton btnAgregarDocumento = new JButton("+");
@@ -598,8 +599,7 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
         panel.setOpaque(false);
         panel.add(btnRegistrarAnalisis);
-        panel.add(btnEnviarVerificacion);
-        panel.add(btnArchivarNoCorresponde);
+        panel.add(btnCancelarAnalisis);
         return panel;
     }
 
@@ -1283,6 +1283,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEditar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRegistrarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnCancelarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEnviarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnArchivarNoCorresponde.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnDescargarPlantillaSeleccionada.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -1511,6 +1512,7 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.addActionListener(e -> recibir());
         btnEditar.addActionListener(e -> editarSeleccionActual());
         btnRegistrarAnalisis.addActionListener(e -> registrarAnalisis());
+        btnCancelarAnalisis.addActionListener(e -> cerrarPanelAnalisis());
         btnEnviarVerificacion.addActionListener(e -> enviarVerificacion());
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
         btnAgregarDocumento.addActionListener(e -> mostrarDialogoAgregarDocumento());

@@ -88,6 +88,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.TableModelEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -194,12 +195,15 @@ public class JPanelAsignacionV2 extends JPanel {
     private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
+    private final AppV2SearchField txtBusquedaCartasRespuesta = new AppV2SearchField(
+            "Buscar expediente, SGD, titular, tipo o documento", 28);
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
     private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>();
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
+    private final JButton btnLimpiarCartasRespuesta = new JButton("Limpiar");
     private final JCheckBox chkSoloGrupoFamiliar = new JCheckBox("Con grupo familiar");
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
     private final JButton btnGenerarNumeroExpediente = new JButton("Generar número");
@@ -313,7 +317,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private JScrollPane cartasRespuestaScroll;
     private final DefaultTableModel bandejaCartasRespuestaModel = new DefaultTableModel(
             new Object[]{
-                "Expediente",
+                "N° expediente",
                 "N° expediente SGD",
                 "Titular",
                 "Tipo",
@@ -332,6 +336,7 @@ public class JPanelAsignacionV2 extends JPanel {
             bandejaCartasRespuestaTable,
             "Sin cartas de respuesta",
             "Aún no existen documentos analizados con respuesta pendiente.");
+    private AppV2ColumnFilterSupport.Controller cartasRespuestaColumnFilterSupport;
     private final DefaultTableModel cargaLaboralModel = new DefaultTableModel(
             new Object[]{"Abogado", "Supervisor", "Equipo", "Asignadas", "Por vencer", "Vencidos", "En análisis"}, 0) {
         @Override
@@ -535,8 +540,22 @@ public class JPanelAsignacionV2 extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
         panel.add(crearHeaderCartasRespuesta(), BorderLayout.NORTH);
-        panel.add(crearBandejaCartasRespuesta(), BorderLayout.CENTER);
+        JPanel centro = new JPanel(new BorderLayout(0, 12));
+        centro.setOpaque(false);
+        centro.add(crearBuscadorCartasRespuesta(), BorderLayout.NORTH);
+        centro.add(crearBandejaCartasRespuesta(), BorderLayout.CENTER);
+        panel.add(centro, BorderLayout.CENTER);
         return panel;
+    }
+
+    private JPanel crearBuscadorCartasRespuesta() {
+        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
+        JPanel acciones = AppV2ActionPanel.right();
+        btnLimpiarCartasRespuesta.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        btnLimpiarCartasRespuesta.addActionListener(e -> limpiarBusquedaCartasRespuesta());
+        acciones.add(btnLimpiarCartasRespuesta);
+        toolbar.addSearchRow("Búsqueda", txtBusquedaCartasRespuesta, acciones);
+        return toolbar;
     }
 
     private JPanel crearContenidoBandejaCargaAbogados() {
@@ -1021,6 +1040,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private void configurarControles() {
         txtBusqueda.setPreferredSize(new Dimension(720, 36));
         txtBusqueda.setMinimumSize(new Dimension(360, 36));
+        txtBusquedaCartasRespuesta.setPreferredSize(new Dimension(720, 36));
+        txtBusquedaCartasRespuesta.setMinimumSize(new Dimension(360, 36));
         Dimension fechaSize = new Dimension(170, 40);
         fechaSolicitudDesde.setPreferredSize(fechaSize);
         fechaSolicitudDesde.setMinimumSize(new Dimension(150, 40));
@@ -1032,6 +1053,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cmbEquipo.setPreferredSize(new Dimension(230, 34));
         cmbAbogado.setPreferredSize(new Dimension(230, 34));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        txtBusquedaCartasRespuesta.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEquipo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
@@ -1248,12 +1270,12 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2TableColumnSizer.applyWidths(
                 bandejaCartasRespuestaTable,
                 165, 150, 220, 170, 140, 96, 130, 260);
-        AppV2ColumnFilterSupport.install(
-                "Asignacion.BandejaCartasRespuesta",
-                bandejaCartasRespuestaTable,
-                bandejaCartasRespuestaTablePanel.getScrollPane(),
-                bandejaCartasRespuestaTablePanel.getScrollPane(),
-                null);
+        cartasRespuestaColumnFilterSupport = AppV2ColumnFilterSupport.install(
+                    "Asignacion.BandejaCartasRespuesta",
+                    bandejaCartasRespuestaTable,
+                    bandejaCartasRespuestaTablePanel.getScrollPane(),
+                    bandejaCartasRespuestaTablePanel.getScrollPane(),
+                    null);
     }
 
     private void configurarColumna(TableColumn column, int preferred, int min, int max) {
@@ -1277,6 +1299,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
+        txtBusquedaCartasRespuesta.getDocument().addDocumentListener(simpleDocumentListener(this::aplicarBusquedaCartasRespuesta));
+        btnLimpiarCartasRespuesta.addActionListener(e -> limpiarBusquedaCartasRespuesta());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
         btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpedienteSeleccionado());
         btnAsignarSeleccionado.addActionListener(e -> asignarFilaSeleccionada());
@@ -1614,7 +1638,7 @@ public class JPanelAsignacionV2 extends JPanel {
             case SIN_NUMERO:
                 return !item.tieneNumeroExpediente() || item.requiereDecisionNumeroAsignacion();
             case GRUPO_FAMILIAR:
-                return item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar();
+                return esAlertaGrupoFamiliar(item);
             case POR_VENCER:
                 Long dias = item.getDiasRestantes();
                 return dias != null && dias >= 0 && dias <= 5;
@@ -1656,7 +1680,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void activarKpiCartas(FiltroKpiCartas filtro) {
         kpiCartasActiva = filtro;
-        cargarBandejaCartasRespuestaModel(new ArrayList<AsignacionCartaRespuestaDTO>(cartasRespuestaPendientes));
+        refrescarCartasRespuesta();
         marcarKpisCartas();
     }
 
@@ -1703,6 +1727,52 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
         return filtrados;
+    }
+
+    private List<AsignacionCartaRespuestaDTO> filtrarCartasBusqueda(List<AsignacionCartaRespuestaDTO> items) {
+        List<AsignacionCartaRespuestaDTO> filtrados = new ArrayList<AsignacionCartaRespuestaDTO>();
+        if (items == null || items.isEmpty()) {
+            return filtrados;
+        }
+        String texto = normalizarFiltroTexto(txtBusquedaCartasRespuesta.getText());
+        if (texto.isEmpty()) {
+            filtrados.addAll(items);
+            return filtrados;
+        }
+        for (AsignacionCartaRespuestaDTO item : items) {
+            if (coincideBusquedaCartas(item, texto)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean coincideBusquedaCartas(AsignacionCartaRespuestaDTO item, String texto) {
+        if (item == null || texto == null || texto.isEmpty()) {
+            return false;
+        }
+        return contieneNormalizado(item.getNumeroExpediente(), texto)
+                || contieneNormalizado(item.getNumeroExpedienteSgd(), texto)
+                || contieneNormalizado(item.getTitular(), texto)
+                || contieneNormalizado(item.getTipoDocumentoNombre(), texto)
+                || contieneNormalizado(item.getEstadoDocumentoNombre(), texto)
+                || contieneNormalizado(item.getNumeroDocumento(), texto)
+                || contieneNormalizado(item.getDescripcion(), texto);
+    }
+
+    private void refrescarCartasRespuesta() {
+        cargarBandejaCartasRespuestaModel(
+                filtrarCartasBusqueda(
+                        filtrarCartasKpi(cartasRespuestaPendientes)));
+    }
+
+    private void aplicarBusquedaCartasRespuesta() {
+        refrescarCartasRespuesta();
+    }
+
+    private void limpiarBusquedaCartasRespuesta() {
+        txtBusquedaCartasRespuesta.setText("");
+        refrescarCartasRespuesta();
     }
 
     private boolean coincideCarta(AsignacionCartaRespuestaDTO item) {
@@ -1757,7 +1827,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 if (!item.tieneNumeroExpediente()) {
                     sinNumero++;
                 }
-                if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+                if (esAlertaGrupoFamiliar(item)) {
                     grupoFamiliar++;
                 }
                 Long dias = item.getDiasRestantes();
@@ -1774,6 +1844,14 @@ public class JPanelAsignacionV2 extends JPanel {
         cardPorVencer.setValue(String.valueOf(porVencer));
         cardVencidos.setValue(String.valueOf(vencidos));
         marcarKpisBandeja();
+    }
+
+    private boolean esAlertaGrupoFamiliar(AsignacionExpedienteDTO item) {
+        if (item == null) {
+            return false;
+        }
+        String alerta = AsignacionRegistroEditRules.normalizar(item.getAlertaIngreso());
+        return alerta.contains("GRUPO FAMILIAR") && !alerta.contains("POTENCIAL DUPLICADO");
     }
 
     private void agregarFilaPrincipal(AsignacionExpedienteDTO item) {
@@ -3275,8 +3353,38 @@ public class JPanelAsignacionV2 extends JPanel {
         return "-".equals(text) ? "" : text;
     }
 
+    private static String normalizarFiltroTexto(String value) {
+        return AsignacionRegistroEditRules.normalizar(value);
+    }
+
+    private static boolean contieneNormalizado(Object value, String criterio) {
+        if (criterio == null || criterio.isEmpty()) {
+            return true;
+        }
+        return normalizarFiltroTexto(stringValue(value)).contains(criterio);
+    }
+
     private static String stringValue(Object value) {
         return value == null ? "" : value.toString().trim();
+    }
+
+    private DocumentListener simpleDocumentListener(Runnable action) {
+        return new DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                action.run();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                action.run();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                action.run();
+            }
+        };
     }
 
     private void prepararHojaEnvioSimple(AsignacionExpedienteDTO item) {

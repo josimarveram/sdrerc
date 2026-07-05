@@ -196,9 +196,6 @@ public class ExpedienteBandejaDAO {
     }
 
     private static String grupoFamiliar(int cantidadRelaciones, boolean grupoFamiliar, String criterio, String observacion) {
-        if (cantidadRelaciones > 0) {
-            return "Potencial duplicado";
-        }
         if (grupoFamiliar) {
             return "Posible Grupo Familiar";
         } else if (hasText(criterio) || hasText(observacion)) {

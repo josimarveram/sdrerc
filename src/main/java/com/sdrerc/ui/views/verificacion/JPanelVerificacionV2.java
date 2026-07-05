@@ -182,7 +182,8 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnRegistrarVerificacion = new JButton("Registrar verificación");
+    private final JButton btnRegistrarVerificacion = new JButton("Registrar Verificación");
+    private final JButton btnCancelarVerificacion = new JButton("Cancelar");
     private final JButton btnAprobar = new JButton("Aprobar verificación");
     private final JButton btnEnviarFirma = new JButton("Preparar documento emitido");
     private final JButton btnObservar = new JButton("Requiere corrección");
@@ -546,12 +547,7 @@ public class JPanelVerificacionV2 extends JPanel {
         JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
         panel.setOpaque(false);
         panel.add(btnRegistrarVerificacion);
-        panel.add(btnAprobar);
-        panel.add(btnObservar);
-        panel.add(btnDocumentoInconsistente);
-        panel.add(btnDevolverAnalisis);
-        panel.add(btnEnviarEjecucion);
-        panel.add(btnEnviarNotificacion);
+        panel.add(btnCancelarVerificacion);
         return panel;
     }
 
@@ -1027,6 +1023,7 @@ public class JPanelVerificacionV2 extends JPanel {
         spnLimite.setPreferredSize(new Dimension(86, 34));
         btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnRegistrarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnCancelarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnAprobar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEnviarFirma.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnObservar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -1150,6 +1147,7 @@ public class JPanelVerificacionV2 extends JPanel {
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
         btnRegistrarVerificacion.addActionListener(e -> registrarVerificacion());
+        btnCancelarVerificacion.addActionListener(e -> cerrarPanelVerificacion());
         btnAprobar.addActionListener(e -> accionRapida("APROBACION_VERIFICACION"));
         btnEnviarFirma.addActionListener(e -> enviarFirma());
         btnObservar.addActionListener(e -> accionRapida("REGISTRO_OBSERVACION_VERIFICACION"));
@@ -1242,6 +1240,7 @@ public class JPanelVerificacionV2 extends JPanel {
         for (CatalogoItemDTO item : carga.estadosDocumento) {
             estadosDocumento.add(new SimpleItem(item.getCodigo(), item.getNombre()));
         }
+        configurarEditoresCatalogoDocumentoTabla();
     }
 
     private void cargarSimpleItems(JComboBox<SimpleItem> combo, List<CatalogoItemDTO> items, String placeholder) {
@@ -2066,6 +2065,13 @@ public class JPanelVerificacionV2 extends JPanel {
             }
         }
         return combo;
+    }
+
+    private void configurarEditoresCatalogoDocumentoTabla() {
+        if (documentosTable != null && documentosTable.getColumnModel().getColumnCount() > COL_DOCUMENTO_ESTADO) {
+            documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO)
+                    .setCellEditor(new DefaultCellEditor(comboEstadosDocumento()));
+        }
     }
 
     private SimpleItem estadoDocumentoDesdeFila(int modelRow) {

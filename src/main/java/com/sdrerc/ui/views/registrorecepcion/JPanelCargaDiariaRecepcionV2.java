@@ -97,10 +97,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     private final JLabel lblEstado = new JLabel("Seleccione un archivo .xlsx o .csv para iniciar.");
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
 
-    private final ResumenCard cardTotal = new ResumenCard("Total leídos", "0", "Pendiente de archivo", AppV2Theme.INFO);
     private final ResumenCard cardValidos = new ResumenCard("Válidos", "0", "Pendiente de validación", AppV2Theme.SUCCESS);
     private final ResumenCard cardErrores = new ResumenCard("Con alertas", "0", "No bloqueantes", AppV2Theme.WARNING);
-    private final ResumenCard cardListos = new ResumenCard("Listos para registrar", "0", "Confirmación requerida", AppV2Theme.TEAL);
     private final ResumenCard cardDuplicados = new ResumenCard("Posibles duplicados", "0", "Acta + titular", AppV2Theme.WARNING);
     private final ResumenCard cardGrupoFamiliar = new ResumenCard("Grupo familiar", "0", "Marca o alerta", AppV2Theme.TEAL);
     private final ResumenCard cardPendientesNumero = new ResumenCard("Pendientes de número", "0", "Asignación decide", AppV2Theme.WARNING);
@@ -205,12 +203,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         mensajes.add(ayuda, BorderLayout.NORTH);
         mensajes.add(lblEstado, BorderLayout.SOUTH);
 
-        JPanel metricas = new JPanel(new GridLayout(1, 4, 10, 8));
+        JPanel metricas = new JPanel(new GridLayout(1, 2, 10, 8));
         metricas.setOpaque(false);
-        metricas.add(cardTotal);
         metricas.add(cardValidos);
         metricas.add(cardErrores);
-        metricas.add(cardListos);
 
         wrapper.add(toolbar, BorderLayout.NORTH);
         wrapper.add(mensajes, BorderLayout.CENTER);
@@ -834,25 +830,19 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private void actualizarResumen() {
         CargaDiariaResumenDTO resumen = CargaDiariaResumenDTO.desde(registros);
-        cardTotal.actualizar(String.valueOf(resumen.getTotalLeidos()), resumen.getTotalLeidos() == 0 ? "Pendiente de archivo" : "Archivo leído");
         cardValidos.actualizar(String.valueOf(resumen.getValidos()), "Sin errores críticos");
         cardErrores.actualizar(
                 String.valueOf(resumen.getConErrores()),
                 "Duplicados: " + resumen.getPosiblesDuplicados()
                         + " | Grupo familiar: " + resumen.getConGrupoFamiliar()
                         + " | Pendientes de número: " + resumen.getPendientesNumero());
-        cardListos.actualizar(
-                String.valueOf(resumen.getListosParaRegistrar()),
-                "Registrados: " + resumen.getRegistrados() + " | Confirmación requerida");
         actualizarBotones();
         marcarKpisSeleccionados();
     }
 
     private void configurarKpisInteractivos() {
-        cardTotal.setOnClick(() -> activarFiltroKpi(FiltroKpi.TODOS));
         cardValidos.setOnClick(() -> activarFiltroKpi(FiltroKpi.VALIDOS));
         cardErrores.setOnClick(() -> activarFiltroKpi(FiltroKpi.ALERTAS));
-        cardListos.setOnClick(() -> activarFiltroKpi(FiltroKpi.LISTOS));
         cardDuplicados.setOnClick(() -> activarFiltroKpi(FiltroKpi.DUPLICADOS));
         cardGrupoFamiliar.setOnClick(() -> activarFiltroKpi(FiltroKpi.GRUPO_FAMILIAR));
         cardPendientesNumero.setOnClick(() -> activarFiltroKpi(FiltroKpi.PENDIENTES_NUMERO));
@@ -870,10 +860,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private void marcarKpisSeleccionados() {
-        cardTotal.setSelected(kpiActivo == FiltroKpi.TODOS);
         cardValidos.setSelected(kpiActivo == FiltroKpi.VALIDOS);
         cardErrores.setSelected(kpiActivo == FiltroKpi.ALERTAS);
-        cardListos.setSelected(kpiActivo == FiltroKpi.LISTOS);
         cardDuplicados.setSelected(kpiActivo == FiltroKpi.DUPLICADOS);
         cardGrupoFamiliar.setSelected(kpiActivo == FiltroKpi.GRUPO_FAMILIAR);
         cardPendientesNumero.setSelected(kpiActivo == FiltroKpi.PENDIENTES_NUMERO);

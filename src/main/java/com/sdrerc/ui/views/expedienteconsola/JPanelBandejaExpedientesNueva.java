@@ -16,7 +16,9 @@ import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
+import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
+import com.sdrerc.ui.appv2.components.PlazoVisualSupportV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
@@ -136,6 +138,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private Long idPanelRecepcionActual;
     private int panelRecepcionLoadSequence;
     private boolean panelRecepcionCargado;
+    private MetricCardV2 cardPotencialDuplicadoRegistro;
+    private MetricCardV2 cardPosibleGrupoFamiliarRegistro;
+    private String filtroAlertaRegistro;
 
     public JPanelBandejaExpedientesNueva() {
         this(new ExpedienteConsultaService());
@@ -728,6 +733,29 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         buscar();
     }
 
+    public void vincularMetricasAlertasRegistro(MetricCardV2 potencialDuplicado, MetricCardV2 posibleGrupoFamiliar) {
+        this.cardPotencialDuplicadoRegistro = potencialDuplicado;
+        this.cardPosibleGrupoFamiliarRegistro = posibleGrupoFamiliar;
+        actualizarMetricasAlertasRegistro(null);
+        marcarFiltroAlertaRegistro();
+    }
+
+    public void alternarFiltroAlertaRegistro(String codigoAlerta) {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        String filtro = normalizar(codigoAlerta);
+        if ("POTENCIAL_DUPLICADO".equals(filtro)) {
+            filtroAlertaRegistro = "POTENCIAL_DUPLICADO".equals(filtroAlertaRegistro) ? null : "POTENCIAL_DUPLICADO";
+        } else if ("POSIBLE_GRUPO_FAMILIAR".equals(filtro)) {
+            filtroAlertaRegistro = "POSIBLE_GRUPO_FAMILIAR".equals(filtroAlertaRegistro) ? null : "POSIBLE_GRUPO_FAMILIAR";
+        } else {
+            filtroAlertaRegistro = null;
+        }
+        marcarFiltroAlertaRegistro();
+        buscar();
+    }
+
     private void buscar() {
         String texto = txtBusqueda.getText();
         String etapa = perfilRegistroRecepcion
@@ -755,17 +783,21 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
 
             @Override
-            protected void done() {
-                try {
-                    List<ExpedienteBandejaDTO> expedientes = get();
-                    if (perfilRegistroRecepcion && chkFiltroGrupoFamiliar.isSelected()) {
-                        expedientes = filtrarGrupoFamiliar(expedientes);
-                    }
-                    cargarTabla(expedientes);
-                } catch (Exception ex) {
-                    mostrarError(ex);
-                } finally {
-                    setBuscando(false);
+                protected void done() {
+                    try {
+                        List<ExpedienteBandejaDTO> expedientes = get();
+                        if (perfilRegistroRecepcion && chkFiltroGrupoFamiliar.isSelected()) {
+                            expedientes = filtrarGrupoFamiliar(expedientes);
+                        }
+                        actualizarMetricasAlertasRegistro(expedientes);
+                        if (perfilRegistroRecepcion) {
+                            expedientes = filtrarPorAlertaRegistro(expedientes);
+                        }
+                        cargarTabla(expedientes);
+                    } catch (Exception ex) {
+                        mostrarError(ex);
+                    } finally {
+                        setBuscando(false);
                 }
             }
         };
@@ -781,6 +813,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         cmbEstado.setSelectedIndex(0);
         chkFiltroGrupoFamiliar.setSelected(false);
+        filtroAlertaRegistro = null;
+        marcarFiltroAlertaRegistro();
         if (perfilRegistroRecepcion) {
             restaurarFechasRegistro();
         } else {
@@ -860,6 +894,71 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
         }
         return filtrados;
+    }
+
+    private List<ExpedienteBandejaDTO> filtrarPorAlertaRegistro(List<ExpedienteBandejaDTO> expedientes) {
+        List<ExpedienteBandejaDTO> filtrados = new ArrayList<>();
+        if (expedientes == null || filtroAlertaRegistro == null) {
+            return expedientes == null ? filtrados : new ArrayList<>(expedientes);
+        }
+        for (ExpedienteBandejaDTO item : expedientes) {
+            if (coincideAlertaRegistro(item)) {
+                filtrados.add(item);
+            }
+        }
+        return filtrados;
+    }
+
+    private boolean coincideAlertaRegistro(ExpedienteBandejaDTO item) {
+        if (item == null) {
+            return false;
+        }
+        String alertas = normalizarFiltro(item.getAlertas());
+        if ("POTENCIAL_DUPLICADO".equals(filtroAlertaRegistro)) {
+            return alertas.contains("POTENCIAL DUPLICADO");
+        }
+        if ("POSIBLE_GRUPO_FAMILIAR".equals(filtroAlertaRegistro)) {
+            return alertas.contains("POSIBLE GRUPO FAMILIAR");
+        }
+        return true;
+    }
+
+    private void actualizarMetricasAlertasRegistro(List<ExpedienteBandejaDTO> expedientes) {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        int duplicados = 0;
+        int grupoFamiliar = 0;
+        if (expedientes != null) {
+            for (ExpedienteBandejaDTO item : expedientes) {
+                if (item == null) {
+                    continue;
+                }
+                String alertas = normalizarFiltro(item.getAlertas());
+                if (alertas.contains("POTENCIAL DUPLICADO")) {
+                    duplicados++;
+                }
+                if (alertas.contains("POSIBLE GRUPO FAMILIAR")) {
+                    grupoFamiliar++;
+                }
+            }
+        }
+        if (cardPotencialDuplicadoRegistro != null) {
+            cardPotencialDuplicadoRegistro.setValue(String.valueOf(duplicados));
+        }
+        if (cardPosibleGrupoFamiliarRegistro != null) {
+            cardPosibleGrupoFamiliarRegistro.setValue(String.valueOf(grupoFamiliar));
+        }
+        marcarFiltroAlertaRegistro();
+    }
+
+    private void marcarFiltroAlertaRegistro() {
+        if (cardPotencialDuplicadoRegistro != null) {
+            cardPotencialDuplicadoRegistro.setSelected("POTENCIAL_DUPLICADO".equals(filtroAlertaRegistro));
+        }
+        if (cardPosibleGrupoFamiliarRegistro != null) {
+            cardPosibleGrupoFamiliarRegistro.setSelected("POSIBLE_GRUPO_FAMILIAR".equals(filtroAlertaRegistro));
+        }
     }
 
     private boolean esGrupoFamiliar(ExpedienteBandejaDTO item) {
@@ -1376,16 +1475,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private static Color colorPlazo(Long dias) {
-        if (dias == null) {
-            return AppV2Theme.TEXT_SECONDARY;
-        }
-        if (dias < 0) {
-            return AppV2Theme.ERROR;
-        }
-        if (dias <= 3) {
-            return AppV2Theme.WARNING;
-        }
-        return AppV2Theme.SUCCESS;
+        return PlazoVisualSupportV2.foregroundFor(PlazoVisualSupportV2.clasificarDias(dias));
     }
 
     private static String descripcionPlazo(Long dias, LocalDate fechaVencimiento) {

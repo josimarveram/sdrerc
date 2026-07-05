@@ -29,6 +29,18 @@ public class PlazoConfiguracionService {
         return plazoConfiguracionDAO.buscar(textoLibre, activo, limite);
     }
 
+    public PlazoConfiguracionDTO obtenerPlazoSolicitud() throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return plazoConfiguracionDAO.obtenerPlazoSolicitud(conn);
+        }
+    }
+
+    public PlazoConfiguracionDTO obtenerPlazoPorCodigo(String codigo) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return plazoConfiguracionDAO.obtenerPlazoPorCodigo(conn, codigo);
+        }
+    }
+
     public PlazoConfiguracionDTO guardar(PlazoConfiguracionDTO plazo) throws SQLException {
         validar(plazo);
         try (Connection conn = SdrercAppConnection.getConnection()) {

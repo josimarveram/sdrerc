@@ -64,10 +64,12 @@ public class RegistroManualExpedienteService {
             mensajes.add(ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
         }
 
-        String grupoFamiliar = expedienteRegistroDAO.detectarPosibleGrupoFamiliarPorTitular(titular, null);
-        if (hasText(grupoFamiliar)) {
-            registro.getSolicitud().agregarObservacionGrupoFamiliar("COINCIDENCIA_APELLIDOS_BD", grupoFamiliar);
-            mensajes.add(grupoFamiliar);
+        if (!registro.isPosibleDuplicado()) {
+            String grupoFamiliar = expedienteRegistroDAO.detectarPosibleGrupoFamiliarPorTitular(titular, null);
+            if (hasText(grupoFamiliar)) {
+                registro.getSolicitud().agregarObservacionGrupoFamiliar("COINCIDENCIA_APELLIDOS_BD", grupoFamiliar);
+                mensajes.add(grupoFamiliar);
+            }
         }
         return mensajes;
     }

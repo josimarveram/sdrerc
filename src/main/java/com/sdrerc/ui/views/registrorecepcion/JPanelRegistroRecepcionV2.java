@@ -15,6 +15,8 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
 
     private static final int TAB_REGISTRO_MANUAL = 2;
 
+    private final MetricCardV2 cardPotencialDuplicado = new MetricCardV2("Potencial duplicado", "0", "Acta + titular", AppV2Theme.WARNING);
+    private final MetricCardV2 cardPosibleGrupoFamiliar = new MetricCardV2("Posible Grupo Familiar", "0", "Apellidos coincidentes", AppV2Theme.TEAL);
     private JPanelBandejaExpedientesNueva bandejaRegistro;
     private JTabbedPane tabs;
     private JPanel metricasRegistro;
@@ -60,11 +62,9 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(12, 14));
         panel.setBackground(AppV2Theme.BACKGROUND);
 
-        metricasRegistro = new AppV2ResponsiveGridPanel(190, 4, 12, 0);
-        metricasRegistro.add(new MetricCardV2("En registro", "-", "Pendiente de métrica", AppV2Theme.INFO));
-        metricasRegistro.add(new MetricCardV2("Recepcionados", "-", "Preparado para SDRERC_APP", AppV2Theme.TEAL));
-        metricasRegistro.add(new MetricCardV2("Observados", "-", "Validación futura", AppV2Theme.WARNING));
-        metricasRegistro.add(new MetricCardV2("Duplicados", "-", "Conservados para revisión", AppV2Theme.INDIGO));
+        metricasRegistro = new AppV2ResponsiveGridPanel(190, 2, 12, 0);
+        metricasRegistro.add(cardPotencialDuplicado);
+        metricasRegistro.add(cardPosibleGrupoFamiliar);
 
         bandejaRegistro = new JPanelBandejaExpedientesNueva(
                 "REGISTRO",
@@ -80,6 +80,9 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                     }
                 },
                 true);
+        bandejaRegistro.vincularMetricasAlertasRegistro(cardPotencialDuplicado, cardPosibleGrupoFamiliar);
+        cardPotencialDuplicado.setOnClick(() -> bandejaRegistro.alternarFiltroAlertaRegistro("POTENCIAL_DUPLICADO"));
+        cardPosibleGrupoFamiliar.setOnClick(() -> bandejaRegistro.alternarFiltroAlertaRegistro("POSIBLE_GRUPO_FAMILIAR"));
         bandejaRegistro.setBorder(BorderFactory.createEmptyBorder());
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;
