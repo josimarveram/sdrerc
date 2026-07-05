@@ -2,6 +2,7 @@ package com.sdrerc.ui.appv2.components;
 
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -11,6 +12,7 @@ import javax.swing.JPanel;
 
 public class AppV2SideSectionPanel extends JPanel {
 
+    private static final int LABEL_COLUMN_WIDTH = 160;
     private final JPanel form = new JPanel(new GridBagLayout());
     private int row;
 
@@ -33,8 +35,8 @@ public class AppV2SideSectionPanel extends JPanel {
         GridBagConstraints gbcLabel = new GridBagConstraints();
         gbcLabel.gridx = 0;
         gbcLabel.gridy = row;
-        gbcLabel.weightx = 0.38;
-        gbcLabel.fill = GridBagConstraints.HORIZONTAL;
+        gbcLabel.weightx = 0;
+        gbcLabel.fill = GridBagConstraints.NONE;
         gbcLabel.anchor = GridBagConstraints.NORTHWEST;
         gbcLabel.insets = new Insets(6, 0, 6, 14);
 
@@ -67,6 +69,9 @@ public class AppV2SideSectionPanel extends JPanel {
         JLabel lbl = new JLabel(text);
         lbl.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lbl.setForeground(AppV2Theme.TEXT_SECONDARY);
+        Dimension pref = lbl.getPreferredSize();
+        lbl.setPreferredSize(new Dimension(LABEL_COLUMN_WIDTH, pref.height));
+        lbl.setMinimumSize(new Dimension(LABEL_COLUMN_WIDTH, pref.height));
         return lbl;
     }
 }
