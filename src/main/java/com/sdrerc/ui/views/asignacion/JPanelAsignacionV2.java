@@ -529,11 +529,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearContenidoBandejaAsignacion() {
-        JPanel contenidoPrincipal = new JPanel(new BorderLayout(8, 8));
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(4, 4));
         contenidoPrincipal.setOpaque(false);
         contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
 
-        JPanel contenidoOperativo = new JPanel(new BorderLayout(8, 8));
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(4, 4));
         contenidoOperativo.setOpaque(false);
         contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
         contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
