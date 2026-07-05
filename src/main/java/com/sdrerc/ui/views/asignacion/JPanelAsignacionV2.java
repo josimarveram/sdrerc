@@ -1130,7 +1130,7 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         AppV2TableColumnSizer.applyWidths(table, 46, 54, 84, 185, 155, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
         configurarColumna(table.getColumnModel().getColumn(COL_EXPANDIR), 46, 42, 48);
-        configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 54, 54, 58);
+        configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 38, 38, 42);
         configurarColumna(table.getColumnModel().getColumn(COL_DIAS), 84, 78, 92);
         configurarColumna(table.getColumnModel().getColumn(3), 185, 165, 260);
         configurarColumna(table.getColumnModel().getColumn(4), 155, 140, 220);
@@ -1156,8 +1156,41 @@ public class JPanelAsignacionV2 extends JPanel {
                 COL_SELECCION,
                 COL_ID);
         table.getColumnModel().getColumn(COL_SELECCION).setHeaderRenderer(new SelectAllHeaderRenderer());
+        SwingUtilities.invokeLater(this::instalarListenerCabeceraSeleccionAsignacion);
         table.getRowSorter().addRowSorterListener(e -> SwingUtilities.invokeLater(
                 this::actualizarEstadoHeaderSeleccion));
+    }
+
+    private void instalarListenerCabeceraSeleccionAsignacion() {
+        if (tablePanel == null || tablePanel.getScrollPane() == null
+                || tablePanel.getScrollPane().getColumnHeader() == null
+                || tablePanel.getScrollPane().getColumnHeader().getView() == null) {
+            return;
+        }
+        Component headerView = tablePanel.getScrollPane().getColumnHeader().getView();
+        if (!(headerView instanceof javax.swing.JComponent)) {
+            return;
+        }
+        javax.swing.JComponent component = (javax.swing.JComponent) headerView;
+        component.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getY() >= 30) {
+                    return;
+                }
+                int offset = 0;
+                for (int viewColumn = 0; viewColumn < table.getColumnModel().getColumnCount(); viewColumn++) {
+                    int width = table.getColumnModel().getColumn(viewColumn).getWidth();
+                    if (e.getX() >= offset && e.getX() < offset + width) {
+                        if (table.convertColumnIndexToModel(viewColumn) == COL_SELECCION) {
+                            alternarSeleccionVisibleDesdeHeader();
+                        }
+                        return;
+                    }
+                    offset += width;
+                }
+            }
+        });
     }
 
     private void configurarTablaDocumentosRelacionados() {
