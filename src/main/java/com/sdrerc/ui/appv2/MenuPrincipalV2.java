@@ -69,6 +69,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnFeriados;
     private JButton btnPlazos;
     private JButton botonActivo;
+    private int sidebarExpandedWidth;
 
     public MenuPrincipalV2() {
         configurarVentana();
@@ -95,7 +96,6 @@ public class MenuPrincipalV2 extends JFrame {
 
     private JPanel crearMenuLateral() {
         sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(AppV2DisplayScale.sidebarExpandedWidth(), 0));
         sidebar.setBackground(AppV2Theme.SIDEBAR);
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 8));
 
@@ -184,6 +184,8 @@ public class MenuPrincipalV2 extends JFrame {
 
         sidebar.add(top, BorderLayout.NORTH);
         sidebar.add(scrollMenu, BorderLayout.CENTER);
+        sidebarExpandedWidth = calcularAnchoSidebarExpandido();
+        sidebar.setPreferredSize(new Dimension(sidebarExpandedWidth, 0));
         botonActivo = btnInicio;
         aplicarEstadoActivo(btnInicio);
         return sidebar;
@@ -300,8 +302,11 @@ public class MenuPrincipalV2 extends JFrame {
     }
 
     private void actualizarSidebar() {
+        if (!sidebarCollapsed) {
+            sidebarExpandedWidth = calcularAnchoSidebarExpandido();
+        }
         sidebar.setPreferredSize(new Dimension(
-                sidebarCollapsed ? AppV2DisplayScale.sidebarCollapsedWidth() : AppV2DisplayScale.sidebarExpandedWidth(), 0));
+                sidebarCollapsed ? AppV2DisplayScale.sidebarCollapsedWidth() : sidebarExpandedWidth, 0));
         sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 8));
         marca.setText(sidebarCollapsed
                 ? ""
@@ -339,6 +344,21 @@ public class MenuPrincipalV2 extends JFrame {
         sidebar.repaint();
         getContentPane().revalidate();
         getContentPane().repaint();
+    }
+
+    private int calcularAnchoSidebarExpandido() {
+        int ancho = AppV2DisplayScale.scale(248);
+        if (marca != null) {
+            ancho = Math.max(ancho, marca.getPreferredSize().width);
+        }
+        for (JLabel seccion : seccionesMenu) {
+            ancho = Math.max(ancho, seccion.getPreferredSize().width);
+        }
+        for (JButton boton : botonesMenu) {
+            ancho = Math.max(ancho, boton.getPreferredSize().width);
+        }
+        ancho += AppV2DisplayScale.scale(28);
+        return ancho;
     }
 
     private void mostrarInicio() {
