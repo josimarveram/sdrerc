@@ -308,7 +308,7 @@ public class AsignacionExpedienteDTO {
             return "Grupo familiar";
         }
         if (isPosibleGrupoFamiliar()) {
-            return "Posible grupo familiar";
+            return "Posible Grupo Familiar";
         }
         if (tieneObservacionRegistro()) {
             return "Con observaciones";

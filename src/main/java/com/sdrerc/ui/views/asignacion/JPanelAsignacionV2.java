@@ -1884,7 +1884,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 if (item.isPotencialDuplicado()) {
                     potencialDuplicado++;
                 }
-                if (item.isPosibleGrupoFamiliar()) {
+                if (contienePosibleGrupoFamiliar(item)) {
                     posibleGrupoFamiliar++;
                 }
                 Long dias = item.getDiasRestantes();
@@ -2018,7 +2018,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (item.isPotencialDuplicado()) {
             return "Potencial duplicado";
         }
-        if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+        if (contienePosibleGrupoFamiliar(item)) {
             return "Posible Grupo Familiar";
         }
         return "Sin Alerta";
@@ -2026,6 +2026,22 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private String alertaAsociada(AsignacionExpedienteDTO principal) {
         return alertaAsignacion(principal);
+    }
+
+    private boolean contienePosibleGrupoFamiliar(AsignacionExpedienteDTO item) {
+        if (item == null) {
+            return false;
+        }
+        String alerta = normalizarTexto(item.getAlertaIngreso());
+        if (alerta.contains("posible grupo familiar")) {
+            return true;
+        }
+        String grupo = normalizarTexto(item.getGrupoFamiliarEstado());
+        return grupo.contains("posible");
+    }
+
+    private static String normalizarTexto(String value) {
+        return value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private static String formatDate(LocalDate value) {
