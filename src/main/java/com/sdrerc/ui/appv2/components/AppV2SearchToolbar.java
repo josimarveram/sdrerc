@@ -44,9 +44,19 @@ public class AppV2SearchToolbar extends AppV2FilterPanel {
         add(component, gbc);
     }
 
+    public void addCompactFilter(Component component) {
+        GridBagConstraints gbc = baseConstraints();
+        gbc.gridy = 1;
+        gbc.gridx = filterColumn;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        add(component, gbc);
+        filterColumn += 2;
+    }
+
     private GridBagConstraints baseConstraints() {
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 6, 4, 6);
+        gbc.insets = new Insets(2, 4, 2, 4);
         gbc.anchor = GridBagConstraints.WEST;
         return gbc;
     }

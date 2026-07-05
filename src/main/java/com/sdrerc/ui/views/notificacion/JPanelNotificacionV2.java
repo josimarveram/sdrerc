@@ -199,7 +199,7 @@ public class JPanelNotificacionV2 extends JPanel {
             DocumentoEjecucionService documentoService) {
         this.notificacionService = notificacionService;
         this.documentoService = documentoService;
-        setLayout(new BorderLayout(14, 14));
+        setLayout(new BorderLayout(8, 8));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
         add(crearCentro(), BorderLayout.CENTER);
@@ -227,11 +227,11 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
-        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(8, 8));
         contenidoPrincipal.setOpaque(false);
         contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
 
-        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(8, 8));
         contenidoOperativo.setOpaque(false);
         contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
         contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
@@ -337,7 +337,7 @@ public class JPanelNotificacionV2 extends JPanel {
         toolbar.addFilter("Tipo notificación", cmbTipoNotificacionFiltro);
         toolbar.addFilter("Resultado", cmbResultadoFiltro);
         toolbar.addFilter("Publicación prevista", cmbPublicacionFiltro);
-        toolbar.addFilter("Mostrar", spnLimite);
+        toolbar.addCompactFilter(spnLimite);
         return toolbar;
     }
 

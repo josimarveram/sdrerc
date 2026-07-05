@@ -405,7 +405,7 @@ public class JPanelAnalisisV2 extends JPanel {
     public JPanelAnalisisV2(AnalisisExpedienteService analisisService, DocumentoAnalisisService documentoService) {
         this.analisisService = analisisService;
         this.documentoService = documentoService;
-        setLayout(new BorderLayout(14, 14));
+        setLayout(new BorderLayout(8, 8));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
         add(crearCentro(), BorderLayout.CENTER);
@@ -431,11 +431,11 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
-        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(8, 8));
         contenidoPrincipal.setOpaque(false);
         contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
 
-        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(8, 8));
         contenidoOperativo.setOpaque(false);
         contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
         contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
@@ -473,7 +473,7 @@ public class JPanelAnalisisV2 extends JPanel {
         toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
         toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
         toolbar.addFilter("Estado", cmbEstadoFiltro);
-        toolbar.addFilter("Mostrar", spnLimite);
+        toolbar.addCompactFilter(spnLimite);
         return toolbar;
     }
 

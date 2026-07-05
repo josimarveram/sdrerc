@@ -367,7 +367,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
-    private final JPanel panelOperativo = new JPanel(new BorderLayout(14, 14));
+    private final JPanel panelOperativo = new JPanel(new BorderLayout(8, 8));
     private final List<AsignacionExpedienteDTO> expedientes = new ArrayList<>();
     private final List<AsignacionTableRow> filasTabla = new ArrayList<>();
     private final List<AsignacionExpedienteDTO> expedientesAsignacionMultiple = new ArrayList<>();
@@ -453,7 +453,7 @@ public class JPanelAsignacionV2 extends JPanel {
     public JPanelAsignacionV2(AsignacionExpedienteService asignacionService, UsuarioAsignacionService usuarioService) {
         this.asignacionService = asignacionService;
         this.usuarioService = usuarioService;
-        setLayout(new BorderLayout(14, 14));
+        setLayout(new BorderLayout(8, 8));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
         add(crearCentro(), BorderLayout.CENTER);
@@ -529,11 +529,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearContenidoBandejaAsignacion() {
-        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(8, 8));
         contenidoPrincipal.setOpaque(false);
         contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
 
-        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(8, 8));
         contenidoOperativo.setOpaque(false);
         contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
         contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
@@ -542,7 +542,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearContenidoBandejaCartasRespuesta() {
-        JPanel panel = new JPanel(new BorderLayout(14, 14));
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setOpaque(false);
         panel.add(crearHeaderCartasRespuesta(), BorderLayout.NORTH);
         JPanel centro = new JPanel(new BorderLayout(0, 12));
@@ -564,7 +564,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearContenidoBandejaCargaAbogados() {
-        JPanel panel = new JPanel(new BorderLayout(14, 14));
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setOpaque(false);
         panel.add(crearHeaderCargaAbogados(), BorderLayout.NORTH);
         panel.add(crearBandejaCargaAbogados(), BorderLayout.CENTER);
@@ -582,7 +582,7 @@ public class JPanelAsignacionV2 extends JPanel {
         toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
         toolbar.addFilter("Estado", cmbEstado);
         toolbar.addFilter("Grupo familiar", crearFiltroGrupoFamiliar());
-        toolbar.addFilter("Mostrar", spnLimite);
+        toolbar.addCompactFilter(spnLimite);
         return toolbar;
     }
 
