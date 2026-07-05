@@ -50,7 +50,10 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
@@ -70,6 +73,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -690,9 +695,42 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionResumenAsignacion = crearResumenAsignacion();
         sectionAccionesRelacionados = crearAccionesRelacionados();
         sectionDecisionNumero = crearDecisionNumero();
-        panel.addSection(sectionResumenAsignacion);
-        panel.addSection(sectionAccionesRelacionados);
-        panel.addSection(sectionDecisionNumero);
+        JPanel contenido = new JPanel(new GridBagLayout());
+        contenido.setOpaque(false);
+
+        JPanel columnaIzquierda = new JPanel();
+        columnaIzquierda.setOpaque(false);
+        columnaIzquierda.setLayout(new BoxLayout(columnaIzquierda, BoxLayout.Y_AXIS));
+        columnaIzquierda.add(sectionResumenAsignacion);
+
+        JPanel columnaDerecha = new JPanel();
+        columnaDerecha.setOpaque(false);
+        columnaDerecha.setLayout(new BoxLayout(columnaDerecha, BoxLayout.Y_AXIS));
+        columnaDerecha.add(sectionAccionesRelacionados);
+        columnaDerecha.add(Box.createVerticalStrut(12));
+        columnaDerecha.add(sectionDecisionNumero);
+
+        GridBagConstraints gbcLeft = new GridBagConstraints();
+        gbcLeft.gridx = 0;
+        gbcLeft.gridy = 0;
+        gbcLeft.weightx = 0.62;
+        gbcLeft.weighty = 1;
+        gbcLeft.fill = GridBagConstraints.BOTH;
+        gbcLeft.anchor = GridBagConstraints.NORTHWEST;
+        gbcLeft.insets = new Insets(0, 0, 0, 10);
+        contenido.add(columnaIzquierda, gbcLeft);
+
+        GridBagConstraints gbcRight = new GridBagConstraints();
+        gbcRight.gridx = 1;
+        gbcRight.gridy = 0;
+        gbcRight.weightx = 0.38;
+        gbcRight.weighty = 1;
+        gbcRight.fill = GridBagConstraints.BOTH;
+        gbcRight.anchor = GridBagConstraints.NORTHWEST;
+        contenido.add(columnaDerecha, gbcRight);
+
+        panel.addSection(contenido);
+        panel.setBodySpacerHeight(8);
         sectionDecisionNumero.setVisible(false);
         return panel;
     }
