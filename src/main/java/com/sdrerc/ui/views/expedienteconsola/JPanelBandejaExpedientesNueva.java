@@ -291,8 +291,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     "Tipo Acta",
                     "Nro Acta",
                     "Titular",
-                    "Alertas",
                     "Estado",
+                    "Alertas",
                     "_ID"
                 }
                 : new Object[]{
@@ -686,11 +686,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setDefaultRenderer(Long.class, renderer);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
-            AppV2TableColumnSizer.applyWidths(table, 38, 88, 165, 150, 145, 220, 130, 130, 260, 190, 130, 0);
+            AppV2TableColumnSizer.applyWidths(table, 38, 88, 165, 150, 145, 220, 130, 130, 260, 130, 190, 0);
             table.getColumnModel().getColumn(0).setMinWidth(38);
             table.getColumnModel().getColumn(0).setMaxWidth(42);
             table.getColumnModel().getColumn(8).setMinWidth(220);
-            table.getColumnModel().getColumn(9).setMinWidth(170);
+            table.getColumnModel().getColumn(9).setMinWidth(120);
             table.getColumnModel().getColumn(11).setMinWidth(0);
             table.getColumnModel().getColumn(11).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -1031,8 +1031,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     item.getTipoActa(),
                     item.getNumeroActa(),
                     item.getTitular(),
-                    item.getAlertas(),
                     DisplayNameMapperV2.estado(item.getEstadoCodigo()),
+                    item.getAlertas(),
                     item.getIdExpediente()
                 });
             } else {
@@ -2166,6 +2166,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (perfilRegistroRecepcion) {
                 if (modelColumn == 1) {
                     return StatusBadgeV2.forDias(value, colorFondoCelda(row, isSelected));
+                }
+                if (!isSelected && modelColumn == 9) {
+                    return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
                 }
             }
             if (modelColumn == 0) {
