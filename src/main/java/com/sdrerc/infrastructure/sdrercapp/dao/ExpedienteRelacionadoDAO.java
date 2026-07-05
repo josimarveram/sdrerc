@@ -180,7 +180,7 @@ public class ExpedienteRelacionadoDAO {
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
-                + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
+                + "r.tipo_relacion, r.descripcion, r.creado_en AS fecha_asociacion, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
                 + "JOIN expediente e ON e.id_expediente = CASE "
                 + "WHEN r.id_expediente_principal = ? THEN r.id_expediente_relacionado "
@@ -233,7 +233,7 @@ public class ExpedienteRelacionadoDAO {
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
                 + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
-                + "r.tipo_relacion, r.descripcion, r.creado_en, u.nombre_completo AS usuario_relacion "
+                + "r.tipo_relacion, r.descripcion, r.creado_en AS fecha_asociacion, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
                 + "JOIN expediente e ON e.id_expediente = r.id_expediente_principal AND e.activo = 1 "
                 + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
@@ -1048,7 +1048,7 @@ public class ExpedienteRelacionadoDAO {
                 "",
                 rs.getString("tipo_relacion"),
                 rs.getString("descripcion"),
-                toLocalDateTime(rs.getTimestamp("creado_en")),
+                toLocalDateTime(rs.getTimestamp("fecha_asociacion")),
                 rs.getString("usuario_relacion"));
     }
 

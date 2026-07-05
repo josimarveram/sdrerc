@@ -160,6 +160,10 @@ public class ExpedienteRelacionadoDTO {
         return fechaRelacion;
     }
 
+    public LocalDate getFechaAsociacion() {
+        return fechaRelacion == null ? null : fechaRelacion.toLocalDate();
+    }
+
     public String getUsuarioRelacion() {
         return usuarioRelacion;
     }

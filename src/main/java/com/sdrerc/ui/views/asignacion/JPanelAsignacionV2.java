@@ -257,13 +257,15 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
     private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
     private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
-            new Object[]{"N° expediente SGD", "Estado", ""}, 0) {
+            new Object[]{"N° expediente SGD", "Estado", "Fecha Asociación", ""}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return column == 2 && puedeEliminarDocumentoRelacionado(row);
+            return column == 3 && puedeEliminarDocumentoRelacionado(row);
         }
     };
     private final JTable documentosRelacionadosTable = new AppV2Table(documentosRelacionadosModel);
+    private JScrollPane documentosRelacionadosScroll;
+    private JPanel documentosRelacionadosWrapper;
     private JPanel panelSolicitudesAsociadas;
     private final DefaultTableModel asignacionMultipleModel = new DefaultTableModel(
             new Object[]{"Nro. Expediente", "N° expediente SGD", "N° hoja de envío"}, 0) {
@@ -961,13 +963,17 @@ public class JPanelAsignacionV2 extends JPanel {
         titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
         panel.add(titulo, BorderLayout.NORTH);
 
-        JScrollPane scroll = new JScrollPane(documentosRelacionadosTable);
-        scroll.setPreferredSize(new Dimension(320, 104));
-        scroll.setMinimumSize(new Dimension(280, 84));
-        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        panel.add(scroll, BorderLayout.CENTER);
+        documentosRelacionadosScroll = new JScrollPane(documentosRelacionadosTable);
+        documentosRelacionadosScroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        documentosRelacionadosScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        documentosRelacionadosScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+
+        documentosRelacionadosWrapper = new JPanel(new BorderLayout(0, 0));
+        documentosRelacionadosWrapper.setOpaque(false);
+        documentosRelacionadosWrapper.add(documentosRelacionadosScroll, BorderLayout.WEST);
+
+        panel.add(documentosRelacionadosWrapper, BorderLayout.CENTER);
+        ajustarTamanoDocumentosRelacionados();
         return panel;
     }
 
@@ -1216,15 +1222,18 @@ public class JPanelAsignacionV2 extends JPanel {
         documentosRelacionadosTable.setShowVerticalLines(false);
         documentosRelacionadosTable.setIntercellSpacing(new Dimension(0, 1));
         documentosRelacionadosTable.setDefaultRenderer(Object.class, new DocumentoRelacionadoRenderer());
-        documentosRelacionadosTable.getColumnModel().getColumn(0).setPreferredWidth(180);
-        documentosRelacionadosTable.getColumnModel().getColumn(0).setMinWidth(150);
-        documentosRelacionadosTable.getColumnModel().getColumn(1).setPreferredWidth(130);
-        documentosRelacionadosTable.getColumnModel().getColumn(1).setMinWidth(110);
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setPreferredWidth(58);
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setMinWidth(54);
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setMaxWidth(64);
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setCellRenderer(new EliminarDocumentoRenderer());
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setCellEditor(new EliminarDocumentoEditor());
+        documentosRelacionadosTable.getColumnModel().getColumn(0).setPreferredWidth(160);
+        documentosRelacionadosTable.getColumnModel().getColumn(0).setMinWidth(130);
+        documentosRelacionadosTable.getColumnModel().getColumn(1).setPreferredWidth(110);
+        documentosRelacionadosTable.getColumnModel().getColumn(1).setMinWidth(100);
+        documentosRelacionadosTable.getColumnModel().getColumn(2).setPreferredWidth(110);
+        documentosRelacionadosTable.getColumnModel().getColumn(2).setMinWidth(100);
+        documentosRelacionadosTable.getColumnModel().getColumn(3).setPreferredWidth(58);
+        documentosRelacionadosTable.getColumnModel().getColumn(3).setMinWidth(54);
+        documentosRelacionadosTable.getColumnModel().getColumn(3).setMaxWidth(64);
+        documentosRelacionadosTable.getColumnModel().getColumn(3).setCellRenderer(new EliminarDocumentoRenderer());
+        documentosRelacionadosTable.getColumnModel().getColumn(3).setCellEditor(new EliminarDocumentoEditor());
+        ajustarTamanoDocumentosRelacionados();
     }
 
     private void configurarTablaAsignacionMultiple() {
@@ -3586,9 +3595,11 @@ public class JPanelAsignacionV2 extends JPanel {
                         documentosRelacionadosModel.addRow(new Object[]{
                             textoDocumentoRelacionado(fila),
                             estadoDocumentoRelacionado(fila),
+                            fechaAsociacionDocumentoRelacionado(fila),
                             fila.esAsociado() ? "Eliminar" : ""
                         });
                     }
+                    ajustarTamanoDocumentosRelacionados();
                     mostrarSolicitudesAsociadas(!relacionados.isEmpty());
                     if (!relacionados.isEmpty()) {
                         if (pendientes > 0 && asociados > 0) {
@@ -3614,6 +3625,7 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteDocumentosRelacionados = null;
         documentosRelacionadosPanel.clear();
         documentosRelacionadosModel.setRowCount(0);
+        ajustarTamanoDocumentosRelacionados();
         mostrarSolicitudesAsociadas(false);
         lblRelacionados.setText(mensaje == null || mensaje.trim().isEmpty()
                 ? "Sin alerta de relacionados."
@@ -3648,6 +3660,13 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private String textoDocumentoRelacionado(DocumentoRelacionadoFila fila) {
         return fila == null ? "-" : textoDocumentoRelacionado(fila.getExpediente());
+    }
+
+    private String fechaAsociacionDocumentoRelacionado(DocumentoRelacionadoFila fila) {
+        if (fila == null || fila.getExpediente() == null || fila.getExpediente().getFechaAsociacion() == null) {
+            return "-";
+        }
+        return DATE_FORMAT.format(fila.getExpediente().getFechaAsociacion());
     }
 
     private String estadoDocumentoRelacionado(DocumentoRelacionadoFila fila) {
@@ -4297,6 +4316,30 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean puedeEliminarDocumentoRelacionado(int modelRow) {
         DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
         return fila != null && fila.esAsociado();
+    }
+
+    private void ajustarTamanoDocumentosRelacionados() {
+        if (documentosRelacionadosScroll == null || documentosRelacionadosTable == null) {
+            return;
+        }
+        int ancho = 0;
+        for (int i = 0; i < documentosRelacionadosTable.getColumnCount(); i++) {
+            ancho += documentosRelacionadosTable.getColumnModel().getColumn(i).getPreferredWidth();
+        }
+        ancho += documentosRelacionadosTable.getIntercellSpacing().width;
+        int altoEncabezado = documentosRelacionadosTable.getTableHeader() != null
+                ? documentosRelacionadosTable.getTableHeader().getPreferredSize().height
+                : 28;
+        int altoFilas = documentosRelacionadosTable.getRowCount() * documentosRelacionadosTable.getRowHeight();
+        int alto = Math.max(altoEncabezado + altoFilas + 2, altoEncabezado + documentosRelacionadosTable.getRowHeight() + 2);
+        Dimension size = new Dimension(Math.max(ancho, 240), Math.max(alto, 64));
+        documentosRelacionadosTable.setPreferredScrollableViewportSize(size);
+        documentosRelacionadosScroll.setPreferredSize(size);
+        documentosRelacionadosScroll.setMinimumSize(size);
+        if (documentosRelacionadosWrapper != null) {
+            documentosRelacionadosWrapper.revalidate();
+            documentosRelacionadosWrapper.repaint();
+        }
     }
 
     private DocumentoRelacionadoFila documentoRelacionadoFila(int modelRow) {
@@ -4984,10 +5027,18 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             int modelRow = table.convertRowIndexToModel(row);
             boolean permitido = puedeEliminarDocumentoRelacionado(modelRow);
-            configure(false, permitido);
-            setToolTipText(permitido
-                    ? "Eliminar la asociación del documento."
-                    : "Eliminar la asociación del documento.");
+            if (!permitido) {
+                JLabel vacio = new JLabel("");
+                vacio.setOpaque(true);
+                vacio.setHorizontalAlignment(SwingConstants.CENTER);
+                vacio.setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE);
+                vacio.setForeground(AppV2Theme.TEXT_PRIMARY);
+                vacio.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                vacio.setToolTipText(null);
+                return vacio;
+            }
+            configure(false, true);
+            setToolTipText("Eliminar la asociación del expediente asociado.");
             return this;
         }
     }
@@ -5019,10 +5070,17 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             modelRow = table.convertRowIndexToModel(row);
             boolean permitido = puedeEliminarDocumentoRelacionado(modelRow);
+            if (!permitido) {
+                JLabel vacio = new JLabel("");
+                vacio.setOpaque(true);
+                vacio.setHorizontalAlignment(SwingConstants.CENTER);
+                vacio.setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE);
+                vacio.setForeground(AppV2Theme.TEXT_PRIMARY);
+                vacio.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                return vacio;
+            }
             button.configure(false, permitido);
-            button.setToolTipText(permitido
-                    ? "Eliminar la asociación del documento."
-                    : "Eliminar la asociación del documento.");
+            button.setToolTipText("Eliminar la asociación del expediente asociado.");
             return button;
         }
     }
