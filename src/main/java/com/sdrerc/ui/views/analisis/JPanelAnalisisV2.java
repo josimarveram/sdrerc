@@ -1531,13 +1531,12 @@ public class JPanelAnalisisV2 extends JPanel {
         });
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                panelAnalisisCerradoPorUsuario = false;
                 actualizarSeleccion();
             }
         });
         table.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(MouseEvent e) {
+            public void mouseClicked(MouseEvent e) {
                 int viewRow = table.rowAtPoint(e.getPoint());
                 int viewColumn = table.columnAtPoint(e.getPoint());
                 if (viewRow >= 0
@@ -1546,8 +1545,11 @@ public class JPanelAnalisisV2 extends JPanel {
                     alternarExpansionFila(table.convertRowIndexToModel(viewRow));
                     return;
                 }
-                if (viewRow >= 0) {
+                if (e.getClickCount() == 2 && viewRow >= 0) {
                     panelAnalisisCerradoPorUsuario = false;
+                    if (splitOperativo != null) {
+                        splitOperativo.setSideVisible(true);
+                    }
                     actualizarVisibilidadPanelAnalisis();
                 }
             }
@@ -2471,6 +2473,9 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private void actualizarVisibilidadPanelAnalisis() {
         if (splitOperativo == null) {
+            return;
+        }
+        if (!splitOperativo.isSideVisible()) {
             return;
         }
         splitOperativo.setSideVisible(obtenerFilaSeleccionada() != null && !panelAnalisisCerradoPorUsuario);

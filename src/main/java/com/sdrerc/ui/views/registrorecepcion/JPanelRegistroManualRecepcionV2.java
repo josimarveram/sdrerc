@@ -23,6 +23,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.text.Normalizer;
 import java.time.LocalDate;
@@ -60,6 +61,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private final JTextField txtNumeroTramite = new JTextField();
     private final JTextField txtNumeroDocumento = new JTextField();
+    private final JTextField txtNumeroExpediente = new JTextField();
     private final JTextField txtNumeroExpedienteSgd = new JTextField();
     private final PremiumDateFieldV2 fechaRecepcionField = new PremiumDateFieldV2();
     private final JRadioButton rdoCorrespondeSdrerc = new JRadioButton("Sí corresponde a la SDRERC", true);
@@ -184,7 +186,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         gbc.insets = new Insets(0, 0, 12, 12);
         form.add(crearDatosSolicitud(), gbc);
         gbc.gridx = 1;
-        form.add(crearDatosActa(), gbc);
+        form.add(crearDatosExpedienteYActa(), gbc);
 
         gbc.gridy = 2;
         gbc.gridx = 0;
@@ -229,14 +231,28 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         JPanel panel = seccion("Datos de solicitud");
         agregarFila(panel, 0, "Fecha recepción *", fechaRecepcionField);
         agregarFila(panel, 1, "Canal de ingreso", cmbCanal);
-        agregarFila(panel, 2, "Nro. trámite web *", txtNumeroTramite);
+        agregarFila(panel, 2, "Nro. trámite web", txtNumeroTramite);
         agregarFila(panel, 3, "Procedimiento registral *", cmbProcedimiento);
-        agregarFila(panel, 4, "N° expediente SGD", txtNumeroExpedienteSgd);
-        agregarFila(panel, 5, "Tipo documento *", cmbTipoDocumento);
-        agregarFila(panel, 6, "N° documento", txtNumeroDocumento);
-        agregarFila(panel, 7, "Tipo de solicitud *", cmbTipoSolicitud);
-        agregarFila(panel, 8, "Prioridad", cmbPrioridad);
-        agregarFila(panel, 9, "Marca operativa", chkGrupoFamiliar);
+        agregarFila(panel, 4, "Tipo documento *", cmbTipoDocumento);
+        agregarFila(panel, 5, "N° documento", txtNumeroDocumento);
+        agregarFila(panel, 6, "Tipo de solicitud *", cmbTipoSolicitud);
+        agregarFila(panel, 7, "Prioridad", cmbPrioridad);
+        agregarFila(panel, 8, "Marca operativa", chkGrupoFamiliar);
+        return panel;
+    }
+
+    private JPanel crearDatosExpedienteYActa() {
+        JPanel panel = new JPanel(new GridLayout(2, 1, 0, 12));
+        panel.setOpaque(false);
+        panel.add(crearDatosExpediente());
+        panel.add(crearDatosActa());
+        return panel;
+    }
+
+    private JPanel crearDatosExpediente() {
+        JPanel panel = seccion("Datos del expediente");
+        agregarFila(panel, 0, "N° expediente", txtNumeroExpediente);
+        agregarFila(panel, 1, "N° expediente SGD", txtNumeroExpedienteSgd);
         return panel;
     }
 
@@ -354,6 +370,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private void configurarEstadoInicial() {
         configurarCampo(txtNumeroTramite);
         configurarCampo(txtNumeroDocumento);
+        configurarCampoBloqueado(txtNumeroExpediente);
         configurarCampo(txtNumeroExpedienteSgd);
         fechaRecepcionField.setDate(toDate(LocalDate.now()));
         configurarCampo(txtHojaEnvio);
@@ -380,12 +397,14 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         cmbDistrito.setEnabled(false);
         configurarCheck(chkGrupoFamiliar);
         actualizarEstadoHojaEnvio();
+        actualizarEstadoNumeroTramite();
         txtResumen.setText(modoEdicion() ? "Cargando datos del expediente..." : "Validación pendiente.");
         txtErrores.setText("");
         btnValidar.setText(modoEdicion() ? "Validar cambios" : "Validar");
         btnLimpiar.setText(modoEdicion() ? "Cancelar edición" : "Limpiar");
         btnRegistrar.setText(modoEdicion() ? "Guardar cambios" : "Registrar expediente");
         btnRegistrar.setEnabled(false);
+        establecerNumeroExpedienteVisible(modoEdicion() ? "Cargando..." : "Pendiente de generación al guardar");
     }
 
     private void configurarCampo(JTextField field) {
@@ -393,6 +412,14 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         field.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(AppV2Theme.BORDER),
                 BorderFactory.createEmptyBorder(7, 9, 7, 9)));
+    }
+
+    private void configurarCampoBloqueado(JTextField field) {
+        configurarCampo(field);
+        field.setEditable(false);
+        field.setEnabled(true);
+        field.setFocusable(false);
+        field.setBackground(AppV2Theme.SURFACE_ALT);
     }
 
     private void configurarCombo(JComboBox<FiltroCatalogoItemV2> combo) {
@@ -450,7 +477,12 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             area.getDocument().addDocumentListener(listener);
         }
         for (JComboBox<FiltroCatalogoItemV2> combo : combos()) {
-            combo.addActionListener(e -> invalidarValidacion());
+            combo.addActionListener(e -> {
+                if (combo == cmbCanal) {
+                    actualizarEstadoNumeroTramite();
+                }
+                invalidarValidacion();
+            });
         }
         fechaRecepcionField.addDateChangeListener(e -> invalidarValidacion());
         rdoCorrespondeSdrerc.addActionListener(e -> invalidarValidacion());
@@ -686,6 +718,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
                     ? "Sin errores críticos. Listo para guardar cambios."
                     : "Sin errores críticos. Listo para registrar.");
             txtResumen.setText(resumen(dto));
+            establecerNumeroExpedienteVisible(numeroPreview);
             lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
             lblEstado.setText(modoEdicion()
                     ? "Cambios validados. Revise el resumen y guarde."
@@ -700,6 +733,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             txtErrores.setBackground(AppV2Theme.SOFT_ORANGE);
             txtErrores.setText(String.join("\n", errores));
             txtResumen.setText(resumen(dto));
+            establecerNumeroExpedienteVisible(numeroPreview);
             lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
             lblEstado.setText(modoEdicion()
                     ? "Se encontraron observaciones. Corrija antes de guardar."
@@ -775,8 +809,10 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
                 rdoCorrespondeSdrerc.setSelected(true);
             }
             actualizarEstadoHojaEnvio();
+            actualizarEstadoNumeroTramite();
             txtHojaEnvio.setText(safeText(dto.getSolicitud().getHojaEnvio()));
             chkGrupoFamiliar.setSelected(dto.getSolicitud().isGrupoFamiliar());
+            establecerNumeroExpedienteVisible(safe(dto.getNumeroExpediente()));
             lblNumeroExpediente.setText(safe(dto.getNumeroExpedienteVistaPrevia()));
             txtErrores.setBackground(AppV2Theme.SOFT_GREEN);
             txtErrores.setText("Expediente editable. Estado actual: Registro / Registrado.");
@@ -824,6 +860,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             protected void done() {
                 try {
                     RegistroManualResultadoDTO resultado = get();
+                    establecerNumeroExpedienteVisible(resultado.getNumeroExpediente());
                     lblNumeroExpediente.setText(resultado.getNumeroExpediente());
                     lblEstado.setText(resultado.getMensaje());
                     txtResumen.setText(resultado.getMensaje() + "\n\n" + txtResumen.getText());
@@ -878,6 +915,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             protected void done() {
                 try {
                     RegistroManualResultadoDTO resultado = get();
+                    establecerNumeroExpedienteVisible(resultado.getNumeroExpediente());
                     lblNumeroExpediente.setText(resultado.getNumeroExpediente());
                     lblEstado.setText(resultado.getMensaje());
                     txtResumen.setText(resultado.getMensaje() + "\n\n" + txtResumen.getText());
@@ -1029,6 +1067,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         for (JTextField field : camposTexto()) {
             field.setText("");
         }
+        establecerNumeroExpedienteVisible("Pendiente de generación al guardar");
         for (JTextArea area : areasTexto()) {
             area.setText("");
         }
@@ -1036,6 +1075,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         rdoCorrespondeSdrerc.setSelected(true);
         chkGrupoFamiliar.setSelected(false);
         actualizarEstadoHojaEnvio();
+        actualizarEstadoNumeroTramite();
         seleccionarPrimero(cmbProcedimiento);
         seleccionarPrimero(cmbTipoSolicitud);
         seleccionarPrimero(cmbTipoDocumento);
@@ -1058,6 +1098,10 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         btnRegistrar.setEnabled(false);
     }
 
+    private void establecerNumeroExpedienteVisible(String valor) {
+        txtNumeroExpediente.setText(safe(valor));
+    }
+
     private void seleccionarPrimero(JComboBox<FiltroCatalogoItemV2> combo) {
         if (combo.getItemCount() > 0) {
             combo.setSelectedIndex(0);
@@ -1072,9 +1116,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         registroValidado = null;
         edicionValidada = null;
         btnRegistrar.setEnabled(false);
-        lblNumeroExpediente.setText(modoEdicion() && edicionValidada != null
-                ? safe(edicionValidada.getNumeroExpedienteVistaPrevia())
-                : modoEdicion() ? lblNumeroExpediente.getText() : "Pendiente de generación al guardar");
+        if (!modoEdicion()) {
+            establecerNumeroExpedienteVisible("Pendiente de generación al guardar");
+        }
         lblEstado.setText("Cambios pendientes de validación.");
     }
 
@@ -1084,6 +1128,19 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         txtHojaEnvio.setEditable(habilitado);
         if (!habilitado) {
             txtHojaEnvio.setText("");
+        }
+    }
+
+    private void actualizarEstadoNumeroTramite() {
+        boolean mesaVirtual = esMesaPartesVirtual(cmbCanal);
+        txtNumeroTramite.setEnabled(mesaVirtual);
+        txtNumeroTramite.setEditable(mesaVirtual);
+        if (mesaVirtual) {
+            if ("SIN TRAMITE".equalsIgnoreCase(trimToNull(txtNumeroTramite.getText()))) {
+                txtNumeroTramite.setText("");
+            }
+        } else {
+            txtNumeroTramite.setText("SIN TRAMITE");
         }
     }
 
@@ -1100,7 +1157,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private void cancelarEdicion() {
         int option = JOptionPane.showConfirmDialog(
                 this,
-                "Se cerrará la edición manual y se volverá a mostrar Registro manual.\n"
+                "Se cerrará la edición y se volverá a mostrar Bandeja Registro.\n"
                         + "Los cambios no guardados se perderán.",
                 "Cancelar edición manual",
                 JOptionPane.YES_NO_OPTION,
@@ -1112,6 +1169,19 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private boolean modoEdicion() {
         return idExpedienteEdicion != null;
+    }
+
+    private boolean esMesaPartesVirtual(JComboBox<FiltroCatalogoItemV2> combo) {
+        Object selected = combo.getSelectedItem();
+        if (!(selected instanceof FiltroCatalogoItemV2)) {
+            return false;
+        }
+        FiltroCatalogoItemV2 item = (FiltroCatalogoItemV2) selected;
+        String codigo = normalizarSinAcentos(item.getCodigo());
+        String nombre = normalizarSinAcentos(item.getNombreVisible());
+        return "MPV".equals(codigo)
+                || "MESA DE PARTES VIRTUAL".equals(nombre)
+                || (nombre != null && nombre.contains("MESA DE PARTES VIRTUAL"));
     }
 
     private void seleccionarCombo(JComboBox<FiltroCatalogoItemV2> combo, String codigo, String nombre) {

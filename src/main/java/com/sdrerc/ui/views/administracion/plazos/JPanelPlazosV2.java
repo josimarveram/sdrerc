@@ -244,6 +244,14 @@ public class JPanelPlazosV2 extends JPanel {
                 cargarSeleccion();
             }
         });
+        tblPlazos.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2 && tblPlazos.getSelectedRow() >= 0) {
+                    mostrarPanelDetalle();
+                }
+            }
+        });
     }
 
     private void cargarPlazos() {

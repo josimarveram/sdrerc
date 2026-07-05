@@ -32,6 +32,8 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -419,8 +421,19 @@ public class JPanelFirmaEmisionV2 extends JPanel {
         btnEnviarEjecucion.addActionListener(e -> enviarEjecucion());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                panelFirmaCerradoPorUsuario = false;
                 actualizarSeleccion();
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && table.rowAtPoint(e.getPoint()) >= 0) {
+                    panelFirmaCerradoPorUsuario = false;
+                    if (splitOperativo != null) {
+                        splitOperativo.setSideVisible(true);
+                    }
+                    actualizarSeleccion();
+                }
             }
         });
     }
@@ -834,6 +847,9 @@ public class JPanelFirmaEmisionV2 extends JPanel {
 
     private void actualizarVisibilidadPanelFirma() {
         if (splitOperativo == null) {
+            return;
+        }
+        if (!splitOperativo.isSideVisible()) {
             return;
         }
         splitOperativo.setSideVisible(seleccionado() != null && !panelFirmaCerradoPorUsuario);

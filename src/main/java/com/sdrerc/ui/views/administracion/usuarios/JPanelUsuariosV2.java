@@ -389,9 +389,19 @@ public class JPanelUsuariosV2 extends JPanel {
                     UsuarioDTO usuario = obtenerUsuarioSeleccionado();
                     if (usuario != null) {
                         cargarFormulario(usuario);
-                        mostrarPanelDetalle();
+                        if (splitDetalle != null && splitDetalle.isSideVisible()) {
+                            mostrarPanelDetalle();
+                        }
                     }
                     actualizarBotones();
+                }
+            }
+        });
+        tblUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2 && obtenerUsuarioSeleccionado() != null) {
+                    mostrarPanelDetalle();
                 }
             }
         });

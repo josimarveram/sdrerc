@@ -1394,12 +1394,11 @@ public class JPanelAsignacionV2 extends JPanel {
                         && viewColumn >= 0
                         && table.convertColumnIndexToModel(viewColumn) == COL_EXPANDIR) {
                     alternarExpansionFila(table.convertRowIndexToModel(viewRow));
+                    return;
                 }
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                reabrirPanelSiCorresponde(e);
+                if (e.getClickCount() == 2 && viewRow >= 0) {
+                    abrirPanelAsignacion();
+                }
             }
         });
         table.getTableHeader().addMouseListener(new MouseAdapter() {
@@ -2834,7 +2833,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (seleccionados == 0) {
             panelAsignacionCerradoPorUsuario = false;
         }
-        if (esBandejaAsignacionActiva()) {
+        if (esBandejaAsignacionActiva() && splitOperativo != null && splitOperativo.isSideVisible()) {
             actualizarVisibilidadPanelAsignacion(seleccionados > 0 && !panelAsignacionCerradoPorUsuario);
         }
         actualizarModoPanelAsignacion(modoMultiple);
@@ -4136,13 +4135,6 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarLenguetasAsignacion();
         panelOperativo.revalidate();
         panelOperativo.repaint();
-    }
-
-    private void reabrirPanelSiCorresponde(MouseEvent event) {
-        if (!panelAsignacionCerradoPorUsuario || table.rowAtPoint(event.getPoint()) < 0) {
-            return;
-        }
-        abrirPanelAsignacion();
     }
 
     private void actualizarVisibilidadPanelAsignacion(boolean mostrar) {

@@ -38,6 +38,8 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -669,8 +671,19 @@ public class JPanelNotificacionV2 extends JPanel {
         btnCerrarExpediente.addActionListener(e -> cerrarExpediente());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                panelNotificacionCerradoPorUsuario = false;
                 actualizarSeleccion();
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && table.rowAtPoint(e.getPoint()) >= 0) {
+                    panelNotificacionCerradoPorUsuario = false;
+                    if (splitOperativo != null) {
+                        splitOperativo.setSideVisible(true);
+                    }
+                    actualizarSeleccion();
+                }
             }
         });
     }
@@ -1385,6 +1398,9 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void actualizarVisibilidadPanelNotificacion() {
         if (splitOperativo == null) {
+            return;
+        }
+        if (!splitOperativo.isSideVisible()) {
             return;
         }
         splitOperativo.setSideVisible(seleccionado() != null && !panelNotificacionCerradoPorUsuario);

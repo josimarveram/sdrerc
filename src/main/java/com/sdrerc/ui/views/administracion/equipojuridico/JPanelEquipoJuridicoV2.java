@@ -399,10 +399,18 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                     EquipoJuridicoDTO equipo = obtenerEquipoSeleccionado();
                     llenarFormulario(equipo);
                     cargarMiembros(equipo == null ? null : equipo.getIdEquipo());
-                    if (equipo != null) {
+                    if (equipo != null && splitDetalle != null && splitDetalle.isSideVisible()) {
                         mostrarPanelDetalle();
                     }
                     actualizarBotonesSeleccion();
+                }
+            }
+        });
+        tblEquipos.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2 && obtenerEquipoSeleccionado() != null) {
+                    mostrarPanelDetalle();
                 }
             }
         });

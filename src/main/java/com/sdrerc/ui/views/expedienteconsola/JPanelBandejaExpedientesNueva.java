@@ -787,9 +787,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 btnVerDetalle.setEnabled(haySeleccion);
                 btnEditar.setEnabled(haySeleccion && esRegistroSeleccionadoEditable());
                 if (perfilRegistroRecepcion) {
-                    if (haySeleccion) {
+                    if (haySeleccion && splitBandeja != null && splitBandeja.isSideVisible()) {
                         mostrarPanelRecepcionSeleccionado();
-                    } else {
+                    } else if (!haySeleccion) {
                         ocultarPanelRecepcion();
                     }
                 }
@@ -798,12 +798,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && table.getSelectedRow() >= 0) {
-                    abrirDetalleSeleccionado();
-                } else if (perfilRegistroRecepcion
-                        && table.getSelectedRow() >= 0
-                        && splitBandeja != null
-                        && !splitBandeja.isSideVisible()) {
+                if (e.getClickCount() == 2
+                        && perfilRegistroRecepcion
+                        && table.getSelectedRow() >= 0) {
                     mostrarPanelRecepcionSeleccionado();
                 }
             }

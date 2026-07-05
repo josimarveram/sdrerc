@@ -142,7 +142,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                 new Runnable() {
                     @Override
                     public void run() {
-                        restaurarRegistroManual();
+                        restaurarBandejaRegistro();
                     }
                 }));
         tabs.setSelectedIndex(TAB_REGISTRO_MANUAL);
@@ -155,6 +155,14 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         tabs.setTitleAt(TAB_REGISTRO_MANUAL, "Registro manual");
         tabs.setComponentAt(TAB_REGISTRO_MANUAL, crearPanelRegistroManual());
         tabs.setSelectedIndex(TAB_REGISTRO_MANUAL);
+    }
+
+    private void restaurarBandejaRegistro() {
+        if (tabs == null) {
+            return;
+        }
+        refrescarBandeja();
+        tabs.setSelectedIndex(0);
     }
 
     private void refrescarBandeja() {

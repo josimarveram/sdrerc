@@ -1164,13 +1164,12 @@ public class JPanelVerificacionV2 extends JPanel {
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                panelVerificacionCerradoPorUsuario = false;
                 actualizarSeleccion();
             }
         });
         table.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(MouseEvent e) {
+            public void mouseClicked(MouseEvent e) {
                 int viewRow = table.rowAtPoint(e.getPoint());
                 int viewColumn = table.columnAtPoint(e.getPoint());
                 if (viewRow >= 0
@@ -1179,8 +1178,11 @@ public class JPanelVerificacionV2 extends JPanel {
                     alternarExpansionFila(table.convertRowIndexToModel(viewRow));
                     return;
                 }
-                if (viewRow >= 0) {
+                if (e.getClickCount() == 2 && viewRow >= 0) {
                     panelVerificacionCerradoPorUsuario = false;
+                    if (splitOperativo != null) {
+                        splitOperativo.setSideVisible(true);
+                    }
                     actualizarVisibilidadPanelVerificacion();
                 }
             }
@@ -1789,6 +1791,9 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private void actualizarVisibilidadPanelVerificacion() {
         if (splitOperativo == null) {
+            return;
+        }
+        if (!splitOperativo.isSideVisible()) {
             return;
         }
         splitOperativo.setSideVisible(obtenerFilaSeleccionada() != null && !panelVerificacionCerradoPorUsuario);

@@ -250,6 +250,14 @@ public class JPanelFeriadosV2 extends JPanel {
                 }
             }
         });
+        tblFeriados.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2 && tblFeriados.getSelectedRow() >= 0) {
+                    mostrarPanelDetalle();
+                }
+            }
+        });
     }
 
     private void cargarFeriados() {

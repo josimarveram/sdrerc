@@ -362,9 +362,19 @@ public class JPanelRolesV2 extends JPanel {
                     RolDTO rol = obtenerRolSeleccionado();
                     if (rol != null) {
                         cargarFormulario(rol);
-                        mostrarPanelDetalle();
+                        if (splitDetalle != null && splitDetalle.isSideVisible()) {
+                            mostrarPanelDetalle();
+                        }
                     }
                     actualizarBotones();
+                }
+            }
+        });
+        tblRoles.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2 && obtenerRolSeleccionado() != null) {
+                    mostrarPanelDetalle();
                 }
             }
         });
