@@ -206,7 +206,6 @@ public class MenuPrincipalV2 extends JFrame {
     private JPanel crearAreaPrincipal() {
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(AppV2Theme.BACKGROUND);
-        main.add(crearHeader(), BorderLayout.NORTH);
         body.setBackground(AppV2Theme.BACKGROUND);
         main.add(body, BorderLayout.CENTER);
         return main;
@@ -217,27 +216,26 @@ public class MenuPrincipalV2 extends JFrame {
         header.setBackground(AppV2Theme.SURFACE);
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
-                BorderFactory.createEmptyBorder(14, 24, 14, 24)));
+                BorderFactory.createEmptyBorder(8, 24, 8, 24)));
 
         lblTitulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_TITLE));
         lblTitulo.setForeground(AppV2Theme.TEXT_PRIMARY);
 
         lblSubtitulo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblSubtitulo.setForeground(AppV2Theme.TEXT_SECONDARY);
+        lblSubtitulo.setVisible(false);
 
         JPanel tituloPanel = new JPanel();
         tituloPanel.setOpaque(false);
         tituloPanel.setLayout(new BoxLayout(tituloPanel, BoxLayout.Y_AXIS));
         tituloPanel.add(lblTitulo);
-        tituloPanel.add(Box.createVerticalStrut(2));
-        tituloPanel.add(lblSubtitulo);
 
         JLabel lblModo = new JLabel(obtenerUsernameVisible());
         lblModo.setHorizontalAlignment(SwingConstants.RIGHT);
         lblModo.setOpaque(true);
-        lblModo.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        lblModo.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
         lblModo.setBackground(AppV2Theme.SOFT_GREEN);
-        lblModo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblModo.setFont(AppV2Theme.fontBold(11));
         lblModo.setForeground(AppV2Theme.SUCCESS);
 
         header.add(tituloPanel, BorderLayout.WEST);

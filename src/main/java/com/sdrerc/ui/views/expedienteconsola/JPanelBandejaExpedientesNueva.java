@@ -32,8 +32,10 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import javax.swing.Box;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -65,6 +67,7 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
+import javax.swing.BoxLayout;
 import javax.swing.table.JTableHeader;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
@@ -112,6 +115,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnEditar = new JButton("Editar");
+    private final JLabel lblSeleccionados = new JLabel("0 expediente(s) seleccionado(s)");
     private final JLabel lblResultado = new JLabel("Seleccione un expediente y presione Ver detalle para abrir la consola.");
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -354,7 +358,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void configurarLayout() {
-        setLayout(new BorderLayout(14, 14));
+        setLayout(new BorderLayout(8, 8));
         setBackground(AppV2Theme.BACKGROUND);
         setBorder(AppV2Theme.pageBorder());
 
@@ -363,22 +367,26 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         JPanel filtros = new AppV2FilterPanel();
         configurarControlesFiltro();
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 6, 4, 6);
-        gbc.anchor = GridBagConstraints.WEST;
+        JPanel filtrosContenido = new JPanel();
+        filtrosContenido.setOpaque(false);
+        filtrosContenido.setLayout(new BoxLayout(filtrosContenido, BoxLayout.Y_AXIS));
 
-        gbc.gridy = 0;
-        gbc.gridx = 0;
-        filtros.add(crearLabelFiltro("Búsqueda"), gbc);
+        JPanel filaBusqueda = new JPanel(new GridBagLayout());
+        filaBusqueda.setOpaque(false);
+        GridBagConstraints gbcBusqueda = new GridBagConstraints();
+        gbcBusqueda.gridy = 0;
+        gbcBusqueda.insets = new Insets(0, 0, 0, 12);
+        gbcBusqueda.anchor = GridBagConstraints.WEST;
 
-        gbc.gridx = 1;
-        gbc.gridwidth = 3;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(txtBusqueda, gbc);
-        gbc.gridwidth = 1;
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
+        gbcBusqueda.gridx = 0;
+        gbcBusqueda.weightx = 0;
+        filaBusqueda.add(crearLabelFiltro("Búsqueda"), gbcBusqueda);
+
+        gbcBusqueda.gridx = 1;
+        gbcBusqueda.weightx = 1.0;
+        gbcBusqueda.fill = GridBagConstraints.HORIZONTAL;
+        gbcBusqueda.insets = new Insets(0, 0, 0, 14);
+        filaBusqueda.add(txtBusqueda, gbcBusqueda);
 
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
@@ -389,76 +397,59 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (editarExpedienteHandler != null) {
             acciones.add(btnEditar);
         }
-        gbc.gridx = 4;
-        gbc.gridwidth = 3;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        filtros.add(acciones, gbc);
-        gbc.gridwidth = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.NONE;
+        gbcBusqueda.gridx = 2;
+        gbcBusqueda.weightx = 0;
+        gbcBusqueda.fill = GridBagConstraints.NONE;
+        gbcBusqueda.insets = new Insets(0, 0, 0, 0);
+        filaBusqueda.add(acciones, gbcBusqueda);
 
-        gbc.gridy = 1;
-        gbc.gridx = 0;
+        JPanel filaFechas = new JPanel(new GridBagLayout());
+        filaFechas.setOpaque(false);
+        GridBagConstraints gbcFechas = new GridBagConstraints();
+        gbcFechas.gridy = 0;
+        gbcFechas.anchor = GridBagConstraints.WEST;
+        gbcFechas.insets = new Insets(0, 0, 0, 12);
+        gbcFechas.gridx = 0;
+        filaFechas.add(crearCampoFiltroInline("Fecha desde", fechaSolicitudDesde, 250), gbcFechas);
+        gbcFechas.gridx = 1;
+        filaFechas.add(crearCampoFiltroInline("Fecha hasta", fechaSolicitudHasta, 250), gbcFechas);
+        gbcFechas.gridx = 2;
+        gbcFechas.weightx = 1.0;
+        gbcFechas.fill = GridBagConstraints.HORIZONTAL;
+        filaFechas.add(Box.createHorizontalGlue(), gbcFechas);
+
+        JPanel filaEstado = new JPanel(new GridBagLayout());
+        filaEstado.setOpaque(false);
+        GridBagConstraints gbcEstado = new GridBagConstraints();
+        gbcEstado.gridy = 0;
+        gbcEstado.anchor = GridBagConstraints.WEST;
+        gbcEstado.insets = new Insets(0, 0, 0, 12);
+        gbcEstado.gridx = 0;
+        filaEstado.add(crearCampoFiltroInline("Estado", cmbEstado, 260), gbcEstado);
         if (perfilRegistroRecepcion) {
-            filtros.add(crearLabelFiltro("Fecha desde"), gbc);
-            gbc.gridx = 1;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            filtros.add(fechaSolicitudDesde, gbc);
-            gbc.fill = GridBagConstraints.NONE;
-
-            gbc.gridx = 2;
-            filtros.add(crearLabelFiltro("Fecha hasta"), gbc);
-            gbc.gridx = 3;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            filtros.add(fechaSolicitudHasta, gbc);
-            gbc.fill = GridBagConstraints.NONE;
-
-        gbc.gridx = 4;
-        filtros.add(crearLabelFiltro("Estado"), gbc);
-        gbc.gridx = 5;
-        filtros.add(cmbEstado, gbc);
-
-        gbc.gridx = 6;
-        filtros.add(crearLabelFiltro("Grupo familiar"), gbc);
-        gbc.gridx = 7;
-        filtros.add(crearFiltroGrupoFamiliar(), gbc);
-
-        gbc.gridx = 8;
-        filtros.add(crearLabelFiltro("Mostrar"), gbc);
-        gbc.gridx = 9;
-        filtros.add(spnLimite, gbc);
-        } else {
-            filtros.add(crearLabelFiltro("Fecha desde"), gbc);
-            gbc.gridx = 1;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            filtros.add(fechaSolicitudDesde, gbc);
-            gbc.fill = GridBagConstraints.NONE;
-
-            gbc.gridx = 2;
-            filtros.add(crearLabelFiltro("Fecha hasta"), gbc);
-            gbc.gridx = 3;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            filtros.add(fechaSolicitudHasta, gbc);
-            gbc.fill = GridBagConstraints.NONE;
-
-            gbc.gridx = 4;
-            filtros.add(crearLabelFiltro("Estado"), gbc);
-            gbc.gridx = 5;
-            filtros.add(cmbEstado, gbc);
-
-            gbc.gridx = 6;
-            filtros.add(crearLabelFiltro("Mostrar"), gbc);
-            gbc.gridx = 7;
-            filtros.add(spnLimite, gbc);
+            gbcEstado.gridx = 1;
+            filaEstado.add(crearFiltroGrupoFamiliarInline(), gbcEstado);
         }
+        gbcEstado.gridx = perfilRegistroRecepcion ? 2 : 1;
+        filaEstado.add(spnLimite, gbcEstado);
+        gbcEstado.gridx = perfilRegistroRecepcion ? 3 : 2;
+        gbcEstado.weightx = 1.0;
+        gbcEstado.fill = GridBagConstraints.HORIZONTAL;
+        filaEstado.add(Box.createHorizontalGlue(), gbcEstado);
+
+        filtrosContenido.add(filaBusqueda);
+        filtrosContenido.add(Box.createVerticalStrut(6));
+        filtrosContenido.add(filaFechas);
+        filtrosContenido.add(Box.createVerticalStrut(6));
+        filtrosContenido.add(filaEstado);
+        filtros.add(filtrosContenido);
 
         btnVerDetalle.setEnabled(false);
         btnVerDetalle.setToolTipText("Disponible en bandeja general");
         btnEditar.setEnabled(false);
         btnEditar.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado");
 
-        JPanel superior = new JPanel(new BorderLayout(8, 8));
+        JPanel superior = new JPanel(new BorderLayout(6, 6));
         superior.setOpaque(false);
         if (mostrarEncabezado) {
             JLabel titulo = new JLabel(tituloBandeja);
@@ -474,21 +465,34 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             superior.add(titleBlock, BorderLayout.NORTH);
         }
 
+        lblSeleccionados.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblSeleccionados.setForeground(AppV2Theme.PRIMARY);
         lblResultado.setText(etapaBloqueada
                 ? "Seleccione un expediente para abrir la consola."
-                : "Seleccione filtros y presione Buscar. Doble clic o Ver detalle abre la consola.");
+                : (perfilRegistroRecepcion
+                        ? "0 expediente(s) encontrado(s)"
+                        : "Seleccione filtros y presione Buscar. Doble clic o Ver detalle abre la consola."));
         lblResultado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblResultado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
-        superior.add(filtros, BorderLayout.CENTER);
-        superior.add(lblResultado, BorderLayout.SOUTH);
+        JPanel mensajePanel = new JPanel();
+        mensajePanel.setOpaque(false);
+        mensajePanel.setLayout(new javax.swing.BoxLayout(mensajePanel, javax.swing.BoxLayout.Y_AXIS));
+        if (perfilRegistroRecepcion) {
+            mensajePanel.add(lblSeleccionados);
+            mensajePanel.add(Box.createVerticalStrut(4));
+        }
+        mensajePanel.add(lblResultado);
 
-        JPanel contenidoOperativo = new JPanel(new BorderLayout(14, 14));
+        superior.add(filtros, BorderLayout.CENTER);
+        superior.add(mensajePanel, BorderLayout.SOUTH);
+
+        JPanel contenidoOperativo = new JPanel(new BorderLayout(8, 8));
         contenidoOperativo.setOpaque(false);
         contenidoOperativo.add(superior, BorderLayout.NORTH);
         contenidoOperativo.add(tablePanel, BorderLayout.CENTER);
 
-        JPanel contenidoPrincipal = new JPanel(new BorderLayout(14, 14));
+        JPanel contenidoPrincipal = new JPanel(new BorderLayout(8, 8));
         contenidoPrincipal.setOpaque(false);
         if (encabezadoOperativo != null) {
             contenidoPrincipal.add(encabezadoOperativo, BorderLayout.NORTH);
@@ -737,24 +741,57 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return label;
     }
 
+    private JPanel crearCampoFiltroInline(String texto, Component control, int anchoPreferido) {
+        JPanel panel = new JPanel(new BorderLayout(8, 0));
+        panel.setOpaque(false);
+        JLabel label = crearLabelFiltro(texto);
+        label.setHorizontalAlignment(SwingConstants.LEFT);
+        label.setPreferredSize(new Dimension(Math.max(78, label.getPreferredSize().width), control.getPreferredSize().height));
+        panel.add(label, BorderLayout.WEST);
+        panel.add(control, BorderLayout.CENTER);
+        panel.setPreferredSize(new Dimension(anchoPreferido, control.getPreferredSize().height));
+        panel.setMinimumSize(new Dimension(Math.max(120, anchoPreferido), control.getPreferredSize().height));
+        return panel;
+    }
+
+    private JPanel crearCampoFiltroInline(String texto, JSpinner control, int anchoPreferido) {
+        return crearCampoFiltroInline(texto, (Component) control, anchoPreferido);
+    }
+
+    private JPanel crearFiltroGrupoFamiliarInline() {
+        JPanel panel = new JPanel(new BorderLayout(8, 0));
+        panel.setOpaque(false);
+        JLabel label = crearLabelFiltro("Grupo familiar");
+        panel.add(label, BorderLayout.WEST);
+        JPanel checkPanel = new JPanel(new BorderLayout());
+        checkPanel.setOpaque(false);
+        chkFiltroGrupoFamiliar.setText("");
+        chkFiltroGrupoFamiliar.setToolTipText("Mostrar únicamente expedientes identificados o alertados como grupo familiar.");
+        checkPanel.add(chkFiltroGrupoFamiliar, BorderLayout.WEST);
+        panel.add(checkPanel, BorderLayout.CENTER);
+        panel.setPreferredSize(new Dimension(170, 34));
+        panel.setMinimumSize(new Dimension(170, 34));
+        return panel;
+    }
+
     private void configurarControlesFiltro() {
         if (perfilRegistroRecepcion) {
             txtBusqueda.setPlaceholder("Buscar expediente, trámite/SGD, acta, titular o documento");
         }
         txtBusqueda.setColumns(34);
-        txtBusqueda.setPreferredSize(new Dimension(perfilRegistroRecepcion ? 720 : 360, 34));
-        txtBusqueda.setMinimumSize(new Dimension(perfilRegistroRecepcion ? 360 : 280, 34));
+        txtBusqueda.setPreferredSize(new Dimension(perfilRegistroRecepcion ? 520 : 360, 34));
+        txtBusqueda.setMinimumSize(new Dimension(perfilRegistroRecepcion ? 320 : 280, 34));
 
         cmbEtapa.setPreferredSize(new Dimension(190, 34));
         cmbEtapa.setMinimumSize(new Dimension(180, 34));
         cmbEstado.setPreferredSize(new Dimension(240, 34));
         cmbEstado.setMinimumSize(new Dimension(220, 34));
 
-        Dimension fechaSize = new Dimension(180, 40);
+        Dimension fechaSize = new Dimension(250, 42);
         fechaSolicitudDesde.setPreferredSize(fechaSize);
-        fechaSolicitudDesde.setMinimumSize(new Dimension(165, 40));
+        fechaSolicitudDesde.setMinimumSize(new Dimension(210, 42));
         fechaSolicitudHasta.setPreferredSize(fechaSize);
-        fechaSolicitudHasta.setMinimumSize(new Dimension(165, 40));
+        fechaSolicitudHasta.setMinimumSize(new Dimension(210, 42));
 
         Dimension limiteSize = new Dimension(86, 34);
         spnLimite.setPreferredSize(limiteSize);
@@ -1015,19 +1052,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         actualizarEstadoHeaderSeleccionRegistro();
         tablePanel.setEmpty(expedientes.isEmpty());
         notificarCambioGrupoFamiliar();
-        if (expedientes.isEmpty()) {
-            lblResultado.setText("No se encontraron expedientes con los filtros ingresados.");
+        if (perfilRegistroRecepcion) {
+            lblResultado.setText(expedientes.size() + " expediente(s) encontrado(s)");
         } else {
-            lblResultado.setText(expedientes.size() + " expediente(s) encontrado(s). Seleccione uno y presione Ver detalle.");
+            lblResultado.setText(expedientes.isEmpty()
+                    ? "No se encontraron expedientes con los filtros ingresados."
+                    : expedientes.size() + " expediente(s) encontrado(s). Seleccione uno y presione Ver detalle.");
         }
-    }
-
-    private JPanel crearFiltroGrupoFamiliar() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
-        panel.add(chkFiltroGrupoFamiliar, BorderLayout.WEST);
-        panel.setPreferredSize(new Dimension(170, 34));
-        return panel;
+        actualizarTextoSeleccionadosRegistro();
     }
 
     private List<ExpedienteBandejaDTO> filtrarGrupoFamiliar(List<ExpedienteBandejaDTO> expedientes) {
@@ -1661,6 +1693,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (header != null) {
             header.repaint();
         }
+        actualizarTextoSeleccionadosRegistro();
+    }
+
+    private void actualizarTextoSeleccionadosRegistro() {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        lblSeleccionados.setText(contarIdsGrupoFamiliarSeleccionados() + " expediente(s) seleccionado(s)");
     }
 
     private class SelectAllHeaderRendererRegistro extends JLabel implements TableCellRenderer {

@@ -33,9 +33,9 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
     private JPanelRegistrarGrupoFamiliarV2 panelRegistrarGrupoFamiliar;
 
     public JPanelRegistroRecepcionV2() {
-        setLayout(new BorderLayout(14, 14));
+        setLayout(new BorderLayout(8, 8));
         setBackground(AppV2Theme.BACKGROUND);
-        setBorder(AppV2Theme.pageBorder());
+        setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
         tabs = crearTabs();
         if (bandejaRegistro != null && bandejaRegistro.getPanelRecepcionWrapper() != null) {
             splitBandejaRegistro = new AppV2OperationalSplitPanel(
