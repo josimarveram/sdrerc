@@ -916,12 +916,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (item == null) {
             return false;
         }
-        String alertas = normalizarFiltro(item.getAlertas());
         if ("POTENCIAL_DUPLICADO".equals(filtroAlertaRegistro)) {
-            return alertas.contains("POTENCIAL DUPLICADO");
+            return contienePotencialDuplicado(item);
         }
         if ("POSIBLE_GRUPO_FAMILIAR".equals(filtroAlertaRegistro)) {
-            return alertas.contains("POSIBLE GRUPO FAMILIAR");
+            return contienePosibleGrupoFamiliar(item);
         }
         return true;
     }
@@ -937,11 +936,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 if (item == null) {
                     continue;
                 }
-                String alertas = normalizarFiltro(item.getAlertas());
-                if (alertas.contains("POTENCIAL DUPLICADO")) {
+                if (contienePotencialDuplicado(item)) {
                     duplicados++;
                 }
-                if (alertas.contains("POSIBLE GRUPO FAMILIAR")) {
+                if (contienePosibleGrupoFamiliar(item)) {
                     grupoFamiliar++;
                 }
             }
@@ -953,6 +951,20 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             cardPosibleGrupoFamiliarRegistro.setValue(String.valueOf(grupoFamiliar));
         }
         marcarFiltroAlertaRegistro();
+    }
+
+    private boolean contienePotencialDuplicado(ExpedienteBandejaDTO item) {
+        String alertas = normalizarFiltro(item == null ? null : item.getAlertas());
+        return alertas.contains("POTENCIAL DUPLICADO");
+    }
+
+    private boolean contienePosibleGrupoFamiliar(ExpedienteBandejaDTO item) {
+        String alertas = normalizarFiltro(item == null ? null : item.getAlertas());
+        if (alertas.contains("POSIBLE GRUPO FAMILIAR")) {
+            return true;
+        }
+        String grupo = normalizarFiltro(item == null ? null : item.getGrupoFamiliar());
+        return grupo.contains("POSIBLE GRUPO FAMILIAR");
     }
 
     private void marcarFiltroAlertaRegistro() {
