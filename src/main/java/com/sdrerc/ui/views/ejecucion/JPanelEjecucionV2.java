@@ -180,7 +180,7 @@ public class JPanelEjecucionV2 extends JPanel {
         this.documentoService = documentoService;
         setLayout(new BorderLayout(8, 8));
         setBackground(AppV2Theme.BACKGROUND);
-        setBorder(AppV2Theme.pageBorder());
+        setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
         configurarDocumentosTabla();
