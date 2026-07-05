@@ -87,6 +87,7 @@ public class AsignacionExpedienteDAO {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
+        sql.append("cr.nombre AS canal_ingreso, ");
         if (soportaNumeroHojaEnvio) {
             sql.append("(SELECT MAX(axa.numero_hoja_envio) KEEP (DENSE_RANK LAST ORDER BY axa.fecha_asignacion, axa.id_expediente_asignacion) ");
             sql.append(" FROM expediente_asignacion axa ");
@@ -148,6 +149,7 @@ public class AsignacionExpedienteDAO {
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
         sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
+        sql.append("LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = esol.id_canal_recepcion ");
         sql.append("LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual ");
         sql.append("LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ");
         sql.append("WHERE e.activo = 1 ");
@@ -473,6 +475,7 @@ public class AsignacionExpedienteDAO {
         List<Object> params = new ArrayList<Object>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
+        sql.append("cr.nombre AS canal_ingreso, ");
         if (soportaNumeroHojaEnvio) {
             sql.append("(SELECT MAX(axa.numero_hoja_envio) KEEP (DENSE_RANK LAST ORDER BY axa.fecha_asignacion, axa.id_expediente_asignacion) ");
             sql.append(" FROM expediente_asignacion axa ");
@@ -533,6 +536,7 @@ public class AsignacionExpedienteDAO {
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
         sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
+        sql.append("LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = esol.id_canal_recepcion ");
         sql.append("LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual ");
         sql.append("LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ");
         sql.append("WHERE e.activo = 1 AND e.id_expediente = ? ");
@@ -558,6 +562,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_hoja_envio_asignacion"),
                 rs.getString("numero_tramite_documentario"),
+                rs.getString("canal_ingreso"),
                 rs.getString("numero_documento"),
                 rs.getString("tipo_documento"),
                 rs.getString("procedimiento"),

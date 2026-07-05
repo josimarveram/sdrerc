@@ -3741,7 +3741,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblTipoDocumentoSeleccionado.setText(valorUi(item.getTipoDocumento()));
         lblProcedimientoSeleccionado.setText(valorUi(item.getProcedimiento()));
         lblTipoSolicitudSeleccionada.setText("-");
-        lblCanalIngresoSeleccionado.setText("-");
+        lblCanalIngresoSeleccionado.setText(valorUi(item.getCanalIngreso()));
         lblPrioridadSeleccionada.setText("-");
         lblTipoActaSeleccionada.setText(valorUi(item.getTipoActa()));
         lblNumeroActaSeleccionada.setText(valorUi(item.getNumeroActa()));
@@ -3830,8 +3830,9 @@ public class JPanelAsignacionV2 extends JPanel {
             lblMarcaOperativaSeleccionada.setToolTipText(null);
             return;
         }
-        lblGrupoFamiliar.setText(item.getGrupoFamiliarEstado());
-        lblMarcaOperativaSeleccionada.setText(item.getGrupoFamiliarEstado());
+        String valorGrupo = item.isGrupoFamiliar() ? "Sí" : "No";
+        lblGrupoFamiliar.setText(valorGrupo);
+        lblMarcaOperativaSeleccionada.setText(valorGrupo);
         StringBuilder tooltip = new StringBuilder();
         if (!item.getCriterioGrupoFamiliar().isEmpty()) {
             tooltip.append("Criterio: ").append(item.getCriterioGrupoFamiliar());
