@@ -2170,6 +2170,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 if (!isSelected && modelColumn == 9) {
                     return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
                 }
+                if (!isSelected && modelColumn == 10) {
+                    String text = value == null ? "" : value.toString();
+                    if (!text.startsWith("Sin")) {
+                        return new BadgeV2(text, AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
+                    }
+                }
             }
             if (modelColumn == 0) {
                 return StatusBadgeV2.forDias(value, colorFondoCelda(row, isSelected));
