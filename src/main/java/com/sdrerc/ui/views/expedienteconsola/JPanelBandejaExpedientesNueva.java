@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
@@ -82,6 +83,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final boolean usarSplitExterno;
     private final boolean perfilRegistroRecepcion;
     private volatile List<ExpedienteBandejaDTO> ultimoResultadoBuscado = Collections.emptyList();
+    private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
+    private volatile SwingWorker<List<ExpedienteBandejaDTO>, Void> busquedaActiva;
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
@@ -759,6 +762,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void buscar() {
+        long secuencia = secuenciaBusqueda.incrementAndGet();
         String texto = txtBusqueda.getText();
         String etapa = perfilRegistroRecepcion
                 ? "REGISTRO"
@@ -777,6 +781,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return;
         }
 
+        SwingWorker<List<ExpedienteBandejaDTO>, Void> workerAnterior = busquedaActiva;
+        if (workerAnterior != null && !workerAnterior.isDone()) {
+            workerAnterior.cancel(true);
+        }
         setBuscando(true);
         SwingWorker<List<ExpedienteBandejaDTO>, Void> worker = new SwingWorker<List<ExpedienteBandejaDTO>, Void>() {
             @Override
@@ -787,6 +795,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             @Override
                 protected void done() {
                     try {
+                        if (secuencia != secuenciaBusqueda.get()) {
+                            return;
+                        }
                         List<ExpedienteBandejaDTO> expedientes = get();
                         ultimoResultadoBuscado = expedientes == null ? Collections.emptyList() : new ArrayList<>(expedientes);
                         if (perfilRegistroRecepcion && chkFiltroGrupoFamiliar.isSelected()) {
@@ -800,10 +811,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     } catch (Exception ex) {
                         mostrarError(ex);
                     } finally {
-                        setBuscando(false);
+                        if (secuencia == secuenciaBusqueda.get()) {
+                            setBuscando(false);
+                        }
                 }
             }
         };
+        busquedaActiva = worker;
         worker.execute();
     }
 
