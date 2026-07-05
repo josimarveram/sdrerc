@@ -44,6 +44,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -150,6 +151,8 @@ public class JPanelEjecucionV2 extends JPanel {
     private final JTable documentosTable = new JTable(documentosModel);
     private final List<EjecucionExpedienteDTO> expedientes = new ArrayList<EjecucionExpedienteDTO>();
     private final List<EjecucionExpedienteDTO> expedientesVisibles = new ArrayList<EjecucionExpedienteDTO>();
+    private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
+    private volatile SwingWorker<?, ?> busquedaActiva;
 
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "En ejecución", AppV2Theme.INFO);
     private final MetricCardV2 cardEnRevision = new MetricCardV2("En revisión", "0", "Documento emitido", AppV2Theme.TEAL);
@@ -596,11 +599,16 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private void buscar() {
+        long secuencia = secuenciaBusqueda.incrementAndGet();
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             JOptionPane.showMessageDialog(this, "Fecha desde no puede ser mayor que Fecha hasta.", "Ejecución", JOptionPane.INFORMATION_MESSAGE);
             return;
+        }
+        SwingWorker<?, ?> workerAnterior = busquedaActiva;
+        if (workerAnterior != null && !workerAnterior.isDone()) {
+            workerAnterior.cancel(true);
         }
         setTrabajando(true, "Consultando expedientes en Ejecución...");
         String texto = txtBusqueda.getText();
@@ -615,14 +623,20 @@ public class JPanelEjecucionV2 extends JPanel {
             @Override
             protected void done() {
                 try {
+                    if (secuencia != secuenciaBusqueda.get()) {
+                        return;
+                    }
                     cargarTabla(get());
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de Ejecución.", ex);
                 } finally {
-                    setTrabajando(false, null);
+                    if (secuencia == secuenciaBusqueda.get()) {
+                        setTrabajando(false, null);
+                    }
                 }
             }
         };
+        busquedaActiva = worker;
         worker.execute();
     }
 

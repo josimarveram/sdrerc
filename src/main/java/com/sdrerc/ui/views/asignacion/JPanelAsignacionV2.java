@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -374,6 +375,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final Set<Long> principalesCargando = new HashSet<>();
     private final List<DocumentoRelacionadoFila> documentosRelacionadosPanel = new ArrayList<>();
     private final List<CargaLaboralAbogadoDTO> cargasLaborales = new ArrayList<>();
+    private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
+    private volatile SwingWorker<?, ?> busquedaActiva;
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Para asignación", AppV2Theme.INFO);
     private final MetricCardV2 cardSinNumero = new MetricCardV2("Sin número", "0", "Requieren decisión", AppV2Theme.TEAL);
     private final MetricCardV2 cardGrupoFamiliar = new MetricCardV2("Grupo familiar", "0", "Sugerencia operativa", AppV2Theme.PRIMARY);
@@ -1547,11 +1550,16 @@ public class JPanelAsignacionV2 extends JPanel {
     private void buscar() {
         busquedaInicialEjecutada = true;
         limpiarSeleccion();
+        long secuencia = secuenciaBusqueda.incrementAndGet();
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
         if (desde != null && hasta != null && hasta.isBefore(desde)) {
             mostrarInfo("La fecha hasta no puede ser menor que la fecha desde.");
             return;
+        }
+        SwingWorker<?, ?> workerAnterior = busquedaActiva;
+        if (workerAnterior != null && !workerAnterior.isDone()) {
+            workerAnterior.cancel(true);
         }
         setTrabajando(true, "Consultando expedientes según filtros...");
         String texto = txtBusqueda.getText();
@@ -1567,14 +1575,20 @@ public class JPanelAsignacionV2 extends JPanel {
             @Override
             protected void done() {
                 try {
+                    if (secuencia != secuenciaBusqueda.get()) {
+                        return;
+                    }
                     cargarTabla(get());
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de asignación.", ex);
                 } finally {
-                    setTrabajando(false, null);
+                    if (secuencia == secuenciaBusqueda.get()) {
+                        setTrabajando(false, null);
+                    }
                 }
             }
         };
+        busquedaActiva = worker;
         worker.execute();
     }
 

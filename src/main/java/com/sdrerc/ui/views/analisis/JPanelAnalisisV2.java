@@ -75,6 +75,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.BorderFactory;
 import javax.swing.AbstractCellEditor;
 import javax.swing.JButton;
@@ -368,6 +369,8 @@ public class JPanelAnalisisV2 extends JPanel {
     private final Map<Long, List<ExpedienteRelacionadoDTO>> asociadosCache = new HashMap<Long, List<ExpedienteRelacionadoDTO>>();
     private final Set<Long> principalesExpandidos = new HashSet<Long>();
     private final Set<Long> principalesCargando = new HashSet<Long>();
+    private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
+    private volatile SwingWorker<?, ?> busquedaActiva;
     private final List<ExpedienteRelacionadoDTO> documentosAsociadosPanel = new ArrayList<ExpedienteRelacionadoDTO>();
     private final List<AnalisisItemDTO> bloquesAnalisis = new ArrayList<AnalisisItemDTO>();
     private FiltroKpi kpiActivo = FiltroKpi.TODOS;
@@ -1662,11 +1665,16 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private void buscar(Long idExpedienteASeleccionar) {
         busquedaInicialEjecutada = true;
+        long secuencia = secuenciaBusqueda.incrementAndGet();
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             mostrarInfo("Fecha desde no puede ser mayor que Fecha hasta.");
             return;
+        }
+        SwingWorker<?, ?> workerAnterior = busquedaActiva;
+        if (workerAnterior != null && !workerAnterior.isDone()) {
+            workerAnterior.cancel(true);
         }
         setTrabajando(true, "Consultando expedientes asignados para análisis...");
         String texto = txtBusqueda.getText();
@@ -1681,6 +1689,9 @@ public class JPanelAnalisisV2 extends JPanel {
             @Override
             protected void done() {
                 try {
+                    if (secuencia != secuenciaBusqueda.get()) {
+                        return;
+                    }
                     cargarTabla(get());
                     if (idExpedienteASeleccionar != null) {
                         seleccionarFilaPorId(idExpedienteASeleccionar);
@@ -1688,10 +1699,13 @@ public class JPanelAnalisisV2 extends JPanel {
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de análisis.", ex);
                 } finally {
-                    setTrabajando(false, null);
+                    if (secuencia == secuenciaBusqueda.get()) {
+                        setTrabajando(false, null);
+                    }
                 }
             }
         };
+        busquedaActiva = worker;
         worker.execute();
     }
 

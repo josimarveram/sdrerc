@@ -64,6 +64,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.CellRendererPane;
 import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
@@ -315,6 +316,8 @@ public class JPanelVerificacionV2 extends JPanel {
     private final Map<Long, List<ExpedienteRelacionadoDTO>> asociadosCache = new HashMap<Long, List<ExpedienteRelacionadoDTO>>();
     private final Set<Long> principalesExpandidos = new HashSet<Long>();
     private final Set<Long> principalesCargando = new HashSet<Long>();
+    private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
+    private volatile SwingWorker<?, ?> busquedaActiva;
 
     private final MetricCardV2 cardEnVerificacion = new MetricCardV2("Pendientes", "0", "En revisión documental", AppV2Theme.INFO);
     private final MetricCardV2 cardObservados = new MetricCardV2("Observados", "0", "Requieren corrección", AppV2Theme.WARNING);
@@ -1253,11 +1256,16 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private void buscar() {
         busquedaInicialEjecutada = true;
+        long secuencia = secuenciaBusqueda.incrementAndGet();
         LocalDate desde = fechaSeleccionada(fechaSolicitudDesde);
         LocalDate hasta = fechaSeleccionada(fechaSolicitudHasta);
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             mostrarInfo("Fecha desde no puede ser mayor que Fecha hasta.");
             return;
+        }
+        SwingWorker<?, ?> workerAnterior = busquedaActiva;
+        if (workerAnterior != null && !workerAnterior.isDone()) {
+            workerAnterior.cancel(true);
         }
         setTrabajando(true, "Consultando expedientes en Verificación...");
         String texto = txtBusqueda.getText();
@@ -1272,14 +1280,20 @@ public class JPanelVerificacionV2 extends JPanel {
             @Override
             protected void done() {
                 try {
+                    if (secuencia != secuenciaBusqueda.get()) {
+                        return;
+                    }
                     cargarTabla(get());
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de verificación.", ex);
                 } finally {
-                    setTrabajando(false, null);
+                    if (secuencia == secuenciaBusqueda.get()) {
+                        setTrabajando(false, null);
+                    }
                 }
             }
         };
+        busquedaActiva = worker;
         worker.execute();
     }
 

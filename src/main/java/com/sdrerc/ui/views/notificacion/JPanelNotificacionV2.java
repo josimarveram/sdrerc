@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -161,6 +162,8 @@ public class JPanelNotificacionV2 extends JPanel {
     };
     private final JTable documentosTable = new JTable(documentosModel);
     private final List<NotificacionExpedienteDTO> expedientes = new ArrayList<NotificacionExpedienteDTO>();
+    private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
+    private volatile SwingWorker<?, ?> busquedaActiva;
 
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Por notificar", AppV2Theme.INFO);
     private final MetricCardV2 cardRevision = new MetricCardV2("En revisión", "0", "Cargo pendiente", AppV2Theme.WARNING);
@@ -759,6 +762,11 @@ public class JPanelNotificacionV2 extends JPanel {
             JOptionPane.showMessageDialog(this, "Fecha desde no puede ser mayor que Fecha hasta.", "Notificación", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        final long secuencia = secuenciaBusqueda.incrementAndGet();
+        SwingWorker<?, ?> workerAnterior = busquedaActiva;
+        if (workerAnterior != null && !workerAnterior.isDone()) {
+            workerAnterior.cancel(true);
+        }
         setTrabajando(true, "Consultando expedientes en Notificación...");
         final String texto = txtBusqueda.getText();
         final String estado = obtenerCodigo(cmbEstadoFiltro);
@@ -783,6 +791,9 @@ public class JPanelNotificacionV2 extends JPanel {
             @Override
             protected void done() {
                 try {
+                    if (secuencia != secuenciaBusqueda.get()) {
+                        return;
+                    }
                     expedientes.clear();
                     expedientes.addAll(get());
                     expedientesVisibles.clear();
@@ -801,10 +812,13 @@ public class JPanelNotificacionV2 extends JPanel {
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de Notificación.", ex);
                 } finally {
-                    setTrabajando(false, null);
+                    if (secuencia == secuenciaBusqueda.get()) {
+                        setTrabajando(false, null);
+                    }
                 }
             }
         };
+        busquedaActiva = worker;
         worker.execute();
     }
 
