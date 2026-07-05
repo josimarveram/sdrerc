@@ -192,17 +192,12 @@ public final class AppV2TableColumnSizer {
             int width = calculateDynamicWidth(table, i, column);
             if (width > 0) {
                 column.setPreferredWidth(width);
-                if (column.getWidth() != width) {
-                    column.setWidth(width);
-                }
                 int minimum = Math.min(width, 90);
                 if (column.getMinWidth() < minimum) {
                     column.setMinWidth(minimum);
                 }
             }
         }
-        table.revalidate();
-        table.repaint();
     }
 
     private static int calculateDynamicWidth(JTable table, int viewColumn, TableColumn column) {
