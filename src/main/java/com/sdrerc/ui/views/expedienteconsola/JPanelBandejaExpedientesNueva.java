@@ -9,6 +9,7 @@ import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
+import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
@@ -522,68 +523,15 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de recepción", this::ocultarPanelRecepcion);
         panel.setAccentColor(new Color(57, 125, 199));
 
-        AppV2SideSectionPanel solicitud = new AppV2SideSectionPanel("Datos de solicitud");
-        solicitud.addRow("Expediente", lblRecepcionExpediente);
-        solicitud.addRow("Resultado inicial", lblRecepcionResultadoInicial);
-        solicitud.addRow("Hoja de envío", lblRecepcionHojaEnvio);
-        solicitud.addRow("Nro. trámite web", lblRecepcionTramite);
-        solicitud.addRow("N° documento", lblRecepcionNumeroDocumento);
-        solicitud.addRow("N° expediente SGD", lblRecepcionNumeroExpedienteSgd);
-        solicitud.addRow("Tipo solicitud", lblRecepcionTipoSolicitud);
-        solicitud.addRow("Fecha recepción", lblRecepcionFecha);
-        solicitud.addRow("Procedimiento registral", lblRecepcionProcedimiento);
-        solicitud.addRow("Tipo documento", lblRecepcionTipoDocumento);
-        solicitud.addRow("Canal de ingreso", lblRecepcionCanal);
-        solicitud.addRow("Prioridad", lblRecepcionPrioridad);
-        solicitud.addRow("Marca operativa", lblRecepcionMarcaOperativa);
-        solicitud.addRow("Expediente", lblRecepcionExpediente);
-        solicitud.addRow("Días hábiles", lblRecepcionDias);
-        solicitud.addRow("Estado", lblRecepcionEtapaEstado);
-        solicitud.addRow("Observación", lblRecepcionObservacion);
+        AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
+        secciones.add(crearSeccionDatosExpediente());
+        secciones.add(crearSeccionDatosActa());
+        secciones.add(crearSeccionDatosSolicitud());
+        secciones.add(crearSeccionTitular());
+        secciones.add(crearSeccionSolicitante());
+        secciones.add(crearSeccionNotificacionUbicacion());
 
-        AppV2SideSectionPanel datos = new AppV2SideSectionPanel("Datos del acta");
-        datos.addRow("Tipo de acta", lblRecepcionTipoActa);
-        datos.addRow("Nro. acta", lblRecepcionNumeroActa);
-        datos.addRow("Resumen acta", lblRecepcionResumenActa);
-
-        AppV2SideSectionPanel titular = new AppV2SideSectionPanel("Datos del titular");
-        titular.addRow("Titular", lblRecepcionTitular);
-        titular.addRow("Tipo documento titular", lblRecepcionTipoDocumentoTitular);
-        titular.addRow("Número documento titular", lblRecepcionNumeroDocumentoTitular);
-
-        AppV2SideSectionPanel solicitante = new AppV2SideSectionPanel("Datos del solicitante");
-        solicitante.addRow("Solicitante", lblRecepcionRemitente);
-        solicitante.addRow("Tipo documento solicitante", lblRecepcionTipoDocumentoSolicitante);
-        solicitante.addRow("Número documento solicitante", lblRecepcionNumeroDocumentoSolicitante);
-
-        AppV2SideSectionPanel notificacion = new AppV2SideSectionPanel("Datos de notificación y ubicación");
-        notificacion.addRow("Correo", lblRecepcionCorreo);
-        notificacion.addRow("Teléfono", lblRecepcionTelefono);
-        notificacion.addRow("Departamento", lblRecepcionDepartamento);
-        notificacion.addRow("Provincia", lblRecepcionProvincia);
-        notificacion.addRow("Distrito", lblRecepcionDistrito);
-        notificacion.addRow("Dirección", lblRecepcionDireccion);
-
-        AppV2SideSectionPanel datosRegistrales = new AppV2SideSectionPanel("Datos registrales");
-        datosRegistrales.addRow("Procedimiento", lblRecepcionProcedimiento);
-        datosRegistrales.addRow("Grupo familiar", lblRecepcionGrupoFamiliar);
-
-        AppV2SideSectionPanel plazo = new AppV2SideSectionPanel("Plazo");
-        plazo.addRow("Vencimiento", lblRecepcionVencimiento);
-        plazo.addRow("Días", lblRecepcionDias);
-
-        AppV2SideSectionPanel gestion = new AppV2SideSectionPanel("Gestión actual");
-        gestion.addRow("Responsable", lblRecepcionResponsable);
-        gestion.addRow("Equipo", lblRecepcionEquipo);
-
-        panel.addSection(solicitud);
-        panel.addSection(datos);
-        panel.addSection(titular);
-        panel.addSection(solicitante);
-        panel.addSection(notificacion);
-        panel.addSection(datosRegistrales);
-        panel.addSection(plazo);
-        panel.addSection(gestion);
+        panel.addSection(secciones);
 
         panelRegistrarGrupoFamiliar = new JPanelRegistrarGrupoFamiliarV2();
         panelRecepcionCardsLayout = new CardLayout();
@@ -608,6 +556,61 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
         });
         return panel;
+    }
+
+    private AppV2SideSectionPanel crearSeccionDatosExpediente() {
+        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos del expediente");
+        seccion.addRow("N° expediente", lblRecepcionExpediente);
+        seccion.addRow("N° expediente SGD", lblRecepcionNumeroExpedienteSgd);
+        return seccion;
+    }
+
+    private AppV2SideSectionPanel crearSeccionDatosActa() {
+        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos del acta");
+        seccion.addRow("Tipo de acta", lblRecepcionTipoActa);
+        seccion.addRow("Nro. acta", lblRecepcionNumeroActa);
+        seccion.addRow("Resumen acta", lblRecepcionResumenActa);
+        return seccion;
+    }
+
+    private AppV2SideSectionPanel crearSeccionDatosSolicitud() {
+        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos de solicitud");
+        seccion.addRow("Fecha recepción", lblRecepcionFecha);
+        seccion.addRow("Canal de ingreso", lblRecepcionCanal);
+        seccion.addRow("Nro. trámite web", lblRecepcionTramite);
+        seccion.addRow("Procedimiento registral", lblRecepcionProcedimiento);
+        seccion.addRow("Tipo documento", lblRecepcionTipoDocumento);
+        seccion.addRow("N° documento", lblRecepcionNumeroDocumento);
+        seccion.addRow("Tipo de solicitud", lblRecepcionTipoSolicitud);
+        seccion.addRow("Marca operativa", lblRecepcionMarcaOperativa);
+        return seccion;
+    }
+
+    private AppV2SideSectionPanel crearSeccionTitular() {
+        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos del titular");
+        seccion.addRow("Titular", lblRecepcionTitular);
+        seccion.addRow("Tipo documento", lblRecepcionTipoDocumentoTitular);
+        seccion.addRow("Número documento", lblRecepcionNumeroDocumentoTitular);
+        return seccion;
+    }
+
+    private AppV2SideSectionPanel crearSeccionSolicitante() {
+        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos del solicitante");
+        seccion.addRow("Solicitante", lblRecepcionRemitente);
+        seccion.addRow("Tipo documento", lblRecepcionTipoDocumentoSolicitante);
+        seccion.addRow("Número documento", lblRecepcionNumeroDocumentoSolicitante);
+        return seccion;
+    }
+
+    private AppV2SideSectionPanel crearSeccionNotificacionUbicacion() {
+        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos de notificación y ubicación");
+        seccion.addRow("Correo", lblRecepcionCorreo);
+        seccion.addRow("Teléfono", lblRecepcionTelefono);
+        seccion.addRow("Departamento", lblRecepcionDepartamento);
+        seccion.addRow("Provincia", lblRecepcionProvincia);
+        seccion.addRow("Distrito", lblRecepcionDistrito);
+        seccion.addRow("Dirección", lblRecepcionDireccion);
+        return seccion;
     }
 
     private JPanel crearPanelRecepcionConTab(final AppV2SideActionPanel panel) {
