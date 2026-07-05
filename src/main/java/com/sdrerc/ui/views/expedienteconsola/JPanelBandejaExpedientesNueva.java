@@ -27,11 +27,15 @@ import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -58,12 +62,15 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
+import javax.swing.SwingConstants;
+import javax.swing.table.JTableHeader;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import java.util.Set;
 
 public class JPanelBandejaExpedientesNueva extends JPanel {
@@ -152,6 +159,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private MetricCardV2 cardPosibleGrupoFamiliarRegistro;
     private String filtroAlertaRegistro;
     private Runnable onGrupoFamiliarSelectionChanged;
+    private boolean hayVisiblesGrupoFamiliar;
+    private boolean todasVisiblesGrupoFamiliarSeleccionadas;
+    private boolean actualizandoGrupoFamiliarMasivo;
 
     public JPanelBandejaExpedientesNueva() {
         this(new ExpedienteConsultaService());
@@ -325,7 +335,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         } else {
                             grupoFamiliarSeleccionados.remove(id);
                         }
-                        notificarCambioGrupoFamiliar();
+                        if (!actualizandoGrupoFamiliarMasivo) {
+                            notificarCambioGrupoFamiliar();
+                        }
                     }
                 }
             }
@@ -662,6 +674,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         }
         instalarFiltrosPorColumna();
+        configurarCabeceraSeleccionGrupoFamiliar();
     }
 
     private void instalarFiltrosPorColumna() {
@@ -675,6 +688,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     btnEditar.setEnabled(false);
                 },
                 perfilRegistroRecepcion ? new int[]{0} : new int[0]);
+        if (perfilRegistroRecepcion && columnFilterSupport != null) {
+            columnFilterSupport.getSorter().addRowSorterListener(event -> actualizarEstadoHeaderSeleccionRegistro());
+        }
     }
 
     private void limpiarFiltrosPorColumna() {
@@ -786,10 +802,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         grupoFamiliarSeleccionados.clear();
         if (tableModel.getRowCount() > 0) {
-            for (int row = 0; row < tableModel.getRowCount(); row++) {
-                tableModel.setValueAt(Boolean.FALSE, row, 0);
+            actualizandoGrupoFamiliarMasivo = true;
+            try {
+                for (int row = 0; row < tableModel.getRowCount(); row++) {
+                    tableModel.setValueAt(Boolean.FALSE, row, 0);
+                }
+            } finally {
+                actualizandoGrupoFamiliarMasivo = false;
             }
         }
+        actualizarEstadoHeaderSeleccionRegistro();
         notificarCambioGrupoFamiliar();
     }
 
@@ -962,6 +984,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 });
             }
         }
+        actualizarEstadoHeaderSeleccionRegistro();
         tablePanel.setEmpty(expedientes.isEmpty());
         notificarCambioGrupoFamiliar();
         if (expedientes.isEmpty()) {
@@ -1349,8 +1372,148 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void notificarCambioGrupoFamiliar() {
+        actualizarEstadoHeaderSeleccionRegistro();
         if (onGrupoFamiliarSelectionChanged != null) {
             SwingUtilities.invokeLater(onGrupoFamiliarSelectionChanged);
+        }
+    }
+
+    private void configurarCabeceraSeleccionGrupoFamiliar() {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        table.getColumnModel().getColumn(0).setHeaderRenderer(new SelectAllHeaderRendererRegistro());
+        table.getTableHeader().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int column = table.columnAtPoint(e.getPoint());
+                if (column >= 0 && table.convertColumnIndexToModel(column) == 0) {
+                    alternarSeleccionVisibleDesdeHeaderRegistro();
+                }
+            }
+        });
+        actualizarEstadoHeaderSeleccionRegistro();
+    }
+
+    private void alternarSeleccionVisibleDesdeHeaderRegistro() {
+        actualizarEstadoHeaderSeleccionRegistro();
+        if (!hayVisiblesGrupoFamiliar) {
+            return;
+        }
+        boolean seleccionar = !todasVisiblesGrupoFamiliarSeleccionadas;
+        actualizandoGrupoFamiliarMasivo = true;
+        try {
+            for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
+                int modelRow = table.convertRowIndexToModel(viewRow);
+                if (modelRow >= 0 && modelRow < tableModel.getRowCount()) {
+                    tableModel.setValueAt(Boolean.valueOf(seleccionar), modelRow, 0);
+                }
+            }
+        } finally {
+            actualizandoGrupoFamiliarMasivo = false;
+        }
+        actualizarEstadoHeaderSeleccionRegistro();
+        notificarCambioGrupoFamiliar();
+    }
+
+    private void actualizarEstadoHeaderSeleccionRegistro() {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        int visiblesSeleccionables = 0;
+        int visiblesSeleccionadas = 0;
+        for (int viewRow = 0; viewRow < table.getRowCount(); viewRow++) {
+            int modelRow = table.convertRowIndexToModel(viewRow);
+            if (modelRow < 0 || modelRow >= tableModel.getRowCount()) {
+                continue;
+            }
+            visiblesSeleccionables++;
+            if (Boolean.TRUE.equals(tableModel.getValueAt(modelRow, 0))) {
+                visiblesSeleccionadas++;
+            }
+        }
+        hayVisiblesGrupoFamiliar = visiblesSeleccionables > 0;
+        todasVisiblesGrupoFamiliarSeleccionadas = hayVisiblesGrupoFamiliar
+                && visiblesSeleccionables == visiblesSeleccionadas;
+        JTableHeader header = table.getTableHeader();
+        if (header != null) {
+            header.repaint();
+        }
+    }
+
+    private class SelectAllHeaderRendererRegistro extends JLabel implements TableCellRenderer {
+
+        private SelectAllHeaderRendererRegistro() {
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setVerticalAlignment(SwingConstants.CENTER);
+            setOpaque(true);
+            setBackground(AppV2Theme.SURFACE_ALT);
+            setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, AppV2Theme.BORDER));
+            setToolTipText("Seleccionar o desmarcar todos los expedientes filtrados.");
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            setEnabled(hayVisiblesGrupoFamiliar);
+            setText("");
+            setIcon(new HeaderCheckBoxIconRegistro(
+                    todasVisiblesGrupoFamiliarSeleccionadas,
+                    hayVisiblesGrupoFamiliar));
+            setToolTipText(hayVisiblesGrupoFamiliar
+                    ? (todasVisiblesGrupoFamiliarSeleccionadas
+                            ? "Desmarcar todos los expedientes filtrados."
+                            : "Seleccionar todos los expedientes filtrados.")
+                    : "No hay expedientes visibles para seleccionar.");
+            return this;
+        }
+    }
+
+    private static class HeaderCheckBoxIconRegistro implements javax.swing.Icon {
+
+        private final boolean selected;
+        private final boolean enabled;
+
+        private HeaderCheckBoxIconRegistro(boolean selected, boolean enabled) {
+            this.selected = selected;
+            this.enabled = enabled;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 18;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 18;
+        }
+
+        @Override
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color border = enabled ? AppV2Theme.PRIMARY : AppV2Theme.BORDER_STRONG;
+                Color fill = selected && enabled ? AppV2Theme.PRIMARY : AppV2Theme.SURFACE;
+                g2.setColor(fill);
+                g2.fillRoundRect(x + 1, y + 1, 15, 15, 4, 4);
+                g2.setColor(border);
+                g2.drawRoundRect(x + 1, y + 1, 15, 15, 4, 4);
+                if (selected && enabled) {
+                    g2.setColor(Color.WHITE);
+                    g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(x + 4, y + 9, x + 7, y + 12);
+                    g2.drawLine(x + 7, y + 12, x + 13, y + 5);
+                }
+            } finally {
+                g2.dispose();
+            }
         }
     }
 
