@@ -225,14 +225,14 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
 
     private JPanel crearDatosSolicitud() {
         JPanel panel = seccion("Datos de solicitud");
-        agregarFila(panel, 0, "Nro. trámite web *", txtNumeroTramite);
-        agregarFila(panel, 1, "N° documento", txtNumeroDocumento);
-        agregarFila(panel, 2, "N° expediente SGD", txtNumeroExpedienteSgd);
-        agregarFila(panel, 3, "Tipo de solicitud *", cmbTipoSolicitud);
-        agregarFila(panel, 4, "Fecha recepción *", fechaRecepcionField);
-        agregarFila(panel, 5, "Procedimiento registral *", cmbProcedimiento);
-        agregarFila(panel, 6, "Tipo documento *", cmbTipoDocumento);
-        agregarFila(panel, 7, "Canal de ingreso", cmbCanal);
+        agregarFila(panel, 0, "Fecha recepción *", fechaRecepcionField);
+        agregarFila(panel, 1, "Canal de ingreso", cmbCanal);
+        agregarFila(panel, 2, "Nro. trámite web *", txtNumeroTramite);
+        agregarFila(panel, 3, "Procedimiento registral *", cmbProcedimiento);
+        agregarFila(panel, 4, "N° expediente SGD", txtNumeroExpedienteSgd);
+        agregarFila(panel, 5, "Tipo documento *", cmbTipoDocumento);
+        agregarFila(panel, 6, "N° documento", txtNumeroDocumento);
+        agregarFila(panel, 7, "Tipo de solicitud *", cmbTipoSolicitud);
         agregarFila(panel, 8, "Prioridad", cmbPrioridad);
         agregarFila(panel, 9, "Marca operativa", chkGrupoFamiliar);
         return panel;
@@ -254,7 +254,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     }
 
     private JPanel crearRemitente() {
-        JPanel panel = seccion("Remitente");
+        JPanel panel = seccion("Solicitante");
         agregarFila(panel, 0, "Nombres / Razón Social *", txtRemitenteNombre);
         agregarFila(panel, 1, "Tipo documento", cmbRemitenteTipoDoc);
         agregarFila(panel, 2, "Número documento", txtRemitenteDocumento);
