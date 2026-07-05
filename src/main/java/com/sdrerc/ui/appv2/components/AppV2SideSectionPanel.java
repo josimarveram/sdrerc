@@ -33,6 +33,8 @@ public class AppV2SideSectionPanel extends JPanel {
         GridBagConstraints gbcLabel = new GridBagConstraints();
         gbcLabel.gridx = 0;
         gbcLabel.gridy = row;
+        gbcLabel.weightx = 0.38;
+        gbcLabel.fill = GridBagConstraints.HORIZONTAL;
         gbcLabel.anchor = GridBagConstraints.NORTHWEST;
         gbcLabel.insets = new Insets(6, 0, 6, 14);
 

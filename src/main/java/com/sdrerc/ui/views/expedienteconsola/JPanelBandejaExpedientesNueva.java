@@ -576,7 +576,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         seccion.addRow("Fecha recepción", lblRecepcionFecha);
         seccion.addRow("Canal de ingreso", lblRecepcionCanal);
         seccion.addRow("Nro. trámite web", lblRecepcionTramite);
-        seccion.addRow("Procedimiento registral", lblRecepcionProcedimiento);
+        seccion.addRow("Proc.Registral", lblRecepcionProcedimiento);
         seccion.addRow("Tipo documento", lblRecepcionTipoDocumento);
         seccion.addRow("N° documento", lblRecepcionNumeroDocumento);
         seccion.addRow("Tipo de solicitud", lblRecepcionTipoSolicitud);
