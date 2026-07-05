@@ -563,6 +563,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("numero_hoja_envio_asignacion"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("canal_ingreso"),
+                extraerValorObservacion(rs.getString("observacion_solicitud"), "Tipo de solicitud"),
                 rs.getString("numero_documento"),
                 rs.getString("tipo_documento"),
                 rs.getString("procedimiento"),
@@ -746,6 +747,22 @@ public class AsignacionExpedienteDAO {
                 throw new SQLException("No se encontró solicitud activa para actualizar el procedimiento registral.");
             }
         }
+    }
+
+    private static String extraerValorObservacion(String observacion, String etiqueta) {
+        if (observacion == null || etiqueta == null) {
+            return null;
+        }
+        String prefix = etiqueta.trim().toLowerCase(Locale.ROOT) + ":";
+        String[] partes = observacion.split("\\|");
+        for (String parte : partes) {
+            String limpia = parte == null ? "" : parte.trim();
+            if (limpia.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                String valor = limpia.substring(prefix.length()).trim();
+                return valor.isEmpty() ? null : valor;
+            }
+        }
+        return null;
     }
 
     private void insertarHistorialEdicionDatosAsignacion(

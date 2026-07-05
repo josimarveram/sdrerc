@@ -3740,7 +3740,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblExpedienteSgdSeleccionado.setText(valorUi(item.getNumeroExpedienteSgd()));
         lblTipoDocumentoSeleccionado.setText(valorUi(item.getTipoDocumento()));
         lblProcedimientoSeleccionado.setText(valorUi(item.getProcedimiento()));
-        lblTipoSolicitudSeleccionada.setText("-");
+        lblTipoSolicitudSeleccionada.setText(valorUi(item.getTipoSolicitud()));
         lblCanalIngresoSeleccionado.setText(valorUi(item.getCanalIngreso()));
         lblPrioridadSeleccionada.setText("-");
         lblTipoActaSeleccionada.setText(valorUi(item.getTipoActa()));

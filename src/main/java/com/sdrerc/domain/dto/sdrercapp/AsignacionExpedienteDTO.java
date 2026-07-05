@@ -12,6 +12,7 @@ public class AsignacionExpedienteDTO {
     private final String numeroHojaEnvioAsignacion;
     private final String numeroTramiteDocumentario;
     private final String canalIngreso;
+    private final String tipoSolicitud;
     private final String numeroDocumento;
     private final String tipoDocumento;
     private final String procedimiento;
@@ -54,6 +55,7 @@ public class AsignacionExpedienteDTO {
             String numeroHojaEnvioAsignacion,
             String numeroTramiteDocumentario,
             String canalIngreso,
+            String tipoSolicitud,
             String numeroDocumento,
             String tipoDocumento,
             String procedimiento,
@@ -94,6 +96,7 @@ public class AsignacionExpedienteDTO {
         this.numeroHojaEnvioAsignacion = safe(numeroHojaEnvioAsignacion);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.canalIngreso = safe(canalIngreso);
+        this.tipoSolicitud = safe(tipoSolicitud);
         this.numeroDocumento = safe(numeroDocumento);
         this.tipoDocumento = safe(tipoDocumento);
         this.procedimiento = safeProcedimiento(procedimiento);
@@ -152,6 +155,10 @@ public class AsignacionExpedienteDTO {
 
     public String getCanalIngreso() {
         return canalIngreso;
+    }
+
+    public String getTipoSolicitud() {
+        return tipoSolicitud;
     }
 
     public String getNumeroDocumento() {
