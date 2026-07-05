@@ -97,7 +97,7 @@ public class MenuPrincipalV2 extends JFrame {
     private JPanel crearMenuLateral() {
         sidebar = new JPanel(new BorderLayout());
         sidebar.setBackground(AppV2Theme.SIDEBAR);
-        sidebar.setBorder(BorderFactory.createEmptyBorder(18, 12, 18, 8));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(18, 10, 18, 6));
 
         marca = new JLabel("<html><b>SDRERC</b><br><span style='font-size:10px'>Gestión de expedientes</span></html>");
         marca.setForeground(Color.WHITE);
@@ -305,7 +305,7 @@ public class MenuPrincipalV2 extends JFrame {
         }
         sidebar.setPreferredSize(new Dimension(
                 sidebarCollapsed ? AppV2DisplayScale.sidebarCollapsedWidth() : sidebarExpandedWidth, 0));
-        sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 12, 18, sidebarCollapsed ? 8 : 8));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(18, sidebarCollapsed ? 8 : 10, 18, sidebarCollapsed ? 8 : 6));
         marca.setText(sidebarCollapsed
                 ? ""
                 : "<html><b>SDRERC</b><br><span style='font-size:10px'>Gestión de expedientes</span></html>");
@@ -345,7 +345,7 @@ public class MenuPrincipalV2 extends JFrame {
     }
 
     private int calcularAnchoSidebarExpandido() {
-        int ancho = AppV2DisplayScale.scale(248);
+        int ancho = AppV2DisplayScale.scale(236);
         if (marca != null) {
             ancho = Math.max(ancho, marca.getPreferredSize().width);
         }
@@ -355,7 +355,7 @@ public class MenuPrincipalV2 extends JFrame {
         for (JButton boton : botonesMenu) {
             ancho = Math.max(ancho, boton.getPreferredSize().width);
         }
-        ancho += AppV2DisplayScale.scale(28);
+        ancho += AppV2DisplayScale.scale(20);
         return ancho;
     }
 
