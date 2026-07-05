@@ -2032,8 +2032,23 @@ public class JPanelAsignacionV2 extends JPanel {
         if (item == null) {
             return false;
         }
+        if (item.isPosibleGrupoFamiliar()) {
+            return true;
+        }
         String alerta = normalizarTexto(item.getAlertaIngreso());
         if (alerta.contains("posible grupo familiar")) {
+            return true;
+        }
+        String observacion = normalizarTexto(item.getObservacionSolicitud());
+        if (observacion.contains("posible grupo familiar")) {
+            return true;
+        }
+        String criterio = normalizarTexto(item.getCriterioGrupoFamiliar());
+        if (criterio.contains("posible grupo familiar") || criterio.contains("grupo familiar")) {
+            return true;
+        }
+        String observacionGrupo = normalizarTexto(item.getObservacionGrupoFamiliar());
+        if (observacionGrupo.contains("posible grupo familiar") || observacionGrupo.contains("grupo familiar")) {
             return true;
         }
         String grupo = normalizarTexto(item.getGrupoFamiliarEstado());

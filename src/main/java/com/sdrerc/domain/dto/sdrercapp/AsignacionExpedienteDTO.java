@@ -284,7 +284,10 @@ public class AsignacionExpedienteDTO {
     }
 
     public boolean isPosibleGrupoFamiliar() {
-        return !grupoFamiliar && (!criterioGrupoFamiliar.isEmpty() || !observacionGrupoFamiliar.isEmpty());
+        return grupoFamiliar
+                || !criterioGrupoFamiliar.isEmpty()
+                || !observacionGrupoFamiliar.isEmpty()
+                || contienePosibleGrupoFamiliar(observacionSolicitud);
     }
 
     public String getGrupoFamiliarEstado() {
@@ -303,9 +306,6 @@ public class AsignacionExpedienteDTO {
     public String getAlertaIngreso() {
         if (potencialDuplicado) {
             return "Potencial duplicado";
-        }
-        if (grupoFamiliar) {
-            return "Grupo familiar";
         }
         if (isPosibleGrupoFamiliar()) {
             return "Posible Grupo Familiar";
@@ -343,5 +343,12 @@ public class AsignacionExpedienteDTO {
     private static String safeProcedimiento(String value) {
         String canonico = ProcedimientoRegistralRules.nombreCanonico(value);
         return canonico == null ? "" : canonico;
+    }
+
+    private static boolean contienePosibleGrupoFamiliar(String value) {
+        if (value == null) {
+            return false;
+        }
+        return value.trim().toLowerCase(java.util.Locale.ROOT).contains("posible grupo familiar");
     }
 }
