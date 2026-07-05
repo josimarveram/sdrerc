@@ -17,6 +17,7 @@ import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
+import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2RemoveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -102,8 +103,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private enum FiltroKpiBandeja {
         TODOS,
         PENDIENTES,
-        SIN_NUMERO,
-        GRUPO_FAMILIAR,
+        POTENCIAL_DUPLICADO,
+        POSIBLE_GRUPO_FAMILIAR,
         POR_VENCER,
         VENCIDOS
     }
@@ -380,8 +381,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
     private volatile SwingWorker<?, ?> busquedaActiva;
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Para asignación", AppV2Theme.INFO);
-    private final MetricCardV2 cardSinNumero = new MetricCardV2("Sin número", "0", "Requieren decisión", AppV2Theme.TEAL);
-    private final MetricCardV2 cardGrupoFamiliar = new MetricCardV2("Grupo familiar", "0", "Sugerencia operativa", AppV2Theme.PRIMARY);
+    private final MetricCardV2 cardPotencialDuplicado = new MetricCardV2("Potencial duplicado", "0", "Acta + titular", AppV2Theme.WARNING);
+    private final MetricCardV2 cardPosibleGrupoFamiliar = new MetricCardV2("Posible Grupo Familiar", "0", "Apellidos coincidentes", AppV2Theme.PRIMARY);
     private final MetricCardV2 cardPorVencer = new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
     private final MetricCardV2 cardVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
     private final MetricCardV2 cardCartasTotal = new MetricCardV2("Cartas", "0", "Con respuesta requerida", AppV2Theme.INFO);
@@ -475,8 +476,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private JPanel crearHeader() {
         JPanel metricas = new AppV2ResponsiveGridPanel(190, 5, 12, 0);
         metricas.add(cardPendientes);
-        metricas.add(cardSinNumero);
-        metricas.add(cardGrupoFamiliar);
+        metricas.add(cardPotencialDuplicado);
+        metricas.add(cardPosibleGrupoFamiliar);
         metricas.add(cardPorVencer);
         metricas.add(cardVencidos);
         return metricas;
@@ -573,29 +574,21 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private JPanel crearBuscador() {
         configurarControles();
-        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
-        toolbar.addSearchRow("Búsqueda", txtBusqueda, acciones);
-        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
-        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
-        toolbar.addFilter("Estado", cmbEstado);
-        toolbar.addFilter("Grupo familiar", crearFiltroGrupoFamiliar());
-        toolbar.addCompactFilter(spnLimite);
-        return toolbar;
-    }
-
-    private JPanel crearFiltroGrupoFamiliar() {
-        JPanel filtro = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        filtro.setOpaque(false);
-        filtro.setPreferredSize(new Dimension(170, 34));
-        filtro.setMinimumSize(new Dimension(150, 34));
-        chkSoloGrupoFamiliar.setText("Solo identificados");
+        chkSoloGrupoFamiliar.setText("");
         chkSoloGrupoFamiliar.setToolTipText(
                 "Mostrar únicamente solicitudes identificadas o alertadas como grupo familiar.");
-        filtro.add(chkSoloGrupoFamiliar);
-        return filtro;
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusqueda,
+                acciones,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                cmbEstado,
+                chkSoloGrupoFamiliar,
+                spnLimite);
     }
 
     private JPanel crearBandeja() {
@@ -648,11 +641,12 @@ public class JPanelAsignacionV2 extends JPanel {
         sectionDatosTitular = crearDatosTitularAsignacion();
         sectionDatosSolicitante = crearDatosSolicitanteAsignacion();
         sectionDatosNotificacionUbicacion = crearDatosNotificacionUbicacionAsignacion();
-        panel.addSection(sectionDatosSolicitud);
-        panel.addSection(sectionDatosActa);
-        panel.addSection(sectionDatosTitular);
-        panel.addSection(sectionDatosSolicitante);
-        panel.addSection(sectionDatosNotificacionUbicacion);
+        panel.addSection(AppV2ExpedientePanelFactory.crearPanelSeccionesResponsivo(
+                sectionDatosSolicitud,
+                sectionDatosActa,
+                sectionDatosTitular,
+                sectionDatosSolicitante,
+                sectionDatosNotificacionUbicacion));
         return panel;
     }
 
@@ -1699,10 +1693,10 @@ public class JPanelAsignacionV2 extends JPanel {
         switch (kpiBandejaActiva) {
             case PENDIENTES:
                 return item.isAsignable();
-            case SIN_NUMERO:
-                return !item.tieneNumeroExpediente() || item.requiereDecisionNumeroAsignacion();
-            case GRUPO_FAMILIAR:
-                return esAlertaGrupoFamiliar(item);
+            case POTENCIAL_DUPLICADO:
+                return item.isPotencialDuplicado();
+            case POSIBLE_GRUPO_FAMILIAR:
+                return item.isPosibleGrupoFamiliar();
             case POR_VENCER:
                 Long dias = item.getDiasRestantes();
                 return dias != null && dias >= 0 && dias <= 5;
@@ -1716,8 +1710,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void configurarKpisInteractivos() {
         cardPendientes.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.PENDIENTES));
-        cardSinNumero.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.SIN_NUMERO));
-        cardGrupoFamiliar.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.GRUPO_FAMILIAR));
+        cardPotencialDuplicado.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.POTENCIAL_DUPLICADO));
+        cardPosibleGrupoFamiliar.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.POSIBLE_GRUPO_FAMILIAR));
         cardPorVencer.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.POR_VENCER));
         cardVencidos.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.VENCIDOS));
 
@@ -1757,8 +1751,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void marcarKpisBandeja() {
         cardPendientes.setSelected(kpiBandejaActiva == FiltroKpiBandeja.PENDIENTES);
-        cardSinNumero.setSelected(kpiBandejaActiva == FiltroKpiBandeja.SIN_NUMERO);
-        cardGrupoFamiliar.setSelected(kpiBandejaActiva == FiltroKpiBandeja.GRUPO_FAMILIAR);
+        cardPotencialDuplicado.setSelected(kpiBandejaActiva == FiltroKpiBandeja.POTENCIAL_DUPLICADO);
+        cardPosibleGrupoFamiliar.setSelected(kpiBandejaActiva == FiltroKpiBandeja.POSIBLE_GRUPO_FAMILIAR);
         cardPorVencer.setSelected(kpiBandejaActiva == FiltroKpiBandeja.POR_VENCER);
         cardVencidos.setSelected(kpiBandejaActiva == FiltroKpiBandeja.VENCIDOS);
     }
@@ -1879,8 +1873,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void actualizarMetricasBandeja(List<AsignacionExpedienteDTO> items) {
         int pendientes = 0;
-        int sinNumero = 0;
-        int grupoFamiliar = 0;
+        int potencialDuplicado = 0;
+        int posibleGrupoFamiliar = 0;
         int porVencer = 0;
         int vencidos = 0;
         if (items != null) {
@@ -1888,11 +1882,11 @@ public class JPanelAsignacionV2 extends JPanel {
                 if (item.isAsignable()) {
                     pendientes++;
                 }
-                if (!item.tieneNumeroExpediente()) {
-                    sinNumero++;
+                if (item.isPotencialDuplicado()) {
+                    potencialDuplicado++;
                 }
-                if (esAlertaGrupoFamiliar(item)) {
-                    grupoFamiliar++;
+                if (item.isPosibleGrupoFamiliar()) {
+                    posibleGrupoFamiliar++;
                 }
                 Long dias = item.getDiasRestantes();
                 if (dias != null && dias < 0) {
@@ -1903,19 +1897,11 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
         cardPendientes.setValue(String.valueOf(pendientes));
-        cardSinNumero.setValue(String.valueOf(sinNumero));
-        cardGrupoFamiliar.setValue(String.valueOf(grupoFamiliar));
+        cardPotencialDuplicado.setValue(String.valueOf(potencialDuplicado));
+        cardPosibleGrupoFamiliar.setValue(String.valueOf(posibleGrupoFamiliar));
         cardPorVencer.setValue(String.valueOf(porVencer));
         cardVencidos.setValue(String.valueOf(vencidos));
         marcarKpisBandeja();
-    }
-
-    private boolean esAlertaGrupoFamiliar(AsignacionExpedienteDTO item) {
-        if (item == null) {
-            return false;
-        }
-        String alerta = AsignacionRegistroEditRules.normalizar(item.getAlertaIngreso());
-        return alerta.contains("GRUPO FAMILIAR") && !alerta.contains("POTENCIAL DUPLICADO");
     }
 
     private void agregarFilaPrincipal(AsignacionExpedienteDTO item) {
@@ -2101,8 +2087,8 @@ public class JPanelAsignacionV2 extends JPanel {
         tablePanel.setEmpty(true);
         txtComentario.setText("");
         cardPendientes.setValue("0");
-        cardSinNumero.setValue("0");
-        cardGrupoFamiliar.setValue("0");
+        cardPotencialDuplicado.setValue("0");
+        cardPosibleGrupoFamiliar.setValue("0");
         cardPorVencer.setValue("0");
         cardVencidos.setValue("0");
         marcarKpisBandeja();
