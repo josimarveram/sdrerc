@@ -264,6 +264,7 @@ Esta seccion consolida el criterio funcional vigente para documentos proyectados
 - Mantener el mapper visual central `DisplayNameMapperV2`; no crear mapeos duplicados de etapa/estado/accion en cada panel.
 - En tablas, conservar codigos tecnicos internamente si son necesarios para acciones, pero mostrar valores amigables al usuario final.
 - En bandejas operativas de expedientes, evitar mostrar columnas tecnicas como `ID`; si son necesarias para acciones, conservarlas como columnas internas ocultas con prefijo `_`.
+- Los KPI superiores de cada modulo deben calcularse con el mismo criterio de filtro de busqueda activo de la bandeja; al presionar `Buscar`, los KPI deben recalcularse segun las fechas y filtros seleccionados, y al cambiar el filtro debe mantenerse la coherencia entre cards y listado.
 - En bandejas operativas, ubicar `Dias` al inicio como indicador numerico/badge y mostrar solo el numero, sin repetir la palabra `dias` en cada celda.
 - En grillas principales de expedientes, no mostrar `Responsable`, `Abogado inicial`, `Abogado` ni `Ultimo mov.` salvo necesidad funcional explicita del modulo o pedido del usuario; esos datos deben quedar disponibles en la consola/detalle cuando correspondan.
 - Las columnas principales de bandeja deben priorizar gestion operativa: `Dias`, expediente, tramite/documento, titular, procedimiento, etapa, estado y alertas/asociados cuando apliquen.
