@@ -197,7 +197,7 @@ public class ExpedienteBandejaDAO {
 
     private static String grupoFamiliar(int cantidadRelaciones, boolean grupoFamiliar, String criterio, String observacion) {
         if (grupoFamiliar) {
-            return "Posible Grupo Familiar";
+            return "Sin Alerta";
         } else if (hasText(criterio) || hasText(observacion)) {
             return "Posible Grupo Familiar";
         }

@@ -2,6 +2,7 @@ package com.sdrerc.ui.views.expedienteconsola;
 
 import com.sdrerc.application.sdrercapp.ExpedienteConsultaService;
 import com.sdrerc.application.sdrercapp.ExpedienteDetalleService;
+import com.sdrerc.application.sdrercapp.GrupoFamiliarRegistroService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
@@ -41,11 +42,13 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.sql.SQLException;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JButton;
@@ -61,6 +64,7 @@ import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import java.util.Set;
 
 public class JPanelBandejaExpedientesNueva extends JPanel {
 
@@ -85,6 +89,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private volatile List<ExpedienteBandejaDTO> ultimoResultadoBuscado = Collections.emptyList();
     private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
     private volatile SwingWorker<List<ExpedienteBandejaDTO>, Void> busquedaActiva;
+    private final Set<Long> grupoFamiliarSeleccionados = new LinkedHashSet<Long>();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final JComboBox<FiltroCatalogoItemV2> cmbEtapa = new JComboBox<FiltroCatalogoItemV2>(crearItemsEtapa());
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
@@ -146,6 +151,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private MetricCardV2 cardPotencialDuplicadoRegistro;
     private MetricCardV2 cardPosibleGrupoFamiliarRegistro;
     private String filtroAlertaRegistro;
+    private Runnable onGrupoFamiliarSelectionChanged;
 
     public JPanelBandejaExpedientesNueva() {
         this(new ExpedienteConsultaService());
@@ -250,9 +256,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         SwingUtilities.invokeLater(this::buscar);
     }
 
-    private static DefaultTableModel crearTableModel(boolean perfilRegistroRecepcion) {
+    private DefaultTableModel crearTableModel(boolean perfilRegistroRecepcion) {
         Object[] columnas = perfilRegistroRecepcion
                 ? new Object[]{
+                    " ",
                     "Dias",
                     "Nro. Expediente",
                     "Canal",
@@ -280,16 +287,19 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false;
+                return perfilRegistroRecepcion && column == 0;
             }
 
             @Override
             public Class<?> getColumnClass(int columnIndex) {
                 if (perfilRegistroRecepcion) {
-                    if (columnIndex == 0 || columnIndex == 10) {
+                    if (columnIndex == 0) {
+                        return Boolean.class;
+                    }
+                    if (columnIndex == 1 || columnIndex == 11) {
                         return Long.class;
                     }
-                    if (columnIndex == 3) {
+                    if (columnIndex == 4) {
                         return LocalDate.class;
                     }
                     return String.class;
@@ -301,6 +311,23 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     return LocalDate.class;
                 }
                 return String.class;
+            }
+
+            @Override
+            public void setValueAt(Object aValue, int row, int column) {
+                super.setValueAt(aValue, row, column);
+                if (perfilRegistroRecepcion && column == 0) {
+                    Object idValue = getValueAt(row, getColumnCount() - 1);
+                    Long id = toLong(idValue);
+                    if (id != null) {
+                        if (Boolean.TRUE.equals(aValue)) {
+                            grupoFamiliarSeleccionados.add(id);
+                        } else {
+                            grupoFamiliarSeleccionados.remove(id);
+                        }
+                        notificarCambioGrupoFamiliar();
+                    }
+                }
             }
         };
     }
@@ -611,14 +638,15 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setDefaultRenderer(Long.class, renderer);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
-            AppV2TableColumnSizer.applyWidths(table, 88, 165, 150, 145, 220, 130, 130, 260, 190, 0, 0);
-            table.getColumnModel().getColumn(0).setMaxWidth(90);
-            table.getColumnModel().getColumn(7).setMinWidth(220);
-            table.getColumnModel().getColumn(8).setMinWidth(170);
-            table.getColumnModel().getColumn(9).setMinWidth(0);
-            table.getColumnModel().getColumn(9).setMaxWidth(0);
+            AppV2TableColumnSizer.applyWidths(table, 38, 88, 165, 150, 145, 220, 130, 130, 260, 190, 0, 0);
+            table.getColumnModel().getColumn(0).setMinWidth(38);
+            table.getColumnModel().getColumn(0).setMaxWidth(42);
+            table.getColumnModel().getColumn(8).setMinWidth(220);
+            table.getColumnModel().getColumn(9).setMinWidth(170);
             table.getColumnModel().getColumn(10).setMinWidth(0);
             table.getColumnModel().getColumn(10).setMaxWidth(0);
+            table.getColumnModel().getColumn(11).setMinWidth(0);
+            table.getColumnModel().getColumn(11).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         } else {
             AppV2TableColumnSizer.applyWidths(table, 88, 175, 155, 155, 175, 145, 145, 125, 125, 0);
@@ -645,7 +673,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 () -> {
                     btnVerDetalle.setEnabled(false);
                     btnEditar.setEnabled(false);
-                });
+                },
+                perfilRegistroRecepcion ? new int[]{0} : new int[0]);
     }
 
     private void limpiarFiltrosPorColumna() {
@@ -738,6 +767,48 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         buscar();
     }
 
+    public List<Long> obtenerIdsGrupoFamiliarSeleccionados() {
+        List<Long> ids = new ArrayList<Long>();
+        if (!perfilRegistroRecepcion) {
+            return ids;
+        }
+        ids.addAll(grupoFamiliarSeleccionados);
+        return ids;
+    }
+
+    public int contarIdsGrupoFamiliarSeleccionados() {
+        return grupoFamiliarSeleccionados.size();
+    }
+
+    public void limpiarSeleccionGrupoFamiliar() {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        grupoFamiliarSeleccionados.clear();
+        if (tableModel.getRowCount() > 0) {
+            for (int row = 0; row < tableModel.getRowCount(); row++) {
+                tableModel.setValueAt(Boolean.FALSE, row, 0);
+            }
+        }
+        notificarCambioGrupoFamiliar();
+    }
+
+    public void registrarGrupoFamiliarSeleccionados() throws SQLException {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        if (grupoFamiliarSeleccionados.isEmpty()) {
+            throw new IllegalStateException("Seleccione al menos un expediente para registrar grupo familiar.");
+        }
+        GrupoFamiliarRegistroService service = new GrupoFamiliarRegistroService();
+        service.registrarGrupoFamiliar(new ArrayList<Long>(grupoFamiliarSeleccionados));
+        limpiarSeleccionGrupoFamiliar();
+    }
+
+    public void setOnGrupoFamiliarSelectionChanged(Runnable onGrupoFamiliarSelectionChanged) {
+        this.onGrupoFamiliarSelectionChanged = onGrupoFamiliarSelectionChanged;
+    }
+
     public void vincularMetricasAlertasRegistro(MetricCardV2 potencialDuplicado, MetricCardV2 posibleGrupoFamiliar) {
         this.cardPotencialDuplicadoRegistro = potencialDuplicado;
         this.cardPosibleGrupoFamiliarRegistro = posibleGrupoFamiliar;
@@ -763,6 +834,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void buscar() {
         long secuencia = secuenciaBusqueda.incrementAndGet();
+        if (perfilRegistroRecepcion) {
+            grupoFamiliarSeleccionados.clear();
+            notificarCambioGrupoFamiliar();
+        }
         String texto = txtBusqueda.getText();
         String etapa = perfilRegistroRecepcion
                 ? "REGISTRO"
@@ -839,6 +914,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         spnLimite.setValue(200);
         limpiarFiltrosPorColumna();
+        grupoFamiliarSeleccionados.clear();
+        notificarCambioGrupoFamiliar();
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
         btnEditar.setEnabled(false);
@@ -857,6 +934,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         for (ExpedienteBandejaDTO item : expedientes) {
             if (perfilRegistroRecepcion) {
                 tableModel.addRow(new Object[]{
+                    Boolean.valueOf(grupoFamiliarSeleccionados.contains(item.getIdExpediente())),
                     item.getDiasRestantes(),
                     item.getNumeroExpediente(),
                     item.getCanal(),
@@ -885,6 +963,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
         }
         tablePanel.setEmpty(expedientes.isEmpty());
+        notificarCambioGrupoFamiliar();
         if (expedientes.isEmpty()) {
             lblResultado.setText("No se encontraron expedientes con los filtros ingresados.");
         } else {
@@ -1256,6 +1335,26 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         int modelRow = table.convertRowIndexToModel(selectedRow);
         Object value = tableModel.getValueAt(modelRow, tableModel.getColumnCount() - 1);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.toString());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private void notificarCambioGrupoFamiliar() {
+        if (onGrupoFamiliarSelectionChanged != null) {
+            SwingUtilities.invokeLater(onGrupoFamiliarSelectionChanged);
+        }
+    }
+
+    private Long toLong(Object value) {
         if (value instanceof Number) {
             return ((Number) value).longValue();
         }

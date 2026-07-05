@@ -22,6 +22,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -358,6 +359,39 @@ public class ExpedienteRegistroDAO {
                         idExpediente,
                         numeroExpediente,
                         "Expediente " + numeroExpediente + " registrado en SDRERC_APP.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    public int registrarGrupoFamiliar(List<Long> idsExpediente) throws SQLException {
+        if (idsExpediente == null || idsExpediente.isEmpty()) {
+            return 0;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+                if (!soportaGrupoFamiliar) {
+                    throw new SQLException("La base de datos no soporta la marca de grupo familiar.");
+                }
+                int total = 0;
+                for (Long idExpediente : idsExpediente) {
+                    if (idExpediente == null) {
+                        continue;
+                    }
+                    total += registrarGrupoFamiliar(conn, idExpediente);
+                }
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return total;
             } catch (Exception ex) {
                 rollbackSilencioso(conn);
                 conn.setAutoCommit(previousAutoCommit);
@@ -1059,6 +1093,52 @@ public class ExpedienteRegistroDAO {
                 "ALERTA",
                 alertas,
                 resolverUsuarioActual());
+    }
+
+    private int registrarGrupoFamiliar(Connection conn, Long idExpediente) throws SQLException {
+        Long idSolicitud = obtenerUltimaSolicitudActivaId(conn, idExpediente);
+        if (idSolicitud == null) {
+            throw new SQLException("No se encontró la solicitud activa del expediente " + idExpediente + ".");
+        }
+        String update = "UPDATE expediente_solicitud SET "
+                + "grupo_familiar = 1, "
+                + "criterio_grupo_familiar = CASE "
+                + "WHEN criterio_grupo_familiar IS NULL OR TRIM(criterio_grupo_familiar) = '' THEN 'MANUAL' "
+                + "ELSE criterio_grupo_familiar END, "
+                + "modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente_solicitud = ?";
+        try (PreparedStatement ps = conn.prepareStatement(update)) {
+            ps.setLong(1, idSolicitud);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo registrar el grupo familiar para el expediente " + idExpediente + ".");
+            }
+        }
+        expedienteAlertaDAO.marcarAtendidas(
+                conn,
+                idExpediente,
+                Collections.singletonList("Posible Grupo Familiar"),
+                resolverUsuarioActual());
+        return 1;
+    }
+
+    private Long obtenerUltimaSolicitudActivaId(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT id_expediente_solicitud FROM ("
+                + "SELECT id_expediente_solicitud "
+                + "FROM expediente_solicitud "
+                + "WHERE id_expediente = ? AND activo = 1 "
+                + "ORDER BY creado_en DESC, id_expediente_solicitud DESC"
+                + ") WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                long value = rs.getLong(1);
+                return rs.wasNull() ? null : value;
+            }
+        }
     }
 
     private Long resolverUsuarioActual() {

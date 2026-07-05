@@ -33,6 +33,28 @@ public class ExpedienteAlertaDAO {
         }
     }
 
+    public int marcarAtendidas(
+            Connection conn,
+            Long idExpediente,
+            List<String> mensajes,
+            Long idUsuario) throws SQLException {
+        if (conn == null || idExpediente == null || mensajes == null || mensajes.isEmpty()) {
+            return 0;
+        }
+        int total = 0;
+        String sql = "UPDATE expediente_alerta "
+                + "SET atendida = 1, activo = 0 "
+                + "WHERE id_expediente = ? AND activo = 1 AND atendida = 0 AND UPPER(mensaje) = ?";
+        for (String mensaje : normalizarMensajes(mensajes)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                ps.setString(2, mensaje.toUpperCase(Locale.ROOT));
+                total += ps.executeUpdate();
+            }
+        }
+        return total;
+    }
+
     public String obtenerResumenAlertas(Connection conn, Long idExpediente) throws SQLException {
         if (conn == null || idExpediente == null) {
             return null;
