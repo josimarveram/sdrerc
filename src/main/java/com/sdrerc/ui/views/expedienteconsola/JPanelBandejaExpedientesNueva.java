@@ -292,7 +292,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     "Nro Acta",
                     "Titular",
                     "Alertas",
-                    "_ESTADO",
+                    "Estado",
                     "_ID"
                 }
                 : new Object[]{
@@ -686,13 +686,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setDefaultRenderer(Long.class, renderer);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
-            AppV2TableColumnSizer.applyWidths(table, 38, 88, 165, 150, 145, 220, 130, 130, 260, 190, 0, 0);
+            AppV2TableColumnSizer.applyWidths(table, 38, 88, 165, 150, 145, 220, 130, 130, 260, 190, 130, 0);
             table.getColumnModel().getColumn(0).setMinWidth(38);
             table.getColumnModel().getColumn(0).setMaxWidth(42);
             table.getColumnModel().getColumn(8).setMinWidth(220);
             table.getColumnModel().getColumn(9).setMinWidth(170);
-            table.getColumnModel().getColumn(10).setMinWidth(0);
-            table.getColumnModel().getColumn(10).setMaxWidth(0);
             table.getColumnModel().getColumn(11).setMinWidth(0);
             table.getColumnModel().getColumn(11).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -1034,7 +1032,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     item.getNumeroActa(),
                     item.getTitular(),
                     item.getAlertas(),
-                    item.getEstadoCodigo(),
+                    DisplayNameMapperV2.estado(item.getEstadoCodigo()),
                     item.getIdExpediente()
                 });
             } else {

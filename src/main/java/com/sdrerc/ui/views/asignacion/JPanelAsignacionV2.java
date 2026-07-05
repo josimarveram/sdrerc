@@ -126,9 +126,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int COL_SELECCION = 1;
     private static final int COL_DIAS = 2;
     private static final int COL_EXPEDIENTE = 3;
-    private static final int COL_ESTADO = 12;
-    private static final int COL_RELACIONADOS = 13;
-    private static final int COL_ID = 14;
+    private static final int COL_ESTADO = 11;
+    private static final int COL_RELACIONADOS = 12;
+    private static final int COL_ID = 13;
     private static final int CARTA_COL_TIPO = 0;
     private static final int CARTA_COL_ESTADO = 1;
     private static final int CARTA_COL_FECHA = 2;
@@ -1128,7 +1128,7 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 42, 34, 84, 185, 155, 135, 230, 135, 130, 260, 240, 220, 155, 170, 0);
+        AppV2TableColumnSizer.applyWidths(table, 42, 34, 84, 185, 155, 135, 230, 135, 130, 260, 240, 155, 170, 0);
         configurarColumna(table.getColumnModel().getColumn(COL_EXPANDIR), 42, 40, 46);
         configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 34, 32, 36);
         configurarColumna(table.getColumnModel().getColumn(COL_DIAS), 84, 78, 92);
@@ -1140,7 +1140,6 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarColumna(table.getColumnModel().getColumn(8), 130, 120, 180);
         configurarColumna(table.getColumnModel().getColumn(9), 260, 230, 380);
         configurarColumna(table.getColumnModel().getColumn(10), 240, 210, 360);
-        configurarColumna(table.getColumnModel().getColumn(11), 220, 190, 320);
         configurarColumna(table.getColumnModel().getColumn(COL_ESTADO), 155, 145, 220);
         configurarColumna(table.getColumnModel().getColumn(COL_RELACIONADOS), 170, 150, 240);
         configurarColumna(table.getColumnModel().getColumn(COL_ID), 0, 0, 0);
@@ -1918,7 +1917,6 @@ public class JPanelAsignacionV2 extends JPanel {
             item.getTipoActa(),
             item.getNumeroActa(),
             item.getTitular(),
-            item.getSolicitante(),
             item.getAbogadoAsignado(),
             DisplayNameMapperV2.estado(item.getEstadoCodigo()),
             alertaAsignacion(item),
@@ -1940,10 +1938,9 @@ public class JPanelAsignacionV2 extends JPanel {
             valorUi(asociado.getTipoActa()),
             valorUi(asociado.getNumeroActa()),
             valorUi(asociado.getTitular()),
-            valorUi(asociado.getSolicitante()),
             valorUi(abogadoAsociado(principal, asociado)),
             estadoAsociado(asociado),
-            textoRelacionAsociada(asociado),
+            alertaAsociada(principal),
             asociado.getIdExpediente()
         });
     }
@@ -2015,26 +2012,20 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private String alertaAsignacion(AsignacionExpedienteDTO item) {
-        List<String> alertas = new ArrayList<>();
-        if (item.getAsociadosConfirmados() > 0) {
-            alertas.add(item.getAsociadosConfirmados() + " asociado(s)");
+        if (item == null) {
+            return "Sin Alerta";
         }
-        if (item.getPosiblesRelacionados() > 0) {
-            alertas.add(item.getPosiblesRelacionados() + " relacionado(s)");
+        if (item.isPotencialDuplicado()) {
+            return "Potencial duplicado";
         }
-        if (item.requiereDecisionNumeroAsignacion()) {
-            alertas.add("Requiere decisión de número");
+        if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()) {
+            return "Posible Grupo Familiar";
         }
-        if (item.isGrupoFamiliar()) {
-            alertas.add("Grupo familiar");
-        } else if (item.isPosibleGrupoFamiliar()) {
-            alertas.add("Posible grupo familiar");
-        }
-        if (!alertas.isEmpty()) {
-            return String.join(" / ", alertas);
-        }
-        String alerta = item.getAlertaIngreso();
-        return "Normal".equalsIgnoreCase(alerta) ? "Sin alerta" : alerta;
+        return "Sin Alerta";
+    }
+
+    private String alertaAsociada(AsignacionExpedienteDTO principal) {
+        return alertaAsignacion(principal);
     }
 
     private static String formatDate(LocalDate value) {
@@ -4362,10 +4353,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Tipo Acta",
                 "Nro. Acta",
                 "Titular",
-                "Solicitante",
                 "Abogado asignado",
                 "Estado",
-                "Relacionados",
+                "Alertas",
                 "_ID"
             }, 0);
         }
