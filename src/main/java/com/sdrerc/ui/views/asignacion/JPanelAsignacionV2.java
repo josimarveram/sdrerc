@@ -4331,7 +4331,11 @@ public class JPanelAsignacionV2 extends JPanel {
                 ? documentosRelacionadosTable.getTableHeader().getPreferredSize().height
                 : 28;
         int altoFilas = documentosRelacionadosTable.getRowCount() * documentosRelacionadosTable.getRowHeight();
-        int alto = Math.max(altoEncabezado + altoFilas + 2, altoEncabezado + documentosRelacionadosTable.getRowHeight() + 2);
+        int altoHorizontalBarra = documentosRelacionadosScroll.getHorizontalScrollBar() != null
+                ? documentosRelacionadosScroll.getHorizontalScrollBar().getPreferredSize().height
+                : 16;
+        int alto = Math.max(altoEncabezado + altoFilas + altoHorizontalBarra + 8,
+                altoEncabezado + documentosRelacionadosTable.getRowHeight() + altoHorizontalBarra + 8);
         Dimension size = new Dimension(Math.max(ancho, 240), Math.max(alto, 64));
         documentosRelacionadosTable.setPreferredScrollableViewportSize(size);
         documentosRelacionadosScroll.setPreferredSize(size);
