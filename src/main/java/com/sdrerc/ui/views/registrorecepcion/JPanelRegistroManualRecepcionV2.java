@@ -24,11 +24,13 @@ import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -752,7 +754,7 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
                     : toDate(dto.getSolicitud().getFechaRecepcion()));
             seleccionarCombo(cmbTipoSolicitud, dto.getSolicitud().getTipoSolicitudCodigo(), dto.getSolicitud().getTipoSolicitudNombre());
             seleccionarCombo(cmbProcedimiento, dto.getSolicitud().getTipoProcedimientoCodigo(), dto.getSolicitud().getTipoProcedimientoNombre());
-            seleccionarCombo(cmbTipoDocumento, dto.getSolicitud().getTipoDocumentoCodigo(), dto.getSolicitud().getTipoDocumentoNombre());
+            seleccionarTipoDocumento(cmbTipoDocumento, dto.getSolicitud().getTipoDocumentoCodigo(), dto.getSolicitud().getTipoDocumentoNombre());
             seleccionarCombo(cmbCanal, dto.getSolicitud().getCanalCodigo(), dto.getSolicitud().getCanalNombre());
             seleccionarCombo(cmbPrioridad, dto.getSolicitud().getPrioridad(), dto.getSolicitud().getPrioridad());
             seleccionarCombo(cmbTipoActa, dto.getActa().getTipoActaCodigo(), dto.getActa().getTipoActaNombre());
@@ -1128,6 +1130,39 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         }
     }
 
+    private void seleccionarTipoDocumento(JComboBox<FiltroCatalogoItemV2> combo, String codigo, String nombre) {
+        if (seleccionarPorCodigo(combo, codigo)) {
+            return;
+        }
+        String normalizedNombre = normalizarSinAcentos(nombre);
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            FiltroCatalogoItemV2 item = combo.getItemAt(i);
+            if (normalizedNombre != null && normalizedNombre.equals(normalizarSinAcentos(item.getNombreVisible()))) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+            if (normalizedNombre != null && normalizedNombre.equals(normalizarSinAcentos(item.getCodigo()))) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    private boolean seleccionarPorCodigo(JComboBox<FiltroCatalogoItemV2> combo, String codigo) {
+        String normalizedCodigo = normalizarComparacion(codigo);
+        if (normalizedCodigo == null) {
+            return false;
+        }
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            FiltroCatalogoItemV2 item = combo.getItemAt(i);
+            if (normalizedCodigo.equals(normalizarComparacion(item.getCodigo()))) {
+                combo.setSelectedIndex(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void seleccionarUbigeoEdicion(DatosPersonaRegistroDTO persona) {
         if (persona == null) {
             return;
@@ -1149,7 +1184,15 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         if (value == null || value.trim().isEmpty() || "-".equals(value.trim())) {
             return null;
         }
-        return value.trim().toUpperCase();
+        return normalizarSinAcentos(value);
+    }
+
+    private String normalizarSinAcentos(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value.trim())) {
+            return null;
+        }
+        String normalized = Normalizer.normalize(value.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return normalized.toUpperCase(Locale.ROOT);
     }
 
     private Long idSeleccionado(JComboBox<FiltroCatalogoItemV2> combo) {
