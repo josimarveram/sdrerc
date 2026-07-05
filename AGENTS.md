@@ -25,6 +25,8 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - Usar `/resume`, `/compact` y `/review` cuando ayuden a conservar continuidad y ahorrar contexto/tokens.
 - No repetir contexto largo salvo que sea necesario para decidir, validar o explicar un bloqueo.
 - Antes de pedir contexto al usuario, revisar archivos locales relevantes del proyecto.
+- `AGENTS.md` es una fuente viva de reglas: si una tarea agrega, cambia o elimina una configuracion funcional, una regla persistente, una restriccion de UI o un criterio operativo, actualizar este archivo en la misma intervencion para que el siguiente prompt herede el estado correcto.
+- Si una configuracion se quita, se reemplaza o se redefine, reflejar ese cambio en `AGENTS.md` de inmediato; no dejar reglas desfasadas entre sesiones.
 
 ## 3. Reglas SDRERC obligatorias
 
@@ -338,6 +340,7 @@ Esta seccion consolida el criterio funcional vigente para documentos proyectados
 - Si el build o verificacion falla, no hacer commit ni push, salvo que el usuario lo autorice explicitamente.
 - Si el build o verificacion pasa, hacer commit obligatorio con un mensaje claro y breve.
 - Despues del commit, hacer push obligatorio al branch actual.
+- Cada incremento funcional o documental que se complete debe cerrar con `git add` selectivo, commit con nombre coherente y push al branch actual; no considerar una tarea cerrada si queda solo en el working tree.
 - Si el push falla por credenciales, red o permisos:
   - reportar la causa exacta;
   - indicar el commit creado;
@@ -394,6 +397,7 @@ codex --approval never --sandbox danger-full-access
 - Si la tarea es ambigua, proponer o aplicar el alcance minimo seguro.
 - Corregir solo errores atribuibles a la tarea actual.
 - No mezclar mejoras oportunistas con la tarea solicitada.
+- Cuando una mejora dependa de una configuracion persistente o de reglas de negocio documentadas, revisar y mantener alineado `AGENTS.md` antes de cerrar la tarea.
 
 ## 11. Compilacion y verificacion
 
