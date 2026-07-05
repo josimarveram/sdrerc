@@ -160,7 +160,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JLabel lblRecepcionPrioridad = valueLabel();
     private final JLabel lblRecepcionMarcaOperativa = valueLabel();
     private final JLabel lblRecepcionObservacion = valueLabel();
-    private final JLabel lblRecepcionResumenActa = valueLabel();
     private final JLabel lblRecepcionVencimiento = valueLabel();
     private final JLabel lblRecepcionDias = valueLabel();
     private final JLabel lblRecepcionResponsable = valueLabel();
@@ -569,7 +568,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos del acta");
         seccion.addRow("Tipo de acta", lblRecepcionTipoActa);
         seccion.addRow("Nro. acta", lblRecepcionNumeroActa);
-        seccion.addRow("Resumen acta", lblRecepcionResumenActa);
         return seccion;
     }
 
@@ -582,7 +580,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         seccion.addRow("Tipo documento", lblRecepcionTipoDocumento);
         seccion.addRow("N° documento", lblRecepcionNumeroDocumento);
         seccion.addRow("Tipo de solicitud", lblRecepcionTipoSolicitud);
-        seccion.addRow("Marca operativa", lblRecepcionMarcaOperativa);
+        seccion.addRow("Grupo familiar", lblRecepcionMarcaOperativa);
         return seccion;
     }
 
@@ -1229,7 +1227,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionNumeroExpedienteSgd, expediente.getNumeroExpedienteSgd());
         setValue(lblRecepcionTipoDocumento, expediente.getTipoDocumento());
         setValue(lblRecepcionNumeroDocumento, expediente.getNumeroDocumento());
-        setValue(lblRecepcionGrupoFamiliar, expediente.getGrupoFamiliarEstado());
+        setValue(lblRecepcionGrupoFamiliar, expediente.isGrupoFamiliar() ? "Sí" : "No");
         lblRecepcionGrupoFamiliar.setToolTipText(toolTipGrupoFamiliar(expediente));
         setValue(lblRecepcionResultadoInicial,
                 DisplayNameMapperV2.etapa(expediente.getEtapaCodigo())
@@ -1242,19 +1240,18 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionProvincia, "-");
         setValue(lblRecepcionDistrito, "-");
         setValue(lblRecepcionDireccion, "-");
-        setValue(lblRecepcionTipoDocumentoTitular, safe(expediente.getTitularDocumento()));
-        setValue(lblRecepcionNumeroDocumentoTitular, safe(expediente.getTitularDocumento()));
-        setValue(lblRecepcionTipoDocumentoSolicitante, safe(expediente.getRemitenteDocumento()));
-        setValue(lblRecepcionNumeroDocumentoSolicitante, safe(expediente.getRemitenteDocumento()));
+        setValue(lblRecepcionTipoDocumentoTitular, extraerTipoDocumentoPersona(expediente.getTitularDocumento()));
+        setValue(lblRecepcionNumeroDocumentoTitular, extraerNumeroDocumentoPersona(expediente.getTitularDocumento()));
+        setValue(lblRecepcionTipoDocumentoSolicitante, extraerTipoDocumentoPersona(expediente.getRemitenteDocumento()));
+        setValue(lblRecepcionNumeroDocumentoSolicitante, extraerNumeroDocumentoPersona(expediente.getRemitenteDocumento()));
         setValue(lblRecepcionProcedimiento, expediente.getProcedimiento());
         setValue(lblRecepcionTitular, expediente.getTitular());
         setValue(lblRecepcionRemitente, expediente.getRemitente());
         setValue(lblRecepcionTipoActa, expediente.getTipoActa());
         setValue(lblRecepcionNumeroActa, expediente.getNumeroActa());
         setValue(lblRecepcionPrioridad, "-");
-        setValue(lblRecepcionMarcaOperativa, "-");
+        setValue(lblRecepcionMarcaOperativa, expediente.isGrupoFamiliar() ? "Sí" : "No");
         setValue(lblRecepcionObservacion, "-");
-        setValue(lblRecepcionResumenActa, safe(expediente.getTipoActa()) + " " + safe(expediente.getNumeroActa()));
         setValue(lblRecepcionVencimiento, formatDate(expediente.getFechaVencimiento()));
         setValue(lblRecepcionDias, descripcionPlazo(expediente.getDiasRestantes(), expediente.getFechaVencimiento()));
         lblRecepcionDias.setForeground(colorPlazo(expediente.getDiasRestantes()));
@@ -1295,7 +1292,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionPrioridad, "");
         setValue(lblRecepcionMarcaOperativa, "");
         setValue(lblRecepcionObservacion, "");
-        setValue(lblRecepcionResumenActa, "");
         setValue(lblRecepcionProcedimiento, "");
         setValue(lblRecepcionTitular, "");
         setValue(lblRecepcionRemitente, "");
@@ -1981,6 +1977,99 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             sb.append(" · ").append(expediente.getObservacionGrupoFamiliar().trim());
         }
         return sb.toString();
+    }
+
+    private static String extraerTipoDocumentoPersona(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        String normalizado = valor.trim().replaceAll("[\\./-]+", " ").replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
+        normalizado = normalizado.replace("C E", "CE");
+        if (normalizado.isEmpty()) {
+            return "";
+        }
+        String[] partes = normalizado.split(" ");
+        if (partes.length == 0) {
+            return "";
+        }
+        String primerToken = partes[0];
+        String tipoCanonico = tipoDocumentoCanonico(primerToken);
+        if (tipoCanonico != null) {
+            return tipoCanonico;
+        }
+        if (esNumeroDocumentoProbable(primerToken)) {
+            return "";
+        }
+        return valor.trim();
+    }
+
+    private static String extraerNumeroDocumentoPersona(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        String limpio = valor.trim().replaceAll("[\\./-]+", " ").replaceAll("\\s+", " ");
+        limpio = limpio.replace("C E", "CE");
+        if (limpio.isEmpty()) {
+            return "";
+        }
+        if (limpio.toUpperCase(Locale.ROOT).startsWith("SIN DNI")) {
+            return "";
+        }
+        String[] partes = limpio.split(" ");
+        if (partes.length <= 1) {
+            return esTipoDocumentoPersona(partes[0]) ? "" : partes[0];
+        }
+        String primerToken = partes[0].toUpperCase(Locale.ROOT);
+        if (esTipoDocumentoPersona(primerToken)) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 1; i < partes.length; i++) {
+                if (partes[i] == null || partes[i].trim().isEmpty()) {
+                    continue;
+                }
+                if (sb.length() > 0) {
+                    sb.append(' ');
+                }
+                sb.append(partes[i].trim());
+            }
+            return sb.toString();
+        }
+        return valor.trim();
+    }
+
+    private static String tipoDocumentoCanonico(String valor) {
+        if (valor == null) {
+            return null;
+        }
+        String normalizado = valor.trim().replaceAll("[\\./-]+", " ").replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
+        normalizado = normalizado.replace("C E", "CE");
+        if (normalizado.isEmpty()) {
+            return null;
+        }
+        if ("DNI".equals(normalizado)) {
+            return "DNI";
+        }
+        if ("CE".equals(normalizado)) {
+            return "CE";
+        }
+        if ("PASAPORTE".equals(normalizado) || "PASSAPORTE".equals(normalizado)) {
+            return "Pasaporte";
+        }
+        if ("SIN DNI".equals(normalizado)) {
+            return "SIN DNI";
+        }
+        return null;
+    }
+
+    private static boolean esTipoDocumentoPersona(String valor) {
+        return tipoDocumentoCanonico(valor) != null;
+    }
+
+    private static boolean esNumeroDocumentoProbable(String valor) {
+        if (valor == null) {
+            return false;
+        }
+        String normalizado = valor.trim();
+        return normalizado.matches("[0-9A-Z]{6,15}");
     }
 
     private static String criterioGrupoFamiliar(String criterio) {
