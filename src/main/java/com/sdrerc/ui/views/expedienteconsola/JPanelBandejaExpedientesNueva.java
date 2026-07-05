@@ -170,7 +170,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private boolean panelRecepcionCargado;
     private MetricCardV2 cardPotencialDuplicadoRegistro;
     private MetricCardV2 cardPosibleGrupoFamiliarRegistro;
-    private MetricCardV2 cardTotalRegistradosRegistro;
     private String filtroAlertaRegistro;
     private Runnable onGrupoFamiliarSelectionChanged;
     private boolean hayVisiblesGrupoFamiliar;
@@ -898,26 +897,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         this.onGrupoFamiliarSelectionChanged = onGrupoFamiliarSelectionChanged;
     }
 
-    public void vincularMetricasAlertasRegistro(MetricCardV2 totalRegistrados, MetricCardV2 potencialDuplicado, MetricCardV2 posibleGrupoFamiliar) {
-        this.cardTotalRegistradosRegistro = totalRegistrados;
+    public void vincularMetricasAlertasRegistro(MetricCardV2 potencialDuplicado, MetricCardV2 posibleGrupoFamiliar) {
         this.cardPotencialDuplicadoRegistro = potencialDuplicado;
         this.cardPosibleGrupoFamiliarRegistro = posibleGrupoFamiliar;
         actualizarMetricasAlertasRegistro(ultimoResultadoBuscado);
         marcarFiltroAlertaRegistro();
-    }
-
-    public void seleccionarFiltroAlertaRegistro(String codigoAlerta) {
-        if (!perfilRegistroRecepcion) {
-            return;
-        }
-        String filtro = normalizar(codigoAlerta);
-        if (!hasTextLocal(filtro) || "TODOS".equals(filtro)) {
-            filtroAlertaRegistro = null;
-        } else {
-            filtroAlertaRegistro = filtro;
-        }
-        marcarFiltroAlertaRegistro();
-        buscar();
     }
 
     public void alternarFiltroAlertaRegistro(String codigoAlerta) {
@@ -925,22 +909,24 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return;
         }
         String filtro = normalizar(codigoAlerta);
-        if ("POTENCIAL_DUPLICADO".equals(filtro)) {
-            filtroAlertaRegistro = "POTENCIAL_DUPLICADO".equals(filtroAlertaRegistro) ? null : "POTENCIAL_DUPLICADO";
-        } else if ("POSIBLE_GRUPO_FAMILIAR".equals(filtro)) {
-            filtroAlertaRegistro = "POSIBLE_GRUPO_FAMILIAR".equals(filtroAlertaRegistro) ? null : "POSIBLE_GRUPO_FAMILIAR";
-        } else {
-            filtroAlertaRegistro = null;
-        }
+        filtroAlertaRegistro = "POTENCIAL_DUPLICADO".equals(filtro) || "POSIBLE_GRUPO_FAMILIAR".equals(filtro) ? filtro : null;
         marcarFiltroAlertaRegistro();
-        buscar();
+        buscar(true);
     }
 
     private void buscar() {
+        buscar(false);
+    }
+
+    private void buscar(boolean conservarFiltroAlerta) {
         long secuencia = secuenciaBusqueda.incrementAndGet();
         if (perfilRegistroRecepcion) {
             grupoFamiliarSeleccionados.clear();
             notificarCambioGrupoFamiliar();
+        }
+        if (perfilRegistroRecepcion && !conservarFiltroAlerta) {
+            filtroAlertaRegistro = null;
+            marcarFiltroAlertaRegistro();
         }
         String texto = txtBusqueda.getText();
         String etapa = perfilRegistroRecepcion
@@ -1139,9 +1125,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 }
             }
         }
-        if (cardTotalRegistradosRegistro != null) {
-            cardTotalRegistradosRegistro.setValue(String.valueOf(total));
-        }
         if (cardPotencialDuplicadoRegistro != null) {
             cardPotencialDuplicadoRegistro.setValue(String.valueOf(duplicados));
         }
@@ -1166,9 +1149,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void marcarFiltroAlertaRegistro() {
-        if (cardTotalRegistradosRegistro != null) {
-            cardTotalRegistradosRegistro.setSelected(normalizarFiltro(filtroAlertaRegistro).isEmpty());
-        }
         if (cardPotencialDuplicadoRegistro != null) {
             cardPotencialDuplicadoRegistro.setSelected("POTENCIAL_DUPLICADO".equals(filtroAlertaRegistro));
         }
@@ -1887,10 +1867,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return null;
         }
         return value.trim();
-    }
-
-    private static boolean hasTextLocal(String value) {
-        return value != null && !value.trim().isEmpty();
     }
 
     private static String textoConDefault(String value, String defaultValue) {
