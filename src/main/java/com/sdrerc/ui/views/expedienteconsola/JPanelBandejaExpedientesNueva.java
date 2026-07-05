@@ -1383,16 +1383,43 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return;
         }
         table.getColumnModel().getColumn(0).setHeaderRenderer(new SelectAllHeaderRendererRegistro());
-        table.getTableHeader().addMouseListener(new MouseAdapter() {
+        SwingUtilities.invokeLater(() -> instalarListenerCabeceraSeleccionRegistro());
+        actualizarEstadoHeaderSeleccionRegistro();
+    }
+
+    private void instalarListenerCabeceraSeleccionRegistro() {
+        if (!perfilRegistroRecepcion) {
+            return;
+        }
+        if (tablePanel == null || tablePanel.getScrollPane() == null
+                || tablePanel.getScrollPane().getColumnHeader() == null
+                || tablePanel.getScrollPane().getColumnHeader().getView() == null) {
+            return;
+        }
+        Component headerView = tablePanel.getScrollPane().getColumnHeader().getView();
+        if (!(headerView instanceof javax.swing.JComponent)) {
+            return;
+        }
+        javax.swing.JComponent component = (javax.swing.JComponent) headerView;
+        component.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                int column = table.columnAtPoint(e.getPoint());
-                if (column >= 0 && table.convertColumnIndexToModel(column) == 0) {
-                    alternarSeleccionVisibleDesdeHeaderRegistro();
+                if (e.getY() >= 30) {
+                    return;
+                }
+                int offset = 0;
+                for (int viewColumn = 0; viewColumn < table.getColumnModel().getColumnCount(); viewColumn++) {
+                    int width = table.getColumnModel().getColumn(viewColumn).getWidth();
+                    if (e.getX() >= offset && e.getX() < offset + width) {
+                        if (table.convertColumnIndexToModel(viewColumn) == 0) {
+                            alternarSeleccionVisibleDesdeHeaderRegistro();
+                        }
+                        return;
+                    }
+                    offset += width;
                 }
             }
         });
-        actualizarEstadoHeaderSeleccionRegistro();
     }
 
     private void alternarSeleccionVisibleDesdeHeaderRegistro() {
@@ -1793,6 +1820,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int row,
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
+            if (perfilRegistroRecepcion) {
+                if (modelColumn == 1) {
+                    return StatusBadgeV2.forDias(value, colorFondoCelda(row, isSelected));
+                }
+            }
             if (modelColumn == 0) {
                 return StatusBadgeV2.forDias(value, colorFondoCelda(row, isSelected));
             }
