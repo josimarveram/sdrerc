@@ -402,6 +402,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private String tabAsignacionActiva = TAB_DATOS_EXPEDIENTE;
     private String modoPanelLateral = MODO_PANEL_ASIGNACION;
     private JTabbedPane tabsBandejas;
+    private AppV2SideSectionPanel sectionDatosExpediente;
     private AppV2SideSectionPanel sectionDatosSolicitud;
     private AppV2SideSectionPanel sectionDatosActa;
     private AppV2SideSectionPanel sectionDatosTitular;
@@ -634,20 +635,35 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelDatosExpediente() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Datos del expediente");
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de asignación", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAsignacion();
+            }
+        });
         panel.setAccentColor(new Color(57, 125, 199));
-        sectionDatosSolicitud = crearDatosSolicitudAsignacion();
+        AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
+        sectionDatosExpediente = crearDatosExpedienteAsignacion();
         sectionDatosActa = crearDatosActaAsignacion();
+        sectionDatosSolicitud = crearDatosSolicitudAsignacion();
         sectionDatosTitular = crearDatosTitularAsignacion();
         sectionDatosSolicitante = crearDatosSolicitanteAsignacion();
         sectionDatosNotificacionUbicacion = crearDatosNotificacionUbicacionAsignacion();
-        panel.addSection(AppV2ExpedientePanelFactory.crearPanelSeccionesResponsivo(
-                sectionDatosSolicitud,
-                sectionDatosActa,
-                sectionDatosTitular,
-                sectionDatosSolicitante,
-                sectionDatosNotificacionUbicacion));
+        secciones.add(sectionDatosExpediente);
+        secciones.add(sectionDatosActa);
+        secciones.add(sectionDatosSolicitud);
+        secciones.add(sectionDatosTitular);
+        secciones.add(sectionDatosSolicitante);
+        secciones.add(sectionDatosNotificacionUbicacion);
+        panel.addSection(secciones);
         return panel;
+    }
+
+    private AppV2SideSectionPanel crearDatosExpedienteAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del expediente");
+        section.addRow("N° expediente", lblExpedienteSeleccionado);
+        section.addRow("N° expediente SGD", lblExpedienteSgdSeleccionado);
+        return section;
     }
 
     private AppV2SideActionPanel crearPanelAsignacionOperativa() {
@@ -855,22 +871,14 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideSectionPanel crearDatosSolicitudAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de solicitud");
-        section.addRow("Resultado inicial", lblResultadoInicialSeleccionado);
-        section.addRow("Hoja de envío", lblHojaEnvioSeleccionada);
-        section.addRow("Nro. trámite web", lblTramiteWebSeleccionado);
-        section.addRow("N° documento", lblNumeroDocumentoSeleccionado);
-        section.addRow("N° expediente SGD", lblExpedienteSgdSeleccionado);
-        section.addRow("Tipo de solicitud", lblTipoSolicitudSeleccionada);
         section.addRow("Fecha recepción", lblFechaSolicitudSeleccionada);
-        section.addRow("Procedimiento registral", lblProcedimientoSeleccionado);
-        section.addRow("Tipo documento", lblTipoDocumentoSeleccionado);
         section.addRow("Canal de ingreso", lblCanalIngresoSeleccionado);
-        section.addRow("Prioridad", lblPrioridadSeleccionada);
-        section.addRow("Marca operativa", lblMarcaOperativaSeleccionada);
-        section.addRow("Expediente", lblExpedienteSeleccionado);
-        section.addRow("Días hábiles", lblDiasSeleccionados);
-        section.addRow("Estado", lblEstadoSeleccionado);
-        section.addRow("Observación", lblObservacionSeleccionada);
+        section.addRow("Nro. trámite web", lblTramiteWebSeleccionado);
+        section.addRow("Proc.Registral", lblProcedimientoSeleccionado);
+        section.addRow("Tipo documento", lblTipoDocumentoSeleccionado);
+        section.addRow("N° documento", lblNumeroDocumentoSeleccionado);
+        section.addRow("Tipo de solicitud", lblTipoSolicitudSeleccionada);
+        section.addRow("Grupo familiar", lblMarcaOperativaSeleccionada);
         return section;
     }
 
@@ -878,7 +886,6 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del acta");
         section.addRow("Tipo de acta", lblTipoActaSeleccionada);
         section.addRow("Nro. acta", lblNumeroActaSeleccionada);
-        section.addRow("Resumen acta", lblActaSeleccionada);
         return section;
     }
 
