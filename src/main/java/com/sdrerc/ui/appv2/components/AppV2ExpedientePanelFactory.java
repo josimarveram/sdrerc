@@ -68,13 +68,13 @@ public final class AppV2ExpedientePanelFactory {
         JPanel filaEstado = new JPanel(new GridBagLayout());
         filaEstado.setOpaque(false);
         GridBagConstraints gbcEstado = constraintsRow();
-        filaEstado.add(crearCampoInline("Estado", estado, 260), gbcEstado);
+        filaEstado.add(crearCampoInline("Estado", estado, 240), gbcEstado);
 
         gbcEstado.gridx = 1;
         filaEstado.add(crearFiltroGrupoFamiliarInline(grupoFamiliar), gbcEstado);
 
         gbcEstado.gridx = 2;
-        filaEstado.add(crearCampoInline("Mostrar", limite, 86), gbcEstado);
+        filaEstado.add(crearControlInline(limite, 86), gbcEstado);
 
         gbcEstado.gridx = 3;
         gbcEstado.weightx = 1.0;
@@ -130,6 +130,15 @@ public final class AppV2ExpedientePanelFactory {
         panel.add(control, BorderLayout.CENTER);
         panel.setPreferredSize(new Dimension(anchoPreferido, control.getPreferredSize().height));
         panel.setMinimumSize(new Dimension(Math.max(120, anchoPreferido), control.getPreferredSize().height));
+        return panel;
+    }
+
+    private static JPanel crearControlInline(Component control, int anchoPreferido) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.add(control, BorderLayout.CENTER);
+        panel.setPreferredSize(new Dimension(anchoPreferido, control.getPreferredSize().height));
+        panel.setMinimumSize(new Dimension(Math.max(86, anchoPreferido), control.getPreferredSize().height));
         return panel;
     }
 

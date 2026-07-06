@@ -22,7 +22,6 @@ import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.PlazoVisualSupportV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
-import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
@@ -663,12 +662,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         seleccionarEtapaInicial();
         if (perfilRegistroRecepcion) {
             restaurarFechasRegistro();
-            EstadoExpedienteComboSupportV2.cargar(
-                    cmbEstado,
-                    "REGISTRO",
-                    new FiltroCatalogoItemV2(null, "Todos los estados"),
-                    (codigo, nombre) -> new FiltroCatalogoItemV2(codigo, nombre),
-                    ex -> lblResultado.setText("No se pudieron cargar los estados de Registro / Recepción."));
+            cargarEstadosRegistroRecepcion();
         } else {
             restaurarFechasBandejaGeneral();
         }
@@ -1927,6 +1921,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             new FiltroCatalogoItemV2("CERRADO", "Cerrado"),
             new FiltroCatalogoItemV2("ARCHIVADO", "Archivado")
         };
+    }
+
+    private void cargarEstadosRegistroRecepcion() {
+        cmbEstado.removeAllItems();
+        cmbEstado.addItem(new FiltroCatalogoItemV2(null, "Todos los estados"));
+        cmbEstado.addItem(new FiltroCatalogoItemV2("REGISTRADO", "Registrado"));
+        cmbEstado.setSelectedIndex(0);
     }
 
     private static String formatDateTime(LocalDateTime dateTime) {

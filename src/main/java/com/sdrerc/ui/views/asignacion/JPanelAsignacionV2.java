@@ -1083,8 +1083,8 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void configurarControles() {
-        txtBusqueda.setPreferredSize(new Dimension(720, 36));
-        txtBusqueda.setMinimumSize(new Dimension(360, 36));
+        txtBusqueda.setPreferredSize(new Dimension(520, 36));
+        txtBusqueda.setMinimumSize(new Dimension(320, 36));
         txtBusquedaCartasRespuesta.setPreferredSize(new Dimension(720, 36));
         txtBusquedaCartasRespuesta.setMinimumSize(new Dimension(360, 36));
         Dimension fechaSize = new Dimension(170, 40);
