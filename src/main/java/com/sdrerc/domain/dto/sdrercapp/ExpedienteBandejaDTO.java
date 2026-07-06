@@ -10,6 +10,7 @@ public class ExpedienteBandejaDTO {
     private final Long idExpediente;
     private final String numeroExpediente;
     private final String numeroTramiteDocumentario;
+    private final String numeroExpedienteSgd;
     private final String etapaCodigo;
     private final String estadoCodigo;
     private final String abogadoInicial;
@@ -34,6 +35,7 @@ public class ExpedienteBandejaDTO {
             Long idExpediente,
             String numeroExpediente,
             String numeroTramiteDocumentario,
+            String numeroExpedienteSgd,
             String etapaCodigo,
             String estadoCodigo,
             String abogadoInicial,
@@ -49,6 +51,7 @@ public class ExpedienteBandejaDTO {
                 idExpediente,
                 numeroExpediente,
                 numeroTramiteDocumentario,
+                numeroExpedienteSgd,
                 etapaCodigo,
                 estadoCodigo,
                 abogadoInicial,
@@ -73,6 +76,7 @@ public class ExpedienteBandejaDTO {
             Long idExpediente,
             String numeroExpediente,
             String numeroTramiteDocumentario,
+            String numeroExpedienteSgd,
             String etapaCodigo,
             String estadoCodigo,
             String abogadoInicial,
@@ -95,6 +99,7 @@ public class ExpedienteBandejaDTO {
                 idExpediente,
                 numeroExpediente,
                 numeroTramiteDocumentario,
+                numeroExpedienteSgd,
                 etapaCodigo,
                 estadoCodigo,
                 abogadoInicial,
@@ -120,6 +125,7 @@ public class ExpedienteBandejaDTO {
             Long idExpediente,
             String numeroExpediente,
             String numeroTramiteDocumentario,
+            String numeroExpedienteSgd,
             String etapaCodigo,
             String estadoCodigo,
             String abogadoInicial,
@@ -142,6 +148,7 @@ public class ExpedienteBandejaDTO {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
+        this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
         this.abogadoInicial = safe(abogadoInicial);
@@ -173,6 +180,10 @@ public class ExpedienteBandejaDTO {
 
     public String getNumeroTramiteDocumentario() {
         return numeroTramiteDocumentario;
+    }
+
+    public String getNumeroExpedienteSgd() {
+        return numeroExpedienteSgd;
     }
 
     public String getEtapaCodigo() {

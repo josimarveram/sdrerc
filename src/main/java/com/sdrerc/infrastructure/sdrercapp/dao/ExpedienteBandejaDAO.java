@@ -55,6 +55,8 @@ public class ExpedienteBandejaDAO {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT id_expediente, numero_expediente, numero_tramite_documentario, ");
+        sql.append("(SELECT NVL(ss.numero_expediente_sgd, '') FROM (SELECT s.numero_expediente_sgd FROM expediente_solicitud s ");
+        sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) ss WHERE ROWNUM = 1) AS numero_expediente_sgd, ");
         sql.append("etapa_codigo, estado_codigo, abogado_inicial, responsable_actual, equipo_actual, ");
         sql.append("(SELECT fecha_recepcion FROM (SELECT s.fecha_recepcion FROM expediente_solicitud s ");
         sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC) WHERE ROWNUM = 1) AS fecha_recepcion, ");
@@ -173,6 +175,7 @@ public class ExpedienteBandejaDAO {
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
                 rs.getString("numero_tramite_documentario"),
+                rs.getString("numero_expediente_sgd"),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 rs.getString("abogado_inicial"),
