@@ -1680,6 +1680,17 @@ public class JPanelAsignacionV2 extends JPanel {
             agregarFilaPrincipal(item);
         }
         table.clearSelection();
+        aplicarOrdenInicialDiasDescendente();
+    }
+
+    private void aplicarOrdenInicialDiasDescendente() {
+        if (columnFilterSupport == null || columnFilterSupport.getSorter() == null) {
+            return;
+        }
+        columnFilterSupport.getSorter().setSortKeys(
+                Collections.singletonList(
+                        new javax.swing.RowSorter.SortKey(COL_DIAS, javax.swing.SortOrder.DESCENDING)));
+        columnFilterSupport.getSorter().sort();
     }
 
     private List<AsignacionExpedienteDTO> filtrarBandejaKpi(List<AsignacionExpedienteDTO> items) {
