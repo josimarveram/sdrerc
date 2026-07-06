@@ -1161,6 +1161,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 COL_EXPANDIR,
                 COL_SELECCION,
                 COL_ID);
+        columnFilterSupport.getSorter().setSortKeys(
+                java.util.Collections.singletonList(
+                        new javax.swing.RowSorter.SortKey(COL_DIAS, javax.swing.SortOrder.DESCENDING)));
         table.getColumnModel().getColumn(COL_SELECCION).setHeaderRenderer(new SelectAllHeaderRenderer());
         SwingUtilities.invokeLater(this::instalarListenerCabeceraSeleccionAsignacion);
         table.getRowSorter().addRowSorterListener(e -> SwingUtilities.invokeLater(

@@ -723,6 +723,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 },
                 perfilRegistroRecepcion ? new int[]{0} : new int[0]);
         if (perfilRegistroRecepcion && columnFilterSupport != null) {
+            columnFilterSupport.getSorter().setSortKeys(
+                    java.util.Collections.singletonList(
+                            new javax.swing.RowSorter.SortKey(1, javax.swing.SortOrder.DESCENDING)));
             columnFilterSupport.getSorter().addRowSorterListener(event -> actualizarEstadoHeaderSeleccionRegistro());
         }
     }
