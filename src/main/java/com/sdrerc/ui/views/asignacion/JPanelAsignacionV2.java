@@ -2958,6 +2958,14 @@ public class JPanelAsignacionV2 extends JPanel {
             lblTitularSeleccionado.setText("-");
             limpiarPanelAsignacion();
         }
+        if (panelDatosExpediente != null) {
+            panelDatosExpediente.revalidate();
+            panelDatosExpediente.repaint();
+        }
+        if (panelOperativo != null) {
+            panelOperativo.revalidate();
+            panelOperativo.repaint();
+        }
     }
 
     private boolean esBandejaAsignacionActiva() {
