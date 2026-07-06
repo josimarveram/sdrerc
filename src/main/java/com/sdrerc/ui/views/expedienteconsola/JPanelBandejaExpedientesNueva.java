@@ -2110,7 +2110,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private static JLabel valueLabel() {
         JLabel label = new JLabel("-");
-        label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         label.setForeground(AppV2Theme.TEXT_PRIMARY);
         label.setToolTipText(null);
         return label;
