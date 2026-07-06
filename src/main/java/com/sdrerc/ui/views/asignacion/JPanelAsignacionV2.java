@@ -2966,6 +2966,37 @@ public class JPanelAsignacionV2 extends JPanel {
             panelOperativo.revalidate();
             panelOperativo.repaint();
         }
+        if (splitOperativo != null) {
+            splitOperativo.revalidate();
+            splitOperativo.repaint();
+        }
+        if (panelDatosExpediente != null || panelAsignacion != null || panelAsociar != null || panelCartasRespuesta != null) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    if (panelDatosExpediente != null) {
+                        panelDatosExpediente.refreshLayoutNow();
+                    }
+                    if (panelAsignacion != null) {
+                        panelAsignacion.refreshLayoutNow();
+                    }
+                    if (panelAsociar != null) {
+                        panelAsociar.refreshLayoutNow();
+                    }
+                    if (panelCartasRespuesta != null) {
+                        panelCartasRespuesta.refreshLayoutNow();
+                    }
+                    if (splitOperativo != null) {
+                        splitOperativo.revalidate();
+                        splitOperativo.repaint();
+                    }
+                    if (panelOperativo != null) {
+                        panelOperativo.revalidate();
+                        panelOperativo.repaint();
+                    }
+                }
+            });
+        }
     }
 
     private boolean esBandejaAsignacionActiva() {
@@ -4169,6 +4200,29 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarLenguetasAsignacion();
         panelOperativo.revalidate();
         panelOperativo.repaint();
+        if (mostrar) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    if (panelDatosExpediente != null) {
+                        panelDatosExpediente.refreshLayoutNow();
+                    }
+                    if (panelAsignacion != null) {
+                        panelAsignacion.refreshLayoutNow();
+                    }
+                    if (panelAsociar != null) {
+                        panelAsociar.refreshLayoutNow();
+                    }
+                    if (panelCartasRespuesta != null) {
+                        panelCartasRespuesta.refreshLayoutNow();
+                    }
+                    if (splitOperativo != null) {
+                        splitOperativo.revalidate();
+                        splitOperativo.repaint();
+                    }
+                }
+            });
+        }
     }
 
     private int contarSeleccionOperativa() {
