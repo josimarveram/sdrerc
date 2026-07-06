@@ -1092,8 +1092,8 @@ public class JPanelAsignacionV2 extends JPanel {
         fechaSolicitudDesde.setMinimumSize(new Dimension(210, 42));
         fechaSolicitudHasta.setPreferredSize(fechaSize);
         fechaSolicitudHasta.setMinimumSize(new Dimension(210, 42));
-        cmbEstado.setPreferredSize(new Dimension(240, 34));
-        cmbEstado.setMinimumSize(new Dimension(190, 34));
+        cmbEstado.setPreferredSize(new Dimension(190, 34));
+        cmbEstado.setMinimumSize(new Dimension(180, 34));
         spnLimite.setPreferredSize(new Dimension(88, 34));
         cmbEquipo.setPreferredSize(new Dimension(230, 34));
         cmbAbogado.setPreferredSize(new Dimension(230, 34));
