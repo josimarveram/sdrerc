@@ -41,11 +41,11 @@ public class AppV2SideActionPanel extends JPanel {
         setBackground(AppV2Theme.SURFACE);
         applyAccentBorder(null);
 
-        lblTitle.setText(title);
+        lblTitle.setText(normalizeTitleText(title));
         lblTitle.setFont(AppV2Theme.fontBold(18));
         lblTitle.setForeground(AppV2Theme.TEXT_PRIMARY);
         lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        lblSubtitle.setFont(AppV2Theme.fontPlain(13));
+        lblSubtitle.setFont(AppV2Theme.fontBold(15));
         lblSubtitle.setForeground(AppV2Theme.PRIMARY);
         lblSubtitle.setVisible(false);
         lblSubtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -171,7 +171,7 @@ public class AppV2SideActionPanel extends JPanel {
     }
 
     public void setTitle(String title) {
-        lblTitle.setText(title == null || title.trim().isEmpty() ? "Panel" : title.trim());
+        lblTitle.setText(normalizeTitleText(title));
         revalidate();
         repaint();
     }
@@ -217,6 +217,31 @@ public class AppV2SideActionPanel extends JPanel {
                         AppV2Theme.SPACE_LARGE,
                         AppV2Theme.SPACE_LARGE,
                 AppV2Theme.SPACE_LARGE)));
+    }
+
+    private static String normalizeTitleText(String value) {
+        String text = value == null ? "" : value.trim();
+        if (text.isEmpty()) {
+            text = "Panel";
+        }
+        if (text.regionMatches(true, 0, "<html>", 0, 6)) {
+            return text;
+        }
+        return "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>"
+                + escapeHtml(text)
+                + "</div></html>";
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private static final class StretchableSectionsPanel extends JPanel implements javax.swing.Scrollable {
