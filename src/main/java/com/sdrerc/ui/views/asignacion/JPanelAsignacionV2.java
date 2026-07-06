@@ -1083,15 +1083,15 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void configurarControles() {
-        txtBusqueda.setPreferredSize(new Dimension(520, 36));
-        txtBusqueda.setMinimumSize(new Dimension(320, 36));
+        txtBusqueda.setPreferredSize(new Dimension(720, 36));
+        txtBusqueda.setMinimumSize(new Dimension(360, 36));
         txtBusquedaCartasRespuesta.setPreferredSize(new Dimension(720, 36));
         txtBusquedaCartasRespuesta.setMinimumSize(new Dimension(360, 36));
-        Dimension fechaSize = new Dimension(170, 40);
+        Dimension fechaSize = new Dimension(250, 42);
         fechaSolicitudDesde.setPreferredSize(fechaSize);
-        fechaSolicitudDesde.setMinimumSize(new Dimension(150, 40));
+        fechaSolicitudDesde.setMinimumSize(new Dimension(210, 42));
         fechaSolicitudHasta.setPreferredSize(fechaSize);
-        fechaSolicitudHasta.setMinimumSize(new Dimension(150, 40));
+        fechaSolicitudHasta.setMinimumSize(new Dimension(210, 42));
         cmbEstado.setPreferredSize(new Dimension(240, 34));
         cmbEstado.setMinimumSize(new Dimension(190, 34));
         spnLimite.setPreferredSize(new Dimension(88, 34));
