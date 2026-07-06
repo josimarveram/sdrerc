@@ -161,7 +161,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JLabel lblRecepcionMarcaOperativa = valueLabel();
     private final JLabel lblRecepcionObservacion = valueLabel();
     private final JLabel lblRecepcionVencimiento = valueLabel();
-    private final JLabel lblRecepcionDias = valueLabel();
+    private final BadgeV2 lblRecepcionDias = new BadgeV2("-", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
     private final JLabel lblRecepcionResponsable = valueLabel();
     private final JLabel lblRecepcionEquipo = valueLabel();
     private final JLabel lblRecepcionEtapaEstado = valueLabel();
@@ -525,6 +525,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         panel.setAccentColor(new Color(57, 125, 199));
 
         AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
+        secciones.add(crearSeccionDatosPlazo());
         secciones.add(crearSeccionDatosExpediente());
         secciones.add(crearSeccionDatosActa());
         secciones.add(crearSeccionDatosSolicitud());
@@ -557,6 +558,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
         });
         return panel;
+    }
+
+    private AppV2SideSectionPanel crearSeccionDatosPlazo() {
+        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Datos del plazo");
+        seccion.addRow("Días", lblRecepcionDias);
+        seccion.addRow("Fecha Vencimiento", lblRecepcionVencimiento);
+        return seccion;
     }
 
     private AppV2SideSectionPanel crearSeccionDatosExpediente() {
@@ -1258,9 +1266,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionPrioridad, "-");
         setValue(lblRecepcionMarcaOperativa, expediente.isGrupoFamiliar() ? "Sí" : "No");
         setValue(lblRecepcionObservacion, "-");
+        actualizarBadgeDias(lblRecepcionDias, expediente.getDiasRestantes());
         setValue(lblRecepcionVencimiento, formatDate(expediente.getFechaVencimiento()));
-        setValue(lblRecepcionDias, descripcionPlazo(expediente.getDiasRestantes(), expediente.getFechaVencimiento()));
-        lblRecepcionDias.setForeground(colorPlazo(expediente.getDiasRestantes()));
         setValue(lblRecepcionResponsable, expediente.getResponsableActual());
         setValue(lblRecepcionEquipo, expediente.getEquipoActual());
         setValue(lblRecepcionEtapaEstado,
@@ -1303,8 +1310,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         setValue(lblRecepcionRemitente, "");
         setValue(lblRecepcionTipoActa, "");
         setValue(lblRecepcionNumeroActa, "");
+        actualizarBadgeDias(lblRecepcionDias, null);
         setValue(lblRecepcionVencimiento, "");
-        setValue(lblRecepcionDias, "");
         setValue(lblRecepcionResponsable, "");
         setValue(lblRecepcionEquipo, "");
     }
@@ -1928,6 +1935,38 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private static String formatDate(LocalDate value) {
         return value == null ? "" : DATE_FORMAT.format(value);
+    }
+
+    private static void actualizarBadgeDias(BadgeV2 badge, Long dias) {
+        if (badge == null) {
+            return;
+        }
+        if (dias == null) {
+            badge.setText("-");
+            badge.setBackground(AppV2Theme.SOFT_GRAY);
+            badge.setForeground(AppV2Theme.MUTED);
+            badge.setToolTipText("Sin días calculados");
+            return;
+        }
+        PlazoVisualSupportV2.Nivel nivel = PlazoVisualSupportV2.clasificarDias(dias);
+        badge.setText(String.valueOf(dias));
+        badge.setBackground(PlazoVisualSupportV2.backgroundFor(nivel));
+        badge.setForeground(PlazoVisualSupportV2.foregroundFor(nivel));
+        String tooltip;
+        switch (nivel) {
+            case VENCIDO:
+                tooltip = "Vencido. Días hábiles restantes: " + dias;
+                break;
+            case ROJO:
+                tooltip = dias.longValue() == 0L
+                        ? "Vence hoy. Días hábiles restantes: 0"
+                        : "Días hábiles restantes: " + dias;
+                break;
+            default:
+                tooltip = "Días hábiles restantes: " + dias;
+                break;
+        }
+        badge.setToolTipText(tooltip);
     }
 
     private static LocalDate fechaSolicitud(ExpedienteBandejaDTO item) {

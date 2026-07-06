@@ -33,6 +33,7 @@ import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
+import com.sdrerc.ui.appv2.components.PlazoVisualSupportV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
@@ -243,7 +244,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblSolicitanteSeleccionado = new JLabel("-");
     private final JLabel lblDocumentoTitularSeleccionado = new JLabel("-");
     private final JLabel lblFechaSolicitudSeleccionada = new JLabel("-");
-    private final JLabel lblDiasSeleccionados = new JLabel("-");
+    private final BadgeV2 lblDiasSeleccionados = new BadgeV2("-", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
+    private final JLabel lblFechaVencimientoSeleccionada = new JLabel("-");
     private final JLabel lblEstadoSeleccionado = new JLabel("-");
     private final JLabel lblHojaEnvioSeleccionada = new JLabel("-");
     private final JLabel lblObservacionSeleccionada = new JLabel("-");
@@ -644,6 +646,7 @@ public class JPanelAsignacionV2 extends JPanel {
         });
         panel.setAccentColor(new Color(57, 125, 199));
         AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
+        secciones.add(crearDatosPlazoAsignacion());
         sectionDatosExpediente = crearDatosExpedienteAsignacion();
         sectionDatosActa = crearDatosActaAsignacion();
         sectionDatosSolicitud = crearDatosSolicitudAsignacion();
@@ -658,6 +661,37 @@ public class JPanelAsignacionV2 extends JPanel {
         secciones.add(sectionDatosNotificacionUbicacion);
         panel.addSection(secciones);
         return panel;
+    }
+
+    private AppV2SideSectionPanel crearDatosPlazoAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del plazo");
+        section.addRow("Días", lblDiasSeleccionados);
+        section.addRow("Fecha Vencimiento", lblFechaVencimientoSeleccionada);
+        return section;
+    }
+
+    private static void actualizarBadgeDias(BadgeV2 badge, Long dias) {
+        if (badge == null) {
+            return;
+        }
+        if (dias == null) {
+            badge.setText("-");
+            badge.setBackground(AppV2Theme.SOFT_GRAY);
+            badge.setForeground(AppV2Theme.MUTED);
+            badge.setToolTipText(null);
+            return;
+        }
+        PlazoVisualSupportV2.Nivel nivel = PlazoVisualSupportV2.clasificarDias(dias);
+        badge.setText(String.valueOf(dias));
+        badge.setBackground(PlazoVisualSupportV2.backgroundFor(nivel));
+        badge.setForeground(PlazoVisualSupportV2.foregroundFor(nivel));
+        if (dias < 0) {
+            badge.setToolTipText("Vencido. Días hábiles restantes: " + Math.abs(dias));
+        } else if (dias == 0) {
+            badge.setToolTipText("Vence hoy. Días hábiles restantes: 0");
+        } else {
+            badge.setToolTipText("Días hábiles restantes: " + dias);
+        }
     }
 
     private AppV2SideSectionPanel crearDatosExpedienteAsignacion() {
@@ -1102,7 +1136,6 @@ public class JPanelAsignacionV2 extends JPanel {
             lblProcedimientoSeleccionado,
             lblActaSeleccionada,
             lblFechaSolicitudSeleccionada,
-            lblDiasSeleccionados,
             lblEstadoSeleccionado,
             lblHojaEnvioSeleccionada,
             lblObservacionSeleccionada,
@@ -3770,7 +3803,8 @@ public class JPanelAsignacionV2 extends JPanel {
             lblSolicitanteSeleccionado.setText("-");
             lblDocumentoTitularSeleccionado.setText("-");
             lblFechaSolicitudSeleccionada.setText("-");
-            lblDiasSeleccionados.setText("-");
+            actualizarBadgeDias(lblDiasSeleccionados, null);
+            lblFechaVencimientoSeleccionada.setText("-");
             lblEstadoSeleccionado.setText("-");
             lblHojaEnvioSeleccionada.setText("-");
             lblObservacionSeleccionada.setText("-");
@@ -3802,7 +3836,8 @@ public class JPanelAsignacionV2 extends JPanel {
         lblDireccionNotificacionSeleccionada.setText(valorUi(item.getDireccionSolicitante()));
         lblDireccionNotificacionSeleccionada.setToolTipText(valorUi(item.getDireccionSolicitante()));
         lblFechaSolicitudSeleccionada.setText(formatDate(item.getFechaRecepcion()));
-        lblDiasSeleccionados.setText(item.getDiasRestantes() == null ? "-" : item.getDiasRestantes() + " día(s)");
+        actualizarBadgeDias(lblDiasSeleccionados, item.getDiasRestantes());
+        lblFechaVencimientoSeleccionada.setText(formatDate(item.getFechaVencimiento()));
         lblEstadoSeleccionado.setText(DisplayNameMapperV2.estado(item.getEstadoCodigo()));
         lblHojaEnvioSeleccionada.setText(valorUi(item.getNumeroHojaEnvioAsignacion()));
         lblObservacionSeleccionada.setText(valorUi(item.getObservacionSolicitud()));
