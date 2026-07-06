@@ -35,6 +35,7 @@ public class AsignacionExpedienteDTO {
     private final String tipoDocumentoTitular;
     private final String numeroDocumentoTitular;
     private final LocalDate fechaRecepcion;
+    private final LocalDate fechaVencimiento;
     private final Long diasRestantes;
     private final LocalDateTime fechaRegistro;
     private final String etapaCodigo;
@@ -78,6 +79,7 @@ public class AsignacionExpedienteDTO {
             String tipoDocumentoTitular,
             String numeroDocumentoTitular,
             LocalDate fechaRecepcion,
+            LocalDate fechaVencimiento,
             Long diasRestantes,
             LocalDateTime fechaRegistro,
             String etapaCodigo,
@@ -119,6 +121,7 @@ public class AsignacionExpedienteDTO {
         this.tipoDocumentoTitular = safe(tipoDocumentoTitular);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
         this.fechaRecepcion = fechaRecepcion;
+        this.fechaVencimiento = fechaVencimiento;
         this.diasRestantes = diasRestantes;
         this.fechaRegistro = fechaRegistro;
         this.etapaCodigo = safe(etapaCodigo);
@@ -247,6 +250,10 @@ public class AsignacionExpedienteDTO {
 
     public LocalDate getFechaRecepcion() {
         return fechaRecepcion;
+    }
+
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
     }
 
     public Long getDiasRestantes() {

@@ -586,6 +586,7 @@ public class AsignacionExpedienteDAO {
                 rs.getString("tipo_documento_titular"),
                 rs.getString("numero_documento_titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                toLocalDate(rs.getDate("fecha_vencimiento")),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 rs.getString("etapa_codigo"),

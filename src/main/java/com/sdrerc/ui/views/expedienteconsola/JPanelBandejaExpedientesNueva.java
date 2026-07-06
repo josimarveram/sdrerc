@@ -287,6 +287,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     "Nro. Expediente",
                     "Canal",
                     "Fecha Solicitud",
+                    "Fecha Vencimiento",
                     "Proc. Registral",
                     "Tipo Acta",
                     "Nro Acta",
@@ -686,13 +687,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         table.setDefaultRenderer(Long.class, renderer);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         if (perfilRegistroRecepcion) {
-            AppV2TableColumnSizer.applyWidths(table, 38, 88, 165, 150, 145, 220, 130, 130, 260, 130, 190, 0);
+            AppV2TableColumnSizer.applyWidths(table, 38, 88, 165, 150, 145, 145, 220, 130, 130, 260, 130, 190, 0);
             table.getColumnModel().getColumn(0).setMinWidth(38);
             table.getColumnModel().getColumn(0).setMaxWidth(42);
             table.getColumnModel().getColumn(8).setMinWidth(220);
             table.getColumnModel().getColumn(9).setMinWidth(120);
-            table.getColumnModel().getColumn(11).setMinWidth(0);
-            table.getColumnModel().getColumn(11).setMaxWidth(0);
+            table.getColumnModel().getColumn(12).setMinWidth(0);
+            table.getColumnModel().getColumn(12).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         } else {
             AppV2TableColumnSizer.applyWidths(table, 88, 175, 155, 155, 175, 145, 145, 125, 125, 0);
@@ -1027,6 +1028,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     item.getNumeroExpediente(),
                     item.getCanal(),
                     fechaSolicitud(item),
+                    item.getFechaVencimiento(),
                     item.getProcedimiento(),
                     item.getTipoActa(),
                     item.getNumeroActa(),

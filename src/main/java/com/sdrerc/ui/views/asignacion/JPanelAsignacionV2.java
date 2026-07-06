@@ -126,9 +126,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int COL_SELECCION = 1;
     private static final int COL_DIAS = 2;
     private static final int COL_EXPEDIENTE = 3;
-    private static final int COL_ESTADO = 11;
-    private static final int COL_RELACIONADOS = 12;
-    private static final int COL_ID = 13;
+    private static final int COL_FECHA_VENCIMIENTO = 6;
+    private static final int COL_ESTADO = 12;
+    private static final int COL_RELACIONADOS = 13;
+    private static final int COL_ID = 14;
     private static final int CARTA_COL_TIPO = 0;
     private static final int CARTA_COL_ESTADO = 1;
     private static final int CARTA_COL_FECHA = 2;
@@ -1135,18 +1136,19 @@ public class JPanelAsignacionV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new AsignacionRenderer());
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        AppV2TableColumnSizer.applyWidths(table, 42, 34, 84, 185, 155, 135, 230, 135, 130, 260, 240, 155, 170, 0);
+        AppV2TableColumnSizer.applyWidths(table, 42, 34, 84, 185, 155, 135, 135, 230, 135, 130, 260, 240, 155, 170, 0);
         configurarColumna(table.getColumnModel().getColumn(COL_EXPANDIR), 42, 40, 46);
         configurarColumna(table.getColumnModel().getColumn(COL_SELECCION), 34, 32, 36);
         configurarColumna(table.getColumnModel().getColumn(COL_DIAS), 84, 78, 92);
         configurarColumna(table.getColumnModel().getColumn(3), 185, 165, 260);
         configurarColumna(table.getColumnModel().getColumn(4), 155, 140, 220);
         configurarColumna(table.getColumnModel().getColumn(5), 135, 128, 170);
-        configurarColumna(table.getColumnModel().getColumn(6), 230, 210, 320);
-        configurarColumna(table.getColumnModel().getColumn(7), 135, 128, 190);
-        configurarColumna(table.getColumnModel().getColumn(8), 130, 120, 180);
-        configurarColumna(table.getColumnModel().getColumn(9), 260, 230, 380);
-        configurarColumna(table.getColumnModel().getColumn(10), 240, 210, 360);
+        configurarColumna(table.getColumnModel().getColumn(6), 135, 128, 170);
+        configurarColumna(table.getColumnModel().getColumn(7), 230, 210, 320);
+        configurarColumna(table.getColumnModel().getColumn(8), 135, 128, 190);
+        configurarColumna(table.getColumnModel().getColumn(9), 130, 120, 180);
+        configurarColumna(table.getColumnModel().getColumn(10), 260, 230, 380);
+        configurarColumna(table.getColumnModel().getColumn(11), 240, 210, 360);
         configurarColumna(table.getColumnModel().getColumn(COL_ESTADO), 155, 145, 220);
         configurarColumna(table.getColumnModel().getColumn(COL_RELACIONADOS), 170, 150, 240);
         configurarColumna(table.getColumnModel().getColumn(COL_ID), 0, 0, 0);
@@ -1920,6 +1922,7 @@ public class JPanelAsignacionV2 extends JPanel {
             item.getNumeroExpediente(),
             item.getNumeroExpedienteSgd(),
             formatDate(item.getFechaRecepcion()),
+            formatDate(item.getFechaVencimiento()),
             item.getProcedimiento(),
             item.getTipoActa(),
             item.getNumeroActa(),
@@ -1941,6 +1944,7 @@ public class JPanelAsignacionV2 extends JPanel {
             principal == null ? "" : principal.getNumeroExpediente(),
             "",
             formatDate(asociado.getFechaRecepcion()),
+            principal == null ? "" : formatDate(principal.getFechaVencimiento()),
             procedimientoAsociado(asociado),
             valorUi(asociado.getTipoActa()),
             valorUi(asociado.getNumeroActa()),
@@ -4449,6 +4453,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Nro. Expediente",
                 "N° expediente SGD",
                 "Fecha Solicitud",
+                "Fecha Vencimiento",
                 "Proc. Registral",
                 "Tipo Acta",
                 "Nro. Acta",
