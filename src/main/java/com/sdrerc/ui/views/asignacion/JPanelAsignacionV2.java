@@ -892,16 +892,16 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideSectionPanel crearDatosTitularAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del titular");
         section.addRow("Titular", lblTitularSeleccionado);
-        section.addRow("Tipo documento titular", lblTipoDocumentoTitularSeleccionado);
-        section.addRow("Número documento titular", lblDocumentoTitularSeleccionado);
+        section.addRow("Tipo documento", lblTipoDocumentoTitularSeleccionado);
+        section.addRow("Número documento", lblDocumentoTitularSeleccionado);
         return section;
     }
 
     private AppV2SideSectionPanel crearDatosSolicitanteAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del solicitante");
         section.addRow("Solicitante", lblSolicitanteSeleccionado);
-        section.addRow("Tipo documento solicitante", lblTipoDocumentoSolicitanteSeleccionado);
-        section.addRow("Número documento solicitante", lblNumeroDocumentoSolicitanteSeleccionado);
+        section.addRow("Tipo documento", lblTipoDocumentoSolicitanteSeleccionado);
+        section.addRow("Número documento", lblNumeroDocumentoSolicitanteSeleccionado);
         return section;
     }
 
