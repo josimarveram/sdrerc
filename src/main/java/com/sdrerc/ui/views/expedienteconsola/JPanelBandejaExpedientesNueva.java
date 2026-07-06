@@ -723,9 +723,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 },
                 perfilRegistroRecepcion ? new int[]{0} : new int[0]);
         if (perfilRegistroRecepcion && columnFilterSupport != null) {
-            columnFilterSupport.getSorter().setSortKeys(
-                    java.util.Collections.singletonList(
-                            new javax.swing.RowSorter.SortKey(1, javax.swing.SortOrder.DESCENDING)));
             columnFilterSupport.getSorter().addRowSorterListener(event -> actualizarEstadoHeaderSeleccionRegistro());
         }
     }
@@ -1064,18 +1061,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     : expedientes.size() + " expediente(s) encontrado(s). Seleccione uno y presione Ver detalle.");
         }
         actualizarTextoSeleccionadosRegistro();
-        aplicarOrdenInicialDiasDescendente();
-    }
-
-    private void aplicarOrdenInicialDiasDescendente() {
-        if (columnFilterSupport == null || columnFilterSupport.getSorter() == null) {
-            return;
-        }
-        int modelColumn = perfilRegistroRecepcion ? 1 : 0;
-        columnFilterSupport.getSorter().setSortKeys(
-                Collections.singletonList(
-                        new javax.swing.RowSorter.SortKey(modelColumn, javax.swing.SortOrder.DESCENDING)));
-        columnFilterSupport.getSorter().sort();
     }
 
     private List<ExpedienteBandejaDTO> filtrarGrupoFamiliar(List<ExpedienteBandejaDTO> expedientes) {
