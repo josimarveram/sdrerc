@@ -76,6 +76,8 @@ public class ExpedienteBandejaDAO {
         sql.append("ORDER BY ep.creado_en DESC) WHERE ROWNUM = 1) AS titular, ");
         sql.append("(SELECT COUNT(1) FROM expediente_relacion er WHERE er.activo = 1 ");
         sql.append("AND (er.id_expediente_principal = b.id_expediente OR er.id_expediente_relacionado = b.id_expediente)) AS cantidad_relaciones, ");
+        sql.append("(SELECT COUNT(1) FROM expediente_relacion er WHERE er.activo = 1 AND er.id_expediente_principal = b.id_expediente) AS relaciones_confirmadas_principal, ");
+        sql.append("CASE WHEN EXISTS (SELECT 1 FROM expediente_relacion er WHERE er.activo = 1 AND er.id_expediente_relacionado = b.id_expediente) THEN 1 ELSE 0 END AS es_relacionado_hijo, ");
         if (soportaGrupoFamiliar) {
             sql.append("(SELECT NVL(sg.grupo_familiar, 0) FROM (SELECT s.grupo_familiar FROM expediente_solicitud s ");
             sql.append("WHERE s.id_expediente = b.id_expediente AND s.activo = 1 ORDER BY s.creado_en DESC, s.id_expediente_solicitud DESC) sg WHERE ROWNUM = 1) AS grupo_familiar_marca, ");
@@ -194,6 +196,8 @@ public class ExpedienteBandejaDAO {
                 alertasVisuales,
                 unirAlertas(alertasPersistidas, alertasVisuales),
                 rs.getString("titular"),
+                rs.getInt("relaciones_confirmadas_principal"),
+                getBooleanFromNumber(rs, "es_relacionado_hijo"),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
         );
     }

@@ -48,6 +48,7 @@ public class AsignacionExpedienteDTO {
     private final boolean grupoFamiliar;
     private final String criterioGrupoFamiliar;
     private final String observacionGrupoFamiliar;
+    private final boolean alertaGrupoFamiliarActiva;
 
     public AsignacionExpedienteDTO(
             Long idExpediente,
@@ -91,7 +92,8 @@ public class AsignacionExpedienteDTO {
             String observacionSolicitud,
             boolean grupoFamiliar,
             String criterioGrupoFamiliar,
-            String observacionGrupoFamiliar) {
+            String observacionGrupoFamiliar,
+            boolean alertaGrupoFamiliarActiva) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
@@ -134,6 +136,7 @@ public class AsignacionExpedienteDTO {
         this.grupoFamiliar = grupoFamiliar;
         this.criterioGrupoFamiliar = safe(criterioGrupoFamiliar);
         this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
+        this.alertaGrupoFamiliarActiva = alertaGrupoFamiliarActiva;
     }
 
     public Long getIdExpediente() {
@@ -305,17 +308,18 @@ public class AsignacionExpedienteDTO {
     }
 
     public boolean isPosibleGrupoFamiliar() {
-        return grupoFamiliar
-                || !criterioGrupoFamiliar.isEmpty()
-                || !observacionGrupoFamiliar.isEmpty()
-                || contienePosibleGrupoFamiliar(observacionSolicitud);
+        return alertaGrupoFamiliarActiva;
+    }
+
+    public boolean tieneAlertaGrupoFamiliarActiva() {
+        return alertaGrupoFamiliarActiva;
     }
 
     public String getGrupoFamiliarEstado() {
         if (grupoFamiliar) {
             return "Sí";
         }
-        return isPosibleGrupoFamiliar() ? "Posible" : "No";
+        return "No";
     }
 
     public boolean tieneObservacionRegistro() {
@@ -328,7 +332,7 @@ public class AsignacionExpedienteDTO {
         if (potencialDuplicado) {
             return "Potencial duplicado";
         }
-        if (isPosibleGrupoFamiliar()) {
+        if (alertaGrupoFamiliarActiva) {
             return "Posible Grupo Familiar";
         }
         if (tieneObservacionRegistro()) {

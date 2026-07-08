@@ -130,6 +130,12 @@ public class AsignacionExpedienteDAO {
             sql.append("0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
             sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
         }
+        sql.append("(CASE WHEN EXISTS (");
+        sql.append("SELECT 1 FROM expediente_alerta ea ");
+        sql.append("WHERE ea.id_expediente = e.id_expediente ");
+        sql.append("AND ea.activo = 1 AND ea.atendida = 0 ");
+        sql.append("AND UPPER(TRIM(ea.mensaje)) = 'POSIBLE GRUPO FAMILIAR'");
+        sql.append(") THEN 1 ELSE 0 END) AS alerta_grupo_familiar_activa, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
@@ -179,8 +185,12 @@ public class AsignacionExpedienteDAO {
 
         if (soloGrupoFamiliar) {
             if (soportaGrupoFamiliar) {
-                sql.append("AND (NVL(esol.grupo_familiar, 0) = 1 ");
-                sql.append("OR TRIM(esol.observacion_grupo_familiar) IS NOT NULL) ");
+                sql.append("AND EXISTS (");
+                sql.append("SELECT 1 FROM expediente_alerta ea ");
+                sql.append("WHERE ea.id_expediente = e.id_expediente ");
+                sql.append("AND ea.activo = 1 AND ea.atendida = 0 ");
+                sql.append("AND UPPER(TRIM(ea.mensaje)) = 'POSIBLE GRUPO FAMILIAR'");
+                sql.append(") ");
             } else {
                 sql.append("AND 1 = 0 ");
             }
@@ -518,6 +528,12 @@ public class AsignacionExpedienteDAO {
             sql.append("0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
             sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
         }
+        sql.append("(CASE WHEN EXISTS (");
+        sql.append("SELECT 1 FROM expediente_alerta ea ");
+        sql.append("WHERE ea.id_expediente = e.id_expediente ");
+        sql.append("AND ea.activo = 1 AND ea.atendida = 0 ");
+        sql.append("AND UPPER(TRIM(ea.mensaje)) = 'POSIBLE GRUPO FAMILIAR'");
+        sql.append(") THEN 1 ELSE 0 END) AS alerta_grupo_familiar_activa, ");
         sql.append("e.fecha_registro, et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("(SELECT COUNT(*) FROM expediente_asignacion ax ");
         sql.append(" WHERE ax.id_expediente = e.id_expediente AND ax.activa = 1 AND ax.activo = 1) AS asignacion_activa, ");
@@ -598,7 +614,8 @@ public class AsignacionExpedienteDAO {
                 rs.getString("observacion_solicitud"),
                 rs.getInt("grupo_familiar") == 1,
                 rs.getString("criterio_grupo_familiar"),
-                rs.getString("observacion_grupo_familiar"));
+                rs.getString("observacion_grupo_familiar"),
+                rs.getInt("alerta_grupo_familiar_activa") == 1);
     }
 
     private void validarTransicion(

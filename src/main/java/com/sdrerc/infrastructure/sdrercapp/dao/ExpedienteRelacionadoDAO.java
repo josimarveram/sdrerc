@@ -14,6 +14,7 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,18 +33,27 @@ public class ExpedienteRelacionadoDAO {
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService;
+    private final ExpedienteAlertaDAO expedienteAlertaDAO;
 
     public ExpedienteRelacionadoDAO() {
-        this(new CatalogoLookupDAO(), new CalendarioLaboralService());
+        this(new CatalogoLookupDAO(), new CalendarioLaboralService(), new ExpedienteAlertaDAO());
     }
 
     public ExpedienteRelacionadoDAO(CatalogoLookupDAO catalogoLookupDAO) {
-        this(catalogoLookupDAO, new CalendarioLaboralService());
+        this(catalogoLookupDAO, new CalendarioLaboralService(), new ExpedienteAlertaDAO());
     }
 
     public ExpedienteRelacionadoDAO(CatalogoLookupDAO catalogoLookupDAO, CalendarioLaboralService calendarioLaboralService) {
+        this(catalogoLookupDAO, calendarioLaboralService, new ExpedienteAlertaDAO());
+    }
+
+    public ExpedienteRelacionadoDAO(
+            CatalogoLookupDAO catalogoLookupDAO,
+            CalendarioLaboralService calendarioLaboralService,
+            ExpedienteAlertaDAO expedienteAlertaDAO) {
         this.catalogoLookupDAO = catalogoLookupDAO;
         this.calendarioLaboralService = calendarioLaboralService;
+        this.expedienteAlertaDAO = expedienteAlertaDAO;
     }
 
     public List<ExpedienteRelacionadoDTO> listarPosiblesRelacionados(Long idExpediente) throws SQLException {
@@ -74,8 +84,9 @@ public class ExpedienteRelacionadoDAO {
                 + "NVL(e.id_usuario_responsable_actual, (SELECT MAX(axa.id_usuario_asignado) "
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
-                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
-                + "? AS motivo_coincidencia "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, e.fecha_vencimiento, "
+                + "? AS motivo_coincidencia, "
+                + resumenAlertasSql("e") + " AS alerta_ingreso "
                 + "FROM base b "
                 + "JOIN expediente_acta ea ON UPPER(TRIM(ea.numero_acta)) = b.numero_acta_norm "
                 + " AND ea.activo = 1 "
@@ -179,7 +190,8 @@ public class ExpedienteRelacionadoDAO {
                 + "NVL(e.id_usuario_responsable_actual, (SELECT MAX(axa.id_usuario_asignado) "
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
-                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, e.fecha_vencimiento, "
+                + resumenAlertasSql("e") + " AS alerta_ingreso, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en AS fecha_asociacion, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
                 + "JOIN expediente e ON e.id_expediente = CASE "
@@ -207,7 +219,7 @@ public class ExpedienteRelacionadoDAO {
             ps.setLong(3, idExpediente);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    asociados.add(mapAsociado(rs));
+                    asociados.add(mapAsociado(conn, rs));
                 }
             }
         }
@@ -232,7 +244,8 @@ public class ExpedienteRelacionadoDAO {
                 + "NVL(e.id_usuario_responsable_actual, (SELECT MAX(axa.id_usuario_asignado) "
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
-                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, e.fecha_vencimiento, "
+                + resumenAlertasSql("e") + " AS alerta_ingreso, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en AS fecha_asociacion, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
                 + "JOIN expediente e ON e.id_expediente = r.id_expediente_principal AND e.activo = 1 "
@@ -259,7 +272,7 @@ public class ExpedienteRelacionadoDAO {
             ps.setString(3, TIPO_RELACION_MISMA_ACTA_TITULAR);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapAsociado(rs);
+                    return mapAsociado(conn, rs);
                 }
             }
         }
@@ -331,6 +344,11 @@ public class ExpedienteRelacionadoDAO {
                                 idUsuarioCreador,
                                 idMovimientoAsignacion,
                                 true);
+                        expedienteAlertaDAO.marcarAtendidas(
+                                conn,
+                                orientacion.idRelacionado,
+                                Collections.singletonList("Potencial duplicado"),
+                                idUsuarioCreador);
                         yaAsociados++;
                         continue;
                     }
@@ -352,6 +370,11 @@ public class ExpedienteRelacionadoDAO {
                             idUsuarioCreador,
                             idMovimientoAsignacion,
                             true);
+                    expedienteAlertaDAO.marcarAtendidas(
+                            conn,
+                            orientacion.idRelacionado,
+                            Collections.singletonList("Potencial duplicado"),
+                            idUsuarioCreador);
                     if (idMovimiento != null) {
                         insertarHistorialRelacion(
                                 conn,
@@ -1019,14 +1042,18 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                toLocalDate(rs.getDate("fecha_vencimiento")),
+                null,
                 rs.getString("motivo_coincidencia"),
+                rs.getString("alerta_ingreso"),
                 "",
                 "",
                 null,
                 "");
     }
 
-    private ExpedienteRelacionadoDTO mapAsociado(ResultSet rs) throws SQLException {
+    private ExpedienteRelacionadoDTO mapAsociado(Connection conn, ResultSet rs) throws SQLException {
+        java.time.LocalDate fechaVencimiento = toLocalDate(rs.getDate("fecha_vencimiento"));
         return new ExpedienteRelacionadoDTO(
                 getLongOrNull(rs, "id_expediente"),
                 rs.getString("numero_expediente"),
@@ -1045,7 +1072,10 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                fechaVencimiento,
+                fechaVencimiento == null ? null : calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 "",
+                rs.getString("alerta_ingreso"),
                 rs.getString("tipo_relacion"),
                 rs.getString("descripcion"),
                 toLocalDateTime(rs.getTimestamp("fecha_asociacion")),
@@ -1068,6 +1098,13 @@ public class ExpedienteRelacionadoDAO {
                 + "WHERE ed.id_expediente = " + expedienteAlias + ".id_expediente "
                 + "AND ed.activo = 1 "
                 + "AND TRIM(ed.numero_documento) IS NOT NULL)";
+    }
+
+    private static String resumenAlertasSql(String expedienteAlias) {
+        return "(SELECT LISTAGG(a.mensaje, ' / ') WITHIN GROUP (ORDER BY a.creado_en, a.id_expediente_alerta) "
+                + "FROM expediente_alerta a "
+                + "WHERE a.id_expediente = " + expedienteAlias + ".id_expediente "
+                + "AND a.activo = 1 AND a.atendida = 0)";
     }
 
     private Long obtenerGeneratedKey(PreparedStatement ps, String entidad) throws SQLException {

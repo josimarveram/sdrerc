@@ -986,21 +986,11 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     }
 
     private void estilizarBotonPrimario(JButton button) {
-        button.setFocusPainted(false);
-        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        button.setBackground(AppV2Theme.PRIMARY);
-        button.setForeground(java.awt.Color.WHITE);
-        button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        AppV2Theme.estilizarBotonPrimario(button);
     }
 
     private void estilizarBotonSecundario(JButton button) {
-        button.setFocusPainted(false);
-        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        button.setBackground(AppV2Theme.SURFACE_ALT);
-        button.setForeground(AppV2Theme.TEXT_PRIMARY);
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppV2Theme.BORDER),
-                BorderFactory.createEmptyBorder(7, 12, 7, 12)));
+        AppV2Theme.estilizarBotonSecundario(button);
     }
 
     private static String nullToEmpty(String value) {

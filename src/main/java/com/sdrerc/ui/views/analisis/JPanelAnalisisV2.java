@@ -180,6 +180,7 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private final AnalisisExpedienteService analisisService;
     private final DocumentoAnalisisService documentoService;
+    private DocumentoAnalisisTreeGridPanelV2 documentosTreePanel;
     private final AnalisisPlantillaDocumentoService plantillaDocumentoService = new AnalisisPlantillaDocumentoService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
@@ -807,39 +808,21 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private JPanel crearDocumentosPanel() {
-        JPanel panel = section("Documentos de análisis y cartas intermedias");
-        JLabel tituloDocumentos = new JLabel("Documentos Analizados");
-        tituloDocumentos.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        tituloDocumentos.setForeground(AppV2Theme.TEXT_PRIMARY);
-        btnAgregarDocumento.setPreferredSize(new Dimension(42, 34));
-        btnAgregarDocumento.setToolTipText("Agregar documento analizado");
-        btnAgregarDocumento.setBackground(AppV2Theme.PRIMARY);
-        btnAgregarDocumento.setForeground(Color.WHITE);
-        btnAgregarDocumento.setFocusPainted(false);
-
-        documentosScrollPane = new JScrollPane(documentosTable);
-        documentosScrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        documentosScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
-        documentosScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        documentoModel.addTableModelListener(e -> actualizarAlturaDocumentosAnalizados(documentosScrollPane));
-        actualizarAlturaDocumentosAnalizados(documentosScrollPane);
-        documentosFijosScrollPane = construirScrollFijoDocumentos();
-
-        JPanel top = new JPanel(new BorderLayout(0, 8));
-        top.setOpaque(false);
-        JPanel barra = new JPanel(new BorderLayout(8, 0));
-        barra.setOpaque(false);
-        barra.add(btnAgregarDocumento, BorderLayout.WEST);
-        barra.add(tituloDocumentos, BorderLayout.CENTER);
-        top.add(barra, BorderLayout.NORTH);
-
-        JPanel contenedorTablas = new JPanel(new BorderLayout(0, 0));
-        contenedorTablas.setOpaque(false);
-        contenedorTablas.add(documentosFijosScrollPane, BorderLayout.WEST);
-        contenedorTablas.add(documentosScrollPane, BorderLayout.CENTER);
-
-        panel.add(top, BorderLayout.NORTH);
-        panel.add(contenedorTablas, BorderLayout.CENTER);
+        JPanel panel = section("Documentos Analizados");
+        documentosTreePanel = new DocumentoAnalisisTreeGridPanelV2();
+        documentosTreePanel.setHandlers(
+                documentos -> {
+                    AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para guardar documentos.");
+                    if (item == null) {
+                        throw new IllegalArgumentException("Seleccione un expediente para guardar documentos.");
+                    }
+                    if (!puedeGuardarDocumentos(item)) {
+                        throw new IllegalArgumentException("El expediente seleccionado no permite guardar documentos de análisis.");
+                    }
+                    return analisisService.guardarDocumentosAnalisisJerarquicos(item.getIdExpediente(), documentos);
+                },
+                this::recargarDetalleSeleccionado);
+        panel.add(documentosTreePanel, BorderLayout.CENTER);
         return panel;
     }
 
@@ -1282,14 +1265,13 @@ public class JPanelAnalisisV2 extends JPanel {
         fechaDocumentoAnalizado.setMinimumSize(new Dimension(220, 40));
         fechaDocumentoAnalizado.setDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         cmbTipoObservacion.setPreferredSize(new Dimension(260, 34));
-        btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRecibir.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnEditar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnCancelarAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnEnviarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnArchivarNoCorresponde.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnDescargarPlantillaSeleccionada.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        AppV2Theme.estilizarBotonPrimario(btnBuscar);
+        AppV2Theme.estilizarBotonPrimario(btnRecibir);
+        AppV2Theme.estilizarBotonPrimario(btnEditar);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarAnalisis);
+        AppV2Theme.estilizarBotonPrimario(btnEnviarVerificacion);
+        AppV2Theme.estilizarBotonPrimario(btnArchivarNoCorresponde);
+        AppV2Theme.estilizarBotonPrimario(btnDescargarPlantillaSeleccionada);
         chkReconstitucion.setOpaque(false);
         chkLegitimidad.setOpaque(false);
         chkMediosProbatorios.setOpaque(false);
@@ -1618,6 +1600,9 @@ public class JPanelAnalisisV2 extends JPanel {
         cargarSimpleItems(cmbTipoObservacion, carga.tiposObservacion, "Seleccione tipo");
         cargarSimpleItems(cmbMotivoNoCorresponde, carga.motivosNoCorresponde, "Seleccione motivo");
         configurarEditoresCatalogoDocumentoTabla();
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setCatalogos(carga.tiposDocumento, carga.estadosDocumento);
+        }
     }
 
     private void cargarSimpleItems(JComboBox<SimpleItem> combo, List<CatalogoItemDTO> items, String placeholder) {
@@ -2378,6 +2363,9 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private void cargarDocumentosAnalizados(List<DocumentoAnalizadoDTO> documentos) {
         documentoModel.setRowCount(0);
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setDocumentos(idExpedienteDetalleCargado, idAnalisisSeleccionado, documentos);
+        }
         if (documentos == null) {
             return;
         }
@@ -2872,6 +2860,9 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private List<DocumentoAnalizadoDTO> obtenerDocumentosFormulario() {
+        if (documentosTreePanel != null) {
+            return documentosTreePanel.getDocumentosActivos();
+        }
         List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
         for (int i = 0; i < documentoModel.getRowCount(); i++) {
             documentos.add(documentoDesdeFila(i));
@@ -3357,6 +3348,9 @@ public class JPanelAnalisisV2 extends JPanel {
         chkRegistrarObservacion.setSelected(false);
         chkDocumentoRequiereRespuesta.setSelected(false);
         documentoModel.setRowCount(0);
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setDocumentos(idExpedienteDetalleCargado, idAnalisisSeleccionado, new ArrayList<DocumentoAnalizadoDTO>());
+        }
         actualizarPlantillaSeleccionada();
         limpiarPublicacionLectura();
         actualizarResultadoSeleccionado();

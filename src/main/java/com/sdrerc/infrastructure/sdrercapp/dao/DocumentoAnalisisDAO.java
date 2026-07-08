@@ -9,10 +9,14 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class DocumentoAnalisisDAO {
 
@@ -125,10 +129,17 @@ public class DocumentoAnalisisDAO {
         boolean soportaNumeroDocumento = soportaNumeroDocumentoAnalizado(conn);
         boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
         boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
+        boolean soportaJerarquia = soportaJerarquiaDocumentoAnalizado(conn);
         String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
                 + (soportaAnalisisMultiple
                         ? "da.id_expediente_analisis, "
                         : "CAST(NULL AS NUMBER) AS id_expediente_analisis, ")
+                + (soportaJerarquia
+                        ? "da.id_documento_padre, NVL(da.nivel, 0) AS nivel, NVL(da.orden, 0) AS orden, "
+                        + "da.estado_respuesta, da.activo, "
+                        : "CAST(NULL AS NUMBER) AS id_documento_padre, 0 AS nivel, 0 AS orden, "
+                        + "CAST(NULL AS VARCHAR2(40)) AS estado_respuesta, da.activo, ")
+                + "da.creado_en, da.modificado_en, "
                 + "td.codigo AS tipo_documento_codigo, td.nombre AS tipo_documento_nombre, "
                 + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
                 + "da.fecha_documento, "
@@ -163,7 +174,10 @@ public class DocumentoAnalisisDAO {
                 + (soportaAnalisisMultiple && idExpedienteAnalisis != null
                         ? "AND da.id_expediente_analisis = ? "
                         : "")
-                + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+                + (soportaJerarquia
+                        ? "ORDER BY NVL(da.id_documento_padre, da.id_documento_analizado), NVL(da.nivel, 0), "
+                        + "NVL(da.orden, da.id_documento_analizado), da.id_documento_analizado"
+                        : "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC");
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             if (soportaAnalisisMultiple && idExpedienteAnalisis != null) {
@@ -190,7 +204,16 @@ public class DocumentoAnalisisDAO {
                             rs.getString("numero_hoja_envio_respuesta"),
                             rs.getInt("requiere_publicacion") == 1,
                             toLocalDate(rs.getDate("fecha_publicacion")),
-                            rs.getString("detalle_observacion")));
+                            rs.getString("detalle_observacion"),
+                            getLongOrNull(rs, "id_documento_padre"),
+                            rs.getInt("nivel"),
+                            rs.getInt("orden"),
+                            rs.getString("estado_respuesta"),
+                            rs.getInt("activo") == 1,
+                            "",
+                            toLocalDateTime(rs.getTimestamp("creado_en")),
+                            "",
+                            toLocalDateTime(rs.getTimestamp("modificado_en"))));
                 }
             }
         }
@@ -204,6 +227,66 @@ public class DocumentoAnalisisDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
             }
+        }
+    }
+
+    public void guardarDocumentosJerarquicos(
+            Connection conn,
+            Long idExpediente,
+            List<DocumentoAnalizadoDTO> documentos,
+            Long idUsuario) throws SQLException {
+        if (conn == null || idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para guardar documentos de análisis.");
+        }
+        if (!soportaJerarquiaDocumentoAnalizado(conn)) {
+            throw new SQLException("Faltan columnas jerárquicas en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 39_patch_documento_analizado_jerarquia.sql.");
+        }
+        Map<Long, Long> idsTemporales = new HashMap<Long, Long>();
+        if (documentos == null) {
+            return;
+        }
+        for (DocumentoAnalizadoDTO documento : documentos) {
+            if (documento == null) {
+                continue;
+            }
+            if (!documento.isActivo()) {
+                darBajaDocumentoAnalizado(conn, idExpediente, documento.getIdDocumentoAnalizado(), idUsuario);
+                continue;
+            }
+            validarJerarquia(documento, idsTemporales);
+            Long idPadre = resolverIdPadreJerarquico(documento, idsTemporales);
+            Long idDocumento = documento.getIdDocumentoAnalizado();
+            if (idDocumento == null || idDocumento.longValue() < 0L) {
+                Long nuevoId = insertarDocumentoAnalizadoJerarquico(conn, idExpediente, documento, idPadre, idUsuario);
+                if (idDocumento != null) {
+                    idsTemporales.put(idDocumento, nuevoId);
+                }
+            } else {
+                actualizarDocumentoAnalizadoJerarquico(conn, idExpediente, documento, idPadre, idUsuario);
+            }
+        }
+    }
+
+    public void darBajaDocumentoAnalizado(
+            Connection conn,
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            Long idUsuarioModificador) throws SQLException {
+        if (conn == null || idExpediente == null || idDocumentoAnalizado == null || idDocumentoAnalizado.longValue() < 0L) {
+            return;
+        }
+        String sql = "UPDATE expediente_documento_analizado SET activo = 0, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (idUsuarioModificador == null) {
+                ps.setNull(1, Types.NUMERIC);
+            } else {
+                ps.setLong(1, idUsuarioModificador);
+            }
+            ps.setLong(2, idDocumentoAnalizado);
+            ps.setLong(3, idExpediente);
+            ps.executeUpdate();
         }
     }
 
@@ -496,6 +579,129 @@ public class DocumentoAnalisisDAO {
         }
     }
 
+    private Long insertarDocumentoAnalizadoJerarquico(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idDocumentoPadre,
+            Long idUsuarioCreador) throws SQLException {
+        Long idTipoDocumento = catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, documento.getTipoDocumentoCodigo());
+        Long idEstadoDocumento = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, documento.getEstadoDocumentoCodigo());
+        if (idTipoDocumento == null) {
+            throw new SQLException("No se encontró el tipo de documento analizado: " + documento.getTipoDocumentoCodigo() + ".");
+        }
+        if (idEstadoDocumento == null) {
+            throw new SQLException("No se encontró el estado de documento: " + documento.getEstadoDocumentoCodigo() + ".");
+        }
+        boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
+        String sql = "INSERT INTO expediente_documento_analizado ("
+                + "id_expediente, "
+                + (soportaAnalisisMultiple ? "id_expediente_analisis, " : "")
+                + "id_documento_padre, nivel, orden, id_tipo_documento_adjunto, id_estado_documento, "
+                + "fecha_documento, numero_documento, detalle_observacion, descripcion, "
+                + "notificado, fecha_acuse, requiere_respuesta, confirmacion_respuesta, "
+                + "fecha_respuesta, numero_hoja_envio_respuesta, estado_respuesta, "
+                + "activo, creado_por, creado_en"
+                + ") VALUES (?, " + (soportaAnalisisMultiple ? "?, " : "")
+                + "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_DOCUMENTO_ANALIZADO"})) {
+            int index = 1;
+            ps.setLong(index++, idExpediente);
+            if (soportaAnalisisMultiple) {
+                setLongOrNull(ps, index++, documento.getIdExpedienteAnalisis());
+            }
+            setLongOrNull(ps, index++, idDocumentoPadre);
+            ps.setInt(index++, documento.getNivel());
+            ps.setInt(index++, documento.getOrden());
+            ps.setLong(index++, idTipoDocumento);
+            ps.setLong(index++, idEstadoDocumento);
+            setDateOrNull(ps, index++, documento.getFechaDocumento());
+            ps.setString(index++, limitar(documento.getNumeroDocumento(), 120));
+            setStringOrNull(ps, index++, detalleObservacionPersistencia(documento));
+            ps.setString(index++, limitar(documento.getDescripcion(), 1000));
+            RespuestaPersistencia respuesta = respuestaPersistencia(documento, true);
+            ps.setInt(index++, documento.isNotificado() ? 1 : 0);
+            setDateOrNull(ps, index++, documento.getFechaAcuse());
+            ps.setInt(index++, documento.isRequiereRespuesta() ? 1 : 0);
+            setStringOrNull(ps, index++, respuesta.confirmacion);
+            setDateOrNull(ps, index++, respuesta.fechaRespuesta);
+            setStringOrNull(ps, index++, respuesta.hojaRespuesta);
+            setStringOrNull(ps, index++, estadoRespuestaPersistencia(documento));
+            if (idUsuarioCreador == null) {
+                ps.setNull(index, Types.NUMERIC);
+            } else {
+                ps.setLong(index, idUsuarioCreador);
+            }
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    return keys.getLong(1);
+                }
+            }
+        }
+        throw new SQLException("No se pudo obtener el identificador generado del documento analizado.");
+    }
+
+    private void actualizarDocumentoAnalizadoJerarquico(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idDocumentoPadre,
+            Long idUsuarioModificador) throws SQLException {
+        Long idTipoDocumento = catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, documento.getTipoDocumentoCodigo());
+        Long idEstadoDocumento = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, documento.getEstadoDocumentoCodigo());
+        if (idTipoDocumento == null) {
+            throw new SQLException("No se encontró el tipo de documento analizado: " + documento.getTipoDocumentoCodigo() + ".");
+        }
+        if (idEstadoDocumento == null) {
+            throw new SQLException("No se encontró el estado de documento: " + documento.getEstadoDocumentoCodigo() + ".");
+        }
+        boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
+        String sql = "UPDATE expediente_documento_analizado SET "
+                + (soportaAnalisisMultiple ? "id_expediente_analisis = ?, " : "")
+                + "id_documento_padre = ?, nivel = ?, orden = ?, "
+                + "id_tipo_documento_adjunto = ?, id_estado_documento = ?, fecha_documento = ?, "
+                + "numero_documento = ?, detalle_observacion = ?, descripcion = ?, "
+                + "notificado = ?, fecha_acuse = ?, requiere_respuesta = ?, confirmacion_respuesta = ?, "
+                + "fecha_respuesta = ?, numero_hoja_envio_respuesta = ?, estado_respuesta = ?, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int index = 1;
+            if (soportaAnalisisMultiple) {
+                setLongOrNull(ps, index++, documento.getIdExpedienteAnalisis());
+            }
+            setLongOrNull(ps, index++, idDocumentoPadre);
+            ps.setInt(index++, documento.getNivel());
+            ps.setInt(index++, documento.getOrden());
+            ps.setLong(index++, idTipoDocumento);
+            ps.setLong(index++, idEstadoDocumento);
+            setDateOrNull(ps, index++, documento.getFechaDocumento());
+            ps.setString(index++, limitar(documento.getNumeroDocumento(), 120));
+            setStringOrNull(ps, index++, detalleObservacionPersistencia(documento));
+            ps.setString(index++, limitar(documento.getDescripcion(), 1000));
+            RespuestaPersistencia respuesta = respuestaPersistencia(documento, true);
+            ps.setInt(index++, documento.isNotificado() ? 1 : 0);
+            setDateOrNull(ps, index++, documento.getFechaAcuse());
+            ps.setInt(index++, documento.isRequiereRespuesta() ? 1 : 0);
+            setStringOrNull(ps, index++, respuesta.confirmacion);
+            setDateOrNull(ps, index++, respuesta.fechaRespuesta);
+            setStringOrNull(ps, index++, respuesta.hojaRespuesta);
+            setStringOrNull(ps, index++, estadoRespuestaPersistencia(documento));
+            if (idUsuarioModificador == null) {
+                ps.setNull(index++, Types.NUMERIC);
+            } else {
+                ps.setLong(index++, idUsuarioModificador);
+            }
+            ps.setLong(index++, documento.getIdDocumentoAnalizado());
+            ps.setLong(index, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar el documento analizado.");
+            }
+        }
+    }
+
     public void actualizarEstadoDocumentoAnalizado(
             Connection conn,
             Long idExpediente,
@@ -531,6 +737,10 @@ public class DocumentoAnalisisDAO {
 
     private static LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toLocalDate();
+    }
+
+    private static LocalDateTime toLocalDateTime(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
     private static void setDateOrNull(PreparedStatement ps, int index, LocalDate date) throws SQLException {
@@ -587,6 +797,16 @@ public class DocumentoAnalisisDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private static boolean soportaJerarquiaDocumentoAnalizado(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(DISTINCT column_name) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                + "AND column_name IN ('ID_DOCUMENTO_PADRE', 'NIVEL', 'ORDEN', 'ESTADO_RESPUESTA')";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 4;
         }
     }
 
@@ -745,6 +965,47 @@ public class DocumentoAnalisisDAO {
 
     private static boolean esEstadoObservado(String codigo) {
         return "OBSERVADO".equalsIgnoreCase(codigo == null ? "" : codigo.trim());
+    }
+
+    private static void validarJerarquia(
+            DocumentoAnalizadoDTO documento,
+            Map<Long, Long> idsTemporales) throws SQLException {
+        if (documento.getNivel() < 0 || documento.getNivel() > 1) {
+            throw new SQLException("Solo se permiten documentos principales e hijos directos.");
+        }
+        if (documento.getNivel() == 0 && documento.getIdDocumentoPadre() != null) {
+            throw new SQLException("Un documento principal no debe tener documento padre.");
+        }
+        if (documento.getNivel() == 1) {
+            Long idPadre = documento.getIdDocumentoPadre();
+            if (idPadre == null) {
+                throw new SQLException("Toda respuesta debe estar asociada a un documento analizado que requiere respuesta.");
+            }
+            if (idPadre.longValue() < 0L && (idsTemporales == null || !idsTemporales.containsKey(idPadre))) {
+                throw new SQLException("El documento padre debe guardarse antes de registrar el documento hijo.");
+            }
+        }
+    }
+
+    private static Long resolverIdPadreJerarquico(
+            DocumentoAnalizadoDTO documento,
+            Map<Long, Long> idsTemporales) {
+        Long idPadre = documento.getIdDocumentoPadre();
+        if (idPadre == null) {
+            return null;
+        }
+        if (idPadre.longValue() < 0L && idsTemporales != null) {
+            return idsTemporales.get(idPadre);
+        }
+        return idPadre;
+    }
+
+    private static String estadoRespuestaPersistencia(DocumentoAnalizadoDTO documento) {
+        String estado = documento.getEstadoRespuesta();
+        if (estado != null && !estado.trim().isEmpty()) {
+            return limitar(estado.trim().toUpperCase(java.util.Locale.ROOT), 40);
+        }
+        return documento.isRequiereRespuesta() ? "PENDIENTE" : null;
     }
 
     private static String nombrePersona(String alias) {

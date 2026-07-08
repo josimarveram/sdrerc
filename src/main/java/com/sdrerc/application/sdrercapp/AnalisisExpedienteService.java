@@ -144,6 +144,19 @@ public class AnalisisExpedienteService {
                 resolverUsuarioActualSdrercApp());
     }
 
+    public AnalisisResultadoDTO guardarDocumentosAnalisisJerarquicos(
+            Long idExpediente,
+            List<DocumentoAnalizadoDTO> documentos) throws SQLException {
+        List<String> errores = validacionService.validarDocumentosAnalisis(idExpediente, documentos);
+        if (!errores.isEmpty()) {
+            throw new IllegalArgumentException(String.join("\n", errores));
+        }
+        return analisisExpedienteDAO.guardarDocumentosAnalisisJerarquicos(
+                idExpediente,
+                documentos,
+                resolverUsuarioActualSdrercApp());
+    }
+
     public AnalisisResultadoDTO guardarDocumentoAnalisis(
             Long idExpediente,
             Long idExpedienteAnalisis,

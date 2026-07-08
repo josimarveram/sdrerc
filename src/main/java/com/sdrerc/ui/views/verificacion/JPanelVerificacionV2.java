@@ -1024,19 +1024,16 @@ public class JPanelVerificacionV2 extends JPanel {
         txtFechaEmision.setPreferredSize(new Dimension(235, 34));
         txtFechaResolucion.setPreferredSize(new Dimension(235, 34));
         spnLimite.setPreferredSize(new Dimension(86, 34));
-        btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnCancelarVerificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnAprobar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnEnviarFirma.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnObservar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnDocumentoInconsistente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnDevolverAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarFirma.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarEmision.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarNumero.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnEnviarEjecucion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnEnviarNotificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        AppV2Theme.estilizarBotonPrimario(btnBuscar);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarVerificacion);
+        AppV2Theme.estilizarBotonPrimario(btnAprobar);
+        AppV2Theme.estilizarBotonPrimario(btnEnviarFirma);
+        AppV2Theme.estilizarBotonPrimario(btnDevolverAnalisis);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarFirma);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarEmision);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarNumero);
+        AppV2Theme.estilizarBotonPrimario(btnEnviarEjecucion);
+        AppV2Theme.estilizarBotonPrimario(btnEnviarNotificacion);
     }
 
     private void configurarTabla() {

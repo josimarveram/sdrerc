@@ -533,6 +533,43 @@ public class AnalisisExpedienteDAO {
         }
     }
 
+    public AnalisisResultadoDTO guardarDocumentosAnalisisJerarquicos(
+            Long idExpediente,
+            List<DocumentoAnalizadoDTO> documentos,
+            Long idUsuario) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteBloqueado expediente = bloquearExpediente(conn, idExpediente);
+                if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
+                        || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo))) {
+                    throw new SQLException("El expediente debe estar en Análisis para guardar documentos de análisis.");
+                }
+                documentoAnalisisDAO.guardarDocumentosJerarquicos(conn, idExpediente, documentos, idUsuario);
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return new AnalisisResultadoDTO(
+                        idExpediente,
+                        expediente.numeroExpediente,
+                        "GUARDAR_DOCUMENTOS_ANALISIS",
+                        ETAPA_ANALISIS,
+                        expediente.estadoCodigo,
+                        "Los documentos de análisis fueron guardados correctamente.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
     public AnalisisResultadoDTO enviarVerificacion(Long idExpediente, String comentario, Long idUsuario) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             ExpedienteBloqueado expediente = obtenerExpediente(conn, idExpediente);

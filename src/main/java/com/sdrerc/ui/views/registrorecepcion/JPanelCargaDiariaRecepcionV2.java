@@ -314,6 +314,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         btnDescargarPlantilla.addActionListener(e -> descargarPlantilla());
         btnArchivo.addActionListener(e -> seleccionarArchivo());
         btnPrevisualizar.addActionListener(e -> previsualizar());
+        AppV2Theme.estilizarBotonPrimario(btnValidar);
+        AppV2Theme.estilizarBotonPrimario(btnConfirmar);
         btnValidar.addActionListener(e -> validar());
         btnConfirmar.addActionListener(e -> confirmarCarga());
         btnExportar.addActionListener(e -> exportarPrevisualizacion());

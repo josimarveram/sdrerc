@@ -4,6 +4,7 @@ import com.sdrerc.ui.appv2.util.AppV2DisplayScale;
 import java.awt.Color;
 import java.awt.Font;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.border.Border;
 
 public final class AppV2Theme {
@@ -89,5 +90,34 @@ public final class AppV2Theme {
         return BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER),
                 BorderFactory.createEmptyBorder(SPACE, SPACE_LARGE, SPACE, SPACE_LARGE));
+    }
+
+    public static void estilizarBotonPrimario(JButton button) {
+        if (button == null) {
+            return;
+        }
+        button.setFocusPainted(false);
+        button.setContentAreaFilled(true);
+        button.setOpaque(true);
+        button.setBorderPainted(false);
+        button.setFont(fontBold(FONT_SIZE_BASE));
+        button.setBackground(PRIMARY);
+        button.setForeground(Color.WHITE);
+    }
+
+    public static void estilizarBotonSecundario(JButton button) {
+        if (button == null) {
+            return;
+        }
+        button.setFocusPainted(false);
+        button.setContentAreaFilled(true);
+        button.setOpaque(true);
+        button.setBorderPainted(true);
+        button.setFont(fontBold(FONT_SIZE_BASE));
+        button.setBackground(SURFACE_ALT);
+        button.setForeground(TEXT_PRIMARY);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER),
+                BorderFactory.createEmptyBorder(7, 14, 7, 14)));
     }
 }

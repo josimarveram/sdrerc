@@ -403,6 +403,8 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         btnValidar.setText(modoEdicion() ? "Validar cambios" : "Validar");
         btnLimpiar.setText(modoEdicion() ? "Cancelar edición" : "Limpiar");
         btnRegistrar.setText(modoEdicion() ? "Guardar cambios" : "Registrar expediente");
+        AppV2Theme.estilizarBotonPrimario(btnValidar);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrar);
         btnRegistrar.setEnabled(false);
         establecerNumeroExpedienteVisible(modoEdicion() ? "Cargando..." : "Pendiente de generación al guardar");
     }

@@ -23,7 +23,10 @@ public class ExpedienteRelacionadoDTO {
     private final String etapaCodigo;
     private final String estadoCodigo;
     private final LocalDate fechaRecepcion;
+    private final LocalDate fechaVencimiento;
+    private final Long diasRestantes;
     private final String motivoCoincidencia;
+    private final String alertaIngreso;
     private final String tipoRelacion;
     private final String descripcionRelacion;
     private final LocalDateTime fechaRelacion;
@@ -47,7 +50,10 @@ public class ExpedienteRelacionadoDTO {
             String etapaCodigo,
             String estadoCodigo,
             LocalDate fechaRecepcion,
+            LocalDate fechaVencimiento,
+            Long diasRestantes,
             String motivoCoincidencia,
+            String alertaIngreso,
             String tipoRelacion,
             String descripcionRelacion,
             LocalDateTime fechaRelacion,
@@ -69,7 +75,10 @@ public class ExpedienteRelacionadoDTO {
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
         this.fechaRecepcion = fechaRecepcion;
+        this.fechaVencimiento = fechaVencimiento;
+        this.diasRestantes = diasRestantes;
         this.motivoCoincidencia = safe(motivoCoincidencia);
+        this.alertaIngreso = safe(alertaIngreso);
         this.tipoRelacion = safe(tipoRelacion);
         this.descripcionRelacion = safe(descripcionRelacion);
         this.fechaRelacion = fechaRelacion;
@@ -144,8 +153,20 @@ public class ExpedienteRelacionadoDTO {
         return fechaRecepcion;
     }
 
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
+    }
+
+    public Long getDiasRestantes() {
+        return diasRestantes;
+    }
+
     public String getMotivoCoincidencia() {
         return motivoCoincidencia;
+    }
+
+    public String getAlertaIngreso() {
+        return alertaIngreso;
     }
 
     public String getTipoRelacion() {

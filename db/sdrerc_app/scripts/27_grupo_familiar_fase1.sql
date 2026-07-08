@@ -16,7 +16,7 @@ BEGIN
     'Marca funcional de grupo familiar: 1=Si, 0=No. No bloquea registro ni importacion.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -36,7 +36,7 @@ BEGIN
     'Criterio de marca o deteccion de grupo familiar: MANUAL, EXCEL, COINCIDENCIA_APELLIDOS_EXCEL o COINCIDENCIA_APELLIDOS_BD.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -56,7 +56,7 @@ BEGIN
     'Observacion o alerta no bloqueante asociada a grupo familiar.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -75,7 +75,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 SELECT column_name, data_type, data_length, nullable, data_default
   FROM user_tab_columns

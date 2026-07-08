@@ -609,13 +609,13 @@ public class JPanelNotificacionV2 extends JPanel {
         txtResultado.setPreferredSize(new Dimension(250, 34));
         txtRecibidoPor.setPreferredSize(new Dimension(250, 34));
         spnLimite.setPreferredSize(new Dimension(86, 34));
-        btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarNotificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarCargo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnMarcarNotificado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRequierePublicacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        AppV2Theme.estilizarBotonPrimario(btnBuscar);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarNotificacion);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarCargo);
+        AppV2Theme.estilizarBotonPrimario(btnMarcarNotificado);
+        AppV2Theme.estilizarBotonPrimario(btnRequierePublicacion);
         btnRequierePublicacion.setToolTipText("Preparar metadata para publicación futura sin registrar publicación real.");
-        btnCerrarExpediente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        AppV2Theme.estilizarBotonPrimario(btnCerrarExpediente);
     }
 
     private void configurarTabla() {

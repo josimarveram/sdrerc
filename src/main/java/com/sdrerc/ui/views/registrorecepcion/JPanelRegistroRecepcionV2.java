@@ -192,7 +192,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
 
             JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             acciones.setOpaque(false);
-            btnRegistrar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+            AppV2Theme.estilizarBotonPrimario(btnRegistrar);
             btnLimpiar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
             btnRegistrar.addActionListener(e -> registrarGrupoFamiliar());
             btnLimpiar.addActionListener(e -> limpiarSeleccion());

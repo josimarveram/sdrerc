@@ -27,10 +27,14 @@ public class AnalisisValidacionService {
         if (!hasText(registro.getFundamento())) {
             errores.add("Ingrese el sustento o conclusión del análisis.");
         }
-        if (!noCorresponde && registro.getDocumentosAnalizados().isEmpty()) {
+        List<DocumentoAnalizadoDTO> documentosRegistro = registro.getDocumentosAnalizados();
+        if (!noCorresponde && !tieneDocumentosActivos(documentosRegistro)) {
             errores.add("Agregue al menos un documento analizado.");
         }
-        for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
+        for (DocumentoAnalizadoDTO documento : documentosRegistro) {
+            if (documento != null && !documento.isActivo()) {
+                continue;
+            }
             if (!hasText(documento.getTipoDocumentoCodigo())) {
                 errores.add("Seleccione el tipo de cada documento analizado.");
                 break;
@@ -83,7 +87,14 @@ public class AnalisisValidacionService {
             errores.add("Agregue al menos un documento de análisis.");
             return errores;
         }
+        if (!tieneDocumentosActivos(items)) {
+            errores.add("Agregue al menos un documento de análisis activo.");
+            return errores;
+        }
         for (DocumentoAnalizadoDTO documento : items) {
+            if (documento != null && !documento.isActivo()) {
+                continue;
+            }
             if (!hasText(documento.getTipoDocumentoCodigo())) {
                 errores.add("Seleccione el tipo de cada documento de análisis.");
                 break;
@@ -112,5 +123,17 @@ public class AnalisisValidacionService {
 
     private static boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private static boolean tieneDocumentosActivos(List<DocumentoAnalizadoDTO> documentos) {
+        if (documentos == null || documentos.isEmpty()) {
+            return false;
+        }
+        for (DocumentoAnalizadoDTO documento : documentos) {
+            if (documento != null && documento.isActivo()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

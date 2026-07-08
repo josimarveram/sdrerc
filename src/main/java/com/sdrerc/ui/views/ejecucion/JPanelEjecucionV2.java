@@ -483,13 +483,10 @@ public class JPanelEjecucionV2 extends JPanel {
         cmbMotivoCorreccion.setPreferredSize(new Dimension(250, 34));
         txtFechaEjecucion.setPreferredSize(new Dimension(250, 34));
         spnLimite.setPreferredSize(new Dimension(86, 34));
-        btnBuscar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRegistrarEjecucion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnMarcarEjecutado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnObservar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnDocumentoInconsistente.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnRevertirAnalisis.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        btnDerivarNotificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        AppV2Theme.estilizarBotonPrimario(btnBuscar);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarEjecucion);
+        AppV2Theme.estilizarBotonPrimario(btnMarcarEjecutado);
+        AppV2Theme.estilizarBotonPrimario(btnDerivarNotificacion);
     }
 
     private void configurarTabla() {

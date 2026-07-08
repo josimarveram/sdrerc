@@ -209,7 +209,7 @@ public class ExpedienteRegistroDAO {
                 Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
                 Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_CARGA_DIARIA), "movimiento IMPORTACION_CARGA_DIARIA");
-                boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+                boolean soportaGrupoFamiliar = soportaGrupoFamiliarSolicitud(conn);
 
                 for (CargaDiariaPreviewDTO item : candidatos) {
                     Long idTitular = insertarPersona(
@@ -309,7 +309,7 @@ public class ExpedienteRegistroDAO {
                 Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
                 Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
                 Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_REGISTRO_MANUAL), "movimiento RECEPCION_DOCUMENTO");
-                boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+                boolean soportaGrupoFamiliar = soportaGrupoFamiliarSolicitud(conn);
                 DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(
                         conn,
                         registro.getActa().getNumeroActa(),
@@ -378,16 +378,14 @@ public class ExpedienteRegistroDAO {
             boolean previousAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             try {
-                boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
-                if (!soportaGrupoFamiliar) {
-                    throw new SQLException("La base de datos no soporta la marca de grupo familiar.");
-                }
+                boolean soportaGrupoFamiliarSolicitud = soportaGrupoFamiliarSolicitud(conn);
+                boolean soportaGrupoFamiliarExpediente = soportaGrupoFamiliarExpediente(conn);
                 int total = 0;
                 for (Long idExpediente : idsExpediente) {
                     if (idExpediente == null) {
                         continue;
                     }
-                    total += registrarGrupoFamiliar(conn, idExpediente);
+                    total += registrarGrupoFamiliar(conn, idExpediente, soportaGrupoFamiliarSolicitud, soportaGrupoFamiliarExpediente);
                 }
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);
@@ -1095,24 +1093,42 @@ public class ExpedienteRegistroDAO {
                 resolverUsuarioActual());
     }
 
-    private int registrarGrupoFamiliar(Connection conn, Long idExpediente) throws SQLException {
+    private int registrarGrupoFamiliar(Connection conn, Long idExpediente, boolean soportaSolicitud, boolean soportaExpediente) throws SQLException {
         Long idSolicitud = obtenerUltimaSolicitudActivaId(conn, idExpediente);
-        if (idSolicitud == null) {
-            throw new SQLException("No se encontró la solicitud activa del expediente " + idExpediente + ".");
-        }
-        String update = "UPDATE expediente_solicitud SET "
-                + "grupo_familiar = 1, "
-                + "criterio_grupo_familiar = CASE "
-                + "WHEN criterio_grupo_familiar IS NULL OR TRIM(criterio_grupo_familiar) = '' THEN 'MANUAL' "
-                + "ELSE criterio_grupo_familiar END, "
-                + "modificado_en = SYSTIMESTAMP "
-                + "WHERE id_expediente_solicitud = ?";
-        try (PreparedStatement ps = conn.prepareStatement(update)) {
-            ps.setLong(1, idSolicitud);
-            int updated = ps.executeUpdate();
-            if (updated != 1) {
-                throw new SQLException("No se pudo registrar el grupo familiar para el expediente " + idExpediente + ".");
+        int updated = 0;
+        boolean persistioMarca = false;
+        if (soportaSolicitud && idSolicitud != null) {
+            String update = "UPDATE expediente_solicitud SET "
+                    + "grupo_familiar = 1, "
+                    + "criterio_grupo_familiar = CASE "
+                    + "WHEN criterio_grupo_familiar IS NULL OR TRIM(criterio_grupo_familiar) = '' THEN 'MANUAL' "
+                    + "ELSE criterio_grupo_familiar END, "
+                    + "modificado_en = SYSTIMESTAMP "
+                    + "WHERE id_expediente_solicitud = ?";
+            try (PreparedStatement ps = conn.prepareStatement(update)) {
+                ps.setLong(1, idSolicitud);
+                updated = ps.executeUpdate();
+                persistioMarca = updated == 1;
             }
+        }
+        if (!persistioMarca && soportaExpediente) {
+            String update = "UPDATE expediente SET "
+                    + "tipo_grupo_familiar = 1 "
+                    + "WHERE id_expediente = ?";
+            try (PreparedStatement ps = conn.prepareStatement(update)) {
+                ps.setLong(1, idExpediente);
+                updated = ps.executeUpdate();
+                persistioMarca = updated == 1;
+            }
+        }
+        if (!persistioMarca && !soportaSolicitud && !soportaExpediente) {
+            updated = 1;
+        }
+        if (updated != 1 && persistioMarca) {
+            updated = 1;
+        }
+        if (updated != 1) {
+            throw new SQLException("No se pudo registrar el grupo familiar para el expediente " + idExpediente + ".");
         }
         expedienteAlertaDAO.marcarAtendidas(
                 conn,
@@ -1149,10 +1165,20 @@ public class ExpedienteRegistroDAO {
         }
     }
 
-    private boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+    private boolean soportaGrupoFamiliarSolicitud(Connection conn) throws SQLException {
         String sql = "SELECT COUNT(1) FROM user_tab_columns "
                 + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
                 + "AND column_name = 'GRUPO_FAMILIAR'";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private boolean soportaGrupoFamiliarExpediente(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE' "
+                + "AND column_name = 'TIPO_GRUPO_FAMILIAR'";
         try (Statement st = conn.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
             return rs.next() && rs.getInt(1) > 0;

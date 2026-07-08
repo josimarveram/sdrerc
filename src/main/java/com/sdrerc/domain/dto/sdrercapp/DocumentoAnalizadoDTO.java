@@ -1,6 +1,7 @@
 package com.sdrerc.domain.dto.sdrercapp;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class DocumentoAnalizadoDTO {
 
@@ -23,6 +24,15 @@ public class DocumentoAnalizadoDTO {
     private final boolean requierePublicacion;
     private final LocalDate fechaPublicacion;
     private final String detalleObservacion;
+    private final Long idDocumentoPadre;
+    private final int nivel;
+    private final int orden;
+    private final String estadoRespuesta;
+    private final boolean activo;
+    private final String usuarioRegistro;
+    private final LocalDateTime fechaRegistro;
+    private final String usuarioModificacion;
+    private final LocalDateTime fechaModificacion;
 
     public DocumentoAnalizadoDTO(
             Long idDocumentoAnalizado,
@@ -273,7 +283,16 @@ public class DocumentoAnalizadoDTO {
                 numeroHojaEnvioRespuesta,
                 requierePublicacion,
                 fechaPublicacion,
-                detalleObservacion);
+                detalleObservacion,
+                null,
+                0,
+                0,
+                "",
+                true,
+                "",
+                null,
+                "",
+                null);
     }
 
     public DocumentoAnalizadoDTO(
@@ -296,6 +315,66 @@ public class DocumentoAnalizadoDTO {
             boolean requierePublicacion,
             LocalDate fechaPublicacion,
             String detalleObservacion) {
+        this(
+                idDocumentoAnalizado,
+                idExpediente,
+                idExpedienteAnalisis,
+                tipoDocumentoCodigo,
+                tipoDocumentoNombre,
+                estadoDocumentoCodigo,
+                estadoDocumentoNombre,
+                fechaDocumento,
+                numeroDocumento,
+                descripcion,
+                notificado,
+                fechaAcuse,
+                requiereRespuesta,
+                confirmacionRespuesta,
+                fechaRespuesta,
+                numeroHojaEnvioRespuesta,
+                requierePublicacion,
+                fechaPublicacion,
+                detalleObservacion,
+                null,
+                0,
+                0,
+                "",
+                true,
+                "",
+                null,
+                "",
+                null);
+    }
+
+    public DocumentoAnalizadoDTO(
+            Long idDocumentoAnalizado,
+            Long idExpediente,
+            Long idExpedienteAnalisis,
+            String tipoDocumentoCodigo,
+            String tipoDocumentoNombre,
+            String estadoDocumentoCodigo,
+            String estadoDocumentoNombre,
+            LocalDate fechaDocumento,
+            String numeroDocumento,
+            String descripcion,
+            boolean notificado,
+            LocalDate fechaAcuse,
+            boolean requiereRespuesta,
+            String confirmacionRespuesta,
+            LocalDate fechaRespuesta,
+            String numeroHojaEnvioRespuesta,
+            boolean requierePublicacion,
+            LocalDate fechaPublicacion,
+            String detalleObservacion,
+            Long idDocumentoPadre,
+            int nivel,
+            int orden,
+            String estadoRespuesta,
+            boolean activo,
+            String usuarioRegistro,
+            LocalDateTime fechaRegistro,
+            String usuarioModificacion,
+            LocalDateTime fechaModificacion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.idExpedienteAnalisis = idExpedienteAnalisis;
@@ -315,6 +394,15 @@ public class DocumentoAnalizadoDTO {
         this.requierePublicacion = requierePublicacion;
         this.fechaPublicacion = fechaPublicacion;
         this.detalleObservacion = safe(detalleObservacion);
+        this.idDocumentoPadre = idDocumentoPadre;
+        this.nivel = nivel;
+        this.orden = orden;
+        this.estadoRespuesta = safe(estadoRespuesta);
+        this.activo = activo;
+        this.usuarioRegistro = safe(usuarioRegistro);
+        this.fechaRegistro = fechaRegistro;
+        this.usuarioModificacion = safe(usuarioModificacion);
+        this.fechaModificacion = fechaModificacion;
     }
 
     public static DocumentoAnalizadoDTO nuevo(
@@ -410,6 +498,42 @@ public class DocumentoAnalizadoDTO {
 
     public String getDetalleObservacion() {
         return detalleObservacion;
+    }
+
+    public Long getIdDocumentoPadre() {
+        return idDocumentoPadre;
+    }
+
+    public int getNivel() {
+        return nivel;
+    }
+
+    public int getOrden() {
+        return orden;
+    }
+
+    public String getEstadoRespuesta() {
+        return estadoRespuesta;
+    }
+
+    public boolean isActivo() {
+        return activo;
+    }
+
+    public String getUsuarioRegistro() {
+        return usuarioRegistro;
+    }
+
+    public LocalDateTime getFechaRegistro() {
+        return fechaRegistro;
+    }
+
+    public String getUsuarioModificacion() {
+        return usuarioModificacion;
+    }
+
+    public LocalDateTime getFechaModificacion() {
+        return fechaModificacion;
     }
 
     private static String safe(String value) {
