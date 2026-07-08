@@ -21,10 +21,10 @@ import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2AssociatedDocumentIconCell;
 import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
+import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2ReceiveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
-import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
@@ -470,18 +470,20 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private JPanel crearBuscador() {
         configurarControles();
-        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
         accionesFiltro.add(btnRefrescar);
         accionesFiltro.add(btnEditar);
-        toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
-        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
-        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
-        toolbar.addFilter("Estado", cmbEstadoFiltro);
-        toolbar.addCompactFilter(spnLimite);
-        return toolbar;
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusqueda,
+                accionesFiltro,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                cmbEstadoFiltro,
+                null,
+                spnLimite);
     }
 
     private JPanel crearBandeja() {

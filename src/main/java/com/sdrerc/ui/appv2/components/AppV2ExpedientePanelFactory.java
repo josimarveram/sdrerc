@@ -70,13 +70,16 @@ public final class AppV2ExpedientePanelFactory {
         GridBagConstraints gbcEstado = constraintsRow();
         filaEstado.add(crearCampoInline("Estado", estado, 240), gbcEstado);
 
-        gbcEstado.gridx = 1;
-        filaEstado.add(crearFiltroGrupoFamiliarInline(grupoFamiliar), gbcEstado);
+        int columnaEstado = 1;
+        if (grupoFamiliar != null) {
+            gbcEstado.gridx = columnaEstado++;
+            filaEstado.add(crearFiltroGrupoFamiliarInline(grupoFamiliar), gbcEstado);
+        }
 
-        gbcEstado.gridx = 2;
+        gbcEstado.gridx = columnaEstado++;
         filaEstado.add(crearControlInline(limite, 86), gbcEstado);
 
-        gbcEstado.gridx = 3;
+        gbcEstado.gridx = columnaEstado;
         gbcEstado.weightx = 1.0;
         gbcEstado.fill = GridBagConstraints.HORIZONTAL;
         filaEstado.add(Box.createHorizontalGlue(), gbcEstado);
