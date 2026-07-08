@@ -49,14 +49,14 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
     private static final int COL_EXPANDIR = 0;
     private static final int COL_TIPO = 1;
     private static final int COL_NUMERO = 2;
-    private static final int COL_FECHA = 3;
-    private static final int COL_DESCRIPCION = 4;
-    private static final int COL_REQUIERE_RESPUESTA = 5;
-    private static final int COL_ESTADO_RESPUESTA = 6;
-    private static final int COL_ESTADO_DOCUMENTO = 7;
-    private static final int COL_OBSERVACION = 8;
-    private static final int COL_USUARIO_REGISTRO = 9;
-    private static final int COL_FECHA_REGISTRO = 10;
+    private static final int COL_ESTADO_DOCUMENTO = 3;
+    private static final int COL_FECHA = 4;
+    private static final int COL_DESCRIPCION = 5;
+    private static final int COL_REQUIERE_RESPUESTA = 6;
+    private static final int COL_CONFIRMACION_RESPUESTA = 7;
+    private static final int COL_FECHA_RESPUESTA = 8;
+    private static final int COL_FECHA_PUBLICACION = 9;
+    private static final int COL_HOJA_ENVIO = 10;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -141,7 +141,7 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
     }
 
     private void configurarTabla() {
-        table.setRowHeight(34);
+        table.setRowHeight(28);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
@@ -154,8 +154,8 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         table.setDefaultRenderer(Object.class, new DocumentoTreeRenderer());
         table.setDefaultRenderer(Boolean.class, new DocumentoTreeBooleanRenderer());
         table.getColumnModel().getColumn(COL_DESCRIPCION).setCellEditor(new TextAreaCellEditor());
-        table.getColumnModel().getColumn(COL_OBSERVACION).setCellEditor(new TextAreaCellEditor());
-        int[] widths = new int[]{54, 210, 130, 110, 260, 145, 135, 150, 220, 130, 140};
+        table.getColumnModel().getColumn(COL_CONFIRMACION_RESPUESTA).setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
+        int[] widths = new int[]{50, 200, 130, 150, 110, 240, 140, 160, 120, 130, 130};
         for (int i = 0; i < widths.length; i++) {
             TableColumn column = table.getColumnModel().getColumn(i);
             column.setPreferredWidth(widths[i]);
@@ -164,6 +164,7 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         scrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setPreferredSize(new Dimension(820, 190));
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -330,6 +331,12 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         return combo;
     }
 
+    private JComboBox<String> comboConfirmacionRespuesta() {
+        JComboBox<String> combo = new JComboBox<String>(new String[]{"Pendiente", "Si", "No"});
+        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        return combo;
+    }
+
     private void actualizarEstado() {
         lblEstado.setText(model.getActivosCount() + " documento(s) activos. Guardar documentos no mueve el expediente de etapa.");
     }
@@ -365,9 +372,9 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         private final List<DocumentoRow> allRows = new ArrayList<DocumentoRow>();
         private final List<DocumentoRow> visibleRows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "", "Tipo documento", "Número documento", "Fecha documento", "Descripción",
-            "¿Requiere respuesta?", "Estado respuesta", "Estado documento", "Observación",
-            "Usuario registro", "Fecha registro"
+            "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
+            "Comentario", "¿Requiere respuesta?", "Confirmación de respuesta", "Fecha Respuesta",
+            "Fecha Publicación", "Hoja de Envío"
         };
 
         void setDocumentos(List<DocumentoAnalizadoDTO> documentos) {
@@ -505,12 +512,22 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
 
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
+            DocumentoRow row = getVisibleRow(rowIndex);
+            if (row == null) {
+                return false;
+            }
+            if (row.nivel == 0) {
+                return columnIndex == COL_TIPO
+                        || columnIndex == COL_NUMERO
+                        || columnIndex == COL_ESTADO_DOCUMENTO
+                        || columnIndex == COL_FECHA
+                        || columnIndex == COL_DESCRIPCION
+                        || columnIndex == COL_REQUIERE_RESPUESTA;
+            }
             return columnIndex == COL_TIPO
-                    || columnIndex == COL_NUMERO
-                    || columnIndex == COL_FECHA
-                    || columnIndex == COL_DESCRIPCION
-                    || columnIndex == COL_REQUIERE_RESPUESTA
-                    || columnIndex == COL_OBSERVACION;
+                    || columnIndex == COL_CONFIRMACION_RESPUESTA
+                    || columnIndex == COL_FECHA_RESPUESTA
+                    || columnIndex == COL_HOJA_ENVIO;
         }
 
         @Override
@@ -525,23 +542,23 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                 case COL_TIPO:
                     return row.tipo;
                 case COL_NUMERO:
-                    return row.numeroDocumento;
-                case COL_FECHA:
-                    return row.fechaDocumento == null ? "" : DATE_FORMAT.format(row.fechaDocumento);
-                case COL_DESCRIPCION:
-                    return row.descripcion;
-                case COL_REQUIERE_RESPUESTA:
-                    return row.requiereRespuesta;
-                case COL_ESTADO_RESPUESTA:
-                    return row.estadoRespuesta;
+                    return row.nivel == 0 ? row.numeroDocumento : "";
                 case COL_ESTADO_DOCUMENTO:
-                    return row.estadoDocumento;
-                case COL_OBSERVACION:
-                    return row.observacion;
-                case COL_USUARIO_REGISTRO:
-                    return row.usuarioRegistro;
-                case COL_FECHA_REGISTRO:
-                    return row.fechaRegistro == null ? "" : DATE_TIME_FORMAT.format(row.fechaRegistro);
+                    return row.nivel == 0 ? row.estadoDocumento : null;
+                case COL_FECHA:
+                    return row.nivel == 0 && row.fechaDocumento != null ? DATE_FORMAT.format(row.fechaDocumento) : "";
+                case COL_DESCRIPCION:
+                    return row.nivel == 0 ? row.descripcion : "";
+                case COL_REQUIERE_RESPUESTA:
+                    return row.nivel == 0 && row.requiereRespuesta;
+                case COL_CONFIRMACION_RESPUESTA:
+                    return row.nivel == 1 ? row.confirmacionRespuesta : "";
+                case COL_FECHA_RESPUESTA:
+                    return row.nivel == 1 && row.fechaRespuesta != null ? DATE_FORMAT.format(row.fechaRespuesta) : "";
+                case COL_FECHA_PUBLICACION:
+                    return row.nivel == 1 && row.fechaPublicacion != null ? DATE_FORMAT.format(row.fechaPublicacion) : "";
+                case COL_HOJA_ENVIO:
+                    return row.nivel == 1 ? row.hojaEnvio : "";
                 default:
                     return "";
             }
@@ -562,6 +579,11 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                 case COL_NUMERO:
                     row.numeroDocumento = text(value);
                     break;
+                case COL_ESTADO_DOCUMENTO:
+                    if (value instanceof CatalogoItemDTO) {
+                        row.estadoDocumento = (CatalogoItemDTO) value;
+                    }
+                    break;
                 case COL_FECHA:
                     row.fechaDocumento = parseDate(value);
                     break;
@@ -572,8 +594,14 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                     row.requiereRespuesta = Boolean.TRUE.equals(value);
                     row.estadoRespuesta = row.requiereRespuesta ? "PENDIENTE" : "";
                     break;
-                case COL_OBSERVACION:
-                    row.observacion = text(value);
+                case COL_CONFIRMACION_RESPUESTA:
+                    row.confirmacionRespuesta = text(value);
+                    break;
+                case COL_FECHA_RESPUESTA:
+                    row.fechaRespuesta = parseDate(value);
+                    break;
+                case COL_HOJA_ENVIO:
+                    row.hojaEnvio = text(value);
                     break;
                 default:
                     break;
@@ -595,6 +623,10 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         private boolean requiereRespuesta;
         private String estadoRespuesta;
         private String observacion;
+        private String confirmacionRespuesta;
+        private LocalDate fechaRespuesta;
+        private LocalDate fechaPublicacion;
+        private String hojaEnvio;
         private boolean activo = true;
         private boolean expanded = true;
         private String usuarioRegistro;
@@ -613,7 +645,6 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
             DocumentoRow row = base(id, tipo, estado, orden);
             row.nivel = 1;
             row.parentId = parentId;
-            row.descripcion = "Respuesta asociada";
             return row;
         }
 
@@ -633,6 +664,10 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                     ? (dto.isRequiereRespuesta() ? "PENDIENTE" : "")
                     : dto.getEstadoRespuesta();
             row.observacion = dto.getDetalleObservacion();
+            row.confirmacionRespuesta = dto.getConfirmacionRespuesta();
+            row.fechaRespuesta = dto.getFechaRespuesta();
+            row.fechaPublicacion = dto.getFechaPublicacion();
+            row.hojaEnvio = dto.getNumeroHojaEnvioRespuesta();
             row.activo = dto.isActivo();
             row.usuarioRegistro = dto.getUsuarioRegistro();
             row.fechaRegistro = dto.getFechaRegistro();
@@ -656,11 +691,11 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                     false,
                     null,
                     requiereRespuesta,
-                    requiereRespuesta ? "PENDIENTE" : "",
-                    null,
-                    "",
+                    confirmacionRespuesta,
+                    fechaRespuesta,
+                    hojaEnvio,
                     false,
-                    null,
+                    fechaPublicacion,
                     observacion,
                     parentId,
                     nivel,
@@ -684,6 +719,8 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
             row.descripcion = "";
             row.estadoRespuesta = "";
             row.observacion = "";
+            row.confirmacionRespuesta = "";
+            row.hojaEnvio = "";
             row.usuarioRegistro = "";
             return row;
         }

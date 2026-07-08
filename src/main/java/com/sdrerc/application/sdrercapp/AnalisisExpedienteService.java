@@ -67,11 +67,7 @@ public class AnalisisExpedienteService {
     }
 
     public List<CatalogoItemDTO> listarResultadosAnalisis() throws SQLException {
-        List<CatalogoItemDTO> items = new ArrayList<CatalogoItemDTO>();
-        items.addAll(catalogoLookupDAO.listarResultadosEvaluacion());
-        items.add(new CatalogoItemDTO("OBSERVADO", "Observado / requiere subsanación"));
-        items.add(new CatalogoItemDTO("NO_CORRESPONDE", "No corresponde a SDRERC"));
-        return items;
+        return catalogoLookupDAO.listarResultadosEvaluacion();
     }
 
     public List<CatalogoItemDTO> listarTiposObservacion() throws SQLException {
