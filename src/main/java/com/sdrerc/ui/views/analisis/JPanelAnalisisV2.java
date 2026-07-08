@@ -2282,9 +2282,9 @@ public class JPanelAnalisisV2 extends JPanel {
         lblDatosObservacion.setText(valorUi(item.getObservacionSolicitud()));
         lblDatosTipoActa.setText(valorUi(item.getTipoActa()));
         lblDatosNumeroActa.setText(valorUi(item.getNumeroActa()));
-        lblDatosTipoDocumentoTitular.setText(valorUi(item.getTipoDocumento()));
+        lblDatosTipoDocumentoTitular.setText(valorUi(item.getTipoDocumentoTitular()));
         lblDatosTipoDocumentoSolicitud.setText(valorUi(item.getTipoDocumento()));
-        lblDatosNumeroDocumentoSolicitud.setText(valorUi(item.getNumeroDocumentoTitular()));
+        lblDatosNumeroDocumentoSolicitud.setText(valorUi(item.getNumeroDocumento()));
         lblDatosTipoDocumentoSolicitante.setText(valorUi(item.getTipoDocumentoSolicitante()));
         lblDatosNumeroDocumentoSolicitante.setText(valorUi(item.getNumeroDocumentoSolicitante()));
         lblDatosSolicitante.setText(valorUi(item.getSolicitante()));

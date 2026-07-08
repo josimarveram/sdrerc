@@ -168,7 +168,13 @@ public class AnalisisExpedienteDAO {
         } else {
             sql.append("CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_asignacion, ");
         }
-        sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
+        sql.append("esol.asunto AS procedimiento, p.tipo_documento AS tipo_documento_titular, p.numero_documento AS numero_documento_titular, ");
+        sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed WHERE ed.id_expediente = e.id_expediente ");
+        sql.append(" AND TRIM(ed.numero_documento) IS NOT NULL) AS numero_documento, ");
+        sql.append("(SELECT MIN(ed.nombre_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed WHERE ed.id_expediente = e.id_expediente ");
+        sql.append(" AND TRIM(ed.nombre_documento) IS NOT NULL) AS tipo_documento, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
         sql.append(nombrePersona("ps")).append(" AS solicitante, ps.tipo_documento AS solicitante_tipo_documento, ");
         sql.append("ps.numero_documento AS numero_documento_solicitante, ps.correo_electronico AS solicitante_correo, ");
@@ -848,6 +854,8 @@ public class AnalisisExpedienteDAO {
                 rs.getString("numero_hoja_envio_asignacion"),
                 rs.getString("procedimiento"),
                 rs.getString("tipo_documento"),
+                rs.getString("numero_documento"),
+                rs.getString("tipo_documento_titular"),
                 rs.getString("numero_documento_titular"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
