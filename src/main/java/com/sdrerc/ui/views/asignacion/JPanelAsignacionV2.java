@@ -52,7 +52,9 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GridLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
@@ -1059,11 +1061,20 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearAccionesAsignacion() {
-        JPanel acciones = new JPanel(new GridLayout(1, 2, 8, 0));
+        JPanel acciones = new JPanel(new GridBagLayout());
         acciones.setOpaque(false);
         acciones.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        acciones.add(btnAsignarSeleccionado);
-        acciones.add(btnAsignarSeleccionados);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 0;
+        gbc.weightx = 0.65;
+        gbc.insets = new Insets(0, 0, 0, 8);
+        acciones.add(btnAsignarSeleccionado, gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 0.35;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        acciones.add(btnAsignarSeleccionados, gbc);
         return acciones;
     }
 
