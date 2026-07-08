@@ -156,8 +156,10 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
+    private static final Color EXPANDED_PARENT_BACKGROUND = new Color(205, 236, 244);
     private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;
     private static final Color ASSOCIATED_ROW_BACKGROUND = new Color(238, 250, 252);
+    private static final Color ASSOCIATED_BLOCK_BORDER = new Color(224, 233, 240);
     private static final Color DOCUMENTO_ANALISIS_BACKGROUND = new Color(238, 247, 252);
     private static final Color DOCUMENTO_ASIGNACION_BACKGROUND = new Color(239, 249, 246);
     private static final Color DOCUMENTO_NOTIFICACION_BACKGROUND = new Color(248, 245, 253);
@@ -4282,14 +4284,14 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private Color colorFondoFila(int viewRow, AnalisisTableRow fila, boolean selected) {
-        if (selected) {
-            return TABLE_SELECTION_BACKGROUND;
-        }
         if (fila != null && fila.esAsociada()) {
-            return ASSOCIATED_ROW_BACKGROUND;
+            return selected ? TABLE_SELECTION_BACKGROUND : ASSOCIATED_ROW_BACKGROUND;
         }
         if (fila != null && fila.esPrincipal() && principalesExpandidos.contains(fila.getIdPrincipal())) {
-            return new Color(238, 250, 252);
+            return EXPANDED_PARENT_BACKGROUND;
+        }
+        if (selected) {
+            return TABLE_SELECTION_BACKGROUND;
         }
         return viewRow % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
     }
@@ -4309,9 +4311,28 @@ public class JPanelAnalisisV2 extends JPanel {
         return GROUP_STRIPE_COLORS[index];
     }
 
+    private boolean esPrimerAsociado(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size() || !filasTabla.get(modelRow).esAsociada()) {
+            return false;
+        }
+        return modelRow == 0 || !filasTabla.get(modelRow - 1).esAsociada();
+    }
+
+    private boolean esUltimoAsociado(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasTabla.size() || !filasTabla.get(modelRow).esAsociada()) {
+            return false;
+        }
+        return modelRow == filasTabla.size() - 1 || !filasTabla.get(modelRow + 1).esAsociada();
+    }
+
     private javax.swing.border.Border bordeContenidoAsociado(int modelRow, int leftPadding, int rightPadding) {
         return BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
+                BorderFactory.createMatteBorder(
+                        esPrimerAsociado(modelRow) ? 1 : 0,
+                        0,
+                        esUltimoAsociado(modelRow) ? 1 : 0,
+                        0,
+                        ASSOCIATED_BLOCK_BORDER),
                 BorderFactory.createEmptyBorder(0, leftPadding, 0, rightPadding));
     }
 
