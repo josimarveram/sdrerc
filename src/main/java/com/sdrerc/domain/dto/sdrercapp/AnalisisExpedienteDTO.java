@@ -34,6 +34,7 @@ public class AnalisisExpedienteDTO {
     private final String observacionGrupoFamiliar;
     private final LocalDate fechaRecepcion;
     private final Long diasRestantes;
+    private final LocalDate fechaVencimiento;
     private final LocalDateTime fechaRegistro;
     private final LocalDateTime fechaAsignacion;
     private final LocalDateTime fechaUltimoMovimiento;
@@ -75,6 +76,7 @@ public class AnalisisExpedienteDTO {
             String observacionGrupoFamiliar,
             LocalDate fechaRecepcion,
             Long diasRestantes,
+            LocalDate fechaVencimiento,
             LocalDateTime fechaRegistro,
             LocalDateTime fechaAsignacion,
             LocalDateTime fechaUltimoMovimiento,
@@ -114,6 +116,7 @@ public class AnalisisExpedienteDTO {
         this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
         this.fechaRecepcion = fechaRecepcion;
         this.diasRestantes = diasRestantes;
+        this.fechaVencimiento = fechaVencimiento;
         this.fechaRegistro = fechaRegistro;
         this.fechaAsignacion = fechaAsignacion;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
@@ -291,6 +294,10 @@ public class AnalisisExpedienteDTO {
 
     public Long getDiasEnEtapa() {
         return diasRestantes;
+    }
+
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
     }
 
     public boolean isRecibible() {

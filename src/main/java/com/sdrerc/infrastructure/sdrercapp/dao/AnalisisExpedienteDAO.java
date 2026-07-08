@@ -869,6 +869,7 @@ public class AnalisisExpedienteDAO {
                 rs.getString("observacion_grupo_familiar"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                toLocalDate(rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 toLocalDateTime(rs.getTimestamp("fecha_asignacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),

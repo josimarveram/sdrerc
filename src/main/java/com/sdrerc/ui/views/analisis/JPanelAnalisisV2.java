@@ -35,6 +35,7 @@ import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PlazoVisualSupportV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
@@ -241,7 +242,10 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JLabel lblDatosProvincia = new JLabel("-");
     private final JLabel lblDatosDistrito = new JLabel("-");
     private final JLabel lblDatosDireccion = new JLabel("-");
-    private final JLabel lblDatosDias = new JLabel("-");
+    private final BadgeV2 lblDatosDias = new BadgeV2("-", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
+    private final JLabel lblDatosVencimiento = new JLabel("-");
+    private final JLabel lblDatosTipoDocumentoSolicitud = new JLabel("-");
+    private final JLabel lblDatosNumeroDocumentoSolicitud = new JLabel("-");
     private final JLabel lblDatosEquipo = new JLabel("-");
     private final JLabel lblPlantillaSeleccionada = new JLabel("Seleccione un documento analizado para descargar su plantilla.");
     private final JLabel lblPlantillaAyuda = new JLabel("Las plantillas reutilizan la configuración documental del expediente en análisis.");
@@ -512,16 +516,45 @@ public class JPanelAnalisisV2 extends JPanel {
             }
         });
         panel.setAccentColor(new Color(57, 125, 199));
-        panel.addSection(crearDatosSolicitudAnalisis());
-        panel.addSection(crearDatosActaAnalisis());
-        panel.addSection(crearDatosTitularAnalisis());
-        panel.addSection(crearDatosSolicitanteAnalisis());
-        panel.addSection(crearDatosNotificacionAnalisis());
-        panel.addSection(crearResumenSeleccion());
+        AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
+        secciones.add(crearDatosPlazoAnalisis());
+        secciones.add(crearDatosExpedienteAnalisis());
+        secciones.add(crearDatosActaAnalisis());
+        secciones.add(crearDatosSolicitudAnalisis());
+        secciones.add(crearDatosTitularAnalisis());
+        secciones.add(crearDatosSolicitanteAnalisis());
+        secciones.add(crearDatosNotificacionAnalisis());
+        panel.addSection(secciones);
         panelSolicitudesAsociadas = crearDocumentosAsociadosPanel();
         panelSolicitudesAsociadas.setVisible(false);
         panel.addSection(panelSolicitudesAsociadas);
         return panel;
+    }
+
+    private void actualizarTituloPanelAnalisis(String titular) {
+        if (panelDatosAnalisis == null) {
+            return;
+        }
+        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de Análisis</div>";
+        if (titular != null && !titular.trim().isEmpty() && !"-".equals(titular.trim())) {
+            titulo = titulo + "<div style='font-size:12px;font-weight:600;color:rgb(21,71,117);margin-top:2px;'>"
+                    + escapeHtml(titular.trim()) + "</div>";
+        }
+        titulo += "</html>";
+        panelDatosAnalisis.setTitle(titulo);
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        String result = value;
+        result = result.replace("&", "&amp;");
+        result = result.replace("<", "&lt;");
+        result = result.replace(">", "&gt;");
+        result = result.replace("\"", "&quot;");
+        result = result.replace("'", "&#39;");
+        return result;
     }
 
     private AppV2SideActionPanel crearPanelResultadoAnalisis() {
@@ -632,33 +665,37 @@ public class JPanelAnalisisV2 extends JPanel {
         return positions;
     }
 
-    private AppV2SideSectionPanel crearDatosSolicitudAnalisis() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de solicitud");
-        section.addRow("Resultado inicial", lblDatosResultadoInicial);
-        section.addRow("Hoja de envío", lblDatosHojaEnvio);
-        section.addRow("Nro. trámite web", lblDatosTramiteWeb);
-        section.addRow("N° documento", lblDatosNumeroDocumentoTitular);
+    private AppV2SideSectionPanel crearDatosPlazoAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del plazo");
+        section.addRow("Días", lblDatosDias);
+        section.addRow("Fecha Vencimiento", lblDatosVencimiento);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosExpedienteAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del expediente");
+        section.addRow("N° expediente", lblDatosExpediente);
         section.addRow("N° expediente SGD", lblDatosExpedienteSgd);
-        section.addRow("Tipo de solicitud", lblDatosTipoSolicitud);
-        section.addRow("Fecha recepción", lblDatosFechaRecepcion);
-        section.addRow("Procedimiento registral", lblProcedimiento);
-        section.addRow("Tipo documento", lblDatosTipoDocumentoTitular);
-        section.addRow("Canal de ingreso", lblDatosCanalIngreso);
-        section.addRow("Prioridad", lblDatosPrioridad);
-        section.addRow("Marca operativa", lblDatosMarcaOperativa);
-        section.addRow("Expediente", lblDatosExpediente);
-        section.addRow("Días hábiles", lblDatosDias);
-        section.addRow("Estado", lblDatosEstado);
-        section.addRow("Observación", lblDatosObservacion);
-        section.addRow("Equipo actual", lblDatosEquipo);
         return section;
     }
 
     private AppV2SideSectionPanel crearDatosActaAnalisis() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del acta");
         section.addRow("Tipo de acta", lblDatosTipoActa);
-        section.addRow("N° de acta", lblDatosNumeroActa);
-        section.addRow("Acta", lblActa);
+        section.addRow("Nro. acta", lblDatosNumeroActa);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosSolicitudAnalisis() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de solicitud");
+        section.addRow("Fecha recepción", lblDatosFechaRecepcion);
+        section.addRow("Canal de ingreso", lblDatosCanalIngreso);
+        section.addRow("Nro. trámite web", lblDatosTramiteWeb);
+        section.addRow("Proc.Registral", lblProcedimiento);
+        section.addRow("Tipo documento", lblDatosTipoDocumentoSolicitud);
+        section.addRow("N° documento", lblDatosNumeroDocumentoSolicitud);
+        section.addRow("Tipo de solicitud", lblDatosTipoSolicitud);
+        section.addRow("Grupo familiar", lblDatosMarcaOperativa);
         return section;
     }
 
@@ -679,7 +716,7 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private AppV2SideSectionPanel crearDatosNotificacionAnalisis() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Notificación y ubicación");
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de notificación y ubicación");
         section.addRow("Correo", lblDatosCorreo);
         section.addRow("Teléfono", lblDatosTelefono);
         section.addRow("Departamento", lblDatosDepartamento);
@@ -753,23 +790,6 @@ public class JPanelAnalisisV2 extends JPanel {
         } else {
             buscar();
         }
-    }
-
-    private JPanel crearResumenSeleccion() {
-        JPanel panel = section("Expediente seleccionado");
-        JPanel grid = new JPanel(new GridBagLayout());
-        grid.setOpaque(false);
-        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        int row = 0;
-        addRow(grid, row++, "Expediente", lblExpediente);
-        addRow(grid, row++, "Titular", lblTitular);
-        addRow(grid, row++, "Acta", lblActa);
-        addRow(grid, row++, "Procedimiento", lblProcedimiento);
-        addRow(grid, row++, "Responsable", lblResponsable);
-        addRow(grid, row++, "Etapa / Estado", lblEtapaEstado);
-        addRow(grid, row, "Alertas", lblAlertas);
-        panel.add(grid, BorderLayout.CENTER);
-        return panel;
     }
 
     private JPanel crearFormularioAnalisis() {
@@ -1308,7 +1328,9 @@ public class JPanelAnalisisV2 extends JPanel {
             lblDatosProvincia,
             lblDatosDistrito,
             lblDatosDireccion,
-            lblDatosDias,
+            lblDatosVencimiento,
+            lblDatosTipoDocumentoSolicitud,
+            lblDatosNumeroDocumentoSolicitud,
             lblDatosEquipo,
             lblRequierePublicacion,
             lblFechaPublicacion,
@@ -2126,6 +2148,7 @@ public class JPanelAnalisisV2 extends JPanel {
             idExpedienteDetalleCargado = null;
             lblExpediente.setText("-");
             lblTitular.setText("-");
+            actualizarTituloPanelAnalisis(null);
             lblActa.setText("-");
             lblProcedimiento.setText("-");
             lblResponsable.setText("-");
@@ -2147,6 +2170,7 @@ public class JPanelAnalisisV2 extends JPanel {
             ExpedienteRelacionadoDTO relacionado = fila.asociado;
             lblExpediente.setText("Documento asociado seleccionado");
             lblTitular.setText(valorUi(relacionado.getTitular()));
+            actualizarTituloPanelAnalisis(valorUi(relacionado.getTitular()));
             lblActa.setText((valorUi(relacionado.getTipoActa()) + " " + valorUi(relacionado.getNumeroActa())).trim());
             lblProcedimiento.setText(procedimientoAsociado(relacionado));
             lblResponsable.setText(valorUi(relacionado.getAbogadoAsignado()));
@@ -2161,6 +2185,7 @@ public class JPanelAnalisisV2 extends JPanel {
         }
         lblExpediente.setText(item.getNumeroExpediente());
         lblTitular.setText(item.getTitular());
+        actualizarTituloPanelAnalisis(item.getTitular());
         lblActa.setText((item.getTipoActa() + " " + item.getNumeroActa()).trim());
         lblProcedimiento.setText(item.getProcedimiento());
         lblResponsable.setText(item.getResponsable().isEmpty() ? "-" : item.getResponsable());
@@ -2201,12 +2226,39 @@ public class JPanelAnalisisV2 extends JPanel {
             lblDatosProvincia,
             lblDatosDistrito,
             lblDatosDireccion,
-            lblDatosDias,
+            lblDatosVencimiento,
+            lblDatosTipoDocumentoSolicitud,
+            lblDatosNumeroDocumentoSolicitud,
             lblDatosEquipo
         };
         for (JLabel label : labels) {
             label.setText("-");
             label.setToolTipText(null);
+        }
+        actualizarBadgeDias(lblDatosDias, null);
+    }
+
+    private static void actualizarBadgeDias(BadgeV2 badge, Long dias) {
+        if (badge == null) {
+            return;
+        }
+        if (dias == null) {
+            badge.setText("-");
+            badge.setBackground(AppV2Theme.SOFT_GRAY);
+            badge.setForeground(AppV2Theme.MUTED);
+            badge.setToolTipText(null);
+            return;
+        }
+        PlazoVisualSupportV2.Nivel nivel = PlazoVisualSupportV2.clasificarDias(dias);
+        badge.setText(String.valueOf(dias));
+        badge.setBackground(PlazoVisualSupportV2.backgroundFor(nivel));
+        badge.setForeground(PlazoVisualSupportV2.foregroundFor(nivel));
+        if (dias < 0) {
+            badge.setToolTipText("Vencido. Días hábiles restantes: " + Math.abs(dias));
+        } else if (dias == 0) {
+            badge.setToolTipText("Vence hoy. Días hábiles restantes: 0");
+        } else {
+            badge.setToolTipText("Días hábiles restantes: " + dias);
         }
     }
 
@@ -2231,6 +2283,8 @@ public class JPanelAnalisisV2 extends JPanel {
         lblDatosTipoActa.setText(valorUi(item.getTipoActa()));
         lblDatosNumeroActa.setText(valorUi(item.getNumeroActa()));
         lblDatosTipoDocumentoTitular.setText(valorUi(item.getTipoDocumento()));
+        lblDatosTipoDocumentoSolicitud.setText(valorUi(item.getTipoDocumento()));
+        lblDatosNumeroDocumentoSolicitud.setText(valorUi(item.getNumeroDocumentoTitular()));
         lblDatosTipoDocumentoSolicitante.setText(valorUi(item.getTipoDocumentoSolicitante()));
         lblDatosNumeroDocumentoSolicitante.setText(valorUi(item.getNumeroDocumentoSolicitante()));
         lblDatosSolicitante.setText(valorUi(item.getSolicitante()));
@@ -2241,7 +2295,8 @@ public class JPanelAnalisisV2 extends JPanel {
         lblDatosDistrito.setText(valorUi(item.getDistritoSolicitante()));
         lblDatosDireccion.setText(valorUi(item.getDireccionSolicitante()));
         lblDatosDireccion.setToolTipText(valorUi(item.getDireccionSolicitante()));
-        lblDatosDias.setText(item.getDiasEnEtapa() == null ? "-" : item.getDiasEnEtapa() + " día(s)");
+        actualizarBadgeDias(lblDatosDias, item.getDiasEnEtapa());
+        lblDatosVencimiento.setText(formatDate(item.getFechaVencimiento()));
         lblDatosEquipo.setText(valorUi(item.getEquipo()));
     }
 
