@@ -155,6 +155,8 @@ Por defecto V2 sigue siendo lectura/consulta. Las escrituras reales solo son val
 - `Analisis`: recibir expedientes `ASIGNACION / ASIGNADO`, registrar evaluacion, observaciones y documentos analizados, enviar a verificacion y archivar no corresponde si el flujo `SDRERC_TO_BE` lo permite; no exponer acciones directas de derivacion a notificacion ni derivacion externa desde el panel de Analisis.
 - `Analisis`: `N° Documento (Proveido)` debe permanecer habilitado para cualquier resultado y registrarse como `EXPEDIENTE_DOCUMENTO` cuando tenga valor. Para `NO_CORRESPONDE` es obligatorio; ademas se bloquean `Acta incorporada`, evaluaciones, documentos analizados, observacion y comentario de movimiento, y no se exigen ni registran documentos analizados.
 - `Analisis`: el combo `Tipo` de documentos analizados debe cargar solo tipos activos con codigo `ANALISIS_%` desde `TIPO_DOCUMENTO_ADJUNTO`, respetando el orden del codigo; `PROVEIDO` es un tipo tecnico para documentos del expediente y no debe mostrarse en ese combo.
+- `Analisis`: la grilla de documentos analizados debe separar la gestion documental del resultado final. Guardar documentos, cartas intermedias, oficios, cargos, respuestas, subsanaciones o anexos no debe exigir resultado/fundamento final ni mover el expediente a Verificacion. El resultado final y el envio a Verificacion siguen siendo acciones independientes.
+- `Analisis`: los documentos analizados pueden organizarse en jerarquia de maximo dos niveles dentro de `EXPEDIENTE_DOCUMENTO_ANALIZADO`: documento principal con `ID_DOCUMENTO_PADRE` nulo y documento relacionado/respuesta con `ID_DOCUMENTO_PADRE` apuntando al principal. No registrar respuestas como nueva solicitud o expediente independiente, no permitir nietos y usar baja logica con `ACTIVO=0` cuando corresponda.
 - `Analisis`: al recibir un expediente principal, recibir en la misma transaccion los documentos asociados que ya se encuentren en `ASIGNACION / ASIGNADO`. Si un documento se asocia despues de la recepcion del principal, debe quedar pendiente y solo el abogado responsable puede recibirlo individualmente desde la seccion `Documentos asociados`; esta accion no lo convierte automaticamente en documento analizado.
 - `Analisis`: la derivacion externa no debe mostrarse como boton o accion preparada en el panel de Analisis; si se requiere en el futuro, debe definirse el flujo funcional completo de entidad destino, tipo de derivacion y datos documentales antes de habilitar escritura.
 - `Verificacion`: consultar expedientes en `VERIFICACION`, revisar analisis y documentos, aprobar verificacion, observar, marcar documento inconsistente, devolver a Analisis y enviar a `FIRMA_EMISION / PARA_FIRMA` si el flujo `SDRERC_TO_BE` lo permite.
@@ -246,11 +248,9 @@ Esta seccion consolida el criterio funcional vigente para documentos proyectados
 - El hero del Home debe usar el logo RENIEC desde recurso local empaquetado, actualmente `src/main/resources/com/sdrerc/ui/imagenes/LogoRENIEC.png`.
 - No cargar logos, imagenes ni iconos desde internet en runtime; los recursos visuales deben vivir en `src/main/resources`.
 - El logo RENIEC del Home debe verse natural, sin recorte, sin distorsion, con proporcion original y con el fondo que corresponda al arte aprobado. Si el logo trae fondo blanco, conservarlo y evitar bordes o lineas superiores artificiales.
-- El Home debe evitar scroll horizontal global. Las metricas, accesos rapidos, flujo operativo y modulos principales deben reacomodarse segun el ancho disponible.
-- El bloque `Flujo operativo` del Home debe verse como una secuencia premium de etapas, no como una lista plana. Debe mantener flechas o conectores visibles, tarjetas/chips de etapa, numeracion o jerarquia clara, y nombres amigables.
-- El flujo operativo puede usar colores sobrios por etapa para mejorar lectura, siempre dentro de la paleta institucional. Evitar colores brillantes, saturados o ajenos al estilo SDRERC.
-- El flujo operativo debe usar estas etapas amigables y en este orden: Registro, Asignacion, Analisis, Verificacion, Firma / Emision, Ejecucion, Notificacion, Publicacion, Expediente digital; el cierre terminal se maneja dentro de `Notificacion` como pestaña interna de seguimiento, no como etapa visual lateral independiente.
-- El flujo operativo no debe mostrar codigos tecnicos como `FIRMA_EMISION`, `PUBLICACION_CONDICIONAL`, `EXPEDIENTE_DIGITAL` o `CIERRE_ARCHIVO`.
+- El Home debe evitar scroll horizontal global. Las metricas, accesos rapidos y modulos principales deben reacomodarse segun el ancho disponible.
+- El Home ya no debe mostrar el bloque visual `Flujo operativo`; al cargar debe priorizar la vista superior desde `Panel Ejecutivo` y contenido operativo resumido.
+- Si en el futuro se requiere volver a mostrar un flujo operativo en Home, debe validarse funcionalmente antes de reintroducirlo y no debe mostrar codigos tecnicos como `FIRMA_EMISION`, `PUBLICACION_CONDICIONAL`, `EXPEDIENTE_DIGITAL` o `CIERRE_ARCHIVO`.
 - El menu lateral V2 debe mantener iconos locales, tooltips en modo colapsado, agrupacion visual clara y navegacion funcional. No usar abreviaturas como reemplazo principal de iconos en modo colapsado.
 
 ## 4.5 Estabilizacion V2 de catalogos, detalle y tablas
@@ -314,6 +314,116 @@ Esta seccion consolida el criterio funcional vigente para documentos proyectados
 - El despliegue LAN debe vivir en `deploy/SDRERC-V2/` con rutas relativas, sin depender de `.m2/repository`, IntelliJ IDEA ni `target/classes`.
 - La configuracion de conexion SDRERC_APP para despliegue debe externalizarse en `config/sdrerc-app.properties` o variables de entorno; no documentar passwords reales.
 - El instalador cliente de red local debe vivir en `tools/installer-client/`, generar `dist/sdrerc-client/`, usar `SDRERC-V2.jar` autocontenido y crear `config/sdrerc-client.properties` con IP/puerto/servicio editables; no hardcodear IP ni credenciales en Java o repositorio.
+
+## 4.8 Estado consolidado vigente al 07/07/2026
+
+Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes externos que partan solo de `AGENTS.md`. No reemplaza las reglas anteriores; las precisa donde hubo ajustes posteriores.
+
+### Registro / Recepcion
+
+- La bandeja `Registro / Recepcion` trabaja con tres pestañas superiores: `Bandeja Registro`, `Carga diaria` y `Registro manual`.
+- El panel derecho de `Bandeja Registro` se abre con doble clic sobre la fila, no con un clic simple. Debe usar el titulo `Panel de Registro` y mostrar debajo el nombre del titular en azul, con el mismo estilo visual replicable en otros paneles de datos.
+- El panel derecho de datos de Registro es informativo: no debe mostrar botones de accion. Debe agrupar datos en `Datos del plazo`, `Datos del expediente`, `Datos del acta`, `Datos de solicitud`, `Datos del titular`, `Datos del solicitante` y `Datos de Notificacion y Ubicacion`.
+- En el panel de datos de Registro, `Datos del plazo` debe mostrar `Dias` como pill con color de vencimiento y `Fecha Vencimiento`; `Datos del expediente` debe mostrar `N° expediente` y `N° expediente SGD`.
+- El formulario `Registro manual` y la `Edicion manual` deben mantener el bloque `Datos del expediente` encima de `Datos del acta`; `N° expediente` es solo lectura, y `N° expediente SGD` vive en ese bloque, no en `Datos de solicitud`.
+- En `Datos de solicitud`, el orden vigente es: `Fecha recepcion`, `Canal de ingreso`, `Nro. tramite web`, `Procedimiento registral`, `Tipo documento`, `N° documento`, `Tipo de solicitud`, `Prioridad` y `Marca operativa`.
+- El bloque visual antes llamado `Remitente` debe mostrarse como `Solicitante`.
+- `Nro. tramite web` no es obligatorio. Solo se habilita si `Canal de ingreso` es `Mesa de partes virtual`; para otros canales debe bloquearse y mostrar `SIN TRAMITE`.
+- El combo `Tipo documento` de `Datos de solicitud` debe normalizar tildes y equivalencias de texto para seleccionar correctamente valores como `Resolucion`, `Hoja de envio`, `Hoja de elevacion` o `Informe tecnico` aunque el Excel los traiga sin tilde.
+- En `Bandeja Registro`, el combo de estado del filtro debe mostrar unicamente `Todos los estados` y `Registrado`.
+- En `Bandeja Registro`, los KPI vigentes son `Potencial duplicado` y `Posible Grupo Familiar`; no mostrar `Total Registrados` salvo pedido futuro.
+- En `Bandeja Registro`, los KPI se calculan con los filtros activos de busqueda. Clic en KPI filtra el listado por ese KPI; clic en `Buscar` limpia el filtro KPI y vuelve al total filtrado por fechas/estado/busqueda.
+- En `Bandeja Registro`, la columna `Alertas` debe mostrar solo `Sin Alerta`, `Potencial duplicado` o `Posible Grupo Familiar`. Observaciones extensas y datos incompletos pertenecen a la previsualizacion de carga diaria, no a la columna de bandeja.
+- La carga diaria debe mostrar observaciones concatenadas solo en la previsualizacion/exportacion, por ejemplo `Potencial duplicado`, `Posible Grupo Familiar` y `Dato incompleto: [campo]`.
+- En carga diaria, `Potencial duplicado` solo aplica cuando coinciden `numero de acta + titular completo`. El primer registro del grupo que genera numero queda `Sin observacion`; los siguientes quedan como `Potencial duplicado` y no generan numero.
+- En carga diaria, nombres completos iguales con diferente numero de acta no son duplicados ni grupo familiar por si solos.
+- `Posible Grupo Familiar` aplica cuando coinciden conservadoramente las dos primeras palabras del titular, pero el titular completo y/o numero de acta no configuran duplicado. No debe coexistir con `Potencial duplicado` en la misma solicitud.
+- La previsualizacion de carga diaria debe permitir editar celdas sin desactivar `Confirmar carga`; al editar, se recalculan solo observaciones dependientes del dato incompleto corregido sin borrar alertas validas como duplicidad o grupo familiar.
+- `Validar carga` no debe quedar inutilizado despues de validar; la importacion debe poder confirmarse aun con observaciones no bloqueantes.
+- `Registrar G.F` no es una pestaña superior de Registro; es una lengueta/panel derecho contextual que aparece cuando hay expedientes seleccionados por casilla para registrar grupo familiar.
+- Registrar grupo familiar marca la solicitud en `EXPEDIENTE_SOLICITUD` y debe resolver/desactivar la alerta `Posible Grupo Familiar` en `EXPEDIENTE_ALERTA`, de modo que deje de aparecer en bandejas y KPI.
+
+### Asociacion de expedientes y alertas
+
+- Los expedientes asociados por duplicidad o relacion confirmada se muestran con icono de expandir `+` en la fila principal y el asociado debajo; el asociado no debe aparecer como otro expediente principal independiente en Registro, Asignacion ni Analisis.
+- La fila asociada debe replicar el patron visual de Asignacion: icono documental, banda/acento vertical izquierdo, fondo celeste suave, texto atenuado, sin checkbox comun y jerarquia visual clara respecto al expediente principal.
+- La relacion se orienta a un principal canonico: primero el expediente con numero SDRERC; si ambos tienen o ninguno tiene numero, el mas antiguo.
+- Al asociar un duplicado por misma acta y titular, el expediente asociado hereda numero de expediente, fecha de vencimiento, abogado/equipo cuando corresponda y queda excluido de gestion independiente como principal.
+- Al resolver una duplicidad mediante asociacion, la alerta `Potencial duplicado` debe quedar atendida/desactivada en BD para que no contabilice en KPI ni se siga mostrando como alerta pendiente.
+- En bandejas jerarquicas, el expediente asociado debe mostrar su propia alerta funcional cuando corresponda, no copiar automaticamente la alerta visual del principal.
+- En el panel `Asociar` de Asignacion, la grilla de solicitudes asociadas debe mostrar `N° expediente SGD`, `Estado`, `Fecha Asociacion` cuando exista y accion `X` solo si la relacion ya esta activa. La `X` elimina la asociacion logicamente y debe tener tooltip.
+
+### Asignacion
+
+- La bandeja `Asignacion` trabaja con tres pestañas superiores: `Bandeja Asignacion`, `Cartas de respuesta` y `Carga Abogados`.
+- Los KPI principales de Asignacion deben incluir `Pendientes`, `Potencial duplicado`, `Posible Grupo Familiar`, `Por vencer` y `Vencidos`, calculados segun filtros activos.
+- El filtro de busqueda de Asignacion debe replicar el diseño, tamanos y posicionamiento del filtro de Registro, manteniendo opciones de estado propias de Asignacion.
+- La bandeja de Asignacion no debe mostrar columna `Solicitante`; debe mostrar `Alertas` con la misma semantica de Registro: `Sin Alerta`, `Potencial duplicado` o `Posible Grupo Familiar`.
+- El panel derecho de Asignacion debe usar lenguetas separadas: `Datos`, `Asignacion` y `Asociar`. Las lenguetas pueden seleccionar primero y expandir/restaurar al segundo clic, manteniendo colores diferenciados de inactivo, activo y expandido.
+- El panel `Datos` de Asignacion debe reutilizar el mismo contenido, estructura y estilo del panel `Datos` de Registro, con titulo `Panel de Asignacion` y nombre del titular debajo.
+- El panel `Asignacion` debe conservar siempre el bloque `Asignacion de abogado` para uno o varios expedientes seleccionados.
+- La grilla del bloque `Asignacion de abogado` debe listar todos los expedientes seleccionados por casilla, permitir hoja de envio por expediente y mostrarse sin barra vertical interna cuando sea razonable; debe crecer para mostrar las filas seleccionadas.
+- La accion principal del panel de Asignacion debe ser `Generar asignacion`; no usar dos botones redundantes como `Asignar expediente` y `Asignar seleccionados`, ni popup adicional si la captura ya esta dentro del panel.
+- En asignacion simple o multiple, validar que todos los expedientes seleccionados tengan hoja de envio cuando la regla funcional la exija y que el numero sea unico antes de confirmar.
+- La casilla de cabecera de las grillas de Registro y Asignacion debe seleccionar todas las filas filtradas seleccionables, respetando que filas asociadas no operativas no se traten como principales seleccionables.
+- La columna de casillas debe tener ancho compacto y uniforme entre Registro y Asignacion; no confundir ancho de la columna con tamano visual del checkbox.
+
+### Analisis
+
+- El modulo `Analisis` vuelve a manejar un unico analisis operativo por expediente. No reintroducir multiples bloques de analisis salvo requerimiento funcional explicito y script aprobado.
+- La grilla de documentos analizados puede ser jerarquica en maximo dos niveles: documento principal y documento relacionado/respuesta. Esta jerarquia documental no significa multiples analisis.
+- La grilla jerarquica de documentos de analisis debe conservar separacion entre documentos y resultado final: guardar documentos no exige resultado final ni mueve a Verificacion.
+- Para la version de un unico analisis, las columnas funcionales de documentos analizados son: `Tipo`, `Estado`, `Detalle Obs.`, `Fecha Emision`, `N° Documento`, `Descripcion`, `¿Requiere respuesta?`, `Fecha Acuse`, `Confirmacion de respuesta`, `Fecha Respuesta`, `Hoja de Envio` y `Notificado`. Si existe columna de control o expandir, no debe contarse como dato funcional ni mostrarse como ID tecnico.
+- La grilla jerarquica propuesta para documentos de analisis puede usar columnas: expandir/contraer, `Tipo documento`, `Numero documento`, `Fecha documento`, `Descripcion`, `¿Requiere respuesta?`, `Estado respuesta`, `Estado documento`, `Observacion`, `Usuario registro` y `Fecha registro`, siempre ocultando IDs tecnicos.
+- La grilla debe permitir agregar documento padre, agregar documento hijo solo sobre un padre, guardar cambios y baja logica. No permitir nietos ni eliminacion fisica.
+- En Analisis, `Resultado final` sigue siendo accion separada. No debe existir una pestana independiente de Resultado si el diseno vigente lo integra al panel de analisis.
+- En Analisis, eliminar o evitar bloques no pertinentes dentro del panel operativo como `Publicacion prevista`, `Expediente digital`, observaciones de publicacion o acciones externas si no corresponden al analisis actual.
+- La edicion manual desde Analisis debe reutilizar el formulario de edicion manual de Registro/Recepcion, sin restringirse solo a expedientes en estado `Registrado`.
+
+### Verificacion, Ejecucion, Notificacion y Publicacion
+
+- Verificacion debe tener pestaña superior `Bandeja Verificacion` y panel derecho con lenguetas `Datos` y `Verificar`, siguiendo el patron visual de Analisis.
+- La grilla `Documentos revisados en analisis` de Verificacion debe replicar el diseno de documentos analizados de Analisis, con columnas fijas cuando aplique, filtros por columna, flechas de ordenamiento y solo icono de guardar; no debe mostrar iconos de Word ni eliminar.
+- En Verificacion, el supervisor puede modificar `Estado`, `Detalle Obs.`, `Fecha Emision` y `N° Documento` de los documentos revisados; el combo de estado debe usar las mismas opciones que la grilla de Analisis.
+- Al final del panel `Verificar` solo deben quedar los botones principales `Registrar Verificacion` y `Cancelar`, salvo nueva regla funcional documentada.
+- Ejecucion debe tener pestaña superior `Bandeja Ejecucion` y mantener panel derecho no limitado por contenedor interno de pestaña.
+- Notificacion debe manejar pestañas superiores `Bandeja Asignacion`, `Bandeja Validacion`, `Bandeja Notificacion` y `Cierre`; `Cierre` es pestaña interna, no modulo lateral.
+- Publicacion existe como modulo V2, pero no debe implementar publicacion real en portales externos; solo metadata, trazabilidad y transiciones reales.
+
+### Bandejas, filtros, tablas y paneles
+
+- Todas las bandejas operativas deben abrir panel derecho con doble clic sobre fila, no con clic simple, salvo seleccion por casillas cuando el panel corresponda a accion masiva.
+- Los filtros de busqueda deben usar formato compacto de tres filas: busqueda y botones principales; fechas desde/hasta; estado, grupo familiar y limite numerico. Evitar texto visible `Mostrar` si el input numerico ya comunica el limite.
+- Las fechas visibles en grillas y filtros deben usar `dd/MM/yyyy`; no mostrar hora ni formato `yyyy-MM-dd`.
+- Las columnas `Fecha Solicitud` y `Fecha Vencimiento` deben estar visibles en Registro y Asignacion; `Fecha Vencimiento` va despues de `Fecha Solicitud`.
+- En Registro, agregar `N° expediente SGD` al lado derecho de `Nro. Expediente`.
+- Las grillas operativas deben tener filtros por columna debajo de cabeceras y ordenamiento por cabecera con flechas visibles; cabecera, filtros y cuerpo deben desplazarse sincronizados en el mismo `JScrollPane`.
+- No usar scroll horizontal global del panel cuando la grilla tiene muchas columnas; el scroll horizontal visible debe pertenecer a la tabla.
+- Los renderers de columnas no deben depender de indices fragiles si se agregan o reordenan columnas; preferir resolver por nombre de columna o constantes centralizadas para evitar que estilos de `Estado` y `Alertas` se apliquen a columnas equivocadas.
+- La columna `Dias` debe usar pill con color derivado de configuracion de plazos, no colores hardcodeados inconsistentes. Los colores deben respetar porcentajes configurados en `PLAZO_CONFIGURACION`.
+- El panel izquierdo de modulos debe ser compacto, ajustado al contenido y no consumir ancho innecesario. En modo colapsado debe conservar iconos y tooltips.
+- Los botones principales de proceso, como `Buscar`, `Confirmar carga`, `Registrar expediente`, `Generar asignacion`, `Registrar Analisis` o `Registrar Verificacion`, deben usar el estilo azul institucional de accion principal, conservando forma y tamano original del boton del modulo.
+
+### Administracion y catalogos
+
+- Los modulos de Administracion deben tender al mismo patron visual de paneles usado en modulos operativos: grilla principal, panel derecho al seleccionar fila, botonera uniforme y acciones primarias azules.
+- En Administracion, `Usuarios`, `Roles`, `Equipo Juridico`, `Feriados` y `Plazos` deben mantener filtros por columna, flechas de ordenamiento y panel contextual sin distorsionar columnas.
+- En el modulo `Usuarios`, el tipo de documento debe ser combo basado en el catalogo de tipo documento de identidad usado para titulares/solicitantes.
+- `Equipo Juridico`, `Feriados` y `Plazos` deben replicar textos y estilo de botones de `Usuarios` y `Roles` segun su funcionalidad.
+
+### Ubigeo, base de datos y scripts recientes
+
+- Las tablas `UBIGEO_DEPARTAMENTO`, `UBIGEO_PROVINCIA` y `UBIGEO_DISTRITO` deben replicar la estructura y datos de referencia aprobados desde la BD origen `SYSTEM` hacia `SDRERC_APP` en `XEPDB1` mediante script intermedio unico cuando se autorice.
+- Si ya existe data sembrada por un script anterior de ubigeo, los scripts posteriores deben ser compatibles e idempotentes; no duplicar datos ni asumir tablas vacias sin validacion previa.
+- No intentar resetear identities o sequences con comandos no soportados por la version Oracle sin validar si la columna sigue siendo identity o default por sequence. Si el modelo quedo inconsistente, documentar y generar script correctivo controlado, no ejecutar automaticamente.
+
+### Despliegue cliente-servidor
+
+- El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
+- La carpeta servidor vigente es `D:\SDRERC_RELEASES\latest`, con `version.json`, `SDRERC-V2.zip` y `checksums.txt`.
+- El launcher cliente vive bajo `C:\SDRERC_CLIENTE\launcher` y debe usar `updater-config.json` apuntando a `\\SERVIDOR\SDRERC_RELEASES\latest` o recurso equivalente.
+- El modo HTTP/VPN queda como capacidad experimental documentada, no como configuracion estandar vigente, salvo autorizacion futura. No exponer Oracle ni releases a internet publico.
+- Para publicar una version LAN se usa `.\scripts\server\publish-sdrerc-release.ps1 -Version "x.y.z"` desde el proyecto, generando y copiando el paquete al release latest.
 
 ## 5. Reglas de SQL y BD
 
