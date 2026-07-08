@@ -594,16 +594,20 @@ public class DocumentoAnalisisDAO {
             throw new SQLException("No se encontró el estado de documento: " + documento.getEstadoDocumentoCodigo() + ".");
         }
         boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
+        boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
         String sql = "INSERT INTO expediente_documento_analizado ("
                 + "id_expediente, "
                 + (soportaAnalisisMultiple ? "id_expediente_analisis, " : "")
                 + "id_documento_padre, nivel, orden, id_tipo_documento_adjunto, id_estado_documento, "
-                + "fecha_documento, numero_documento, detalle_observacion, descripcion, "
+                + "fecha_documento, numero_documento, "
+                + (soportaDetalleObservacion ? "detalle_observacion, " : "")
+                + "descripcion, "
                 + "notificado, fecha_acuse, requiere_respuesta, confirmacion_respuesta, "
                 + "fecha_respuesta, numero_hoja_envio_respuesta, estado_respuesta, "
                 + "activo, creado_por, creado_en"
                 + ") VALUES (?, " + (soportaAnalisisMultiple ? "?, " : "")
-                + "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+                + "?, ?, ?, ?, ?, ?, ?, " + (soportaDetalleObservacion ? "?, " : "")
+                + "?, ?, ?, ?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_DOCUMENTO_ANALIZADO"})) {
             int index = 1;
             ps.setLong(index++, idExpediente);
@@ -617,7 +621,9 @@ public class DocumentoAnalisisDAO {
             ps.setLong(index++, idEstadoDocumento);
             setDateOrNull(ps, index++, documento.getFechaDocumento());
             ps.setString(index++, limitar(documento.getNumeroDocumento(), 120));
-            setStringOrNull(ps, index++, detalleObservacionPersistencia(documento));
+            if (soportaDetalleObservacion) {
+                setStringOrNull(ps, index++, detalleObservacionPersistencia(documento));
+            }
             ps.setString(index++, limitar(documento.getDescripcion(), 1000));
             RespuestaPersistencia respuesta = respuestaPersistencia(documento, true);
             ps.setInt(index++, documento.isNotificado() ? 1 : 0);
@@ -657,11 +663,14 @@ public class DocumentoAnalisisDAO {
             throw new SQLException("No se encontró el estado de documento: " + documento.getEstadoDocumentoCodigo() + ".");
         }
         boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
+        boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
         String sql = "UPDATE expediente_documento_analizado SET "
                 + (soportaAnalisisMultiple ? "id_expediente_analisis = ?, " : "")
                 + "id_documento_padre = ?, nivel = ?, orden = ?, "
                 + "id_tipo_documento_adjunto = ?, id_estado_documento = ?, fecha_documento = ?, "
-                + "numero_documento = ?, detalle_observacion = ?, descripcion = ?, "
+                + "numero_documento = ?, "
+                + (soportaDetalleObservacion ? "detalle_observacion = ?, " : "")
+                + "descripcion = ?, "
                 + "notificado = ?, fecha_acuse = ?, requiere_respuesta = ?, confirmacion_respuesta = ?, "
                 + "fecha_respuesta = ?, numero_hoja_envio_respuesta = ?, estado_respuesta = ?, "
                 + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
@@ -678,7 +687,9 @@ public class DocumentoAnalisisDAO {
             ps.setLong(index++, idEstadoDocumento);
             setDateOrNull(ps, index++, documento.getFechaDocumento());
             ps.setString(index++, limitar(documento.getNumeroDocumento(), 120));
-            setStringOrNull(ps, index++, detalleObservacionPersistencia(documento));
+            if (soportaDetalleObservacion) {
+                setStringOrNull(ps, index++, detalleObservacionPersistencia(documento));
+            }
             ps.setString(index++, limitar(documento.getDescripcion(), 1000));
             RespuestaPersistencia respuesta = respuestaPersistencia(documento, true);
             ps.setInt(index++, documento.isNotificado() ? 1 : 0);

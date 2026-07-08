@@ -153,6 +153,29 @@ public class AnalisisExpedienteService {
                 resolverUsuarioActualSdrercApp());
     }
 
+    public AnalisisResultadoDTO guardarDocumentoAnalisisJerarquico(
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento) throws SQLException {
+        List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
+        if (documento != null) {
+            documentos.add(documento);
+        }
+        return guardarDocumentosAnalisisJerarquicos(idExpediente, documentos);
+    }
+
+    public AnalisisResultadoDTO darBajaDocumentosAnalisis(
+            Long idExpediente,
+            List<Long> idsDocumentoAnalizado) throws SQLException {
+        validacionService.validarExpedienteSeleccionado(idExpediente);
+        if (idsDocumentoAnalizado == null || idsDocumentoAnalizado.isEmpty()) {
+            throw new IllegalArgumentException("Seleccione al menos un documento para dar de baja.");
+        }
+        return analisisExpedienteDAO.darBajaDocumentosAnalisis(
+                idExpediente,
+                idsDocumentoAnalizado,
+                resolverUsuarioActualSdrercApp());
+    }
+
     public AnalisisResultadoDTO guardarDocumentoAnalisis(
             Long idExpediente,
             Long idExpedienteAnalisis,

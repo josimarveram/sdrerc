@@ -82,9 +82,6 @@ import javax.swing.AbstractCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.CellRendererPane;
-import javax.swing.DefaultCellEditor;
-import javax.swing.Icon;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -100,13 +97,10 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.SwingConstants;
-import javax.swing.SortOrder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumn;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class JPanelAnalisisV2 extends JPanel {
@@ -127,26 +121,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private static final int COL_ESTADO = 10;
     private static final int COL_ASOCIADOS = 11;
     private static final int COL_ID = 12;
-    private static final int COL_DOCUMENTO_NUMERO_ANALISIS = 0;
-    private static final int COL_DOCUMENTO_TIPO = 1;
-    private static final int COL_DOCUMENTO_ESTADO = 2;
-    private static final int COL_DOCUMENTO_DETALLE_OBS = 3;
-    private static final int COL_DOCUMENTO_FECHA = 4;
-    private static final int COL_DOCUMENTO_NUMERO = 5;
-    private static final int COL_DOCUMENTO_DESCRIPCION = 6;
-    private static final int COL_DOCUMENTO_REQUIERE_RESPUESTA = 7;
-    private static final int COL_DOCUMENTO_FECHA_ACUSE = 8;
-    private static final int COL_DOCUMENTO_CONFIRMACION_RESPUESTA = 9;
-    private static final int COL_DOCUMENTO_FECHA_RESPUESTA = 10;
-    private static final int COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA = 11;
-    private static final int COL_DOCUMENTO_NOTIFICADO = 12;
-    private static final int COL_DOCUMENTO_PLANTILLA = 13;
-    private static final int COL_DOCUMENTO_GUARDAR = 14;
-    private static final int COL_DOCUMENTO_ACCION = 15;
-    private static final int COL_DOCUMENTO_TIPO_CODIGO = 16;
-    private static final int COL_DOCUMENTO_ESTADO_CODIGO = 17;
-    private static final int COL_DOCUMENTO_ID = 18;
-    private static final int DOCUMENTOS_COLUMNAS_FIJAS_ANCHO = 242;
     private static final int PANEL_ANALISIS_ANCHO_MINIMO = 380;
     private static final int PANEL_ANALISIS_ANCHO_NORMAL = 430;
     private static final int PANEL_ANALISIS_TAB_OVERHANG = 46;
@@ -200,8 +174,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnCancelarAnalisis = new JButton("Cancelar");
     private final JButton btnEnviarVerificacion = new JButton("Enviar a verificación");
     private final JButton btnArchivarNoCorresponde = new JButton("Archivar no corresponde");
-    private final JButton btnAgregarDocumento = new JButton("+");
-    private final JButton btnQuitarDocumento = new JButton("Quitar documento");
 
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes de análisis.");
     private final JLabel lblExpediente = new JLabel("-");
@@ -280,88 +252,6 @@ public class JPanelAnalisisV2 extends JPanel {
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
-    private final DefaultTableModel documentoModel = new DefaultTableModel(
-            new Object[]{
-                "N° Análisis",
-                "Tipo",
-                "Estado",
-                "Detalle Obs.",
-                "Fecha Emisión",
-                "N° Documento",
-                "Descripción",
-                "¿Requiere respuesta?",
-                "Fecha Acuse",
-                "Confirmación de respuesta",
-                "Fecha Respuesta",
-                "Hoja de Envío",
-                "Notificado",
-                "",
-                "",
-                "",
-                "tipo_codigo",
-                "estado_codigo",
-                "_id_documento"
-            },
-            0) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            if (column == COL_DOCUMENTO_DETALLE_OBS) {
-                return esEstadoDocumentoObservadoPorFila(row);
-            }
-            return (column >= COL_DOCUMENTO_TIPO && column <= COL_DOCUMENTO_NOTIFICADO)
-                    || column == COL_DOCUMENTO_PLANTILLA
-                    || column == COL_DOCUMENTO_GUARDAR
-                    || column == COL_DOCUMENTO_ACCION;
-        }
-
-        @Override
-        public Class<?> getColumnClass(int columnIndex) {
-            return columnIndex == COL_DOCUMENTO_REQUIERE_RESPUESTA ? Boolean.class : Object.class;
-        }
-    };
-    private final JTable documentosTable = new AppV2Table(documentoModel);
-    private final AbstractTableModel documentosFijosModel = new AbstractTableModel() {
-        @Override
-        public int getRowCount() {
-            return documentosTable == null ? documentoModel.getRowCount() : documentosTable.getRowCount();
-        }
-
-        @Override
-        public int getColumnCount() {
-            return 2;
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            return column == 0 ? "N° Análisis" : "Tipo";
-        }
-
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            int modelRow = modeloDocumentoDesdeFilaFija(row);
-            return modelRow >= 0 && documentoModel.isCellEditable(modelRow, column);
-        }
-
-        @Override
-        public Object getValueAt(int row, int column) {
-            int modelRow = modeloDocumentoDesdeFilaFija(row);
-            return modelRow < 0 ? "" : documentoModel.getValueAt(modelRow, column);
-        }
-
-        @Override
-        public void setValueAt(Object value, int row, int column) {
-            int modelRow = modeloDocumentoDesdeFilaFija(row);
-            if (modelRow >= 0) {
-                documentoModel.setValueAt(value, modelRow, column);
-            }
-        }
-    };
-    private final JTable documentosFijosTable = new AppV2Table(documentosFijosModel);
-    private JScrollPane documentosScrollPane;
-    private JScrollPane documentosFijosScrollPane;
-    private AppV2ColumnFilterSupport.Controller documentosColumnFilterSupport;
-    private JTextField filtroDocumentoAnalisis;
-    private JTextField filtroDocumentoTipo;
     private final DefaultTableModel documentosAsociadosModel = new DefaultTableModel(
             new Object[]{"N° expediente SGD", "Estado"}, 0) {
         @Override
@@ -417,7 +307,6 @@ public class JPanelAnalisisV2 extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
-        configurarDocumentoTabla();
         configurarDocumentosAsociadosTabla();
         configurarEventos();
         configurarKpisInteractivos();
@@ -575,19 +464,6 @@ public class JPanelAnalisisV2 extends JPanel {
         return panel;
     }
 
-    private AppV2SideActionPanel crearPanelPlantillasAnalisis() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de análisis", new Runnable() {
-            @Override
-            public void run() {
-                cerrarPanelAnalisis();
-            }
-        });
-        panel.setAccentColor(new Color(110, 78, 164));
-        panel.addSection(crearPanelPlantillas());
-        panel.addSection(crearExpedienteDigitalPanel());
-        return panel;
-    }
-
     private JPanel crearPanelAnalisisConTab(
             final AppV2SideActionPanel panelDatos,
             final AppV2SideActionPanel panelDocumentos) {
@@ -728,22 +604,6 @@ public class JPanelAnalisisV2 extends JPanel {
         return section;
     }
 
-    private AppV2SideSectionPanel crearPanelPlantillas() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Plantillas Word");
-        lblPlantillaSeleccionada.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        lblPlantillaSeleccionada.setForeground(AppV2Theme.TEXT_PRIMARY);
-        lblPlantillaAyuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        lblPlantillaAyuda.setForeground(AppV2Theme.TEXT_SECONDARY);
-        btnDescargarPlantillaSeleccionada.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        JPanel contenido = new JPanel(new BorderLayout(0, 8));
-        contenido.setOpaque(false);
-        contenido.add(lblPlantillaSeleccionada, BorderLayout.NORTH);
-        contenido.add(lblPlantillaAyuda, BorderLayout.CENTER);
-        contenido.add(btnDescargarPlantillaSeleccionada, BorderLayout.SOUTH);
-        section.addContent(contenido);
-        return section;
-    }
-
     private void editarSeleccionActual() {
         AnalisisTableRow fila = obtenerFilaSeleccionada();
         if (fila == null || !fila.esPrincipal() || fila.principal == null || fila.principal.getIdExpediente() == null) {
@@ -835,16 +695,24 @@ public class JPanelAnalisisV2 extends JPanel {
         JPanel panel = section("Documentos Analizados");
         documentosTreePanel = new DocumentoAnalisisTreeGridPanelV2();
         documentosTreePanel.setHandlers(
-                documentos -> {
-                    AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para guardar documentos.");
+                documento -> {
+                    AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para guardar el documento.");
                     if (item == null) {
-                        throw new IllegalArgumentException("Seleccione un expediente para guardar documentos.");
+                        throw new IllegalArgumentException("Seleccione un expediente para guardar el documento.");
                     }
                     if (!puedeGuardarDocumentos(item)) {
                         throw new IllegalArgumentException("El expediente seleccionado no permite guardar documentos de análisis.");
                     }
-                    return analisisService.guardarDocumentosAnalisisJerarquicos(item.getIdExpediente(), documentos);
+                    return analisisService.guardarDocumentoAnalisisJerarquico(item.getIdExpediente(), documento);
                 },
+                (idExp, ids) -> {
+                    AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para eliminar el documento.");
+                    if (item == null) {
+                        throw new IllegalArgumentException("Seleccione un expediente para eliminar el documento.");
+                    }
+                    return analisisService.darBajaDocumentosAnalisis(idExp, ids);
+                },
+                this::descargarPlantillaDocumento,
                 this::recargarDetalleSeleccionado);
         panel.add(documentosTreePanel, BorderLayout.CENTER);
         return panel;
@@ -869,305 +737,6 @@ public class JPanelAnalisisV2 extends JPanel {
         lblExpedienteDigital.setForeground(AppV2Theme.TEXT_SECONDARY);
         panel.add(lblExpedienteDigital, BorderLayout.CENTER);
         return panel;
-    }
-
-    private void actualizarAlturaDocumentosAnalizados(JScrollPane scroll) {
-        int headerHeight = scroll.getColumnHeader() != null && scroll.getColumnHeader().getView() != null
-                ? scroll.getColumnHeader().getView().getPreferredSize().height
-                : documentosTable.getTableHeader().getPreferredSize().height;
-        int rowCount = Math.max(1, documentosTable.getRowCount());
-        int rowsHeight = rowCount * documentosTable.getRowHeight();
-        int horizontalBarHeight = scroll.getHorizontalScrollBar().getPreferredSize().height;
-        int extraPadding = 18;
-        int height = headerHeight + rowsHeight + horizontalBarHeight + extraPadding;
-        Dimension size = new Dimension(360, height);
-        scroll.setPreferredSize(size);
-        scroll.setMinimumSize(new Dimension(280, height));
-        if (documentosFijosScrollPane != null) {
-            documentosFijosScrollPane.setPreferredSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, height));
-            documentosFijosScrollPane.setMinimumSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, height));
-        }
-        scroll.revalidate();
-        scroll.repaint();
-        actualizarDocumentosFijos();
-    }
-
-    private JScrollPane construirScrollFijoDocumentos() {
-        JScrollPane scroll = new JScrollPane(documentosFijosTable);
-        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
-        scroll.setPreferredSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, 0));
-        scroll.setMinimumSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, 0));
-        scroll.setMaximumSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, Integer.MAX_VALUE));
-        documentosFijosTable.setShowHorizontalLines(false);
-        documentosFijosTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        documentosFijosTable.setPreferredScrollableViewportSize(new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, 0));
-        documentosFijosTable.setRowHeight(30);
-        TableColumn colAnalisis = documentosFijosTable.getColumnModel().getColumn(0);
-        colAnalisis.setPreferredWidth(92);
-        colAnalisis.setMinWidth(92);
-        colAnalisis.setMaxWidth(92);
-        TableColumn colTipo = documentosFijosTable.getColumnModel().getColumn(1);
-        colTipo.setPreferredWidth(150);
-        colTipo.setMinWidth(150);
-        colTipo.setMaxWidth(150);
-        documentosFijosTable.getColumnModel().getColumn(1)
-                .setCellEditor(new DefaultCellEditor(comboDesdeCatalogo(cmbTipoDocumento)));
-        JTextField filtroAnalisis = crearCampoFiltroDocumentoFijo("Filtrar");
-        JTextField filtroTipo = crearCampoFiltroDocumentoFijo("Filtrar");
-        filtroDocumentoAnalisis = filtroAnalisis;
-        filtroDocumentoTipo = filtroTipo;
-        filtroAnalisis.setPreferredSize(new Dimension(92, 24));
-        filtroTipo.setPreferredSize(new Dimension(150, 24));
-        FrozenDocumentHeaderPanel header = new FrozenDocumentHeaderPanel(
-                documentosFijosTable,
-                documentosColumnFilterSupport,
-                filtroAnalisis,
-                filtroTipo);
-        scroll.setColumnHeaderView(header);
-        scroll.getVerticalScrollBar().setModel(documentosScrollPane.getVerticalScrollBar().getModel());
-        documentosFijosTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        documentosFijosTable.setSelectionModel(documentosTable.getSelectionModel());
-        filtroAnalisis.getDocument().addDocumentListener(simpleDocumentListener(() ->
-                aplicarFiltroDocumentoFijo(COL_DOCUMENTO_NUMERO_ANALISIS, filtroAnalisis.getText())));
-        filtroTipo.getDocument().addDocumentListener(simpleDocumentListener(() ->
-                aplicarFiltroDocumentoFijo(COL_DOCUMENTO_TIPO, filtroTipo.getText())));
-        return scroll;
-    }
-
-    private JTextField crearCampoFiltroDocumentoFijo(String prompt) {
-        JTextField field = new JTextField();
-        field.setFont(AppV2Theme.fontPlain(10));
-        field.setForeground(AppV2Theme.TEXT_PRIMARY);
-        field.setBackground(AppV2Theme.SURFACE);
-        field.setCaretColor(AppV2Theme.PRIMARY);
-        field.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppV2Theme.BORDER),
-                BorderFactory.createEmptyBorder(1, 6, 1, 6)));
-        field.setPreferredSize(new Dimension(100, 24));
-        field.setToolTipText(prompt);
-        return field;
-    }
-
-    private SortOrder sortOrderDocumentoFijo(int modelColumn) {
-        if (documentosColumnFilterSupport == null || documentosColumnFilterSupport.getSorter() == null) {
-            return SortOrder.UNSORTED;
-        }
-        for (javax.swing.RowSorter.SortKey key : documentosColumnFilterSupport.getSorter().getSortKeys()) {
-            if (key.getColumn() == modelColumn) {
-                return key.getSortOrder();
-            }
-        }
-        return SortOrder.UNSORTED;
-    }
-
-    private void aplicarFiltroDocumentoFijo(int modelColumn, String text) {
-        if (documentosColumnFilterSupport == null) {
-            return;
-        }
-        documentosColumnFilterSupport.setFilterText(modelColumn, text);
-    }
-
-    private final class FrozenDocumentHeaderPanel extends JPanel {
-
-        private static final int FIXED_HEADER_HEIGHT = 30;
-        private static final int FIXED_FILTER_HEIGHT = 30;
-        private final CellRendererPane rendererPane = new CellRendererPane();
-        private final JTable tableRef;
-        private final AppV2ColumnFilterSupport.Controller sorterSupport;
-        private final JTextField filtroAnalisisRef;
-        private final JTextField filtroTipoRef;
-
-        private FrozenDocumentHeaderPanel(
-                JTable tableRef,
-                AppV2ColumnFilterSupport.Controller sorterSupport,
-                JTextField filtroAnalisisRef,
-                JTextField filtroTipoRef) {
-            this.tableRef = tableRef;
-            this.sorterSupport = sorterSupport;
-            this.filtroAnalisisRef = filtroAnalisisRef;
-            this.filtroTipoRef = filtroTipoRef;
-            setLayout(null);
-            setOpaque(true);
-            setBackground(AppV2Theme.SURFACE_ALT);
-            add(rendererPane);
-            add(filtroAnalisisRef);
-            add(filtroTipoRef);
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mousePressed(MouseEvent event) {
-                    if (event.getY() >= FIXED_HEADER_HEIGHT) {
-                        return;
-                    }
-                    int viewColumn = viewColumnAt(event.getX());
-                    if (viewColumn < 0) {
-                        return;
-                    }
-                    int modelColumn = viewColumn == 0 ? COL_DOCUMENTO_NUMERO_ANALISIS : COL_DOCUMENTO_TIPO;
-                    if (sorterSupport != null && sorterSupport.getSorter() != null) {
-                        sorterSupport.getSorter().toggleSortOrder(modelColumn);
-                        repaint();
-                    }
-                }
-            });
-            addMouseMotionListener(new MouseAdapter() {
-                @Override
-                public void mouseMoved(MouseEvent event) {
-                    setCursor(event.getY() < FIXED_HEADER_HEIGHT
-                            ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-                            : Cursor.getDefaultCursor());
-                }
-            });
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            return new Dimension(DOCUMENTOS_COLUMNAS_FIJAS_ANCHO, FIXED_HEADER_HEIGHT + FIXED_FILTER_HEIGHT);
-        }
-
-        @Override
-        public Dimension getMinimumSize() {
-            return getPreferredSize();
-        }
-
-        @Override
-        public void doLayout() {
-            int analisisWidth = tableRef.getColumnModel().getColumn(0).getWidth();
-            int tipoWidth = tableRef.getColumnModel().getColumn(1).getWidth();
-            rendererPane.setBounds(0, 0, analisisWidth + tipoWidth, FIXED_HEADER_HEIGHT);
-            filtroAnalisisRef.setBounds(2, FIXED_HEADER_HEIGHT + 3, Math.max(0, analisisWidth - 4), 24);
-            filtroTipoRef.setBounds(analisisWidth + 2, FIXED_HEADER_HEIGHT + 3, Math.max(0, tipoWidth - 4), 24);
-        }
-
-        @Override
-        protected void paintComponent(Graphics graphics) {
-            super.paintComponent(graphics);
-            paintHeaderCell(graphics, 0, 92, COL_DOCUMENTO_NUMERO_ANALISIS);
-            paintHeaderCell(graphics, 92, 150, COL_DOCUMENTO_TIPO);
-        }
-
-        private void paintHeaderCell(Graphics graphics, int x, int width, int modelColumn) {
-            TableCellRenderer renderer = tableRef.getTableHeader().getDefaultRenderer();
-            Component component = renderer.getTableCellRendererComponent(
-                    tableRef,
-                    tableRef.getColumnModel().getColumn(modelColumn).getHeaderValue(),
-                    false,
-                    false,
-                    -1,
-                    modelColumn);
-            if (component instanceof JLabel) {
-                JLabel label = (JLabel) component;
-                label.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-                label.setForeground(AppV2Theme.TEXT_SECONDARY);
-                label.setBackground(AppV2Theme.SURFACE_ALT);
-                label.setHorizontalAlignment(JLabel.CENTER);
-                label.setHorizontalTextPosition(JLabel.LEFT);
-                label.setIconTextGap(6);
-                label.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER),
-                        BorderFactory.createEmptyBorder(0, 8, 0, 8)));
-                label.setIcon(new SortIndicatorIcon(sortOrderDocumentoFijo(modelColumn)));
-                rendererPane.paintComponent(
-                        graphics,
-                        label,
-                        this,
-                        x,
-                        0,
-                        width,
-                        FIXED_HEADER_HEIGHT,
-                        true);
-                return;
-            }
-            rendererPane.paintComponent(graphics, component, this, x, 0, width, FIXED_HEADER_HEIGHT, true);
-        }
-
-        private int viewColumnAt(int x) {
-            if (x >= 0 && x < 92) {
-                return 0;
-            }
-            if (x >= 92 && x < 242) {
-                return 1;
-            }
-            return -1;
-        }
-    }
-
-    private static final class SortIndicatorIcon implements Icon {
-
-        private final SortOrder order;
-
-        private SortIndicatorIcon(SortOrder order) {
-            this.order = order == null ? SortOrder.UNSORTED : order;
-        }
-
-        @Override
-        public int getIconWidth() {
-            return 9;
-        }
-
-        @Override
-        public int getIconHeight() {
-            return 14;
-        }
-
-        @Override
-        public void paintIcon(Component component, Graphics graphics, int x, int y) {
-            Graphics2D g2 = (Graphics2D) graphics.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                if (order == SortOrder.ASCENDING) {
-                    g2.setColor(AppV2Theme.PRIMARY);
-                    paintUp(g2, x, y + 3);
-                } else if (order == SortOrder.DESCENDING) {
-                    g2.setColor(AppV2Theme.PRIMARY);
-                    paintDown(g2, x, y + 6);
-                } else {
-                    g2.setColor(new Color(
-                            AppV2Theme.TEXT_SECONDARY.getRed(),
-                            AppV2Theme.TEXT_SECONDARY.getGreen(),
-                            AppV2Theme.TEXT_SECONDARY.getBlue(),
-                            150));
-                    paintUp(g2, x, y + 2);
-                    paintDown(g2, x, y + 8);
-                }
-            } finally {
-                g2.dispose();
-            }
-        }
-
-        private static void paintUp(Graphics2D g2, int x, int y) {
-            g2.fillPolygon(
-                    new int[]{x + 4, x + 1, x + 7},
-                    new int[]{y, y + 5, y + 5},
-                    3);
-        }
-
-        private static void paintDown(Graphics2D g2, int x, int y) {
-            g2.fillPolygon(
-                    new int[]{x + 1, x + 7, x + 4},
-                    new int[]{y, y, y + 5},
-                    3);
-        }
-    }
-
-    private javax.swing.event.DocumentListener simpleDocumentListener(Runnable action) {
-        return new javax.swing.event.DocumentListener() {
-            @Override
-            public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                action.run();
-            }
-
-            @Override
-            public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                action.run();
-            }
-
-            @Override
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                action.run();
-            }
-        };
     }
 
     private JPanel crearDocumentosAsociadosPanel() {
@@ -1376,126 +945,6 @@ public class JPanelAnalisisV2 extends JPanel {
                 12);
     }
 
-    private void configurarDocumentoTabla() {
-        configurarDocumentoTablaBase(documentosTable, true);
-        configurarDocumentoTablaBase(documentosFijosTable, false);
-        documentosTable.setSelectionModel(documentosFijosTable.getSelectionModel());
-        documentosFijosTable.setSelectionModel(documentosTable.getSelectionModel());
-        if (documentosScrollPane != null) {
-            documentosColumnFilterSupport = AppV2ColumnFilterSupport.install(
-                    "Analisis.DocumentosAnalizados",
-                    documentosTable,
-                    documentosScrollPane,
-                    documentosScrollPane,
-                    null,
-                    COL_DOCUMENTO_PLANTILLA,
-                    COL_DOCUMENTO_GUARDAR,
-                    COL_DOCUMENTO_ACCION,
-                    COL_DOCUMENTO_TIPO_CODIGO,
-                    COL_DOCUMENTO_ESTADO_CODIGO,
-                    COL_DOCUMENTO_ID);
-            documentosColumnFilterSupport.getFilterField(COL_DOCUMENTO_NUMERO_ANALISIS).setVisible(false);
-            documentosColumnFilterSupport.getFilterField(COL_DOCUMENTO_TIPO).setVisible(false);
-            documentosColumnFilterSupport.getSorter().addRowSorterListener(event -> actualizarDocumentosFijos());
-            actualizarAlturaDocumentosAnalizados(documentosScrollPane);
-        }
-    }
-
-    private void configurarDocumentoTablaBase(JTable tabla, boolean principal) {
-        tabla.setRowHeight(30);
-        tabla.setAutoCreateRowSorter(false);
-        tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tabla.getTableHeader().setReorderingAllowed(false);
-        tabla.getTableHeader().setResizingAllowed(true);
-        tabla.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        tabla.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
-        tabla.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
-        tabla.setGridColor(AppV2Theme.BORDER);
-        tabla.setShowVerticalLines(false);
-        tabla.setIntercellSpacing(new Dimension(0, 1));
-        tabla.setDefaultRenderer(Object.class, new DocumentoAnalizadoRenderer());
-        tabla.setDefaultRenderer(Boolean.class, new DocumentoAnalizadoCheckRenderer());
-        if (principal) {
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_NOTIFICADO).setCellEditor(new DefaultCellEditor(comboSiNo()));
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_FECHA).setCellEditor(new FechaDocumentoCellEditor());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_ACUSE).setCellEditor(new FechaDocumentoCellEditor());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_CONFIRMACION_RESPUESTA).setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_FECHA_RESPUESTA).setCellEditor(new FechaDocumentoCellEditor());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellRenderer(new DescripcionDocumentoRenderer());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).setCellEditor(new DescripcionDocumentoCellEditor());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellRenderer(new PlantillaDocumentoRenderer());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setCellEditor(new PlantillaDocumentoEditor());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellRenderer(new GuardarDocumentoRenderer());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setCellEditor(new GuardarDocumentoEditor());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellRenderer(new EliminarDocumentoRenderer());
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setCellEditor(new EliminarDocumentoEditor());
-        }
-        int[] widths = principal
-                ? new int[]{0, 0, 120, 180, 110, 120, 240, 145, 105, 165, 115, 145, 95, 42, 42, 42, 0, 0, 0}
-                : new int[]{92, 150};
-        int visibleCount = tabla.getColumnModel().getColumnCount();
-        for (int i = 0; i < visibleCount && i < widths.length; i++) {
-            int preferred = widths[i];
-            int min = principal && i < 2 ? 0 : Math.min(preferred, 90);
-            int max = principal && i < 2 ? 0 : preferred + 90;
-            configurarColumnaDocumento(tabla, i, preferred, min, max);
-        }
-        if (principal) {
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMinWidth(42);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setPreferredWidth(42);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_PLANTILLA).setMaxWidth(48);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMinWidth(42);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setPreferredWidth(42);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_GUARDAR).setMaxWidth(48);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMinWidth(42);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setPreferredWidth(42);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ACCION).setMaxWidth(48);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMinWidth(0);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_TIPO_CODIGO).setMaxWidth(0);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMinWidth(0);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO_CODIGO).setMaxWidth(0);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMinWidth(0);
-            tabla.getColumnModel().getColumn(COL_DOCUMENTO_ID).setMaxWidth(0);
-        } else {
-            for (int i = tabla.getColumnModel().getColumnCount() - 1; i >= 2; i--) {
-                tabla.getColumnModel().removeColumn(tabla.getColumnModel().getColumn(i));
-            }
-            tabla.setPreferredScrollableViewportSize(new Dimension(250, 0));
-        }
-    }
-
-    private void configurarColumnaDocumento(JTable tabla, int index, int preferred, int min, int max) {
-        TableColumn column = tabla.getColumnModel().getColumn(index);
-        column.setPreferredWidth(preferred);
-        column.setMinWidth(min);
-        column.setMaxWidth(max);
-    }
-
-    private int modeloDocumentoDesdeFilaFija(int fixedRow) {
-        if (fixedRow < 0 || documentosTable == null || fixedRow >= documentosTable.getRowCount()) {
-            return -1;
-        }
-        return documentosTable.convertRowIndexToModel(fixedRow);
-    }
-
-    private void actualizarDocumentosFijos() {
-        if (documentosFijosModel != null) {
-            documentosFijosModel.fireTableDataChanged();
-        }
-        if (documentosFijosScrollPane != null) {
-            documentosFijosScrollPane.revalidate();
-            documentosFijosScrollPane.repaint();
-        }
-    }
-
-    private void ajustarAlturaDocumentoFila(int viewRow, int height) {
-        documentosTable.setRowHeight(viewRow, height);
-        if (viewRow >= 0 && viewRow < documentosFijosTable.getRowCount()) {
-            documentosFijosTable.setRowHeight(viewRow, height);
-        }
-    }
-
     private void configurarDocumentosAsociadosTabla() {
         documentosAsociadosTable.setRowHeight(30);
         documentosAsociadosTable.setAutoCreateRowSorter(false);
@@ -1526,17 +975,9 @@ public class JPanelAnalisisV2 extends JPanel {
         btnCancelarAnalisis.addActionListener(e -> cerrarPanelAnalisis());
         btnEnviarVerificacion.addActionListener(e -> enviarVerificacion());
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
-        btnAgregarDocumento.addActionListener(e -> mostrarDialogoAgregarDocumento());
-        btnQuitarDocumento.addActionListener(e -> quitarDocumento());
-        btnDescargarPlantillaSeleccionada.addActionListener(e -> descargarPlantillaDocumentoSeleccionado());
         cmbIncorporado.addActionListener(e -> actualizarChecksIncorporado());
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
         chkRegistrarObservacion.addActionListener(e -> actualizarObservacionHabilitada());
-        documentosTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                actualizarPlantillaSeleccionada();
-            }
-        });
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 actualizarSeleccion();
@@ -1625,7 +1066,6 @@ public class JPanelAnalisisV2 extends JPanel {
         cargarSimpleItems(cmbEstadoDocumento, carga.estadosDocumento, "Seleccione estado");
         cargarSimpleItems(cmbTipoObservacion, carga.tiposObservacion, "Seleccione tipo");
         cargarSimpleItems(cmbMotivoNoCorresponde, carga.motivosNoCorresponde, "Seleccione motivo");
-        configurarEditoresCatalogoDocumentoTabla();
         if (documentosTreePanel != null) {
             documentosTreePanel.setCatalogos(carga.tiposDocumento, carga.estadosDocumento);
         }
@@ -1637,39 +1077,6 @@ public class JPanelAnalisisV2 extends JPanel {
         for (CatalogoItemDTO item : items) {
             combo.addItem(new SimpleItem(item.getCodigo(), item.getNombre()));
         }
-    }
-
-    private void configurarEditoresCatalogoDocumentoTabla() {
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_TIPO)
-                .setCellEditor(new DefaultCellEditor(comboDesdeCatalogo(cmbTipoDocumento)));
-        documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_ESTADO)
-                .setCellEditor(new DefaultCellEditor(comboDesdeCatalogo(cmbEstadoDocumento)));
-        documentosFijosTable.getColumnModel().getColumn(1)
-                .setCellEditor(new DefaultCellEditor(comboDesdeCatalogo(cmbTipoDocumento)));
-    }
-
-    private JComboBox<SimpleItem> comboDesdeCatalogo(JComboBox<SimpleItem> origen) {
-        JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
-        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        for (int i = 0; i < origen.getItemCount(); i++) {
-            SimpleItem item = origen.getItemAt(i);
-            if (item != null && item.codigo != null && !item.codigo.trim().isEmpty()) {
-                combo.addItem(item);
-            }
-        }
-        return combo;
-    }
-
-    private JComboBox<String> comboSiNo() {
-        JComboBox<String> combo = new JComboBox<String>(new String[]{"No", "Si"});
-        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        return combo;
-    }
-
-    private JComboBox<String> comboConfirmacionRespuesta() {
-        JComboBox<String> combo = new JComboBox<String>(new String[]{"Pendiente", "Si", "No"});
-        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        return combo;
     }
 
     private void buscar() {
@@ -2413,7 +1820,7 @@ public class JPanelAnalisisV2 extends JPanel {
             txtObservacion.setText(observacion.getDescripcion());
         }
         if (!detalle.isRegistrado()
-                && documentoModel.getRowCount() == 0
+                && (detalle.getDocumentosAnalizados() == null || detalle.getDocumentosAnalizados().isEmpty())
                 && cmbEstadoDocumento.getItemCount() > 1) {
             cmbEstadoDocumento.setSelectedIndex(1);
         }
@@ -2421,35 +1828,8 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void cargarDocumentosAnalizados(List<DocumentoAnalizadoDTO> documentos) {
-        documentoModel.setRowCount(0);
         if (documentosTreePanel != null) {
             documentosTreePanel.setDocumentos(idExpedienteDetalleCargado, idAnalisisSeleccionado, documentos);
-        }
-        if (documentos == null) {
-            return;
-        }
-        for (DocumentoAnalizadoDTO documento : documentos) {
-            documentoModel.addRow(new Object[]{
-                etiquetaAnalisisDocumento(documento),
-                new SimpleItem(documento.getTipoDocumentoCodigo(), documento.getTipoDocumentoNombre()),
-                new SimpleItem(documento.getEstadoDocumentoCodigo(), documento.getEstadoDocumentoNombre()),
-                documento.getDetalleObservacion(),
-                documento.getFechaDocumento() == null ? "-" : DATE_FORMAT.format(documento.getFechaDocumento()),
-                valueOrEmpty(documento.getNumeroDocumento()),
-                documento.getDescripcion(),
-                documento.isRequiereRespuesta(),
-                documento.getFechaAcuse() == null ? "" : DATE_FORMAT.format(documento.getFechaAcuse()),
-                confirmacionRespuestaUi(documento.getConfirmacionRespuesta(), documento.isRequiereRespuesta()),
-                documento.getFechaRespuesta() == null ? "" : DATE_FORMAT.format(documento.getFechaRespuesta()),
-                valueOrEmpty(documento.getNumeroHojaEnvioRespuesta()),
-                documento.isNotificado() ? "Si" : "No",
-                "",
-                "",
-                "",
-                documento.getTipoDocumentoCodigo(),
-                documento.getEstadoDocumentoCodigo(),
-                documento.getIdDocumentoAnalizado()
-            });
         }
         actualizarPublicacionLectura(documentos);
     }
@@ -2919,192 +2299,21 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private List<DocumentoAnalizadoDTO> obtenerDocumentosFormulario() {
-        if (documentosTreePanel != null) {
-            return documentosTreePanel.getDocumentosActivos();
-        }
-        List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
-        for (int i = 0; i < documentoModel.getRowCount(); i++) {
-            documentos.add(documentoDesdeFila(i));
-        }
-        return documentos;
-    }
-
-    private DocumentoAnalizadoDTO documentoDesdeFila(int i) {
-        return new DocumentoAnalizadoDTO(
-                longValue(documentoModel.getValueAt(i, COL_DOCUMENTO_ID)),
-                null,
-                idAnalisisSeleccionado,
-                codigoDocumentoFila(i, COL_DOCUMENTO_TIPO, COL_DOCUMENTO_TIPO_CODIGO, cmbTipoDocumento),
-                nombreDocumentoFila(i, COL_DOCUMENTO_TIPO),
-                codigoDocumentoFila(i, COL_DOCUMENTO_ESTADO, COL_DOCUMENTO_ESTADO_CODIGO, cmbEstadoDocumento),
-                nombreDocumentoFila(i, COL_DOCUMENTO_ESTADO),
-                localDateValue(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA)),
-                valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_NUMERO)),
-                value(documentoModel.getValueAt(i, COL_DOCUMENTO_DESCRIPCION)),
-                esSi(documentoModel.getValueAt(i, COL_DOCUMENTO_NOTIFICADO)),
-                localDateOptional(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA_ACUSE)),
-                Boolean.TRUE.equals(documentoModel.getValueAt(i, COL_DOCUMENTO_REQUIERE_RESPUESTA)),
-                confirmacionRespuestaDb(documentoModel.getValueAt(i, COL_DOCUMENTO_CONFIRMACION_RESPUESTA)),
-                localDateOptional(documentoModel.getValueAt(i, COL_DOCUMENTO_FECHA_RESPUESTA)),
-                valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA)),
-                false,
-                null,
-                esEstadoDocumentoObservadoPorFila(i)
-                        ? valueOrEmpty(documentoModel.getValueAt(i, COL_DOCUMENTO_DETALLE_OBS))
-                        : "");
-    }
-
-    private void mostrarDialogoAgregarDocumento() {
-        resetearDocumentoFormulario();
-        txtDescripcionDocumento.setText("");
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setOpaque(false);
-        int row = 0;
-        addRow(form, row++, "Tipo", cmbTipoDocumento);
-        addRow(form, row++, "Estado", cmbEstadoDocumento);
-        addRow(form, row++, "Fecha", fechaDocumentoAnalizado);
-        addRow(form, row++, "Descripción", scrollText(txtDescripcionDocumento, 58));
-        addRow(form, row, "", chkDocumentoRequiereRespuesta);
-        int respuesta = JOptionPane.showConfirmDialog(
-                this,
-                form,
-                "Agregar documento analizado",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
-        if (respuesta == JOptionPane.OK_OPTION) {
-            agregarDocumento();
-        }
+        return documentosTreePanel != null
+                ? documentosTreePanel.getDocumentosActivos()
+                : new ArrayList<DocumentoAnalizadoDTO>();
     }
 
     private void crearNuevoBloqueAnalisis() {
         mostrarInfo("El módulo de Análisis quedó configurado con un único análisis por expediente.");
     }
 
-    private void agregarDocumento() {
-        SimpleItem tipo = (SimpleItem) cmbTipoDocumento.getSelectedItem();
-        SimpleItem estado = (SimpleItem) cmbEstadoDocumento.getSelectedItem();
-        LocalDate fechaDocumento = fechaSeleccionada(fechaDocumentoAnalizado);
-        String descripcion = txtDescripcionDocumento.getText() == null ? "" : txtDescripcionDocumento.getText().trim();
-        if (tipo == null || tipo.codigo.isEmpty()) {
-            mostrarInfo("Seleccione el tipo de documento analizado.");
-            return;
-        }
-        if (estado == null || estado.codigo.isEmpty()) {
-            mostrarInfo("Seleccione el estado del documento analizado.");
-            return;
-        }
-        if (descripcion.isEmpty()) {
-            mostrarInfo("Ingrese la descripción del documento analizado.");
-            return;
-        }
-        documentoModel.addRow(new Object[]{
-            etiquetaAnalisisActual(),
-            tipo,
-            estado,
-            "",
-            DATE_FORMAT.format(fechaDocumento == null ? LocalDate.now() : fechaDocumento),
-            "",
-            descripcion,
-            chkDocumentoRequiereRespuesta.isSelected(),
-            "",
-            "Pendiente",
-            "",
-            "",
-            "No",
-            "",
-            "",
-            "",
-            tipo.codigo,
-            estado.codigo,
-            null
-        });
-        int lastRow = documentoModel.getRowCount() - 1;
-        if (lastRow >= 0) {
-            documentosTable.getSelectionModel().setSelectionInterval(lastRow, lastRow);
-        }
-        txtDescripcionDocumento.setText("");
-        resetearDocumentoFormulario();
-        actualizarPlantillaSeleccionada();
-    }
-
-    private void resetearDocumentoFormulario() {
-        if (cmbTipoDocumento.getItemCount() > 0) {
-            cmbTipoDocumento.setSelectedIndex(0);
-        }
-        if (cmbEstadoDocumento.getItemCount() > 0) {
-            cmbEstadoDocumento.setSelectedIndex(0);
-        }
-        fechaDocumentoAnalizado.setDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()));
-        chkDocumentoRequiereRespuesta.setSelected(false);
-    }
-
-    private void quitarDocumento() {
-        int row = documentosTable.getSelectedRow();
-        if (row < 0) {
-            mostrarInfo("Seleccione un documento para quitarlo del registro.");
-            return;
-        }
-        quitarDocumentoFila(documentosTable.convertRowIndexToModel(row));
-    }
-
-    private void quitarDocumentoFila(int modelRow) {
-        if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
-            return;
-        }
-        documentoModel.removeRow(modelRow);
-        actualizarPlantillaSeleccionada();
-    }
-
-    private void guardarDocumentoFila(int modelRow) {
-        if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
-            return;
-        }
-        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para guardar el documento.");
-        if (item == null) {
-            return;
-        }
-        if (!puedeGuardarDocumentos(item)) {
-            mostrarInfo("El expediente seleccionado no permite guardar documentos de análisis.");
-            return;
-        }
-        DocumentoAnalizadoDTO documento = documentoDesdeFila(modelRow);
-        setTrabajando(true, "Guardando documento de análisis...");
-        SwingWorker<AnalisisResultadoDTO, Void> worker = new SwingWorker<AnalisisResultadoDTO, Void>() {
-            @Override
-            protected AnalisisResultadoDTO doInBackground() throws Exception {
-                return analisisService.guardarDocumentoAnalisis(item.getIdExpediente(), documento);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    AnalisisResultadoDTO resultado = get();
-                    JOptionPane.showMessageDialog(
-                            JPanelAnalisisV2.this,
-                            resultado.getMensaje(),
-                            "Análisis",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    recargarDetalleSeleccionado();
-                } catch (Exception ex) {
-                    mostrarError("No se pudo guardar el documento de análisis.", ex);
-                } finally {
-                    setTrabajando(false, null);
-                }
-            }
-        };
-        worker.execute();
-    }
-
-    private void descargarPlantillaDocumento(int modelRow) {
-        if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
-            return;
-        }
+    private void descargarPlantillaDocumento(DocumentoAnalizadoDTO documento) {
         AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para descargar la plantilla.");
         if (item == null) {
             return;
         }
-        DocumentoAnalizadoDTO documento = documentoDesdeFila(modelRow);
-        if (documento.getTipoDocumentoNombre().trim().isEmpty()) {
+        if (documento == null || documento.getTipoDocumentoNombre().trim().isEmpty()) {
             mostrarInfo("Seleccione el tipo de documento para descargar la plantilla.");
             return;
         }
@@ -3201,29 +2410,6 @@ public class JPanelAnalisisV2 extends JPanel {
             return bloquesAnalisis.get(0).getTitulo();
         }
         return "Análisis 1";
-    }
-
-    private void descargarPlantillaDocumentoSeleccionado() {
-        int row = documentosTable.getSelectedRow();
-        if (row < 0) {
-            mostrarInfo("Seleccione un documento analizado para descargar su plantilla.");
-            return;
-        }
-        descargarPlantillaDocumento(documentosTable.convertRowIndexToModel(row));
-    }
-
-    private void actualizarPlantillaSeleccionada() {
-        int row = documentosTable.getSelectedRow();
-        if (row < 0) {
-            lblPlantillaSeleccionada.setText("Seleccione un documento analizado para descargar su plantilla.");
-            return;
-        }
-        int modelRow = documentosTable.convertRowIndexToModel(row);
-        String tipo = valueOrEmpty(documentoModel.getValueAt(modelRow, COL_DOCUMENTO_TIPO));
-        String descripcion = valueOrEmpty(documentoModel.getValueAt(modelRow, COL_DOCUMENTO_DESCRIPCION));
-        lblPlantillaSeleccionada.setText(
-                tipo.isEmpty() ? "Documento analizado seleccionado"
-                        : "Plantilla: " + tipo + (descripcion.isEmpty() ? "" : " · " + descripcion));
     }
 
     private boolean tieneExtensionWord(Path path) {
@@ -3350,9 +2536,6 @@ public class JPanelAnalisisV2 extends JPanel {
         fechaDocumentoAnalizado.setEnabled(habilitar);
         txtDescripcionDocumento.setEnabled(habilitar);
         chkDocumentoRequiereRespuesta.setEnabled(habilitar);
-        documentosTable.setEnabled(habilitar);
-        btnAgregarDocumento.setEnabled(habilitar);
-        btnQuitarDocumento.setEnabled(habilitar);
         chkRegistrarObservacion.setEnabled(habilitar);
         txtComentarioMovimiento.setEnabled(habilitar);
     }
@@ -3406,11 +2589,9 @@ public class JPanelAnalisisV2 extends JPanel {
         chkMediosProbatorios.setSelected(false);
         chkRegistrarObservacion.setSelected(false);
         chkDocumentoRequiereRespuesta.setSelected(false);
-        documentoModel.setRowCount(0);
         if (documentosTreePanel != null) {
             documentosTreePanel.setDocumentos(idExpedienteDetalleCargado, idAnalisisSeleccionado, new ArrayList<DocumentoAnalizadoDTO>());
         }
-        actualizarPlantillaSeleccionada();
         limpiarPublicacionLectura();
         actualizarResultadoSeleccionado();
         actualizarObservacionHabilitada();
@@ -3453,114 +2634,6 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private static String formatDate(LocalDate value) {
         return value == null ? "" : DATE_FORMAT.format(value);
-    }
-
-    private static String value(Object value) {
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    private static Long longValue(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
-        if (value == null || value.toString().trim().isEmpty()) {
-            return null;
-        }
-        try {
-            return Long.valueOf(value.toString().trim());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    private static LocalDate localDateValue(Object value) {
-        String text = value(value).trim();
-        if (text.isEmpty() || "-".equals(text)) {
-            return LocalDate.now();
-        }
-        try {
-            return LocalDate.parse(text, DATE_FORMAT);
-        } catch (Exception ex) {
-            return LocalDate.now();
-        }
-    }
-
-    private static LocalDate localDateOptional(Object value) {
-        String text = value(value).trim();
-        if (text.isEmpty() || "-".equals(text)) {
-            return null;
-        }
-        try {
-            return LocalDate.parse(text, DATE_FORMAT);
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private static boolean esSi(Object value) {
-        String text = value(value).trim().toUpperCase(java.util.Locale.ROOT)
-                .replace("Í", "I");
-        return "SI".equals(text) || "S".equals(text);
-    }
-
-    private static String confirmacionRespuestaUi(String value, boolean requiereRespuesta) {
-        if (!requiereRespuesta) {
-            return "Pendiente";
-        }
-        String normalized = value(value).trim().toUpperCase(java.util.Locale.ROOT)
-                .replace("Í", "I");
-        if ("SI".equals(normalized)) {
-            return "Si";
-        }
-        if ("NO".equals(normalized)) {
-            return "No";
-        }
-        return "Pendiente";
-    }
-
-    private static String confirmacionRespuestaDb(Object value) {
-        String normalized = value(value).trim().toUpperCase(java.util.Locale.ROOT)
-                .replace("Í", "I");
-        if ("SI".equals(normalized) || "NO".equals(normalized) || "PENDIENTE".equals(normalized)) {
-            return normalized;
-        }
-        return "PENDIENTE";
-    }
-
-    private String codigoDocumentoFila(
-            int row,
-            int visibleColumn,
-            int hiddenColumn,
-            JComboBox<SimpleItem> catalogo) {
-        Object visible = documentoModel.getValueAt(row, visibleColumn);
-        if (visible instanceof SimpleItem) {
-            return ((SimpleItem) visible).codigo;
-        }
-        String hidden = value(documentoModel.getValueAt(row, hiddenColumn)).trim();
-        if (!hidden.isEmpty()) {
-            return hidden;
-        }
-        String nombre = value(visible).trim();
-        for (int i = 0; i < catalogo.getItemCount(); i++) {
-            SimpleItem item = catalogo.getItemAt(i);
-            if (item != null && item.nombre.equalsIgnoreCase(nombre)) {
-                return item.codigo;
-            }
-        }
-        return "";
-    }
-
-    private String nombreDocumentoFila(int row, int visibleColumn) {
-        Object visible = documentoModel.getValueAt(row, visibleColumn);
-        if (visible instanceof SimpleItem) {
-            return ((SimpleItem) visible).nombre;
-        }
-        return value(visible);
-    }
-
-    private static String valueOrEmpty(Object value) {
-        String text = value(value).trim();
-        return "-".equals(text) ? "" : text;
     }
 
     private void mostrarInfo(String message) {
@@ -3727,164 +2800,6 @@ public class JPanelAnalisisV2 extends JPanel {
         }
     }
 
-    private class DocumentoAnalizadoRenderer extends DefaultTableCellRenderer {
-
-        private DocumentoAnalizadoRenderer() {
-            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            String text = value instanceof SimpleItem ? ((SimpleItem) value).toString() : value(value);
-            setText(text == null || text.trim().isEmpty() ? "-" : text);
-            setToolTipText(getText());
-            setHorizontalAlignment(column == COL_DOCUMENTO_NUMERO_ANALISIS
-                    || column == COL_DOCUMENTO_FECHA
-                    || column == COL_DOCUMENTO_NOTIFICADO
-                    || column == COL_DOCUMENTO_FECHA_ACUSE
-                    || column == COL_DOCUMENTO_CONFIRMACION_RESPUESTA
-                    || column == COL_DOCUMENTO_FECHA_RESPUESTA
-                            ? SwingConstants.CENTER
-                            : SwingConstants.LEFT);
-            if (isSelected) {
-                setBackground(TABLE_SELECTION_BACKGROUND);
-                setForeground(TABLE_SELECTION_FOREGROUND);
-            } else {
-                int modelRow = table == documentosFijosTable
-                        ? modeloDocumentoDesdeFilaFija(row)
-                        : table.convertRowIndexToModel(row);
-                setBackground(colorDocumentoAnalizado(table, column));
-                setForeground(column == COL_DOCUMENTO_DETALLE_OBS
-                        && !esEstadoDocumentoObservadoPorFila(modelRow)
-                        ? AppV2Theme.TEXT_SECONDARY
-                        : AppV2Theme.TEXT_PRIMARY);
-            }
-            return component;
-        }
-    }
-
-    private class DescripcionDocumentoRenderer extends JTextArea implements TableCellRenderer {
-
-        private DescripcionDocumentoRenderer() {
-            setLineWrap(true);
-            setWrapStyleWord(true);
-            setOpaque(true);
-            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-            setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-            int row,
-            int column) {
-            String text = value == null ? "" : value.toString();
-            setText(text.isEmpty() ? "-" : text);
-            setSize(table.getColumnModel().getColumn(column).getWidth(), Short.MAX_VALUE);
-            int height = Math.max(30, getPreferredSize().height + 8);
-            if (documentosTable.getRowHeight(row) != height || documentosFijosTable.getRowHeight(row) != height) {
-                ajustarAlturaDocumentoFila(row, height);
-            }
-            if (isSelected) {
-                setBackground(TABLE_SELECTION_BACKGROUND);
-                setForeground(TABLE_SELECTION_FOREGROUND);
-            } else {
-                setBackground(colorDocumentoAnalizado(table, column));
-                setForeground(AppV2Theme.TEXT_PRIMARY);
-            }
-            setToolTipText(text.isEmpty() ? null : text);
-            return this;
-        }
-    }
-
-    private class DocumentoAnalizadoCheckRenderer extends JCheckBox implements TableCellRenderer {
-
-        private DocumentoAnalizadoCheckRenderer() {
-            setHorizontalAlignment(SwingConstants.CENTER);
-            setOpaque(true);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-            int row,
-            int column) {
-            setSelected(Boolean.TRUE.equals(value));
-            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : colorDocumentoAnalizado(table, column));
-            setToolTipText(Boolean.TRUE.equals(value)
-                    ? "Requiere respuesta."
-                    : "No requiere respuesta.");
-            return this;
-        }
-    }
-
-    private Color colorDocumentoAnalizado(JTable table, int viewColumn) {
-        int modelColumn = table.convertColumnIndexToModel(viewColumn);
-        if (modelColumn >= COL_DOCUMENTO_NUMERO_ANALISIS && modelColumn <= COL_DOCUMENTO_REQUIERE_RESPUESTA) {
-            return DOCUMENTO_ANALISIS_BACKGROUND;
-        }
-        if (modelColumn >= COL_DOCUMENTO_FECHA_ACUSE && modelColumn <= COL_DOCUMENTO_HOJA_ENVIO_RESPUESTA) {
-            return DOCUMENTO_ASIGNACION_BACKGROUND;
-        }
-        if (modelColumn == COL_DOCUMENTO_NOTIFICADO) {
-            return DOCUMENTO_NOTIFICACION_BACKGROUND;
-        }
-        return DOCUMENTO_ACTION_BACKGROUND;
-    }
-
-    private boolean esEstadoDocumentoObservadoPorFila(int modelRow) {
-        if (modelRow < 0 || modelRow >= documentoModel.getRowCount()) {
-            return false;
-        }
-        Object estado = documentoModel.getValueAt(modelRow, COL_DOCUMENTO_ESTADO);
-        String codigo = estado instanceof SimpleItem ? ((SimpleItem) estado).codigo : "";
-        if (codigo.isEmpty()) {
-            codigo = valueOrEmpty(documentoModel.getValueAt(modelRow, COL_DOCUMENTO_ESTADO_CODIGO));
-        }
-        return "OBSERVADO".equalsIgnoreCase(codigo);
-    }
-
-    private class FechaDocumentoCellEditor extends AbstractCellEditor implements TableCellEditor {
-
-        private final PremiumDateFieldV2 field = new PremiumDateFieldV2();
-
-        private FechaDocumentoCellEditor() {
-            field.setPreferredSize(new Dimension(120, 34));
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            LocalDate date = fechaSeleccionada(field);
-            return date == null ? "" : formatDate(date);
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            LocalDate date = localDateOptional(value);
-            field.setDate(date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()));
-            return field;
-        }
-    }
-
     private class DocumentoAsociadoPanelRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
@@ -3910,371 +2825,6 @@ public class JPanelAnalisisV2 extends JPanel {
             c.setForeground(AppV2Theme.TEXT_PRIMARY);
             setToolTipText(text.isEmpty() ? null : text);
             return c;
-        }
-    }
-
-    private class GuardarDocumentoRenderer extends JButton implements TableCellRenderer {
-        private GuardarDocumentoRenderer() {
-            setText("");
-            setIcon(new SaveDocumentIcon());
-            setToolTipText("Guardar documento");
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setFocusPainted(false);
-            setBorderPainted(false);
-            setContentAreaFilled(false);
-            setOpaque(false);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            setEnabled(table.isEnabled());
-            return this;
-        }
-    }
-
-    private class PlantillaDocumentoRenderer extends JButton implements TableCellRenderer {
-        private PlantillaDocumentoRenderer() {
-            setText("");
-            setIcon(new WordDocumentIcon());
-            setToolTipText("Descargar plantilla Word");
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setFocusPainted(false);
-            setBorderPainted(false);
-            setContentAreaFilled(false);
-            setOpaque(false);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            setEnabled(table.isEnabled());
-            return this;
-        }
-    }
-
-    private class PlantillaDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JButton button = new JButton();
-        private int modelRow = -1;
-
-        private PlantillaDocumentoEditor() {
-            button.setText("");
-            button.setIcon(new WordDocumentIcon());
-            button.setToolTipText("Descargar plantilla Word");
-            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            button.setFocusPainted(false);
-            button.setBorderPainted(false);
-            button.setContentAreaFilled(false);
-            button.addActionListener(e -> {
-                int row = modelRow;
-                fireEditingStopped();
-                descargarPlantillaDocumento(row);
-            });
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return "";
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            modelRow = table.convertRowIndexToModel(row);
-            button.setEnabled(table.isEnabled());
-            return button;
-        }
-    }
-
-    private class EliminarDocumentoRenderer extends JButton implements TableCellRenderer {
-        private EliminarDocumentoRenderer() {
-            setText("");
-            setIcon(new DeleteDocumentIcon());
-            setToolTipText("Quitar documento");
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setFocusPainted(false);
-            setBorderPainted(false);
-            setContentAreaFilled(false);
-            setOpaque(false);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            setEnabled(table.isEnabled());
-            return this;
-        }
-    }
-
-    private class GuardarDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JButton button = new JButton();
-        private int modelRow = -1;
-
-        private GuardarDocumentoEditor() {
-            button.setText("");
-            button.setIcon(new SaveDocumentIcon());
-            button.setToolTipText("Guardar documento");
-            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            button.setFocusPainted(false);
-            button.setBorderPainted(false);
-            button.setContentAreaFilled(false);
-            button.addActionListener(e -> {
-                int row = modelRow;
-                fireEditingStopped();
-                guardarDocumentoFila(row);
-            });
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return "";
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            modelRow = table.convertRowIndexToModel(row);
-            button.setEnabled(table.isEnabled());
-            return button;
-        }
-    }
-
-    private static class WordDocumentIcon implements Icon {
-        private static final int SIZE = 18;
-
-        @Override
-        public int getIconWidth() {
-            return SIZE;
-        }
-
-        @Override
-        public int getIconHeight() {
-            return SIZE;
-        }
-
-        @Override
-        public void paintIcon(Component c, Graphics g, int x, int y) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color stroke = AppV2Theme.PRIMARY;
-                Color fill = new Color(232, 244, 252);
-                g2.setColor(fill);
-                g2.fillRoundRect(x + 3, y + 1, 12, 16, 3, 3);
-                g2.setColor(stroke);
-                g2.drawRoundRect(x + 3, y + 1, 12, 16, 3, 3);
-                g2.drawLine(x + 6, y + 6, x + 12, y + 6);
-                g2.drawLine(x + 6, y + 9, x + 12, y + 9);
-                g2.drawLine(x + 6, y + 12, x + 10, y + 12);
-                g2.setColor(new Color(29, 92, 151));
-                g2.fillRoundRect(x + 1, y + 5, 8, 8, 2, 2);
-                g2.setColor(Color.WHITE);
-                g2.drawLine(x + 3, y + 7, x + 4, y + 11);
-                g2.drawLine(x + 4, y + 11, x + 5, y + 8);
-                g2.drawLine(x + 5, y + 8, x + 6, y + 11);
-                g2.drawLine(x + 6, y + 11, x + 7, y + 7);
-            } finally {
-                g2.dispose();
-            }
-        }
-    }
-
-    private static class SaveDocumentIcon implements Icon {
-        private static final int SIZE = 18;
-
-        @Override
-        public int getIconWidth() {
-            return SIZE;
-        }
-
-        @Override
-        public int getIconHeight() {
-            return SIZE;
-        }
-
-        @Override
-        public void paintIcon(Component c, Graphics g, int x, int y) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color stroke = AppV2Theme.PRIMARY;
-                Color fill = new Color(238, 247, 252);
-                g2.setColor(fill);
-                g2.fillRoundRect(x + 2, y + 2, 14, 14, 4, 4);
-                g2.setColor(stroke);
-                g2.drawRoundRect(x + 2, y + 2, 14, 14, 4, 4);
-                g2.fillRect(x + 5, y + 3, 7, 4);
-                g2.setColor(Color.WHITE);
-                g2.fillRect(x + 6, y + 4, 4, 2);
-                g2.setColor(stroke);
-                g2.fillRoundRect(x + 5, y + 10, 8, 5, 2, 2);
-                g2.setColor(Color.WHITE);
-                g2.drawLine(x + 7, y + 12, x + 11, y + 12);
-            } finally {
-                g2.dispose();
-            }
-        }
-    }
-
-    private static class DeleteDocumentIcon implements Icon {
-        private static final int SIZE = 18;
-
-        @Override
-        public int getIconWidth() {
-            return SIZE;
-        }
-
-        @Override
-        public int getIconHeight() {
-            return SIZE;
-        }
-
-        @Override
-        public void paintIcon(Component c, Graphics g, int x, int y) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color stroke = new Color(196, 53, 53);
-                Color fill = new Color(253, 237, 237);
-                g2.setColor(fill);
-                g2.fillRoundRect(x + 2, y + 2, 14, 14, 7, 7);
-                g2.setColor(stroke);
-                g2.drawRoundRect(x + 2, y + 2, 14, 14, 7, 7);
-                g2.setStroke(new java.awt.BasicStroke(2f));
-                g2.drawLine(x + 6, y + 6, x + 12, y + 12);
-                g2.drawLine(x + 12, y + 6, x + 6, y + 12);
-            } finally {
-                g2.dispose();
-            }
-        }
-    }
-
-    private class EliminarDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JButton button = new JButton();
-        private int modelRow = -1;
-
-        private EliminarDocumentoEditor() {
-            button.setText("");
-            button.setIcon(new DeleteDocumentIcon());
-            button.setToolTipText("Quitar documento");
-            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            button.setFocusPainted(false);
-            button.setBorderPainted(false);
-            button.setContentAreaFilled(false);
-            button.addActionListener(e -> {
-                int row = modelRow;
-                fireEditingStopped();
-                quitarDocumentoFila(row);
-            });
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return "";
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            modelRow = table.convertRowIndexToModel(row);
-            button.setEnabled(table.isEnabled());
-            return button;
-        }
-    }
-
-    private class DescripcionDocumentoCellEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JTextArea area = new JTextArea();
-        private final JScrollPane scroll = new JScrollPane(area);
-        private int viewRow = -1;
-
-        private DescripcionDocumentoCellEditor() {
-            area.setLineWrap(true);
-            area.setWrapStyleWord(true);
-            area.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-            area.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
-            scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-            scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-            area.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-                @Override
-                public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                    ajustarAltura();
-                }
-
-                @Override
-                public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                    ajustarAltura();
-                }
-
-                @Override
-                public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                    ajustarAltura();
-                }
-            });
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return area.getText();
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            viewRow = row;
-            area.setText(value == null ? "" : value.toString());
-            SwingUtilities.invokeLater(() -> {
-                area.setCaretPosition(area.getDocument().getLength());
-                ajustarAltura();
-            });
-            return scroll;
-        }
-
-        private void ajustarAltura() {
-            if (viewRow < 0) {
-                return;
-            }
-            int columnWidth = documentosTable.getColumnModel().getColumn(COL_DOCUMENTO_DESCRIPCION).getWidth();
-            int lines = Math.max(2, Math.min(10, area.getLineCount() + 1));
-            int height = Math.max(54, lines * 19 + 18);
-            ajustarAlturaDocumentoFila(viewRow, height);
-            scroll.setPreferredSize(new Dimension(Math.max(220, columnWidth), height));
-            scroll.revalidate();
-            documentosTable.revalidate();
-            documentosFijosTable.revalidate();
-            documentosTable.repaint();
-            documentosFijosTable.repaint();
         }
     }
 

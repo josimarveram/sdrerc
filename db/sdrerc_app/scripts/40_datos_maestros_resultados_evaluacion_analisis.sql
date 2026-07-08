@@ -73,7 +73,7 @@ BEGIN
      WHERE UPPER(codigo) = 'EDICTO';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -94,7 +94,7 @@ BEGIN
      WHERE UPPER(codigo) = 'FALTA_SUSTENTO';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -115,7 +115,7 @@ BEGIN
      WHERE UPPER(codigo) = 'INDAGATORIO';
   END IF;
 END;
-/
+
 
 SELECT codigo, nombre, activo
   FROM tipo_resultado_evaluacion
