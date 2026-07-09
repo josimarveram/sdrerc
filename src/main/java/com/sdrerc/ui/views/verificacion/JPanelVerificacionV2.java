@@ -503,8 +503,6 @@ public class JPanelVerificacionV2 extends JPanel {
         });
         panel.setAccentColor(new Color(10, 118, 145));
         panel.addSection(crearDocumentosPanel());
-        panel.addSection(crearFormularioVerificacion());
-        panel.addSection(crearFormularioFirmaEmision());
         panel.setFooter(crearAccionesPanelVerificacion());
         return panel;
     }
@@ -681,7 +679,7 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private JPanel crearDocumentosPanel() {
-        JPanel panel = section("Documentos revisados en análisis");
+        JPanel panel = section("Documentos verificados");
         documentosScrollPane = new JScrollPane(documentosTable);
         documentosScrollPane.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         documentosScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
@@ -1212,8 +1210,6 @@ public class JPanelVerificacionV2 extends JPanel {
                     COL_DOCUMENTO_GUARDAR,
                     COL_DOCUMENTO_ESTADO_CODIGO,
                     COL_DOCUMENTO_ID);
-            documentosColumnFilterSupport.getFilterField(COL_DOCUMENTO_NUM_ANALISIS).setVisible(false);
-            documentosColumnFilterSupport.getFilterField(COL_DOCUMENTO_TIPO).setVisible(false);
             documentosColumnFilterSupport.getSorter().addRowSorterListener(event -> actualizarDocumentosFijos());
             actualizarAlturaDocumentosVerificacion(documentosScrollPane);
         }
