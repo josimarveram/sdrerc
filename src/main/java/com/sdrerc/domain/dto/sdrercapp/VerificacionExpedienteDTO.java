@@ -13,12 +13,29 @@ public class VerificacionExpedienteDTO {
     private final String numeroExpedienteSgd;
     private final String numeroTramiteDocumentario;
     private final String procedimiento;
+    private final String numeroDocumento;
     private final String tipoDocumento;
     private final String numeroDocumentoTitular;
+    private final String tipoDocumentoTitular;
     private final String tipoActa;
     private final String numeroActa;
     private final String titular;
+    private final String solicitante;
+    private final String tipoDocumentoSolicitante;
+    private final String numeroDocumentoSolicitante;
+    private final String correoSolicitante;
+    private final String telefonoSolicitante;
+    private final String departamentoSolicitante;
+    private final String provinciaSolicitante;
+    private final String distritoSolicitante;
+    private final String direccionSolicitante;
+    private final String canalIngreso;
+    private final String observacionSolicitud;
+    private final boolean grupoFamiliar;
+    private final String criterioGrupoFamiliar;
+    private final String observacionGrupoFamiliar;
     private final LocalDate fechaRecepcion;
+    private final LocalDate fechaVencimiento;
     private final Long diasRestantes;
     private final LocalDateTime fechaEnvioVerificacion;
     private final LocalDateTime fechaUltimoMovimiento;
@@ -48,12 +65,29 @@ public class VerificacionExpedienteDTO {
             String numeroExpedienteSgd,
             String numeroTramiteDocumentario,
             String procedimiento,
+            String numeroDocumento,
             String tipoDocumento,
             String numeroDocumentoTitular,
+            String tipoDocumentoTitular,
             String tipoActa,
             String numeroActa,
             String titular,
+            String solicitante,
+            String tipoDocumentoSolicitante,
+            String numeroDocumentoSolicitante,
+            String correoSolicitante,
+            String telefonoSolicitante,
+            String departamentoSolicitante,
+            String provinciaSolicitante,
+            String distritoSolicitante,
+            String direccionSolicitante,
+            String canalIngreso,
+            String observacionSolicitud,
+            boolean grupoFamiliar,
+            String criterioGrupoFamiliar,
+            String observacionGrupoFamiliar,
             LocalDate fechaRecepcion,
+            LocalDate fechaVencimiento,
             Long diasRestantes,
             LocalDateTime fechaEnvioVerificacion,
             LocalDateTime fechaUltimoMovimiento,
@@ -81,12 +115,29 @@ public class VerificacionExpedienteDTO {
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
         this.procedimiento = safeProcedimiento(procedimiento);
+        this.numeroDocumento = safe(numeroDocumento);
         this.tipoDocumento = safe(tipoDocumento);
         this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
+        this.tipoDocumentoTitular = safe(tipoDocumentoTitular);
         this.tipoActa = safe(tipoActa);
         this.numeroActa = safe(numeroActa);
         this.titular = safe(titular);
+        this.solicitante = safe(solicitante);
+        this.tipoDocumentoSolicitante = safe(tipoDocumentoSolicitante);
+        this.numeroDocumentoSolicitante = safe(numeroDocumentoSolicitante);
+        this.correoSolicitante = safe(correoSolicitante);
+        this.telefonoSolicitante = safe(telefonoSolicitante);
+        this.departamentoSolicitante = safe(departamentoSolicitante);
+        this.provinciaSolicitante = safe(provinciaSolicitante);
+        this.distritoSolicitante = safe(distritoSolicitante);
+        this.direccionSolicitante = safe(direccionSolicitante);
+        this.canalIngreso = safe(canalIngreso);
+        this.observacionSolicitud = safe(observacionSolicitud);
+        this.grupoFamiliar = grupoFamiliar;
+        this.criterioGrupoFamiliar = safe(criterioGrupoFamiliar);
+        this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
         this.fechaRecepcion = fechaRecepcion;
+        this.fechaVencimiento = fechaVencimiento;
         this.diasRestantes = diasRestantes;
         this.fechaEnvioVerificacion = fechaEnvioVerificacion;
         this.fechaUltimoMovimiento = fechaUltimoMovimiento;
@@ -135,8 +186,16 @@ public class VerificacionExpedienteDTO {
         return tipoDocumento;
     }
 
+    public String getNumeroDocumento() {
+        return numeroDocumento;
+    }
+
     public String getNumeroDocumentoTitular() {
         return numeroDocumentoTitular;
+    }
+
+    public String getTipoDocumentoTitular() {
+        return tipoDocumentoTitular;
     }
 
     public String getTipoActa() {
@@ -151,8 +210,72 @@ public class VerificacionExpedienteDTO {
         return titular;
     }
 
+    public String getSolicitante() {
+        return solicitante;
+    }
+
+    public String getTipoDocumentoSolicitante() {
+        return tipoDocumentoSolicitante;
+    }
+
+    public String getNumeroDocumentoSolicitante() {
+        return numeroDocumentoSolicitante;
+    }
+
+    public String getCorreoSolicitante() {
+        return correoSolicitante;
+    }
+
+    public String getTelefonoSolicitante() {
+        return telefonoSolicitante;
+    }
+
+    public String getDepartamentoSolicitante() {
+        return departamentoSolicitante;
+    }
+
+    public String getProvinciaSolicitante() {
+        return provinciaSolicitante;
+    }
+
+    public String getDistritoSolicitante() {
+        return distritoSolicitante;
+    }
+
+    public String getDireccionSolicitante() {
+        return direccionSolicitante;
+    }
+
+    public String getCanalIngreso() {
+        return canalIngreso;
+    }
+
+    public String getObservacionSolicitud() {
+        return observacionSolicitud;
+    }
+
+    public boolean isGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public String getCriterioGrupoFamiliar() {
+        return criterioGrupoFamiliar;
+    }
+
+    public String getObservacionGrupoFamiliar() {
+        return observacionGrupoFamiliar;
+    }
+
+    public String getGrupoFamiliarEstado() {
+        return grupoFamiliar ? "Si" : "No";
+    }
+
     public LocalDate getFechaRecepcion() {
         return fechaRecepcion;
+    }
+
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
     }
 
     public LocalDateTime getFechaEnvioVerificacion() {

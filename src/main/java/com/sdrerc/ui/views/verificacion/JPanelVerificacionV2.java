@@ -20,9 +20,10 @@ import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
 import com.sdrerc.ui.appv2.components.AppV2IconProvider;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
+import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
-import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
+import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
@@ -30,6 +31,7 @@ import com.sdrerc.ui.appv2.components.AppV2TablePanel;
 import com.sdrerc.ui.appv2.components.AppV2TableSectionPanel;
 import com.sdrerc.ui.appv2.components.BadgeV2;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
+import com.sdrerc.ui.appv2.components.PlazoVisualSupportV2;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
@@ -110,12 +112,9 @@ public class JPanelVerificacionV2 extends JPanel {
     private static final int COL_EXPANDIR = 0;
     private static final int COL_DIAS = 1;
     private static final int COL_EXPEDIENTE = 2;
-    private static final int COL_ESTADO = 11;
-    private static final int COL_RESULTADO = 10;
-    private static final int COL_EMITIDO = 12;
-    private static final int COL_PUBLICACION = 13;
-    private static final int COL_ALERTAS = 14;
-    private static final int COL_ID = 15;
+    private static final int COL_ESTADO = 10;
+    private static final int COL_ASOCIADOS = 11;
+    private static final int COL_ID = 12;
     private static final int COL_DOCUMENTO_NUM_ANALISIS = 0;
     private static final int COL_DOCUMENTO_TIPO = 1;
     private static final int COL_DOCUMENTO_ESTADO = 2;
@@ -141,6 +140,7 @@ public class JPanelVerificacionV2 extends JPanel {
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final String TAB_VERIFICACION_DATOS = "DATOS";
     private static final String TAB_VERIFICACION_OPERACION = "OPERACION";
+    private static final String ETAPA_ANALISIS = "ANALISIS";
     private static final String ETAPA_VERIFICACION = "VERIFICACION";
     private static final String ETAPA_FIRMA_EMISION = "FIRMA_EMISION";
     private static final String ESTADO_PARA_FIRMA = "PARA_FIRMA";
@@ -213,6 +213,31 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JLabel lblRequierePublicacion = new JLabel("-");
     private final JLabel lblFechaPublicacion = new JLabel("-");
     private final JLabel lblFechaVerificacion = new JLabel(DATE_FORMAT.format(LocalDate.now()));
+    private final BadgeV2 lblDatosDias = new BadgeV2("-", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
+    private final JLabel lblDatosVencimiento = new JLabel("-");
+    private final JLabel lblDatosExpediente = new JLabel("-");
+    private final JLabel lblDatosExpedienteSgd = new JLabel("-");
+    private final JLabel lblDatosTipoActa = new JLabel("-");
+    private final JLabel lblDatosNumeroActa = new JLabel("-");
+    private final JLabel lblDatosFechaRecepcion = new JLabel("-");
+    private final JLabel lblDatosCanalIngreso = new JLabel("-");
+    private final JLabel lblDatosTramiteWeb = new JLabel("-");
+    private final JLabel lblDatosTipoDocumentoSolicitud = new JLabel("-");
+    private final JLabel lblDatosNumeroDocumentoSolicitud = new JLabel("-");
+    private final JLabel lblDatosTipoSolicitud = new JLabel("-");
+    private final JLabel lblDatosGrupoFamiliar = new JLabel("-");
+    private final JLabel lblDatosTitular = new JLabel("-");
+    private final JLabel lblDatosTipoDocumentoTitular = new JLabel("-");
+    private final JLabel lblDatosNumeroDocumentoTitular = new JLabel("-");
+    private final JLabel lblDatosSolicitante = new JLabel("-");
+    private final JLabel lblDatosTipoDocumentoSolicitante = new JLabel("-");
+    private final JLabel lblDatosNumeroDocumentoSolicitante = new JLabel("-");
+    private final JLabel lblDatosCorreo = new JLabel("-");
+    private final JLabel lblDatosTelefono = new JLabel("-");
+    private final JLabel lblDatosDepartamento = new JLabel("-");
+    private final JLabel lblDatosProvincia = new JLabel("-");
+    private final JLabel lblDatosDistrito = new JLabel("-");
+    private final JLabel lblDatosDireccion = new JLabel("-");
 
     private final JComboBox<ResultadoItem> cmbResultado = new JComboBox<ResultadoItem>();
     private final JComboBox<SimpleItem> cmbTipoObservacion = new JComboBox<SimpleItem>();
@@ -374,7 +399,7 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new AppV2ResponsiveGridPanel(190, 6, 12, 10);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 6, 12, 0);
         metricas.add(cardEnVerificacion);
         metricas.add(cardObservados);
         metricas.add(cardInconsistentes);
@@ -425,17 +450,19 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private JPanel crearBuscador() {
         configurarControles();
-        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
         accionesFiltro.add(btnRefrescar);
-        toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
-        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
-        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
-        toolbar.addFilter("Estado", cmbEstadoFiltro);
-        toolbar.addCompactFilter(spnLimite);
-        return toolbar;
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusqueda,
+                accionesFiltro,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                cmbEstadoFiltro,
+                null,
+                spnLimite);
     }
 
     private JPanel crearBandeja() {
@@ -448,21 +475,27 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelDatosVerificacion() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Datos de verificación", new Runnable() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Verificación", new Runnable() {
             @Override
             public void run() {
                 cerrarPanelVerificacion();
             }
         });
         panel.setAccentColor(new Color(57, 125, 199));
-        panel.addSection(crearResumenSeleccion());
-        panel.addSection(crearAnalisisPrevio());
-        panel.addSection(crearPublicacionPrevista());
+        AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
+        secciones.add(crearDatosPlazoVerificacion());
+        secciones.add(crearDatosExpedienteVerificacion());
+        secciones.add(crearDatosActaVerificacion());
+        secciones.add(crearDatosSolicitudVerificacion());
+        secciones.add(crearDatosTitularVerificacion());
+        secciones.add(crearDatosSolicitanteVerificacion());
+        secciones.add(crearDatosNotificacionVerificacion());
+        panel.addSection(secciones);
         return panel;
     }
 
     private AppV2SideActionPanel crearPanelVerificacionOperativa() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Verificar documento", new Runnable() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Verificación", new Runnable() {
             @Override
             public void run() {
                 cerrarPanelVerificacion();
@@ -552,6 +585,67 @@ public class JPanelVerificacionV2 extends JPanel {
         panel.add(btnRegistrarVerificacion);
         panel.add(btnCancelarVerificacion);
         return panel;
+    }
+
+    private AppV2SideSectionPanel crearDatosPlazoVerificacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del plazo");
+        section.addRow("Días", lblDatosDias);
+        section.addRow("Fecha Vencimiento", lblDatosVencimiento);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosExpedienteVerificacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del expediente");
+        section.addRow("N° expediente", lblDatosExpediente);
+        section.addRow("N° expediente SGD", lblDatosExpedienteSgd);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosActaVerificacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del acta");
+        section.addRow("Tipo de acta", lblDatosTipoActa);
+        section.addRow("Nro. acta", lblDatosNumeroActa);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosSolicitudVerificacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de solicitud");
+        section.addRow("Fecha recepción", lblDatosFechaRecepcion);
+        section.addRow("Canal de ingreso", lblDatosCanalIngreso);
+        section.addRow("Nro. trámite web", lblDatosTramiteWeb);
+        section.addRow("Proc.Registral", lblProcedimiento);
+        section.addRow("Tipo documento", lblDatosTipoDocumentoSolicitud);
+        section.addRow("N° documento", lblDatosNumeroDocumentoSolicitud);
+        section.addRow("Tipo de solicitud", lblDatosTipoSolicitud);
+        section.addRow("Grupo familiar", lblDatosGrupoFamiliar);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosTitularVerificacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del titular");
+        section.addRow("Titular", lblDatosTitular);
+        section.addRow("Tipo documento", lblDatosTipoDocumentoTitular);
+        section.addRow("N° documento", lblDatosNumeroDocumentoTitular);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosSolicitanteVerificacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del solicitante");
+        section.addRow("Solicitante", lblDatosSolicitante);
+        section.addRow("Tipo documento", lblDatosTipoDocumentoSolicitante);
+        section.addRow("N° documento", lblDatosNumeroDocumentoSolicitante);
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearDatosNotificacionVerificacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos de notificación y ubicación");
+        section.addRow("Correo", lblDatosCorreo);
+        section.addRow("Teléfono", lblDatosTelefono);
+        section.addRow("Departamento", lblDatosDepartamento);
+        section.addRow("Provincia", lblDatosProvincia);
+        section.addRow("Distrito", lblDatosDistrito);
+        section.addRow("Dirección", lblDatosDireccion);
+        return section;
     }
 
     private JPanel crearResumenSeleccion() {
@@ -1013,8 +1107,9 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private void configurarControles() {
-        txtBusqueda.setPreferredSize(new Dimension(340, 34));
-        cmbEstadoFiltro.setPreferredSize(new Dimension(220, 34));
+        txtBusqueda.setPreferredSize(new Dimension(420, 34));
+        txtBusqueda.setMinimumSize(new Dimension(320, 34));
+        cmbEstadoFiltro.setPreferredSize(new Dimension(250, 34));
         cmbResultado.setPreferredSize(new Dimension(235, 34));
         cmbTipoObservacion.setPreferredSize(new Dimension(235, 34));
         cmbMotivoCorreccion.setPreferredSize(new Dimension(235, 34));
@@ -1034,6 +1129,40 @@ public class JPanelVerificacionV2 extends JPanel {
         AppV2Theme.estilizarBotonPrimario(btnRegistrarNumero);
         AppV2Theme.estilizarBotonPrimario(btnEnviarEjecucion);
         AppV2Theme.estilizarBotonPrimario(btnEnviarNotificacion);
+        configurarDatosPanelLabels();
+    }
+
+    private void configurarDatosPanelLabels() {
+        JLabel[] labels = {
+            lblDatosVencimiento,
+            lblDatosExpediente,
+            lblDatosExpedienteSgd,
+            lblDatosTipoActa,
+            lblDatosNumeroActa,
+            lblDatosFechaRecepcion,
+            lblDatosCanalIngreso,
+            lblDatosTramiteWeb,
+            lblDatosTipoDocumentoSolicitud,
+            lblDatosNumeroDocumentoSolicitud,
+            lblDatosTipoSolicitud,
+            lblDatosGrupoFamiliar,
+            lblDatosTitular,
+            lblDatosTipoDocumentoTitular,
+            lblDatosNumeroDocumentoTitular,
+            lblDatosSolicitante,
+            lblDatosTipoDocumentoSolicitante,
+            lblDatosNumeroDocumentoSolicitante,
+            lblDatosCorreo,
+            lblDatosTelefono,
+            lblDatosDepartamento,
+            lblDatosProvincia,
+            lblDatosDistrito,
+            lblDatosDireccion
+        };
+        for (JLabel label : labels) {
+            label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            label.setForeground(AppV2Theme.TEXT_PRIMARY);
+        }
     }
 
     private void configurarTabla() {
@@ -1052,7 +1181,7 @@ public class JPanelVerificacionV2 extends JPanel {
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         AppV2TableColumnSizer.applyWidths(
                 table,
-                46, 88, 185, 155, 160, 145, 210, 125, 125, 250, 175, 150, 105, 125, 190, 0);
+                46, 88, 185, 150, 145, 220, 130, 130, 260, 210, 155, 160, 0);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMinWidth(42);
         table.getColumnModel().getColumn(COL_EXPANDIR).setPreferredWidth(46);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMaxWidth(48);
@@ -1065,7 +1194,7 @@ public class JPanelVerificacionV2 extends JPanel {
                 tablePanel,
                 () -> contraerTodosExcepto(null),
                 COL_EXPANDIR,
-                15);
+                COL_ID);
     }
 
     private void configurarDocumentosTabla() {
@@ -1191,6 +1320,7 @@ public class JPanelVerificacionV2 extends JPanel {
                 cmbEstadoFiltro, new SimpleItem("TODOS", "Todos los estados"),
                 (codigo, nombre) -> new SimpleItem(codigo, nombre),
                 ex -> lblEstado.setText("No se pudieron cargar los estados de Verificación."),
+                ETAPA_ANALISIS,
                 ETAPA_VERIFICACION,
                 ETAPA_FIRMA_EMISION);
     }
@@ -1426,17 +1556,14 @@ public class JPanelVerificacionV2 extends JPanel {
             item.getDiasEnEtapa() == null ? "" : item.getDiasEnEtapa(),
             item.getNumeroExpediente(),
             item.getNumeroExpedienteSgd(),
-            item.getNumeroTramiteDocumentario(),
             formatDate(item.getFechaRecepcion()),
             item.getProcedimiento(),
             item.getTipoActa(),
             item.getNumeroActa(),
             item.getTitular(),
-            item.getUltimoResultadoAnalisis().isEmpty() ? "Sin resultado" : item.getUltimoResultadoAnalisis(),
+            item.getResponsableAnalisis().isEmpty() ? item.getResponsable() : item.getResponsableAnalisis(),
             estadoVisualIntegrado(item),
-            item.isDocumentoEmitido() ? "Emitido" : "Pendiente",
-            item.isRequierePublicacion() ? "Requiere" : "No",
-            item.isTieneObservacionPendiente() ? "Con observación" : "Sin observación",
+            item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociado(s)" : "Sin asociados",
             item.getIdExpediente()
         });
     }
@@ -1449,18 +1576,13 @@ public class JPanelVerificacionV2 extends JPanel {
             "",
             valorUi(principal.getNumeroExpediente()),
             valorUi(principal.getNumeroExpedienteSgd()),
-            valorUi(asociado.getNumeroDocumento().isEmpty()
-                    ? asociado.getNumeroTramiteDocumentario()
-                    : asociado.getNumeroDocumento()),
             formatDate(asociado.getFechaRecepcion()),
             procedimientoAsociado(asociado),
             valorUi(asociado.getTipoActa()),
             valorUi(asociado.getNumeroActa()),
             valorUi(asociado.getTitular()),
-            "Contexto de verificación",
+            valorUi(asociado.getAbogadoAsignado()),
             estadoAsociado(asociado),
-            "-",
-            principal.isRequierePublicacion() ? "Requiere" : "No",
             textoRelacionAsociada(asociado),
             asociado.getIdExpediente()
         });
@@ -1707,6 +1829,138 @@ public class JPanelVerificacionV2 extends JPanel {
         actualizarSeleccion();
     }
 
+    private void actualizarTituloPanelVerificacion(String titular) {
+        if (panelDatosVerificacion == null) {
+            return;
+        }
+        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de Verificación</div>";
+        if (titular != null && !titular.trim().isEmpty() && !"-".equals(titular.trim())) {
+            titulo = titulo + "<div style='font-size:12px;font-weight:600;color:rgb(21,71,117);margin-top:2px;'>"
+                    + escapeHtml(titular.trim()) + "</div>";
+        }
+        titulo += "</html>";
+        panelDatosVerificacion.setTitle(titulo);
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
+    private void limpiarDatosExpedienteVerificacion() {
+        JLabel[] labels = {
+            lblDatosVencimiento,
+            lblDatosExpediente,
+            lblDatosExpedienteSgd,
+            lblDatosTipoActa,
+            lblDatosNumeroActa,
+            lblDatosFechaRecepcion,
+            lblDatosCanalIngreso,
+            lblDatosTramiteWeb,
+            lblDatosTipoDocumentoSolicitud,
+            lblDatosNumeroDocumentoSolicitud,
+            lblDatosTipoSolicitud,
+            lblDatosGrupoFamiliar,
+            lblDatosTitular,
+            lblDatosTipoDocumentoTitular,
+            lblDatosNumeroDocumentoTitular,
+            lblDatosSolicitante,
+            lblDatosTipoDocumentoSolicitante,
+            lblDatosNumeroDocumentoSolicitante,
+            lblDatosCorreo,
+            lblDatosTelefono,
+            lblDatosDepartamento,
+            lblDatosProvincia,
+            lblDatosDistrito,
+            lblDatosDireccion
+        };
+        for (JLabel label : labels) {
+            label.setText("-");
+            label.setToolTipText(null);
+        }
+        actualizarBadgeDias(lblDatosDias, null);
+    }
+
+    private void cargarDatosExpedienteVerificacion(VerificacionExpedienteDTO item) {
+        if (item == null) {
+            limpiarDatosExpedienteVerificacion();
+            return;
+        }
+        lblDatosExpediente.setText(valorUi(item.getNumeroExpediente()));
+        lblDatosExpedienteSgd.setText(valorUi(item.getNumeroExpedienteSgd()));
+        lblDatosTipoActa.setText(valorUi(item.getTipoActa()));
+        lblDatosNumeroActa.setText(valorUi(item.getNumeroActa()));
+        lblDatosFechaRecepcion.setText(formatDate(item.getFechaRecepcion()));
+        lblDatosCanalIngreso.setText(valorUi(item.getCanalIngreso()));
+        lblDatosTramiteWeb.setText(valorUi(item.getNumeroTramiteDocumentario()));
+        lblDatosTipoDocumentoSolicitud.setText(valorUi(item.getTipoDocumento()));
+        lblDatosNumeroDocumentoSolicitud.setText(valorUi(item.getNumeroDocumento()));
+        lblDatosTipoSolicitud.setText(extraerValorObservacion(item.getObservacionSolicitud(), "Tipo de solicitud"));
+        lblDatosGrupoFamiliar.setText(valorUi(item.getGrupoFamiliarEstado()));
+        lblDatosTitular.setText(valorUi(item.getTitular()));
+        lblDatosTipoDocumentoTitular.setText(valorUi(item.getTipoDocumentoTitular()));
+        lblDatosNumeroDocumentoTitular.setText(valorUi(item.getNumeroDocumentoTitular()));
+        lblDatosSolicitante.setText(valorUi(item.getSolicitante()));
+        lblDatosTipoDocumentoSolicitante.setText(valorUi(item.getTipoDocumentoSolicitante()));
+        lblDatosNumeroDocumentoSolicitante.setText(valorUi(item.getNumeroDocumentoSolicitante()));
+        lblDatosCorreo.setText(valorUi(item.getCorreoSolicitante()));
+        lblDatosTelefono.setText(valorUi(item.getTelefonoSolicitante()));
+        lblDatosDepartamento.setText(valorUi(item.getDepartamentoSolicitante()));
+        lblDatosProvincia.setText(valorUi(item.getProvinciaSolicitante()));
+        lblDatosDistrito.setText(valorUi(item.getDistritoSolicitante()));
+        lblDatosDireccion.setText(valorUi(item.getDireccionSolicitante()));
+        lblDatosDireccion.setToolTipText(valorUi(item.getDireccionSolicitante()));
+        actualizarBadgeDias(lblDatosDias, item.getDiasEnEtapa());
+        lblDatosVencimiento.setText(formatDate(item.getFechaVencimiento()));
+    }
+
+    private static void actualizarBadgeDias(BadgeV2 badge, Long dias) {
+        if (badge == null) {
+            return;
+        }
+        if (dias == null) {
+            badge.setText("-");
+            badge.setBackground(AppV2Theme.SOFT_GRAY);
+            badge.setForeground(AppV2Theme.MUTED);
+            badge.setToolTipText(null);
+            return;
+        }
+        PlazoVisualSupportV2.Nivel nivel = PlazoVisualSupportV2.clasificarDias(dias);
+        badge.setText(String.valueOf(dias));
+        badge.setBackground(PlazoVisualSupportV2.backgroundFor(nivel));
+        badge.setForeground(PlazoVisualSupportV2.foregroundFor(nivel));
+        if (dias < 0) {
+            badge.setToolTipText("Vencido. Días hábiles restantes: " + Math.abs(dias));
+        } else if (dias == 0) {
+            badge.setToolTipText("Vence hoy. Días hábiles restantes: 0");
+        } else {
+            badge.setToolTipText("Días hábiles restantes: " + dias);
+        }
+    }
+
+    private static String extraerValorObservacion(String observacion, String etiqueta) {
+        if (observacion == null || etiqueta == null) {
+            return "-";
+        }
+        String prefijo = etiqueta + ":";
+        String[] partes = observacion.split("\\|");
+        for (String parte : partes) {
+            String texto = parte == null ? "" : parte.trim();
+            if (texto.regionMatches(true, 0, prefijo, 0, prefijo.length())) {
+                String valor = texto.substring(prefijo.length()).trim();
+                return valor.isEmpty() ? "-" : valor;
+            }
+        }
+        return "-";
+    }
+
     private void actualizarSeleccion() {
         VerificacionTableRow fila = obtenerFilaSeleccionada();
         VerificacionExpedienteDTO item = fila == null ? null : fila.principal;
@@ -1721,6 +1975,8 @@ public class JPanelVerificacionV2 extends JPanel {
         actualizarAccionesFirmaEmision(item, asociado, has);
         actualizarVisibilidadPanelVerificacion();
         if (!has) {
+            actualizarTituloPanelVerificacion(null);
+            limpiarDatosExpedienteVerificacion();
             lblExpediente.setText("-");
             lblExpedienteSgd.setText("-");
             lblTitular.setText("-");
@@ -1740,6 +1996,8 @@ public class JPanelVerificacionV2 extends JPanel {
         }
         if (asociado) {
             ExpedienteRelacionadoDTO relacionado = fila.asociado;
+            actualizarTituloPanelVerificacion(relacionado.getTitular());
+            limpiarDatosExpedienteVerificacion();
             lblExpediente.setText("Documento asociado seleccionado");
             lblExpedienteSgd.setText(item == null ? "-" : valorUi(item.getNumeroExpedienteSgd()));
             lblTitular.setText(valorUi(relacionado.getTitular()));
@@ -1760,6 +2018,8 @@ public class JPanelVerificacionV2 extends JPanel {
             limpiarFormularioFirma();
             return;
         }
+        actualizarTituloPanelVerificacion(item.getTitular());
+        cargarDatosExpedienteVerificacion(item);
         lblExpediente.setText(item.getNumeroExpediente());
         lblExpedienteSgd.setText(valorUi(item.getNumeroExpedienteSgd()));
         lblTitular.setText(item.getTitular());
@@ -2587,17 +2847,14 @@ public class JPanelVerificacionV2 extends JPanel {
                 "Días",
                 "Expediente",
                 "N° expediente SGD",
-                "Trámite / Documento",
                 "Fecha solicitud",
                 "Procedimiento",
                 "Tipo acta",
                 "Nro. acta",
                 "Titular",
-                "Resultado análisis",
+                "Abogado designado",
                 "Estado",
-                "Emitido",
-                "Requiere publicación",
-                "Alertas / Observaciones",
+                "Asociados",
                 "_ID"
             }, 0);
         }
@@ -2861,23 +3118,6 @@ public class JPanelVerificacionV2 extends JPanel {
             }
             if (!isSelected && modelColumn == COL_ESTADO) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
-            }
-            if (!isSelected && modelColumn == COL_EMITIDO) {
-                boolean emitido = "Emitido".equalsIgnoreCase(value == null ? "" : value.toString());
-                return new BadgeV2(
-                        emitido ? "Emitido" : "Pendiente",
-                        emitido ? AppV2Theme.SOFT_GREEN : AppV2Theme.SOFT_GRAY,
-                        emitido ? AppV2Theme.SUCCESS : AppV2Theme.TEXT_SECONDARY);
-            }
-            if (!isSelected && modelColumn == COL_PUBLICACION) {
-                boolean requiere = "Requiere".equalsIgnoreCase(value == null ? "" : value.toString());
-                return new BadgeV2(
-                        requiere ? "Requiere" : "No",
-                        requiere ? AppV2Theme.SOFT_ORANGE : AppV2Theme.SOFT_GRAY,
-                        requiere ? AppV2Theme.WARNING : AppV2Theme.TEXT_SECONDARY);
-            }
-            if (!isSelected && modelColumn == COL_ALERTAS && value != null && value.toString().startsWith("Con")) {
-                return new BadgeV2(value.toString(), AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
             }
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setFont(filaAsociada && modelColumn != COL_EXPEDIENTE

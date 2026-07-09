@@ -30,6 +30,7 @@ public class VerificacionExpedienteDAO {
     private static final String ESTADO_REQUIERE_CORRECCION = "REQUIERE_CORRECCION";
     private static final String ESTADO_DOCUMENTO_INCONSISTENTE = "DOCUMENTO_INCONSISTENTE";
     private static final String ESTADO_VERIFICADO = "VERIFICADO";
+    private static final String ESTADO_ATENDIDO = "ATENDIDO";
     private static final String ESTADO_ANALISIS_OBSERVADO = "OBSERVADO";
     private static final String ESTADO_PARA_FIRMA = "PARA_FIRMA";
     private static final String ACCION_APROBACION = "APROBACION_VERIFICACION";
@@ -67,11 +68,33 @@ public class VerificacionExpedienteDAO {
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
         List<Object> params = new ArrayList<Object>();
+        boolean soportaGrupoFamiliar;
+        try (Connection connSoporte = SdrercAppConnection.getConnection()) {
+            soportaGrupoFamiliar = soportaGrupoFamiliar(connSoporte);
+        }
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
-        sql.append("esol.asunto AS procedimiento, p.tipo_documento, p.numero_documento AS numero_documento_titular, ");
+        sql.append("esol.asunto AS procedimiento, p.tipo_documento AS tipo_documento_titular, p.numero_documento AS numero_documento_titular, ");
+        sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed WHERE ed.id_expediente = e.id_expediente ");
+        sql.append(" AND TRIM(ed.numero_documento) IS NOT NULL) AS numero_documento, ");
+        sql.append("(SELECT MIN(ed.nombre_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed WHERE ed.id_expediente = e.id_expediente ");
+        sql.append(" AND TRIM(ed.nombre_documento) IS NOT NULL) AS tipo_documento, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
+        sql.append(nombrePersona("ps")).append(" AS solicitante, ps.tipo_documento AS solicitante_tipo_documento, ");
+        sql.append("ps.numero_documento AS numero_documento_solicitante, ps.correo_electronico AS solicitante_correo, ");
+        sql.append("ps.telefono AS solicitante_telefono, ps.direccion AS solicitante_direccion, ");
+        sql.append("ps.departamento AS solicitante_departamento, ps.provincia AS solicitante_provincia, ps.distrito AS solicitante_distrito, ");
+        sql.append("cr.nombre AS canal_ingreso, esol.observacion AS observacion_solicitud, ");
+        if (soportaGrupoFamiliar) {
+            sql.append("NVL(esol.grupo_familiar, 0) AS grupo_familiar, ");
+            sql.append("esol.criterio_grupo_familiar, esol.observacion_grupo_familiar, ");
+        } else {
+            sql.append("0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
+            sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
+        }
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_registro, e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
@@ -119,19 +142,23 @@ public class VerificacionExpedienteDAO {
         sql.append("LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ");
         sql.append("LEFT JOIN equipo eq ON eq.id_equipo = e.id_equipo_responsable_actual ");
         sql.append("LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 ");
+        sql.append("LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = esol.id_canal_recepcion ");
         sql.append("LEFT JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 ");
         sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
+        sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
         sql.append("LEFT JOIN (SELECT id_expediente, ");
         sql.append("MAX(id_expediente_resolucion) KEEP (DENSE_RANK LAST ORDER BY creado_en, id_expediente_resolucion) AS id_expediente_resolucion ");
         sql.append("FROM expediente_resolucion WHERE activo = 1 GROUP BY id_expediente) res_pick ");
         sql.append("ON res_pick.id_expediente = e.id_expediente ");
         sql.append("LEFT JOIN expediente_resolucion res ON res.id_expediente_resolucion = res_pick.id_expediente_resolucion ");
         sql.append("LEFT JOIN tipo_resolucion tr ON tr.id_tipo_resolucion = res.id_tipo_resolucion ");
-        sql.append("WHERE e.activo = 1 AND et.codigo IN (?, ?) ");
+        sql.append("WHERE e.activo = 1 AND (et.codigo IN (?, ?) OR (et.codigo = ? AND est.codigo = ?)) ");
         params.add(ETAPA_VERIFICACION);
         params.add(ETAPA_FIRMA);
+        params.add(ETAPA_ANALISIS);
+        params.add(ESTADO_ATENDIDO);
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
@@ -442,12 +469,29 @@ public class VerificacionExpedienteDAO {
                 rs.getString("numero_expediente_sgd"),
                 rs.getString("numero_tramite_documentario"),
                 rs.getString("procedimiento"),
+                rs.getString("numero_documento"),
                 rs.getString("tipo_documento"),
                 rs.getString("numero_documento_titular"),
+                rs.getString("tipo_documento_titular"),
                 rs.getString("tipo_acta"),
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
+                rs.getString("solicitante"),
+                rs.getString("solicitante_tipo_documento"),
+                rs.getString("numero_documento_solicitante"),
+                rs.getString("solicitante_correo"),
+                rs.getString("solicitante_telefono"),
+                rs.getString("solicitante_departamento"),
+                rs.getString("solicitante_provincia"),
+                rs.getString("solicitante_distrito"),
+                rs.getString("solicitante_direccion"),
+                rs.getString("canal_ingreso"),
+                rs.getString("observacion_solicitud"),
+                rs.getInt("grupo_familiar") == 1,
+                rs.getString("criterio_grupo_familiar"),
+                rs.getString("observacion_grupo_familiar"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
+                toLocalDate(rs.getDate("fecha_vencimiento")),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_envio_verificacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
@@ -470,6 +514,15 @@ public class VerificacionExpedienteDAO {
                 toLocalDateTime(rs.getTimestamp("fecha_firma_documento")),
                 rs.getInt("cartas_edicto") > 0,
                 rs.getInt("puede_derivar_notificacion") == 1);
+    }
+
+    private static boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' AND column_name = 'GRUPO_FAMILIAR'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
     }
 
     private boolean tieneEvaluacionActiva(Connection conn, Long idExpediente) throws SQLException {
