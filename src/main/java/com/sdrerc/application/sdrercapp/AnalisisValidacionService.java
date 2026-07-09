@@ -103,10 +103,6 @@ public class AnalisisValidacionService {
                 errores.add("Seleccione el estado de cada documento de análisis.");
                 break;
             }
-            if (!hasText(documento.getDescripcion())) {
-                errores.add("Ingrese la descripción de cada documento de análisis.");
-                break;
-            }
             if (documento.getNumeroDocumento().length() > 120) {
                 errores.add("El N° Documento de análisis no debe exceder 120 caracteres.");
                 break;

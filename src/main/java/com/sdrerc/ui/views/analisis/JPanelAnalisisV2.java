@@ -706,8 +706,7 @@ public class JPanelAnalisisV2 extends JPanel {
                     return analisisService.guardarDocumentoAnalisisJerarquico(item.getIdExpediente(), documento);
                 },
                 (idExp, ids) -> {
-                    AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para eliminar el documento.");
-                    if (item == null) {
+                    if (idExp == null) {
                         throw new IllegalArgumentException("Seleccione un expediente para eliminar el documento.");
                     }
                     return analisisService.darBajaDocumentosAnalisis(idExp, ids);
@@ -1760,9 +1759,10 @@ public class JPanelAnalisisV2 extends JPanel {
                     return;
                 }
                 try {
-                    aplicarBloquesAnalisis(get());
                     idExpedienteDetalleCargado = idExpediente;
+                    aplicarBloquesAnalisis(get());
                 } catch (Exception ex) {
+                    idExpedienteDetalleCargado = null;
                     limpiarFormulario();
                     mostrarError("No se pudo cargar el análisis registrado.", ex);
                 } finally {

@@ -3653,7 +3653,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 valorUi(item.getNumeroExpedienteSgd()),
                 hojasEnvioAsignacionMultiple.containsKey(item.getIdExpediente())
                         ? hojasEnvioAsignacionMultiple.get(item.getIdExpediente())
-                        : ""
+                        : valorUi(item.getNumeroHojaEnvioAsignacion())
             });
         }
         hojasEnvioAsignacionMultiple.keySet().retainAll(idsVigentes);

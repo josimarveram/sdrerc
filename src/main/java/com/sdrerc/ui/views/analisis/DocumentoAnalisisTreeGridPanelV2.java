@@ -4,6 +4,7 @@ import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
+import com.sdrerc.ui.appv2.components.AppV2TableScrollDiagnostics;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
@@ -41,6 +42,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.JViewport;
 import javax.swing.SwingWorker;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -257,6 +259,10 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         scrollPadre.setPreferredSize(new Dimension(820, 150));
         scrollHijo.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         scrollHijo.setPreferredSize(new Dimension(820, 130));
+        configurarScrollAnidado(scrollPadre);
+        configurarScrollAnidado(scrollHijo);
+        AppV2TableScrollDiagnostics.log("AnalisisDocumentosPadre", tablaPadre, scrollPadre);
+        AppV2TableScrollDiagnostics.log("AnalisisDocumentosHijo", tablaHijo, scrollHijo);
 
         tablaPadre.getSelectionModel().addListSelectionListener(e -> {
             if (e.getValueIsAdjusting()) {
@@ -279,6 +285,14 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         table.setGridColor(AppV2Theme.BORDER);
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
+    }
+
+    private void configurarScrollAnidado(JScrollPane scroll) {
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scroll.getViewport().setBackground(Color.WHITE);
+        scroll.getViewport().setScrollMode(JViewport.BLIT_SCROLL_MODE);
+        scroll.setWheelScrollingEnabled(true);
     }
 
     private void ajustarAnchos(JTable table, int[] widths) {
