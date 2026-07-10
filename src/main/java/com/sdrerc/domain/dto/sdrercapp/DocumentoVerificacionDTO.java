@@ -23,6 +23,7 @@ public class DocumentoVerificacionDTO {
     private final int nivel;
     private final int orden;
     private final LocalDate fechaPublicacion;
+    private final Boolean existeOposicion;
 
     public DocumentoVerificacionDTO(
             Long idDocumentoAnalizado,
@@ -51,6 +52,7 @@ public class DocumentoVerificacionDTO {
                 null,
                 0,
                 0,
+                null,
                 null);
     }
 
@@ -73,7 +75,8 @@ public class DocumentoVerificacionDTO {
             Long idDocumentoPadre,
             int nivel,
             int orden,
-            LocalDate fechaPublicacion) {
+            LocalDate fechaPublicacion,
+            Boolean existeOposicion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.tipoDocumento = safe(tipoDocumento);
@@ -93,6 +96,7 @@ public class DocumentoVerificacionDTO {
         this.nivel = nivel;
         this.orden = orden;
         this.fechaPublicacion = fechaPublicacion;
+        this.existeOposicion = existeOposicion;
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -169,6 +173,10 @@ public class DocumentoVerificacionDTO {
 
     public LocalDate getFechaPublicacion() {
         return fechaPublicacion;
+    }
+
+    public Boolean getExisteOposicion() {
+        return existeOposicion;
     }
 
     private static String safe(String value) {

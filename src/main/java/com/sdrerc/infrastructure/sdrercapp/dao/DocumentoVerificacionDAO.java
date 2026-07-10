@@ -50,7 +50,8 @@ public class DocumentoVerificacionDAO {
                             getLongOrNull(rs, "id_documento_padre"),
                             rs.getInt("nivel"),
                             rs.getInt("orden"),
-                            toLocalDate(rs.getDate("fecha_publicacion"))));
+                            toLocalDate(rs.getDate("fecha_publicacion")),
+                            getBooleanOrNull(rs, "existe_oposicion")));
                 }
             }
         }
@@ -61,7 +62,7 @@ public class DocumentoVerificacionDAO {
             Long idExpediente,
             Long idDocumentoAnalizado,
             String estadoCodigo,
-            String detalleObservacion,
+            String comentario,
             LocalDate fechaEmision,
             String numeroDocumento,
             Long idUsuarioModificador) throws SQLException {
@@ -76,12 +77,8 @@ public class DocumentoVerificacionDAO {
                 if (idEstadoDocumento == null) {
                     throw new SQLException("No se encontró el estado de documento: " + estadoCodigo + ".");
                 }
-                boolean soportaDetalle = soportaDetalleObservacionDocumentoAnalizado(conn);
                 boolean soportaNumero = soportaNumeroDocumentoAnalizado(conn);
                 boolean soportaFecha = soportaFechaDocumentoAnalizado(conn);
-                if (!soportaDetalle && hasText(detalleObservacion)) {
-                    throw new SQLException("Falta la columna DETALLE_OBSERVACION en EXPEDIENTE_DOCUMENTO_ANALIZADO. Ejecute el script 33_patch_documento_analizado_detalle_observacion.sql.");
-                }
                 if (!soportaNumero && hasText(numeroDocumento)) {
                     throw new SQLException("Falta la columna NUMERO_DOCUMENTO en EXPEDIENTE_DOCUMENTO_ANALIZADO.");
                 }
@@ -92,7 +89,7 @@ public class DocumentoVerificacionDAO {
                         + "id_estado_documento = ?, "
                         + (soportaFecha ? "fecha_documento = ?, " : "")
                         + (soportaNumero ? "numero_documento = ?, " : "")
-                        + (soportaDetalle ? "detalle_observacion = ?, " : "")
+                        + "descripcion = ?, "
                         + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                         + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -104,9 +101,7 @@ public class DocumentoVerificacionDAO {
                     if (soportaNumero) {
                         setStringOrNull(ps, index++, limitar(numeroDocumento, 120));
                     }
-                    if (soportaDetalle) {
-                        setStringOrNull(ps, index++, limitar(detalleObservacion, 1000));
-                    }
+                    setStringOrNull(ps, index++, limitar(comentario, 1000));
                     if (idUsuarioModificador == null) {
                         ps.setNull(index++, java.sql.Types.NUMERIC);
                     } else {
@@ -134,6 +129,11 @@ public class DocumentoVerificacionDAO {
         return rs.wasNull() ? null : value;
     }
 
+    private static Boolean getBooleanOrNull(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value == 1;
+    }
+
     private static LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toLocalDate();
     }
@@ -144,6 +144,7 @@ public class DocumentoVerificacionDAO {
         boolean soportaDetalle = soportaDetalleObservacionDocumentoAnalizado(conn);
         boolean soportaJerarquia = soportaJerarquiaDocumentoAnalizado(conn);
         boolean soportaPublicacion = soportaPublicacionPreparada(conn);
+        boolean soportaOposicion = soportaExisteOposicion(conn);
         return "SELECT da.id_documento_analizado, da.id_expediente, "
                 + "td.nombre AS tipo_documento, ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento, "
                 + "da.fecha_documento, "
@@ -165,8 +166,9 @@ public class DocumentoVerificacionDAO {
                         + " SELECT p.fecha_publicacion FROM expediente_publicacion p "
                         + " WHERE p.id_expediente = da.id_expediente AND p.activo = 1 "
                         + " ORDER BY p.creado_en DESC, p.id_expediente_publicacion DESC"
-                        + ") WHERE ROWNUM = 1) AS fecha_publicacion "
-                        : "CAST(NULL AS DATE) AS fecha_publicacion ")
+                        + ") WHERE ROWNUM = 1) AS fecha_publicacion, "
+                        : "CAST(NULL AS DATE) AS fecha_publicacion, ")
+                + (soportaOposicion ? "da.existe_oposicion " : "CAST(NULL AS NUMBER(1)) AS existe_oposicion ")
                 + "FROM expediente_documento_analizado da "
                 + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                 + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
@@ -175,6 +177,16 @@ public class DocumentoVerificacionDAO {
                         ? "ORDER BY NVL(da.id_documento_padre, da.id_documento_analizado), NVL(da.nivel, 0), "
                         + "NVL(da.orden, da.id_documento_analizado), da.id_documento_analizado"
                         : "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC");
+    }
+
+    private static boolean soportaExisteOposicion(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                + "AND column_name = 'EXISTE_OPOSICION'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
     }
 
     private static boolean soportaJerarquiaDocumentoAnalizado(Connection conn) throws SQLException {

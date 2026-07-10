@@ -52,7 +52,7 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
         void guardarFila(
                 Long idDocumentoAnalizado,
                 String estadoCodigo,
-                String detalleObservacion,
+                String comentario,
                 LocalDate fechaEmision,
                 String numeroDocumento) throws Exception;
     }
@@ -62,18 +62,18 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
     private static final int PADRE_COL_ESTADO_DOCUMENTO = 2;
     private static final int PADRE_COL_FECHA = 3;
     private static final int PADRE_COL_COMENTARIO = 4;
-    private static final int PADRE_COL_DETALLE_OBS = 5;
-    private static final int PADRE_COL_REQUIERE_RESPUESTA = 6;
-    private static final int PADRE_COL_GUARDAR = 7;
+    private static final int PADRE_COL_REQUIERE_RESPUESTA = 5;
+    private static final int PADRE_COL_GUARDAR = 6;
 
     private static final int HIJO_COL_TIPO = 0;
-    private static final int HIJO_COL_COMENTARIO = 1;
-    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 2;
-    private static final int HIJO_COL_FECHA_RESPUESTA = 3;
-    private static final int HIJO_COL_FECHA_PUBLICACION = 4;
+    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 1;
+    private static final int HIJO_COL_FECHA_RESPUESTA = 2;
+    private static final int HIJO_COL_FECHA_PUBLICACION = 3;
+    private static final int HIJO_COL_EXISTE_OPOSICION = 4;
     private static final int HIJO_COL_HOJA_ENVIO = 5;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final List<String> ESTADOS_VISIBLES_PADRE = java.util.Arrays.asList("EN_DESPACHO", "EMITIDO", "OBSERVADO");
 
     private final List<DocumentoRow> allRows = new ArrayList<DocumentoRow>();
     private final PadreTableModel padreModel = new PadreTableModel();
@@ -82,8 +82,8 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
     private final JTable tablaHijo = new AppV2Table(hijoModel);
     private final JScrollPane scrollPadre = new JScrollPane(tablaPadre);
     private final JScrollPane scrollHijo = new JScrollPane(tablaHijo);
-    private final JLabel lblBannerPadre = crearBanner("Documentos verificados");
-    private final JLabel lblBannerHijo = crearBanner("Documentos relacionados / respuesta");
+    private final JLabel lblBannerPadre = crearBanner("Documentos de verificación");
+    private final JLabel lblBannerHijo = crearBanner("Documentos de cartas de respuesta");
     private final JLabel lblEstado = new JLabel("Seleccione un expediente para revisar sus documentos.");
 
     private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
@@ -172,7 +172,7 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
         tablaHijo.setDefaultRenderer(Object.class, textoRenderer);
 
         tablaPadre.getColumnModel().getColumn(PADRE_COL_FECHA).setCellEditor(new FechaCellEditor());
-        tablaPadre.getColumnModel().getColumn(PADRE_COL_DETALLE_OBS).setCellEditor(new DefaultCellEditor(new JTextField()));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_COMENTARIO).setCellEditor(new DefaultCellEditor(new JTextField()));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_NUMERO).setCellEditor(new DefaultCellEditor(new JTextField()));
 
         tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellRenderer(
@@ -181,7 +181,7 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
                 new RowActionEditor(new SaveDocumentIcon(), "Guardar documento revisado",
                         row -> guardarFila(padreModel.getRow(row))));
 
-        ajustarAnchos(tablaPadre, new int[]{200, 130, 150, 110, 220, 220, 140});
+        ajustarAnchos(tablaPadre, new int[]{200, 130, 150, 110, 240, 140});
         configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR});
         ajustarAnchos(tablaHijo, new int[]{170, 210, 150, 110, 120, 120});
 
@@ -251,20 +251,20 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
             return;
         }
         if ("OBSERVADO".equalsIgnoreCase(row.estadoDocumento == null ? "" : row.estadoDocumento.getCodigo())
-                && (row.detalleObservacion == null || row.detalleObservacion.trim().isEmpty())) {
-            mostrarInfo("Ingrese el detalle de observación del documento revisado.");
+                && (row.descripcion == null || row.descripcion.trim().isEmpty())) {
+            mostrarInfo("Ingrese el comentario del documento revisado.");
             return;
         }
         final Long idDocumento = row.id;
         final String estadoCodigo = row.estadoDocumento == null ? "" : row.estadoDocumento.getCodigo();
-        final String detalleObservacion = row.detalleObservacion;
+        final String comentario = row.descripcion;
         final LocalDate fechaEmision = row.fechaDocumento;
         final String numeroDocumento = row.numeroDocumento;
         lblEstado.setText("Guardando documento revisado...");
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                saveRowHandler.guardarFila(idDocumento, estadoCodigo, detalleObservacion, fechaEmision, numeroDocumento);
+                saveRowHandler.guardarFila(idDocumento, estadoCodigo, comentario, fechaEmision, numeroDocumento);
                 return null;
             }
 
@@ -296,7 +296,8 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
     private void rebuildPadre() {
         List<DocumentoRow> visibles = new ArrayList<DocumentoRow>();
         for (DocumentoRow row : allRows) {
-            if (row.nivel == 0) {
+            if (row.nivel == 0 && row.estadoDocumento != null
+                    && ESTADOS_VISIBLES_PADRE.contains(row.estadoDocumento.getCodigo().toUpperCase())) {
                 visibles.add(row);
             }
         }
@@ -356,7 +357,7 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
             "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
-            "Comentario", "Detalle Obs.", "¿Requiere respuesta?", ""
+            "Comentario", "¿Requiere respuesta?", ""
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -394,7 +395,7 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
             return getRow(rowIndex) != null
                     && (columnIndex == PADRE_COL_ESTADO_DOCUMENTO
                     || columnIndex == PADRE_COL_FECHA
-                    || columnIndex == PADRE_COL_DETALLE_OBS
+                    || columnIndex == PADRE_COL_COMENTARIO
                     || columnIndex == PADRE_COL_NUMERO
                     || columnIndex == PADRE_COL_GUARDAR);
         }
@@ -416,8 +417,6 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
                     return row.fechaDocumento != null ? DATE_FORMAT.format(row.fechaDocumento) : "";
                 case PADRE_COL_COMENTARIO:
                     return row.descripcion;
-                case PADRE_COL_DETALLE_OBS:
-                    return row.detalleObservacion;
                 case PADRE_COL_REQUIERE_RESPUESTA:
                     return row.requiereRespuesta;
                 default:
@@ -443,8 +442,8 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
                 case PADRE_COL_FECHA:
                     row.fechaDocumento = parseDate(value);
                     break;
-                case PADRE_COL_DETALLE_OBS:
-                    row.detalleObservacion = text(value);
+                case PADRE_COL_COMENTARIO:
+                    row.descripcion = text(value);
                     break;
                 default:
                     break;
@@ -456,8 +455,8 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
     private static class HijoTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Comentario", "Confirmación de respuesta", "Fecha Respuesta",
-            "Fecha Publicación", "Hoja de Envío"
+            "Tipo documento", "Confirmación de respuesta", "Fecha Respuesta",
+            "Fecha Publicación", "Existe Oposición", "Hoja de Envío"
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -499,14 +498,14 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
             switch (columnIndex) {
                 case HIJO_COL_TIPO:
                     return row.tipoDocumento;
-                case HIJO_COL_COMENTARIO:
-                    return row.descripcion;
                 case HIJO_COL_CONFIRMACION_RESPUESTA:
                     return row.confirmacionRespuesta;
                 case HIJO_COL_FECHA_RESPUESTA:
                     return row.fechaRespuesta != null ? DATE_FORMAT.format(row.fechaRespuesta) : "";
                 case HIJO_COL_FECHA_PUBLICACION:
                     return row.fechaPublicacion != null ? DATE_FORMAT.format(row.fechaPublicacion) : "";
+                case HIJO_COL_EXISTE_OPOSICION:
+                    return row.existeOposicion == null ? "-" : (row.existeOposicion ? "Si" : "No");
                 case HIJO_COL_HOJA_ENVIO:
                     return row.hojaEnvio;
                 default:
@@ -526,10 +525,10 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
         private String numeroDocumento;
         private String descripcion;
         private boolean requiereRespuesta;
-        private String detalleObservacion;
         private String confirmacionRespuesta;
         private LocalDate fechaRespuesta;
         private LocalDate fechaPublicacion;
+        private Boolean existeOposicion;
         private String hojaEnvio;
 
         static DocumentoRow from(DocumentoVerificacionDTO dto) {
@@ -544,10 +543,10 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
             row.numeroDocumento = dto.getNumeroDocumento();
             row.descripcion = dto.getDescripcion();
             row.requiereRespuesta = dto.isRequiereRespuesta();
-            row.detalleObservacion = dto.getDetalleObservacion();
             row.confirmacionRespuesta = dto.getConfirmacionRespuesta();
             row.fechaRespuesta = dto.getFechaRespuesta();
             row.fechaPublicacion = dto.getFechaPublicacion();
+            row.existeOposicion = dto.getExisteOposicion();
             row.hojaEnvio = dto.getNumeroHojaEnvioRespuesta();
             return row;
         }

@@ -58,6 +58,8 @@ public class VerificacionExpedienteDTO {
     private final LocalDateTime fechaFirmaDocumento;
     private final boolean tieneCartaEdicto;
     private final boolean puedeDerivarNotificacion;
+    private final Long idDocumentoPendiente;
+    private final String tipoDocumentoPendiente;
 
     public VerificacionExpedienteDTO(
             Long idExpediente,
@@ -109,7 +111,9 @@ public class VerificacionExpedienteDTO {
             LocalDate fechaDocumentoEmitido,
             LocalDateTime fechaFirmaDocumento,
             boolean tieneCartaEdicto,
-            boolean puedeDerivarNotificacion) {
+            boolean puedeDerivarNotificacion,
+            Long idDocumentoPendiente,
+            String tipoDocumentoPendiente) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
@@ -160,6 +164,8 @@ public class VerificacionExpedienteDTO {
         this.fechaFirmaDocumento = fechaFirmaDocumento;
         this.tieneCartaEdicto = tieneCartaEdicto;
         this.puedeDerivarNotificacion = puedeDerivarNotificacion;
+        this.idDocumentoPendiente = idDocumentoPendiente;
+        this.tipoDocumentoPendiente = safe(tipoDocumentoPendiente);
     }
 
     public Long getIdExpediente() {
@@ -360,6 +366,14 @@ public class VerificacionExpedienteDTO {
 
     public boolean isPuedeDerivarNotificacion() {
         return puedeDerivarNotificacion;
+    }
+
+    public Long getIdDocumentoPendiente() {
+        return idDocumentoPendiente;
+    }
+
+    public String getTipoDocumentoPendiente() {
+        return tipoDocumentoPendiente;
     }
 
     public Long getDiasEnEtapa() {

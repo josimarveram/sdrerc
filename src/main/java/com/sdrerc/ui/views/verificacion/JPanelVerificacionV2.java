@@ -112,10 +112,10 @@ public class JPanelVerificacionV2 extends JPanel {
     private static final int COL_EXPANDIR = 0;
     private static final int COL_DIAS = 1;
     private static final int COL_EXPEDIENTE = 2;
-    private static final int COL_RESULTADO = 10;
-    private static final int COL_ESTADO = 11;
-    private static final int COL_ASOCIADOS = 12;
-    private static final int COL_ID = 13;
+    private static final int COL_RESULTADO = 8;
+    private static final int COL_ESTADO = 9;
+    private static final int COL_ASOCIADOS = 10;
+    private static final int COL_ID = 11;
     private static final int PANEL_VERIFICACION_ANCHO_MINIMO = 380;
     private static final int PANEL_VERIFICACION_ANCHO_NORMAL = 430;
     private static final int PANEL_VERIFICACION_TAB_OVERHANG = 46;
@@ -797,7 +797,7 @@ public class JPanelVerificacionV2 extends JPanel {
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         AppV2TableColumnSizer.applyWidths(
                 table,
-                46, 88, 185, 150, 145, 220, 130, 130, 260, 210, 150, 155, 160, 0);
+                46, 88, 185, 150, 145, 200, 260, 210, 150, 155, 160, 0);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMinWidth(42);
         table.getColumnModel().getColumn(COL_EXPANDIR).setPreferredWidth(46);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMaxWidth(48);
@@ -1102,9 +1102,7 @@ public class JPanelVerificacionV2 extends JPanel {
             item.getNumeroExpediente(),
             item.getNumeroExpedienteSgd(),
             formatDate(item.getFechaRecepcion()),
-            item.getProcedimiento(),
-            item.getTipoActa(),
-            item.getNumeroActa(),
+            item.getTipoDocumentoPendiente().isEmpty() ? "-" : item.getTipoDocumentoPendiente(),
             item.getTitular(),
             item.getResponsableAnalisis().isEmpty() ? item.getResponsable() : item.getResponsableAnalisis(),
             item.getUltimoResultadoAnalisis().isEmpty() ? "-" : item.getUltimoResultadoAnalisis(),
@@ -1123,9 +1121,7 @@ public class JPanelVerificacionV2 extends JPanel {
             valorUi(principal.getNumeroExpediente()),
             valorUi(principal.getNumeroExpedienteSgd()),
             formatDate(asociado.getFechaRecepcion()),
-            procedimientoAsociado(asociado),
-            valorUi(asociado.getTipoActa()),
-            valorUi(asociado.getNumeroActa()),
+            "-",
             valorUi(asociado.getTitular()),
             valorUi(asociado.getAbogadoAsignado()),
             "-",
@@ -2301,9 +2297,7 @@ public class JPanelVerificacionV2 extends JPanel {
                 "Expediente",
                 "N° expediente SGD",
                 "Fecha solicitud",
-                "Procedimiento",
-                "Tipo acta",
-                "Nro. acta",
+                "Tipo documento",
                 "Titular",
                 "Abogado designado",
                 "Resultado",
