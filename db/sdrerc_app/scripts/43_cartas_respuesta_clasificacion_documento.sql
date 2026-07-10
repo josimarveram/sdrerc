@@ -36,7 +36,7 @@ BEGIN
     'Clasificacion funcional del documento: INTERMEDIO o FINAL. Nulo si no aplica.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -55,7 +55,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 UPDATE tipo_documento_adjunto
    SET clasificacion = 'INTERMEDIO'
@@ -128,7 +128,7 @@ BEGIN
     'Indica si existe oposicion sobre la carta de respuesta: 1=Si, 0=No, NULL=No aplica.'
   ]';
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -147,7 +147,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 SELECT codigo, nombre, clasificacion, activo
   FROM tipo_documento_adjunto

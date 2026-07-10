@@ -58,7 +58,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE expediente_documento_analizado ADD (id_equipo_notificacion NUMBER)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -73,7 +73,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE expediente_documento_analizado ADD (id_usuario_notificacion NUMBER)';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -88,7 +88,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE expediente_documento_analizado ADD (numero_hoja_envio_notificacion VARCHAR2(120))';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -107,7 +107,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 DECLARE
   v_count NUMBER;
@@ -126,7 +126,7 @@ BEGIN
     ]';
   END IF;
 END;
-/
+
 
 SELECT codigo, nombre, activo FROM estado_documento WHERE codigo IN ('ASIGNADO', 'VALIDADO') ORDER BY codigo;
 SELECT codigo, nombre, activo FROM equipo WHERE codigo IN ('EQ_NOTIFICACION', 'EQ_VALIDACION') ORDER BY codigo;
