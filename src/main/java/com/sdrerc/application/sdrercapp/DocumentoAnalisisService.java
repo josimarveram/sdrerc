@@ -3,6 +3,8 @@ package com.sdrerc.application.sdrercapp;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO;
+import com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.DocumentoAnalisisDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
@@ -57,8 +59,41 @@ public class DocumentoAnalisisService {
         documentoAnalisisDAO.guardarCartaRespuesta(idExpediente, carta, resolverUsuarioActualSdrercApp());
     }
 
-    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
+    public List<NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
         return documentoAnalisisDAO.listarDocumentosAsignacionNotificacion();
+    }
+
+    public List<NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion() throws SQLException {
+        return documentoAnalisisDAO.listarDocumentosValidacion();
+    }
+
+    public void registrarValidacion(Long idDocumentoAnalizado) throws SQLException {
+        documentoAnalisisDAO.registrarValidacion(idDocumentoAnalizado, resolverUsuarioActualSdrercApp());
+    }
+
+    public List<NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion() throws SQLException {
+        return documentoAnalisisDAO.listarDocumentosNotificacion();
+    }
+
+    public List<NotificacionAsignacionDocumentoDTO> listarDocumentosPublicacion() throws SQLException {
+        return documentoAnalisisDAO.listarDocumentosPublicacion();
+    }
+
+    public List<NotificacionIntentoDTO> listarIntentosNotificacion(Long idDocumentoAnalizado) throws SQLException {
+        return documentoAnalisisDAO.listarIntentosNotificacion(idDocumentoAnalizado);
+    }
+
+    public void registrarIntentoNotificacion(
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            String tipoNotificacionCodigo,
+            String codigoNotificacion) throws SQLException {
+        documentoAnalisisDAO.registrarIntentoNotificacion(
+                idExpediente,
+                idDocumentoAnalizado,
+                tipoNotificacionCodigo,
+                codigoNotificacion,
+                resolverUsuarioActualSdrercApp());
     }
 
     public void asignarNotificacion(

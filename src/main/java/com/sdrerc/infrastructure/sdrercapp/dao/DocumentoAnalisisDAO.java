@@ -3,6 +3,7 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
 import java.sql.Date;
@@ -249,6 +250,141 @@ public class DocumentoAnalisisDAO {
             }
         }
     }
+
+    public void registrarValidacion(Long idDocumentoAnalizado, Long idUsuario) throws SQLException {
+        if (idDocumentoAnalizado == null) {
+            throw new IllegalArgumentException("Seleccione un documento para registrar la validación.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            Long idEstadoValidado = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, "VALIDADO");
+            if (idEstadoValidado == null) {
+                throw new SQLException("No se encontró el estado de documento VALIDADO. Ejecute el script 44_asignacion_notificacion_validacion.sql.");
+            }
+            String sql = "UPDATE expediente_documento_analizado SET "
+                    + "id_estado_documento = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                    + "WHERE id_documento_analizado = ? AND activo = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idEstadoValidado);
+                if (idUsuario == null) {
+                    ps.setNull(2, Types.NUMERIC);
+                } else {
+                    ps.setLong(2, idUsuario);
+                }
+                ps.setLong(3, idDocumentoAnalizado);
+                int updated = ps.executeUpdate();
+                if (updated != 1) {
+                    throw new SQLException("No se pudo registrar la validación del documento.");
+                }
+            }
+        }
+    }
+
+    public List<NotificacionIntentoDTO> listarIntentosNotificacion(Long idDocumentoAnalizado) throws SQLException {
+        List<NotificacionIntentoDTO> items = new ArrayList<NotificacionIntentoDTO>();
+        if (idDocumentoAnalizado == null) {
+            return items;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaIntentosNotificacionDocumento(conn)) {
+                return items;
+            }
+            boolean soportaPublicacion = soportaPublicacionPreparada(conn);
+            String sql = "SELECT n.id_expediente_notificacion, n.id_expediente, n.id_documento_analizado, "
+                    + "n.numero_intento, tn.codigo AS tipo_notificacion_codigo, tn.nombre AS tipo_notificacion, "
+                    + "n.fecha_envio, en.codigo AS estado_notificacion_codigo, en.nombre AS estado_notificacion, "
+                    + "n.codigo_notificacion, "
+                    + "(SELECT MAX(c.fecha_recepcion) FROM expediente_cargo_acuse c "
+                    + " WHERE c.id_expediente_notificacion = n.id_expediente_notificacion AND c.activo = 1) AS fecha_recepcion, "
+                    + (soportaPublicacion
+                            ? "(SELECT fecha_publicacion FROM ("
+                            + " SELECT p.fecha_publicacion FROM expediente_publicacion p "
+                            + " WHERE p.id_expediente = n.id_expediente AND p.activo = 1 "
+                            + " ORDER BY p.creado_en DESC, p.id_expediente_publicacion DESC"
+                            + ") WHERE ROWNUM = 1) AS fecha_publicacion "
+                            : "CAST(NULL AS DATE) AS fecha_publicacion ")
+                    + "FROM expediente_notificacion n "
+                    + "JOIN tipo_notificacion tn ON tn.id_tipo_notificacion = n.id_tipo_notificacion "
+                    + "JOIN estado_notificacion en ON en.id_estado_notificacion = n.id_estado_notificacion "
+                    + "WHERE n.id_documento_analizado = ? AND n.activo = 1 "
+                    + "ORDER BY n.numero_intento, n.id_expediente_notificacion";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idDocumentoAnalizado);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        LocalDateTime fechaRecepcion = toLocalDateTime(rs.getTimestamp("fecha_recepcion"));
+                        String estadoCodigo = rs.getString("estado_notificacion_codigo");
+                        boolean ubicado = "EXITOSA".equalsIgnoreCase(estadoCodigo) || fechaRecepcion != null;
+                        items.add(new NotificacionIntentoDTO(
+                                getLongOrNull(rs, "id_expediente_notificacion"),
+                                getLongOrNull(rs, "id_expediente"),
+                                getLongOrNull(rs, "id_documento_analizado"),
+                                rs.getInt("numero_intento"),
+                                rs.getString("tipo_notificacion_codigo"),
+                                rs.getString("tipo_notificacion"),
+                                toLocalDateTime(rs.getTimestamp("fecha_envio")),
+                                estadoCodigo,
+                                rs.getString("estado_notificacion"),
+                                rs.getString("codigo_notificacion"),
+                                fechaRecepcion,
+                                ubicado,
+                                toLocalDate(rs.getDate("fecha_publicacion"))));
+                    }
+                }
+            }
+        }
+        return items;
+    }
+
+    public void registrarIntentoNotificacion(
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            String tipoNotificacionCodigo,
+            String codigoNotificacion,
+            Long idUsuario) throws SQLException {
+        if (idExpediente == null || idDocumentoAnalizado == null) {
+            throw new IllegalArgumentException("Seleccione expediente y documento para registrar el intento.");
+        }
+        String tipoCodigo = hasText(tipoNotificacionCodigo) ? tipoNotificacionCodigo.trim().toUpperCase() : "VIRTUAL";
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaIntentosNotificacionDocumento(conn)) {
+                throw new SQLException("La base de datos no soporta intentos de notificación por documento. Ejecute el script 45_intentos_notificacion_documento.sql.");
+            }
+            Long idTipoNotificacion = catalogoLookupDAO.obtenerTipoNotificacionId(conn, tipoCodigo);
+            if (idTipoNotificacion == null) {
+                throw new SQLException("No se encontró el tipo de notificación " + tipoCodigo + ". Verifique el catálogo o ejecute el script correspondiente.");
+            }
+            Long idEstadoPendiente = catalogoLookupDAO.obtenerEstadoNotificacionId(conn, "PENDIENTE");
+            if (idEstadoPendiente == null) {
+                throw new SQLException("No se encontró el estado de notificación PENDIENTE.");
+            }
+            int numeroIntento = obtenerSiguienteIntentoNotificacion(conn, idDocumentoAnalizado);
+            if (numeroIntento > 3) {
+                throw new SQLException("Solo se permiten hasta 3 intentos de notificación por documento.");
+            }
+            String sql = "INSERT INTO expediente_notificacion ("
+                    + "id_expediente, id_documento_analizado, id_tipo_notificacion, id_estado_notificacion, "
+                    + "numero_intento, fecha_envio, resultado, requiere_publicacion, codigo_notificacion, "
+                    + "observacion, activo, creado_por, creado_en"
+                    + ") VALUES (?, ?, ?, ?, ?, SYSTIMESTAMP, 'PENDIENTE', ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                ps.setLong(2, idDocumentoAnalizado);
+                ps.setLong(3, idTipoNotificacion);
+                ps.setLong(4, idEstadoPendiente);
+                ps.setInt(5, numeroIntento);
+                ps.setInt(6, "PUBLICACION".equalsIgnoreCase(tipoCodigo) ? 1 : 0);
+                setStringOrNull(ps, 7, limitar(codigoNotificacion, 60));
+                setStringOrNull(ps, 8, "Intento registrado desde bandeja de documentos.");
+                if (idUsuario == null) {
+                    ps.setNull(9, Types.NUMERIC);
+                } else {
+                    ps.setLong(9, idUsuario);
+                }
+                ps.executeUpdate();
+            }
+        }
+    }
+
 
     public void guardarCartaRespuesta(
             Long idExpediente,
@@ -1116,6 +1252,31 @@ public class DocumentoAnalisisDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt("total") == 3;
+        }
+    }
+
+    private static boolean soportaIntentosNotificacionDocumento(Connection conn) throws SQLException {
+        String sql = "SELECT "
+                + "(SELECT COUNT(1) FROM user_tables WHERE table_name = 'EXPEDIENTE_NOTIFICACION') + "
+                + "(SELECT COUNT(1) FROM user_tables WHERE table_name = 'EXPEDIENTE_CARGO_ACUSE') + "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE_NOTIFICACION' AND column_name = 'ID_DOCUMENTO_ANALIZADO') + "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE_NOTIFICACION' AND column_name = 'CODIGO_NOTIFICACION') "
+                + "AS total FROM dual";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt("total") == 4;
+        }
+    }
+
+    private static int obtenerSiguienteIntentoNotificacion(Connection conn, Long idDocumentoAnalizado) throws SQLException {
+        String sql = "SELECT NVL(MAX(numero_intento), 0) + 1 AS siguiente "
+                + "FROM expediente_notificacion "
+                + "WHERE id_documento_analizado = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idDocumentoAnalizado);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt("siguiente") : 1;
+            }
         }
     }
 

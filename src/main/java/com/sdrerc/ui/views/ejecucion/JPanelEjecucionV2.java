@@ -508,13 +508,10 @@ public class JPanelEjecucionV2 extends JPanel {
         table.setIntercellSpacing(new Dimension(0, 1));
         table.setDefaultRenderer(Object.class, new EjecucionRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
-        table.getColumnModel().getColumn(1).setMaxWidth(92);
-        table.getColumnModel().getColumn(9).setPreferredWidth(160);
-        table.getColumnModel().getColumn(10).setPreferredWidth(142);
-        table.getColumnModel().getColumn(12).setMaxWidth(92);
-        table.getColumnModel().getColumn(0).setMinWidth(0);
-        table.getColumnModel().getColumn(0).setPreferredWidth(0);
-        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        setMaxWidthIfPresent(1, 92);
+        setPreferredWidthIfPresent(5, 160);
+        setPreferredWidthIfPresent(9, 142);
+        ocultarColumnaIfPresent(0);
         tablePanel.getScrollPane().setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         columnFilterSupport = AppV2ColumnFilterSupport.install(
                 "Ejecucion",
@@ -523,6 +520,26 @@ public class JPanelEjecucionV2 extends JPanel {
                 tablePanel,
                 null,
                 0);
+    }
+
+    private void setPreferredWidthIfPresent(int columnIndex, int width) {
+        if (columnIndex >= 0 && columnIndex < table.getColumnModel().getColumnCount()) {
+            table.getColumnModel().getColumn(columnIndex).setPreferredWidth(width);
+        }
+    }
+
+    private void setMaxWidthIfPresent(int columnIndex, int width) {
+        if (columnIndex >= 0 && columnIndex < table.getColumnModel().getColumnCount()) {
+            table.getColumnModel().getColumn(columnIndex).setMaxWidth(width);
+        }
+    }
+
+    private void ocultarColumnaIfPresent(int columnIndex) {
+        if (columnIndex >= 0 && columnIndex < table.getColumnModel().getColumnCount()) {
+            table.getColumnModel().getColumn(columnIndex).setMinWidth(0);
+            table.getColumnModel().getColumn(columnIndex).setPreferredWidth(0);
+            table.getColumnModel().getColumn(columnIndex).setMaxWidth(0);
+        }
     }
 
     private void configurarEventos() {

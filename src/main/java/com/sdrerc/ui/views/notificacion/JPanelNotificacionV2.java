@@ -5,6 +5,7 @@ import com.sdrerc.application.sdrercapp.NotificacionExpedienteService;
 import com.sdrerc.domain.dto.sdrercapp.CargoAcuseDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.CierreNotificacionDTO;
+import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoEjecucionDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionRegistroDTO;
@@ -12,6 +13,7 @@ import com.sdrerc.domain.dto.sdrercapp.NotificacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.PublicacionRequeridaDTO;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
+import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
 import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -30,6 +32,7 @@ import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import com.sdrerc.util.DateRangePickerSupport;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -69,6 +72,7 @@ import javax.swing.SwingWorker;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 
 public class JPanelNotificacionV2 extends JPanel {
 
@@ -182,6 +186,81 @@ public class JPanelNotificacionV2 extends JPanel {
     private JPanel bandejaAsignacionTab;
     private JPanel bandejaValidacionTab;
     private JPanel bandejaNotificacionTab;
+    private JPanel notifSharedContentHost;
+
+    private final com.sdrerc.application.sdrercapp.DocumentoAnalisisService documentoAnalisisService =
+            new com.sdrerc.application.sdrercapp.DocumentoAnalisisService();
+    private final com.sdrerc.application.sdrercapp.UsuarioAsignacionService usuarioAsignacionServiceNotif =
+            new com.sdrerc.application.sdrercapp.UsuarioAsignacionService();
+    private final List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> documentosAsignacionNotif =
+            new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+    private final DefaultTableModel asignacionNotifModel = new DefaultTableModel(
+            new Object[]{"", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado"},
+            0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return column == 0;
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == 0 ? Boolean.class : Object.class;
+        }
+    };
+    private final JTable tablaAsignacionNotif = new AppV2Table(asignacionNotifModel);
+    private final AppV2TablePanel tablaAsignacionNotifPanel = new AppV2TablePanel(
+            tablaAsignacionNotif, "Sin documentos para asignar", "No hay documentos pendientes de asignación.");
+    private final JLabel lblEstadoAsignacionNotif = new JLabel("Seleccione documentos y presione Generar asignación.");
+    private final JTextField txtHojaEnvioNotif = new JTextField(18);
+    private final JComboBox<EquipoNotifItem> cmbEquipoNotif = new JComboBox<EquipoNotifItem>();
+    private final JComboBox<UsuarioNotifItem> cmbUsuarioNotif = new JComboBox<UsuarioNotifItem>();
+    private final JButton btnGenerarAsignacionNotif = new JButton("Generar asignación");
+    private final JButton btnCancelarAsignacionNotif = new JButton("Cancelar");
+    private boolean cargandoCombosAsignacionNotif;
+
+    private final List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> documentosValidacion =
+            new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+    private final DefaultTableModel validacionModel = new DefaultTableModel(
+            new Object[]{"N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado"},
+            0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable tablaValidacion = new AppV2Table(validacionModel);
+    private final AppV2TablePanel tablaValidacionPanel = new AppV2TablePanel(
+            tablaValidacion, "Sin documentos para validar", "No hay documentos pendientes de validación.");
+    private final JLabel lblEstadoValidacion = new JLabel("Haga doble clic en un documento para abrir el Panel de Validación.");
+    private final com.sdrerc.ui.views.ejecucion.DocumentoEjecucionTreeGridPanelV2 documentosValidacionTreePanel =
+            new com.sdrerc.ui.views.ejecucion.DocumentoEjecucionTreeGridPanelV2();
+    private final JButton btnRegistrarValidacion = new JButton("Registrar Validación");
+    private final JButton btnCancelarValidacion = new JButton("Cancelar");
+    private final JLabel lblPanelValidacionTitulo = new JLabel("Panel de Validación");
+    private Long idDocumentoValidacionSeleccionado;
+    private Long idExpedienteValidacionSeleccionado;
+
+    private final List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> documentosNotifBandeja =
+            new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+    private final List<NotifFilaTabla> filasNotifBandeja = new ArrayList<NotifFilaTabla>();
+    private final java.util.Map<Long, List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>> intentosNotifCache =
+            new java.util.HashMap<Long, List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>>();
+    private final java.util.Set<Long> documentosNotifExpandidos = new java.util.HashSet<Long>();
+    private final DefaultTableModel notifBandejaModel = new DefaultTableModel(
+            new Object[]{"", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado"},
+            0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable tablaNotifBandeja = new AppV2Table(notifBandejaModel);
+    private final AppV2TablePanel tablaNotifBandejaPanel = new AppV2TablePanel(
+            tablaNotifBandeja, "Sin documentos para notificar", "No hay documentos pendientes de notificación.");
+    private final JLabel lblEstadoNotifBandeja = new JLabel("Haga clic en \"+\" para desplegar los intentos de notificación.");
+    private final JButton btnAgregarIntento = new JButton("+ Agregar intento");
+    private Long idDocumentoNotifSeleccionado;
+
     private enum ModoBandejaNotificacion {
         ASIGNACION,
         VALIDACION,
@@ -212,6 +291,10 @@ public class JPanelNotificacionV2 extends JPanel {
         inicializarFechas();
         inicializarFechasFiltro();
         actualizarSeleccion();
+        cargarBandejaAsignacionNotificacion();
+        cargarEquiposAsignacionNotif();
+        cargarBandejaValidacion();
+        cargarBandejaNotifV2();
     }
 
     private JPanel crearHeader() {
@@ -258,10 +341,20 @@ public class JPanelNotificacionV2 extends JPanel {
 
         bandejaAsignacionTab = new JPanel(new BorderLayout());
         bandejaAsignacionTab.setOpaque(false);
+        bandejaAsignacionTab.add(crearBandejaAsignacionNotificacion(), BorderLayout.CENTER);
         bandejaValidacionTab = new JPanel(new BorderLayout());
         bandejaValidacionTab.setOpaque(false);
+        bandejaValidacionTab.add(crearBandejaValidacion(), BorderLayout.CENTER);
         bandejaNotificacionTab = new JPanel(new BorderLayout());
         bandejaNotificacionTab.setOpaque(false);
+        JPanel notifBandejaWrapper = new JPanel(new BorderLayout());
+        notifBandejaWrapper.setOpaque(false);
+        notifBandejaWrapper.setPreferredSize(new Dimension(10, 320));
+        notifBandejaWrapper.add(crearBandejaNotifV2(), BorderLayout.CENTER);
+        bandejaNotificacionTab.add(notifBandejaWrapper, BorderLayout.NORTH);
+        notifSharedContentHost = new JPanel(new BorderLayout());
+        notifSharedContentHost.setOpaque(false);
+        bandejaNotificacionTab.add(notifSharedContentHost, BorderLayout.CENTER);
 
         tabsBandejasTop.addTab("Bandeja Asignación", bandejaAsignacionTab);
         tabsBandejasTop.addTab("Bandeja Validación", bandejaValidacionTab);
@@ -293,21 +386,813 @@ public class JPanelNotificacionV2 extends JPanel {
         destino.repaint();
     }
 
+    private JPanel crearBandejaAsignacionNotificacion() {
+        tablaAsignacionNotif.setRowHeight(32);
+        tablaAsignacionNotif.setAutoCreateRowSorter(false);
+        tablaAsignacionNotif.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tablaAsignacionNotif.getTableHeader().setReorderingAllowed(false);
+        tablaAsignacionNotif.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tablaAsignacionNotif.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        tablaAsignacionNotif.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        tablaAsignacionNotif.setGridColor(AppV2Theme.BORDER);
+        tablaAsignacionNotif.setShowVerticalLines(false);
+        AppV2TableColumnSizer.applyFriendlyDefaults(tablaAsignacionNotif);
+        tablaAsignacionNotif.getColumnModel().getColumn(0).setMaxWidth(40);
+        tablaAsignacionNotif.getColumnModel().getColumn(0).setMinWidth(36);
+
+        JPanel izquierda = new JPanel(new BorderLayout(6, 6));
+        izquierda.setOpaque(false);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablaAsignacionNotifPanel);
+        section.setStatus(lblEstadoAsignacionNotif);
+        izquierda.add(section, BorderLayout.CENTER);
+
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setOpaque(false);
+        panel.add(izquierda, BorderLayout.CENTER);
+        panel.add(crearPanelAsignarNotif(), BorderLayout.EAST);
+        return panel;
+    }
+
+    private JPanel crearPanelAsignarNotif() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+        panel.setPreferredSize(new Dimension(300, 10));
+
+        JLabel titulo = new JLabel("Asignar Notif.");
+        titulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_MEDIUM));
+        titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
+        panel.add(titulo, BorderLayout.NORTH);
+
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = 0;
+        gbcLabel.anchor = GridBagConstraints.NORTHWEST;
+        gbcLabel.insets = new Insets(6, 0, 6, 8);
+        GridBagConstraints gbcValue = new GridBagConstraints();
+        gbcValue.gridx = 1;
+        gbcValue.weightx = 1;
+        gbcValue.fill = GridBagConstraints.HORIZONTAL;
+        gbcValue.insets = new Insets(6, 0, 6, 0);
+
+        txtHojaEnvioNotif.setPreferredSize(new Dimension(180, 32));
+        cmbEquipoNotif.setPreferredSize(new Dimension(180, 32));
+        cmbUsuarioNotif.setPreferredSize(new Dimension(180, 32));
+
+        int row = 0;
+        gbcLabel.gridy = row;
+        gbcValue.gridy = row++;
+        grid.add(new JLabel("Hoja de envío"), gbcLabel);
+        grid.add(txtHojaEnvioNotif, gbcValue);
+        gbcLabel.gridy = row;
+        gbcValue.gridy = row++;
+        grid.add(new JLabel("Equipo"), gbcLabel);
+        grid.add(cmbEquipoNotif, gbcValue);
+        gbcLabel.gridy = row;
+        gbcValue.gridy = row++;
+        grid.add(new JLabel("Usuario"), gbcLabel);
+        grid.add(cmbUsuarioNotif, gbcValue);
+
+        panel.add(grid, BorderLayout.CENTER);
+
+        JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
+        acciones.setOpaque(false);
+        AppV2Theme.estilizarBotonPrimario(btnGenerarAsignacionNotif);
+        acciones.add(btnGenerarAsignacionNotif);
+        acciones.add(btnCancelarAsignacionNotif);
+        panel.add(acciones, BorderLayout.SOUTH);
+
+        cmbEquipoNotif.addActionListener(e -> {
+            if (!cargandoCombosAsignacionNotif) {
+                cargarUsuariosAsignacionNotif();
+            }
+        });
+        btnGenerarAsignacionNotif.addActionListener(e -> generarAsignacionNotificacion());
+        btnCancelarAsignacionNotif.addActionListener(e -> {
+            txtHojaEnvioNotif.setText("");
+            for (int i = 0; i < asignacionNotifModel.getRowCount(); i++) {
+                asignacionNotifModel.setValueAt(Boolean.FALSE, i, 0);
+            }
+        });
+        return panel;
+    }
+
+    private void cargarBandejaAsignacionNotificacion() {
+        lblEstadoAsignacionNotif.setText("Cargando documentos pendientes de asignación...");
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosAsignacionNotificacion();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items = get();
+                    documentosAsignacionNotif.clear();
+                    documentosAsignacionNotif.addAll(items);
+                    asignacionNotifModel.setRowCount(0);
+                    for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : items) {
+                        asignacionNotifModel.addRow(new Object[]{
+                            Boolean.FALSE,
+                            item.getNumeroExpediente(),
+                            item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
+                            item.getTipoDocumento().isEmpty() ? "-" : item.getTipoDocumento(),
+                            item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
+                            item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
+                            item.getTitular().isEmpty() ? "-" : item.getTitular(),
+                            item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento()
+                        });
+                    }
+                    tablaAsignacionNotifPanel.setEmpty(items.isEmpty());
+                    lblEstadoAsignacionNotif.setText(items.isEmpty()
+                            ? "No hay documentos pendientes de asignación."
+                            : items.size() + " documento(s) pendientes de asignación.");
+                } catch (Exception ex) {
+                    lblEstadoAsignacionNotif.setText("No se pudieron cargar los documentos pendientes de asignación.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarEquiposAsignacionNotif() {
+        cargandoCombosAsignacionNotif = true;
+        cmbEquipoNotif.removeAllItems();
+        cmbEquipoNotif.addItem(EquipoNotifItem.placeholder("Seleccione equipo"));
+        cmbUsuarioNotif.removeAllItems();
+        cmbUsuarioNotif.addItem(UsuarioNotifItem.placeholder("Seleccione usuario"));
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO> doInBackground() throws Exception {
+                return usuarioAsignacionServiceNotif.listarEquiposActivos();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    for (com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo : get()) {
+                        String codigo = equipo.getCodigo() == null ? "" : equipo.getCodigo().toUpperCase();
+                        if ("EQ_NOTIFICACION".equals(codigo) || "EQ_VALIDACION".equals(codigo)) {
+                            cmbEquipoNotif.addItem(new EquipoNotifItem(equipo));
+                        }
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los equipos destino.", ex);
+                } finally {
+                    cargandoCombosAsignacionNotif = false;
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarUsuariosAsignacionNotif() {
+        EquipoNotifItem equipoItem = (EquipoNotifItem) cmbEquipoNotif.getSelectedItem();
+        cmbUsuarioNotif.removeAllItems();
+        cmbUsuarioNotif.addItem(UsuarioNotifItem.placeholder("Seleccione usuario"));
+        if (equipoItem == null || equipoItem.equipo == null) {
+            return;
+        }
+        final Long idEquipo = equipoItem.equipo.getIdEquipo();
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> doInBackground() throws Exception {
+                return usuarioAsignacionServiceNotif.listarAbogadosAsignables(idEquipo);
+            }
+
+            @Override
+            protected void done() {
+                EquipoNotifItem equipoActual = (EquipoNotifItem) cmbEquipoNotif.getSelectedItem();
+                if (equipoActual == null || equipoActual.equipo == null || !idEquipo.equals(equipoActual.equipo.getIdEquipo())) {
+                    return;
+                }
+                try {
+                    for (com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario : get()) {
+                        cmbUsuarioNotif.addItem(new UsuarioNotifItem(usuario));
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los usuarios del equipo destino.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void generarAsignacionNotificacion() {
+        List<Long> seleccionados = new ArrayList<Long>();
+        for (int row = 0; row < asignacionNotifModel.getRowCount(); row++) {
+            if (Boolean.TRUE.equals(asignacionNotifModel.getValueAt(row, 0)) && row < documentosAsignacionNotif.size()) {
+                seleccionados.add(documentosAsignacionNotif.get(row).getIdDocumentoAnalizado());
+            }
+        }
+        if (seleccionados.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione al menos un documento para generar la asignación.",
+                    "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        EquipoNotifItem equipoItem = (EquipoNotifItem) cmbEquipoNotif.getSelectedItem();
+        UsuarioNotifItem usuarioItem = (UsuarioNotifItem) cmbUsuarioNotif.getSelectedItem();
+        if (equipoItem == null || equipoItem.equipo == null || usuarioItem == null || usuarioItem.usuario == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione equipo y usuario destino para generar la asignación.",
+                    "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se generará la asignación de " + seleccionados.size() + " documento(s). ¿Desea continuar?",
+                "Generar asignación",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        final Long idEquipoDestino = equipoItem.equipo.getIdEquipo();
+        final Long idUsuarioDestino = usuarioItem.usuario.getIdUsuario();
+        final String hojaEnvio = txtHojaEnvioNotif.getText();
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.asignarNotificacion(seleccionados, idEquipoDestino, idUsuarioDestino, hojaEnvio);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(
+                            JPanelNotificacionV2.this,
+                            "La asignación se generó correctamente.",
+                            "Asignar Notif.",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    txtHojaEnvioNotif.setText("");
+                    cargarBandejaAsignacionNotificacion();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo generar la asignación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private static class EquipoNotifItem {
+        private final com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo;
+        private final String label;
+
+        private EquipoNotifItem(com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo) {
+            this.equipo = equipo;
+            this.label = equipo.getDisplayName();
+        }
+
+        private EquipoNotifItem(String label) {
+            this.equipo = null;
+            this.label = label;
+        }
+
+        private static EquipoNotifItem placeholder(String label) {
+            return new EquipoNotifItem(label);
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private static class UsuarioNotifItem {
+        private final com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario;
+        private final String label;
+
+        private UsuarioNotifItem(com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario) {
+            this.usuario = usuario;
+            this.label = usuario.getDisplayName();
+        }
+
+        private UsuarioNotifItem(String label) {
+            this.usuario = null;
+            this.label = label;
+        }
+
+        private static UsuarioNotifItem placeholder(String label) {
+            return new UsuarioNotifItem(label);
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private JPanel crearBandejaValidacion() {
+        tablaValidacion.setRowHeight(32);
+        tablaValidacion.setAutoCreateRowSorter(false);
+        tablaValidacion.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tablaValidacion.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tablaValidacion.getTableHeader().setReorderingAllowed(false);
+        tablaValidacion.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tablaValidacion.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        tablaValidacion.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        tablaValidacion.setGridColor(AppV2Theme.BORDER);
+        tablaValidacion.setShowVerticalLines(false);
+        AppV2TableColumnSizer.applyFriendlyDefaults(tablaValidacion);
+        tablaValidacion.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    int viewRow = tablaValidacion.getSelectedRow();
+                    if (viewRow < 0) {
+                        return;
+                    }
+                    int modelRow = tablaValidacion.convertRowIndexToModel(viewRow);
+                    if (modelRow >= 0 && modelRow < documentosValidacion.size()) {
+                        abrirPanelValidacion(documentosValidacion.get(modelRow));
+                    }
+                }
+            }
+        });
+
+        JPanel izquierda = new JPanel(new BorderLayout(6, 6));
+        izquierda.setOpaque(false);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablaValidacionPanel);
+        section.setStatus(lblEstadoValidacion);
+        izquierda.add(section, BorderLayout.CENTER);
+
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setOpaque(false);
+        panel.add(izquierda, BorderLayout.CENTER);
+        panel.add(crearPanelValidacion(), BorderLayout.EAST);
+        return panel;
+    }
+
+    private JPanel crearPanelValidacion() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+        panel.setPreferredSize(new Dimension(520, 10));
+
+        lblPanelValidacionTitulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_MEDIUM));
+        lblPanelValidacionTitulo.setForeground(AppV2Theme.TEXT_PRIMARY);
+        panel.add(lblPanelValidacionTitulo, BorderLayout.NORTH);
+        panel.add(documentosValidacionTreePanel, BorderLayout.CENTER);
+
+        JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
+        acciones.setOpaque(false);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarValidacion);
+        acciones.add(btnRegistrarValidacion);
+        acciones.add(btnCancelarValidacion);
+        panel.add(acciones, BorderLayout.SOUTH);
+
+        btnRegistrarValidacion.addActionListener(e -> registrarValidacion());
+        btnCancelarValidacion.addActionListener(e -> limpiarPanelValidacion());
+        limpiarPanelValidacion();
+        return panel;
+    }
+
+    private void cargarBandejaValidacion() {
+        lblEstadoValidacion.setText("Cargando documentos pendientes de validación...");
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosValidacion();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items = get();
+                    documentosValidacion.clear();
+                    documentosValidacion.addAll(items);
+                    validacionModel.setRowCount(0);
+                    for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : items) {
+                        validacionModel.addRow(new Object[]{
+                            item.getNumeroExpediente(),
+                            item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
+                            item.getTipoDocumento().isEmpty() ? "-" : item.getTipoDocumento(),
+                            item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
+                            item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
+                            item.getTitular().isEmpty() ? "-" : item.getTitular(),
+                            item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento()
+                        });
+                    }
+                    tablaValidacionPanel.setEmpty(items.isEmpty());
+                    lblEstadoValidacion.setText(items.isEmpty()
+                            ? "No hay documentos pendientes de validación."
+                            : items.size() + " documento(s) pendientes de validación.");
+                } catch (Exception ex) {
+                    lblEstadoValidacion.setText("No se pudieron cargar los documentos pendientes de validación.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void abrirPanelValidacion(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
+        idDocumentoValidacionSeleccionado = item.getIdDocumentoAnalizado();
+        idExpedienteValidacionSeleccionado = item.getIdExpediente();
+        lblPanelValidacionTitulo.setText("Panel de Validación - " + item.getNumeroExpediente());
+        btnRegistrarValidacion.setEnabled(true);
+        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
+            @Override
+            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosAnalizados(item.getIdExpediente());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    documentosValidacionTreePanel.setDocumentos(item.getIdExpediente(), get());
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los documentos del expediente.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void limpiarPanelValidacion() {
+        idDocumentoValidacionSeleccionado = null;
+        idExpedienteValidacionSeleccionado = null;
+        lblPanelValidacionTitulo.setText("Panel de Validación");
+        btnRegistrarValidacion.setEnabled(false);
+        documentosValidacionTreePanel.setDocumentos(null, new ArrayList<DocumentoAnalizadoDTO>());
+    }
+
+    private void registrarValidacion() {
+        if (idDocumentoValidacionSeleccionado == null) {
+            JOptionPane.showMessageDialog(this, "Haga doble clic en un documento de la bandeja de validación.",
+                    "Registrar Validación", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se registrará la validación del documento seleccionado. ¿Desea continuar?",
+                "Registrar Validación",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        final Long idDocumento = idDocumentoValidacionSeleccionado;
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.registrarValidacion(idDocumento);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(
+                            JPanelNotificacionV2.this,
+                            "La validación se registró correctamente.",
+                            "Registrar Validación",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    limpiarPanelValidacion();
+                    cargarBandejaValidacion();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo registrar la validación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private JPanel crearBandejaNotifV2() {
+        tablaNotifBandeja.setRowHeight(32);
+        tablaNotifBandeja.setAutoCreateRowSorter(false);
+        tablaNotifBandeja.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tablaNotifBandeja.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tablaNotifBandeja.getTableHeader().setReorderingAllowed(false);
+        tablaNotifBandeja.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tablaNotifBandeja.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        tablaNotifBandeja.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        tablaNotifBandeja.setGridColor(AppV2Theme.BORDER);
+        tablaNotifBandeja.setShowVerticalLines(false);
+        AppV2TableColumnSizer.applyFriendlyDefaults(tablaNotifBandeja);
+        tablaNotifBandeja.getColumnModel().getColumn(0).setMaxWidth(40);
+        tablaNotifBandeja.getColumnModel().getColumn(0).setMinWidth(36);
+        tablaNotifBandeja.getColumnModel().getColumn(0).setCellRenderer(new NotifExpandirRenderer());
+        tablaNotifBandeja.setDefaultRenderer(Object.class, new NotifBandejaRenderer());
+        tablaNotifBandeja.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int viewRow = tablaNotifBandeja.rowAtPoint(e.getPoint());
+                int viewCol = tablaNotifBandeja.columnAtPoint(e.getPoint());
+                if (viewRow < 0) {
+                    return;
+                }
+                int modelRow = tablaNotifBandeja.convertRowIndexToModel(viewRow);
+                if (modelRow < 0 || modelRow >= filasNotifBandeja.size()) {
+                    return;
+                }
+                NotifFilaTabla fila = filasNotifBandeja.get(modelRow);
+                if (viewCol == 0 && fila.esPadre()) {
+                    alternarExpansionNotif(fila.idDocumento);
+                    return;
+                }
+                idDocumentoNotifSeleccionado = fila.idDocumento;
+            }
+        });
+
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        toolbar.setOpaque(false);
+        AppV2Theme.estilizarBotonPrimario(btnAgregarIntento);
+        toolbar.add(btnAgregarIntento);
+        btnAgregarIntento.addActionListener(e -> mostrarDialogoAgregarIntento());
+
+        JPanel izquierda = new JPanel(new BorderLayout(6, 6));
+        izquierda.setOpaque(false);
+        izquierda.add(toolbar, BorderLayout.NORTH);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablaNotifBandejaPanel);
+        section.setStatus(lblEstadoNotifBandeja);
+        izquierda.add(section, BorderLayout.CENTER);
+        return izquierda;
+    }
+
+    private void cargarBandejaNotifV2() {
+        lblEstadoNotifBandeja.setText("Cargando documentos pendientes de notificación...");
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosNotificacion();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items = get();
+                    documentosNotifBandeja.clear();
+                    documentosNotifBandeja.addAll(items);
+                    documentosNotifExpandidos.clear();
+                    intentosNotifCache.clear();
+                    reconstruirFilasNotifBandeja();
+                    tablaNotifBandejaPanel.setEmpty(items.isEmpty());
+                    lblEstadoNotifBandeja.setText(items.isEmpty()
+                            ? "No hay documentos pendientes de notificación."
+                            : items.size() + " documento(s) pendientes de notificación.");
+                } catch (Exception ex) {
+                    lblEstadoNotifBandeja.setText("No se pudieron cargar los documentos pendientes de notificación.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void reconstruirFilasNotifBandeja() {
+        filasNotifBandeja.clear();
+        notifBandejaModel.setRowCount(0);
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
+            filasNotifBandeja.add(NotifFilaTabla.padre(item));
+            List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos = intentosNotifCache.get(item.getIdDocumentoAnalizado());
+            notifBandejaModel.addRow(new Object[]{
+                documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) ? "collapse" : "expand",
+                item.getNumeroExpediente(),
+                item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
+                item.getTipoDocumento().isEmpty() ? "-" : item.getTipoDocumento(),
+                item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
+                item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
+                item.getTitular().isEmpty() ? "-" : item.getTitular(),
+                estadoNotificacionCalculado(intentos, item.getEstadoDocumento())
+            });
+            if (documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) && intentos != null) {
+                for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
+                    filasNotifBandeja.add(NotifFilaTabla.hijo(item.getIdDocumentoAnalizado()));
+                    notifBandejaModel.addRow(new Object[]{
+                        "",
+                        "↳ Intento " + intento.getNumeroIntento(),
+                        intento.getTipoNotificacion().isEmpty() ? "-" : intento.getTipoNotificacion(),
+                        intento.getEstadoNotificacion().isEmpty() ? "-" : intento.getEstadoNotificacion(),
+                        intento.getCodigoNotificacion().isEmpty() ? "-" : intento.getCodigoNotificacion(),
+                        intento.getFechaEnvio() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio()),
+                        intento.getFechaRecepcion() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaRecepcion()),
+                        intento.isUbicado() ? "Ubicado" : "No ubicado"
+                    });
+                }
+            }
+        }
+    }
+
+    private String estadoNotificacionCalculado(List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos, String estadoDocumentoFallback) {
+        if (intentos == null || intentos.isEmpty()) {
+            return estadoDocumentoFallback == null || estadoDocumentoFallback.isEmpty() ? "-" : estadoDocumentoFallback;
+        }
+        boolean algunoUbicado = false;
+        int intentosNoUbicados = 0;
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
+            if (intento.isUbicado()) {
+                algunoUbicado = true;
+            } else {
+                intentosNoUbicados++;
+            }
+        }
+        if (algunoUbicado) {
+            return "Atendido";
+        }
+        if (intentosNoUbicados >= 2) {
+            return "Pendiente de publicación";
+        }
+        return "Pendiente";
+    }
+
+    private void alternarExpansionNotif(Long idDocumento) {
+        if (idDocumento == null) {
+            return;
+        }
+        if (documentosNotifExpandidos.contains(idDocumento)) {
+            documentosNotifExpandidos.remove(idDocumento);
+            reconstruirFilasNotifBandeja();
+            return;
+        }
+        if (intentosNotifCache.containsKey(idDocumento)) {
+            documentosNotifExpandidos.add(idDocumento);
+            reconstruirFilasNotifBandeja();
+            return;
+        }
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarIntentosNotificacion(idDocumento);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    intentosNotifCache.put(idDocumento, get());
+                    documentosNotifExpandidos.add(idDocumento);
+                    reconstruirFilasNotifBandeja();
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los intentos de notificación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void mostrarDialogoAgregarIntento() {
+        if (idDocumentoNotifSeleccionado == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione un documento de la bandeja de notificación.",
+                    "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documento = null;
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
+            if (idDocumentoNotifSeleccionado.equals(item.getIdDocumentoAnalizado())) {
+                documento = item;
+                break;
+            }
+        }
+        if (documento == null) {
+            return;
+        }
+        JComboBox<SimpleItem> cmbModalidad = new JComboBox<SimpleItem>();
+        cmbModalidad.addItem(new SimpleItem("VIRTUAL", "Virtual"));
+        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
+        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
+        JTextField txtCodigo = new JTextField(16);
+        JPanel form = new JPanel(new GridBagLayout());
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = 0;
+        gbcLabel.anchor = GridBagConstraints.WEST;
+        gbcLabel.insets = new Insets(4, 0, 4, 8);
+        GridBagConstraints gbcValue = new GridBagConstraints();
+        gbcValue.gridx = 1;
+        gbcValue.fill = GridBagConstraints.HORIZONTAL;
+        gbcValue.insets = new Insets(4, 0, 4, 0);
+        gbcLabel.gridy = 0;
+        gbcValue.gridy = 0;
+        form.add(new JLabel("Modalidad"), gbcLabel);
+        form.add(cmbModalidad, gbcValue);
+        gbcLabel.gridy = 1;
+        gbcValue.gridy = 1;
+        form.add(new JLabel("Código notificación"), gbcLabel);
+        form.add(txtCodigo, gbcValue);
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this, form, "Agregar intento de notificación", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (confirm != JOptionPane.OK_OPTION) {
+            return;
+        }
+        SimpleItem modalidad = (SimpleItem) cmbModalidad.getSelectedItem();
+        final Long idExpediente = documento.getIdExpediente();
+        final Long idDocumento = documento.getIdDocumentoAnalizado();
+        final String tipoNotificacionCodigo = modalidad == null ? "VIRTUAL" : modalidad.codigo;
+        final String codigoNotificacion = txtCodigo.getText();
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.registrarIntentoNotificacion(idExpediente, idDocumento, tipoNotificacionCodigo, codigoNotificacion);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    intentosNotifCache.remove(idDocumento);
+                    documentosNotifExpandidos.add(idDocumento);
+                    alternarExpansionNotifForzado(idDocumento);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo registrar el intento de notificación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void alternarExpansionNotifForzado(Long idDocumento) {
+        documentosNotifExpandidos.remove(idDocumento);
+        alternarExpansionNotif(idDocumento);
+    }
+
+    private static class NotifFilaTabla {
+        private final boolean padre;
+        private final Long idDocumento;
+
+        private NotifFilaTabla(boolean padre, Long idDocumento) {
+            this.padre = padre;
+            this.idDocumento = idDocumento;
+        }
+
+        private static NotifFilaTabla padre(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
+            return new NotifFilaTabla(true, item.getIdDocumentoAnalizado());
+        }
+
+        private static NotifFilaTabla hijo(Long idDocumento) {
+            return new NotifFilaTabla(false, idDocumento);
+        }
+
+        private boolean esPadre() {
+            return padre;
+        }
+    }
+
+    private class NotifExpandirRenderer extends JPanel implements TableCellRenderer {
+        private final AppV2ExpandCollapseGlyph glyph = new AppV2ExpandCollapseGlyph();
+
+        private NotifExpandirRenderer() {
+            setOpaque(true);
+            setLayout(new BorderLayout());
+            add(glyph, BorderLayout.CENTER);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Color background = isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            setBackground(background);
+            if ("expand".equals(value)) {
+                glyph.configure(AppV2ExpandCollapseGlyph.EXPAND, AppV2Theme.PRIMARY, background);
+            } else if ("collapse".equals(value)) {
+                glyph.configure(AppV2ExpandCollapseGlyph.COLLAPSE, AppV2Theme.PRIMARY, background);
+            } else {
+                glyph.configure(AppV2ExpandCollapseGlyph.NONE, AppV2Theme.PRIMARY, background);
+            }
+            return this;
+        }
+    }
+
+    private class NotifBandejaRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            int modelRow = table.convertRowIndexToModel(row);
+            boolean esHijo = modelRow >= 0 && modelRow < filasNotifBandeja.size() && !filasNotifBandeja.get(modelRow).esPadre();
+            setFont(esHijo ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL) : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            if (!isSelected) {
+                setBackground(esHijo ? new Color(238, 250, 252) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+                setForeground(esHijo ? AppV2Theme.TEXT_SECONDARY : AppV2Theme.TEXT_PRIMARY);
+            }
+            return c;
+        }
+    }
+
     private JPanel panelParaModoBandejaNotificacion() {
         if (tabsBandejasTop == null) {
-            return bandejaNotificacionTab;
+            return notifSharedContentHost;
         }
         int index = tabsBandejasTop.getSelectedIndex();
         if (index == 0) {
             modoBandejaNotificacion = ModoBandejaNotificacion.ASIGNACION;
-            return bandejaAsignacionTab;
+            return null;
         }
         if (index == 1) {
             modoBandejaNotificacion = ModoBandejaNotificacion.VALIDACION;
-            return bandejaValidacionTab;
+            return null;
         }
         modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
-        return bandejaNotificacionTab;
+        return notifSharedContentHost;
     }
 
     private void actualizarTabBandejaNotificacion() {
