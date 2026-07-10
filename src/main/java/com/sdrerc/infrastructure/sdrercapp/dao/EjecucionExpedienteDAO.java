@@ -148,7 +148,7 @@ public class EjecucionExpedienteDAO {
         }
 
         sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, orden_titular ASC, id_expediente ASC");
-        sql.append(") WHERE ROWNUM <= ?");
+        sql.append(") WHERE UPPER(NVL(resultado_analisis, '')) IN ('PROCEDENTE', 'PROCEDENTE EN PARTE') AND ROWNUM <= ?");
         params.add(normalizarLimite(limite));
 
         try (Connection conn = SdrercAppConnection.getConnection();

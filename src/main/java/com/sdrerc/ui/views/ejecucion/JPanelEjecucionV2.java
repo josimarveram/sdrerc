@@ -97,7 +97,8 @@ public class JPanelEjecucionV2 extends JPanel {
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnRegistrarEjecucion = new JButton("Registrar ejecución");
+    private final JButton btnRegistrarEjecucion = new JButton("Guardar Ejecución");
+    private final JButton btnCancelarEjecucion = new JButton("Cancelar");
     private final JButton btnMarcarEjecutado = new JButton("Marcar ejecutado");
     private final JButton btnObservar = new JButton("Observación ejecución");
     private final JButton btnDocumentoInconsistente = new JButton("Error material");
@@ -142,15 +143,11 @@ public class JPanelEjecucionV2 extends JPanel {
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
-    private final DefaultTableModel documentosModel = new DefaultTableModel(
-            new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
-            0) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
-    };
-    private final JTable documentosTable = new JTable(documentosModel);
+    private DocumentoEjecucionTreeGridPanelV2 documentosTreePanel;
+    private final com.sdrerc.application.sdrercapp.DocumentoAnalisisService documentoAnalisisService =
+            new com.sdrerc.application.sdrercapp.DocumentoAnalisisService();
+    private final com.sdrerc.application.sdrercapp.DocumentoVerificacionService documentoVerificacionService =
+            new com.sdrerc.application.sdrercapp.DocumentoVerificacionService();
     private final List<EjecucionExpedienteDTO> expedientes = new ArrayList<EjecucionExpedienteDTO>();
     private final List<EjecucionExpedienteDTO> expedientesVisibles = new ArrayList<EjecucionExpedienteDTO>();
     private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
@@ -183,7 +180,6 @@ public class JPanelEjecucionV2 extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
         add(crearCentro(), BorderLayout.CENTER);
         configurarTabla();
-        configurarDocumentosTabla();
         configurarEventos();
         configurarKpisInteractivos();
         restaurarFechasBusqueda();
@@ -315,11 +311,7 @@ public class JPanelEjecucionV2 extends JPanel {
         JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
         panel.setOpaque(false);
         panel.add(btnRegistrarEjecucion);
-        panel.add(btnMarcarEjecutado);
-        panel.add(btnObservar);
-        panel.add(btnDocumentoInconsistente);
-        panel.add(btnRevertirAnalisis);
-        panel.add(btnDerivarNotificacion);
+        panel.add(btnCancelarEjecucion);
         return panel;
     }
 
@@ -361,11 +353,24 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private JPanel crearDocumentosPanel() {
-        JPanel panel = section("Documentos de expediente");
-        JScrollPane scroll = new JScrollPane(documentosTable);
-        scroll.setPreferredSize(new Dimension(355, 132));
-        scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        panel.add(scroll, BorderLayout.CENTER);
+        JPanel panel = section("Documentos del expediente");
+        documentosTreePanel = new DocumentoEjecucionTreeGridPanelV2();
+        documentosTreePanel.setHandlers(
+                (idDocumento, estadoCodigo, comentario, fechaEmision, numeroDocumento) -> {
+                    EjecucionExpedienteDTO item = requerirSeleccion();
+                    if (item == null) {
+                        throw new IllegalArgumentException("Seleccione un expediente para guardar el documento.");
+                    }
+                    documentoVerificacionService.actualizarEstadoDocumentoAnalizado(
+                            item.getIdExpediente(), idDocumento, estadoCodigo, comentario, fechaEmision, numeroDocumento);
+                },
+                () -> {
+                    EjecucionExpedienteDTO item = seleccionado();
+                    if (item != null) {
+                        cargarDocumentos(item.getIdExpediente());
+                    }
+                });
+        panel.add(documentosTreePanel, BorderLayout.CENTER);
         return panel;
     }
 
@@ -520,20 +525,12 @@ public class JPanelEjecucionV2 extends JPanel {
                 0);
     }
 
-    private void configurarDocumentosTabla() {
-        documentosTable.setRowHeight(30);
-        documentosTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        documentosTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
-        documentosTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
-        documentosTable.setGridColor(AppV2Theme.BORDER);
-        documentosTable.setShowVerticalLines(false);
-    }
-
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
         btnRegistrarEjecucion.addActionListener(e -> registrarEjecucion());
+        btnCancelarEjecucion.addActionListener(e -> cerrarPanelEjecucion());
         btnMarcarEjecutado.addActionListener(e -> marcarEjecutado());
         btnObservar.addActionListener(e -> registrarObservacion());
         btnDocumentoInconsistente.addActionListener(e -> registrarDocumentoInconsistente());
@@ -573,7 +570,8 @@ public class JPanelEjecucionV2 extends JPanel {
                 return new CatalogosCarga(
                         ejecucionService.listarResultadosEjecucion(),
                         ejecucionService.listarTiposObservacion(),
-                        ejecucionService.listarMotivosCorreccion());
+                        ejecucionService.listarMotivosCorreccion(),
+                        documentoAnalisisService.listarEstadosDocumento());
             }
 
             @Override
@@ -594,6 +592,9 @@ public class JPanelEjecucionV2 extends JPanel {
         cargarSimpleItems(cmbResultado, carga.resultados, "Seleccione resultado");
         cargarSimpleItems(cmbTipoObservacion, carga.tiposObservacion, "Seleccione tipo");
         cargarSimpleItems(cmbMotivoCorreccion, carga.motivosCorreccion, "Seleccione motivo");
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setEstadosDocumento(carga.estadosDocumento);
+        }
     }
 
     private void cargarSimpleItems(JComboBox<SimpleItem> combo, List<CatalogoItemDTO> items, String placeholder) {
@@ -858,41 +859,35 @@ public class JPanelEjecucionV2 extends JPanel {
         txtFundamentoAnalisis.setText("");
         txtObservacion.setText("");
         inicializarFecha();
-        documentosModel.setRowCount(0);
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setDocumentos(null, new ArrayList<com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO>());
+        }
         actualizarAcciones(null);
     }
 
     private void cargarDocumentos(Long idExpediente) {
-        documentosModel.setRowCount(0);
-        SwingWorker<List<DocumentoEjecucionDTO>, Void> worker = new SwingWorker<List<DocumentoEjecucionDTO>, Void>() {
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setDocumentos(idExpediente, new ArrayList<com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO>());
+        }
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO>, Void>() {
             @Override
-            protected List<DocumentoEjecucionDTO> doInBackground() throws Exception {
-                return documentoService.listarPorExpediente(idExpediente);
+            protected List<com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
             }
 
             @Override
             protected void done() {
                 try {
-                    cargarDocumentosVista(get());
+                    if (documentosTreePanel != null) {
+                        documentosTreePanel.setDocumentos(idExpediente, get());
+                    }
                 } catch (Exception ex) {
                     mostrarError("No se pudieron cargar los documentos del expediente.", ex);
                 }
             }
         };
         worker.execute();
-    }
-
-    private void cargarDocumentosVista(List<DocumentoEjecucionDTO> documentos) {
-        documentosModel.setRowCount(0);
-        for (DocumentoEjecucionDTO documento : documentos) {
-            documentosModel.addRow(new Object[]{
-                valor(documento.getTipoDocumento()),
-                valor(documento.getEstadoDocumento()),
-                valor(documento.getNumeroDocumento()),
-                valor(documento.getNombreDocumento()),
-                format(documento.getFechaDocumento())
-            });
-        }
     }
 
     private void actualizarAcciones(EjecucionExpedienteDTO expediente) {
@@ -1180,16 +1175,6 @@ public class JPanelEjecucionV2 extends JPanel {
         return alertas.isEmpty() ? "Sin alertas." : String.join(" · ", alertas);
     }
 
-    private String documentoEmitidoTabla(EjecucionExpedienteDTO expediente) {
-        if (expediente == null || !expediente.isDocumentoEmitido()) {
-            return "Pendiente";
-        }
-        if (hasText(expediente.getNumeroResolucion())) {
-            return expediente.getNumeroResolucion();
-        }
-        return hasText(expediente.getTipoResolucion()) ? expediente.getTipoResolucion() : "Emitido";
-    }
-
     private String documentoEmitidoDetalle(EjecucionExpedienteDTO expediente) {
         if (expediente == null || !expediente.isDocumentoEmitido()) {
             return "Sin documento emitido registrado";
@@ -1309,9 +1294,8 @@ public class JPanelEjecucionV2 extends JPanel {
     private class EjecucionTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Días", "Expediente", "N° expediente SGD", "Trámite / Documento", "Titular",
-            "Procedimiento", "Resultado análisis", "Documento emitido", "Estado",
-            "Requiere publicación", "Alertas", "Asociados"
+            "ID", "Días", "Expediente", "N° expediente SGD", "Fecha solicitud", "Tipo documento",
+            "Resultado", "Abogado", "Titular", "Estado"
         };
 
         @Override
@@ -1342,23 +1326,17 @@ public class JPanelEjecucionV2 extends JPanel {
                 case 3:
                     return item.getNumeroExpedienteSgd();
                 case 4:
-                    return item.getNumeroTramiteDocumentario();
+                    return format(item.getFechaRecepcion());
                 case 5:
-                    return item.getTitular();
+                    return item.getTipoResolucion().isEmpty() ? "Resolución" : item.getTipoResolucion();
                 case 6:
-                    return item.getProcedimiento();
-                case 7:
                     return valor(item.getResultadoAnalisis());
+                case 7:
+                    return item.getResponsableAnalisis().isEmpty() ? item.getResponsable() : item.getResponsableAnalisis();
                 case 8:
-                    return documentoEmitidoTabla(item);
+                    return item.getTitular();
                 case 9:
                     return DisplayNameMapperV2.estado(item.getEstadoCodigo());
-                case 10:
-                    return item.isRequierePublicacion() ? "Requiere" : "No";
-                case 11:
-                    return alertasTexto(item);
-                case 12:
-                    return item.getTotalRelacionados();
                 default:
                     return "";
             }
@@ -1380,13 +1358,6 @@ public class JPanelEjecucionV2 extends JPanel {
             if (column == 9) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (column == 10) {
-                String text = value == null ? "" : value.toString();
-                return StatusBadgeV2.small(
-                        text,
-                        "Requiere".equalsIgnoreCase(text) ? AppV2Theme.SOFT_ORANGE : AppV2Theme.SOFT_GRAY,
-                        "Requiere".equalsIgnoreCase(text) ? AppV2Theme.WARNING : AppV2Theme.TEXT_SECONDARY);
-            }
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
@@ -1407,14 +1378,17 @@ public class JPanelEjecucionV2 extends JPanel {
         private final List<CatalogoItemDTO> resultados;
         private final List<CatalogoItemDTO> tiposObservacion;
         private final List<CatalogoItemDTO> motivosCorreccion;
+        private final List<CatalogoItemDTO> estadosDocumento;
 
         private CatalogosCarga(
                 List<CatalogoItemDTO> resultados,
                 List<CatalogoItemDTO> tiposObservacion,
-                List<CatalogoItemDTO> motivosCorreccion) {
+                List<CatalogoItemDTO> motivosCorreccion,
+                List<CatalogoItemDTO> estadosDocumento) {
             this.resultados = resultados;
             this.tiposObservacion = tiposObservacion;
             this.motivosCorreccion = motivosCorreccion;
+            this.estadosDocumento = estadosDocumento;
         }
     }
 
