@@ -75,7 +75,17 @@ public class VerificacionExpedienteDAO {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
-        sql.append("dap.id_documento_analizado AS id_documento_pendiente, tdap.nombre AS tipo_documento_pendiente, ");
+        sql.append("(SELECT MAX(da2.id_documento_analizado) KEEP (DENSE_RANK LAST ORDER BY da2.fecha_documento NULLS FIRST, da2.id_documento_analizado) ");
+        sql.append(" FROM expediente_documento_analizado da2 ");
+        sql.append(" LEFT JOIN estado_documento ed2 ON ed2.id_estado_documento = da2.id_estado_documento ");
+        sql.append(" WHERE da2.id_expediente = e.id_expediente AND da2.activo = 1 ");
+        sql.append(" AND UPPER(NVL(ed2.codigo, '')) IN ('EN_DESPACHO', 'EMITIDO')) AS id_documento_pendiente, ");
+        sql.append("(SELECT MAX(tda2.nombre) KEEP (DENSE_RANK LAST ORDER BY da2.fecha_documento NULLS FIRST, da2.id_documento_analizado) ");
+        sql.append(" FROM expediente_documento_analizado da2 ");
+        sql.append(" LEFT JOIN estado_documento ed2 ON ed2.id_estado_documento = da2.id_estado_documento ");
+        sql.append(" LEFT JOIN tipo_documento_adjunto tda2 ON tda2.id_tipo_documento_adjunto = da2.id_tipo_documento_adjunto ");
+        sql.append(" WHERE da2.id_expediente = e.id_expediente AND da2.activo = 1 ");
+        sql.append(" AND UPPER(NVL(ed2.codigo, '')) IN ('EN_DESPACHO', 'EMITIDO')) AS tipo_documento_pendiente, ");
         sql.append("esol.asunto AS procedimiento, p.tipo_documento AS tipo_documento_titular, p.numero_documento AS numero_documento_titular, ");
         sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
         sql.append(" FROM expediente_documento ed WHERE ed.id_expediente = e.id_expediente ");
@@ -155,10 +165,11 @@ public class VerificacionExpedienteDAO {
         sql.append("ON res_pick.id_expediente = e.id_expediente ");
         sql.append("LEFT JOIN expediente_resolucion res ON res.id_expediente_resolucion = res_pick.id_expediente_resolucion ");
         sql.append("LEFT JOIN tipo_resolucion tr ON tr.id_tipo_resolucion = res.id_tipo_resolucion ");
-        sql.append("JOIN expediente_documento_analizado dap ON dap.id_expediente = e.id_expediente AND dap.activo = 1 ");
-        sql.append("JOIN estado_documento edp ON edp.id_estado_documento = dap.id_estado_documento AND UPPER(edp.codigo) = 'EN_DESPACHO' ");
-        sql.append("LEFT JOIN tipo_documento_adjunto tdap ON tdap.id_tipo_documento_adjunto = dap.id_tipo_documento_adjunto ");
-        sql.append("WHERE e.activo = 1 ");
+        sql.append("WHERE e.activo = 1 AND (et.codigo IN (?, ?) OR (et.codigo = ? AND est.codigo = ?)) ");
+        params.add(ETAPA_VERIFICACION);
+        params.add(ETAPA_FIRMA);
+        params.add(ETAPA_ANALISIS);
+        params.add(ESTADO_ATENDIDO);
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
