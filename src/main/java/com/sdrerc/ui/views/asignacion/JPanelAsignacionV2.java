@@ -245,8 +245,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
     private final JLabel lblIngreso = new JLabel("Normal");
     private final JLabel lblSupervisor = new JLabel("-");
-    private final JLabel lblEquipoActual = new JLabel("-");
-    private final JLabel lblAbogadoActual = new JLabel("-");
+    private final JLabel lblAbogadoAnalisisAsignacionEtiqueta = AppV2SideSectionPanel.buildLabel("Abogado");
+    private final JLabel lblAbogadoAnalisisAsignacionValor = new JLabel("-");
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
     private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
     private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
@@ -974,8 +974,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideSectionPanel crearDestinoAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Destino operativo");
-        section.addRow("Equipo actual", lblEquipoActual);
-        section.addRow("Abogado actual", lblAbogadoActual);
+        section.addRow(lblAbogadoAnalisisAsignacionEtiqueta, lblAbogadoAnalisisAsignacionValor);
         section.addRow("Equipo destino", cmbEquipo);
         section.addRow("Abogado responsable", cmbAbogado);
         section.addRow("Supervisor", lblSupervisor);
@@ -1054,8 +1053,7 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarLabelsDatosExpediente();
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblGrupoFamiliar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lblEquipoActual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lblAbogadoActual.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblAbogadoAnalisisAsignacionValor.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         AppV2Theme.estilizarBotonPrimario(btnBuscar);
         AppV2Theme.estilizarBotonPrimario(btnAsignarSeleccionado);
         AppV2Theme.estilizarBotonSecundario(btnAsignarSeleccionados);
@@ -1439,10 +1437,10 @@ public class JPanelAsignacionV2 extends JPanel {
             Long idEquipo,
             String abogadoNombre,
             Long idAbogado) {
-        lblEquipoActual.setText(textoAsignacion(equipoNombre));
-        lblEquipoActual.setToolTipText(textoAsignacion(equipoNombre));
-        lblAbogadoActual.setText(textoAsignacion(abogadoNombre));
-        lblAbogadoActual.setToolTipText(textoAsignacion(abogadoNombre));
+        boolean tieneEquipo = equipoNombre != null && !equipoNombre.trim().isEmpty();
+        lblAbogadoAnalisisAsignacionEtiqueta.setText(tieneEquipo ? "Abogado " + equipoNombre.trim() : "Abogado");
+        lblAbogadoAnalisisAsignacionValor.setText(textoAsignacion(abogadoNombre));
+        lblAbogadoAnalisisAsignacionValor.setToolTipText(textoAsignacion(abogadoNombre));
         idEquipoPendienteSeleccion = idEquipo;
         idAbogadoPendienteSeleccion = idAbogado;
         aplicarAsignacionPendienteEnCombos();
@@ -2829,10 +2827,9 @@ public class JPanelAsignacionV2 extends JPanel {
             lblExpedienteSeleccionado.setText("Selección múltiple");
             lblTitularSeleccionado.setText("Múltiples titulares");
             actualizarIdentificacionDocumento(null, null, null);
-            lblEquipoActual.setText("Selección múltiple");
-            lblEquipoActual.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
-            lblAbogadoActual.setText("Selección múltiple");
-            lblAbogadoActual.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
+            lblAbogadoAnalisisAsignacionEtiqueta.setText("Abogado");
+            lblAbogadoAnalisisAsignacionValor.setText("Selección múltiple");
+            lblAbogadoAnalisisAsignacionValor.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
             aplicarEstadoRecepcion(lblRecepcionAbogado, "No aplica");
             lblGrupoFamiliar.setText("Múltiple");
             lblGrupoFamiliar.setToolTipText("Revise la columna Alertas de cada expediente seleccionado.");

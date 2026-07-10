@@ -116,6 +116,11 @@ public class VerificacionExpedienteDAO {
         sql.append("(SELECT MAX(ua.nombre_completo) KEEP (DENSE_RANK LAST ORDER BY ev.fecha_evaluacion NULLS FIRST, ev.creado_en) ");
         sql.append("FROM expediente_evaluacion ev LEFT JOIN usuario ua ON ua.id_usuario = ev.creado_por ");
         sql.append("WHERE ev.id_expediente = e.id_expediente AND ev.activo = 1) AS responsable_analisis, ");
+        sql.append("(SELECT MAX(eqa.nombre) KEEP (DENSE_RANK LAST ORDER BY ev.fecha_evaluacion NULLS FIRST, ev.creado_en) ");
+        sql.append("FROM expediente_evaluacion ev ");
+        sql.append("LEFT JOIN equipo_usuario eua ON eua.id_usuario = ev.creado_por AND eua.activo = 1 ");
+        sql.append("LEFT JOIN equipo eqa ON eqa.id_equipo = eua.id_equipo AND eqa.activo = 1 ");
+        sql.append("WHERE ev.id_expediente = e.id_expediente AND ev.activo = 1) AS equipo_analisis, ");
         sql.append("et.codigo AS etapa_codigo, est.codigo AS estado_codigo, ");
         sql.append("UPPER(NVL(").append(nombrePersona("p")).append(", 'ZZZ')) AS orden_titular, ");
         sql.append("(SELECT COUNT(*) FROM expediente_observacion o WHERE o.id_expediente = e.id_expediente AND o.subsanada = 0 AND o.activo = 1) AS observaciones_pendientes, ");
@@ -597,7 +602,8 @@ public class VerificacionExpedienteDAO {
                 rs.getInt("cartas_edicto") > 0,
                 rs.getInt("puede_derivar_notificacion") == 1,
                 getLongOrNull(rs, "id_documento_pendiente"),
-                rs.getString("tipo_documento_pendiente"));
+                rs.getString("tipo_documento_pendiente"),
+                rs.getString("equipo_analisis"));
     }
 
     private static boolean soportaGrupoFamiliar(Connection conn) throws SQLException {

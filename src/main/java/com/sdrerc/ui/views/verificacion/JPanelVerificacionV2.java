@@ -188,6 +188,8 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JLabel lblProcedimiento = new JLabel("-");
     private final JLabel lblResponsable = new JLabel("-");
     private final JLabel lblResponsableAnalisis = new JLabel("-");
+    private final JLabel lblAbogadoAnalisisDestinoEtiqueta = label("Abogado");
+    private final JLabel lblAbogadoAnalisisDestinoValor = new JLabel("-");
     private final JLabel lblEtapaEstado = new JLabel("-");
     private final JLabel lblAnalisis = new JLabel("-");
     private final JLabel lblAlertas = new JLabel("Sin alertas.");
@@ -624,9 +626,17 @@ public class JPanelVerificacionV2 extends JPanel {
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         int row = 0;
         addRow(grid, row++, "Equipo destino", cmbEquipoDestino);
-        addRow(grid, row, "Usuario destino", cmbUsuarioDestino);
+        addRow(grid, row++, "Usuario destino", cmbUsuarioDestino);
+        addRow(grid, row, lblAbogadoAnalisisDestinoEtiqueta, lblAbogadoAnalisisDestinoValor);
         panel.add(grid, BorderLayout.CENTER);
         return panel;
+    }
+
+    private void actualizarAbogadoAnalisisDestino(VerificacionExpedienteDTO item) {
+        String equipo = item == null ? "" : item.getEquipoAnalisis();
+        String abogado = item == null ? "" : item.getResponsableAnalisis();
+        lblAbogadoAnalisisDestinoEtiqueta.setText(equipo.isEmpty() ? "Abogado" : "Abogado " + equipo);
+        lblAbogadoAnalisisDestinoValor.setText(abogado.isEmpty() ? "-" : abogado);
     }
 
     private JPanel crearFormularioVerificacion() {
@@ -697,6 +707,10 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private void addRow(JPanel target, int row, String label, Component component) {
+        addRow(target, row, label(label), component);
+    }
+
+    private void addRow(JPanel target, int row, JLabel labelComponent, Component component) {
         GridBagConstraints gbcLabel = new GridBagConstraints();
         gbcLabel.gridx = 0;
         gbcLabel.gridy = row;
@@ -709,7 +723,7 @@ public class JPanelVerificacionV2 extends JPanel {
         gbcValue.weightx = 1;
         gbcValue.fill = GridBagConstraints.HORIZONTAL;
         gbcValue.insets = new Insets(5, 0, 5, 0);
-        target.add(label(label), gbcLabel);
+        target.add(labelComponent, gbcLabel);
         target.add(component, gbcValue);
     }
 
@@ -1527,6 +1541,7 @@ public class JPanelVerificacionV2 extends JPanel {
             lblProcedimiento.setText("-");
             lblResponsable.setText("-");
             lblResponsableAnalisis.setText("-");
+            actualizarAbogadoAnalisisDestino(null);
             lblEtapaEstado.setText("-");
             lblDestinoSiguiente.setText("-");
             lblAnalisis.setText("-");
@@ -1548,6 +1563,7 @@ public class JPanelVerificacionV2 extends JPanel {
             lblProcedimiento.setText(procedimientoAsociado(relacionado));
             lblResponsable.setText(valorUi(relacionado.getAbogadoAsignado()));
             lblResponsableAnalisis.setText(item == null || item.getResponsableAnalisis().isEmpty() ? "-" : item.getResponsableAnalisis());
+            actualizarAbogadoAnalisisDestino(item);
             lblEtapaEstado.setText("Expediente principal: " + fila.numeroExpedientePrincipal());
             lblDestinoSiguiente.setText("Contexto del expediente principal");
             lblAnalisis.setText("Contexto de verificación");
@@ -1570,6 +1586,7 @@ public class JPanelVerificacionV2 extends JPanel {
         lblProcedimiento.setText(item.getProcedimiento());
         lblResponsable.setText(item.getResponsable().isEmpty() ? "-" : item.getResponsable());
         lblResponsableAnalisis.setText(item.getResponsableAnalisis().isEmpty() ? "-" : item.getResponsableAnalisis());
+        actualizarAbogadoAnalisisDestino(item);
         lblEtapaEstado.setText(estadoVisualIntegrado(item));
         lblDestinoSiguiente.setText(item.getDestinoSiguiente());
         lblAnalisis.setText(item.getUltimoResultadoAnalisis().isEmpty() ? "Sin resultado registrado" : item.getUltimoResultadoAnalisis());

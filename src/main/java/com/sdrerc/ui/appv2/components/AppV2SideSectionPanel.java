@@ -52,6 +52,27 @@ public class AppV2SideSectionPanel extends JPanel {
         row++;
     }
 
+    public void addRow(JLabel labelComponent, Component component) {
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = 0;
+        gbcLabel.gridy = row;
+        gbcLabel.weightx = 0;
+        gbcLabel.fill = GridBagConstraints.NONE;
+        gbcLabel.anchor = GridBagConstraints.NORTHWEST;
+        gbcLabel.insets = new Insets(6, 0, 6, 14);
+
+        GridBagConstraints gbcValue = new GridBagConstraints();
+        gbcValue.gridx = 1;
+        gbcValue.gridy = row;
+        gbcValue.weightx = 1;
+        gbcValue.fill = GridBagConstraints.HORIZONTAL;
+        gbcValue.insets = new Insets(6, 0, 6, 0);
+
+        form.add(labelComponent, gbcLabel);
+        form.add(component, gbcValue);
+        row++;
+    }
+
     public void addContent(Component component) {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -66,6 +87,10 @@ public class AppV2SideSectionPanel extends JPanel {
     }
 
     private JLabel label(String text) {
+        return buildLabel(text);
+    }
+
+    public static JLabel buildLabel(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lbl.setForeground(AppV2Theme.TEXT_SECONDARY);

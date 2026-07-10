@@ -60,6 +60,7 @@ public class VerificacionExpedienteDTO {
     private final boolean puedeDerivarNotificacion;
     private final Long idDocumentoPendiente;
     private final String tipoDocumentoPendiente;
+    private final String equipoAnalisis;
 
     public VerificacionExpedienteDTO(
             Long idExpediente,
@@ -113,7 +114,8 @@ public class VerificacionExpedienteDTO {
             boolean tieneCartaEdicto,
             boolean puedeDerivarNotificacion,
             Long idDocumentoPendiente,
-            String tipoDocumentoPendiente) {
+            String tipoDocumentoPendiente,
+            String equipoAnalisis) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
@@ -166,6 +168,7 @@ public class VerificacionExpedienteDTO {
         this.puedeDerivarNotificacion = puedeDerivarNotificacion;
         this.idDocumentoPendiente = idDocumentoPendiente;
         this.tipoDocumentoPendiente = safe(tipoDocumentoPendiente);
+        this.equipoAnalisis = safe(equipoAnalisis);
     }
 
     public Long getIdExpediente() {
@@ -374,6 +377,10 @@ public class VerificacionExpedienteDTO {
 
     public String getTipoDocumentoPendiente() {
         return tipoDocumentoPendiente;
+    }
+
+    public String getEquipoAnalisis() {
+        return equipoAnalisis;
     }
 
     public Long getDiasEnEtapa() {
