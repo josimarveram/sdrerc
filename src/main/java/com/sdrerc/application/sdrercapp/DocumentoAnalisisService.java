@@ -57,6 +57,19 @@ public class DocumentoAnalisisService {
         documentoAnalisisDAO.guardarCartaRespuesta(idExpediente, carta, resolverUsuarioActualSdrercApp());
     }
 
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
+        return documentoAnalisisDAO.listarDocumentosAsignacionNotificacion();
+    }
+
+    public void asignarNotificacion(
+            List<Long> idsDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            String numeroHojaEnvio) throws SQLException {
+        documentoAnalisisDAO.asignarNotificacion(
+                idsDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, numeroHojaEnvio, resolverUsuarioActualSdrercApp());
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();

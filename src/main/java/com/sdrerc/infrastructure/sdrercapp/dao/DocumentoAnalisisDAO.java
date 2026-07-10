@@ -116,6 +116,140 @@ public class DocumentoAnalisisDAO {
         return items;
     }
 
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
+        return listarDocumentosNotificacionPorEstados(
+                java.util.Arrays.asList("EMITIDO", "EN_DESPACHO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion() throws SQLException {
+        return listarDocumentosNotificacionPorEstados(
+                java.util.Arrays.asList("ASIGNADO", "VALIDADO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion() throws SQLException {
+        return listarDocumentosNotificacionPorEstados(
+                java.util.Arrays.asList("EMITIDO", "VALIDADO"), java.util.Arrays.asList("INTERMEDIO"));
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosPublicacion() throws SQLException {
+        return listarDocumentosNotificacionPorEstados(
+                java.util.Arrays.asList("FINALIZADO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
+    }
+
+    private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacionPorEstados(
+            List<String> estadosCodigo, List<String> clasificaciones) throws SQLException {
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
+                new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaClasificacionTipoDocumento(conn)) {
+                return items;
+            }
+            StringBuilder estadoPlaceholders = new StringBuilder();
+            for (int i = 0; i < estadosCodigo.size(); i++) {
+                estadoPlaceholders.append(i == 0 ? "?" : ", ?");
+            }
+            StringBuilder clasifPlaceholders = new StringBuilder();
+            for (int i = 0; i < clasificaciones.size(); i++) {
+                clasifPlaceholders.append(i == 0 ? "?" : ", ?");
+            }
+            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
+                    + "tda.clasificacion, tda.nombre AS tipo_documento_nombre, "
+                    + "da.numero_documento, da.fecha_documento, "
+                    + nombrePersona("p") + " AS titular, "
+                    + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre "
+                    + "FROM expediente_documento_analizado da "
+                    + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
+                    + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                    + " AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                    + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                    + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                    + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
+                    + "WHERE da.activo = 1 "
+                    + "AND UPPER(NVL(tda.clasificacion, '')) IN (" + clasifPlaceholders + ") "
+                    + "AND UPPER(NVL(ed.codigo, '')) IN (" + estadoPlaceholders + ") "
+                    + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                int index = 1;
+                for (String clasificacion : clasificaciones) {
+                    ps.setString(index++, clasificacion);
+                }
+                for (String estadoCodigo : estadosCodigo) {
+                    ps.setString(index++, estadoCodigo);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        items.add(new com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO(
+                                getLongOrNull(rs, "id_documento_analizado"),
+                                getLongOrNull(rs, "id_expediente"),
+                                rs.getString("numero_expediente"),
+                                rs.getString("clasificacion"),
+                                rs.getString("tipo_documento_nombre"),
+                                rs.getString("numero_documento"),
+                                toLocalDate(rs.getDate("fecha_documento")),
+                                rs.getString("titular"),
+                                rs.getString("estado_documento_codigo"),
+                                rs.getString("estado_documento_nombre")));
+                    }
+                }
+            }
+        }
+        return items;
+    }
+
+    public void asignarNotificacion(
+            List<Long> idsDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            String numeroHojaEnvio,
+            Long idUsuario) throws SQLException {
+        if (idsDocumentoAnalizado == null || idsDocumentoAnalizado.isEmpty() || idEquipoDestino == null || idUsuarioDestino == null) {
+            throw new IllegalArgumentException("Seleccione documentos, equipo destino y usuario destino para generar la asignación.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean autoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                Long idEstadoAsignado = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, "ASIGNADO");
+                String sql = "UPDATE expediente_documento_analizado SET "
+                        + "id_equipo_notificacion = ?, id_usuario_notificacion = ?, numero_hoja_envio_notificacion = ?, "
+                        + (idEstadoAsignado != null
+                                ? "id_estado_documento = CASE WHEN id_estado_documento IN "
+                                + "(SELECT id_estado_documento FROM estado_documento WHERE UPPER(codigo) = 'EN_DESPACHO') "
+                                + "THEN ? ELSE id_estado_documento END, "
+                                : "")
+                        + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                        + "WHERE id_documento_analizado = ? AND activo = 1";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    for (Long idDocumento : idsDocumentoAnalizado) {
+                        int index = 1;
+                        ps.setLong(index++, idEquipoDestino);
+                        ps.setLong(index++, idUsuarioDestino);
+                        setStringOrNull(ps, index++, numeroHojaEnvio);
+                        if (idEstadoAsignado != null) {
+                            ps.setLong(index++, idEstadoAsignado);
+                        }
+                        if (idUsuario == null) {
+                            ps.setNull(index++, Types.NUMERIC);
+                        } else {
+                            ps.setLong(index++, idUsuario);
+                        }
+                        ps.setLong(index, idDocumento);
+                        ps.executeUpdate();
+                    }
+                }
+                conn.commit();
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            } finally {
+                conn.setAutoCommit(autoCommit);
+            }
+        }
+    }
+
     public void guardarCartaRespuesta(
             Long idExpediente,
             DocumentoAnalizadoDTO carta,
