@@ -96,6 +96,19 @@ public class VerificacionExpedienteService {
         return verificacionExpedienteDAO.aprobarVerificacion(idExpediente, comentario, resolverUsuarioActualSdrercApp());
     }
 
+    public VerificacionResultadoDTO aprobarVerificacionDirecta(Long idExpediente, String comentario) throws SQLException {
+        validacionService.validarExpedienteSeleccionado(idExpediente);
+        return verificacionExpedienteDAO.aprobarVerificacionDirecta(idExpediente, comentario, resolverUsuarioActualSdrercApp());
+    }
+
+    public VerificacionResultadoDTO registrarObservacionYDevolverAnalisis(VerificacionRegistroDTO registro) throws SQLException {
+        List<String> errores = validacionService.validarRegistroVerificacion(registro);
+        if (!errores.isEmpty()) {
+            throw new IllegalArgumentException(String.join("\n", errores));
+        }
+        return verificacionExpedienteDAO.registrarObservacionYDevolverAnalisis(registro, resolverUsuarioActualSdrercApp());
+    }
+
     public VerificacionResultadoDTO aprobarVerificacionConDestino(
             Long idExpediente,
             String comentario,

@@ -26,6 +26,8 @@ public class VerificacionExpedienteDAO {
     private static final String ETAPA_VERIFICACION = "VERIFICACION";
     private static final String ETAPA_ANALISIS = "ANALISIS";
     private static final String ETAPA_FIRMA = "FIRMA_EMISION";
+    private static final String ETAPA_EJECUCION = "EJECUCION";
+    private static final String ESTADO_EN_EJECUCION = "EN_EJECUCION";
     private static final String ESTADO_EN_VERIFICACION = "EN_VERIFICACION";
     private static final String ESTADO_REQUIERE_CORRECCION = "REQUIERE_CORRECCION";
     private static final String ESTADO_DOCUMENTO_INCONSISTENTE = "DOCUMENTO_INCONSISTENTE";
@@ -261,6 +263,37 @@ public class VerificacionExpedienteDAO {
                 idUsuario,
                 true,
                 "La verificación fue aprobada correctamente.");
+    }
+
+    public VerificacionResultadoDTO aprobarVerificacionDirecta(Long idExpediente, String comentario, Long idUsuario) throws SQLException {
+        return moverExpediente(
+                idExpediente,
+                ACCION_APROBACION,
+                ETAPA_VERIFICACION,
+                ESTADO_EN_VERIFICACION,
+                ETAPA_EJECUCION,
+                ESTADO_EN_EJECUCION,
+                comentario,
+                idUsuario,
+                true,
+                "El expediente fue aprobado y enviado a Ejecución.");
+    }
+
+    public VerificacionResultadoDTO registrarObservacionYDevolverAnalisis(
+            VerificacionRegistroDTO registro, Long idUsuario) throws SQLException {
+        registrarObservacion(
+                registro,
+                ACCION_OBSERVACION,
+                ESTADO_REQUIERE_CORRECCION,
+                "La observación de verificación fue registrada correctamente.",
+                idUsuario);
+        VerificacionRegistroDTO devolucion = new VerificacionRegistroDTO(
+                registro.getIdExpediente(),
+                ACCION_DEVOLUCION_ANALISIS,
+                registro.getResultadoNombre(),
+                registro.getComentario(),
+                registro.getObservacion());
+        return devolverAnalisis(devolucion, idUsuario);
     }
 
     public VerificacionResultadoDTO aprobarVerificacionConDestino(

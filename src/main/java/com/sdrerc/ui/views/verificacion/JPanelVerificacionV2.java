@@ -226,6 +226,11 @@ public class JPanelVerificacionV2 extends JPanel {
     private final JLabel lblDatosDireccion = new JLabel("-");
 
     private final JComboBox<ResultadoItem> cmbResultado = new JComboBox<ResultadoItem>();
+    private final JComboBox<ResultadoItem> cmbResultadoVerificacion = new JComboBox<ResultadoItem>(
+            new ResultadoItem[]{
+                    new ResultadoItem("APROBADO", "Aprobado"),
+                    new ResultadoItem("OBSERVADO", "Observado")
+            });
     private final JComboBox<SimpleItem> cmbTipoObservacion = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbMotivoCorreccion = new JComboBox<SimpleItem>();
     private final JTextArea txtComentario = new JTextArea(4, 22);
@@ -416,8 +421,21 @@ public class JPanelVerificacionV2 extends JPanel {
         });
         panel.setAccentColor(new Color(10, 118, 145));
         panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearResultadoVerificacion());
         panel.addSection(crearDestinoVerificacion());
         panel.setFooter(crearAccionesPanelVerificacion());
+        return panel;
+    }
+
+    private JPanel crearResultadoVerificacion() {
+        JPanel panel = section("Resultado de verificación");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        int row = 0;
+        addRow(grid, row++, "Resultado", cmbResultadoVerificacion);
+        addRow(grid, row, "Comentario", scrollText(txtComentario, 60));
+        panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
 
@@ -625,16 +643,16 @@ public class JPanelVerificacionV2 extends JPanel {
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         int row = 0;
+        addRow(grid, row++, lblAbogadoAnalisisDestinoEtiqueta, lblAbogadoAnalisisDestinoValor);
         addRow(grid, row++, "Equipo destino", cmbEquipoDestino);
-        addRow(grid, row++, "Usuario destino", cmbUsuarioDestino);
-        addRow(grid, row, lblAbogadoAnalisisDestinoEtiqueta, lblAbogadoAnalisisDestinoValor);
+        addRow(grid, row, "Usuario destino", cmbUsuarioDestino);
         panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
 
     private void actualizarAbogadoAnalisisDestino(VerificacionExpedienteDTO item) {
-        String equipo = item == null ? "" : item.getEquipoAnalisis();
-        String abogado = item == null ? "" : item.getResponsableAnalisis();
+        String equipo = item == null ? "" : (item.getEquipoAnalisis().isEmpty() ? item.getEquipo() : item.getEquipoAnalisis());
+        String abogado = item == null ? "" : (item.getResponsableAnalisis().isEmpty() ? item.getResponsable() : item.getResponsableAnalisis());
         lblAbogadoAnalisisDestinoEtiqueta.setText(equipo.isEmpty() ? "Abogado" : "Abogado " + equipo);
         lblAbogadoAnalisisDestinoValor.setText(abogado.isEmpty() ? "-" : abogado);
     }
@@ -1849,31 +1867,40 @@ public class JPanelVerificacionV2 extends JPanel {
         if (item == null) {
             return;
         }
-        ResultadoItem resultado = (ResultadoItem) cmbResultado.getSelectedItem();
-        String accion = resultado == null ? "" : resultado.codigo;
-        if ("APROBACION_VERIFICACION".equals(accion)) {
-            EquipoItem equipoItem = (EquipoItem) cmbEquipoDestino.getSelectedItem();
-            UsuarioItem usuarioItem = (UsuarioItem) cmbUsuarioDestino.getSelectedItem();
-            if (equipoItem == null || equipoItem.equipo == null || usuarioItem == null || usuarioItem.usuario == null) {
-                mostrarInfo("Seleccione equipo destino y usuario destino para registrar la verificación.");
-                return;
-            }
-            final Long idEquipoDestino = equipoItem.equipo.getIdEquipo();
-            final Long idUsuarioDestino = usuarioItem.usuario.getIdUsuario();
-            final String comentario = txtComentario.getText();
+        ResultadoItem resultado = (ResultadoItem) cmbResultadoVerificacion.getSelectedItem();
+        String resultadoCodigo = resultado == null ? "" : resultado.codigo;
+        final String comentario = txtComentario.getText();
+        if ("OBSERVADO".equals(resultadoCodigo)) {
+            ObservacionVerificacionDTO observacion = new ObservacionVerificacionDTO("", "", "", "", comentario);
+            VerificacionRegistroDTO registro = new VerificacionRegistroDTO(
+                    item.getIdExpediente(), "REGISTRO_OBSERVACION_VERIFICACION", "Observado", comentario, observacion);
             confirmarYEjecutar(
                     "Registrar verificación",
-                    "Se registrará la verificación del expediente " + item.getNumeroExpediente()
-                            + " y se enviará al equipo destino seleccionado. ¿Desea continuar?",
-                    () -> verificacionService.aprobarVerificacionConDestino(
-                            item.getIdExpediente(), comentario, idEquipoDestino, idUsuarioDestino));
+                    "El expediente " + item.getNumeroExpediente() + " quedará Observado y volverá a Análisis. ¿Desea continuar?",
+                    () -> verificacionService.registrarObservacionYDevolverAnalisis(registro));
             return;
         }
-        VerificacionRegistroDTO registro = construirRegistro(item, null);
+        if (item.isResultadoResolutivo()) {
+            confirmarYEjecutar(
+                    "Registrar verificación",
+                    "El expediente " + item.getNumeroExpediente() + " será aprobado y enviado a Ejecución. ¿Desea continuar?",
+                    () -> verificacionService.aprobarVerificacionDirecta(item.getIdExpediente(), comentario));
+            return;
+        }
+        EquipoItem equipoItem = (EquipoItem) cmbEquipoDestino.getSelectedItem();
+        UsuarioItem usuarioItem = (UsuarioItem) cmbUsuarioDestino.getSelectedItem();
+        if (equipoItem == null || equipoItem.equipo == null || usuarioItem == null || usuarioItem.usuario == null) {
+            mostrarInfo("Seleccione equipo destino y usuario destino para registrar la verificación.");
+            return;
+        }
+        final Long idEquipoDestino = equipoItem.equipo.getIdEquipo();
+        final Long idUsuarioDestino = usuarioItem.usuario.getIdUsuario();
         confirmarYEjecutar(
                 "Registrar verificación",
-                "Se registrará la verificación del expediente " + item.getNumeroExpediente() + ". ¿Desea continuar?",
-                () -> verificacionService.registrarVerificacion(registro));
+                "Se registrará la verificación del expediente " + item.getNumeroExpediente()
+                        + " y se enviará al equipo destino seleccionado. ¿Desea continuar?",
+                () -> verificacionService.aprobarVerificacionConDestino(
+                        item.getIdExpediente(), comentario, idEquipoDestino, idUsuarioDestino));
     }
 
     private void accionRapida(String accionCodigo) {
