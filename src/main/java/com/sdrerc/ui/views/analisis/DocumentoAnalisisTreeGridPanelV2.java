@@ -817,6 +817,7 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         private LocalDateTime fechaRegistro;
         private String usuarioModificacion;
         private LocalDateTime fechaModificacion;
+        private Boolean existeOposicion;
 
         static DocumentoRow nuevoPadre(Long id, CatalogoItemDTO tipo, CatalogoItemDTO estado, int orden) {
             DocumentoRow row = base(id, tipo, estado, orden);
@@ -857,6 +858,7 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
             row.fechaRegistro = dto.getFechaRegistro();
             row.usuarioModificacion = dto.getUsuarioModificacion();
             row.fechaModificacion = dto.getFechaModificacion();
+            row.existeOposicion = dto.getExisteOposicion();
             return row;
         }
 
@@ -889,7 +891,8 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                     usuarioRegistro,
                     fechaRegistro,
                     usuarioModificacion,
-                    fechaModificacion);
+                    fechaModificacion,
+                    existeOposicion);
         }
 
         private static DocumentoRow base(Long id, CatalogoItemDTO tipo, CatalogoItemDTO estado, int orden) {

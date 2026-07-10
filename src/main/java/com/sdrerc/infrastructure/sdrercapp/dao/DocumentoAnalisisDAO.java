@@ -55,6 +55,7 @@ public class DocumentoAnalisisDAO {
             }
             boolean soportaPublicacion = soportaPublicacionPreparada(conn);
             boolean soportaNumeroDocumento = soportaNumeroDocumentoAnalizado(conn);
+            boolean soportaClasificacion = soportaClasificacionTipoDocumento(conn);
             String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
                     + "esol.numero_expediente_sgd, "
                     + nombrePersona("p") + " AS titular, "
@@ -82,7 +83,10 @@ public class DocumentoAnalisisDAO {
                     + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
                     + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                     + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
-                    + "WHERE da.activo = 1 AND NVL(da.requiere_respuesta, 0) = 1 "
+                    + "WHERE da.activo = 1 "
+                    + "AND UPPER(NVL(da.confirmacion_respuesta, '')) = 'SI' "
+                    + "AND UPPER(NVL(ed.codigo, '')) IN ('ATENDIDO', 'FINALIZADO') "
+                    + (soportaClasificacion ? "AND UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' " : "")
                     + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql);
                  ResultSet rs = ps.executeQuery()) {
@@ -112,6 +116,105 @@ public class DocumentoAnalisisDAO {
         return items;
     }
 
+    public void guardarCartaRespuesta(
+            Long idExpediente,
+            DocumentoAnalizadoDTO carta,
+            Long idUsuario) throws SQLException {
+        if (idExpediente == null || carta == null || !hasText(carta.getTipoDocumentoCodigo())) {
+            throw new IllegalArgumentException("Seleccione el tipo de documento de la carta de respuesta.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            Long idTipoDocumento = catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, carta.getTipoDocumentoCodigo());
+            if (idTipoDocumento == null) {
+                throw new SQLException("No se encontró el tipo de documento: " + carta.getTipoDocumentoCodigo() + ".");
+            }
+            boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
+            boolean soportaOposicion = soportaExisteOposicion(conn);
+            Long idDocumento = carta.getIdDocumentoAnalizado();
+            if (idDocumento == null || idDocumento.longValue() < 0L) {
+                insertarCartaRespuesta(conn, idExpediente, carta, idTipoDocumento, soportaAnalisisMultiple, soportaOposicion, idUsuario);
+            } else {
+                actualizarCartaRespuesta(conn, idExpediente, carta, soportaOposicion, idUsuario);
+            }
+        }
+    }
+
+    private void insertarCartaRespuesta(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO carta,
+            Long idTipoDocumento,
+            boolean soportaAnalisisMultiple,
+            boolean soportaOposicion,
+            Long idUsuario) throws SQLException {
+        String sql = "INSERT INTO expediente_documento_analizado ("
+                + "id_expediente, "
+                + (soportaAnalisisMultiple ? "id_expediente_analisis, " : "")
+                + "id_documento_padre, nivel, orden, id_tipo_documento_adjunto, "
+                + "fecha_documento, confirmacion_respuesta, fecha_respuesta, numero_hoja_envio_respuesta, "
+                + (soportaOposicion ? "existe_oposicion, " : "")
+                + "activo, creado_por, creado_en"
+                + ") VALUES (?, " + (soportaAnalisisMultiple ? "?, " : "")
+                + "?, ?, 0, ?, ?, ?, ?, ?, " + (soportaOposicion ? "?, " : "")
+                + "1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int index = 1;
+            ps.setLong(index++, idExpediente);
+            if (soportaAnalisisMultiple) {
+                setLongOrNull(ps, index++, carta.getIdExpedienteAnalisis());
+            }
+            setLongOrNull(ps, index++, carta.getIdDocumentoPadre());
+            ps.setInt(index++, 1);
+            ps.setLong(index++, idTipoDocumento);
+            setDateOrNull(ps, index++, carta.getFechaDocumento());
+            setStringOrNull(ps, index++, emptyToNull(carta.getConfirmacionRespuesta()));
+            setDateOrNull(ps, index++, carta.getFechaRespuesta());
+            setStringOrNull(ps, index++, limitar(emptyToNull(carta.getNumeroHojaEnvioRespuesta()), 120));
+            if (soportaOposicion) {
+                setBooleanOrNull(ps, index++, carta.getExisteOposicion());
+            }
+            if (idUsuario == null) {
+                ps.setNull(index, Types.NUMERIC);
+            } else {
+                ps.setLong(index, idUsuario);
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    private void actualizarCartaRespuesta(
+            Connection conn,
+            Long idExpediente,
+            DocumentoAnalizadoDTO carta,
+            boolean soportaOposicion,
+            Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_documento_analizado SET "
+                + "confirmacion_respuesta = ?, fecha_respuesta = ?, numero_hoja_envio_respuesta = ?, "
+                + (soportaOposicion ? "existe_oposicion = ?, " : "")
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int index = 1;
+            setStringOrNull(ps, index++, emptyToNull(carta.getConfirmacionRespuesta()));
+            setDateOrNull(ps, index++, carta.getFechaRespuesta());
+            setStringOrNull(ps, index++, limitar(emptyToNull(carta.getNumeroHojaEnvioRespuesta()), 120));
+            if (soportaOposicion) {
+                setBooleanOrNull(ps, index++, carta.getExisteOposicion());
+            }
+            if (idUsuario == null) {
+                ps.setNull(index++, Types.NUMERIC);
+            } else {
+                ps.setLong(index++, idUsuario);
+            }
+            ps.setLong(index++, carta.getIdDocumentoAnalizado());
+            ps.setLong(index, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar la carta de respuesta.");
+            }
+        }
+    }
+
     public List<DocumentoAnalizadoDTO> listarPorExpediente(Connection conn, Long idExpediente) throws SQLException {
         return listarPorExpediente(conn, idExpediente, null);
     }
@@ -130,6 +233,7 @@ public class DocumentoAnalisisDAO {
         boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
         boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
         boolean soportaJerarquia = soportaJerarquiaDocumentoAnalizado(conn);
+        boolean soportaOposicion = soportaExisteOposicion(conn);
         String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
                 + (soportaAnalisisMultiple
                         ? "da.id_expediente_analisis, "
@@ -166,6 +270,9 @@ public class DocumentoAnalisisDAO {
                         + " ORDER BY p.creado_en DESC, p.id_expediente_publicacion DESC"
                         + ") WHERE ROWNUM = 1) AS fecha_publicacion "
                         : ", 0 AS requiere_publicacion, CAST(NULL AS DATE) AS fecha_publicacion ")
+                + (soportaOposicion
+                        ? ", da.existe_oposicion "
+                        : ", CAST(NULL AS NUMBER(1)) AS existe_oposicion ")
                 + "FROM expediente_documento_analizado da "
                 + "JOIN expediente e ON e.id_expediente = da.id_expediente "
                 + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
@@ -213,7 +320,8 @@ public class DocumentoAnalisisDAO {
                             "",
                             toLocalDateTime(rs.getTimestamp("creado_en")),
                             "",
-                            toLocalDateTime(rs.getTimestamp("modificado_en"))));
+                            toLocalDateTime(rs.getTimestamp("modificado_en")),
+                            getBooleanOrNull(rs, "existe_oposicion")));
                 }
             }
         }
@@ -746,6 +854,11 @@ public class DocumentoAnalisisDAO {
         return rs.wasNull() ? null : value;
     }
 
+    private static Boolean getBooleanOrNull(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value == 1;
+    }
+
     private static LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toLocalDate();
     }
@@ -767,6 +880,14 @@ public class DocumentoAnalisisDAO {
             ps.setNull(index, Types.VARCHAR);
         } else {
             ps.setString(index, value.trim());
+        }
+    }
+
+    private static void setBooleanOrNull(PreparedStatement ps, int index, Boolean value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.NUMERIC);
+        } else {
+            ps.setInt(index, value.booleanValue() ? 1 : 0);
         }
     }
 
@@ -805,6 +926,26 @@ public class DocumentoAnalisisDAO {
         String sql = "SELECT COUNT(1) FROM user_tab_columns "
                 + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
                 + "AND column_name = 'DETALLE_OBSERVACION'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private static boolean soportaExisteOposicion(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                + "AND column_name = 'EXISTE_OPOSICION'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private static boolean soportaClasificacionTipoDocumento(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'TIPO_DOCUMENTO_ADJUNTO' "
+                + "AND column_name = 'CLASIFICACION'";
         try (PreparedStatement ps = conn.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt(1) > 0;

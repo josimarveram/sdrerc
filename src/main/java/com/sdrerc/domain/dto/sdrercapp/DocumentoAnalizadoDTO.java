@@ -33,6 +33,7 @@ public class DocumentoAnalizadoDTO {
     private final LocalDateTime fechaRegistro;
     private final String usuarioModificacion;
     private final LocalDateTime fechaModificacion;
+    private final Boolean existeOposicion;
 
     public DocumentoAnalizadoDTO(
             Long idDocumentoAnalizado,
@@ -292,6 +293,7 @@ public class DocumentoAnalizadoDTO {
                 "",
                 null,
                 "",
+                null,
                 null);
     }
 
@@ -343,6 +345,7 @@ public class DocumentoAnalizadoDTO {
                 "",
                 null,
                 "",
+                null,
                 null);
     }
 
@@ -374,7 +377,8 @@ public class DocumentoAnalizadoDTO {
             String usuarioRegistro,
             LocalDateTime fechaRegistro,
             String usuarioModificacion,
-            LocalDateTime fechaModificacion) {
+            LocalDateTime fechaModificacion,
+            Boolean existeOposicion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.idExpedienteAnalisis = idExpedienteAnalisis;
@@ -403,6 +407,7 @@ public class DocumentoAnalizadoDTO {
         this.fechaRegistro = fechaRegistro;
         this.usuarioModificacion = safe(usuarioModificacion);
         this.fechaModificacion = fechaModificacion;
+        this.existeOposicion = existeOposicion;
     }
 
     public static DocumentoAnalizadoDTO nuevo(
@@ -534,6 +539,10 @@ public class DocumentoAnalizadoDTO {
 
     public LocalDateTime getFechaModificacion() {
         return fechaModificacion;
+    }
+
+    public Boolean getExisteOposicion() {
+        return existeOposicion;
     }
 
     private static String safe(String value) {

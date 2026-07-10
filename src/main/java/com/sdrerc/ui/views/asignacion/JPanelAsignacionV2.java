@@ -133,19 +133,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int COL_ESTADO = 12;
     private static final int COL_RELACIONADOS = 13;
     private static final int COL_ID = 14;
-    private static final int CARTA_COL_TIPO = 0;
-    private static final int CARTA_COL_ESTADO = 1;
-    private static final int CARTA_COL_FECHA = 2;
-    private static final int CARTA_COL_DESCRIPCION = 3;
-    private static final int CARTA_COL_NOTIFICADO = 4;
-    private static final int CARTA_COL_FECHA_ACUSE = 5;
-    private static final int CARTA_COL_REQUIERE_RESPUESTA = 6;
-    private static final int CARTA_COL_CONFIRMACION_RESPUESTA = 7;
-    private static final int CARTA_COL_FECHA_RESPUESTA = 8;
-    private static final int CARTA_COL_HOJA_ENVIO_RESPUESTA = 9;
-    private static final int CARTA_COL_REQUIERE_PUBLICACION = 10;
-    private static final int CARTA_COL_FECHA_PUBLICACION = 11;
-    private static final int CARTA_COL_ACCION = 12;
     private static final int PANEL_ASIGNACION_ANCHO_MINIMO = 380;
     private static final int PANEL_ASIGNACION_ANCHO_NORMAL = 430;
     private static final int PANEL_ASIGNACION_TAB_OVERHANG = 46;
@@ -283,57 +270,17 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable asignacionMultipleTable = new AppV2Table(asignacionMultipleModel);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
-    private final DefaultTableModel cartasRespuestaModel = new DefaultTableModel(
-            new Object[]{
-                "Tipo",
-                "Estado",
-                "Fecha",
-                "Descripción",
-                "Notificado",
-                "Fecha Acuse",
-                "¿Requiere respuesta?",
-                "Confirmación de respuesta",
-                "Fecha Respuesta",
-                "Hoja de Envío",
-                "¿Requiere publicación?",
-                "Fecha publicación",
-                ""
-            }, 0) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            if (row < 0 || row >= getRowCount()) {
-                return false;
-            }
-            if (column == CARTA_COL_NOTIFICADO || column == CARTA_COL_FECHA_ACUSE || column == CARTA_COL_ACCION) {
-                return true;
-            }
-            if (column == CARTA_COL_REQUIERE_PUBLICACION || column == CARTA_COL_FECHA_PUBLICACION) {
-                return true;
-            }
-            return respuestaCartaHabilitada(row)
-                    && (column == CARTA_COL_CONFIRMACION_RESPUESTA
-                    || column == CARTA_COL_FECHA_RESPUESTA
-                    || column == CARTA_COL_HOJA_ENVIO_RESPUESTA);
-        }
-
-        @Override
-        public Class<?> getColumnClass(int columnIndex) {
-            return columnIndex == CARTA_COL_REQUIERE_RESPUESTA
-                    || columnIndex == CARTA_COL_REQUIERE_PUBLICACION ? Boolean.class : Object.class;
-        }
-    };
-    private final JTable cartasRespuestaTable = new AppV2Table(cartasRespuestaModel);
-    private JScrollPane cartasRespuestaScroll;
+    private CartaRespuestaTreeGridPanelV2 cartasRespuestaTreePanel;
     private final DefaultTableModel bandejaCartasRespuestaModel = new DefaultTableModel(
             new Object[]{
                 "N° expediente",
                 "N° expediente SGD",
                 "Titular",
-                "Tipo",
-                "Estado",
-                "Fecha",
+                "Tipo documento",
                 "N° Documento",
-                "Descripción"
+                "Fecha Recepción",
+                "Fecha Publicación",
+                "Estado"
             }, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -436,7 +383,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private Long idExpedienteDocumentosRelacionados;
     private Long idExpedienteHojaEnvioSimple;
     private Long idExpedienteCartasRespuesta;
-    private final Map<Integer, DocumentoAnalizadoDTO> documentosCartasRespuesta = new HashMap<>();
     private final List<AsignacionCartaRespuestaDTO> cartasRespuestaPendientes = new ArrayList<AsignacionCartaRespuestaDTO>();
     private final List<AsignacionCartaRespuestaDTO> cartasRespuestaVisibles = new ArrayList<AsignacionCartaRespuestaDTO>();
     private AsignacionCartaRespuestaDTO cartaRespuestaSeleccionada;
@@ -446,7 +392,6 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private boolean cargandoCombos;
     private boolean actualizandoSeleccion;
-    private boolean actualizandoCartasRespuesta;
     private boolean usuarioActualResuelto;
     private Long idUsuarioActualSdrercApp;
     private Long idEquipoPendienteSeleccion;
@@ -468,7 +413,6 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarTabla();
         configurarTablaDocumentosRelacionados();
         configurarTablaAsignacionMultiple();
-        configurarTablaCartasRespuesta();
         configurarTablaBandejaCartasRespuesta();
         configurarTablaCargaLaboral();
         configurarEventos();
@@ -970,22 +914,12 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private AppV2SideSectionPanel crearCartasRespuesta() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Cartas de respuesta");
-        JLabel ayuda = new JLabel("<html>Complete notificación, acuse y respuesta cuando el documento lo requiera.</html>");
-        ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
-
-        JPanel content = new JPanel(new BorderLayout(6, 6));
-        content.setOpaque(false);
-        content.add(ayuda, BorderLayout.NORTH);
-        cartasRespuestaScroll = new JScrollPane(cartasRespuestaTable);
-        cartasRespuestaScroll.setPreferredSize(new Dimension(330, 185));
-        cartasRespuestaScroll.setMinimumSize(new Dimension(290, 135));
-        cartasRespuestaScroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        cartasRespuestaScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        cartasRespuestaScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        content.add(cartasRespuestaScroll, BorderLayout.CENTER);
-        section.addContent(content);
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Cartas de Rpta");
+        cartasRespuestaTreePanel = new CartaRespuestaTreeGridPanelV2();
+        cartasRespuestaTreePanel.setHandlers(
+                carta -> documentoAnalisisService.guardarCartaRespuesta(idExpedienteCartasRespuesta, carta),
+                () -> cargarCartasRespuestaPorDocumento(idExpedienteCartasRespuesta, null));
+        section.addContent(cartasRespuestaTreePanel);
         return section;
     }
 
@@ -1298,55 +1232,6 @@ public class JPanelAsignacionV2 extends JPanel {
         asignacionMultipleTable.getColumnModel().getColumn(1).setMinWidth(130);
         asignacionMultipleTable.getColumnModel().getColumn(2).setPreferredWidth(175);
         asignacionMultipleTable.getColumnModel().getColumn(2).setMinWidth(150);
-    }
-
-    private void configurarTablaCartasRespuesta() {
-        cartasRespuestaTable.setRowHeight(34);
-        cartasRespuestaTable.setAutoCreateRowSorter(false);
-        cartasRespuestaTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        cartasRespuestaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        cartasRespuestaTable.getTableHeader().setReorderingAllowed(false);
-        cartasRespuestaTable.getTableHeader().setResizingAllowed(true);
-        cartasRespuestaTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        cartasRespuestaTable.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
-        cartasRespuestaTable.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
-        cartasRespuestaTable.setGridColor(AppV2Theme.BORDER);
-        cartasRespuestaTable.setShowVerticalLines(false);
-        cartasRespuestaTable.setIntercellSpacing(new Dimension(0, 1));
-        cartasRespuestaTable.setDefaultRenderer(Object.class, new CartaRespuestaRenderer());
-        cartasRespuestaTable.setDefaultRenderer(Boolean.class, new CartaRespuestaCheckRenderer());
-        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_NOTIFICADO)
-                .setCellEditor(new DefaultCellEditor(comboSiNo()));
-        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_FECHA_ACUSE)
-                .setCellEditor(new FechaCartaCellEditor());
-        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_CONFIRMACION_RESPUESTA)
-                .setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
-        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_FECHA_RESPUESTA)
-                .setCellEditor(new FechaCartaCellEditor());
-        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_FECHA_PUBLICACION)
-                .setCellEditor(new FechaCartaCellEditor());
-        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_ACCION)
-                .setCellRenderer(new GuardarCartaRenderer());
-        cartasRespuestaTable.getColumnModel().getColumn(CARTA_COL_ACCION)
-                .setCellEditor(new GuardarCartaEditor());
-        int[] widths = new int[]{120, 120, 95, 220, 95, 105, 140, 165, 115, 145, 150, 125, 82};
-        for (int i = 0; i < widths.length; i++) {
-            configurarColumna(cartasRespuestaTable.getColumnModel().getColumn(i), widths[i], Math.min(widths[i], 90), Math.max(widths[i] + 70, widths[i]));
-        }
-        if (cartasRespuestaScroll != null) {
-            AppV2ColumnFilterSupport.install(
-                    "Asignacion.CartasRespuesta",
-                    cartasRespuestaTable,
-                    cartasRespuestaScroll,
-                    null,
-                    null,
-                    CARTA_COL_ACCION);
-        }
-        cartasRespuestaModel.addTableModelListener(e -> {
-            if (!actualizandoCartasRespuesta) {
-                cartasRespuestaTable.repaint();
-            }
-        });
     }
 
     private void configurarTablaBandejaCartasRespuesta() {
@@ -3167,10 +3052,10 @@ public class JPanelAsignacionV2 extends JPanel {
                     valorUi(item.getNumeroExpedienteSgd()),
                     valorUi(item.getTitular()),
                     valorUi(item.getTipoDocumentoNombre()),
-                    valorUi(item.getEstadoDocumentoNombre()),
-                    formatDate(item.getFechaDocumento()),
                     valorUi(item.getNumeroDocumento()),
-                    valorUi(item.getDescripcion())
+                    formatDate(item.getFechaDocumento()),
+                    formatDate(item.getFechaPublicacion()),
+                    valorUi(item.getEstadoDocumentoNombre())
                 });
             }
         }
@@ -3361,7 +3246,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private void cargarCartasRespuestaPorDocumento(final Long idExpediente, final Long idDocumentoAnalizado) {
         idExpedienteCartasRespuesta = idExpediente;
         final long secuencia = ++secuenciaCargaCartasRespuesta;
-        limpiarCartasRespuestaModel();
+        if (cartasRespuestaTreePanel != null) {
+            cartasRespuestaTreePanel.setDocumentos(idExpediente, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
+        }
         SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
             @Override
             protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
@@ -3374,7 +3261,22 @@ public class JPanelAsignacionV2 extends JPanel {
                     return;
                 }
                 try {
-                    cargarCartasRespuestaModel(filtrarDocumentoSeleccionado(get(), idDocumentoAnalizado));
+                    List<DocumentoAnalizadoDTO> todos = get();
+                    List<DocumentoAnalizadoDTO> documentosAnalisis = new ArrayList<DocumentoAnalizadoDTO>();
+                    List<DocumentoAnalizadoDTO> cartasRespuesta = new ArrayList<DocumentoAnalizadoDTO>();
+                    for (DocumentoAnalizadoDTO documento : todos) {
+                        if (documento == null) {
+                            continue;
+                        }
+                        if (documento.getNivel() == 1) {
+                            cartasRespuesta.add(documento);
+                        } else if (documento.isRequiereRespuesta()) {
+                            documentosAnalisis.add(documento);
+                        }
+                    }
+                    if (cartasRespuestaTreePanel != null) {
+                        cartasRespuestaTreePanel.setDocumentos(idExpediente, documentosAnalisis, cartasRespuesta);
+                    }
                 } catch (Exception ex) {
                     lblEstadoCartas.setText("No se pudieron cargar cartas de respuesta.");
                 }
@@ -3386,150 +3288,12 @@ public class JPanelAsignacionV2 extends JPanel {
     private void limpiarCartasRespuestaPanel() {
         idExpedienteCartasRespuesta = null;
         ++secuenciaCargaCartasRespuesta;
-        limpiarCartasRespuestaModel();
+        if (cartasRespuestaTreePanel != null) {
+            cartasRespuestaTreePanel.setDocumentos(null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
+        }
         if (sectionCartasRespuesta != null) {
             sectionCartasRespuesta.setVisible(false);
         }
-    }
-
-    private List<DocumentoAnalizadoDTO> filtrarDocumentoSeleccionado(
-            List<DocumentoAnalizadoDTO> documentos,
-            Long idDocumentoAnalizado) {
-        if (documentos == null || idDocumentoAnalizado == null) {
-            return documentos;
-        }
-        List<DocumentoAnalizadoDTO> filtrados = new ArrayList<DocumentoAnalizadoDTO>();
-        for (DocumentoAnalizadoDTO documento : documentos) {
-            if (documento != null && idDocumentoAnalizado.equals(documento.getIdDocumentoAnalizado())) {
-                filtrados.add(documento);
-            }
-        }
-        return filtrados;
-    }
-
-    private void limpiarCartasRespuestaModel() {
-        actualizandoCartasRespuesta = true;
-        try {
-            documentosCartasRespuesta.clear();
-            cartasRespuestaModel.setRowCount(0);
-        } finally {
-            actualizandoCartasRespuesta = false;
-        }
-    }
-
-    private void cargarCartasRespuestaModel(List<DocumentoAnalizadoDTO> documentos) {
-        actualizandoCartasRespuesta = true;
-        try {
-            documentosCartasRespuesta.clear();
-            cartasRespuestaModel.setRowCount(0);
-            if (documentos == null) {
-                return;
-            }
-            for (DocumentoAnalizadoDTO documento : documentos) {
-                int row = cartasRespuestaModel.getRowCount();
-                documentosCartasRespuesta.put(row, documento);
-                cartasRespuestaModel.addRow(new Object[]{
-                    valorUi(documento.getTipoDocumentoNombre()),
-                    valorUi(documento.getEstadoDocumentoNombre()),
-                    formatDate(documento.getFechaDocumento()),
-                    valorUi(documento.getDescripcion()),
-                    documento.isNotificado() ? "Si" : "No",
-                    formatDate(documento.getFechaAcuse()),
-                    documento.isRequiereRespuesta(),
-                    confirmacionRespuestaUi(documento.getConfirmacionRespuesta(), documento.isRequiereRespuesta()),
-                    formatDate(documento.getFechaRespuesta()),
-                    valorUi(documento.getNumeroHojaEnvioRespuesta()),
-                    documento.isRequierePublicacion(),
-                    formatDate(documento.getFechaPublicacion()),
-                    "Guardar"
-                });
-            }
-        } finally {
-            actualizandoCartasRespuesta = false;
-            cartasRespuestaTable.repaint();
-        }
-    }
-
-    private boolean respuestaCartaHabilitada(int row) {
-        if (row < 0 || row >= cartasRespuestaModel.getRowCount()) {
-            return false;
-        }
-        return Boolean.TRUE.equals(cartasRespuestaModel.getValueAt(row, CARTA_COL_REQUIERE_RESPUESTA))
-                && esSi(cartasRespuestaModel.getValueAt(row, CARTA_COL_NOTIFICADO))
-                && parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_ACUSE))) != null;
-    }
-
-    private void guardarCartaRespuesta(int row) {
-        if (row < 0 || row >= cartasRespuestaModel.getRowCount() || idExpedienteCartasRespuesta == null) {
-            mostrarInfo("Seleccione una carta de respuesta válida.");
-            return;
-        }
-        DocumentoAnalizadoDTO original = documentosCartasRespuesta.get(row);
-        if (original == null || original.getIdDocumentoAnalizado() == null) {
-            mostrarInfo("El documento seleccionado no tiene identificador para actualizar.");
-            return;
-        }
-        final DocumentoAnalizadoDTO documento = new DocumentoAnalizadoDTO(
-                original.getIdDocumentoAnalizado(),
-                idExpedienteCartasRespuesta,
-                original.getTipoDocumentoCodigo(),
-                original.getTipoDocumentoNombre(),
-                original.getEstadoDocumentoCodigo(),
-                original.getEstadoDocumentoNombre(),
-                original.getFechaDocumento(),
-                original.getDescripcion(),
-                esSi(cartasRespuestaModel.getValueAt(row, CARTA_COL_NOTIFICADO)),
-                parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_ACUSE))),
-                Boolean.TRUE.equals(cartasRespuestaModel.getValueAt(row, CARTA_COL_REQUIERE_RESPUESTA)),
-                stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_CONFIRMACION_RESPUESTA)),
-                parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_RESPUESTA))),
-                normalizarValorEditable(cartasRespuestaModel.getValueAt(row, CARTA_COL_HOJA_ENVIO_RESPUESTA)),
-                Boolean.TRUE.equals(cartasRespuestaModel.getValueAt(row, CARTA_COL_REQUIERE_PUBLICACION)),
-                parseFechaUi(stringValue(cartasRespuestaModel.getValueAt(row, CARTA_COL_FECHA_PUBLICACION))));
-        final Long idExpediente = idExpedienteCartasRespuesta;
-        setTrabajando(true, "Guardando carta de respuesta...");
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                documentoAnalisisService.guardarRespuestaDocumentoAnalizado(idExpediente, documento);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    get();
-                    lblEstadoCartas.setText("Carta de respuesta actualizada correctamente.");
-                    cargarBandejaCartasRespuesta();
-                    cargarCartasRespuestaPorDocumento(idExpediente, documento.getIdDocumentoAnalizado());
-                } catch (Exception ex) {
-                    mostrarError("No se pudo guardar la carta de respuesta.", ex);
-                } finally {
-                    setTrabajando(false, null);
-                }
-            }
-        };
-        worker.execute();
-    }
-
-    private static boolean esSi(Object value) {
-        String text = stringValue(value);
-        return "SI".equals(AsignacionRegistroEditRules.normalizar(text))
-                || "S".equals(AsignacionRegistroEditRules.normalizar(text));
-    }
-
-    private static String confirmacionRespuestaUi(String value, boolean requiereRespuesta) {
-        if (!requiereRespuesta) {
-            return "Pendiente";
-        }
-        String normalized = AsignacionRegistroEditRules.normalizar(value);
-        if ("SI".equals(normalized)) {
-            return "Si";
-        }
-        if ("NO".equals(normalized)) {
-            return "No";
-        }
-        return "Pendiente";
     }
 
     private static LocalDate parseFechaUi(String value) {
@@ -4588,52 +4352,6 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
-    private class CartaRespuestaRenderer extends DefaultTableCellRenderer {
-
-        private CartaRespuestaRenderer() {
-            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            int modelRow = table.convertRowIndexToModel(row);
-            boolean respuestaHabilitada = respuestaCartaHabilitada(modelRow);
-            boolean columnaRespuesta = column == CARTA_COL_CONFIRMACION_RESPUESTA
-                    || column == CARTA_COL_FECHA_RESPUESTA
-                    || column == CARTA_COL_HOJA_ENVIO_RESPUESTA;
-            boolean columnaPublicacion = column == CARTA_COL_FECHA_PUBLICACION;
-            setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
-            setToolTipText(getText());
-            setHorizontalAlignment(column == CARTA_COL_FECHA
-                    || column == CARTA_COL_NOTIFICADO
-                    || column == CARTA_COL_FECHA_ACUSE
-                    || column == CARTA_COL_CONFIRMACION_RESPUESTA
-                    || column == CARTA_COL_FECHA_RESPUESTA
-                    || column == CARTA_COL_FECHA_PUBLICACION
-                            ? SwingConstants.CENTER
-                            : SwingConstants.LEFT);
-            if (isSelected) {
-                setBackground(TABLE_SELECTION_BACKGROUND);
-                setForeground(TABLE_SELECTION_FOREGROUND);
-            } else {
-                Color base = row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
-                setBackground(columnaRespuesta && !respuestaHabilitada ? new Color(244, 247, 250) : base);
-                setForeground(columnaRespuesta && !respuestaHabilitada && !columnaPublicacion
-                        ? AppV2Theme.MUTED
-                        : AppV2Theme.TEXT_PRIMARY);
-            }
-            return component;
-        }
-    }
-
     private class CartaRespuestaPendienteRenderer extends DefaultTableCellRenderer {
 
         private CartaRespuestaPendienteRenderer() {
@@ -4652,7 +4370,7 @@ public class JPanelAsignacionV2 extends JPanel {
             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
             setToolTipText(getText());
-            setHorizontalAlignment(column == 5 ? SwingConstants.CENTER : SwingConstants.LEFT);
+            setHorizontalAlignment(column == 5 || column == 6 ? SwingConstants.CENTER : SwingConstants.LEFT);
             setBackground(isSelected
                     ? TABLE_SELECTION_BACKGROUND
                     : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
@@ -4691,37 +4409,6 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
-    private class CartaRespuestaCheckRenderer extends JCheckBox implements TableCellRenderer {
-
-        private CartaRespuestaCheckRenderer() {
-            setHorizontalAlignment(SwingConstants.CENTER);
-            setOpaque(true);
-            setEnabled(false);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            setSelected(Boolean.TRUE.equals(value));
-            setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
-            if (column == CARTA_COL_REQUIERE_PUBLICACION) {
-                setToolTipText(Boolean.TRUE.equals(value)
-                        ? "El documento requiere preparación de publicación."
-                        : "El documento no requiere publicación.");
-            } else {
-                setToolTipText(Boolean.TRUE.equals(value)
-                        ? "El documento requiere respuesta según Análisis."
-                        : "El documento no requiere respuesta.");
-            }
-            return this;
-        }
-    }
-
     private class FechaCartaCellEditor extends AbstractCellEditor implements TableCellEditor {
 
         private final PremiumDateFieldV2 field = new PremiumDateFieldV2();
@@ -4746,67 +4433,6 @@ public class JPanelAsignacionV2 extends JPanel {
             LocalDate date = parseFechaUi(stringValue(value));
             field.setDate(date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()));
             return field;
-        }
-    }
-
-    private class GuardarCartaRenderer extends JButton implements TableCellRenderer {
-
-        private GuardarCartaRenderer() {
-            setText("Guardar");
-            setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-            setFocusPainted(false);
-            setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-            setBackground(AppV2Theme.SURFACE);
-            setForeground(AppV2Theme.PRIMARY);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            setToolTipText("Guardar datos de notificación, respuesta y publicación preparada.");
-            return this;
-        }
-    }
-
-    private class GuardarCartaEditor extends AbstractCellEditor implements TableCellEditor {
-
-        private final JButton button = new JButton("Guardar");
-        private int modelRow = -1;
-
-        private GuardarCartaEditor() {
-            button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-            button.setFocusPainted(false);
-            button.addActionListener(e -> {
-                final int row = modelRow;
-                fireEditingStopped();
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        guardarCartaRespuesta(row);
-                    }
-                });
-            });
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return "Guardar";
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            modelRow = table.convertRowIndexToModel(row);
-            return button;
         }
     }
 

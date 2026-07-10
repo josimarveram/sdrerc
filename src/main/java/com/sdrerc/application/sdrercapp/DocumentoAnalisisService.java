@@ -53,6 +53,10 @@ public class DocumentoAnalisisService {
                 resolverUsuarioActualSdrercApp());
     }
 
+    public void guardarCartaRespuesta(Long idExpediente, DocumentoAnalizadoDTO carta) throws SQLException {
+        documentoAnalisisDAO.guardarCartaRespuesta(idExpediente, carta, resolverUsuarioActualSdrercApp());
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();
