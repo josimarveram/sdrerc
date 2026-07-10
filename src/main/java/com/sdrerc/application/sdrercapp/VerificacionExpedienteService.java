@@ -96,6 +96,27 @@ public class VerificacionExpedienteService {
         return verificacionExpedienteDAO.aprobarVerificacion(idExpediente, comentario, resolverUsuarioActualSdrercApp());
     }
 
+    public VerificacionResultadoDTO aprobarVerificacionConDestino(
+            Long idExpediente,
+            String comentario,
+            Long idEquipoDestino,
+            Long idUsuarioDestino) throws SQLException {
+        validacionService.validarExpedienteSeleccionado(idExpediente);
+        if (idEquipoDestino == null || idUsuarioDestino == null) {
+            throw new IllegalArgumentException("Seleccione equipo destino y usuario destino para registrar la verificación.");
+        }
+        return verificacionExpedienteDAO.aprobarVerificacionConDestino(
+                idExpediente, comentario, idEquipoDestino, idUsuarioDestino, resolverUsuarioActualSdrercApp());
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO> listarEquiposActivos() throws SQLException {
+        return usuarioAsignacionService.listarEquiposActivos();
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> listarAbogadosAsignables(Long idEquipo) throws SQLException {
+        return usuarioAsignacionService.listarAbogadosAsignables(idEquipo);
+    }
+
     public VerificacionResultadoDTO enviarFirma(Long idExpediente, String comentario) throws SQLException {
         validacionService.validarExpedienteSeleccionado(idExpediente);
         return verificacionExpedienteDAO.enviarFirma(idExpediente, comentario, resolverUsuarioActualSdrercApp());

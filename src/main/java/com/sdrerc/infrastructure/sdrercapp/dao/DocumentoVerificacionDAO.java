@@ -46,7 +46,11 @@ public class DocumentoVerificacionDAO {
                             toLocalDate(rs.getDate("fecha_respuesta")),
                             rs.getString("numero_hoja_envio_respuesta"),
                             rs.getInt("notificado") == 1,
-                            rs.getString("detalle_observacion")));
+                            rs.getString("detalle_observacion"),
+                            getLongOrNull(rs, "id_documento_padre"),
+                            rs.getInt("nivel"),
+                            rs.getInt("orden"),
+                            toLocalDate(rs.getDate("fecha_publicacion"))));
                 }
             }
         }
@@ -138,6 +142,8 @@ public class DocumentoVerificacionDAO {
         boolean soportaRespuesta = soportaRespuestaDocumentoAnalizado(conn);
         boolean soportaNumero = soportaNumeroDocumentoAnalizado(conn);
         boolean soportaDetalle = soportaDetalleObservacionDocumentoAnalizado(conn);
+        boolean soportaJerarquia = soportaJerarquiaDocumentoAnalizado(conn);
+        boolean soportaPublicacion = soportaPublicacionPreparada(conn);
         return "SELECT da.id_documento_analizado, da.id_expediente, "
                 + "td.nombre AS tipo_documento, ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento, "
                 + "da.fecha_documento, "
@@ -150,12 +156,46 @@ public class DocumentoVerificacionDAO {
                         : "0 AS requiere_respuesta, CAST(NULL AS DATE) AS fecha_acuse, "
                         + "CAST(NULL AS VARCHAR2(20)) AS confirmacion_respuesta, CAST(NULL AS DATE) AS fecha_respuesta, "
                         + "CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio_respuesta, 0 AS notificado, ")
-                + (soportaDetalle ? "da.detalle_observacion " : "CAST(NULL AS VARCHAR2(1000)) AS detalle_observacion ")
+                + (soportaDetalle ? "da.detalle_observacion, " : "CAST(NULL AS VARCHAR2(1000)) AS detalle_observacion, ")
+                + (soportaJerarquia
+                        ? "da.id_documento_padre, NVL(da.nivel, 0) AS nivel, NVL(da.orden, 0) AS orden, "
+                        : "CAST(NULL AS NUMBER) AS id_documento_padre, 0 AS nivel, 0 AS orden, ")
+                + (soportaPublicacion
+                        ? "(SELECT fecha_publicacion FROM ("
+                        + " SELECT p.fecha_publicacion FROM expediente_publicacion p "
+                        + " WHERE p.id_expediente = da.id_expediente AND p.activo = 1 "
+                        + " ORDER BY p.creado_en DESC, p.id_expediente_publicacion DESC"
+                        + ") WHERE ROWNUM = 1) AS fecha_publicacion "
+                        : "CAST(NULL AS DATE) AS fecha_publicacion ")
                 + "FROM expediente_documento_analizado da "
                 + "LEFT JOIN tipo_documento_adjunto td ON td.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                 + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                 + "WHERE da.id_expediente = ? AND da.activo = 1 "
-                + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+                + (soportaJerarquia
+                        ? "ORDER BY NVL(da.id_documento_padre, da.id_documento_analizado), NVL(da.nivel, 0), "
+                        + "NVL(da.orden, da.id_documento_analizado), da.id_documento_analizado"
+                        : "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC");
+    }
+
+    private static boolean soportaJerarquiaDocumentoAnalizado(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(DISTINCT column_name) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                + "AND column_name IN ('ID_DOCUMENTO_PADRE', 'NIVEL', 'ORDEN')";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 3;
+        }
+    }
+
+    private static boolean soportaPublicacionPreparada(Connection conn) throws SQLException {
+        String sql = "SELECT "
+                + "(SELECT COUNT(1) FROM user_tables WHERE table_name = 'EXPEDIENTE_PUBLICACION') + "
+                + "(SELECT COUNT(1) FROM user_tab_columns WHERE table_name = 'EXPEDIENTE_PUBLICACION' AND column_name = 'FECHA_PUBLICACION') "
+                + "AS total FROM dual";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt("total") == 2;
+        }
     }
 
     private static boolean soportaRespuestaDocumentoAnalizado(Connection conn) throws SQLException {

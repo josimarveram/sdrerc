@@ -247,6 +247,77 @@ public class VerificacionExpedienteDAO {
                 "La verificación fue aprobada correctamente.");
     }
 
+    public VerificacionResultadoDTO aprobarVerificacionConDestino(
+            Long idExpediente,
+            String comentario,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Long idUsuario) throws SQLException {
+        if (idEquipoDestino == null || idUsuarioDestino == null) {
+            throw new SQLException("Seleccione equipo destino y usuario destino para registrar la verificación.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteBloqueado expediente = bloquearExpediente(conn, idExpediente);
+                if (!ETAPA_VERIFICACION.equalsIgnoreCase(expediente.etapaCodigo)
+                        || !ESTADO_EN_VERIFICACION.equalsIgnoreCase(expediente.estadoCodigo)) {
+                    throw new SQLException("El expediente ya no se encuentra en "
+                            + ETAPA_VERIFICACION + " / " + ESTADO_EN_VERIFICACION + ".");
+                }
+                Transicion transicion = requerirTransicion(
+                        conn,
+                        ACCION_APROBACION,
+                        ETAPA_VERIFICACION,
+                        ESTADO_EN_VERIFICACION,
+                        ETAPA_VERIFICACION,
+                        ESTADO_VERIFICADO);
+                validarRequisitosTransicion(conn, transicion, comentario, idExpediente, true);
+                Long idMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_APROBACION), "movimiento " + ACCION_APROBACION);
+                actualizarExpedienteConDestino(
+                        conn,
+                        idExpediente,
+                        transicion.idEtapaDestino,
+                        transicion.idEstadoDestino,
+                        idEquipoDestino,
+                        idUsuarioDestino,
+                        idUsuario);
+                insertarHistorial(
+                        conn,
+                        idExpediente,
+                        idMovimiento,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        transicion.idEtapaDestino,
+                        transicion.idEstadoDestino,
+                        idUsuario,
+                        idUsuarioDestino,
+                        idEquipoDestino,
+                        null,
+                        null,
+                        comentarioMovimiento(ACCION_APROBACION, comentario),
+                        ACCION_APROBACION);
+                conn.commit();
+                return new VerificacionResultadoDTO(
+                        idExpediente,
+                        expediente.numeroExpediente,
+                        ACCION_APROBACION,
+                        ETAPA_VERIFICACION,
+                        ESTADO_VERIFICADO,
+                        "La verificación fue aprobada y enviada al equipo destino correctamente.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            } finally {
+                conn.setAutoCommit(previousAutoCommit);
+            }
+        }
+    }
+
     public VerificacionResultadoDTO enviarFirma(Long idExpediente, String comentario, Long idUsuario) throws SQLException {
         return moverExpediente(
                 idExpediente,
@@ -551,6 +622,34 @@ public class VerificacionExpedienteDAO {
             ps.setLong(2, idEstadoDestino);
             setLongOrNull(ps, 3, idUsuarioModificador);
             ps.setLong(4, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar el expediente seleccionado.");
+            }
+        }
+    }
+
+    private void actualizarExpedienteConDestino(
+            Connection conn,
+            Long idExpediente,
+            Long idEtapaDestino,
+            Long idEstadoDestino,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Long idUsuarioModificador) throws SQLException {
+        String sql = "UPDATE expediente SET "
+                + "id_etapa_actual = ?, id_estado_actual = ?, "
+                + "id_equipo_responsable_actual = ?, id_usuario_responsable_actual = ?, "
+                + "fecha_ultimo_movimiento = SYSTIMESTAMP, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idEtapaDestino);
+            ps.setLong(2, idEstadoDestino);
+            ps.setLong(3, idEquipoDestino);
+            ps.setLong(4, idUsuarioDestino);
+            setLongOrNull(ps, 5, idUsuarioModificador);
+            ps.setLong(6, idExpediente);
             int updated = ps.executeUpdate();
             if (updated != 1) {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");

@@ -19,6 +19,10 @@ public class DocumentoVerificacionDTO {
     private final String numeroHojaEnvioRespuesta;
     private final boolean notificado;
     private final String detalleObservacion;
+    private final Long idDocumentoPadre;
+    private final int nivel;
+    private final int orden;
+    private final LocalDate fechaPublicacion;
 
     public DocumentoVerificacionDTO(
             Long idDocumentoAnalizado,
@@ -43,7 +47,11 @@ public class DocumentoVerificacionDTO {
                 null,
                 "",
                 false,
-                "");
+                "",
+                null,
+                0,
+                0,
+                null);
     }
 
     public DocumentoVerificacionDTO(
@@ -61,7 +69,11 @@ public class DocumentoVerificacionDTO {
             LocalDate fechaRespuesta,
             String numeroHojaEnvioRespuesta,
             boolean notificado,
-            String detalleObservacion) {
+            String detalleObservacion,
+            Long idDocumentoPadre,
+            int nivel,
+            int orden,
+            LocalDate fechaPublicacion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.tipoDocumento = safe(tipoDocumento);
@@ -77,6 +89,10 @@ public class DocumentoVerificacionDTO {
         this.numeroHojaEnvioRespuesta = safe(numeroHojaEnvioRespuesta);
         this.notificado = notificado;
         this.detalleObservacion = safe(detalleObservacion);
+        this.idDocumentoPadre = idDocumentoPadre;
+        this.nivel = nivel;
+        this.orden = orden;
+        this.fechaPublicacion = fechaPublicacion;
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -137,6 +153,22 @@ public class DocumentoVerificacionDTO {
 
     public String getDetalleObservacion() {
         return detalleObservacion;
+    }
+
+    public Long getIdDocumentoPadre() {
+        return idDocumentoPadre;
+    }
+
+    public int getNivel() {
+        return nivel;
+    }
+
+    public int getOrden() {
+        return orden;
+    }
+
+    public LocalDate getFechaPublicacion() {
+        return fechaPublicacion;
     }
 
     private static String safe(String value) {

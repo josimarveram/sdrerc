@@ -172,7 +172,6 @@ public class JPanelAnalisisV2 extends JPanel {
     private final JButton btnEditar = new JButton("Editar");
     private final JButton btnRegistrarAnalisis = new JButton("Registrar Análisis");
     private final JButton btnCancelarAnalisis = new JButton("Cancelar");
-    private final JButton btnEnviarVerificacion = new JButton("Enviar a verificación");
     private final JButton btnArchivarNoCorresponde = new JButton("Archivar no corresponde");
 
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes de análisis.");
@@ -861,7 +860,6 @@ public class JPanelAnalisisV2 extends JPanel {
         AppV2Theme.estilizarBotonPrimario(btnRecibir);
         AppV2Theme.estilizarBotonPrimario(btnEditar);
         AppV2Theme.estilizarBotonPrimario(btnRegistrarAnalisis);
-        AppV2Theme.estilizarBotonPrimario(btnEnviarVerificacion);
         AppV2Theme.estilizarBotonPrimario(btnArchivarNoCorresponde);
         AppV2Theme.estilizarBotonPrimario(btnDescargarPlantillaSeleccionada);
         chkReconstitucion.setOpaque(false);
@@ -972,7 +970,6 @@ public class JPanelAnalisisV2 extends JPanel {
         btnEditar.addActionListener(e -> editarSeleccionActual());
         btnRegistrarAnalisis.addActionListener(e -> registrarAnalisis());
         btnCancelarAnalisis.addActionListener(e -> cerrarPanelAnalisis());
-        btnEnviarVerificacion.addActionListener(e -> enviarVerificacion());
         btnArchivarNoCorresponde.addActionListener(e -> archivarNoCorresponde());
         cmbIncorporado.addActionListener(e -> actualizarChecksIncorporado());
         cmbResultado.addActionListener(e -> actualizarResultadoSeleccionado());
@@ -1548,7 +1545,6 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.setEnabled(has && !asociado && item.isRecibible());
         btnEditar.setEnabled(has && !asociado);
         btnRegistrarAnalisis.setEnabled(has && !asociado && item.isRegistrable());
-        btnEnviarVerificacion.setEnabled(has && !asociado && item.isEnviableVerificacion());
         btnArchivarNoCorresponde.setEnabled(has && !asociado && item.isArchivableNoCorresponde());
         actualizarVisibilidadPanelAnalisis();
         if (!has) {
@@ -2180,18 +2176,14 @@ public class JPanelAnalisisV2 extends JPanel {
         confirmarYEjecutar(
                 "Registrar resultado final",
                 "Se registrará el resultado final del expediente " + item.getNumeroExpediente() + ". ¿Desea continuar?",
-                () -> analisisService.registrarAnalisis(registro));
-    }
-
-    private void enviarVerificacion() {
-        AnalisisExpedienteDTO item = requerirSeleccion("Seleccione un expediente para enviar a verificación.");
-        if (item == null) {
-            return;
-        }
-        confirmarYEjecutar(
-                "Enviar a verificación",
-                "Se enviará el expediente " + item.getNumeroExpediente() + " a Verificación. ¿Desea continuar?",
-                () -> analisisService.enviarVerificacion(item.getIdExpediente(), txtComentarioMovimiento.getText()));
+                () -> {
+                    AnalisisResultadoDTO resultado = analisisService.registrarAnalisis(registro);
+                    if ("ATENDIDO".equalsIgnoreCase(resultado.getEstadoDestinoCodigo())) {
+                        resultado = analisisService.enviarVerificacion(
+                                item.getIdExpediente(), txtComentarioMovimiento.getText());
+                    }
+                    return resultado;
+                });
     }
 
     private void archivarNoCorresponde() {
@@ -2606,7 +2598,6 @@ public class JPanelAnalisisV2 extends JPanel {
         btnRecibir.setEnabled(!trabajando && item != null && item.isRecibible());
         btnEditar.setEnabled(!trabajando && item != null);
         btnRegistrarAnalisis.setEnabled(!trabajando && item != null && item.isRegistrable());
-        btnEnviarVerificacion.setEnabled(!trabajando && item != null && item.isEnviableVerificacion());
         btnArchivarNoCorresponde.setEnabled(!trabajando && item != null && item.isArchivableNoCorresponde());
         documentosAsociadosTable.setEnabled(!trabajando);
         if (mensaje != null) {

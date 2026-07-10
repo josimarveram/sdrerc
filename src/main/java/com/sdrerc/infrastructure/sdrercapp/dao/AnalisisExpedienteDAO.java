@@ -935,9 +935,6 @@ public class AnalisisExpedienteDAO {
         if (ESTADO_NO_CORRESPONDE.equalsIgnoreCase(resultado)) {
             return new ResultadoDestino(ESTADO_NO_CORRESPONDE, false);
         }
-        if (ESTADO_EN_ABANDONO.equalsIgnoreCase(resultado)) {
-            return new ResultadoDestino(ESTADO_EN_ABANDONO, true);
-        }
         if (ESTADO_OBSERVACION_ADMINISTRATIVA.equalsIgnoreCase(resultado)) {
             return new ResultadoDestino(ESTADO_OBSERVACION_ADMINISTRATIVA, true);
         }
