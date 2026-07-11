@@ -25,6 +25,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
 
     private final MetricCardV2 cardPotencialDuplicado = new MetricCardV2("Potencial duplicado", "0", "Acta + titular", AppV2Theme.WARNING);
     private final MetricCardV2 cardPosibleGrupoFamiliar = new MetricCardV2("Posible Grupo Familiar", "0", "Apellidos coincidentes", AppV2Theme.TEAL);
+    private final MetricCardV2 cardGrupoFamiliarConfirmado = new MetricCardV2("Grupo Familiar Confirmado", "0", "Registrado", AppV2Theme.PRIMARY);
     private final GrupoFamiliarRegistroService grupoFamiliarRegistroService = new GrupoFamiliarRegistroService();
     private JPanelBandejaExpedientesNueva bandejaRegistro;
     private JTabbedPane tabs;
@@ -77,6 +78,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         metricasRegistro = new AppV2ResponsiveGridPanel(190, 2, 12, 0);
         metricasRegistro.add(cardPotencialDuplicado);
         metricasRegistro.add(cardPosibleGrupoFamiliar);
+        metricasRegistro.add(cardGrupoFamiliarConfirmado);
 
         bandejaRegistro = new JPanelBandejaExpedientesNueva(
                 "REGISTRO",
@@ -92,9 +94,10 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
                     }
                 },
                 true);
-        bandejaRegistro.vincularMetricasAlertasRegistro(cardPotencialDuplicado, cardPosibleGrupoFamiliar);
+        bandejaRegistro.vincularMetricasAlertasRegistro(cardPotencialDuplicado, cardPosibleGrupoFamiliar, cardGrupoFamiliarConfirmado);
         cardPotencialDuplicado.setOnClick(() -> bandejaRegistro.alternarFiltroAlertaRegistro("POTENCIAL_DUPLICADO"));
         cardPosibleGrupoFamiliar.setOnClick(() -> bandejaRegistro.alternarFiltroAlertaRegistro("POSIBLE_GRUPO_FAMILIAR"));
+        cardGrupoFamiliarConfirmado.setOnClick(() -> bandejaRegistro.alternarFiltroAlertaRegistro("GRUPO_FAMILIAR_CONFIRMADO"));
         bandejaRegistro.setBorder(BorderFactory.createEmptyBorder());
         panel.add(bandejaRegistro, BorderLayout.CENTER);
         return panel;

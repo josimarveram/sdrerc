@@ -26,6 +26,7 @@ public class ExpedienteEdicionManualDAO {
     private static final String CODIGO_ETAPA_ANALISIS = "ANALISIS";
     private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
     private static final String CODIGO_MOVIMIENTO_EDICION = "RECEPCION_DOCUMENTO";
+    private static final String CODIGO_MOVIMIENTO_ELIMINACION = "BAJA_REGISTRO";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService;
@@ -148,6 +149,77 @@ public class ExpedienteEdicionManualDAO {
 
     public RegistroManualResultadoDTO guardar(ExpedienteEdicionManualDTO dto) throws SQLException {
         return guardarInterno(dto, false);
+    }
+
+    public RegistroManualResultadoDTO eliminar(Long idExpediente, Long idUsuario) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para eliminar.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteEstado estado = bloquearYObtenerEstado(conn, idExpediente);
+                validarEditable(estado, tieneAsignacionActiva(conn, idExpediente), false);
+
+                Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_ELIMINACION);
+                if (idMovimiento == null) {
+                    throw new SQLException("No se encontró el movimiento " + CODIGO_MOVIMIENTO_ELIMINACION
+                            + ". Ejecute el script de catálogo correspondiente.");
+                }
+                String sqlHistorial = "INSERT INTO expediente_historial ("
+                        + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_etapa_origen, id_estado_origen, "
+                        + "id_etapa_destino, id_estado_destino, tabla_relacionada, id_registro_relacionado, "
+                        + "comentario, motivo, activo, creado_por"
+                        + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, ?, ?, 'EXPEDIENTE', ?, ?, 'BAJA_REGISTRO_RECEPCION', 1, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sqlHistorial)) {
+                    ps.setLong(1, idExpediente);
+                    ps.setLong(2, idMovimiento);
+                    ps.setLong(3, estado.idEtapa);
+                    ps.setLong(4, estado.idEstado);
+                    ps.setLong(5, estado.idEtapa);
+                    ps.setLong(6, estado.idEstado);
+                    ps.setLong(7, idExpediente);
+                    ps.setString(8, limitar("Registro eliminado (baja lógica) desde Recepción. Expediente: "
+                            + textoNumeroExpediente(estado.numeroExpediente) + ".", 2000));
+                    if (idUsuario == null) {
+                        ps.setNull(9, Types.NUMERIC);
+                    } else {
+                        ps.setLong(9, idUsuario);
+                    }
+                    ps.executeUpdate();
+                }
+
+                String sqlBaja = "UPDATE expediente SET activo = 0, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                        + "WHERE id_expediente = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sqlBaja)) {
+                    if (idUsuario == null) {
+                        ps.setNull(1, Types.NUMERIC);
+                    } else {
+                        ps.setLong(1, idUsuario);
+                    }
+                    ps.setLong(2, idExpediente);
+                    int updated = ps.executeUpdate();
+                    if (updated != 1) {
+                        throw new SQLException("No se pudo eliminar el expediente seleccionado.");
+                    }
+                }
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return new RegistroManualResultadoDTO(
+                        idExpediente,
+                        textoNumeroExpediente(estado.numeroExpediente),
+                        "El registro fue eliminado correctamente.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
     }
 
     public RegistroManualResultadoDTO guardarDesdeAnalisis(ExpedienteEdicionManualDTO dto) throws SQLException {

@@ -2,6 +2,8 @@ package com.sdrerc.ui.views.expedienteconsola;
 
 import com.sdrerc.application.sdrercapp.ExpedienteConsultaService;
 import com.sdrerc.application.sdrercapp.ExpedienteDetalleService;
+import com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService;
+import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoDeteccionService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoService;
 import com.sdrerc.application.sdrercapp.GrupoFamiliarRegistroService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
@@ -91,6 +93,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private static final int PANEL_RECEPCION_TAB_HEIGHT = 94;
     private static final String PANEL_RECEPCION_CARD_DATOS = "DATOS";
     private static final String PANEL_RECEPCION_CARD_GF = "REGISTRAR_GF";
+    private static final String PANEL_RECEPCION_CARD_ASOCIAR = "ASOCIAR_DUPLICADOS";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Color GRID_ACTION_ICON_BLUE = AppV2Theme.PRIMARY;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
@@ -118,6 +121,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final ExpedienteConsultaService consultaService;
     private final ExpedienteDetalleService detalleService = new ExpedienteDetalleService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
+    private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final String etapaInicial;
     private final String tituloBandeja;
     private final String subtituloBandeja;
@@ -136,12 +140,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final JComboBox<FiltroCatalogoItemV2> cmbEstado = new JComboBox<FiltroCatalogoItemV2>(crearItemsEstado());
     private final PremiumDateFieldV2 fechaSolicitudDesde = new PremiumDateFieldV2();
     private final PremiumDateFieldV2 fechaSolicitudHasta = new PremiumDateFieldV2();
-    private final JCheckBox chkFiltroGrupoFamiliar = new JCheckBox("Solo identificados");
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
     private final JButton btnVerDetalle = new JButton("Ver detalle");
     private final JButton btnEditar = new JButton("Editar");
+    private final JButton btnEliminar = new JButton("Eliminar");
+    private final ExpedienteEdicionManualService edicionManualService = new ExpedienteEdicionManualService();
     private final JLabel lblSeleccionados = new JLabel("0 expediente(s) seleccionado(s)");
     private final JLabel lblResultado = new JLabel("Seleccione un expediente y presione Ver detalle para abrir la consola.");
     private final DefaultTableModel tableModel;
@@ -155,9 +160,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private Long idExpedienteExpansionActiva;
     private final AppV2StackedSideTab tabPanelRecepcion = crearTabRecepcion();
     private final AppV2StackedSideTab tabPanelRegistrarGF = crearTabRegistrarGF();
+    private final AppV2StackedSideTab tabPanelAsociarDuplicados = crearTabAsociarDuplicados();
     private AppV2OperationalSplitPanel splitBandeja;
     private AppV2SideActionPanel panelRecepcion;
     private JPanelRegistrarGrupoFamiliarV2 panelRegistrarGrupoFamiliar;
+    private JPanelAsociarDuplicadosRecepcionV2 panelAsociarDuplicados;
     private JPanel panelRecepcionWrapper;
     private JPanel panelRecepcionCards;
     private CardLayout panelRecepcionCardsLayout;
@@ -201,6 +208,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private boolean panelRecepcionCargado;
     private MetricCardV2 cardPotencialDuplicadoRegistro;
     private MetricCardV2 cardPosibleGrupoFamiliarRegistro;
+    private MetricCardV2 cardGrupoFamiliarConfirmadoRegistro;
     private String filtroAlertaRegistro;
     private Runnable onGrupoFamiliarSelectionChanged;
     private boolean hayVisiblesGrupoFamiliar;
@@ -438,6 +446,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         if (editarExpedienteHandler != null) {
             acciones.add(btnEditar);
+            acciones.add(btnEliminar);
         }
         gbcBusqueda.gridx = 2;
         gbcBusqueda.weightx = 0;
@@ -468,13 +477,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         gbcEstado.insets = new Insets(0, 0, 0, 12);
         gbcEstado.gridx = 0;
         filaEstado.add(crearCampoFiltroInline("Estado", cmbEstado, 260), gbcEstado);
-        if (perfilRegistroRecepcion) {
-            gbcEstado.gridx = 1;
-            filaEstado.add(crearFiltroGrupoFamiliarInline(), gbcEstado);
-        }
-        gbcEstado.gridx = perfilRegistroRecepcion ? 2 : 1;
+        gbcEstado.gridx = 1;
         filaEstado.add(spnLimite, gbcEstado);
-        gbcEstado.gridx = perfilRegistroRecepcion ? 3 : 2;
+        gbcEstado.gridx = 2;
         gbcEstado.weightx = 1.0;
         gbcEstado.fill = GridBagConstraints.HORIZONTAL;
         filaEstado.add(Box.createHorizontalGlue(), gbcEstado);
@@ -490,6 +495,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         btnVerDetalle.setToolTipText("Disponible en bandeja general");
         btnEditar.setEnabled(false);
         btnEditar.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado");
+        btnEliminar.setEnabled(false);
+        btnEliminar.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado");
 
         JPanel superior = new JPanel(new BorderLayout(6, 6));
         superior.setOpaque(false);
@@ -576,15 +583,18 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         panel.addSection(secciones);
 
         panelRegistrarGrupoFamiliar = new JPanelRegistrarGrupoFamiliarV2();
+        panelAsociarDuplicados = new JPanelAsociarDuplicadosRecepcionV2();
         panelRecepcionCardsLayout = new CardLayout();
         panelRecepcionCards = new JPanel(panelRecepcionCardsLayout);
         panelRecepcionCards.setOpaque(false);
         panelRecepcionCards.add(panel, PANEL_RECEPCION_CARD_DATOS);
         panelRecepcionCards.add(panelRegistrarGrupoFamiliar, PANEL_RECEPCION_CARD_GF);
+        panelRecepcionCards.add(panelAsociarDuplicados, PANEL_RECEPCION_CARD_ASOCIAR);
         panelRecepcionCardsLayout.show(panelRecepcionCards, PANEL_RECEPCION_CARD_DATOS);
 
         actualizarTabRecepcion(false, false);
         actualizarTabRegistrarGF(false, false);
+        actualizarTabAsociarDuplicados(false, false);
         tabPanelRecepcion.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -595,6 +605,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 alternarPanelRecepcion(PANEL_RECEPCION_CARD_GF);
+            }
+        });
+        tabPanelAsociarDuplicados.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                alternarPanelRecepcion(PANEL_RECEPCION_CARD_ASOCIAR);
             }
         });
         return panel;
@@ -669,7 +685,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int height = getHeight();
                 int panelX = PANEL_RECEPCION_TAB_OVERHANG;
                 panelRecepcionCards.setBounds(panelX, 0, Math.max(0, width - panelX), height);
-                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - (PANEL_RECEPCION_TAB_HEIGHT * 2) - 18));
+                int tabY = Math.min(PANEL_RECEPCION_TAB_TOP, Math.max(0, height - (PANEL_RECEPCION_TAB_HEIGHT * 3) - 28));
                 tabPanelRecepcion.setBounds(
                         0,
                         tabY,
@@ -677,7 +693,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         PANEL_RECEPCION_TAB_HEIGHT);
                 tabPanelRegistrarGF.setBounds(
                         0,
-                        Math.min(height - PANEL_RECEPCION_TAB_HEIGHT - 8, tabY + PANEL_RECEPCION_TAB_HEIGHT + 10),
+                        Math.min(height - (PANEL_RECEPCION_TAB_HEIGHT * 2) - 18, tabY + PANEL_RECEPCION_TAB_HEIGHT + 10),
+                        PANEL_RECEPCION_TAB_OVERHANG - 6,
+                        PANEL_RECEPCION_TAB_HEIGHT);
+                tabPanelAsociarDuplicados.setBounds(
+                        0,
+                        Math.min(height - PANEL_RECEPCION_TAB_HEIGHT - 8, tabY + (PANEL_RECEPCION_TAB_HEIGHT + 10) * 2),
                         PANEL_RECEPCION_TAB_OVERHANG - 6,
                         PANEL_RECEPCION_TAB_HEIGHT);
             }
@@ -686,6 +707,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         wrapper.add(panelRecepcionCards);
         wrapper.add(tabPanelRecepcion);
         wrapper.add(tabPanelRegistrarGF);
+        wrapper.add(tabPanelAsociarDuplicados);
         wrapper.setMinimumSize(new Dimension(PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG, 0));
         wrapper.setPreferredSize(new Dimension(PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG, 0));
         return wrapper;
@@ -772,6 +794,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 () -> {
                     btnVerDetalle.setEnabled(false);
                     btnEditar.setEnabled(false);
+                    btnEliminar.setEnabled(false);
                 },
                 perfilRegistroRecepcion ? new int[]{COL_EXPANDIR_REGISTRO, COL_SELECCION_REGISTRO} : new int[0]);
         if (perfilRegistroRecepcion && columnFilterSupport != null) {
@@ -809,22 +832,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return crearCampoFiltroInline(texto, (Component) control, anchoPreferido);
     }
 
-    private JPanel crearFiltroGrupoFamiliarInline() {
-        JPanel panel = new JPanel(new BorderLayout(8, 0));
-        panel.setOpaque(false);
-        JLabel label = crearLabelFiltro("Grupo familiar");
-        panel.add(label, BorderLayout.WEST);
-        JPanel checkPanel = new JPanel(new BorderLayout());
-        checkPanel.setOpaque(false);
-        chkFiltroGrupoFamiliar.setText("");
-        chkFiltroGrupoFamiliar.setToolTipText("Mostrar únicamente expedientes identificados o alertados como grupo familiar.");
-        checkPanel.add(chkFiltroGrupoFamiliar, BorderLayout.WEST);
-        panel.add(checkPanel, BorderLayout.CENTER);
-        panel.setPreferredSize(new Dimension(170, 34));
-        panel.setMinimumSize(new Dimension(170, 34));
-        return panel;
-    }
-
     private void configurarControlesFiltro() {
         if (perfilRegistroRecepcion) {
             txtBusqueda.setPlaceholder("Buscar expediente, trámite/SGD, acta, titular o documento");
@@ -851,16 +858,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         cmbEtapa.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         txtBusqueda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        chkFiltroGrupoFamiliar.setOpaque(false);
-        chkFiltroGrupoFamiliar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        chkFiltroGrupoFamiliar.setForeground(AppV2Theme.TEXT_PRIMARY);
-        chkFiltroGrupoFamiliar.setToolTipText("Mostrar únicamente expedientes identificados o alertados como grupo familiar.");
     }
 
     private void configurarBotones() {
         AppV2Theme.estilizarBotonPrimario(btnBuscar);
         btnVerDetalle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEditar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnEliminar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnLimpiar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
     }
 
@@ -869,11 +873,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         btnLimpiar.addActionListener(e -> limpiar());
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
         btnEditar.addActionListener(e -> editarSeleccionado());
+        btnEliminar.addActionListener(e -> eliminarSeleccionado());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 boolean haySeleccion = table.getSelectedRow() >= 0;
                 btnVerDetalle.setEnabled(haySeleccion);
                 btnEditar.setEnabled(haySeleccion && esRegistroSeleccionadoEditable());
+                btnEliminar.setEnabled(haySeleccion && esRegistroSeleccionadoEditable());
                 if (perfilRegistroRecepcion) {
                     if (haySeleccion && splitBandeja != null && splitBandeja.isSideVisible()) {
                         mostrarPanelRecepcionSeleccionado();
@@ -959,8 +965,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     public void vincularMetricasAlertasRegistro(MetricCardV2 potencialDuplicado, MetricCardV2 posibleGrupoFamiliar) {
+        vincularMetricasAlertasRegistro(potencialDuplicado, posibleGrupoFamiliar, null);
+    }
+
+    public void vincularMetricasAlertasRegistro(
+            MetricCardV2 potencialDuplicado, MetricCardV2 posibleGrupoFamiliar, MetricCardV2 grupoFamiliarConfirmado) {
         this.cardPotencialDuplicadoRegistro = potencialDuplicado;
         this.cardPosibleGrupoFamiliarRegistro = posibleGrupoFamiliar;
+        this.cardGrupoFamiliarConfirmadoRegistro = grupoFamiliarConfirmado;
         actualizarMetricasAlertasRegistro(ultimoResultadoBuscado);
         marcarFiltroAlertaRegistro();
     }
@@ -970,7 +982,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return;
         }
         String filtro = normalizar(codigoAlerta);
-        filtroAlertaRegistro = "POTENCIAL_DUPLICADO".equals(filtro) || "POSIBLE_GRUPO_FAMILIAR".equals(filtro) ? filtro : null;
+        filtroAlertaRegistro = "POTENCIAL_DUPLICADO".equals(filtro)
+                || "POSIBLE_GRUPO_FAMILIAR".equals(filtro)
+                || "GRUPO_FAMILIAR_CONFIRMADO".equals(filtro)
+                ? filtro : null;
         marcarFiltroAlertaRegistro();
         buscar(true);
     }
@@ -1025,9 +1040,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                             return;
                         }
                         List<ExpedienteBandejaDTO> expedientes = get();
-                        if (perfilRegistroRecepcion && chkFiltroGrupoFamiliar.isSelected()) {
-                            expedientes = filtrarGrupoFamiliar(expedientes);
-                        }
                         if (perfilRegistroRecepcion) {
                             expedientes = filtrarPorAlertaRegistro(expedientes);
                             expedientes = filtrarExpedientesPrincipalesRegistro(expedientes);
@@ -1056,7 +1068,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             cmbEtapa.setSelectedIndex(0);
         }
         cmbEstado.setSelectedIndex(0);
-        chkFiltroGrupoFamiliar.setSelected(false);
         filtroAlertaRegistro = null;
         marcarFiltroAlertaRegistro();
         if (perfilRegistroRecepcion) {
@@ -1076,6 +1087,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
         btnEditar.setEnabled(false);
+        btnEliminar.setEnabled(false);
         ocultarPanelRecepcion();
         tablePanel.setEmpty(true);
         lblResultado.setText(etapaBloqueada
@@ -1093,6 +1105,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         tableModel.setRowCount(0);
         btnVerDetalle.setEnabled(false);
         btnEditar.setEnabled(false);
+        btnEliminar.setEnabled(false);
         for (ExpedienteBandejaDTO item : expedientes) {
             if (perfilRegistroRecepcion) {
                 agregarFilaRegistro(item);
@@ -1122,19 +1135,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     : expedientes.size() + " expediente(s) encontrado(s). Seleccione uno y presione Ver detalle.");
         }
         actualizarTextoSeleccionadosRegistro();
-    }
-
-    private List<ExpedienteBandejaDTO> filtrarGrupoFamiliar(List<ExpedienteBandejaDTO> expedientes) {
-        List<ExpedienteBandejaDTO> filtrados = new ArrayList<>();
-        if (expedientes == null) {
-            return filtrados;
-        }
-        for (ExpedienteBandejaDTO item : expedientes) {
-            if (esGrupoFamiliar(item)) {
-                filtrados.add(item);
-            }
-        }
-        return filtrados;
     }
 
     private List<ExpedienteBandejaDTO> filtrarPorAlertaRegistro(List<ExpedienteBandejaDTO> expedientes) {
@@ -1463,6 +1463,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if ("POSIBLE_GRUPO_FAMILIAR".equals(filtroAlertaRegistro)) {
             return contienePosibleGrupoFamiliar(item);
         }
+        if ("GRUPO_FAMILIAR_CONFIRMADO".equals(filtroAlertaRegistro)) {
+            return esGrupoFamiliar(item);
+        }
         return true;
     }
 
@@ -1473,6 +1476,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         int total = 0;
         int duplicados = 0;
         int grupoFamiliar = 0;
+        int grupoFamiliarConfirmado = 0;
         if (expedientes != null) {
             total = expedientes.size();
             for (ExpedienteBandejaDTO item : expedientes) {
@@ -1485,6 +1489,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 if (contienePosibleGrupoFamiliar(item)) {
                     grupoFamiliar++;
                 }
+                if (esGrupoFamiliar(item)) {
+                    grupoFamiliarConfirmado++;
+                }
             }
         }
         if (cardPotencialDuplicadoRegistro != null) {
@@ -1492,6 +1499,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         if (cardPosibleGrupoFamiliarRegistro != null) {
             cardPosibleGrupoFamiliarRegistro.setValue(String.valueOf(grupoFamiliar));
+        }
+        if (cardGrupoFamiliarConfirmadoRegistro != null) {
+            cardGrupoFamiliarConfirmadoRegistro.setValue(String.valueOf(grupoFamiliarConfirmado));
         }
         marcarFiltroAlertaRegistro();
     }
@@ -1516,6 +1526,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         if (cardPosibleGrupoFamiliarRegistro != null) {
             cardPosibleGrupoFamiliarRegistro.setSelected("POSIBLE_GRUPO_FAMILIAR".equals(filtroAlertaRegistro));
+        }
+        if (cardGrupoFamiliarConfirmadoRegistro != null) {
+            cardGrupoFamiliarConfirmadoRegistro.setSelected("GRUPO_FAMILIAR_CONFIRMADO".equals(filtroAlertaRegistro));
         }
     }
 
@@ -1681,6 +1694,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
         actualizarTabRecepcion(false, false);
         actualizarTabRegistrarGF(false, false);
+        actualizarTabAsociarDuplicados(false, false);
     }
 
     private void actualizarTituloPanelRecepcion(ExpedienteConsolaDTO expediente) {
@@ -1713,6 +1727,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (PANEL_RECEPCION_CARD_GF.equals(panelRecepcionActivo)) {
             actualizarTabRegistrarGF(true, expandido);
         }
+        if (PANEL_RECEPCION_CARD_ASOCIAR.equals(panelRecepcionActivo)) {
+            actualizarTabAsociarDuplicados(true, expandido);
+        }
     }
 
     private AppV2StackedSideTab crearTabRecepcion() {
@@ -1735,6 +1752,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 new Color(156, 96, 22));
     }
 
+    private AppV2StackedSideTab crearTabAsociarDuplicados() {
+        return new AppV2StackedSideTab(
+                "Asociar",
+                PANEL_RECEPCION_TAB_OVERHANG - 6,
+                PANEL_RECEPCION_TAB_HEIGHT,
+                new Color(249, 239, 224),
+                new Color(198, 121, 31),
+                new Color(156, 96, 22));
+    }
+
     private void actualizarTabRecepcion(boolean seleccionado, boolean expandido) {
         tabPanelRecepcion.setState(seleccionado, expandido);
         tabPanelRecepcion.setToolTipText(expandido
@@ -1747,6 +1774,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         tabPanelRegistrarGF.setToolTipText(expandido
                 ? "Restaurar registrar grupo familiar"
                 : "Expandir registrar grupo familiar");
+    }
+
+    private void actualizarTabAsociarDuplicados(boolean seleccionado, boolean expandido) {
+        tabPanelAsociarDuplicados.setState(seleccionado, expandido);
+        tabPanelAsociarDuplicados.setToolTipText(expandido
+                ? "Restaurar asociar duplicados"
+                : "Expandir asociar duplicados");
     }
 
     private void alternarPanelRecepcion(String panelId) {
@@ -1766,8 +1800,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         boolean expandido = splitBandeja.isSideExpanded();
         actualizarTabRecepcion(PANEL_RECEPCION_CARD_DATOS.equals(panelId), expandido && PANEL_RECEPCION_CARD_DATOS.equals(panelId));
         actualizarTabRegistrarGF(PANEL_RECEPCION_CARD_GF.equals(panelId), expandido && PANEL_RECEPCION_CARD_GF.equals(panelId));
+        actualizarTabAsociarDuplicados(PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId), expandido && PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId));
         if (PANEL_RECEPCION_CARD_GF.equals(panelId) && panelRegistrarGrupoFamiliar != null) {
             panelRegistrarGrupoFamiliar.actualizarEstado();
+        }
+        if (PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId) && panelAsociarDuplicados != null) {
+            panelAsociarDuplicados.cargarDuplicados(obtenerIdExpedienteSeleccionado());
         }
     }
 
@@ -1786,8 +1824,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         boolean expandido = splitBandeja.isSideExpanded();
         actualizarTabRecepcion(PANEL_RECEPCION_CARD_DATOS.equals(panelId), expandido && PANEL_RECEPCION_CARD_DATOS.equals(panelId));
         actualizarTabRegistrarGF(PANEL_RECEPCION_CARD_GF.equals(panelId), expandido && PANEL_RECEPCION_CARD_GF.equals(panelId));
+        actualizarTabAsociarDuplicados(PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId), expandido && PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId));
         if (PANEL_RECEPCION_CARD_GF.equals(panelId) && panelRegistrarGrupoFamiliar != null) {
             panelRegistrarGrupoFamiliar.actualizarEstado();
+        }
+        if (PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId) && panelAsociarDuplicados != null) {
+            panelAsociarDuplicados.cargarDuplicados(obtenerIdExpedienteSeleccionado());
         }
     }
 
@@ -1829,6 +1871,62 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return;
         }
         editarExpedienteHandler.accept(idExpediente);
+    }
+
+    private void eliminarSeleccionado() {
+        Long idExpediente = obtenerIdExpedienteSeleccionado();
+        if (idExpediente == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Seleccione un expediente para eliminar.",
+                    "Registro / Recepción",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (!esRegistroSeleccionadoEditable()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Solo se permite eliminar expedientes en estado Registrado y sin asignación a abogado.",
+                    "Eliminar no disponible",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int confirmacion = JOptionPane.showConfirmDialog(
+                this,
+                "Esta acción eliminará el registro seleccionado (baja lógica, quedará excluido de las bandejas). ¿Desea continuar?",
+                "Eliminar registro",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) {
+            return;
+        }
+        setBuscando(true);
+        final Long idExpedienteFinal = idExpediente;
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                edicionManualService.eliminar(idExpedienteFinal);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setBuscando(false);
+                try {
+                    get();
+                    ocultarPanelRecepcion();
+                    buscar();
+                    JOptionPane.showMessageDialog(
+                            JPanelBandejaExpedientesNueva.this,
+                            "El registro fue eliminado correctamente.",
+                            "Eliminar registro",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    mostrarError(ex);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private boolean esRegistroSeleccionadoEditable() {
@@ -1998,6 +2096,179 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             super.setEnabled(enabled);
             btnRegistrar.setEnabled(enabled && contarIdsGrupoFamiliarSeleccionados() > 0);
             btnLimpiar.setEnabled(enabled && contarIdsGrupoFamiliarSeleccionados() > 0);
+        }
+    }
+
+    private final class JPanelAsociarDuplicadosRecepcionV2 extends AppV2SideActionPanel {
+
+        private final DefaultTableModel modeloDuplicados = new DefaultTableModel(
+                new Object[]{"", "N° expediente", "Titular", "Tipo/N° acta", "Motivo coincidencia"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 0;
+            }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                return columnIndex == 0 ? Boolean.class : Object.class;
+            }
+        };
+        private final JTable tablaDuplicados = new AppV2Table(modeloDuplicados);
+        private final AppV2TablePanel panelTablaDuplicados = new AppV2TablePanel(
+                tablaDuplicados, "Sin duplicados detectados", "No hay posibles duplicados para el expediente seleccionado.");
+        private final JLabel lblEstadoAsociar = new JLabel("Seleccione un expediente en la bandeja.");
+        private final JButton btnAsociarDuplicados = new JButton("Asociar seleccionados");
+        private List<ExpedienteRelacionadoDTO> duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
+        private Long idExpedientePrincipalDuplicados;
+        private long secuenciaCargaDuplicados;
+
+        private JPanelAsociarDuplicadosRecepcionV2() {
+            super("Asociar duplicados");
+            setAccentColor(new Color(198, 121, 31));
+
+            AppV2SideSectionPanel resumen = new AppV2SideSectionPanel("Posibles duplicados");
+            resumen.addRow("Estado", lblEstadoAsociar);
+            addSection(resumen);
+
+            JPanel content = new JPanel(new BorderLayout(6, 6));
+            content.setOpaque(false);
+            content.setPreferredSize(new Dimension(320, 220));
+            content.add(panelTablaDuplicados, BorderLayout.CENTER);
+            AppV2SideSectionPanel seccionTabla = new AppV2SideSectionPanel("Coincidencias por N° de acta y titular");
+            seccionTabla.addContent(content);
+            addSection(seccionTabla);
+
+            tablaDuplicados.setRowHeight(28);
+            tablaDuplicados.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+            AppV2TableColumnSizer.applyWidths(tablaDuplicados, 34, 140, 160, 120, 200);
+
+            AppV2Theme.estilizarBotonPrimario(btnAsociarDuplicados);
+            btnAsociarDuplicados.addActionListener(e -> asociarSeleccionados());
+            JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+            acciones.setOpaque(false);
+            acciones.add(btnAsociarDuplicados);
+            setFooter(acciones);
+            actualizarEstadoBoton();
+        }
+
+        private void cargarDuplicados(Long idExpediente) {
+            idExpedientePrincipalDuplicados = idExpediente;
+            if (idExpediente == null) {
+                duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
+                modeloDuplicados.setRowCount(0);
+                lblEstadoAsociar.setText("Seleccione un expediente en la bandeja.");
+                actualizarEstadoBoton();
+                return;
+            }
+            lblEstadoAsociar.setText("Buscando posibles duplicados...");
+            final long sequence = ++secuenciaCargaDuplicados;
+            SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker = new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {
+                @Override
+                protected List<ExpedienteRelacionadoDTO> doInBackground() throws Exception {
+                    return relacionadoDeteccionService.listarPosiblesRelacionados(idExpediente);
+                }
+
+                @Override
+                protected void done() {
+                    if (sequence != secuenciaCargaDuplicados) {
+                        return;
+                    }
+                    try {
+                        duplicadosActuales = get();
+                    } catch (Exception ex) {
+                        duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
+                        lblEstadoAsociar.setText(mensajeError(ex));
+                    }
+                    modeloDuplicados.setRowCount(0);
+                    for (ExpedienteRelacionadoDTO relacionado : duplicadosActuales) {
+                        modeloDuplicados.addRow(new Object[]{
+                                Boolean.TRUE,
+                                relacionado.getNumeroExpediente(),
+                                relacionado.getTitular(),
+                                (relacionado.getTipoActa() + " " + relacionado.getNumeroActa()).trim(),
+                                relacionado.getMotivoCoincidencia()
+                        });
+                    }
+                    if (duplicadosActuales.isEmpty()) {
+                        lblEstadoAsociar.setText("No se detectaron posibles duplicados.");
+                    } else {
+                        lblEstadoAsociar.setText(duplicadosActuales.size() + " posible(s) duplicado(s) detectado(s).");
+                    }
+                    actualizarEstadoBoton();
+                }
+            };
+            worker.execute();
+        }
+
+        private void actualizarEstadoBoton() {
+            btnAsociarDuplicados.setEnabled(idExpedientePrincipalDuplicados != null && !duplicadosActuales.isEmpty());
+        }
+
+        private void asociarSeleccionados() {
+            if (idExpedientePrincipalDuplicados == null || duplicadosActuales.isEmpty()) {
+                return;
+            }
+            final List<Long> ids = new ArrayList<Long>();
+            for (int i = 0; i < modeloDuplicados.getRowCount() && i < duplicadosActuales.size(); i++) {
+                Boolean marcado = (Boolean) modeloDuplicados.getValueAt(i, 0);
+                if (Boolean.TRUE.equals(marcado)) {
+                    Long idRelacionado = duplicadosActuales.get(i).getIdExpediente();
+                    if (idRelacionado != null) {
+                        ids.add(idRelacionado);
+                    }
+                }
+            }
+            if (ids.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        JPanelBandejaExpedientesNueva.this,
+                        "Seleccione al menos un duplicado para asociar.",
+                        "Asociar duplicados",
+                        JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    JPanelBandejaExpedientesNueva.this,
+                    "Se asociarán " + ids.size() + " expediente(s) como duplicados del expediente principal seleccionado.\n"
+                            + "¿Desea continuar?",
+                    "Asociar duplicados",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (confirmacion != JOptionPane.YES_OPTION) {
+                return;
+            }
+            final Long idPrincipal = idExpedientePrincipalDuplicados;
+            btnAsociarDuplicados.setEnabled(false);
+            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    relacionadoService.asociarRelacionados(
+                            idPrincipal, ids, "Documento duplicado asociado desde Recepción por misma acta y titular.");
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        refrescar();
+                        cargarDuplicados(idPrincipal);
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                "Duplicados asociados correctamente.",
+                                "Asociar duplicados",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                ex.getMessage() == null ? "No se pudo asociar los duplicados." : ex.getMessage(),
+                                "Asociar duplicados",
+                                JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        actualizarEstadoBoton();
+                    }
+                }
+            };
+            worker.execute();
         }
     }
 

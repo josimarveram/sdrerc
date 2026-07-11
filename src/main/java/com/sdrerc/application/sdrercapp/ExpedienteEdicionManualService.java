@@ -3,6 +3,7 @@ package com.sdrerc.application.sdrercapp;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteEdicionManualDTO;
 import com.sdrerc.domain.dto.sdrercapp.RegistroManualResultadoDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.ExpedienteEdicionManualDAO;
+import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ public class ExpedienteEdicionManualService {
 
     private final RegistroManualValidacionService validacionService;
     private final ExpedienteEdicionManualDAO edicionManualDAO;
+    private final UsuarioAsignacionService usuarioAsignacionService = new UsuarioAsignacionService();
 
     public ExpedienteEdicionManualService() {
         this(new RegistroManualValidacionService(), new ExpedienteEdicionManualDAO());
@@ -61,5 +63,21 @@ public class ExpedienteEdicionManualService {
             throw new IllegalArgumentException(String.join(" | ", errores));
         }
         return edicionManualDAO.guardarDesdeAnalisis(dto);
+    }
+
+    public RegistroManualResultadoDTO eliminar(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para eliminar.");
+        }
+        return edicionManualDAO.eliminar(idExpediente, resolverUsuarioActualSdrercApp());
+    }
+
+    private Long resolverUsuarioActualSdrercApp() {
+        try {
+            String username = SessionContext.getUsername();
+            return usuarioAsignacionService.obtenerIdUsuarioActivoPorUsername(username);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 }

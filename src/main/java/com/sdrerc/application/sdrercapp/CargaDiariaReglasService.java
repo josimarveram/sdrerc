@@ -87,6 +87,10 @@ public class CargaDiariaReglasService {
                 item.agregarMensaje("Número de acta obligatorio.");
                 error = true;
             }
+            if (!hasText(item.getNumeroExpedienteSgd())) {
+                item.agregarMensaje("N° expediente SGD obligatorio.");
+                error = true;
+            }
             if (!hasText(item.getTitular())) {
                 item.agregarMensaje("Titular obligatorio.");
                 error = true;

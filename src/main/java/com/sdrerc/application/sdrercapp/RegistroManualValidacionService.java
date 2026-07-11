@@ -25,7 +25,7 @@ public class RegistroManualValidacionService {
         validarSolicitud(registro.getSolicitud(), errores);
         validarActa(registro.getActa(), errores);
         validarPersona("Titular", registro.getTitular(), true, errores);
-        validarPersona("Remitente", registro.getRemitente(), true, errores);
+        validarPersona("Solicitante", registro.getRemitente(), true, errores);
         return errores;
     }
 
@@ -50,11 +50,17 @@ public class RegistroManualValidacionService {
         if (!hasText(solicitud.getTipoDocumentoNombre())) {
             errores.add("Tipo de documento obligatorio.");
         }
+        if (!hasText(solicitud.getNumeroExpedienteSgd())) {
+            errores.add("N° expediente SGD obligatorio.");
+        }
     }
 
     private void validarActa(DatosActaDTO acta, List<String> errores) {
         if (!hasText(acta.getNumeroActa())) {
             errores.add("Número de acta obligatorio.");
+        }
+        if (!hasText(acta.getTipoActaNombre())) {
+            errores.add("Tipo de acta obligatorio.");
         }
         if (acta.getAnioActa() != null && (acta.getAnioActa() < 1900 || acta.getAnioActa() > LocalDate.now().getYear() + 1)) {
             errores.add("Año del acta fuera de rango.");
