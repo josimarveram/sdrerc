@@ -37,6 +37,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
@@ -171,7 +172,7 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         tablaHijo.setDefaultRenderer(Object.class, textoRenderer);
 
         tablaPadre.getColumnModel().getColumn(PADRE_COL_FECHA).setCellEditor(new FechaCellEditor());
-        tablaPadre.getColumnModel().getColumn(PADRE_COL_COMENTARIO).setCellEditor(new DefaultCellEditor(new JTextField()));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_COMENTARIO).setCellEditor(new TextAreaCellEditor());
         tablaPadre.getColumnModel().getColumn(PADRE_COL_NUMERO).setCellEditor(new DefaultCellEditor(new JTextField()));
 
         tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellRenderer(
@@ -646,6 +647,68 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             editingRow = row;
             button.setEnabled(table.isEnabled());
             return button;
+        }
+    }
+
+    private static class TextAreaCellEditor extends AbstractCellEditor implements TableCellEditor {
+        private static final int ALTURA_EXPANDIDA = 90;
+        private final JTextArea area = new JTextArea();
+        private final JScrollPane scroll;
+        private JTable tablaActual;
+        private int filaActual = -1;
+        private int alturaOriginal;
+
+        TextAreaCellEditor() {
+            area.setLineWrap(true);
+            area.setWrapStyleWord(true);
+            area.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            area.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+            scroll = new JScrollPane(area);
+            scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.PRIMARY));
+            scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return area.getText();
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            area.setText(value == null ? "" : String.valueOf(value));
+            tablaActual = table;
+            filaActual = row;
+            alturaOriginal = table.getRowHeight(row);
+            if (alturaOriginal < ALTURA_EXPANDIDA) {
+                table.setRowHeight(row, ALTURA_EXPANDIDA);
+            }
+            return scroll;
+        }
+
+        @Override
+        public boolean stopCellEditing() {
+            restaurarAltura();
+            return super.stopCellEditing();
+        }
+
+        @Override
+        public void cancelCellEditing() {
+            restaurarAltura();
+            super.cancelCellEditing();
+        }
+
+        private void restaurarAltura() {
+            if (tablaActual != null && filaActual >= 0) {
+                tablaActual.setRowHeight(filaActual, alturaOriginal);
+            }
+            tablaActual = null;
+            filaActual = -1;
         }
     }
 

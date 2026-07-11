@@ -112,9 +112,10 @@ public class JPanelVerificacionV2 extends JPanel {
     private static final int COL_EXPANDIR = 0;
     private static final int COL_DIAS = 1;
     private static final int COL_EXPEDIENTE = 2;
-    private static final int COL_RESULTADO = 8;
-    private static final int COL_ESTADO = 9;
-    private static final int COL_ASOCIADOS = 10;
+    private static final int COL_RESULTADO = 6;
+    private static final int COL_ESTADO = 8;
+    private static final int COL_ASOCIADOS = 9;
+    private static final int COL_TITULAR = 10;
     private static final int COL_ID = 11;
     private static final int PANEL_VERIFICACION_ANCHO_MINIMO = 380;
     private static final int PANEL_VERIFICACION_ANCHO_NORMAL = 430;
@@ -829,7 +830,7 @@ public class JPanelVerificacionV2 extends JPanel {
         AppV2TableColumnSizer.applyFriendlyDefaults(table);
         AppV2TableColumnSizer.applyWidths(
                 table,
-                46, 88, 185, 150, 145, 200, 260, 210, 150, 155, 160, 0);
+                46, 88, 185, 150, 145, 200, 150, 210, 155, 160, 260, 0);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMinWidth(42);
         table.getColumnModel().getColumn(COL_EXPANDIR).setPreferredWidth(46);
         table.getColumnModel().getColumn(COL_EXPANDIR).setMaxWidth(48);
@@ -1135,11 +1136,11 @@ public class JPanelVerificacionV2 extends JPanel {
             item.getNumeroExpedienteSgd(),
             formatDate(item.getFechaRecepcion()),
             item.getTipoDocumentoPendiente().isEmpty() ? "-" : item.getTipoDocumentoPendiente(),
-            item.getTitular(),
-            item.getResponsableAnalisis().isEmpty() ? item.getResponsable() : item.getResponsableAnalisis(),
             item.getUltimoResultadoAnalisis().isEmpty() ? "-" : item.getUltimoResultadoAnalisis(),
+            item.getResponsableAnalisis().isEmpty() ? item.getResponsable() : item.getResponsableAnalisis(),
             DisplayNameMapperV2.estado(item.getEstadoCodigo()),
             item.getTotalRelacionados() > 0 ? item.getTotalRelacionados() + " asociado(s)" : "Sin asociados",
+            item.getTitular(),
             item.getIdExpediente()
         });
     }
@@ -1154,11 +1155,11 @@ public class JPanelVerificacionV2 extends JPanel {
             valorUi(principal.getNumeroExpedienteSgd()),
             formatDate(asociado.getFechaRecepcion()),
             "-",
-            valorUi(asociado.getTitular()),
-            valorUi(asociado.getAbogadoAsignado()),
             "-",
+            valorUi(asociado.getAbogadoAsignado()),
             estadoAsociado(asociado),
             textoRelacionAsociada(asociado),
+            valorUi(asociado.getTitular()),
             asociado.getIdExpediente()
         });
     }
@@ -1851,8 +1852,19 @@ public class JPanelVerificacionV2 extends JPanel {
                     return;
                 }
                 try {
+                    VerificacionExpedienteDTO seleccionado = obtenerSeleccionado();
+                    String abogadoAnalisis = seleccionado == null
+                            ? ""
+                            : (seleccionado.getResponsableAnalisis().isEmpty()
+                                    ? seleccionado.getResponsable()
+                                    : seleccionado.getResponsableAnalisis()).trim();
                     for (com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario : get()) {
                         cmbUsuarioDestino.addItem(new UsuarioItem(usuario));
+                        if (!abogadoAnalisis.isEmpty()
+                                && usuario.getNombreCompleto() != null
+                                && abogadoAnalisis.equalsIgnoreCase(usuario.getNombreCompleto().trim())) {
+                            cmbUsuarioDestino.setSelectedIndex(cmbUsuarioDestino.getItemCount() - 1);
+                        }
                     }
                 } catch (Exception ex) {
                     mostrarError("No se pudieron cargar los abogados del equipo destino.", ex);
@@ -2342,11 +2354,11 @@ public class JPanelVerificacionV2 extends JPanel {
                 "N° expediente SGD",
                 "Fecha solicitud",
                 "Tipo documento",
-                "Titular",
-                "Abogado designado",
                 "Resultado",
+                "Abogado designado",
                 "Estado",
                 "Asociados",
+                "Titular",
                 "_ID"
             }, 0);
         }
