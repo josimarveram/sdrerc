@@ -90,18 +90,6 @@ public class HomeV2 extends JPanel {
         new Color(241, 243, 246)
     };
 
-    private static final String[][] MODULOS = {
-        {"Registro / Recepción", "Ingreso, carga diaria y registro manual de expedientes.", AppV2IconProvider.REGISTRO},
-        {"Asignación", "Distribución controlada de expedientes a equipos y responsables.", AppV2IconProvider.ASIGNACION},
-        {"Análisis", "Evaluación jurídica y documental de expedientes asignados.", AppV2IconProvider.ANALISIS},
-        {"Verificación", "Revisión, documento emitido y numeración dentro del control documental.", AppV2IconProvider.VERIFICACION},
-        {"Ejecución", "Seguimiento del cumplimiento de resoluciones emitidas.", AppV2IconProvider.EJECUCION},
-        {"Notificación", "Gestión de modalidades, cargos y resultados de comunicación.", AppV2IconProvider.NOTIFICACION},
-        {"Expediente digital", "Carpeta, enlace y completitud documental del expediente.", AppV2IconProvider.EXPEDIENTE_DIGITAL},
-        {"Cierre / Archivo", "Gestión final de expedientes cerrados o archivados.", AppV2IconProvider.CIERRE_ARCHIVO},
-        {"Administración", "Usuarios, roles y organización del equipo jurídico.", AppV2IconProvider.USUARIOS}
-    };
-
     private final Runnable abrirBandejaAction;
 
     public HomeV2() {
@@ -130,8 +118,6 @@ public class HomeV2 extends JPanel {
                 crearMetricas())));
         page.add(Box.createVerticalStrut(AppV2Theme.SPACE_LARGE));
         page.add(fullWidth(crearAccesosRapidos()));
-        page.add(Box.createVerticalStrut(AppV2Theme.SPACE_LARGE));
-        page.add(fullWidth(crearModulos()));
         page.add(Box.createVerticalStrut(AppV2Theme.SPACE_XL));
 
         JScrollPane scroll = new JScrollPane(page);
@@ -299,18 +285,6 @@ public class HomeV2 extends JPanel {
         return card;
     }
 
-    private JPanel crearModulos() {
-        AppV2ResponsiveGridPanel grid = new AppV2ResponsiveGridPanel(
-                300, 3, AppV2Theme.SPACE, AppV2Theme.SPACE);
-        for (String[] modulo : MODULOS) {
-            grid.add(crearModuloCard(modulo[0], modulo[1], modulo[2]));
-        }
-        return crearSeccion(
-                "Módulos principales",
-                "Áreas operativas y administrativas del sistema",
-                grid);
-    }
-
     private JPanel crearSeccion(String title, String subtitle, Component content) {
         JPanel section = new JPanel(new BorderLayout(0, 12));
         section.setOpaque(false);
@@ -365,20 +339,6 @@ public class HomeV2 extends JPanel {
 
         card.add(header, BorderLayout.NORTH);
         card.add(description, BorderLayout.CENTER);
-        return card;
-    }
-
-    private JPanel crearModuloCard(String title, String detail, String iconCode) {
-        JPanel card = baseCard();
-        card.setLayout(new BorderLayout(0, 12));
-        card.add(crearCardHeader(title, iconCode), BorderLayout.NORTH);
-        card.add(textArea(detail, AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE),
-                AppV2Theme.TEXT_SECONDARY), BorderLayout.CENTER);
-
-        JLabel status = new JLabel("Disponible");
-        status.setFont(AppV2Theme.fontBold(11));
-        status.setForeground(AppV2Theme.SUCCESS);
-        card.add(status, BorderLayout.SOUTH);
         return card;
     }
 
