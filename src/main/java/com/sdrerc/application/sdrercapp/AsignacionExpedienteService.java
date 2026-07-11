@@ -1,6 +1,7 @@
 package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
@@ -100,6 +101,34 @@ public class AsignacionExpedienteService {
                 comentario,
                 resolverUsuarioActualSdrercApp(),
                 hojasEnvioPorExpediente);
+    }
+
+    public AsignacionResultadoDTO reasignar(
+            Long idExpediente,
+            EquipoAsignacionDTO equipo,
+            UsuarioAsignableDTO abogado,
+            String numeroHojaEnvio,
+            String comentario) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para reasignar.");
+        }
+        if (equipo == null || equipo.getIdEquipo() == null) {
+            throw new IllegalArgumentException("Seleccione el equipo destino.");
+        }
+        if (abogado == null || abogado.getIdUsuario() == null) {
+            throw new IllegalArgumentException("Seleccione el abogado responsable.");
+        }
+        return asignacionExpedienteDAO.reasignarExpediente(
+                idExpediente,
+                equipo.getIdEquipo(),
+                abogado.getIdUsuario(),
+                numeroHojaEnvio,
+                comentario,
+                resolverUsuarioActualSdrercApp());
+    }
+
+    public List<AsignacionHistorialDTO> listarHistorialAsignaciones(Long idExpediente) throws SQLException {
+        return asignacionExpedienteDAO.listarHistorialAsignaciones(idExpediente);
     }
 
     public String generarNumeroExpediente(Long idExpediente) throws SQLException {

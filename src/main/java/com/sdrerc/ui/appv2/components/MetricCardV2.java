@@ -15,10 +15,12 @@ import javax.swing.JPanel;
 public class MetricCardV2 extends JPanel {
 
     private final JLabel lblValue;
+    private final JLabel lblCaption;
     private final Color baseBackground = AppV2Theme.SURFACE;
     private final Color selectedBackground = AppV2Theme.SURFACE_ALT;
     private Runnable clickAction;
     private boolean selected;
+    private boolean compact;
 
     public MetricCardV2(String title, String value, String caption, Color accent) {
         super(new BorderLayout(6, 3));
@@ -39,7 +41,7 @@ public class MetricCardV2 extends JPanel {
         lblValue.setFont(AppV2Theme.fontBold(22));
         lblValue.setForeground(AppV2Theme.TEXT_PRIMARY);
 
-        JLabel lblCaption = new JLabel(caption);
+        lblCaption = new JLabel(caption);
         lblCaption.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblCaption.setForeground(AppV2Theme.MUTED);
 
@@ -84,6 +86,23 @@ public class MetricCardV2 extends JPanel {
 
     public boolean isSelected() {
         return selected;
+    }
+
+    public void setCompact(boolean compact) {
+        if (this.compact == compact) {
+            return;
+        }
+        this.compact = compact;
+        lblCaption.setVisible(!compact);
+        lblValue.setFont(AppV2Theme.fontBold(compact ? 16 : 22));
+        setPreferredSize(new Dimension(0, compact ? 52 : 76));
+        setMinimumSize(new Dimension(0, compact ? 46 : 68));
+        revalidate();
+        repaint();
+    }
+
+    public boolean isCompact() {
+        return compact;
     }
 
     private void instalarMouseRecursivo(Component component, MouseAdapter mouseAdapter) {

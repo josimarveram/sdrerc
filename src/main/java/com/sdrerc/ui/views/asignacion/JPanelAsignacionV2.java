@@ -108,6 +108,7 @@ public class JPanelAsignacionV2 extends JPanel {
         PENDIENTES,
         POTENCIAL_DUPLICADO,
         POSIBLE_GRUPO_FAMILIAR,
+        GRUPO_FAMILIAR_CONFIRMADO,
         POR_VENCER,
         VENCIDOS
     }
@@ -159,6 +160,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final Color PANEL_ASSIGNMENT_ACCENT = new Color(10, 118, 145);
     private static final Color GRID_ACTION_ICON_BLUE = AppV2Theme.PRIMARY;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_HORA_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final Color[] GROUP_STRIPE_COLORS = new Color[]{
         new Color(30, 59, 97),
         new Color(56, 88, 128),
@@ -196,8 +198,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JSpinner spnLimite = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnBuscar = new JButton("Buscar");
     private final JButton btnLimpiar = new JButton("Limpiar");
+    private final JButton btnEditarRegistro = new JButton("Editar");
+    private final JButton btnEliminarRegistro = new JButton("Eliminar");
+    private final com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService edicionManualService =
+            new com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService();
     private final JButton btnLimpiarCartasRespuesta = new JButton("Limpiar");
-    private final JCheckBox chkSoloGrupoFamiliar = new JCheckBox("Con grupo familiar");
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
     private final JButton btnGenerarNumeroExpediente = new JButton("Generar número");
     private final JButton btnAsignarSeleccionado = new JButton("Generar asignación");
@@ -270,6 +275,23 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JTable asignacionMultipleTable = new AppV2Table(asignacionMultipleModel);
     private final JComboBox<EquipoItem> cmbEquipo = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogado = new JComboBox<UsuarioItem>();
+    private final JComboBox<EquipoItem> cmbEquipoReasignacion = new JComboBox<EquipoItem>();
+    private final JComboBox<UsuarioItem> cmbAbogadoReasignacion = new JComboBox<UsuarioItem>();
+    private final JTextField txtHojaEnvioReasignacion = new JTextField();
+    private final JButton btnReasignar = new JButton("Reasignar");
+    private final DefaultTableModel historialAsignacionModel = new DefaultTableModel(
+            new Object[]{"Abogado", "Equipo", "Hoja de envío", "Fecha", "Estado"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable tablaHistorialAsignacion = new AppV2Table(historialAsignacionModel);
+    private final AppV2TablePanel panelHistorialAsignacion = new AppV2TablePanel(
+            tablaHistorialAsignacion, "Sin historial de asignación", "Aún no hay asignaciones registradas para este expediente.");
+    private boolean cargandoCombosReasignacion;
+    private long secuenciaCargaAbogadosReasignacion;
+    private long secuenciaHistorialAsignacion;
     private CartaRespuestaTreeGridPanelV2 cartasRespuestaTreePanel;
     private final DefaultTableModel bandejaCartasRespuestaModel = new DefaultTableModel(
             new Object[]{
@@ -335,6 +357,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Para asignación", AppV2Theme.INFO);
     private final MetricCardV2 cardPotencialDuplicado = new MetricCardV2("Potencial duplicado", "0", "Acta + titular", AppV2Theme.WARNING);
     private final MetricCardV2 cardPosibleGrupoFamiliar = new MetricCardV2("Posible Grupo Familiar", "0", "Apellidos coincidentes", AppV2Theme.PRIMARY);
+    private final MetricCardV2 cardGrupoFamiliarConfirmado = new MetricCardV2("Grupo Familiar Confirmado", "0", "Registrado", AppV2Theme.TEAL);
     private final MetricCardV2 cardPorVencer = new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
     private final MetricCardV2 cardVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
     private final MetricCardV2 cardCartasTotal = new MetricCardV2("Cartas", "0", "Con respuesta requerida", AppV2Theme.INFO);
@@ -382,6 +405,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean busquedaInicialEjecutada;
     private Long idExpedienteDocumentosRelacionados;
     private Long idExpedienteHojaEnvioSimple;
+    private Long idExpedienteReasignacionActual;
     private Long idExpedienteCartasRespuesta;
     private final List<AsignacionCartaRespuestaDTO> cartasRespuestaPendientes = new ArrayList<AsignacionCartaRespuestaDTO>();
     private final List<AsignacionCartaRespuestaDTO> cartasRespuestaVisibles = new ArrayList<AsignacionCartaRespuestaDTO>();
@@ -425,10 +449,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new AppV2ResponsiveGridPanel(190, 5, 12, 0);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 6, 12, 0);
         metricas.add(cardPendientes);
         metricas.add(cardPotencialDuplicado);
         metricas.add(cardPosibleGrupoFamiliar);
+        metricas.add(cardGrupoFamiliarConfirmado);
         metricas.add(cardPorVencer);
         metricas.add(cardVencidos);
         return metricas;
@@ -474,6 +499,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 0,
                 PANEL_ASIGNACION_ANCHO_MINIMO + PANEL_ASIGNACION_TAB_OVERHANG,
                 PANEL_ASIGNACION_ANCHO_NORMAL + PANEL_ASIGNACION_TAB_OVERHANG);
+        splitOperativo.setOnExpandChanged(this::aplicarCompactacionKpisBandeja);
 
         panelOperativo.setOpaque(false);
         panelOperativo.add(splitOperativo, BorderLayout.CENTER);
@@ -528,9 +554,8 @@ public class JPanelAsignacionV2 extends JPanel {
         JPanel acciones = AppV2ActionPanel.right();
         acciones.add(btnBuscar);
         acciones.add(btnLimpiar);
-        chkSoloGrupoFamiliar.setText("");
-        chkSoloGrupoFamiliar.setToolTipText(
-                "Mostrar únicamente solicitudes identificadas o alertadas como grupo familiar.");
+        acciones.add(btnEditarRegistro);
+        acciones.add(btnEliminarRegistro);
         return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
                 "Búsqueda",
                 txtBusqueda,
@@ -538,7 +563,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 fechaSolicitudDesde,
                 fechaSolicitudHasta,
                 cmbEstado,
-                chkSoloGrupoFamiliar,
+                null,
                 spnLimite);
     }
 
@@ -680,6 +705,9 @@ public class JPanelAsignacionV2 extends JPanel {
         panel.addSection(sectionAccionesRelacionados);
         panel.addSection(sectionDecisionNumero);
         sectionDecisionNumero.setVisible(false);
+        panel.addSection(crearReasignacionAsignacion());
+        panel.addSection(crearHistorialAsignacion());
+        cargarEquiposReasignacion();
         return panel;
     }
 
@@ -964,6 +992,205 @@ public class JPanelAsignacionV2 extends JPanel {
         return section;
     }
 
+    private AppV2SideSectionPanel crearReasignacionAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Reasignar abogado");
+        txtHojaEnvioReasignacion.setToolTipText("Nueva hoja de envío para la reasignación (no reutiliza la anterior).");
+        section.addRow("N° hoja de envío", txtHojaEnvioReasignacion);
+        section.addRow("Equipo destino", cmbEquipoReasignacion);
+        section.addRow("Abogado destino", cmbAbogadoReasignacion);
+        AppV2Theme.estilizarBotonSecundario(btnReasignar);
+        btnReasignar.setEnabled(false);
+        btnReasignar.setToolTipText("Reasigna el expediente seleccionado a un abogado distinto con una nueva hoja de envío.");
+        btnReasignar.addActionListener(e -> reasignarSeleccionado());
+        section.addRow("Acción", btnReasignar);
+        cmbEquipoReasignacion.addActionListener(e -> {
+            if (!cargandoCombosReasignacion) {
+                cargarAbogadosReasignacion();
+            }
+        });
+        return section;
+    }
+
+    private AppV2SideSectionPanel crearHistorialAsignacion() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Historial de asignación / reasignación");
+        tablaHistorialAsignacion.setRowHeight(28);
+        tablaHistorialAsignacion.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        AppV2TableColumnSizer.applyWidths(tablaHistorialAsignacion, 160, 160, 130, 140, 110);
+        JPanel content = new JPanel(new BorderLayout());
+        content.setOpaque(false);
+        content.setPreferredSize(new Dimension(320, 180));
+        content.add(panelHistorialAsignacion, BorderLayout.CENTER);
+        section.addContent(content);
+        return section;
+    }
+
+    private void cargarEquiposReasignacion() {
+        cargandoCombosReasignacion = true;
+        cmbEquipoReasignacion.removeAllItems();
+        cmbEquipoReasignacion.addItem(EquipoItem.placeholder("Seleccione equipo"));
+        cmbAbogadoReasignacion.removeAllItems();
+        cmbAbogadoReasignacion.addItem(UsuarioItem.placeholder("Seleccione abogado"));
+        SwingWorker<List<EquipoAsignacionDTO>, Void> worker = new SwingWorker<List<EquipoAsignacionDTO>, Void>() {
+            @Override
+            protected List<EquipoAsignacionDTO> doInBackground() throws Exception {
+                return usuarioService.listarEquiposActivos();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    for (EquipoAsignacionDTO equipo : get()) {
+                        cmbEquipoReasignacion.addItem(new EquipoItem(equipo));
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los equipos para reasignación.", ex);
+                } finally {
+                    cargandoCombosReasignacion = false;
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarAbogadosReasignacion() {
+        Object seleccionado = cmbEquipoReasignacion.getSelectedItem();
+        EquipoAsignacionDTO equipo = seleccionado instanceof EquipoItem ? ((EquipoItem) seleccionado).equipo : null;
+        final long solicitud = ++secuenciaCargaAbogadosReasignacion;
+        cmbAbogadoReasignacion.removeAllItems();
+        cmbAbogadoReasignacion.addItem(UsuarioItem.placeholder("Seleccione abogado"));
+        if (equipo == null) {
+            return;
+        }
+        final Long idEquipoSolicitado = equipo.getIdEquipo();
+        SwingWorker<List<UsuarioAsignableDTO>, Void> worker = new SwingWorker<List<UsuarioAsignableDTO>, Void>() {
+            @Override
+            protected List<UsuarioAsignableDTO> doInBackground() throws Exception {
+                return usuarioService.listarAbogadosAsignables(idEquipoSolicitado);
+            }
+
+            @Override
+            protected void done() {
+                if (solicitud != secuenciaCargaAbogadosReasignacion) {
+                    return;
+                }
+                try {
+                    cargandoCombosReasignacion = true;
+                    for (UsuarioAsignableDTO abogado : get()) {
+                        cmbAbogadoReasignacion.addItem(new UsuarioItem(abogado));
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los abogados del equipo destino.", ex);
+                } finally {
+                    cargandoCombosReasignacion = false;
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarHistorialAsignacion(Long idExpediente) {
+        idExpedienteReasignacionActual = idExpediente;
+        historialAsignacionModel.setRowCount(0);
+        btnReasignar.setEnabled(idExpediente != null);
+        if (idExpediente == null) {
+            return;
+        }
+        final long solicitud = ++secuenciaHistorialAsignacion;
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO> doInBackground() throws Exception {
+                return asignacionService.listarHistorialAsignaciones(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (solicitud != secuenciaHistorialAsignacion || !idExpediente.equals(idExpedienteReasignacionActual)) {
+                    return;
+                }
+                try {
+                    for (com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO item : get()) {
+                        historialAsignacionModel.addRow(new Object[]{
+                                item.getAbogado().isEmpty() ? "-" : item.getAbogado(),
+                                item.getEquipo().isEmpty() ? "-" : item.getEquipo(),
+                                item.getNumeroHojaEnvio().isEmpty() ? "-" : item.getNumeroHojaEnvio(),
+                                item.getFechaAsignacion() == null ? "-" : item.getFechaAsignacion().format(DATE_HORA_FORMAT),
+                                item.isActiva()
+                                        ? (item.isReasignacionExcepcional() ? "Activa (reasignación)" : "Activa")
+                                        : "Histórica"
+                        });
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudo cargar el historial de asignación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void reasignarSeleccionado() {
+        if (idExpedienteReasignacionActual == null) {
+            mostrarInfo("Seleccione un expediente para reasignar.");
+            return;
+        }
+        Object equipoSeleccionado = cmbEquipoReasignacion.getSelectedItem();
+        Object abogadoSeleccionado = cmbAbogadoReasignacion.getSelectedItem();
+        EquipoAsignacionDTO equipo = equipoSeleccionado instanceof EquipoItem ? ((EquipoItem) equipoSeleccionado).equipo : null;
+        UsuarioAsignableDTO abogado = abogadoSeleccionado instanceof UsuarioItem ? ((UsuarioItem) abogadoSeleccionado).usuario : null;
+        if (equipo == null) {
+            mostrarInfo("Seleccione el equipo destino para la reasignación.");
+            return;
+        }
+        if (abogado == null) {
+            mostrarInfo("Seleccione el abogado destino para la reasignación.");
+            return;
+        }
+        String hoja = txtHojaEnvioReasignacion.getText() == null ? "" : txtHojaEnvioReasignacion.getText().trim();
+        if (hoja.isEmpty() || hoja.equals("-")) {
+            mostrarInfo("Ingrese una hoja de envío.");
+            txtHojaEnvioReasignacion.requestFocusInWindow();
+            return;
+        }
+        final Long idExpediente = idExpedienteReasignacionActual;
+        final String hojaFinal = hoja;
+        int confirmacion = JOptionPane.showConfirmDialog(
+                this,
+                "Se reasignará el expediente al equipo/abogado seleccionado con una nueva hoja de envío. ¿Desea continuar?",
+                "Reasignar abogado",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) {
+            return;
+        }
+        setTrabajando(true, "Reasignando expediente...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                asignacionService.reasignar(idExpediente, equipo, abogado, hojaFinal, txtComentario.getText());
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setTrabajando(false, null);
+                try {
+                    get();
+                    txtHojaEnvioReasignacion.setText("");
+                    cargarHistorialAsignacion(idExpediente);
+                    buscar();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            "El expediente fue reasignado correctamente.",
+                            "Reasignar abogado",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo reasignar el expediente.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private AppV2SideSectionPanel crearFlujoAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Flujo operativo");
         section.addRow("Origen", lblOrigen);
@@ -1046,10 +1273,6 @@ public class JPanelAsignacionV2 extends JPanel {
         txtHojaEnvioAsignacion.setMinimumSize(new Dimension(180, 34));
         txtHojaEnvioAsignacion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         txtHojaEnvioAsignacion.setToolTipText("Número de hoja de envío de la asignación.");
-        chkSoloGrupoFamiliar.setOpaque(false);
-        chkSoloGrupoFamiliar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        chkSoloGrupoFamiliar.setForeground(AppV2Theme.TEXT_PRIMARY);
-        chkSoloGrupoFamiliar.setToolTipText("Filtra solicitudes marcadas o alertadas como grupo familiar.");
         configurarLabelsDatosExpediente();
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblGrupoFamiliar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -1060,6 +1283,10 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2Theme.estilizarBotonPrimario(btnGenerarNumeroExpediente);
         btnGenerarNumeroExpediente.setEnabled(false);
         btnGenerarNumeroExpediente.setToolTipText("Disponible solo para Reconsideración/Apelación registrada sin número.");
+        btnEditarRegistro.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnEditarRegistro.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado.");
+        btnEliminarRegistro.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
+        btnEliminarRegistro.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado.");
     }
 
     private void configurarLabelsDatosExpediente() {
@@ -1278,6 +1505,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
+        btnEditarRegistro.addActionListener(e -> editarRegistroSeleccionado());
+        btnEliminarRegistro.addActionListener(e -> eliminarRegistroSeleccionado());
         txtBusquedaCartasRespuesta.getDocument().addDocumentListener(simpleDocumentListener(this::aplicarBusquedaCartasRespuesta));
         btnLimpiarCartasRespuesta.addActionListener(e -> limpiarBusquedaCartasRespuesta());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
@@ -1539,12 +1768,11 @@ public class JPanelAsignacionV2 extends JPanel {
         setTrabajando(true, "Consultando expedientes según filtros...");
         String texto = txtBusqueda.getText();
         String estado = codigoSeleccionado(cmbEstado);
-        boolean soloGrupoFamiliar = chkSoloGrupoFamiliar.isSelected();
         int limite = ((Number) spnLimite.getValue()).intValue();
         SwingWorker<List<AsignacionExpedienteDTO>, Void> worker = new SwingWorker<List<AsignacionExpedienteDTO>, Void>() {
             @Override
             protected List<AsignacionExpedienteDTO> doInBackground() throws Exception {
-                return asignacionService.buscarExpedientes(texto, estado, desde, hasta, limite, soloGrupoFamiliar);
+                return asignacionService.buscarExpedientes(texto, estado, desde, hasta, limite, false);
             }
 
             @Override
@@ -1628,6 +1856,8 @@ public class JPanelAsignacionV2 extends JPanel {
                 return item.isPotencialDuplicado();
             case POSIBLE_GRUPO_FAMILIAR:
                 return item.isPosibleGrupoFamiliar();
+            case GRUPO_FAMILIAR_CONFIRMADO:
+                return item.isGrupoFamiliar();
             case POR_VENCER:
                 Long dias = item.getDiasRestantes();
                 return dias != null && dias >= 0 && dias <= 5;
@@ -1643,6 +1873,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardPendientes.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.PENDIENTES));
         cardPotencialDuplicado.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.POTENCIAL_DUPLICADO));
         cardPosibleGrupoFamiliar.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.POSIBLE_GRUPO_FAMILIAR));
+        cardGrupoFamiliarConfirmado.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.GRUPO_FAMILIAR_CONFIRMADO));
         cardPorVencer.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.POR_VENCER));
         cardVencidos.setOnClick(() -> activarKpiBandeja(FiltroKpiBandeja.VENCIDOS));
 
@@ -1659,6 +1890,16 @@ public class JPanelAsignacionV2 extends JPanel {
         marcarKpisBandeja();
         marcarKpisCartas();
         marcarKpisCarga();
+    }
+
+    private void aplicarCompactacionKpisBandeja() {
+        boolean compacto = splitOperativo != null && splitOperativo.isSideExpanded();
+        cardPendientes.setCompact(compacto);
+        cardPotencialDuplicado.setCompact(compacto);
+        cardPosibleGrupoFamiliar.setCompact(compacto);
+        cardGrupoFamiliarConfirmado.setCompact(compacto);
+        cardPorVencer.setCompact(compacto);
+        cardVencidos.setCompact(compacto);
     }
 
     private void activarKpiBandeja(FiltroKpiBandeja filtro) {
@@ -1684,6 +1925,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardPendientes.setSelected(kpiBandejaActiva == FiltroKpiBandeja.PENDIENTES);
         cardPotencialDuplicado.setSelected(kpiBandejaActiva == FiltroKpiBandeja.POTENCIAL_DUPLICADO);
         cardPosibleGrupoFamiliar.setSelected(kpiBandejaActiva == FiltroKpiBandeja.POSIBLE_GRUPO_FAMILIAR);
+        cardGrupoFamiliarConfirmado.setSelected(kpiBandejaActiva == FiltroKpiBandeja.GRUPO_FAMILIAR_CONFIRMADO);
         cardPorVencer.setSelected(kpiBandejaActiva == FiltroKpiBandeja.POR_VENCER);
         cardVencidos.setSelected(kpiBandejaActiva == FiltroKpiBandeja.VENCIDOS);
     }
@@ -1806,6 +2048,7 @@ public class JPanelAsignacionV2 extends JPanel {
         int pendientes = 0;
         int potencialDuplicado = 0;
         int posibleGrupoFamiliar = 0;
+        int grupoFamiliarConfirmado = 0;
         int porVencer = 0;
         int vencidos = 0;
         if (items != null) {
@@ -1819,6 +2062,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 if (contienePosibleGrupoFamiliar(item)) {
                     posibleGrupoFamiliar++;
                 }
+                if (item.isGrupoFamiliar()) {
+                    grupoFamiliarConfirmado++;
+                }
                 Long dias = item.getDiasRestantes();
                 if (dias != null && dias < 0) {
                     vencidos++;
@@ -1830,6 +2076,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardPendientes.setValue(String.valueOf(pendientes));
         cardPotencialDuplicado.setValue(String.valueOf(potencialDuplicado));
         cardPosibleGrupoFamiliar.setValue(String.valueOf(posibleGrupoFamiliar));
+        cardGrupoFamiliarConfirmado.setValue(String.valueOf(grupoFamiliarConfirmado));
         cardPorVencer.setValue(String.valueOf(porVencer));
         cardVencidos.setValue(String.valueOf(vencidos));
         marcarKpisBandeja();
@@ -2016,7 +2263,6 @@ public class JPanelAsignacionV2 extends JPanel {
         txtBusqueda.setText("");
         restaurarFechasBusqueda();
         cmbEstado.setSelectedIndex(0);
-        chkSoloGrupoFamiliar.setSelected(false);
         spnLimite.setValue(200);
         expedientes.clear();
         filasTabla.clear();
@@ -2035,6 +2281,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardPendientes.setValue("0");
         cardPotencialDuplicado.setValue("0");
         cardPosibleGrupoFamiliar.setValue("0");
+        cardGrupoFamiliarConfirmado.setValue("0");
         cardPorVencer.setValue("0");
         cardVencidos.setValue("0");
         marcarKpisBandeja();
@@ -2407,6 +2654,105 @@ public class JPanelAsignacionV2 extends JPanel {
         dialog.setVisible(true);
     }
 
+    private void editarRegistroSeleccionado() {
+        AsignacionExpedienteDTO item = obtenerExpedienteFoco();
+        if (item == null) {
+            mostrarInfo("Seleccione un expediente para editar.");
+            return;
+        }
+        if (!item.isAsignable()) {
+            mostrarInfo("Solo se permite editar expedientes en estado Registrado y sin asignación a abogado.");
+            return;
+        }
+        mostrarEdicionManualAsignacion(item.getIdExpediente());
+    }
+
+    private void mostrarEdicionManualAsignacion(final Long idExpediente) {
+        if (tabsBandejas == null || idExpediente == null) {
+            return;
+        }
+        com.sdrerc.ui.views.registrorecepcion.JPanelRegistroManualRecepcionV2 panelEdicion =
+                new com.sdrerc.ui.views.registrorecepcion.JPanelRegistroManualRecepcionV2(
+                        idExpediente,
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                restaurarBandejaAsignacionTrasEdicion();
+                            }
+                        },
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                restaurarBandejaAsignacionTrasEdicion();
+                            }
+                        },
+                        false);
+        if (tabsBandejas.getTabCount() > 3) {
+            tabsBandejas.removeTabAt(3);
+        }
+        tabsBandejas.addTab("Edición manual", panelEdicion);
+        tabsBandejas.setSelectedIndex(3);
+    }
+
+    private void restaurarBandejaAsignacionTrasEdicion() {
+        if (tabsBandejas == null) {
+            return;
+        }
+        if (tabsBandejas.getTabCount() > 3) {
+            tabsBandejas.removeTabAt(3);
+        }
+        tabsBandejas.setSelectedIndex(TAB_BANDEJA_ASIGNACION);
+        buscar();
+    }
+
+    private void eliminarRegistroSeleccionado() {
+        AsignacionExpedienteDTO item = obtenerExpedienteFoco();
+        if (item == null) {
+            mostrarInfo("Seleccione un expediente para eliminar.");
+            return;
+        }
+        if (!item.isAsignable()) {
+            mostrarInfo("Solo se permite eliminar expedientes en estado Registrado y sin asignación a abogado.");
+            return;
+        }
+        int confirmacion = JOptionPane.showConfirmDialog(
+                this,
+                "Esta acción eliminará el registro seleccionado (baja lógica, quedará excluido de las bandejas). ¿Desea continuar?",
+                "Eliminar registro",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) {
+            return;
+        }
+        final Long idExpediente = item.getIdExpediente();
+        setTrabajando(true, "Eliminando registro...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                edicionManualService.eliminar(idExpediente);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setTrabajando(false, null);
+                try {
+                    get();
+                    limpiarSeleccion();
+                    buscar();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            "El registro fue eliminado correctamente.",
+                            "Eliminar registro",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo eliminar el registro seleccionado.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void asociarRelacionadosRapido() {
         finalizarEdicionTabla();
         AsociacionRapidaSeleccion seleccion = obtenerSeleccionAsociacionRapida();
@@ -2559,13 +2905,18 @@ public class JPanelAsignacionV2 extends JPanel {
         return ids;
     }
 
+    private static boolean esHojaEnvioVacia(String valor) {
+        String normalizado = valor == null ? "" : valor.trim();
+        return normalizado.isEmpty() || normalizado.equals("-");
+    }
+
     private Map<Long, String> obtenerHojaEnvioAsignacionSimple(Long idExpediente) {
         String hoja = txtHojaEnvioAsignacion.getText() == null
                 ? ""
                 : txtHojaEnvioAsignacion.getText().trim();
         txtHojaEnvioAsignacion.setText(hoja);
-        if (hoja.isEmpty()) {
-            mostrarInfo("Ingrese el número de hoja de envío de la asignación.");
+        if (esHojaEnvioVacia(hoja)) {
+            mostrarInfo("Ingrese una hoja de envío.");
             txtHojaEnvioAsignacion.requestFocusInWindow();
             return null;
         }
@@ -2580,8 +2931,8 @@ public class JPanelAsignacionV2 extends JPanel {
         Set<String> normalizados = new HashSet<>();
         for (Long id : ids) {
             String hoja = hojasEnvioAsignacionMultiple.get(id);
-            if (hoja == null || hoja.trim().isEmpty()) {
-                mostrarInfo("Ingrese el número de hoja de envío para todos los expedientes seleccionados.");
+            if (esHojaEnvioVacia(hoja)) {
+                mostrarInfo("Ingrese una hoja de envío.");
                 enfocarHojaEnvioPendiente(id);
                 return null;
             }
@@ -2820,6 +3171,7 @@ public class JPanelAsignacionV2 extends JPanel {
         actualizarTituloPanelAsignacion(filaPanel, modoMultiple);
         if (modoMultiple) {
             prepararHojaEnvioSimple(null);
+            cargarHistorialAsignacion(null);
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(null, true);
             cargarPanelAsignacionMultiple(obtenerExpedientesMarcados());
@@ -2844,6 +3196,7 @@ public class JPanelAsignacionV2 extends JPanel {
         } else if (filaPanel != null && filaPanel.esPrincipal()) {
             AsignacionExpedienteDTO item = filaPanel.principal;
             prepararHojaEnvioSimple(item);
+            cargarHistorialAsignacion(item.getIdExpediente());
             cargarPanelAsignacionMultiple(Collections.singletonList(item));
             aplicarIdentidadVisual(item, false);
             lblExpedienteSeleccionado.setText(numeroExpedienteVisual(item));
@@ -2887,6 +3240,7 @@ public class JPanelAsignacionV2 extends JPanel {
             actualizarDecisionNumero(item);
         } else if (filaPanel != null && filaPanel.esAsociada()) {
             prepararHojaEnvioSimple(null);
+            cargarHistorialAsignacion(null);
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(filaPanel.principal, false);
             lblExpedienteSeleccionado.setText("Expediente principal: " + filaPanel.numeroExpedientePrincipal());

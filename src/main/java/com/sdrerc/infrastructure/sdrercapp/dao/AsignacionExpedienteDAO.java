@@ -5,6 +5,7 @@ import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
 import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
 import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
+import com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
@@ -36,6 +37,7 @@ public class AsignacionExpedienteDAO {
     private static final String CODIGO_ETAPA_DESTINO = "ASIGNACION";
     private static final String CODIGO_ESTADO_DESTINO = "ASIGNADO";
     private static final String CODIGO_MOVIMIENTO = "ASIGNACION_ABOGADO";
+    private static final String CODIGO_MOVIMIENTO_REASIGNACION = "REASIGNACION_ABOGADO";
     private static final String CODIGO_MOVIMIENTO_GENERACION_NUMERO = "GENERACION_CODIGO_EXPEDIENTE";
     private static final String CODIGO_MOVIMIENTO_EDICION_DATOS = "RECEPCION_DOCUMENTO";
     private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
@@ -329,7 +331,8 @@ public class AsignacionExpedienteDAO {
                             hojasNormalizadas.get(idExpediente),
                             comentario,
                             idUsuarioAsignador,
-                            soportaNumeroHojaEnvio);
+                            soportaNumeroHojaEnvio,
+                            false);
                     actualizarExpediente(
                             conn,
                             idExpediente,
@@ -374,6 +377,170 @@ public class AsignacionExpedienteDAO {
                 idsUnicos.size(),
                 idsUnicos.size() + " expediente(s) asignado(s) correctamente.",
                 detalles);
+    }
+
+    public AsignacionResultadoDTO reasignarExpediente(
+            Long idExpediente,
+            Long idEquipoNuevo,
+            Long idAbogadoNuevo,
+            String numeroHojaEnvioNuevo,
+            String comentario,
+            Long idUsuarioAsignador) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para reasignar.");
+        }
+        if (idEquipoNuevo == null) {
+            throw new IllegalArgumentException("Seleccione el equipo destino.");
+        }
+        if (idAbogadoNuevo == null) {
+            throw new IllegalArgumentException("Seleccione el abogado responsable.");
+        }
+        if (esHojaEnvioVacia(numeroHojaEnvioNuevo)) {
+            throw new IllegalArgumentException("Ingrese una hoja de envío.");
+        }
+        String hojaEnvio = numeroHojaEnvioNuevo.trim();
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteEdicionDatos expediente = bloquearExpedienteParaEdicionDatos(conn, idExpediente);
+                if (!tieneAsignacionActiva(conn, idExpediente)) {
+                    throw new SQLException("El expediente no tiene una asignación activa para reasignar.");
+                }
+                boolean soportaNumeroHojaEnvio = soportaNumeroHojaEnvio(conn);
+                if (!soportaNumeroHojaEnvio) {
+                    throw new SQLException("La base de datos aún no tiene EXPEDIENTE_ASIGNACION.NUMERO_HOJA_ENVIO. Ejecute el script 26_patch_expediente_asignacion_hoja_envio.sql.");
+                }
+                validarHojaEnvioNoRegistrada(conn, hojaEnvio);
+                validarEquipoActivo(conn, idEquipoNuevo);
+                validarAbogadoAsignable(conn, idAbogadoNuevo, idEquipoNuevo);
+
+                desactivarAsignacionesActivas(conn, idExpediente, idUsuarioAsignador);
+
+                Long idAsignacion = insertarAsignacion(
+                        conn,
+                        idExpediente,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        expediente.idEtapa,
+                        hojaEnvio,
+                        comentario,
+                        idUsuarioAsignador,
+                        true,
+                        true);
+
+                actualizarExpediente(
+                        conn,
+                        idExpediente,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idUsuarioAsignador);
+
+                Long idMovimiento = requerirId(
+                        catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_REASIGNACION),
+                        "movimiento " + CODIGO_MOVIMIENTO_REASIGNACION);
+                insertarHistorial(
+                        conn,
+                        idExpediente,
+                        idMovimiento,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        idUsuarioAsignador,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idAsignacion,
+                        hasText(comentario) ? comentario : "Reasignación de expediente a nuevo abogado responsable.");
+
+                expedienteRelacionadoDAO.sincronizarAsignacionAsociados(conn, idExpediente, idUsuarioAsignador);
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return AsignacionResultadoDTO.exito(
+                        1,
+                        expediente.numeroExpediente + " reasignado correctamente.",
+                        java.util.Collections.singletonList(expediente.numeroExpediente + " reasignado."));
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    public List<AsignacionHistorialDTO> listarHistorialAsignaciones(Long idExpediente) throws SQLException {
+        List<AsignacionHistorialDTO> items = new ArrayList<AsignacionHistorialDTO>();
+        if (idExpediente == null) {
+            return items;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean soportaHoja = soportaNumeroHojaEnvio(conn);
+            String sql = "SELECT axa.id_expediente_asignacion, u.nombre_completo AS abogado, eq.nombre AS equipo, "
+                    + (soportaHoja ? "axa.numero_hoja_envio, " : "CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio, ")
+                    + "axa.fecha_asignacion, axa.activa, axa.es_reasignacion_excepcional, axa.motivo "
+                    + "FROM expediente_asignacion axa "
+                    + "LEFT JOIN usuario u ON u.id_usuario = axa.id_usuario_asignado "
+                    + "LEFT JOIN equipo eq ON eq.id_equipo = axa.id_equipo_asignado "
+                    + "WHERE axa.id_expediente = ? AND axa.activo = 1 "
+                    + "ORDER BY axa.fecha_asignacion DESC, axa.id_expediente_asignacion DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        items.add(new AsignacionHistorialDTO(
+                                getLongOrNull(rs, "id_expediente_asignacion"),
+                                rs.getString("abogado"),
+                                rs.getString("equipo"),
+                                rs.getString("numero_hoja_envio"),
+                                toLocalDateTime(rs.getTimestamp("fecha_asignacion")),
+                                rs.getInt("activa") == 1,
+                                rs.getInt("es_reasignacion_excepcional") == 1,
+                                rs.getString("motivo")));
+                    }
+                }
+            }
+        }
+        return items;
+    }
+
+    private void desactivarAsignacionesActivas(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_asignacion SET activa = 0, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND activa = 1 AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setLongOrNull(ps, 1, idUsuario);
+            ps.setLong(2, idExpediente);
+            ps.executeUpdate();
+        }
+    }
+
+    private void validarHojaEnvioNoRegistrada(Connection conn, String hojaEnvio) throws SQLException {
+        String normalizada = normalizarHojaEnvio(hojaEnvio);
+        if (normalizada == null) {
+            return;
+        }
+        String sql = "SELECT 1 FROM expediente_asignacion "
+                + "WHERE activo = 1 "
+                + "AND numero_hoja_envio IS NOT NULL "
+                + "AND UPPER(TRIM(numero_hoja_envio)) = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, normalizada);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    throw new SQLException("El número de hoja de envío " + hojaEnvio.trim() + " ya se encuentra registrado en otra asignación.");
+                }
+            }
+        }
+    }
+
+    private static boolean esHojaEnvioVacia(String valor) {
+        String normalizado = valor == null ? "" : valor.trim();
+        return normalizado.isEmpty() || normalizado.equals("-");
     }
 
     public String generarNumeroExpediente(Long idExpediente, Long idUsuario) throws SQLException {
@@ -849,7 +1016,8 @@ public class AsignacionExpedienteDAO {
             String numeroHojaEnvio,
             String comentario,
             Long idUsuarioAsignador,
-            boolean soportaNumeroHojaEnvio) throws SQLException {
+            boolean soportaNumeroHojaEnvio,
+            boolean esReasignacion) throws SQLException {
         if (!soportaNumeroHojaEnvio) {
             return insertarAsignacionSinHojaEnvio(
                     conn,
@@ -858,20 +1026,22 @@ public class AsignacionExpedienteDAO {
                     idEquipo,
                     idEtapa,
                     comentario,
-                    idUsuarioAsignador);
+                    idUsuarioAsignador,
+                    esReasignacion);
         }
         String sql = "INSERT INTO expediente_asignacion ("
                 + "id_expediente, id_usuario_asignado, id_equipo_asignado, id_etapa, fecha_asignacion, "
                 + "activa, es_abogado_principal, es_reasignacion_excepcional, numero_hoja_envio, motivo, activo, creado_por, creado_en"
-                + ") VALUES (?, ?, ?, ?, SYSTIMESTAMP, 1, 1, 0, ?, ?, 1, ?, SYSTIMESTAMP)";
+                + ") VALUES (?, ?, ?, ?, SYSTIMESTAMP, 1, 1, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_ASIGNACION"})) {
             ps.setLong(1, idExpediente);
             ps.setLong(2, idAbogado);
             ps.setLong(3, idEquipo);
             ps.setLong(4, idEtapa);
-            ps.setString(5, limitar(numeroHojaEnvio, 120));
-            ps.setString(6, limitar(comentario, 1000));
-            setLongOrNull(ps, 7, idUsuarioAsignador);
+            ps.setInt(5, esReasignacion ? 1 : 0);
+            ps.setString(6, limitar(numeroHojaEnvio, 120));
+            ps.setString(7, limitar(comentario, 1000));
+            setLongOrNull(ps, 8, idUsuarioAsignador);
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente_asignacion");
         }
@@ -884,18 +1054,20 @@ public class AsignacionExpedienteDAO {
             Long idEquipo,
             Long idEtapa,
             String comentario,
-            Long idUsuarioAsignador) throws SQLException {
+            Long idUsuarioAsignador,
+            boolean esReasignacion) throws SQLException {
         String sql = "INSERT INTO expediente_asignacion ("
                 + "id_expediente, id_usuario_asignado, id_equipo_asignado, id_etapa, fecha_asignacion, "
                 + "activa, es_abogado_principal, es_reasignacion_excepcional, motivo, activo, creado_por, creado_en"
-                + ") VALUES (?, ?, ?, ?, SYSTIMESTAMP, 1, 1, 0, ?, 1, ?, SYSTIMESTAMP)";
+                + ") VALUES (?, ?, ?, ?, SYSTIMESTAMP, 1, 1, ?, ?, 1, ?, SYSTIMESTAMP)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_ASIGNACION"})) {
             ps.setLong(1, idExpediente);
             ps.setLong(2, idAbogado);
             ps.setLong(3, idEquipo);
             ps.setLong(4, idEtapa);
-            ps.setString(5, limitar(comentario, 1000));
-            setLongOrNull(ps, 6, idUsuarioAsignador);
+            ps.setInt(5, esReasignacion ? 1 : 0);
+            ps.setString(6, limitar(comentario, 1000));
+            setLongOrNull(ps, 7, idUsuarioAsignador);
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "expediente_asignacion");
         }

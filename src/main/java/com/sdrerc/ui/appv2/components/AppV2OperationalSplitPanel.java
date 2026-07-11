@@ -29,6 +29,7 @@ public class AppV2OperationalSplitPanel extends JPanel {
     private boolean sideVisible;
     private boolean adjustingDivider;
     private boolean sideExpanded;
+    private Runnable onExpandChanged;
 
     public AppV2OperationalSplitPanel(
             Component mainComponent,
@@ -97,6 +98,7 @@ public class AppV2OperationalSplitPanel extends JPanel {
             sideExpanded = false;
             return;
         }
+        boolean previousExpanded = sideExpanded;
         if (expanded) {
             if (!sideExpanded) {
                 normalSideWidth = clampSideWidth(currentSideWidth);
@@ -108,10 +110,17 @@ public class AppV2OperationalSplitPanel extends JPanel {
             sideExpanded = false;
         }
         applyDividerLocationLater();
+        if (previousExpanded != sideExpanded && onExpandChanged != null) {
+            onExpandChanged.run();
+        }
     }
 
     public boolean isSideExpanded() {
         return sideExpanded;
+    }
+
+    public void setOnExpandChanged(Runnable onExpandChanged) {
+        this.onExpandChanged = onExpandChanged;
     }
 
     private void showSide() {
