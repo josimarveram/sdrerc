@@ -158,7 +158,8 @@ Pestanas superiores:
 Reglas principales:
 
 - Carga diaria y registro manual detectan duplicidad solo por `numero de acta + titular completo`.
-- Duplicados se registran para trazabilidad, pero no generan numero de expediente hasta resolverse en Asignacion.
+- Duplicados se registran para trazabilidad, pero no generan numero de expediente hasta resolverse (asociacion confirmada).
+- La asociacion de duplicados puede resolverse desde Registro (lengueta "Asociar duplicados" en el panel de Registro) o desde Asignacion (lengueta "Asociar"); ambas reutilizan el mismo servicio de asociacion.
 - Reconsideracion y Apelacion se registran sin numero; Asignacion decide asociar o generar numero.
 - Numero SDRERC visible: `SDRERC-EXP-YYYY-000001`.
 - No usar `id_expediente` como correlativo visible.
@@ -167,6 +168,7 @@ Reglas principales:
 - Si canal es `Mesa de partes virtual`, habilitar `Nro. tramite web`.
 - Si canal no es `Mesa de partes virtual`, bloquear y mostrar `SIN TRAMITE`.
 - `N° expediente SGD` vive en el bloque `Datos del expediente`.
+- `N° expediente SGD` y `Tipo de acta` son obligatorios en Registro manual, Edicion manual y Carga diaria.
 - `Tipo documento` de solicitud debe normalizar equivalencias con y sin tilde.
 
 KPIs vigentes en Bandeja Registro:
@@ -252,7 +254,8 @@ Panel derecho Asignacion:
 - Accion principal: `Generar asignacion`.
 - No usar popup si la captura ya esta en el panel.
 - La grilla de asignacion debe listar todos los expedientes seleccionados y permitir hoja de envio por expediente.
-- Hoja de envio se persiste en `EXPEDIENTE_ASIGNACION.NUMERO_HOJA_ENVIO` y debe ser unica.
+- Hoja de envio se persiste en `EXPEDIENTE_ASIGNACION.NUMERO_HOJA_ENVIO` y debe ser unica. Un valor vacio o solo un guion (`-`) se considera hoja de envio no ingresada.
+- `Asociar` incluye la reasignacion de expediente a otro abogado/equipo: exige hoja de envio nueva (no sobrescribe la anterior), desactiva la asignacion vigente conservando su historial y muestra una grilla de historial de asignaciones/reasignaciones del expediente.
 
 Cartas de respuesta:
 
