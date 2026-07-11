@@ -15,9 +15,13 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFFooter;
 import org.apache.poi.xwpf.usermodel.XWPFHeader;
@@ -31,6 +35,9 @@ public class AnalisisPlantillaDocumentoService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final String DOCX_EXTENSION = ".docx";
+    private static final Pattern PATRON_SI = Pattern.compile(
+            "\\[\\[SI_(ACTA|PROCEDIMIENTO):([^\\]]*)\\]\\]", Pattern.CASE_INSENSITIVE);
+    private static final String MARCADOR_FIN_SI = "[[FIN_SI]]";
 
     public Path generarDocumento(
             AnalisisExpedienteDTO expediente,
@@ -39,7 +46,7 @@ public class AnalisisPlantillaDocumentoService {
         Path plantilla = resolverPlantilla(documento);
         Files.createDirectories(destino.toAbsolutePath().getParent());
         if (plantilla.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(DOCX_EXTENSION)) {
-            generarDocx(plantilla, destino, valores(expediente, documento));
+            generarDocx(plantilla, destino, expediente, valores(expediente, documento));
         } else {
             Files.copy(plantilla, destino, StandardCopyOption.REPLACE_EXISTING);
         }
@@ -96,9 +103,14 @@ public class AnalisisPlantillaDocumentoService {
         return tipo + "_" + numero + "_" + LocalDate.now().toString() + extension;
     }
 
-    private void generarDocx(Path plantilla, Path destino, Map<String, String> valores) throws IOException {
+    private void generarDocx(
+            Path plantilla,
+            Path destino,
+            AnalisisExpedienteDTO expediente,
+            Map<String, String> valores) throws IOException {
         try (InputStream in = Files.newInputStream(plantilla);
                 XWPFDocument document = new XWPFDocument(in)) {
+            aplicarCondicionales(document, expediente);
             reemplazarParrafos(document.getParagraphs(), valores);
             for (XWPFTable table : document.getTables()) {
                 reemplazarTabla(table, valores);
@@ -119,6 +131,78 @@ public class AnalisisPlantillaDocumentoService {
                 document.write(out);
             }
         }
+    }
+
+    /**
+     * Permite condicionar parrafos dentro de una misma plantilla segun el tipo de
+     * acta o el procedimiento registral del expediente, usando marcadores de texto:
+     * [[SI_ACTA:Valor1|Valor2]] ... [[FIN_SI]]
+     * [[SI_PROCEDIMIENTO:Valor1|Valor2]] ... [[FIN_SI]]
+     * Los parrafos marcador siempre se eliminan; el contenido entre ellos se
+     * conserva solo si el expediente coincide con alguno de los valores listados.
+     */
+    private void aplicarCondicionales(XWPFDocument document, AnalisisExpedienteDTO expediente) {
+        List<XWPFParagraph> paragraphs = document.getParagraphs();
+        String tipoActaActual = normalizarClave(expediente.getTipoActa());
+        String procedimientoActual = normalizarClave(expediente.getProcedimiento());
+        List<Integer> aEliminar = new ArrayList<Integer>();
+        int i = 0;
+        while (i < paragraphs.size()) {
+            String texto = paragraphs.get(i).getText() == null ? "" : paragraphs.get(i).getText().trim();
+            Matcher matcher = PATRON_SI.matcher(texto);
+            if (matcher.matches()) {
+                int fin = buscarFinSi(paragraphs, i + 1);
+                if (fin < 0) {
+                    i++;
+                    continue;
+                }
+                boolean coincide = coincideCriterio(
+                        matcher.group(1).toUpperCase(Locale.ROOT),
+                        matcher.group(2),
+                        tipoActaActual,
+                        procedimientoActual);
+                aEliminar.add(i);
+                if (!coincide) {
+                    for (int j = i + 1; j < fin; j++) {
+                        aEliminar.add(j);
+                    }
+                }
+                aEliminar.add(fin);
+                i = fin + 1;
+                continue;
+            }
+            i++;
+        }
+        for (int idx = aEliminar.size() - 1; idx >= 0; idx--) {
+            int pos = document.getPosOfParagraph(paragraphs.get(aEliminar.get(idx)));
+            if (pos >= 0) {
+                document.removeBodyElement(pos);
+            }
+        }
+    }
+
+    private int buscarFinSi(List<XWPFParagraph> paragraphs, int desde) {
+        for (int k = desde; k < paragraphs.size(); k++) {
+            String texto = paragraphs.get(k).getText() == null ? "" : paragraphs.get(k).getText().trim();
+            if (MARCADOR_FIN_SI.equalsIgnoreCase(texto)) {
+                return k;
+            }
+        }
+        return -1;
+    }
+
+    private boolean coincideCriterio(
+            String criterio, String valoresCriterio, String tipoActaActual, String procedimientoActual) {
+        String objetivo = "ACTA".equals(criterio) ? tipoActaActual : procedimientoActual;
+        if (objetivo.isEmpty()) {
+            return false;
+        }
+        for (String valorEsperado : valoresCriterio.split("\\|")) {
+            if (normalizarClave(valorEsperado).equals(objetivo)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void reemplazarTabla(XWPFTable table, Map<String, String> valores) {

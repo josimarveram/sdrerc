@@ -111,7 +111,8 @@ public class JPanelAnalisisV2 extends JPanel {
         EN_ANALISIS,
         CARTA_INTERMEDIA,
         OBSERVADOS,
-        VENCIMIENTO_CRITICO
+        VENCIMIENTO_CRITICO,
+        GRUPO_FAMILIAR_CONFIRMADO
     }
 
     private static final int COL_EXPANDIR = 0;
@@ -275,6 +276,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private final MetricCardV2 cardCartaIntermedia = new MetricCardV2("Con carta intermedia", "0", "Documentos guardados", AppV2Theme.INDIGO);
     private final MetricCardV2 cardObservados = new MetricCardV2("Observados", "0", "Requieren subsanación", AppV2Theme.WARNING);
     private final MetricCardV2 cardVencimiento = new MetricCardV2("Por vencer / vencidos", "0", "Días hábiles críticos", AppV2Theme.ERROR);
+    private final MetricCardV2 cardGrupoFamiliarConfirmado = new MetricCardV2("Grupo Familiar Confirmado", "0", "Registrado", AppV2Theme.TEAL);
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelAnalisis;
     private AppV2SideActionPanel panelDatosAnalisis;
@@ -316,12 +318,13 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new AppV2ResponsiveGridPanel(190, 5, 12, 0);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 6, 12, 0);
         metricas.add(cardPorRecibir);
         metricas.add(cardEnAnalisis);
         metricas.add(cardCartaIntermedia);
         metricas.add(cardObservados);
         metricas.add(cardVencimiento);
+        metricas.add(cardGrupoFamiliarConfirmado);
         return metricas;
     }
 
@@ -391,9 +394,9 @@ public class JPanelAnalisisV2 extends JPanel {
             }
         });
         panel.setAccentColor(new Color(10, 118, 145));
+        panel.addSection(crearFormularioAnalisis());
         panel.addSection(crearResumenAnalisisUnico());
         panel.addSection(crearDocumentosPanel());
-        panel.addSection(crearFormularioAnalisis());
         panel.setFooter(crearAccionesPanelAnalisis());
         return panel;
     }
@@ -495,7 +498,7 @@ public class JPanelAnalisisV2 extends JPanel {
         tabDocumentosAnalisis.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                seleccionarTabAnalisis(TAB_ANALISIS_DOCUMENTOS);
+                abrirLenguetaAnalisisDocumentos();
             }
         });
         wrapper.add(tabDatosAnalisis);
@@ -995,6 +998,11 @@ public class JPanelAnalisisV2 extends JPanel {
                     if (splitOperativo != null) {
                         splitOperativo.setSideVisible(true);
                     }
+                    AnalisisTableRow filaDoble = filaTabla(table.convertRowIndexToModel(viewRow));
+                    if (filaDoble != null && filaDoble.esAsociada()) {
+                        seleccionarTabAnalisis(TAB_ANALISIS_DATOS);
+                    }
+                    actualizarSeleccion();
                     actualizarVisibilidadPanelAnalisis();
                 }
             }
@@ -1027,7 +1035,8 @@ public class JPanelAnalisisV2 extends JPanel {
                         documentoService.listarTiposDocumentoAnalizado(),
                         documentoService.listarEstadosDocumento(),
                         analisisService.listarTiposObservacion(),
-                        analisisService.listarMotivosNoCorresponde());
+                        analisisService.listarMotivosNoCorresponde(),
+                        documentoService.listarCodigosTipoDocumentoIntermedio());
             }
 
             @Override
@@ -1064,6 +1073,7 @@ public class JPanelAnalisisV2 extends JPanel {
         cargarSimpleItems(cmbMotivoNoCorresponde, carga.motivosNoCorresponde, "Seleccione motivo");
         if (documentosTreePanel != null) {
             documentosTreePanel.setCatalogos(carga.tiposDocumento, carga.estadosDocumento);
+            documentosTreePanel.setTiposIntermedios(carga.tiposIntermedios);
         }
     }
 
@@ -1141,6 +1151,7 @@ public class JPanelAnalisisV2 extends JPanel {
         int cartasIntermedias = 0;
         int observados = 0;
         int vencimientoCritico = 0;
+        int grupoFamiliarConfirmado = 0;
         for (AnalisisExpedienteDTO item : expedientes) {
             if (item.isRecibible()) {
                 porRecibir++;
@@ -1157,12 +1168,16 @@ public class JPanelAnalisisV2 extends JPanel {
             if (item.getDiasEnEtapa() != null && item.getDiasEnEtapa() <= 3) {
                 vencimientoCritico++;
             }
+            if (item.isGrupoFamiliar()) {
+                grupoFamiliarConfirmado++;
+            }
         }
         cardPorRecibir.setValue(String.valueOf(porRecibir));
         cardEnAnalisis.setValue(String.valueOf(enAnalisis));
         cardCartaIntermedia.setValue(String.valueOf(cartasIntermedias));
         cardObservados.setValue(String.valueOf(observados));
         cardVencimiento.setValue(String.valueOf(vencimientoCritico));
+        cardGrupoFamiliarConfirmado.setValue(String.valueOf(grupoFamiliarConfirmado));
         marcarKpis();
         cargarTablaVisible(visibles);
         lblEstado.setText(items.isEmpty()
@@ -1209,6 +1224,8 @@ public class JPanelAnalisisV2 extends JPanel {
                 return "OBSERVADO".equalsIgnoreCase(item.getEstadoCodigo());
             case VENCIMIENTO_CRITICO:
                 return item.getDiasEnEtapa() != null && item.getDiasEnEtapa() <= 3;
+            case GRUPO_FAMILIAR_CONFIRMADO:
+                return item.isGrupoFamiliar();
             case TODOS:
             default:
                 return true;
@@ -1221,6 +1238,7 @@ public class JPanelAnalisisV2 extends JPanel {
         cardCartaIntermedia.setOnClick(() -> activarKpi(FiltroKpi.CARTA_INTERMEDIA));
         cardObservados.setOnClick(() -> activarKpi(FiltroKpi.OBSERVADOS));
         cardVencimiento.setOnClick(() -> activarKpi(FiltroKpi.VENCIMIENTO_CRITICO));
+        cardGrupoFamiliarConfirmado.setOnClick(() -> activarKpi(FiltroKpi.GRUPO_FAMILIAR_CONFIRMADO));
         marcarKpis();
     }
 
@@ -1236,6 +1254,7 @@ public class JPanelAnalisisV2 extends JPanel {
         cardCartaIntermedia.setSelected(kpiActivo == FiltroKpi.CARTA_INTERMEDIA);
         cardObservados.setSelected(kpiActivo == FiltroKpi.OBSERVADOS);
         cardVencimiento.setSelected(kpiActivo == FiltroKpi.VENCIMIENTO_CRITICO);
+        cardGrupoFamiliarConfirmado.setSelected(kpiActivo == FiltroKpi.GRUPO_FAMILIAR_CONFIRMADO);
     }
 
     private void limpiar() {
@@ -1262,6 +1281,7 @@ public class JPanelAnalisisV2 extends JPanel {
         cardCartaIntermedia.setValue("0");
         cardObservados.setValue("0");
         cardVencimiento.setValue("0");
+        cardGrupoFamiliarConfirmado.setValue("0");
         marcarKpis();
         lblEstado.setText("Filtros limpiados. Presione Buscar para consultar expedientes de análisis.");
         panelAnalisisCerradoPorUsuario = false;
@@ -1600,7 +1620,6 @@ public class JPanelAnalisisV2 extends JPanel {
         lblExpedienteDigital.setText("Registro de enlace/carpeta se gestiona desde el módulo Expediente digital.");
         cargarDocumentosAsociadosPanel(item);
         cargarAnalisisRegistrado(item);
-        preguntarRecepcionSiCorresponde(item);
     }
 
     private void limpiarDatosExpedienteAnalisis() {
@@ -1913,6 +1932,15 @@ public class JPanelAnalisisV2 extends JPanel {
         actualizarLenguetasAnalisis();
         revalidate();
         repaint();
+    }
+
+    private void abrirLenguetaAnalisisDocumentos() {
+        AnalisisTableRow fila = obtenerFilaSeleccionada();
+        AnalisisExpedienteDTO item = fila != null && fila.esPrincipal() ? fila.principal : null;
+        if (item != null && item.isRecibible()) {
+            preguntarRecepcionSiCorresponde(item);
+        }
+        seleccionarTabAnalisis(TAB_ANALISIS_DOCUMENTOS);
     }
 
     private void seleccionarTabAnalisis(String tab) {
@@ -2632,10 +2660,12 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void mostrarError(String context, Exception ex) {
-        String message = ex.getMessage();
-        if (message == null && ex.getCause() != null) {
-            message = ex.getCause().getMessage();
+        Throwable causa = ex;
+        while (causa.getCause() != null
+                && (causa instanceof java.util.concurrent.ExecutionException || causa.getMessage() == null)) {
+            causa = causa.getCause();
         }
+        String message = causa.getMessage();
         JOptionPane.showMessageDialog(
                 this,
                 context + (message == null ? "" : "\n" + message),
@@ -3030,18 +3060,21 @@ public class JPanelAnalisisV2 extends JPanel {
         private final List<CatalogoItemDTO> estadosDocumento;
         private final List<CatalogoItemDTO> tiposObservacion;
         private final List<CatalogoItemDTO> motivosNoCorresponde;
+        private final java.util.Set<String> tiposIntermedios;
 
         private CatalogosCarga(
                 List<CatalogoItemDTO> resultados,
                 List<CatalogoItemDTO> tiposDocumento,
                 List<CatalogoItemDTO> estadosDocumento,
                 List<CatalogoItemDTO> tiposObservacion,
-                List<CatalogoItemDTO> motivosNoCorresponde) {
+                List<CatalogoItemDTO> motivosNoCorresponde,
+                java.util.Set<String> tiposIntermedios) {
             this.resultados = resultados == null ? new ArrayList<CatalogoItemDTO>() : resultados;
             this.tiposDocumento = tiposDocumento == null ? new ArrayList<CatalogoItemDTO>() : tiposDocumento;
             this.estadosDocumento = estadosDocumento == null ? new ArrayList<CatalogoItemDTO>() : estadosDocumento;
             this.tiposObservacion = tiposObservacion == null ? new ArrayList<CatalogoItemDTO>() : tiposObservacion;
             this.motivosNoCorresponde = motivosNoCorresponde == null ? new ArrayList<CatalogoItemDTO>() : motivosNoCorresponde;
+            this.tiposIntermedios = tiposIntermedios == null ? new java.util.HashSet<String>() : tiposIntermedios;
         }
     }
 }

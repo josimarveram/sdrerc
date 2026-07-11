@@ -24,9 +24,6 @@ public class AnalisisValidacionService {
         if (!noCorresponde && registro.getIncorporado() == null) {
             errores.add("Seleccione si el acta está incorporada.");
         }
-        if (!hasText(registro.getFundamento())) {
-            errores.add("Ingrese el sustento o conclusión del análisis.");
-        }
         List<DocumentoAnalizadoDTO> documentosRegistro = registro.getDocumentosAnalizados();
         if (!noCorresponde && !tieneDocumentosActivos(documentosRegistro)) {
             errores.add("Agregue al menos un documento analizado.");
@@ -41,10 +38,6 @@ public class AnalisisValidacionService {
             }
             if (!hasText(documento.getEstadoDocumentoCodigo())) {
                 errores.add("Seleccione el estado de cada documento analizado.");
-                break;
-            }
-            if (!hasText(documento.getDescripcion())) {
-                errores.add("Ingrese la descripción de cada documento analizado.");
                 break;
             }
             if (documento.getNumeroDocumento().length() > 120) {

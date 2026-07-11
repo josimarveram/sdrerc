@@ -101,6 +101,7 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
 
     private List<CatalogoItemDTO> tipos = new ArrayList<CatalogoItemDTO>();
     private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
+    private java.util.Set<String> tiposIntermedios = new java.util.HashSet<String>();
     private Long idExpediente;
     private Long idExpedienteAnalisis;
     private DocumentoRow padreSeleccionado;
@@ -134,6 +135,11 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         tablaPadre.getColumnModel().getColumn(PADRE_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.tipos)));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_ESTADO_DOCUMENTO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.estados)));
         tablaHijo.getColumnModel().getColumn(HIJO_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.tipos)));
+    }
+
+    public void setTiposIntermedios(java.util.Set<String> tiposIntermedios) {
+        this.tiposIntermedios = tiposIntermedios == null ? new java.util.HashSet<String>() : tiposIntermedios;
+        padreModel.tiposIntermedios = this.tiposIntermedios;
     }
 
     public void setDocumentos(Long idExpediente, Long idExpedienteAnalisis, List<DocumentoAnalizadoDTO> documentos) {
@@ -514,6 +520,11 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
     }
 
     private CatalogoItemDTO primerEstado() {
+        for (CatalogoItemDTO estado : estados) {
+            if (estado != null && "EN_PROYECTO".equalsIgnoreCase(estado.getCodigo())) {
+                return estado;
+            }
+        }
         return estados.isEmpty() ? new CatalogoItemDTO("", "") : estados.get(0);
     }
 
@@ -598,6 +609,11 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
             "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
             "Comentario", "¿Requiere respuesta?", "", "", ""
         };
+        private java.util.Set<String> tiposIntermedios = new java.util.HashSet<String>();
+
+        private boolean esTipoIntermedio(CatalogoItemDTO tipo) {
+            return tipo != null && tipo.getCodigo() != null && tiposIntermedios.contains(tipo.getCodigo());
+        }
 
         void setRows(List<DocumentoRow> nuevas) {
             rows.clear();
@@ -672,6 +688,10 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                 case PADRE_COL_TIPO:
                     if (value instanceof CatalogoItemDTO) {
                         row.tipo = (CatalogoItemDTO) value;
+                        if (esTipoIntermedio(row.tipo)) {
+                            row.requiereRespuesta = true;
+                            row.estadoRespuesta = "PENDIENTE";
+                        }
                     }
                     break;
                 case PADRE_COL_NUMERO:
@@ -1018,13 +1038,22 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
     }
 
     private static class TextAreaCellEditor extends AbstractCellEditor implements TableCellEditor {
+        private static final int ALTURA_EXPANDIDA = 90;
         private final JTextArea area = new JTextArea();
+        private final JScrollPane scroll;
+        private JTable tablaActual;
+        private int filaActual = -1;
+        private int alturaOriginal;
 
         TextAreaCellEditor() {
             area.setLineWrap(true);
             area.setWrapStyleWord(true);
             area.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
             area.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+            scroll = new JScrollPane(area);
+            scroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.PRIMARY));
+            scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         }
 
         @Override
@@ -1040,7 +1069,33 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                 int row,
                 int column) {
             area.setText(value == null ? "" : String.valueOf(value));
-            return area;
+            tablaActual = table;
+            filaActual = row;
+            alturaOriginal = table.getRowHeight(row);
+            if (alturaOriginal < ALTURA_EXPANDIDA) {
+                table.setRowHeight(row, ALTURA_EXPANDIDA);
+            }
+            return scroll;
+        }
+
+        @Override
+        public boolean stopCellEditing() {
+            restaurarAltura();
+            return super.stopCellEditing();
+        }
+
+        @Override
+        public void cancelCellEditing() {
+            restaurarAltura();
+            super.cancelCellEditing();
+        }
+
+        private void restaurarAltura() {
+            if (tablaActual != null && filaActual >= 0) {
+                tablaActual.setRowHeight(filaActual, alturaOriginal);
+            }
+            tablaActual = null;
+            filaActual = -1;
         }
     }
 

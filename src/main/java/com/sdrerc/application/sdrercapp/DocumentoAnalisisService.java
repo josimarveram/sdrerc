@@ -9,6 +9,7 @@ import com.sdrerc.infrastructure.sdrercapp.dao.DocumentoAnalisisDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 
 public class DocumentoAnalisisService {
 
@@ -36,6 +37,10 @@ public class DocumentoAnalisisService {
 
     public List<CatalogoItemDTO> listarEstadosDocumento() throws SQLException {
         return documentoAnalisisDAO.listarEstadosDocumento();
+    }
+
+    public Set<String> listarCodigosTipoDocumentoIntermedio() throws SQLException {
+        return documentoAnalisisDAO.listarCodigosTipoDocumentoIntermedio();
     }
 
     public List<DocumentoAnalizadoDTO> listarDocumentosAnalizados(Long idExpediente) throws SQLException {

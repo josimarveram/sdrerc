@@ -16,8 +16,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class DocumentoAnalisisDAO {
 
@@ -33,6 +35,24 @@ public class DocumentoAnalisisDAO {
 
     public List<CatalogoItemDTO> listarTiposDocumentoAnalizado() throws SQLException {
         return catalogoLookupDAO.listarTiposDocumentoAdjuntoAnalisis();
+    }
+
+    public Set<String> listarCodigosTipoDocumentoIntermedio() throws SQLException {
+        Set<String> codigos = new HashSet<String>();
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaClasificacionTipoDocumento(conn)) {
+                return codigos;
+            }
+            String sql = "SELECT codigo FROM tipo_documento_adjunto "
+                    + "WHERE activo = 1 AND UPPER(clasificacion) = 'INTERMEDIO'";
+            try (PreparedStatement ps = conn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    codigos.add(rs.getString("codigo"));
+                }
+            }
+        }
+        return codigos;
     }
 
     public List<CatalogoItemDTO> listarEstadosDocumento() throws SQLException {
