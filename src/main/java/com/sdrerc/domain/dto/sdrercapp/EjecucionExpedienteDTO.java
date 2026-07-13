@@ -42,6 +42,24 @@ public class EjecucionExpedienteDTO {
     private final boolean requierePublicacion;
     private final LocalDate fechaPublicacion;
     private final String accionesPermitidas;
+    private final String numeroDocumento;
+    private final String tipoDocumentoTitular;
+    private final String numeroDocumentoTitular;
+    private final String solicitante;
+    private final String tipoDocumentoSolicitante;
+    private final String numeroDocumentoSolicitante;
+    private final String correoSolicitante;
+    private final String telefonoSolicitante;
+    private final String direccionSolicitante;
+    private final String departamentoSolicitante;
+    private final String provinciaSolicitante;
+    private final String distritoSolicitante;
+    private final String canalIngreso;
+    private final String observacionSolicitud;
+    private final boolean grupoFamiliar;
+    private final String criterioGrupoFamiliar;
+    private final String observacionGrupoFamiliar;
+    private final LocalDate fechaVencimiento;
 
     public EjecucionExpedienteDTO(
             Long idExpediente,
@@ -75,7 +93,25 @@ public class EjecucionExpedienteDTO {
             LocalDateTime fechaFirmaResolucion,
             boolean requierePublicacion,
             LocalDate fechaPublicacion,
-            String accionesPermitidas) {
+            String accionesPermitidas,
+            String numeroDocumento,
+            String tipoDocumentoTitular,
+            String numeroDocumentoTitular,
+            String solicitante,
+            String tipoDocumentoSolicitante,
+            String numeroDocumentoSolicitante,
+            String correoSolicitante,
+            String telefonoSolicitante,
+            String direccionSolicitante,
+            String departamentoSolicitante,
+            String provinciaSolicitante,
+            String distritoSolicitante,
+            String canalIngreso,
+            String observacionSolicitud,
+            boolean grupoFamiliar,
+            String criterioGrupoFamiliar,
+            String observacionGrupoFamiliar,
+            LocalDate fechaVencimiento) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroExpedienteSgd = safe(numeroExpedienteSgd);
@@ -108,6 +144,24 @@ public class EjecucionExpedienteDTO {
         this.requierePublicacion = requierePublicacion;
         this.fechaPublicacion = fechaPublicacion;
         this.accionesPermitidas = safe(accionesPermitidas);
+        this.numeroDocumento = safe(numeroDocumento);
+        this.tipoDocumentoTitular = safe(tipoDocumentoTitular);
+        this.numeroDocumentoTitular = safe(numeroDocumentoTitular);
+        this.solicitante = safe(solicitante);
+        this.tipoDocumentoSolicitante = safe(tipoDocumentoSolicitante);
+        this.numeroDocumentoSolicitante = safe(numeroDocumentoSolicitante);
+        this.correoSolicitante = safe(correoSolicitante);
+        this.telefonoSolicitante = safe(telefonoSolicitante);
+        this.direccionSolicitante = safe(direccionSolicitante);
+        this.departamentoSolicitante = safe(departamentoSolicitante);
+        this.provinciaSolicitante = safe(provinciaSolicitante);
+        this.distritoSolicitante = safe(distritoSolicitante);
+        this.canalIngreso = safe(canalIngreso);
+        this.observacionSolicitud = safe(observacionSolicitud);
+        this.grupoFamiliar = grupoFamiliar;
+        this.criterioGrupoFamiliar = safe(criterioGrupoFamiliar);
+        this.observacionGrupoFamiliar = safe(observacionGrupoFamiliar);
+        this.fechaVencimiento = fechaVencimiento;
     }
 
     public Long getIdExpediente() {
@@ -236,6 +290,82 @@ public class EjecucionExpedienteDTO {
 
     public Long getDiasEnEtapa() {
         return diasRestantes;
+    }
+
+    public String getNumeroDocumento() {
+        return numeroDocumento;
+    }
+
+    public String getTipoDocumentoTitular() {
+        return tipoDocumentoTitular;
+    }
+
+    public String getNumeroDocumentoTitular() {
+        return numeroDocumentoTitular;
+    }
+
+    public String getSolicitante() {
+        return solicitante;
+    }
+
+    public String getTipoDocumentoSolicitante() {
+        return tipoDocumentoSolicitante;
+    }
+
+    public String getNumeroDocumentoSolicitante() {
+        return numeroDocumentoSolicitante;
+    }
+
+    public String getCorreoSolicitante() {
+        return correoSolicitante;
+    }
+
+    public String getTelefonoSolicitante() {
+        return telefonoSolicitante;
+    }
+
+    public String getDireccionSolicitante() {
+        return direccionSolicitante;
+    }
+
+    public String getDepartamentoSolicitante() {
+        return departamentoSolicitante;
+    }
+
+    public String getProvinciaSolicitante() {
+        return provinciaSolicitante;
+    }
+
+    public String getDistritoSolicitante() {
+        return distritoSolicitante;
+    }
+
+    public String getCanalIngreso() {
+        return canalIngreso;
+    }
+
+    public String getObservacionSolicitud() {
+        return observacionSolicitud;
+    }
+
+    public boolean isGrupoFamiliar() {
+        return grupoFamiliar;
+    }
+
+    public String getCriterioGrupoFamiliar() {
+        return criterioGrupoFamiliar;
+    }
+
+    public String getObservacionGrupoFamiliar() {
+        return observacionGrupoFamiliar;
+    }
+
+    public String getGrupoFamiliarEstado() {
+        return grupoFamiliar ? "Si" : "No";
+    }
+
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
     }
 
     public boolean hasAccion(String codigoAccion) {

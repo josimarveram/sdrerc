@@ -218,9 +218,14 @@ public class JPanelUsuariosV2 extends JPanel {
         lblUsuarioSeleccionado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblUsuarioSeleccionado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
+        JPanel titleRow = new JPanel(new BorderLayout(8, 0));
+        titleRow.setOpaque(false);
+        titleRow.add(title, BorderLayout.CENTER);
+        titleRow.add(crearBotonCerrarPanel(), BorderLayout.EAST);
+
         JPanel header = new JPanel(new BorderLayout(0, 4));
         header.setOpaque(false);
-        header.add(title, BorderLayout.NORTH);
+        header.add(titleRow, BorderLayout.NORTH);
         header.add(lblUsuarioSeleccionado, BorderLayout.CENTER);
 
         JTabbedPane tabs = new JTabbedPane();
@@ -349,8 +354,7 @@ public class JPanelUsuariosV2 extends JPanel {
         scrollUsuarios.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblUsuarios.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblUsuarios.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        tblUsuarios.getColumnModel().getColumn(0).setMaxWidth(70);
-        tblUsuarios.getColumnModel().getColumn(6).setCellRenderer(new EstadoUsuarioRenderer());
+        tblUsuarios.getColumnModel().getColumn(5).setCellRenderer(new EstadoUsuarioRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(tblUsuarios);
         AppV2ColumnFilterSupport.install("Administracion.Usuarios", tblUsuarios, scrollUsuarios, null, null);
 
@@ -473,6 +477,7 @@ public class JPanelUsuariosV2 extends JPanel {
                     usuarios.clear();
                     usuarios.addAll(get());
                     usuariosModel.fireTableDataChanged();
+                    AppV2TableColumnSizer.sizeToContent(tblUsuarios);
                     actualizarMetricas();
                     nuevoUsuario();
                     lblEstado.setText(usuarios.size() + " usuario(s) encontrado(s).");
@@ -648,6 +653,7 @@ public class JPanelUsuariosV2 extends JPanel {
                     usuarios.clear();
                     usuarios.addAll(get());
                     usuariosModel.fireTableDataChanged();
+                    AppV2TableColumnSizer.sizeToContent(tblUsuarios);
                     actualizarMetricas();
                     seleccionarUsuario(idUsuario);
                     lblEstado.setText(usuarios.size() + " usuario(s) encontrado(s).");
@@ -715,6 +721,27 @@ public class JPanelUsuariosV2 extends JPanel {
         if (splitDetalle != null) {
             splitDetalle.setSideVisible(true);
         }
+    }
+
+    private void cerrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(false);
+        }
+    }
+
+    private JButton crearBotonCerrarPanel() {
+        JButton btnCerrar = new JButton("X");
+        btnCerrar.setFocusable(false);
+        btnCerrar.setToolTipText("Ocultar panel");
+        btnCerrar.setHorizontalAlignment(SwingConstants.CENTER);
+        btnCerrar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        btnCerrar.setForeground(AppV2Theme.TEXT_SECONDARY);
+        btnCerrar.setBackground(AppV2Theme.SURFACE);
+        btnCerrar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(4, 9, 4, 9)));
+        btnCerrar.addActionListener(e -> cerrarPanelDetalle());
+        return btnCerrar;
     }
 
     private void actualizarAreaSeleccionada() {
@@ -831,7 +858,7 @@ public class JPanelUsuariosV2 extends JPanel {
     private class UsuariosTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Usuario", "Nombres", "Apellidos", "Documento", "Correo", "Estado", "Roles", "Equipo / área"
+            "Usuario", "Nombres", "Apellidos", "Documento", "Correo", "Estado", "Roles", "Equipo / área"
         };
 
         @Override
@@ -851,9 +878,6 @@ public class JPanelUsuariosV2 extends JPanel {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            if (columnIndex == 0) {
-                return Long.class;
-            }
             return String.class;
         }
 
@@ -862,22 +886,20 @@ public class JPanelUsuariosV2 extends JPanel {
             UsuarioDTO usuario = usuarios.get(rowIndex);
             switch (columnIndex) {
                 case 0:
-                    return usuario.getIdUsuario();
-                case 1:
                     return usuario.getUsername();
-                case 2:
+                case 1:
                     return usuario.getNombres();
-                case 3:
+                case 2:
                     return usuario.getApellidos();
-                case 4:
+                case 3:
                     return documento(usuario);
-                case 5:
+                case 4:
                     return usuario.getCorreo();
-                case 6:
+                case 5:
                     return usuario.isActivo() ? "Activo" : "Inactivo";
-                case 7:
+                case 6:
                     return nullToEmpty(usuario.getRolesResumen());
-                case 8:
+                case 7:
                     return equipoArea(usuario);
                 default:
                     return "";

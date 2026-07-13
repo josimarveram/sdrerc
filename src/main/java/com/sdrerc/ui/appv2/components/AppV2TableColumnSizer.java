@@ -1,13 +1,62 @@
 package com.sdrerc.ui.appv2.components;
 
+import java.awt.Component;
 import java.util.Locale;
 import javax.swing.JTable;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
 public final class AppV2TableColumnSizer {
 
+    private static final int DEFAULT_MAX_COLUMN_WIDTH = 420;
+    private static final int CELL_PADDING = 24;
+
     private AppV2TableColumnSizer() {
+    }
+
+    /**
+     * Ajusta cada columna al ancho real de su contenido (encabezado + celdas visibles),
+     * respetando un máximo por columna para no generar columnas excesivamente anchas.
+     */
+    public static void sizeToContent(JTable table) {
+        sizeToContent(table, DEFAULT_MAX_COLUMN_WIDTH);
+    }
+
+    public static void sizeToContent(JTable table, int maxColumnWidth) {
+        if (table == null || table.getColumnModel() == null) {
+            return;
+        }
+        TableColumnModel model = table.getColumnModel();
+        for (int col = 0; col < model.getColumnCount(); col++) {
+            TableColumn column = model.getColumn(col);
+            if (column.getMaxWidth() == 0) {
+                continue;
+            }
+            int width = anchoEncabezado(table, col);
+            int filas = table.getRowCount();
+            for (int row = 0; row < filas; row++) {
+                TableCellRenderer renderer = table.getCellRenderer(row, col);
+                Component comp = table.prepareRenderer(renderer, row, col);
+                width = Math.max(width, comp.getPreferredSize().width + CELL_PADDING);
+            }
+            width = Math.min(width, maxColumnWidth);
+            column.setPreferredWidth(Math.max(width, column.getMinWidth()));
+        }
+    }
+
+    private static int anchoEncabezado(JTable table, int col) {
+        if (table.getTableHeader() == null) {
+            return 0;
+        }
+        TableColumn column = table.getColumnModel().getColumn(col);
+        TableCellRenderer headerRenderer = column.getHeaderRenderer();
+        if (headerRenderer == null) {
+            headerRenderer = table.getTableHeader().getDefaultRenderer();
+        }
+        Component comp = headerRenderer.getTableCellRendererComponent(
+                table, column.getHeaderValue(), false, false, -1, col);
+        return comp.getPreferredSize().width + CELL_PADDING;
     }
 
     public static void applyWidths(JTable table, int... widths) {

@@ -1,6 +1,7 @@
 package com.sdrerc.ui.views.registrorecepcion;
 
 import com.sdrerc.application.sdrercapp.GrupoFamiliarRegistroService;
+import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.MetricCardV2;
@@ -22,6 +23,9 @@ import javax.swing.SwingWorker;
 public class JPanelRegistroRecepcionV2 extends JPanel {
 
     private static final int TAB_REGISTRO_MANUAL = 2;
+    private static final String PERMISO_BANDEJA_REGISTRO_LISTADO = "BANDEJA_REGISTRO_LISTADO";
+    private static final String PERMISO_BANDEJA_REGISTRO_CARGA_DIARIA = "BANDEJA_REGISTRO_CARGA_DIARIA";
+    private static final String PERMISO_BANDEJA_REGISTRO_MANUAL = "BANDEJA_REGISTRO_MANUAL";
 
     private final MetricCardV2 cardPotencialDuplicado = new MetricCardV2("Potencial duplicado", "0", "Acta + titular", AppV2Theme.WARNING);
     private final MetricCardV2 cardPosibleGrupoFamiliar = new MetricCardV2("Posible Grupo Familiar", "0", "Apellidos coincidentes", AppV2Theme.TEAL);
@@ -68,7 +72,25 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         tabs.addChangeListener(e -> {
             actualizarVisibilidadPanelRecepcion();
         });
+        aplicarPermisosBandejas();
         return tabs;
+    }
+
+    private void aplicarPermisosBandejas() {
+        aplicarPermisoBandeja(0, PERMISO_BANDEJA_REGISTRO_LISTADO, "No tiene permiso para ver Bandeja Registro.");
+        aplicarPermisoBandeja(1, PERMISO_BANDEJA_REGISTRO_CARGA_DIARIA, "No tiene permiso para ver Carga diaria.");
+        aplicarPermisoBandeja(
+                TAB_REGISTRO_MANUAL, PERMISO_BANDEJA_REGISTRO_MANUAL, "No tiene permiso para ver Registro manual.");
+    }
+
+    private void aplicarPermisoBandeja(int indice, String codigoPermiso, String motivo) {
+        if (tabs == null || indice < 0 || indice >= tabs.getTabCount()) {
+            return;
+        }
+        if (!SessionContext.tienePermiso(codigoPermiso)) {
+            tabs.setEnabledAt(indice, false);
+            tabs.setToolTipTextAt(indice, motivo);
+        }
     }
 
     private JPanel crearBandejaRegistro() {

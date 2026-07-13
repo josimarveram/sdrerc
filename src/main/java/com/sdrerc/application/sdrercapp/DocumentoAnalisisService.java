@@ -8,7 +8,9 @@ import com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.DocumentoAnalisisDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DocumentoAnalisisService {
@@ -39,12 +41,20 @@ public class DocumentoAnalisisService {
         return documentoAnalisisDAO.listarEstadosDocumento();
     }
 
+    public List<CatalogoItemDTO> listarResultadosValidacion() throws SQLException {
+        return documentoAnalisisDAO.listarResultadosValidacion();
+    }
+
     public Set<String> listarCodigosTipoDocumentoIntermedio() throws SQLException {
         return documentoAnalisisDAO.listarCodigosTipoDocumentoIntermedio();
     }
 
     public List<DocumentoAnalizadoDTO> listarDocumentosAnalizados(Long idExpediente) throws SQLException {
         return documentoAnalisisDAO.listarPorExpediente(idExpediente);
+    }
+
+    public boolean tieneDocumentoFinalEnDespacho(Long idExpediente) throws SQLException {
+        return documentoAnalisisDAO.tieneDocumentoFinalEnDespacho(idExpediente);
     }
 
     public List<AsignacionCartaRespuestaDTO> listarCartasRespuestaPendientes() throws SQLException {
@@ -55,6 +65,15 @@ public class DocumentoAnalisisService {
             Long idExpediente,
             DocumentoAnalizadoDTO documento) throws SQLException {
         documentoAnalisisDAO.actualizarRespuestaDocumentoAnalizado(
+                idExpediente,
+                documento,
+                resolverUsuarioActualSdrercApp());
+    }
+
+    public void guardarDocumentoJerarquico(
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento) throws SQLException {
+        documentoAnalisisDAO.guardarDocumentoJerarquico(
                 idExpediente,
                 documento,
                 resolverUsuarioActualSdrercApp());
@@ -72,8 +91,12 @@ public class DocumentoAnalisisService {
         return documentoAnalisisDAO.listarDocumentosValidacion();
     }
 
-    public void registrarValidacion(Long idDocumentoAnalizado) throws SQLException {
-        documentoAnalisisDAO.registrarValidacion(idDocumentoAnalizado, resolverUsuarioActualSdrercApp());
+    public void registrarResultadoValidacion(
+            Long idDocumentoAnalizado,
+            String resultadoCodigo,
+            String comentario) throws SQLException {
+        documentoAnalisisDAO.registrarResultadoValidacion(
+                idDocumentoAnalizado, resultadoCodigo, comentario, resolverUsuarioActualSdrercApp());
     }
 
     public List<NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion() throws SQLException {
@@ -108,6 +131,39 @@ public class DocumentoAnalisisService {
             String numeroHojaEnvio) throws SQLException {
         documentoAnalisisDAO.asignarNotificacion(
                 idsDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, numeroHojaEnvio, resolverUsuarioActualSdrercApp());
+    }
+
+    public void asignarNotificacionMultiple(
+            List<Long> idsDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Map<Long, String> hojasEnvioPorDocumento,
+            boolean reasignacion) throws SQLException {
+        documentoAnalisisDAO.asignarNotificacionMultiple(
+                idsDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, hojasEnvioPorDocumento,
+                resolverUsuarioActualSdrercApp(), reasignacion);
+    }
+
+    public void reasignarNotificacion(
+            Long idDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            String numeroHojaEnvio) throws SQLException {
+        documentoAnalisisDAO.reasignarNotificacion(
+                idDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, numeroHojaEnvio, resolverUsuarioActualSdrercApp());
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO> listarHistorialAsignacionesNotificacion(
+            Long idDocumentoAnalizado) throws SQLException {
+        return documentoAnalisisDAO.listarHistorialAsignacionesNotificacion(idDocumentoAnalizado);
+    }
+
+    public void registrarFirmaDocumentoNotificacion(
+            Long idDocumentoAnalizado,
+            String numeroDocumento,
+            LocalDate fechaEmision) throws SQLException {
+        documentoAnalisisDAO.registrarFirmaDocumentoNotificacion(
+                idDocumentoAnalizado, numeroDocumento, fechaEmision, resolverUsuarioActualSdrercApp());
     }
 
     private Long resolverUsuarioActualSdrercApp() {

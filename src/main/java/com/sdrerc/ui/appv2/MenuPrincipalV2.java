@@ -71,11 +71,42 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton botonActivo;
     private int sidebarExpandedWidth;
 
+    private static final String PERMISO_MENU_BANDEJA = "MENU_BANDEJA";
+    private static final String PERMISO_MENU_REGISTRO = "MENU_REGISTRO";
+    private static final String PERMISO_MENU_ASIGNACION = "MENU_ASIGNACION";
+    private static final String PERMISO_MENU_ANALISIS = "MENU_ANALISIS";
+    private static final String PERMISO_MENU_VERIFICACION = "MENU_VERIFICACION";
+    private static final String PERMISO_MENU_EJECUCION = "MENU_EJECUCION";
+    private static final String PERMISO_MENU_NOTIFICACION = "MENU_NOTIFICACION";
+    private static final String PERMISO_MENU_EXPEDIENTE_DIGITAL = "MENU_EXPEDIENTE_DIGITAL";
+    private static final String PERMISO_MENU_ADMIN_USUARIOS = "MENU_ADMIN_USUARIOS";
+    private static final String PERMISO_MENU_ADMIN_EQUIPO_JURIDICO = "MENU_ADMIN_EQUIPO_JURIDICO";
+    private static final String PERMISO_MENU_ADMIN_ROLES = "MENU_ADMIN_ROLES";
+    private static final String PERMISO_MENU_ADMIN_FERIADOS = "MENU_ADMIN_FERIADOS";
+    private static final String PERMISO_MENU_ADMIN_PLAZOS = "MENU_ADMIN_PLAZOS";
+
     public MenuPrincipalV2() {
         configurarVentana();
+        resolverPermisosSesion();
         AppV2CopyTextSupport.installForWindow(this);
         configurarLayout();
         mostrarInicio();
+    }
+
+    private void resolverPermisosSesion() {
+        try {
+            java.util.Set<String> permisos =
+                    new com.sdrerc.application.sdrercapp.PermisoRolService().listarCodigosPermisoUsuarioActual();
+            SessionContext.setPermisos(permisos);
+        } catch (Exception ex) {
+            SessionContext.setPermisos(null);
+        }
+    }
+
+    private void aplicarPermiso(JButton boton, String codigoPermiso) {
+        if (!SessionContext.tienePermiso(codigoPermiso)) {
+            boton.setVisible(false);
+        }
     }
 
     private void configurarVentana() {
@@ -126,48 +157,61 @@ public class MenuPrincipalV2 extends JFrame {
         opciones.add(crearSeccionMenu("Operación registral"));
         btnBandeja = crearBotonMenu("Bandeja de Expedientes", AppV2IconProvider.BANDEJA);
         btnBandeja.addActionListener(e -> mostrarBandeja(btnBandeja));
+        aplicarPermiso(btnBandeja, PERMISO_MENU_BANDEJA);
         opciones.add(btnBandeja);
         btnRegistroRecepcion = crearBotonMenu("Registro / Recepción", AppV2IconProvider.REGISTRO);
         btnRegistroRecepcion.addActionListener(e -> mostrarRegistroRecepcion(btnRegistroRecepcion));
+        aplicarPermiso(btnRegistroRecepcion, PERMISO_MENU_REGISTRO);
         opciones.add(btnRegistroRecepcion);
         btnAsignacion = crearBotonMenu("Asignación", AppV2IconProvider.ASIGNACION);
         btnAsignacion.addActionListener(e -> mostrarAsignacion(btnAsignacion));
+        aplicarPermiso(btnAsignacion, PERMISO_MENU_ASIGNACION);
         opciones.add(btnAsignacion);
         btnAnalisis = crearBotonMenu("Análisis", AppV2IconProvider.ANALISIS);
         btnAnalisis.addActionListener(e -> mostrarAnalisis(btnAnalisis));
+        aplicarPermiso(btnAnalisis, PERMISO_MENU_ANALISIS);
         opciones.add(btnAnalisis);
         btnVerificacion = crearBotonMenu("Verificación", AppV2IconProvider.VERIFICACION);
         btnVerificacion.addActionListener(e -> mostrarVerificacion(btnVerificacion));
+        aplicarPermiso(btnVerificacion, PERMISO_MENU_VERIFICACION);
         opciones.add(btnVerificacion);
         btnEjecucion = crearBotonMenu("Ejecución", AppV2IconProvider.EJECUCION);
         btnEjecucion.addActionListener(e -> mostrarEjecucion(btnEjecucion));
+        aplicarPermiso(btnEjecucion, PERMISO_MENU_EJECUCION);
         opciones.add(btnEjecucion);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Seguimiento y comunicación"));
         btnNotificacion = crearBotonMenu("Notificación", AppV2IconProvider.NOTIFICACION);
         btnNotificacion.addActionListener(e -> mostrarNotificacion(btnNotificacion));
+        aplicarPermiso(btnNotificacion, PERMISO_MENU_NOTIFICACION);
         opciones.add(btnNotificacion);
         btnExpedienteDigital = crearBotonMenu("Expediente digital", AppV2IconProvider.EXPEDIENTE_DIGITAL);
         btnExpedienteDigital.addActionListener(e -> mostrarExpedienteDigital(btnExpedienteDigital));
+        aplicarPermiso(btnExpedienteDigital, PERMISO_MENU_EXPEDIENTE_DIGITAL);
         opciones.add(btnExpedienteDigital);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Administración"));
         btnUsuarios = crearBotonMenu("Usuarios", AppV2IconProvider.USUARIOS);
         btnUsuarios.addActionListener(e -> mostrarUsuarios(btnUsuarios));
+        aplicarPermiso(btnUsuarios, PERMISO_MENU_ADMIN_USUARIOS);
         opciones.add(btnUsuarios);
         btnEquipoJuridico = crearBotonMenu("Equipo Jurídico", AppV2IconProvider.EQUIPO_JURIDICO);
         btnEquipoJuridico.addActionListener(e -> mostrarEquipoJuridico(btnEquipoJuridico));
+        aplicarPermiso(btnEquipoJuridico, PERMISO_MENU_ADMIN_EQUIPO_JURIDICO);
         opciones.add(btnEquipoJuridico);
         btnRoles = crearBotonMenu("Roles", AppV2IconProvider.ROLES);
         btnRoles.addActionListener(e -> mostrarRoles(btnRoles));
+        aplicarPermiso(btnRoles, PERMISO_MENU_ADMIN_ROLES);
         opciones.add(btnRoles);
         btnFeriados = crearBotonMenu("Feriados", AppV2IconProvider.FERIADOS);
         btnFeriados.addActionListener(e -> mostrarFeriados(btnFeriados));
+        aplicarPermiso(btnFeriados, PERMISO_MENU_ADMIN_FERIADOS);
         opciones.add(btnFeriados);
         btnPlazos = crearBotonMenu("Plazos", AppV2IconProvider.PLAZOS);
         btnPlazos.addActionListener(e -> mostrarPlazos(btnPlazos));
+        aplicarPermiso(btnPlazos, PERMISO_MENU_ADMIN_PLAZOS);
         opciones.add(btnPlazos);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 

@@ -224,9 +224,14 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         lblEquipoSeleccionado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblEquipoSeleccionado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
+        JPanel titleRow = new JPanel(new BorderLayout(8, 0));
+        titleRow.setOpaque(false);
+        titleRow.add(title, BorderLayout.CENTER);
+        titleRow.add(crearBotonCerrarPanel(), BorderLayout.EAST);
+
         JPanel header = new JPanel(new BorderLayout(0, 4));
         header.setOpaque(false);
-        header.add(title, BorderLayout.NORTH);
+        header.add(titleRow, BorderLayout.NORTH);
         header.add(lblEquipoSeleccionado, BorderLayout.CENTER);
 
         tabsDetalle.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
@@ -344,15 +349,14 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         scrollEquipos.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblEquipos.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblEquipos.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        tblEquipos.getColumnModel().getColumn(0).setPreferredWidth(54);
-        tblEquipos.getColumnModel().getColumn(1).setPreferredWidth(128);
-        tblEquipos.getColumnModel().getColumn(2).setPreferredWidth(170);
-        tblEquipos.getColumnModel().getColumn(3).setPreferredWidth(120);
-        tblEquipos.getColumnModel().getColumn(4).setPreferredWidth(160);
-        tblEquipos.getColumnModel().getColumn(5).setPreferredWidth(82);
-        tblEquipos.getColumnModel().getColumn(6).setPreferredWidth(76);
-        tblEquipos.getColumnModel().getColumn(7).setPreferredWidth(80);
-        tblEquipos.getColumnModel().getColumn(5).setCellRenderer(new EstadoRenderer());
+        tblEquipos.getColumnModel().getColumn(0).setPreferredWidth(128);
+        tblEquipos.getColumnModel().getColumn(1).setPreferredWidth(170);
+        tblEquipos.getColumnModel().getColumn(2).setPreferredWidth(120);
+        tblEquipos.getColumnModel().getColumn(3).setPreferredWidth(160);
+        tblEquipos.getColumnModel().getColumn(4).setPreferredWidth(82);
+        tblEquipos.getColumnModel().getColumn(5).setPreferredWidth(76);
+        tblEquipos.getColumnModel().getColumn(6).setPreferredWidth(80);
+        tblEquipos.getColumnModel().getColumn(4).setCellRenderer(new EstadoRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(tblEquipos);
         AppV2ColumnFilterSupport.install("Administracion.EquipoJuridico", tblEquipos, scrollEquipos, null, null);
 
@@ -528,17 +532,16 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
             equipos.addAll(nuevosEquipos);
         }
         equiposModel.fireTableDataChanged();
+        AppV2TableColumnSizer.sizeToContent(tblEquipos);
         actualizarMetricas();
         if (idSeleccionar != null && seleccionarEquipoPorId(idSeleccionar)) {
             return;
         }
-        if (!equipos.isEmpty()) {
-            tblEquipos.setRowSelectionInterval(0, 0);
-        } else {
-            limpiarFormulario(null);
-            miembros.clear();
-            miembrosModel.fireTableDataChanged();
-        }
+        tblEquipos.clearSelection();
+        limpiarFormulario(null);
+        idEquipoEditando = null;
+        miembros.clear();
+        miembrosModel.fireTableDataChanged();
         actualizarBotonesSeleccion();
     }
 
@@ -585,6 +588,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                     miembros.clear();
                     miembros.addAll(get());
                     miembrosModel.fireTableDataChanged();
+                    AppV2TableColumnSizer.sizeToContent(tblMiembros);
                 } catch (Exception ex) {
                     mostrarError("No se pudo cargar miembros del equipo.", ex);
                 } finally {
@@ -620,6 +624,27 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         if (splitDetalle != null) {
             splitDetalle.setSideVisible(true);
         }
+    }
+
+    private void cerrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(false);
+        }
+    }
+
+    private JButton crearBotonCerrarPanel() {
+        JButton btnCerrar = new JButton("X");
+        btnCerrar.setFocusable(false);
+        btnCerrar.setToolTipText("Ocultar panel");
+        btnCerrar.setHorizontalAlignment(SwingConstants.CENTER);
+        btnCerrar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        btnCerrar.setForeground(AppV2Theme.TEXT_SECONDARY);
+        btnCerrar.setBackground(AppV2Theme.SURFACE);
+        btnCerrar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(4, 9, 4, 9)));
+        btnCerrar.addActionListener(e -> cerrarPanelDetalle());
+        return btnCerrar;
     }
 
     private void llenarFormulario(EquipoJuridicoDTO equipo) {
@@ -1100,7 +1125,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private class EquiposTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Código", "Nombre", "Área", "Responsable", "Estado", "Miembros", "Abogados"
+            "Código", "Nombre", "Área", "Responsable", "Estado", "Miembros", "Abogados"
         };
 
         @Override
@@ -1123,20 +1148,18 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
             EquipoJuridicoDTO equipo = equipos.get(rowIndex);
             switch (columnIndex) {
                 case 0:
-                    return equipo.getIdEquipo();
-                case 1:
                     return equipo.getCodigo();
-                case 2:
+                case 1:
                     return equipo.getNombre();
-                case 3:
+                case 2:
                     return nullToEmpty(equipo.getAreaNombre());
-                case 4:
+                case 3:
                     return nullToEmpty(equipo.getResponsableNombre());
-                case 5:
+                case 4:
                     return equipo.isActivo() ? "Activo" : "Inactivo";
-                case 6:
+                case 5:
                     return equipo.getMiembrosActivos();
-                case 7:
+                case 6:
                     return equipo.getAbogadosActivos();
                 default:
                     return "";

@@ -23,6 +23,9 @@ import java.util.Set;
 
 public class DocumentoAnalisisDAO {
 
+    private static final String CODIGO_MOVIMIENTO_ASIGNACION_NOTIFICACION = "ASIGNACION_NOTIFICACION";
+    private static final String CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION = "REASIGNACION_NOTIFICACION";
+
     private final CatalogoLookupDAO catalogoLookupDAO;
 
     public DocumentoAnalisisDAO() {
@@ -57,6 +60,10 @@ public class DocumentoAnalisisDAO {
 
     public List<CatalogoItemDTO> listarEstadosDocumento() throws SQLException {
         return filtrarEstadosDocumentoAnalizado(catalogoLookupDAO.listarEstadosDocumento());
+    }
+
+    public List<CatalogoItemDTO> listarResultadosValidacion() throws SQLException {
+        return catalogoLookupDAO.listarResultadosValidacion();
     }
 
     public List<DocumentoAnalizadoDTO> listarPorExpediente(Long idExpediente) throws SQLException {
@@ -137,24 +144,53 @@ public class DocumentoAnalisisDAO {
         return items;
     }
 
+    private static final String CONDICION_ASIGNACION_NOTIFICACION =
+            "((UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO') "
+            + "OR (UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) IN ('EN_DESPACHO', 'VALIDADO')))";
+
+    private static final String CONDICION_VALIDACION_NOTIFICACION =
+            "(UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) = 'EN_DESPACHO')";
+
+    private static final String CONDICION_BANDEJA_NOTIFICACION =
+            "(UPPER(NVL(tda.clasificacion, '')) IN ('INTERMEDIO', 'FINAL') AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO')";
+
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
-        return listarDocumentosNotificacionPorEstados(
-                java.util.Arrays.asList("EMITIDO", "EN_DESPACHO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
+        return listarDocumentosNotificacionPareado(CONDICION_ASIGNACION_NOTIFICACION, false);
     }
 
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion() throws SQLException {
-        return listarDocumentosNotificacionPorEstados(
-                java.util.Arrays.asList("ASIGNADO", "VALIDADO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
+        return listarDocumentosNotificacionPareado(CONDICION_VALIDACION_NOTIFICACION, true);
     }
 
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion() throws SQLException {
-        return listarDocumentosNotificacionPorEstados(
-                java.util.Arrays.asList("EMITIDO", "VALIDADO"), java.util.Arrays.asList("INTERMEDIO"));
+        return listarDocumentosNotificacionPareado(CONDICION_BANDEJA_NOTIFICACION, false);
     }
 
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosPublicacion() throws SQLException {
         return listarDocumentosNotificacionPorEstados(
                 java.util.Arrays.asList("FINALIZADO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
+    }
+
+    public boolean tieneDocumentoFinalEnDespacho(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return false;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaClasificacionTipoDocumento(conn)) {
+                return false;
+            }
+            String sql = "SELECT COUNT(*) FROM expediente_documento_analizado da "
+                    + "JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                    + "JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
+                    + "WHERE da.id_expediente = ? AND da.activo = 1 AND da.nivel = 0 "
+                    + "AND UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(ed.codigo) = 'EN_DESPACHO'";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() && rs.getInt(1) > 0;
+                }
+            }
+        }
     }
 
     private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacionPorEstados(
@@ -173,18 +209,24 @@ public class DocumentoAnalisisDAO {
             for (int i = 0; i < clasificaciones.size(); i++) {
                 clasifPlaceholders.append(i == 0 ? "?" : ", ?");
             }
-            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
+            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, "
                     + "tda.clasificacion, tda.nombre AS tipo_documento_nombre, "
                     + "da.numero_documento, da.fecha_documento, "
                     + nombrePersona("p") + " AS titular, "
-                    + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre "
+                    + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
+                    + "(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 "
+                    + "AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, "
+                    + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
+                    + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
+                    + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
                     + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
                     + " AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
                     + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
                     + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                     + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
+                    + "LEFT JOIN usuario un ON un.id_usuario = da.id_usuario_notificacion "
                     + "WHERE da.activo = 1 "
                     + "AND UPPER(NVL(tda.clasificacion, '')) IN (" + clasifPlaceholders + ") "
                     + "AND UPPER(NVL(ed.codigo, '')) IN (" + estadoPlaceholders + ") "
@@ -203,14 +245,74 @@ public class DocumentoAnalisisDAO {
                                 getLongOrNull(rs, "id_documento_analizado"),
                                 getLongOrNull(rs, "id_expediente"),
                                 rs.getString("numero_expediente"),
+                                rs.getString("numero_expediente_sgd"),
                                 rs.getString("clasificacion"),
                                 rs.getString("tipo_documento_nombre"),
                                 rs.getString("numero_documento"),
                                 toLocalDate(rs.getDate("fecha_documento")),
                                 rs.getString("titular"),
                                 rs.getString("estado_documento_codigo"),
-                                rs.getString("estado_documento_nombre")));
+                                rs.getString("estado_documento_nombre"),
+                                rs.getInt("relaciones_confirmadas"),
+                                rs.getInt("asignado") == 1,
+                                rs.getString("numero_hoja_envio_notificacion"),
+                                rs.getString("usuario_notificacion_actual")));
                     }
+                }
+            }
+        }
+        return items;
+    }
+
+    private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacionPareado(
+            String condicionPareada, boolean soloAsignados) throws SQLException {
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
+                new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaClasificacionTipoDocumento(conn)) {
+                return items;
+            }
+            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, "
+                    + "tda.clasificacion, tda.nombre AS tipo_documento_nombre, "
+                    + "da.numero_documento, da.fecha_documento, "
+                    + nombrePersona("p") + " AS titular, "
+                    + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
+                    + "(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 "
+                    + "AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, "
+                    + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
+                    + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual "
+                    + "FROM expediente_documento_analizado da "
+                    + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
+                    + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                    + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                    + " AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                    + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                    + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                    + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
+                    + "LEFT JOIN usuario un ON un.id_usuario = da.id_usuario_notificacion "
+                    + "WHERE da.activo = 1 "
+                    + "AND " + condicionPareada + " "
+                    + (soloAsignados ? "AND da.id_usuario_notificacion IS NOT NULL " : "")
+                    + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    items.add(new com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO(
+                            getLongOrNull(rs, "id_documento_analizado"),
+                            getLongOrNull(rs, "id_expediente"),
+                            rs.getString("numero_expediente"),
+                            rs.getString("numero_expediente_sgd"),
+                            rs.getString("clasificacion"),
+                            rs.getString("tipo_documento_nombre"),
+                            rs.getString("numero_documento"),
+                            toLocalDate(rs.getDate("fecha_documento")),
+                            rs.getString("titular"),
+                            rs.getString("estado_documento_codigo"),
+                            rs.getString("estado_documento_nombre"),
+                            rs.getInt("relaciones_confirmadas"),
+                            rs.getInt("asignado") == 1,
+                            rs.getString("numero_hoja_envio_notificacion"),
+                            rs.getString("usuario_notificacion_actual")));
                 }
             }
         }
@@ -223,6 +325,32 @@ public class DocumentoAnalisisDAO {
             Long idUsuarioDestino,
             String numeroHojaEnvio,
             Long idUsuario) throws SQLException {
+        asignarNotificacion(idsDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, numeroHojaEnvio, idUsuario, false);
+    }
+
+    public void asignarNotificacion(
+            List<Long> idsDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            String numeroHojaEnvio,
+            Long idUsuario,
+            boolean reasignacion) throws SQLException {
+        Map<Long, String> hojasEnvio = new HashMap<Long, String>();
+        if (idsDocumentoAnalizado != null) {
+            for (Long idDocumento : idsDocumentoAnalizado) {
+                hojasEnvio.put(idDocumento, numeroHojaEnvio);
+            }
+        }
+        asignarNotificacionMultiple(idsDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, hojasEnvio, idUsuario, reasignacion);
+    }
+
+    public void asignarNotificacionMultiple(
+            List<Long> idsDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Map<Long, String> hojasEnvioPorDocumento,
+            Long idUsuario,
+            boolean reasignacion) throws SQLException {
         if (idsDocumentoAnalizado == null || idsDocumentoAnalizado.isEmpty() || idEquipoDestino == null || idUsuarioDestino == null) {
             throw new IllegalArgumentException("Seleccione documentos, equipo destino y usuario destino para generar la asignación.");
         }
@@ -230,25 +358,21 @@ public class DocumentoAnalisisDAO {
             boolean autoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             try {
-                Long idEstadoAsignado = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, "ASIGNADO");
+                Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn,
+                        reasignacion ? CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION : CODIGO_MOVIMIENTO_ASIGNACION_NOTIFICACION);
                 String sql = "UPDATE expediente_documento_analizado SET "
                         + "id_equipo_notificacion = ?, id_usuario_notificacion = ?, numero_hoja_envio_notificacion = ?, "
-                        + (idEstadoAsignado != null
-                                ? "id_estado_documento = CASE WHEN id_estado_documento IN "
-                                + "(SELECT id_estado_documento FROM estado_documento WHERE UPPER(codigo) = 'EN_DESPACHO') "
-                                + "THEN ? ELSE id_estado_documento END, "
-                                : "")
                         + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                         + "WHERE id_documento_analizado = ? AND activo = 1";
-                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                String sqlExpediente = "SELECT id_expediente FROM expediente_documento_analizado WHERE id_documento_analizado = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sql);
+                     PreparedStatement psExpediente = conn.prepareStatement(sqlExpediente)) {
                     for (Long idDocumento : idsDocumentoAnalizado) {
+                        String numeroHojaEnvio = hojasEnvioPorDocumento == null ? null : hojasEnvioPorDocumento.get(idDocumento);
                         int index = 1;
                         ps.setLong(index++, idEquipoDestino);
                         ps.setLong(index++, idUsuarioDestino);
                         setStringOrNull(ps, index++, numeroHojaEnvio);
-                        if (idEstadoAsignado != null) {
-                            ps.setLong(index++, idEstadoAsignado);
-                        }
                         if (idUsuario == null) {
                             ps.setNull(index++, Types.NUMERIC);
                         } else {
@@ -256,6 +380,20 @@ public class DocumentoAnalisisDAO {
                         }
                         ps.setLong(index, idDocumento);
                         ps.executeUpdate();
+                        if (idMovimiento != null) {
+                            Long idExpediente = null;
+                            psExpediente.setLong(1, idDocumento);
+                            try (ResultSet rs = psExpediente.executeQuery()) {
+                                if (rs.next()) {
+                                    idExpediente = getLongOrNull(rs, "id_expediente");
+                                }
+                            }
+                            if (idExpediente != null) {
+                                insertarHistorialNotificacion(
+                                        conn, idExpediente, idDocumento, idMovimiento,
+                                        idUsuarioDestino, idEquipoDestino, numeroHojaEnvio, idUsuario);
+                            }
+                        }
                     }
                 }
                 conn.commit();
@@ -271,29 +409,168 @@ public class DocumentoAnalisisDAO {
         }
     }
 
-    public void registrarValidacion(Long idDocumentoAnalizado, Long idUsuario) throws SQLException {
+    public void reasignarNotificacion(
+            Long idDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            String numeroHojaEnvio,
+            Long idUsuario) throws SQLException {
+        if (idDocumentoAnalizado == null || idEquipoDestino == null || idUsuarioDestino == null) {
+            throw new IllegalArgumentException("Seleccione documento, equipo destino y usuario destino para reasignar.");
+        }
+        asignarNotificacion(
+                java.util.Collections.singletonList(idDocumentoAnalizado),
+                idEquipoDestino,
+                idUsuarioDestino,
+                numeroHojaEnvio,
+                idUsuario,
+                true);
+    }
+
+    private void insertarHistorialNotificacion(
+            Connection conn,
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            Long idMovimiento,
+            Long idUsuarioDestino,
+            Long idEquipoDestino,
+            String numeroHojaEnvio,
+            Long idUsuarioCreador) throws SQLException {
+        String sql = "INSERT INTO expediente_historial ("
+                + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
+                + "id_usuario_destino, id_equipo_destino, "
+                + "tabla_relacionada, id_registro_relacionado, comentario, activo, creado_por, creado_en"
+                + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, 'EXPEDIENTE_DOCUMENTO_ANALIZADO', ?, ?, 1, ?, SYSTIMESTAMP)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idMovimiento);
+            setLongOrNull(ps, 3, idUsuarioDestino);
+            setLongOrNull(ps, 4, idEquipoDestino);
+            ps.setLong(5, idDocumentoAnalizado);
+            setStringOrNull(ps, 6, numeroHojaEnvio);
+            setLongOrNull(ps, 7, idUsuarioCreador);
+            ps.executeUpdate();
+        }
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO> listarHistorialAsignacionesNotificacion(
+            Long idDocumentoAnalizado) throws SQLException {
+        List<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO> items =
+                new ArrayList<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO>();
+        if (idDocumentoAnalizado == null) {
+            return items;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String sql = "SELECT eh.id_expediente_historial, un.nombre_completo AS usuario_destino, "
+                    + "eq.nombre AS equipo_destino, eh.comentario AS numero_hoja_envio, eh.fecha_movimiento, "
+                    + "uc.nombre_completo AS asignado_por, tm.codigo AS codigo_movimiento "
+                    + "FROM expediente_historial eh "
+                    + "LEFT JOIN usuario un ON un.id_usuario = eh.id_usuario_destino "
+                    + "LEFT JOIN equipo eq ON eq.id_equipo = eh.id_equipo_destino "
+                    + "LEFT JOIN usuario uc ON uc.id_usuario = eh.creado_por "
+                    + "LEFT JOIN tipo_movimiento tm ON tm.id_tipo_movimiento = eh.id_tipo_movimiento "
+                    + "WHERE eh.activo = 1 AND eh.tabla_relacionada = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                    + "AND eh.id_registro_relacionado = ? "
+                    + "AND tm.codigo IN (?, ?) "
+                    + "ORDER BY eh.fecha_movimiento DESC, eh.id_expediente_historial DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idDocumentoAnalizado);
+                ps.setString(2, CODIGO_MOVIMIENTO_ASIGNACION_NOTIFICACION);
+                ps.setString(3, CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION);
+                try (ResultSet rs = ps.executeQuery()) {
+                    boolean primero = true;
+                    while (rs.next()) {
+                        items.add(new com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO(
+                                getLongOrNull(rs, "id_expediente_historial"),
+                                rs.getString("usuario_destino"),
+                                rs.getString("equipo_destino"),
+                                rs.getString("numero_hoja_envio"),
+                                toLocalDateTime(rs.getTimestamp("fecha_movimiento")),
+                                primero,
+                                CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION.equalsIgnoreCase(rs.getString("codigo_movimiento")),
+                                null,
+                                rs.getString("asignado_por")));
+                        primero = false;
+                    }
+                }
+            }
+        }
+        return items;
+    }
+
+    public void registrarFirmaDocumentoNotificacion(
+            Long idDocumentoAnalizado,
+            String numeroDocumento,
+            LocalDate fechaEmision,
+            Long idUsuario) throws SQLException {
+        if (idDocumentoAnalizado == null) {
+            throw new IllegalArgumentException("Seleccione un documento para registrar la firma.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            Long idEstadoEmitido = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, "EMITIDO");
+            if (idEstadoEmitido == null) {
+                throw new SQLException("No se encontró el estado de documento EMITIDO.");
+            }
+            String sql = "UPDATE expediente_documento_analizado SET "
+                    + "id_estado_documento = ?, numero_documento = ?, fecha_documento = ?, "
+                    + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                    + "WHERE id_documento_analizado = ? AND activo = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idEstadoEmitido);
+                setStringOrNull(ps, 2, numeroDocumento);
+                setDateOrNull(ps, 3, fechaEmision);
+                if (idUsuario == null) {
+                    ps.setNull(4, Types.NUMERIC);
+                } else {
+                    ps.setLong(4, idUsuario);
+                }
+                ps.setLong(5, idDocumentoAnalizado);
+                int updated = ps.executeUpdate();
+                if (updated != 1) {
+                    throw new SQLException("No se pudo registrar la firma del documento.");
+                }
+            }
+        }
+    }
+
+    public void registrarResultadoValidacion(
+            Long idDocumentoAnalizado,
+            String resultadoCodigo,
+            String comentario,
+            Long idUsuario) throws SQLException {
         if (idDocumentoAnalizado == null) {
             throw new IllegalArgumentException("Seleccione un documento para registrar la validación.");
         }
+        boolean observado = "OBSERVADO".equalsIgnoreCase(resultadoCodigo);
+        String estadoDestino = observado ? "OBSERVADO" : "VALIDADO";
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            Long idEstadoValidado = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, "VALIDADO");
-            if (idEstadoValidado == null) {
-                throw new SQLException("No se encontró el estado de documento VALIDADO. Ejecute el script 44_asignacion_notificacion_validacion.sql.");
+            Long idEstadoDestino = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, estadoDestino);
+            if (idEstadoDestino == null) {
+                throw new SQLException("No se encontró el estado de documento " + estadoDestino
+                        + ". Ejecute el script 44_asignacion_notificacion_validacion.sql.");
             }
+            boolean soportaDetalleObservacion = soportaDetalleObservacionDocumentoAnalizado(conn);
             String sql = "UPDATE expediente_documento_analizado SET "
-                    + "id_estado_documento = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                    + "id_estado_documento = ?, "
+                    + (observado ? "id_equipo_notificacion = NULL, id_usuario_notificacion = NULL, numero_hoja_envio_notificacion = NULL, " : "")
+                    + (observado && soportaDetalleObservacion ? "detalle_observacion = ?, " : "")
+                    + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                     + "WHERE id_documento_analizado = ? AND activo = 1";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setLong(1, idEstadoValidado);
-                if (idUsuario == null) {
-                    ps.setNull(2, Types.NUMERIC);
-                } else {
-                    ps.setLong(2, idUsuario);
+                int index = 1;
+                ps.setLong(index++, idEstadoDestino);
+                if (observado && soportaDetalleObservacion) {
+                    setStringOrNull(ps, index++, comentario);
                 }
-                ps.setLong(3, idDocumentoAnalizado);
+                if (idUsuario == null) {
+                    ps.setNull(index++, Types.NUMERIC);
+                } else {
+                    ps.setLong(index++, idUsuario);
+                }
+                ps.setLong(index, idDocumentoAnalizado);
                 int updated = ps.executeUpdate();
                 if (updated != 1) {
-                    throw new SQLException("No se pudo registrar la validación del documento.");
+                    throw new SQLException("No se pudo registrar el resultado de la validación.");
                 }
             }
         }
@@ -661,6 +938,33 @@ public class DocumentoAnalisisDAO {
                 }
             } else {
                 actualizarDocumentoAnalizadoJerarquico(conn, idExpediente, documento, idPadre, idUsuario);
+            }
+        }
+    }
+
+    public void guardarDocumentoJerarquico(
+            Long idExpediente,
+            DocumentoAnalizadoDTO documento,
+            Long idUsuarioModificador) throws SQLException {
+        if (idExpediente == null || documento == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para guardar el documento.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                List<DocumentoAnalizadoDTO> documentos = new ArrayList<DocumentoAnalizadoDTO>();
+                documentos.add(documento);
+                guardarDocumentosJerarquicos(conn, idExpediente, documentos, idUsuarioModificador);
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
             }
         }
     }
@@ -1476,8 +1780,7 @@ public class DocumentoAnalisisDAO {
     }
 
     private static String nombrePersona(String alias) {
-        return "TRIM(REGEXP_REPLACE(NVL(" + alias + ".nombres, '') || ' ' || "
-                + "NVL(" + alias + ".apellido_paterno, '') || ' ' || NVL(" + alias + ".apellido_materno, ''), '\\s+', ' '))";
+        return "TRIM(NVL(" + alias + ".razon_social, TRIM(NVL(" + alias + ".nombres, '') || ' ' || NVL(" + alias + ".apellidos, ''))))";
     }
 
     private static void rollbackSilencioso(Connection conn) {

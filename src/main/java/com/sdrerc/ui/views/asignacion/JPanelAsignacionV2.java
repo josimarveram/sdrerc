@@ -149,6 +149,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int TAB_BANDEJA_ASIGNACION = 0;
     private static final int TAB_BANDEJA_CARTAS_RESPUESTA = 1;
     private static final int TAB_BANDEJA_CARGA_ABOGADOS = 2;
+    private static final String PERMISO_BANDEJA_ASIGNACION_LISTADO = "BANDEJA_ASIGNACION_LISTADO";
+    private static final String PERMISO_BANDEJA_ASIGNACION_CARTAS_RESPUESTA = "BANDEJA_ASIGNACION_CARTAS_RESPUESTA";
+    private static final String PERMISO_BANDEJA_ASIGNACION_CARGA_ABOGADOS = "BANDEJA_ASIGNACION_CARGA_ABOGADOS";
     private static final int ASIGNACION_TAB_HEIGHT = 92;
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
@@ -480,6 +483,14 @@ public class JPanelAsignacionV2 extends JPanel {
         tabsBandejas.addTab("Bandeja Asignación", crearContenidoBandejaAsignacion());
         tabsBandejas.addTab("Cartas de respuesta", crearContenidoBandejaCartasRespuesta());
         tabsBandejas.addTab("Carga Abogados", crearContenidoBandejaCargaAbogados());
+        aplicarPermisoBandeja(
+                TAB_BANDEJA_ASIGNACION, PERMISO_BANDEJA_ASIGNACION_LISTADO, "No tiene permiso para ver Bandeja Asignación.");
+        aplicarPermisoBandeja(
+                TAB_BANDEJA_CARTAS_RESPUESTA, PERMISO_BANDEJA_ASIGNACION_CARTAS_RESPUESTA,
+                "No tiene permiso para ver Cartas de respuesta.");
+        aplicarPermisoBandeja(
+                TAB_BANDEJA_CARGA_ABOGADOS, PERMISO_BANDEJA_ASIGNACION_CARGA_ABOGADOS,
+                "No tiene permiso para ver Carga Abogados.");
 
         panelDatosExpediente = crearPanelDatosExpediente();
         panelAsignacion = crearPanelAsignacionOperativa();
@@ -501,6 +512,16 @@ public class JPanelAsignacionV2 extends JPanel {
         panelOperativo.setOpaque(false);
         panelOperativo.add(splitOperativo, BorderLayout.CENTER);
         return panelOperativo;
+    }
+
+    private void aplicarPermisoBandeja(int indice, String codigoPermiso, String motivo) {
+        if (tabsBandejas == null || indice < 0 || indice >= tabsBandejas.getTabCount()) {
+            return;
+        }
+        if (!SessionContext.tienePermiso(codigoPermiso)) {
+            tabsBandejas.setEnabledAt(indice, false);
+            tabsBandejas.setToolTipTextAt(indice, motivo);
+        }
     }
 
     private JPanel crearContenidoBandejaAsignacion() {

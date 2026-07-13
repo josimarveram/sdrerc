@@ -117,9 +117,22 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private static final int COL_ESTADO_REGISTRO = 12;
     private static final int COL_ALERTAS_REGISTRO = 13;
     private static final int COL_ID_REGISTRO = 14;
+    private static final int COL_EXPANDIR_BANDEJA = 0;
+    private static final int COL_DIAS_BANDEJA = 1;
+    private static final int COL_EXPEDIENTE_BANDEJA = 2;
+    private static final int COL_TRAMITE_BANDEJA = 3;
+    private static final int COL_ETAPA_BANDEJA = 4;
+    private static final int COL_ESTADO_BANDEJA = 5;
+    private static final int COL_FECHA_SOLICITUD_BANDEJA = 6;
+    private static final int COL_VENCIMIENTO_BANDEJA = 7;
+    private static final int COL_PUBLICACION_BANDEJA = 8;
+    private static final int COL_DIGITAL_BANDEJA = 9;
+    private static final int COL_ID_BANDEJA = 10;
 
     private final ExpedienteConsultaService consultaService;
     private final ExpedienteDetalleService detalleService = new ExpedienteDetalleService();
+    private final com.sdrerc.application.sdrercapp.AsignacionExpedienteService asignacionExpedienteServiceRecepcion =
+            new com.sdrerc.application.sdrercapp.AsignacionExpedienteService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
     private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final String etapaInicial;
@@ -338,12 +351,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     "_ID"
                 }
                 : new Object[]{
+                    " ",
                     "Días",
                     "Expediente",
                     "Trámite",
                     "Etapa",
                     "Estado",
-                    "Registro",
+                    "Fecha Solicitud",
                     "Vencimiento",
                     "Publicación",
                     "Digital",
@@ -377,10 +391,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     }
                     return String.class;
                 }
-                if (columnIndex == 0 || columnIndex == 9) {
+                if (columnIndex == COL_EXPANDIR_BANDEJA) {
+                    return String.class;
+                }
+                if (columnIndex == COL_DIAS_BANDEJA || columnIndex == COL_ID_BANDEJA) {
                     return Long.class;
                 }
-                if (columnIndex == 5 || columnIndex == 6) {
+                if (columnIndex == COL_FECHA_SOLICITUD_BANDEJA || columnIndex == COL_VENCIMIENTO_BANDEJA) {
                     return LocalDate.class;
                 }
                 return String.class;
@@ -764,22 +781,26 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             table.getColumnModel().getColumn(COL_ID_REGISTRO).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         } else {
-            AppV2TableColumnSizer.applyWidths(table, 88, 175, 155, 155, 175, 145, 145, 125, 125, 0);
-            table.getColumnModel().getColumn(0).setMaxWidth(90);
-            table.getColumnModel().getColumn(1).setMinWidth(150);
-            table.getColumnModel().getColumn(2).setMinWidth(130);
-            table.getColumnModel().getColumn(3).setMinWidth(130);
-            table.getColumnModel().getColumn(4).setMinWidth(150);
-            table.getColumnModel().getColumn(7).setMaxWidth(125);
-            table.getColumnModel().getColumn(8).setMaxWidth(120);
-            table.getColumnModel().getColumn(9).setMinWidth(0);
-            table.getColumnModel().getColumn(9).setMaxWidth(0);
+            AppV2TableColumnSizer.applyWidths(table, 34, 88, 175, 155, 155, 175, 145, 145, 125, 125, 0);
+            table.getColumnModel().getColumn(COL_EXPANDIR_BANDEJA).setMinWidth(34);
+            table.getColumnModel().getColumn(COL_EXPANDIR_BANDEJA).setMaxWidth(38);
+            table.getColumnModel().getColumn(COL_DIAS_BANDEJA).setMaxWidth(90);
+            table.getColumnModel().getColumn(COL_EXPEDIENTE_BANDEJA).setMinWidth(150);
+            table.getColumnModel().getColumn(COL_TRAMITE_BANDEJA).setMinWidth(130);
+            table.getColumnModel().getColumn(COL_ETAPA_BANDEJA).setMinWidth(130);
+            table.getColumnModel().getColumn(COL_ESTADO_BANDEJA).setMinWidth(150);
+            table.getColumnModel().getColumn(COL_PUBLICACION_BANDEJA).setMaxWidth(125);
+            table.getColumnModel().getColumn(COL_DIGITAL_BANDEJA).setMaxWidth(120);
+            table.getColumnModel().getColumn(COL_ID_BANDEJA).setMinWidth(0);
+            table.getColumnModel().getColumn(COL_ID_BANDEJA).setMaxWidth(0);
             tablePanel.getScrollPane().setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         }
         if (perfilRegistroRecepcion) {
             table.getColumnModel().getColumn(COL_EXPANDIR_REGISTRO).setCellRenderer(new ExpandirRendererRegistro());
             table.getColumnModel().getColumn(COL_SELECCION_REGISTRO).setCellRenderer(new SeleccionRendererRegistro());
             table.getColumnModel().getColumn(COL_SELECCION_REGISTRO).setHeaderRenderer(new SelectAllHeaderRendererRegistro());
+        } else {
+            table.getColumnModel().getColumn(COL_EXPANDIR_BANDEJA).setCellRenderer(new ExpandirRendererRegistro());
         }
         instalarFiltrosPorColumna();
         configurarCabeceraSeleccionGrupoFamiliar();
@@ -796,7 +817,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     btnEditar.setEnabled(false);
                     btnEliminar.setEnabled(false);
                 },
-                perfilRegistroRecepcion ? new int[]{COL_EXPANDIR_REGISTRO, COL_SELECCION_REGISTRO} : new int[0]);
+                perfilRegistroRecepcion
+                        ? new int[]{COL_EXPANDIR_REGISTRO, COL_SELECCION_REGISTRO}
+                        : new int[]{COL_EXPANDIR_BANDEJA});
         if (perfilRegistroRecepcion && columnFilterSupport != null) {
             columnFilterSupport.getSorter().addRowSorterListener(event -> actualizarEstadoHeaderSeleccionRegistro());
         }
@@ -894,8 +917,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 int viewRow = table.rowAtPoint(e.getPoint());
                 int viewColumn = table.columnAtPoint(e.getPoint());
-                if (perfilRegistroRecepcion
-                        && viewRow >= 0
+                if (viewRow >= 0
                         && viewColumn >= 0
                         && table.convertColumnIndexToModel(viewColumn) == COL_EXPANDIR_REGISTRO) {
                     alternarExpansionFilaRegistro(table.convertRowIndexToModel(viewRow));
@@ -1110,18 +1132,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (perfilRegistroRecepcion) {
                 agregarFilaRegistro(item);
             } else {
-                tableModel.addRow(new Object[]{
-                    item.getDiasRestantes(),
-                    item.getNumeroExpediente(),
-                    item.getNumeroTramiteDocumentario(),
-                    DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
-                    DisplayNameMapperV2.estado(item.getEstadoCodigo()),
-                    fechaRegistro(item),
-                    item.getFechaVencimiento(),
-                    item.isRequierePublicacion() ? "Requiere" : "No",
-                    item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente",
-                    item.getIdExpediente()
-                });
+                agregarFilaBandeja(item);
             }
         }
         actualizarEstadoHeaderSeleccionRegistro();
@@ -1175,7 +1186,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             item.getNumeroExpediente(),
             item.getNumeroExpedienteSgd(),
             valorFiltro(item.getCanal()),
-            fechaRegistro(item),
+            fechaSolicitud(item),
             item.getFechaVencimiento(),
             item.getProcedimiento(),
             item.getTipoActa(),
@@ -1211,6 +1222,50 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             valorUi(asociado.getTitular()),
             estadoAsociadoRegistro(asociado),
             alertaAsociadaRegistro(asociado),
+            asociado.getIdExpediente()
+        });
+    }
+
+    private void agregarFilaBandeja(ExpedienteBandejaDTO item) {
+        if (item == null) {
+            return;
+        }
+        filasTabla.add(RegistroTableRow.principal(item));
+        tableModel.addRow(new Object[]{
+            iconoExpansionRegistro(item),
+            item.getDiasRestantes(),
+            item.getNumeroExpediente(),
+            item.getNumeroTramiteDocumentario(),
+            DisplayNameMapperV2.etapa(item.getEtapaCodigo()),
+            DisplayNameMapperV2.estado(item.getEstadoCodigo()),
+            fechaSolicitud(item),
+            item.getFechaVencimiento(),
+            item.isRequierePublicacion() ? "Requiere" : "No",
+            item.isExpedienteDigitalCompleto() ? "Completo" : "Pendiente",
+            item.getIdExpediente()
+        });
+    }
+
+    private void agregarFilaAsociadaBandeja(ExpedienteBandejaDTO principal, ExpedienteRelacionadoDTO asociado, int index) {
+        if (principal == null || asociado == null) {
+            return;
+        }
+        RegistroTableRow row = RegistroTableRow.asociada(principal, asociado);
+        if (index < 0 || index > filasTabla.size()) {
+            index = filasTabla.size();
+        }
+        filasTabla.add(index, row);
+        tableModel.insertRow(index, new Object[]{
+            "",
+            asociado.getDiasRestantes() == null ? "" : asociado.getDiasRestantes(),
+            valorUi(principal.getNumeroExpediente()),
+            valorUi(asociado.getNumeroTramiteDocumentario()),
+            DisplayNameMapperV2.etapa(asociado.getEtapaCodigo()),
+            estadoAsociadoRegistro(asociado),
+            asociado.getFechaRecepcion(),
+            asociado.getFechaVencimiento(),
+            "-",
+            "-",
             asociado.getIdExpediente()
         });
     }
@@ -1314,7 +1369,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         int insertAt = principalRow + 1;
         if (asociados != null) {
             for (ExpedienteRelacionadoDTO asociado : asociados) {
-                agregarFilaAsociadaRegistro(principal, asociado, insertAt);
+                if (perfilRegistroRecepcion) {
+                    agregarFilaAsociadaRegistro(principal, asociado, insertAt);
+                } else {
+                    agregarFilaAsociadaBandeja(principal, asociado, insertAt);
+                }
                 insertAt++;
             }
         }
@@ -1591,6 +1650,39 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
         };
         worker.execute();
+
+        SwingWorker<com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO, Void> workerUbicacion =
+                new SwingWorker<com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO, Void>() {
+            @Override
+            protected com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO doInBackground() throws Exception {
+                return asignacionExpedienteServiceRecepcion.obtenerExpedientePorId(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (sequence != panelRecepcionLoadSequence || !idExpediente.equals(obtenerIdExpedienteSeleccionado())) {
+                    return;
+                }
+                try {
+                    cargarNotificacionUbicacionRecepcion(get());
+                } catch (Exception ex) {
+                    // El bloque de notificación y ubicación queda con su valor por defecto ("-").
+                }
+            }
+        };
+        workerUbicacion.execute();
+    }
+
+    private void cargarNotificacionUbicacionRecepcion(com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO expediente) {
+        if (expediente == null) {
+            return;
+        }
+        setValue(lblRecepcionCorreo, expediente.getCorreoSolicitante());
+        setValue(lblRecepcionTelefono, expediente.getTelefonoSolicitante());
+        setValue(lblRecepcionDepartamento, expediente.getDepartamentoSolicitante());
+        setValue(lblRecepcionProvincia, expediente.getProvinciaSolicitante());
+        setValue(lblRecepcionDistrito, expediente.getDistritoSolicitante());
+        setValue(lblRecepcionDireccion, expediente.getDireccionSolicitante());
     }
 
     private void cargarPanelRecepcion(ExpedienteConsolaDTO expediente) {
@@ -2925,10 +3017,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return null;
     }
 
-    private static LocalDate fechaRegistro(ExpedienteBandejaDTO item) {
-        return item.getFechaRegistro() == null ? null : item.getFechaRegistro().toLocalDate();
-    }
-
     private static String valorFiltro(Object value) {
         if (value == null) {
             return "";
@@ -3160,7 +3248,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int column) {
             int modelColumn = table.convertColumnIndexToModel(column);
             int modelRow = table.convertRowIndexToModel(row);
-            RegistroTableRow fila = perfilRegistroRecepcion ? filaRegistro(modelRow) : null;
+            RegistroTableRow fila = filaRegistro(modelRow);
             boolean filaAsociada = fila != null && fila.esAsociada();
             if (perfilRegistroRecepcion) {
                 if (modelColumn == COL_DIAS_REGISTRO) {
@@ -3185,27 +3273,33 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         return new BadgeV2(text, bg, fg);
                     }
                 }
-            }
-            if (modelColumn == 0) {
-                return StatusBadgeV2.forDias(value, colorFondoCelda(row, isSelected));
-            }
-            if (perfilRegistroRecepcion) {
                 return defaultComponent(table, value, isSelected, hasFocus, row, column, fila, modelColumn, modelRow);
             }
-            if (!isSelected && modelColumn == 3) {
+            if (modelColumn == COL_DIAS_BANDEJA) {
+                if (filaAsociada) {
+                    Component c = super.getTableCellRendererComponent(table, "", isSelected, hasFocus, row, column);
+                    c.setBackground(colorFondoFilaRegistro(row, fila, isSelected));
+                    c.setForeground(AppV2Theme.TEXT_SECONDARY);
+                    setBorder(bordeContenidoAsociadoRegistro(modelRow, 8, 8));
+                    setToolTipText("La alerta de días aplica al expediente principal.");
+                    return c;
+                }
+                return StatusBadgeV2.forDias(value, colorFondoCelda(row, isSelected));
+            }
+            if (!isSelected && modelColumn == COL_ETAPA_BANDEJA) {
                 return StatusBadgeV2.forEtapa(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 4) {
+            if (!isSelected && modelColumn == COL_ESTADO_BANDEJA) {
                 return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
             }
-            if (!isSelected && modelColumn == 7) {
+            if (!isSelected && !filaAsociada && modelColumn == COL_PUBLICACION_BANDEJA) {
                 String text = value == null ? "" : value.toString();
                 if ("Requiere".equalsIgnoreCase(text)) {
                     return new BadgeV2("Requiere", AppV2Theme.SOFT_ORANGE, AppV2Theme.WARNING);
                 }
                 return new BadgeV2("No", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY);
             }
-            if (!isSelected && modelColumn == 8) {
+            if (!isSelected && !filaAsociada && modelColumn == COL_DIGITAL_BANDEJA) {
                 String text = value == null ? "" : value.toString();
                 if ("Completo".equalsIgnoreCase(text)) {
                     return new BadgeV2("Completo", AppV2Theme.SOFT_GREEN, AppV2Theme.SUCCESS);
@@ -3213,7 +3307,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 return new BadgeV2("Pendiente", AppV2Theme.SOFT_GRAY, AppV2Theme.TEXT_SECONDARY);
             }
 
-            return defaultComponent(table, value, isSelected, hasFocus, row, column);
+            return defaultComponent(table, value, isSelected, hasFocus, row, column, fila, modelColumn, modelRow);
         }
 
         private Color colorFondoCelda(int row, boolean isSelected) {
@@ -3229,16 +3323,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 boolean isSelected,
                 boolean hasFocus,
                 int row,
-                int column) {
-            return defaultComponent(table, value, isSelected, hasFocus, row, column, null, -1, -1);
-        }
-
-        private Component defaultComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
                 int column,
                 RegistroTableRow fila,
                 int modelColumn,
@@ -3246,19 +3330,20 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             String display = valorFiltro(value);
             Component c = super.getTableCellRendererComponent(table, display, isSelected, hasFocus, row, column);
             boolean filaAsociada = fila != null && fila.esAsociada();
-            setFont(filaAsociada && modelColumn != COL_NUMERO_EXPEDIENTE_REGISTRO
+            boolean esColumnaExpediente = modelColumn == COL_NUMERO_EXPEDIENTE_REGISTRO || modelColumn == COL_EXPEDIENTE_BANDEJA;
+            setFont(filaAsociada && !esColumnaExpediente
                     ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL)
                     : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
             setBorder(filaAsociada
                     ? bordeContenidoAsociadoRegistro(
                             modelRow,
-                            modelColumn == COL_NUMERO_EXPEDIENTE_REGISTRO ? ASSOCIATED_EXPEDIENTE_INDENT : 8,
+                            esColumnaExpediente ? ASSOCIATED_EXPEDIENTE_INDENT : 8,
                             8)
                     : BorderFactory.createEmptyBorder(0, 8, 0, 8));
             setToolTipText(display == null || display.trim().isEmpty() ? null : display);
             if (filaAsociada) {
                 c.setBackground(colorFondoFilaRegistro(row, fila, isSelected));
-                c.setForeground(modelColumn == COL_NUMERO_EXPEDIENTE_REGISTRO
+                c.setForeground(esColumnaExpediente
                         ? AppV2Theme.TEXT_PRIMARY
                         : AppV2Theme.TEXT_SECONDARY);
             } else if (!isSelected) {

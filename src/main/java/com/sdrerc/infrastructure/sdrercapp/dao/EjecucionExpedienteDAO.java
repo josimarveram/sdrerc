@@ -62,11 +62,34 @@ public class EjecucionExpedienteDAO {
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
         List<Object> params = new ArrayList<Object>();
+        boolean soportaGrupoFamiliar;
+        try (Connection connSoporte = SdrercAppConnection.getConnection()) {
+            soportaGrupoFamiliar = soportaGrupoFamiliar(connSoporte);
+        }
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
         sql.append("SELECT DISTINCT e.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, e.numero_tramite_documentario, ");
-        sql.append("esol.asunto AS procedimiento, p.tipo_documento, ");
+        sql.append("esol.asunto AS procedimiento, ");
+        sql.append("(SELECT MIN(ed.numero_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed WHERE ed.id_expediente = e.id_expediente ");
+        sql.append(" AND TRIM(ed.numero_documento) IS NOT NULL) AS numero_documento, ");
+        sql.append("(SELECT MIN(ed.nombre_documento) KEEP (DENSE_RANK FIRST ORDER BY ed.id_expediente_documento) ");
+        sql.append(" FROM expediente_documento ed WHERE ed.id_expediente = e.id_expediente ");
+        sql.append(" AND TRIM(ed.nombre_documento) IS NOT NULL) AS tipo_documento, ");
+        sql.append("p.tipo_documento AS tipo_documento_titular, p.numero_documento AS numero_documento_titular, ");
         sql.append("ta.nombre AS tipo_acta, ea.numero_acta, ").append(nombrePersona("p")).append(" AS titular, ");
+        sql.append(nombrePersona("ps")).append(" AS solicitante, ps.tipo_documento AS solicitante_tipo_documento, ");
+        sql.append("ps.numero_documento AS numero_documento_solicitante, ps.correo_electronico AS solicitante_correo, ");
+        sql.append("ps.telefono AS solicitante_telefono, ps.direccion AS solicitante_direccion, ");
+        sql.append("ps.departamento AS solicitante_departamento, ps.provincia AS solicitante_provincia, ps.distrito AS solicitante_distrito, ");
+        sql.append("cr.nombre AS canal_ingreso, esol.observacion AS observacion_solicitud, ");
+        if (soportaGrupoFamiliar) {
+            sql.append("NVL(esol.grupo_familiar, 0) AS grupo_familiar, ");
+            sql.append("esol.criterio_grupo_familiar, esol.observacion_grupo_familiar, ");
+        } else {
+            sql.append("0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, ");
+            sql.append("CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ");
+        }
         sql.append("esol.fecha_recepcion, e.fecha_vencimiento, ");
         sql.append("e.fecha_ultimo_movimiento, ");
         sql.append("(SELECT MAX(h.fecha_movimiento) FROM expediente_historial h ");
@@ -104,10 +127,12 @@ public class EjecucionExpedienteDAO {
         sql.append("LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ");
         sql.append("LEFT JOIN equipo eq ON eq.id_equipo = e.id_equipo_responsable_actual ");
         sql.append("LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 ");
+        sql.append("LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = esol.id_canal_recepcion ");
         sql.append("LEFT JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 ");
         sql.append("LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta ");
         sql.append("LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' ");
         sql.append("LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 ");
+        sql.append("LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 ");
         sql.append("LEFT JOIN (SELECT id_expediente, ");
         sql.append("MAX(id_expediente_resolucion) KEEP (DENSE_RANK LAST ORDER BY creado_en, id_expediente_resolucion) AS id_expediente_resolucion ");
         sql.append("FROM expediente_resolucion WHERE activo = 1 GROUP BY id_expediente) res_pick ");
@@ -357,7 +382,8 @@ public class EjecucionExpedienteDAO {
                     throw new SQLException("El expediente ya no se encuentra en Ejecución / " + estadoOrigenCodigo + ".");
                 }
                 Long idResolucion = resolucionDocumentoDAO.obtenerIdResolucionActiva(conn, registro.getIdExpediente());
-                if (requiereResolucion && idResolucion == null) {
+                if (requiereResolucion && idResolucion == null
+                        && !tieneDocumentoResolucionConNumero(conn, registro.getIdExpediente())) {
                     throw new SQLException("El expediente no tiene resolución activa para ejecutar.");
                 }
                 Transicion transicion = requerirTransicion(
@@ -654,7 +680,48 @@ public class EjecucionExpedienteDAO {
                 toLocalDateTime(rs.getTimestamp("fecha_firma")),
                 rs.getInt("requiere_publicacion") == 1,
                 toLocalDate(rs.getDate("fecha_publicacion")),
-                rs.getString("acciones_permitidas"));
+                rs.getString("acciones_permitidas"),
+                rs.getString("numero_documento"),
+                rs.getString("tipo_documento_titular"),
+                rs.getString("numero_documento_titular"),
+                rs.getString("solicitante"),
+                rs.getString("solicitante_tipo_documento"),
+                rs.getString("numero_documento_solicitante"),
+                rs.getString("solicitante_correo"),
+                rs.getString("solicitante_telefono"),
+                rs.getString("solicitante_direccion"),
+                rs.getString("solicitante_departamento"),
+                rs.getString("solicitante_provincia"),
+                rs.getString("solicitante_distrito"),
+                rs.getString("canal_ingreso"),
+                rs.getString("observacion_solicitud"),
+                rs.getInt("grupo_familiar") == 1,
+                rs.getString("criterio_grupo_familiar"),
+                rs.getString("observacion_grupo_familiar"),
+                toLocalDate(rs.getDate("fecha_vencimiento")));
+    }
+
+    private static boolean tieneDocumentoResolucionConNumero(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM expediente_documento_analizado da "
+                + "JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                + "WHERE da.id_expediente = ? AND da.activo = 1 AND da.nivel = 0 "
+                + "AND TRIM(da.numero_documento) IS NOT NULL "
+                + "AND UPPER(NVL(tda.codigo, '')) LIKE '%RESOLUCION%'";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    private static boolean soportaGrupoFamiliar(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' AND column_name = 'GRUPO_FAMILIAR'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
     }
 
     private Long requerirId(Long value, String descripcion) throws SQLException {

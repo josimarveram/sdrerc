@@ -7,9 +7,40 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PermisoDAO {
+
+    /**
+     * Códigos de permiso activos de un usuario, resueltos vía usuario -&gt; usuario_rol -&gt; rol_permiso -&gt; permiso.
+     */
+    public Set<String> listarCodigosPermisoPorUsuario(Long idUsuario) throws SQLException {
+        Set<String> codigos = new HashSet<String>();
+        if (idUsuario == null) {
+            return codigos;
+        }
+        String sql = "SELECT DISTINCT p.codigo "
+                + "FROM permiso p "
+                + "JOIN rol_permiso rp ON rp.id_permiso = p.id_permiso AND rp.activo = 1 "
+                + "JOIN rol r ON r.id_rol = rp.id_rol AND r.activo = 1 "
+                + "JOIN usuario_rol ur ON ur.id_rol = r.id_rol AND ur.activo = 1 "
+                + "WHERE p.activo = 1 AND ur.id_usuario = ?";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String codigo = rs.getString("codigo");
+                    if (codigo != null) {
+                        codigos.add(codigo.trim().toUpperCase(java.util.Locale.ROOT));
+                    }
+                }
+            }
+        }
+        return codigos;
+    }
 
     public List<PermisoDTO> listarPermisosPorRol(Long idRol) throws SQLException {
         String sql = "SELECT p.id_permiso, p.codigo, p.nombre, p.modulo, p.activo, "

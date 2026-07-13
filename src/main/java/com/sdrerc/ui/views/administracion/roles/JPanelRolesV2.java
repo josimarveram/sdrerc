@@ -194,9 +194,14 @@ public class JPanelRolesV2 extends JPanel {
         lblRolSeleccionado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblRolSeleccionado.setForeground(AppV2Theme.TEXT_SECONDARY);
 
+        JPanel titleRow = new JPanel(new BorderLayout(8, 0));
+        titleRow.setOpaque(false);
+        titleRow.add(title, BorderLayout.CENTER);
+        titleRow.add(crearBotonCerrarPanel(), BorderLayout.EAST);
+
         JPanel header = new JPanel(new BorderLayout(0, 4));
         header.setOpaque(false);
-        header.add(title, BorderLayout.NORTH);
+        header.add(titleRow, BorderLayout.NORTH);
         header.add(lblRolSeleccionado, BorderLayout.CENTER);
 
         JTabbedPane tabs = new JTabbedPane();
@@ -319,10 +324,9 @@ public class JPanelRolesV2 extends JPanel {
         scrollRoles.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblRoles.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblRoles.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        tblRoles.getColumnModel().getColumn(0).setMaxWidth(70);
-        tblRoles.getColumnModel().getColumn(4).setCellRenderer(new EstadoRolRenderer());
+        tblRoles.getColumnModel().getColumn(3).setCellRenderer(new EstadoRolRenderer());
+        tblRoles.getColumnModel().getColumn(4).setMaxWidth(80);
         tblRoles.getColumnModel().getColumn(5).setMaxWidth(80);
-        tblRoles.getColumnModel().getColumn(6).setMaxWidth(80);
         AppV2TableColumnSizer.applyFriendlyDefaults(tblRoles);
         AppV2ColumnFilterSupport.install("Administracion.Roles", tblRoles, scrollRoles, null, null);
 
@@ -398,6 +402,7 @@ public class JPanelRolesV2 extends JPanel {
                     roles.clear();
                     roles.addAll(get());
                     rolesModel.fireTableDataChanged();
+                    AppV2TableColumnSizer.sizeToContent(tblRoles);
                     actualizarMetricas();
                     nuevoRol();
                     lblEstado.setText(roles.size() + " rol(es) encontrado(s).");
@@ -450,6 +455,27 @@ public class JPanelRolesV2 extends JPanel {
         if (splitDetalle != null) {
             splitDetalle.setSideVisible(true);
         }
+    }
+
+    private void cerrarPanelDetalle() {
+        if (splitDetalle != null) {
+            splitDetalle.setSideVisible(false);
+        }
+    }
+
+    private JButton crearBotonCerrarPanel() {
+        JButton btnCerrar = new JButton("X");
+        btnCerrar.setFocusable(false);
+        btnCerrar.setToolTipText("Ocultar panel");
+        btnCerrar.setHorizontalAlignment(SwingConstants.CENTER);
+        btnCerrar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        btnCerrar.setForeground(AppV2Theme.TEXT_SECONDARY);
+        btnCerrar.setBackground(AppV2Theme.SURFACE);
+        btnCerrar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(4, 9, 4, 9)));
+        btnCerrar.addActionListener(e -> cerrarPanelDetalle());
+        return btnCerrar;
     }
 
     private void cargarFormulario(RolDTO rol) {
@@ -633,6 +659,7 @@ public class JPanelRolesV2 extends JPanel {
                     roles.clear();
                     roles.addAll(get());
                     rolesModel.fireTableDataChanged();
+                    AppV2TableColumnSizer.sizeToContent(tblRoles);
                     actualizarMetricas();
                     seleccionarRol(idRol);
                     lblEstado.setText(roles.size() + " rol(es) encontrado(s).");
@@ -749,7 +776,7 @@ public class JPanelRolesV2 extends JPanel {
     private class RolesTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "ID", "Código", "Nombre", "Descripción", "Estado", "Usuarios", "Permisos"
+            "Código", "Nombre", "Descripción", "Estado", "Usuarios", "Permisos"
         };
 
         @Override
@@ -769,10 +796,7 @@ public class JPanelRolesV2 extends JPanel {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            if (columnIndex == 0) {
-                return Long.class;
-            }
-            if (columnIndex == 5 || columnIndex == 6) {
+            if (columnIndex == 4 || columnIndex == 5) {
                 return Integer.class;
             }
             return String.class;
@@ -783,18 +807,16 @@ public class JPanelRolesV2 extends JPanel {
             RolDTO rol = roles.get(rowIndex);
             switch (columnIndex) {
                 case 0:
-                    return rol.getIdRol();
-                case 1:
                     return rol.getCodigo();
-                case 2:
+                case 1:
                     return rol.getNombre();
-                case 3:
+                case 2:
                     return rol.getDescripcion();
-                case 4:
+                case 3:
                     return rol.isActivo() ? "Activo" : "Inactivo";
-                case 5:
+                case 4:
                     return rol.getUsuariosAsociados();
-                case 6:
+                case 5:
                     return rol.getPermisosAsociados();
                 default:
                     return "";

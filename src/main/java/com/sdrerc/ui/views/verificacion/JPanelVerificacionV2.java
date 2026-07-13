@@ -658,6 +658,17 @@ public class JPanelVerificacionV2 extends JPanel {
         lblAbogadoAnalisisDestinoValor.setText(abogado.isEmpty() ? "-" : abogado);
     }
 
+    private void limpiarSeleccionDestinoOperativo() {
+        cargandoCombosDestino = true;
+        if (cmbEquipoDestino.getItemCount() > 0) {
+            cmbEquipoDestino.setSelectedIndex(0);
+        }
+        cmbUsuarioDestino.removeAllItems();
+        cmbUsuarioDestino.addItem(UsuarioItem.placeholder("Seleccione abogado"));
+        cmbUsuarioDestino.setSelectedIndex(0);
+        cargandoCombosDestino = false;
+    }
+
     private JPanel crearFormularioVerificacion() {
         JPanel panel = section("Registro de verificación");
         JPanel grid = new JPanel(new GridBagLayout());
@@ -1561,6 +1572,7 @@ public class JPanelVerificacionV2 extends JPanel {
             lblResponsable.setText("-");
             lblResponsableAnalisis.setText("-");
             actualizarAbogadoAnalisisDestino(null);
+            limpiarSeleccionDestinoOperativo();
             lblEtapaEstado.setText("-");
             lblDestinoSiguiente.setText("-");
             lblAnalisis.setText("-");
@@ -1583,6 +1595,7 @@ public class JPanelVerificacionV2 extends JPanel {
             lblResponsable.setText(valorUi(relacionado.getAbogadoAsignado()));
             lblResponsableAnalisis.setText(item == null || item.getResponsableAnalisis().isEmpty() ? "-" : item.getResponsableAnalisis());
             actualizarAbogadoAnalisisDestino(item);
+            limpiarSeleccionDestinoOperativo();
             lblEtapaEstado.setText("Expediente principal: " + fila.numeroExpedientePrincipal());
             lblDestinoSiguiente.setText("Contexto del expediente principal");
             lblAnalisis.setText("Contexto de verificación");
@@ -1606,6 +1619,7 @@ public class JPanelVerificacionV2 extends JPanel {
         lblResponsable.setText(item.getResponsable().isEmpty() ? "-" : item.getResponsable());
         lblResponsableAnalisis.setText(item.getResponsableAnalisis().isEmpty() ? "-" : item.getResponsableAnalisis());
         actualizarAbogadoAnalisisDestino(item);
+        limpiarSeleccionDestinoOperativo();
         lblEtapaEstado.setText(estadoVisualIntegrado(item));
         lblDestinoSiguiente.setText(item.getDestinoSiguiente());
         lblAnalisis.setText(item.getUltimoResultadoAnalisis().isEmpty() ? "Sin resultado registrado" : item.getUltimoResultadoAnalisis());

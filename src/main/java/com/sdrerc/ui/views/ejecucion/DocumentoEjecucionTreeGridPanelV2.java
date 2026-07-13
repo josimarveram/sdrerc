@@ -1,5 +1,6 @@
 package com.sdrerc.ui.views.ejecucion;
 
+import com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
@@ -11,17 +12,23 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntConsumer;
 import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
@@ -50,12 +57,11 @@ import javax.swing.table.TableColumn;
 public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
 
     public interface SaveRowHandler {
-        void guardarFila(
-                Long idDocumentoAnalizado,
-                String estadoCodigo,
-                String comentario,
-                LocalDate fechaEmision,
-                String numeroDocumento) throws Exception;
+        AnalisisResultadoDTO guardarFila(DocumentoAnalizadoDTO documento) throws Exception;
+    }
+
+    public interface DownloadPlantillaHandler {
+        void descargar(DocumentoAnalizadoDTO documento);
     }
 
     private static final int PADRE_COL_TIPO = 0;
@@ -64,14 +70,23 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
     private static final int PADRE_COL_FECHA = 3;
     private static final int PADRE_COL_COMENTARIO = 4;
     private static final int PADRE_COL_REQUIERE_RESPUESTA = 5;
-    private static final int PADRE_COL_GUARDAR = 6;
+    private static final int PADRE_COL_WORD = 6;
+    private static final int PADRE_COL_GUARDAR = 7;
 
     private static final int HIJO_COL_TIPO = 0;
-    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 1;
-    private static final int HIJO_COL_FECHA_RESPUESTA = 2;
-    private static final int HIJO_COL_FECHA_PUBLICACION = 3;
-    private static final int HIJO_COL_EXISTE_OPOSICION = 4;
+    private static final int HIJO_COL_COMENTARIO = 1;
+    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 2;
+    private static final int HIJO_COL_FECHA_RESPUESTA = 3;
+    private static final int HIJO_COL_FECHA_PUBLICACION = 4;
     private static final int HIJO_COL_HOJA_ENVIO = 5;
+
+    private static final String ESTADO_VISIBLE_PADRE = "EMITIDO";
+
+    private static final Set<String> TIPOS_CARTA_NOTIFICACION = new HashSet<String>(Arrays.asList(
+            "ANALISIS_DOC_01_CARTA_ABANDONO",
+            "ANALISIS_DOC_17_CARTA_IMPROCEDENTE",
+            "ANALISIS_DOC_18_CARTA_PROCEDENTE",
+            "ANALISIS_DOC_19_CARTA_PROCEDENTE_EN_PARTE"));
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -84,30 +99,43 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
     private final JScrollPane scrollHijo = new JScrollPane(tablaHijo);
     private final JLabel lblBannerPadre = crearBanner("Documentos del expediente");
     private final JLabel lblBannerHijo = crearBanner("Documentos de cartas de respuesta");
+    private final JButton btnAgregarPadre = new JButton("+ Documento");
+    private final JButton btnAgregarHijo = new JButton("+ Relacionado");
     private final JLabel lblEstado = new JLabel("Seleccione un expediente para revisar sus documentos.");
+    private final AtomicLong tempIds = new AtomicLong(-1L);
 
+    private List<CatalogoItemDTO> tipos = new ArrayList<CatalogoItemDTO>();
     private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
     private Long idExpediente;
+    private DocumentoRow padreSeleccionado;
     private SaveRowHandler saveRowHandler;
+    private DownloadPlantillaHandler downloadHandler;
     private Runnable refreshHandler;
 
     public DocumentoEjecucionTreeGridPanelV2() {
         setLayout(new BorderLayout(0, 8));
         setOpaque(false);
-        add(crearEncabezado(), BorderLayout.NORTH);
+        add(crearToolbar(), BorderLayout.NORTH);
         configurarTablas();
         add(crearGrillas(), BorderLayout.CENTER);
     }
 
-    public void setHandlers(SaveRowHandler saveRowHandler, Runnable refreshHandler) {
+    public void setHandlers(
+            SaveRowHandler saveRowHandler,
+            DownloadPlantillaHandler downloadHandler,
+            Runnable refreshHandler) {
         this.saveRowHandler = saveRowHandler;
+        this.downloadHandler = downloadHandler;
         this.refreshHandler = refreshHandler;
     }
 
-    public void setEstadosDocumento(List<CatalogoItemDTO> estados) {
+    public void setCatalogos(List<CatalogoItemDTO> tipos, List<CatalogoItemDTO> estados) {
+        this.tipos = tipos == null ? new ArrayList<CatalogoItemDTO>() : new ArrayList<CatalogoItemDTO>(tipos);
         this.estados = estados == null ? new ArrayList<CatalogoItemDTO>() : new ArrayList<CatalogoItemDTO>(estados);
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.tipos)));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_ESTADO_DOCUMENTO)
                 .setCellEditor(new DefaultCellEditor(comboCatalogo(this.estados)));
+        tablaHijo.getColumnModel().getColumn(HIJO_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.tipos)));
     }
 
     public void setDocumentos(Long idExpediente, List<DocumentoAnalizadoDTO> documentos) {
@@ -120,17 +148,27 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                 }
             }
         }
+        padreSeleccionado = null;
         rebuildPadre();
         rebuildHijo(null);
         actualizarEstado();
     }
 
-    private JPanel crearEncabezado() {
-        JPanel wrapper = new JPanel(new BorderLayout());
+    private JPanel crearToolbar() {
+        JPanel wrapper = new JPanel(new BorderLayout(8, 6));
         wrapper.setOpaque(false);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        actions.setOpaque(false);
+        estilizarPrimario(btnAgregarPadre);
+        estilizarSecundario(btnAgregarHijo);
+        actions.add(btnAgregarPadre);
+        actions.add(btnAgregarHijo);
         lblEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
+        wrapper.add(actions, BorderLayout.NORTH);
         wrapper.add(lblEstado, BorderLayout.SOUTH);
+        btnAgregarPadre.addActionListener(e -> agregarPadre());
+        btnAgregarHijo.addActionListener(e -> agregarHijo());
         return wrapper;
     }
 
@@ -175,6 +213,11 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         tablaPadre.getColumnModel().getColumn(PADRE_COL_COMENTARIO).setCellEditor(new TextAreaCellEditor());
         tablaPadre.getColumnModel().getColumn(PADRE_COL_NUMERO).setCellEditor(new DefaultCellEditor(new JTextField()));
 
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_WORD).setCellRenderer(
+                new RowActionRenderer(new WordDocumentIcon(), "Descargar plantilla Word"));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_WORD).setCellEditor(
+                new RowActionEditor(new WordDocumentIcon(), "Descargar plantilla Word",
+                        row -> descargarPlantilla(padreModel.getRow(row))));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellRenderer(
                 new RowActionRenderer(new SaveDocumentIcon(), "Guardar documento"));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellEditor(
@@ -182,8 +225,8 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                         row -> guardarFila(padreModel.getRow(row))));
 
         ajustarAnchos(tablaPadre, new int[]{200, 130, 150, 110, 240, 140});
-        configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR});
-        ajustarAnchos(tablaHijo, new int[]{170, 210, 150, 110, 120, 120});
+        configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_WORD, PADRE_COL_GUARDAR});
+        ajustarAnchos(tablaHijo, new int[]{170, 220, 190, 130, 130, 120});
 
         scrollPadre.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         scrollPadre.setPreferredSize(new Dimension(820, 150));
@@ -199,8 +242,8 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                 return;
             }
             int row = tablaPadre.getSelectedRow();
-            DocumentoRow seleccionado = row < 0 ? null : padreModel.getRow(row);
-            rebuildHijo(seleccionado == null ? null : seleccionado.id);
+            padreSeleccionado = row < 0 ? null : padreModel.getRow(row);
+            rebuildHijo(padreSeleccionado == null ? null : padreSeleccionado.id);
         });
     }
 
@@ -242,25 +285,46 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         }
     }
 
+    private void agregarPadre() {
+        DocumentoRow row = DocumentoRow.nuevoPadre(tempIds.getAndDecrement(), primerTipoVisible(), primerEstado(), siguienteOrden(null));
+        allRows.add(row);
+        rebuildPadre();
+        seleccionarFilaPadre(row);
+        actualizarEstado();
+    }
+
+    private void agregarHijo() {
+        DocumentoRow seleccionado = padreSeleccionado;
+        if (seleccionado == null) {
+            mostrarInfo("Seleccione un documento principal para agregar un documento relacionado.");
+            return;
+        }
+        DocumentoRow hijo = DocumentoRow.nuevoHijo(
+                tempIds.getAndDecrement(),
+                seleccionado.id,
+                primerTipo(),
+                primerEstado(),
+                siguienteOrden(seleccionado.id));
+        allRows.add(hijo);
+        rebuildHijo(seleccionado.id);
+        seleccionarFilaHijo(hijo);
+        actualizarEstado();
+    }
+
     private void guardarFila(DocumentoRow row) {
-        if (row == null || row.id == null) {
+        if (row == null) {
             return;
         }
         if (saveRowHandler == null) {
             mostrarInfo("No se configuró el servicio de guardado de documentos.");
             return;
         }
-        final Long idDocumento = row.id;
-        final String estadoCodigo = row.estadoDocumento == null ? "" : row.estadoDocumento.getCodigo();
-        final String comentario = row.descripcion;
-        final LocalDate fechaEmision = row.fechaDocumento;
-        final String numeroDocumento = row.numeroDocumento;
+        DocumentoAnalizadoDTO documento = row.toDocumento(idExpediente);
         lblEstado.setText("Guardando documento...");
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+        SwingWorker<AnalisisResultadoDTO, Void> worker = new SwingWorker<AnalisisResultadoDTO, Void>() {
             @Override
-            protected Void doInBackground() throws Exception {
-                saveRowHandler.guardarFila(idDocumento, estadoCodigo, comentario, fechaEmision, numeroDocumento);
-                return null;
+            protected AnalisisResultadoDTO doInBackground() throws Exception {
+                return saveRowHandler.guardarFila(documento);
             }
 
             @Override
@@ -276,10 +340,23 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                     refrescar();
                 } catch (Exception ex) {
                     mostrarError("No se pudo guardar el documento.", ex);
+                } finally {
+                    actualizarEstado();
                 }
             }
         };
         worker.execute();
+    }
+
+    private void descargarPlantilla(DocumentoRow row) {
+        if (row == null) {
+            return;
+        }
+        if (downloadHandler == null) {
+            mostrarInfo("No se configuró el servicio de descarga de plantillas.");
+            return;
+        }
+        downloadHandler.descargar(row.toDocumento(idExpediente));
     }
 
     private void refrescar() {
@@ -310,6 +387,76 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             visibles.sort(Comparator.comparingInt(r -> r.orden));
         }
         hijoModel.setRows(visibles);
+    }
+
+    private void seleccionarFilaPadre(DocumentoRow row) {
+        int index = padreModel.indexOf(row);
+        if (index >= 0) {
+            tablaPadre.getSelectionModel().setSelectionInterval(index, index);
+            tablaPadre.scrollRectToVisible(tablaPadre.getCellRect(index, 0, true));
+        }
+    }
+
+    private void seleccionarFilaHijo(DocumentoRow row) {
+        int index = hijoModel.indexOf(row);
+        if (index >= 0) {
+            tablaHijo.getSelectionModel().setSelectionInterval(index, index);
+            tablaHijo.scrollRectToVisible(tablaHijo.getCellRect(index, 0, true));
+        }
+    }
+
+    private CatalogoItemDTO primerTipo() {
+        return tipos.isEmpty() ? new CatalogoItemDTO("", "") : tipos.get(0);
+    }
+
+    private CatalogoItemDTO primerTipoVisible() {
+        for (CatalogoItemDTO tipo : tipos) {
+            if (tipo != null && tipo.getCodigo() != null && TIPOS_CARTA_NOTIFICACION.contains(tipo.getCodigo().toUpperCase())) {
+                return tipo;
+            }
+        }
+        return primerTipo();
+    }
+
+    private CatalogoItemDTO primerEstado() {
+        for (CatalogoItemDTO estado : estados) {
+            if (estado != null && ESTADO_VISIBLE_PADRE.equalsIgnoreCase(estado.getCodigo())) {
+                return estado;
+            }
+        }
+        return estados.isEmpty() ? new CatalogoItemDTO("", "") : estados.get(0);
+    }
+
+    private int siguienteOrden(Long parentId) {
+        int max = 0;
+        for (DocumentoRow row : allRows) {
+            if (same(parentId, row.parentId)) {
+                max = Math.max(max, row.orden);
+            }
+        }
+        return max + 1;
+    }
+
+    private static boolean same(Long a, Long b) {
+        return a == null ? b == null : a.equals(b);
+    }
+
+    private void estilizarPrimario(JButton button) {
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.PRIMARY);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(7, 12, 7, 12));
+    }
+
+    private void estilizarSecundario(JButton button) {
+        button.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        button.setBackground(AppV2Theme.SURFACE);
+        button.setForeground(AppV2Theme.TEXT_PRIMARY);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppV2Theme.BORDER),
+                BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
     private void actualizarEstado() {
@@ -351,7 +498,7 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
             "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
-            "Comentario", "¿Requiere respuesta?", ""
+            "Comentario", "¿Requiere respuesta?", "", ""
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -362,6 +509,10 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
 
         DocumentoRow getRow(int row) {
             return row < 0 || row >= rows.size() ? null : rows.get(row);
+        }
+
+        int indexOf(DocumentoRow target) {
+            return rows.indexOf(target);
         }
 
         @Override
@@ -387,10 +538,12 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return getRow(rowIndex) != null
-                    && (columnIndex == PADRE_COL_ESTADO_DOCUMENTO
+                    && (columnIndex == PADRE_COL_TIPO
+                    || columnIndex == PADRE_COL_ESTADO_DOCUMENTO
                     || columnIndex == PADRE_COL_FECHA
                     || columnIndex == PADRE_COL_COMENTARIO
                     || columnIndex == PADRE_COL_NUMERO
+                    || columnIndex == PADRE_COL_WORD
                     || columnIndex == PADRE_COL_GUARDAR);
         }
 
@@ -402,7 +555,7 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             }
             switch (columnIndex) {
                 case PADRE_COL_TIPO:
-                    return row.tipoDocumento;
+                    return row.tipo;
                 case PADRE_COL_NUMERO:
                     return row.numeroDocumento;
                 case PADRE_COL_ESTADO_DOCUMENTO:
@@ -425,6 +578,11 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                 return;
             }
             switch (columnIndex) {
+                case PADRE_COL_TIPO:
+                    if (value instanceof CatalogoItemDTO) {
+                        row.tipo = (CatalogoItemDTO) value;
+                    }
+                    break;
                 case PADRE_COL_NUMERO:
                     row.numeroDocumento = text(value);
                     break;
@@ -449,8 +607,8 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
     private static class HijoTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Confirmación de respuesta", "Fecha Respuesta",
-            "Fecha Publicación", "Existe Oposición", "Hoja de Envío"
+            "Tipo documento", "Comentario", "Confirmación de respuesta",
+            "Fecha Respuesta", "Fecha Publicación", "Hoja de Envío"
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -461,6 +619,10 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
 
         DocumentoRow getRow(int row) {
             return row < 0 || row >= rows.size() ? null : rows.get(row);
+        }
+
+        int indexOf(DocumentoRow target) {
+            return rows.indexOf(target);
         }
 
         @Override
@@ -491,15 +653,15 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             }
             switch (columnIndex) {
                 case HIJO_COL_TIPO:
-                    return row.tipoDocumento;
+                    return row.tipo;
+                case HIJO_COL_COMENTARIO:
+                    return row.descripcion;
                 case HIJO_COL_CONFIRMACION_RESPUESTA:
                     return row.confirmacionRespuesta;
                 case HIJO_COL_FECHA_RESPUESTA:
                     return row.fechaRespuesta != null ? DATE_FORMAT.format(row.fechaRespuesta) : "";
                 case HIJO_COL_FECHA_PUBLICACION:
                     return row.fechaPublicacion != null ? DATE_FORMAT.format(row.fechaPublicacion) : "";
-                case HIJO_COL_EXISTE_OPOSICION:
-                    return row.existeOposicion == null ? "-" : (row.existeOposicion ? "Si" : "No");
                 case HIJO_COL_HOJA_ENVIO:
                     return row.hojaEnvio;
                 default:
@@ -513,17 +675,53 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         private Long parentId;
         private int nivel;
         private int orden;
-        private String tipoDocumento;
+        private CatalogoItemDTO tipo;
         private CatalogoItemDTO estadoDocumento;
         private LocalDate fechaDocumento;
         private String numeroDocumento;
         private String descripcion;
         private boolean requiereRespuesta;
+        private String estadoRespuesta;
+        private String observacion;
         private String confirmacionRespuesta;
         private LocalDate fechaRespuesta;
         private LocalDate fechaPublicacion;
         private Boolean existeOposicion;
         private String hojaEnvio;
+        private boolean activo = true;
+        private String usuarioRegistro;
+        private LocalDateTime fechaRegistro;
+        private String usuarioModificacion;
+        private LocalDateTime fechaModificacion;
+
+        static DocumentoRow base(Long id, CatalogoItemDTO tipo, CatalogoItemDTO estado, int orden) {
+            DocumentoRow row = new DocumentoRow();
+            row.id = id;
+            row.tipo = tipo;
+            row.estadoDocumento = estado;
+            row.orden = orden;
+            row.numeroDocumento = "";
+            row.descripcion = "";
+            row.estadoRespuesta = "";
+            row.observacion = "";
+            row.confirmacionRespuesta = "";
+            row.hojaEnvio = "";
+            return row;
+        }
+
+        static DocumentoRow nuevoPadre(Long id, CatalogoItemDTO tipo, CatalogoItemDTO estado, int orden) {
+            DocumentoRow row = base(id, tipo, estado, orden);
+            row.nivel = 0;
+            row.parentId = null;
+            return row;
+        }
+
+        static DocumentoRow nuevoHijo(Long id, Long parentId, CatalogoItemDTO tipo, CatalogoItemDTO estado, int orden) {
+            DocumentoRow row = base(id, tipo, estado, orden);
+            row.nivel = 1;
+            row.parentId = parentId;
+            return row;
+        }
 
         static DocumentoRow from(DocumentoAnalizadoDTO dto) {
             DocumentoRow row = new DocumentoRow();
@@ -531,18 +729,60 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             row.parentId = dto.getIdDocumentoPadre();
             row.nivel = dto.getNivel();
             row.orden = dto.getOrden();
-            row.tipoDocumento = dto.getTipoDocumentoNombre();
+            row.tipo = new CatalogoItemDTO(dto.getTipoDocumentoCodigo(), dto.getTipoDocumentoNombre());
             row.estadoDocumento = new CatalogoItemDTO(dto.getEstadoDocumentoCodigo(), dto.getEstadoDocumentoNombre());
             row.fechaDocumento = dto.getFechaDocumento();
             row.numeroDocumento = dto.getNumeroDocumento();
             row.descripcion = dto.getDescripcion();
             row.requiereRespuesta = dto.isRequiereRespuesta();
+            row.estadoRespuesta = dto.getEstadoRespuesta().isEmpty()
+                    ? (dto.isRequiereRespuesta() ? "PENDIENTE" : "")
+                    : dto.getEstadoRespuesta();
+            row.observacion = dto.getDetalleObservacion();
             row.confirmacionRespuesta = dto.getConfirmacionRespuesta();
             row.fechaRespuesta = dto.getFechaRespuesta();
             row.fechaPublicacion = dto.getFechaPublicacion();
             row.existeOposicion = dto.getExisteOposicion();
             row.hojaEnvio = dto.getNumeroHojaEnvioRespuesta();
+            row.activo = dto.isActivo();
+            row.usuarioRegistro = dto.getUsuarioRegistro();
+            row.fechaRegistro = dto.getFechaRegistro();
+            row.usuarioModificacion = dto.getUsuarioModificacion();
+            row.fechaModificacion = dto.getFechaModificacion();
             return row;
+        }
+
+        DocumentoAnalizadoDTO toDocumento(Long idExpediente) {
+            return new DocumentoAnalizadoDTO(
+                    id,
+                    idExpediente,
+                    null,
+                    tipo == null ? "" : tipo.getCodigo(),
+                    tipo == null ? "" : tipo.getNombre(),
+                    estadoDocumento == null ? "" : estadoDocumento.getCodigo(),
+                    estadoDocumento == null ? "" : estadoDocumento.getNombre(),
+                    fechaDocumento,
+                    numeroDocumento,
+                    descripcion,
+                    false,
+                    null,
+                    requiereRespuesta,
+                    confirmacionRespuesta,
+                    fechaRespuesta,
+                    hojaEnvio,
+                    false,
+                    fechaPublicacion,
+                    observacion,
+                    parentId,
+                    nivel,
+                    orden,
+                    estadoRespuesta,
+                    activo,
+                    usuarioRegistro,
+                    fechaRegistro,
+                    usuarioModificacion,
+                    fechaModificacion,
+                    existeOposicion);
         }
     }
 
@@ -735,6 +975,46 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             LocalDate date = parseDate(value);
             field.setDate(date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()));
             return field;
+        }
+    }
+
+    private static class WordDocumentIcon implements Icon {
+        private static final int SIZE = 18;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = AppV2Theme.PRIMARY;
+                Color fill = new Color(232, 244, 252);
+                g2.setColor(fill);
+                g2.fillRoundRect(x + 3, y + 1, 12, 16, 3, 3);
+                g2.setColor(stroke);
+                g2.drawRoundRect(x + 3, y + 1, 12, 16, 3, 3);
+                g2.drawLine(x + 6, y + 6, x + 12, y + 6);
+                g2.drawLine(x + 6, y + 9, x + 12, y + 9);
+                g2.drawLine(x + 6, y + 12, x + 10, y + 12);
+                g2.setColor(new Color(29, 92, 151));
+                g2.fillRoundRect(x + 1, y + 5, 8, 8, 2, 2);
+                g2.setColor(Color.WHITE);
+                g2.drawLine(x + 3, y + 7, x + 4, y + 11);
+                g2.drawLine(x + 4, y + 11, x + 5, y + 8);
+                g2.drawLine(x + 5, y + 8, x + 6, y + 11);
+                g2.drawLine(x + 6, y + 11, x + 7, y + 7);
+            } finally {
+                g2.dispose();
+            }
         }
     }
 

@@ -196,6 +196,19 @@ public class CatalogoLookupDAO {
         return listarCatalogo("tipo_resultado_ejecucion");
     }
 
+    public List<CatalogoItemDTO> listarResultadosValidacion() throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String sql = "SELECT COUNT(1) FROM user_tables WHERE table_name = 'TIPO_RESULTADO_VALIDACION'";
+            try (PreparedStatement ps = conn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                if (!rs.next() || rs.getInt(1) == 0) {
+                    return new ArrayList<>();
+                }
+            }
+        }
+        return listarCatalogo("tipo_resultado_validacion");
+    }
+
     public List<CatalogoItemDTO> listarTiposNotificacion() throws SQLException {
         return listarCatalogo("tipo_notificacion");
     }

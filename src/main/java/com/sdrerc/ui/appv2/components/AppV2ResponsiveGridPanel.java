@@ -57,9 +57,6 @@ public class AppV2ResponsiveGridPanel extends JPanel {
         int columns = Math.max(1, Math.min(maximumColumns,
                 (availableWidth + horizontalGap) / (minimumCellWidth + horizontalGap)));
         columns = Math.min(columns, Math.max(1, getComponentCount()));
-        if (columns == currentColumns) {
-            return;
-        }
         currentColumns = columns;
         revalidate();
         repaint();
