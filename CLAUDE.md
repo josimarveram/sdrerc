@@ -276,6 +276,7 @@ Reglas vigentes:
 - Guardar documentos no exige resultado/fundamento final.
 - Guardar documentos no mueve el expediente a Verificacion.
 - Enviar a Verificacion sigue siendo accion explicita.
+- Guardar o eliminar un documento analizado (icono de diskette/eliminar en la grilla) refresca solo esa grilla y la lectura de Publicacion prevista; no debe resetear los combos/checks/fundamento del bloque "Resultado del analisis".
 
 Documentos analizados:
 

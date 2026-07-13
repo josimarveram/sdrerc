@@ -395,7 +395,6 @@ public class JPanelAnalisisV2 extends JPanel {
         });
         panel.setAccentColor(new Color(10, 118, 145));
         panel.addSection(crearFormularioAnalisis());
-        panel.addSection(crearResumenAnalisisUnico());
         panel.addSection(crearDocumentosPanel());
         panel.setFooter(crearAccionesPanelAnalisis());
         return panel;
@@ -680,19 +679,6 @@ public class JPanelAnalisisV2 extends JPanel {
         return panel;
     }
 
-    private JPanel crearResumenAnalisisUnico() {
-        JPanel panel = section("Análisis");
-        JPanel grid = new JPanel(new GridBagLayout());
-        grid.setOpaque(false);
-        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel lblUnico = new JLabel("El expediente se gestiona con un único análisis.");
-        lblUnico.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        lblUnico.setForeground(AppV2Theme.TEXT_SECONDARY);
-        addRow(grid, 0, "Análisis actual", lblUnico);
-        panel.add(grid, BorderLayout.CENTER);
-        return panel;
-    }
-
     private JPanel crearDocumentosPanel() {
         JPanel panel = section("Documentos Analizados");
         documentosTreePanel = new DocumentoAnalisisTreeGridPanelV2();
@@ -714,7 +700,7 @@ public class JPanelAnalisisV2 extends JPanel {
                     return analisisService.darBajaDocumentosAnalisis(idExp, ids);
                 },
                 this::descargarPlantillaDocumento,
-                this::recargarDetalleSeleccionado);
+                this::recargarDocumentosSeleccionado);
         panel.add(documentosTreePanel, BorderLayout.CENTER);
         return panel;
     }
@@ -2278,6 +2264,48 @@ public class JPanelAnalisisV2 extends JPanel {
         idExpedienteDetalleCargado = null;
         idExpedienteDetalleSolicitado = null;
         cargarAnalisisRegistrado(item);
+    }
+
+    /**
+     * Refresca solo la grilla de documentos analizados (y la lectura de publicación) tras
+     * guardar/eliminar un documento, sin recargar ni resetear el bloque "Resultado del análisis".
+     */
+    private void recargarDocumentosSeleccionado() {
+        AnalisisExpedienteDTO item = obtenerSeleccionado();
+        if (item == null || item.getIdExpediente() == null) {
+            return;
+        }
+        final Long idExpediente = item.getIdExpediente();
+        SwingWorker<List<AnalisisItemDTO>, Void> worker = new SwingWorker<List<AnalisisItemDTO>, Void>() {
+            @Override
+            protected List<AnalisisItemDTO> doInBackground() throws Exception {
+                return analisisService.listarAnalisisPorExpediente(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (!idExpediente.equals(idExpedienteDetalleCargado)) {
+                    return;
+                }
+                try {
+                    List<AnalisisItemDTO> items = get();
+                    AnalisisItemDTO unico = (items == null || items.isEmpty()) ? null : items.get(0);
+                    if (unico != null) {
+                        if (bloquesAnalisis.isEmpty()) {
+                            bloquesAnalisis.add(unico);
+                        } else {
+                            bloquesAnalisis.set(0, unico);
+                        }
+                        idAnalisisSeleccionado = unico.getIdExpedienteAnalisis();
+                    }
+                    AnalisisDetalleDTO detalle = unico == null ? null : unico.getDetalle();
+                    cargarDocumentosAnalizados(detalle == null ? null : detalle.getDocumentosAnalizados());
+                } catch (Exception ex) {
+                    mostrarError("No se pudo actualizar la lista de documentos.", ex);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private AnalisisRegistroDTO construirRegistro(AnalisisExpedienteDTO item) {
