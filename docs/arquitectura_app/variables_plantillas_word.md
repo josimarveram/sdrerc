@@ -7,6 +7,7 @@ Nota: `~$forme_reconstitucion.docx` es un archivo de bloqueo temporal de Word (i
 ## Cartas
 
 ### carta_abandono.docx
+- `#correo#`
 - `#direccion#`
 - `#dniSolicitante#`
 - `#nomTitular#`
