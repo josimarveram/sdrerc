@@ -42,11 +42,13 @@ public class AnalisisPlantillaDocumentoService {
     public Path generarDocumento(
             AnalisisExpedienteDTO expediente,
             DocumentoAnalizadoDTO documento,
+            List<DocumentoAnalizadoDTO> documentosExpediente,
             Path destino) throws IOException {
         Path plantilla = resolverPlantilla(documento);
         Files.createDirectories(destino.toAbsolutePath().getParent());
         if (plantilla.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(DOCX_EXTENSION)) {
-            generarDocx(plantilla, destino, expediente, valores(expediente, documento));
+            DocumentoAnalizadoDTO informeReferencia = informeMasReciente(documentosExpediente);
+            generarDocx(plantilla, destino, expediente, valores(expediente, documento, informeReferencia));
         } else {
             Files.copy(plantilla, destino, StandardCopyOption.REPLACE_EXISTING);
         }
@@ -249,7 +251,10 @@ public class AnalisisPlantillaDocumentoService {
         return result;
     }
 
-    private Map<String, String> valores(AnalisisExpedienteDTO expediente, DocumentoAnalizadoDTO documento) {
+    private Map<String, String> valores(
+            AnalisisExpedienteDTO expediente,
+            DocumentoAnalizadoDTO documento,
+            DocumentoAnalizadoDTO informeReferencia) {
         Map<String, String> values = new LinkedHashMap<String, String>();
         values.put("NUMERO_EXPEDIENTE", valor(expediente.getNumeroExpediente()));
         values.put("NUMERO_EXPEDIENTE_SGD", valor(expediente.getNumeroExpedienteSgd()));
@@ -281,7 +286,59 @@ public class AnalisisPlantillaDocumentoService {
         values.put("dniSolicitante", valor(expediente.getNumeroDocumentoSolicitante()));
         values.put("tipoActa", valor(expediente.getTipoActa()));
         values.put("nroActa", valor(expediente.getNumeroActa()));
+        values.put("direccion", valor(expediente.getDireccionSolicitante()));
+        values.put("correo", valor(expediente.getCorreoSolicitante()));
+        values.put("tipoProcedimiento", valor(expediente.getProcedimiento()));
+        values.put("fechaSolicitud", fecha(expediente.getFechaRecepcion()));
+        values.put("nroTramiteWeb", valor(expediente.getNumeroTramiteDocumentario()));
+        values.put("canalRecepcion", valor(expediente.getCanalIngreso()));
+        values.put("fechaActual", fecha(LocalDate.now()));
+        values.put("numDoc", valor(expediente.getNumeroDocumento()));
+        values.put("tipoDoc", valor(expediente.getTipoDocumento()));
+        values.put("numDocInforme", informeReferencia == null ? "" : valor(informeReferencia.getNumeroDocumento()));
+        values.put("fechaDocInforme", informeReferencia == null ? "" : fecha(informeReferencia.getFechaDocumento()));
         return values;
+    }
+
+    private static DocumentoAnalizadoDTO informeMasReciente(List<DocumentoAnalizadoDTO> documentos) {
+        if (documentos == null) {
+            return null;
+        }
+        DocumentoAnalizadoDTO mejor = null;
+        for (DocumentoAnalizadoDTO candidato : documentos) {
+            if (candidato == null || !candidato.isActivo() || !esTipoInforme(candidato)) {
+                continue;
+            }
+            if (mejor == null || esMasReciente(candidato, mejor)) {
+                mejor = candidato;
+            }
+        }
+        return mejor;
+    }
+
+    private static boolean esTipoInforme(DocumentoAnalizadoDTO documento) {
+        String codigo = limpiarCodigo(documento.getTipoDocumentoCodigo()).toUpperCase(Locale.ROOT);
+        if (codigo.startsWith("INFORME")) {
+            return true;
+        }
+        String nombre = valor(documento.getTipoDocumentoNombre()).toUpperCase(Locale.ROOT);
+        return nombre.startsWith("INFORME");
+    }
+
+    private static boolean esMasReciente(DocumentoAnalizadoDTO candidato, DocumentoAnalizadoDTO actual) {
+        LocalDate fechaCandidato = candidato.getFechaDocumento();
+        LocalDate fechaActualMejor = actual.getFechaDocumento();
+        if (fechaCandidato != null && fechaActualMejor != null) {
+            return fechaCandidato.isAfter(fechaActualMejor);
+        }
+        if (fechaCandidato != null) {
+            return true;
+        }
+        if (fechaActualMejor != null) {
+            return false;
+        }
+        return candidato.getFechaRegistro() != null
+                && (actual.getFechaRegistro() == null || candidato.getFechaRegistro().isAfter(actual.getFechaRegistro()));
     }
 
     private Path rutaBasePlantillas() {

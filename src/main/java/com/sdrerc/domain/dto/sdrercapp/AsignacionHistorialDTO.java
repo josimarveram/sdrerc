@@ -12,6 +12,7 @@ public class AsignacionHistorialDTO {
     private final boolean activa;
     private final boolean reasignacionExcepcional;
     private final String motivo;
+    private final String asignadoPor;
 
     public AsignacionHistorialDTO(
             Long idExpedienteAsignacion,
@@ -21,7 +22,8 @@ public class AsignacionHistorialDTO {
             LocalDateTime fechaAsignacion,
             boolean activa,
             boolean reasignacionExcepcional,
-            String motivo) {
+            String motivo,
+            String asignadoPor) {
         this.idExpedienteAsignacion = idExpedienteAsignacion;
         this.abogado = safe(abogado);
         this.equipo = safe(equipo);
@@ -30,6 +32,7 @@ public class AsignacionHistorialDTO {
         this.activa = activa;
         this.reasignacionExcepcional = reasignacionExcepcional;
         this.motivo = safe(motivo);
+        this.asignadoPor = safe(asignadoPor);
     }
 
     public Long getIdExpedienteAsignacion() {
@@ -62,6 +65,10 @@ public class AsignacionHistorialDTO {
 
     public String getMotivo() {
         return motivo;
+    }
+
+    public String getAsignadoPor() {
+        return asignadoPor;
     }
 
     private static String safe(String value) {

@@ -2361,11 +2361,13 @@ public class JPanelAnalisisV2 extends JPanel {
         }
 
         final Path destinoFinal = destino;
+        final List<DocumentoAnalizadoDTO> documentosExpediente = obtenerDocumentosFormulario();
         setTrabajando(true, "Generando plantilla Word...");
         SwingWorker<Path, Void> worker = new SwingWorker<Path, Void>() {
             @Override
             protected Path doInBackground() throws Exception {
-                return plantillaDocumentoService.generarDocumento(item, documento, destinoFinal);
+                return plantillaDocumentoService.generarDocumento(
+                        item, documento, documentosExpediente, destinoFinal);
             }
 
             @Override

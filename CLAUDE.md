@@ -255,7 +255,7 @@ Panel derecho Asignacion:
 - No usar popup si la captura ya esta en el panel.
 - La grilla de asignacion debe listar todos los expedientes seleccionados y permitir hoja de envio por expediente.
 - Hoja de envio se persiste en `EXPEDIENTE_ASIGNACION.NUMERO_HOJA_ENVIO` y debe ser unica. Un valor vacio o solo un guion (`-`) se considera hoja de envio no ingresada.
-- `Asociar` incluye la reasignacion de expediente a otro abogado/equipo: exige hoja de envio nueva (no sobrescribe la anterior), desactiva la asignacion vigente conservando su historial y muestra una grilla de historial de asignaciones/reasignaciones del expediente.
+- La reasignacion a otro abogado/equipo se realiza dentro de la misma lengueta `Asignacion`, no en `Asociar`: por defecto la casilla de seleccion del listado queda bloqueada para expedientes ya asignados (igual que antes de existir la reasignacion). Un checkbox `Habilitar reasignacion` en el bloque `Asignacion de abogado` habilita esa casilla tambien para expedientes ya asignados, permitiendo marcarlos junto con expedientes nuevos y reasignarlos con el mismo boton `Generar asignacion`; el checkbox se desactiva automaticamente al terminar la accion, para que el listado vuelva a bloquear por defecto los expedientes asignados (incluyendo los recien asignados/reasignados). La grilla separa `Hoja de envio nueva` (editable, vacia por defecto en reasignacion) de `Hoja de envio actual` (solo lectura, referencia). `Asignacion` incluye el bloque de historial de asignaciones/reasignaciones del expediente con foco (Tipo, Abogado, Equipo, Hoja de envio, Fecha, Asignado por, Estado); `Asociar` ya no lo muestra.
 
 Cartas de respuesta:
 
@@ -315,6 +315,9 @@ Plantillas:
 
 - Plantillas Word viven bajo `docs/plantillas`.
 - La descarga/relleno de plantilla debe reemplazar variables como titular, DNI, solicitante, acta, etc., con datos de la solicitud.
+- Las variables usan el formato `#nomVariable#` (camelCase) dentro del Word; el listado completo por plantilla vive en `docs/arquitectura_app/variables_plantillas_word.md`.
+- Al generar una RESOLUCION, la plantilla puede autocompletar `#numDocInforme#`/`#fechaDocInforme#` con los datos del documento analizado tipo `INFORME` mas reciente (activo, mayor `fecha_documento`) del mismo expediente; si no existe informe, esas variables quedan vacias. La logica vive en `AnalisisPlantillaDocumentoService`, no en el JPanel.
+- Clasificacion de negocio (`TIPO_DOCUMENTO_ADJUNTO.CLASIFICACION`): cartas finales y resoluciones -> `FINAL`; cartas intermedias y oficios -> `INTERMEDIO`; informes -> sin clasificar (`NULL`). Detalle completo en `docs/arquitectura_app/variables_plantillas_word.md`.
 
 No debe haber:
 

@@ -483,10 +483,12 @@ public class AsignacionExpedienteDAO {
             boolean soportaHoja = soportaNumeroHojaEnvio(conn);
             String sql = "SELECT axa.id_expediente_asignacion, u.nombre_completo AS abogado, eq.nombre AS equipo, "
                     + (soportaHoja ? "axa.numero_hoja_envio, " : "CAST(NULL AS VARCHAR2(120)) AS numero_hoja_envio, ")
-                    + "axa.fecha_asignacion, axa.activa, axa.es_reasignacion_excepcional, axa.motivo "
+                    + "axa.fecha_asignacion, axa.activa, axa.es_reasignacion_excepcional, axa.motivo, "
+                    + "uc.nombre_completo AS asignado_por "
                     + "FROM expediente_asignacion axa "
                     + "LEFT JOIN usuario u ON u.id_usuario = axa.id_usuario_asignado "
                     + "LEFT JOIN equipo eq ON eq.id_equipo = axa.id_equipo_asignado "
+                    + "LEFT JOIN usuario uc ON uc.id_usuario = axa.creado_por "
                     + "WHERE axa.id_expediente = ? AND axa.activo = 1 "
                     + "ORDER BY axa.fecha_asignacion DESC, axa.id_expediente_asignacion DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -501,7 +503,8 @@ public class AsignacionExpedienteDAO {
                                 toLocalDateTime(rs.getTimestamp("fecha_asignacion")),
                                 rs.getInt("activa") == 1,
                                 rs.getInt("es_reasignacion_excepcional") == 1,
-                                rs.getString("motivo")));
+                                rs.getString("motivo"),
+                                rs.getString("asignado_por")));
                     }
                 }
             }
