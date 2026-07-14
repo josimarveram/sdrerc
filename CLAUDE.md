@@ -43,6 +43,7 @@ Antes de modificar cualquier cosa:
 - UI llama Service; Service llama DAO.
 - Mantener Java 8 + Swing + FlatLaf.
 - No usar `git add .`.
+- No commitear secretos reales (`db.password`, `security.totp.key`) en `config/sdrerc-app.properties`; revisar el diff de ese archivo antes de cada commit aunque ya este trackeado en el repo.
 
 ## Arquitectura tecnica
 
@@ -64,6 +65,7 @@ Dependencias relevantes:
 - JCalendar.
 - Log4j2.
 - BCrypt.
+- ZXing (`core` + `javase`): generacion de codigo QR para enrolamiento TOTP del login V2.
 
 ## Documentacion funcional clave
 
@@ -110,6 +112,26 @@ Reglas de menu:
 - No usar el menu legacy para nuevas entradas.
 - `Cierre` se maneja como pestana interna de Notificacion, no como modulo lateral independiente.
 - No mostrar sufijo tecnico `V2` al usuario final.
+
+## Login y autenticacion (V2)
+
+Estado: implementado y en uso. `MainV2` ya no abre `MenuPrincipalV2` directamente; primero abre `LoginFrameV2` (`com.sdrerc.ui.appv2.login`), y solo tras autenticar con exito construye el menu.
+
+Reglas vigentes:
+
+- Autentica contra la tabla `USUARIO` de `SDRERC_APP`, no contra la legacy `APP_USERS`. No confundir con `FrmLogin`/`LoginService`/`UserService` legacy, que siguen aislados y sin tocar.
+- Doble factor obligatorio para todos los usuarios, sin excepcion de rol.
+- Flujo: credenciales -> cambio de contrasena obligatorio si `debe_cambiar_password=1` -> enrolamiento TOTP (primera vez, sin `totp_habilitado`) o verificacion TOTP (logins posteriores) -> sesion.
+- TOTP implementado con RFC 6238 sobre JDK puro (sin libreria externa de TOTP); enrolamiento con codigo QR generado con ZXing y clave manual como respaldo.
+- Al confirmar el enrolamiento se generan 8 codigos de respaldo de un solo uso (formato `XXXX-XXXX`, hasheados con BCrypt en `USUARIO_TOTP_BACKUP_CODE`); se muestran una unica vez y no se vuelven a exponer.
+- Bloqueo temporal (5 intentos fallidos, 15 minutos) compartido entre fallos de contrasena y de codigo TOTP/respaldo, para evitar fuerza bruta sobre un codigo de 6 digitos.
+- La primera contrasena la asigna el administrador desde Administracion > Usuarios > `Restablecer clave` (ya habilitado); no existe flujo de autoservicio para reclamar cuenta sin contrasena.
+- `Restablecer clave` permite ademas marcar "reiniciar verificacion en dos pasos" cuando el usuario perdio su dispositivo autenticador (limpia `totp_secret`/`totp_habilitado`, fuerza nuevo enrolamiento).
+- El secreto TOTP se cifra (AES-GCM) antes de persistirse en `USUARIO.TOTP_SECRET`; nunca se guarda en claro. La clave de cifrado se resuelve por `security.totp.key` en `config/sdrerc-app.properties` o variable de entorno `SDRERC_APP_TOTP_KEY`, nunca hardcodeada en el fuente.
+- Clases clave: `LoginFrameV2` + `PasoCambioPasswordPanel`/`PasoTotpEnrolarPanel`/`PasoTotpVerificarPanel` (UI), `AutenticacionService` (orquestacion), `TotpService`/`TotpSecretCipher` (`infrastructure.security`), `UsuarioDAO` (metodos de autenticacion/bloqueo/roles).
+- Mensajes de error de login deliberadamente genericos; nunca revelar si un username existe o no.
+- Esquema: columnas nuevas en `USUARIO` (`debe_cambiar_password`, `totp_secret`, `totp_habilitado`, `totp_confirmado_en`, `intentos_fallidos`, `bloqueado_hasta`, `password_actualizado_en`, `ultimo_login_en`) y tabla `USUARIO_TOTP_BACKUP_CODE`, agregadas por `61_login_2fa_usuario.sql` (ya ejecutado).
+- Bootstrap del primer superadministrador via `62_reset_datos_prueba_y_superadmin.sql` (ya ejecutado); utilidad `com.sdrerc.tools.PasswordHashCli` genera el hash BCrypt localmente para no escribir contrasenas en texto plano en scripts versionados.
 
 ## Flujo funcional principal
 
@@ -373,6 +395,14 @@ Reglas:
 - Toda devolucion conserva resolucion/documentos previos e historial.
 - Derivar a Notificacion solo con carta/documento listo, sin error pendiente y transicion real.
 
+Grilla y panel derecho (implementado):
+
+- Grilla principal replica filtros/diseno de Verificacion, con icono `+` para expandir expedientes asociados (mismo patron que Asignacion/Verificacion: expande expedientes relacionados por acta+titular, no documentos ni intentos).
+- Panel derecho con lenguetas `Datos` y `Ejecutar`, oculto por defecto (se abre con doble clic).
+- Grilla de documentos usa las mismas columnas que Analisis, filtrada a documentos `Emitido`/`Resolucion`; permite `+Documento`/`+Relacionado` y descarga Word.
+- Bloque `Resultado de ejecucion` incluye `Fecha Ejecucion` con calendario condicional segun el resultado elegido.
+- Catalogo de resultado de ejecucion (`OREC`) sembrado por `56_agregar_resultado_ejecucion_orec.sql`.
+
 ## Notificacion
 
 Pestanas superiores vigentes:
@@ -396,6 +426,23 @@ Reglas:
 - Registrar acuse/cargo si aplica.
 - No enviar correos, SMS, WhatsApp ni integraciones externas.
 - Notificacion registra metadata y trazabilidad.
+
+Bandeja Asignacion (implementado):
+
+- Grilla con columna `N° expediente SGD`, checkbox de seleccion individual/multiple e icono `+` que expande expedientes asociados (no documentos).
+- Panel derecho oculto por defecto (doble clic para abrir), con lenguetas `Datos`, `Asignacion` y `Firma`, mismo patron visual que el Panel de Asignacion de Asignacion (incluye `Habilitar reasignacion`, `Hoja de envio nueva` vs `Hoja de envio actual`, historial de asignaciones/reasignaciones).
+- Enrutamiento por clasificacion de documento: `INTERMEDIO` se asigna al equipo `EQ_NOTIFICACION` (abogados de notificacion); `FINAL` se asigna al equipo `EQ_VALIDACION` (validadores). No se permite mezclar clasificaciones en una misma asignacion, ni asignar al equipo que no corresponde.
+- Ciclo de un documento `FINAL`: En despacho -> Bandeja Asignacion (asignar validador) -> Bandeja Validacion (Aprobado/Observado) -> Aprobado reaparece en Bandeja Asignacion con lengueta `Firma` habilitada (pasa de Validado a Emitido, con numero de documento y fecha) -> Bandeja Notificacion.
+- Ciclo de un documento `INTERMEDIO`: ya llega Emitido desde Verificacion; la lengueta `Asignacion` no aplica (deshabilitada) y `Firma` solo permite corregir numero/fecha si hace falta; ya es visible en Bandeja Notificacion sin accion adicional.
+- KPIs propios en la bandeja, con el mismo patron de filtros compactos de tres filas que Registro/Asignacion.
+- Historial de asignaciones/reasignaciones de Notificacion se guarda en la tabla generica `EXPEDIENTE_HISTORIAL` (no una tabla nueva), con `tipo_movimiento` `ASIGNACION_NOTIFICACION`/`REASIGNACION_NOTIFICACION` (`58_tipo_movimiento_notificacion.sql`).
+
+Bandeja Validacion (implementado):
+
+- Sin checkbox ni `+`; solo doble clic para abrir el panel derecho.
+- Panel derecho oculto por defecto, con lenguetas `Datos` y `Validar`.
+- `Validar` incluye la grilla de documentos del expediente (editable en `Estado`) y el bloque `Resultado de validacion`: `Aprobado`/`Observado` (catalogo `tipo_resultado_validacion`, `57_catalogo_resultado_validacion_notificacion.sql`) con comentario obligatorio si es Observado.
+- Marcar `Observado` cambia el documento a estado `OBSERVADO` y limpia la asignacion (equipo/usuario/hoja de envio de notificacion), sin tocar `expediente.id_etapa_actual`/`id_estado_actual`; el abogado responsable (Ejecucion para `FINAL`, Analisis/Verificacion para `INTERMEDIO`) lo ve en su propia grilla de documentos, que ya no filtra por estado.
 
 Cierre:
 
@@ -433,11 +480,25 @@ Reglas:
 
 - Usar patron visual de modulos operativos cuando aplique.
 - Grilla principal con filtros por columna y flechas.
-- Panel derecho al seleccionar fila.
+- Grilla ajustada al contenido real (sin columna `ID` visible) en Usuarios, Roles y Equipo Juridico.
+- Panel derecho al seleccionar fila, oculto por defecto: se abre con doble clic, no al cargar la bandeja.
+- Panel derecho incluye boton `X` para cerrarlo (Usuarios, Roles, Equipo Juridico).
 - Botones principales azules institucionales conservando forma/tamano del modulo.
 - Nunca eliminar fisicamente roles, usuarios o equipos.
 - No mostrar ni guardar passwords en texto plano.
 - `Usuarios`: tipo documento debe ser combo basado en catalogo de identidad.
+- `Usuarios`: `Restablecer clave` (implementado) asigna contrasena temporal al usuario seleccionado (`DlgRestablecerClaveV2`), fuerza cambio en el proximo login, y permite marcar "reiniciar verificacion en dos pasos" cuando corresponda.
+
+## Permisos (control de acceso)
+
+Estado: implementado y en uso.
+
+- Permisos por rol, no por equipo; equipo es una dimension de negocio/alcance de datos (a quien se asigna trabajo), no de control de acceso a pantallas.
+- Dos niveles de permiso: modulo (boton del menu lateral) y bandeja (pestana superior dentro de un modulo). No hay permisos a nivel de panel/lengueta interna (`Datos`/`Asignacion`/`Firma`, etc.): son facetas de la misma tarea dentro de una bandeja ya autorizada, no funciones independientes.
+- Tablas `permiso` y `rol_permiso` ya existian (`07_tablas_fase_2.sql`) pero estaban vacias/sin uso en tiempo de ejecucion; sembradas por `59_catalogo_permisos_menu.sql` (modulo) y `60_catalogo_permisos_bandejas.sql` (bandeja, solo en Registro/Recepcion, Asignacion y Notificacion, que tienen mas de una pestana superior). Ambos scripts otorgan todos los permisos a `ADMIN_SISTEMA`; la asignacion al resto de roles se configura desde Administracion > Roles > `Permisos del rol`.
+- `SessionContext.setPermisos(...)`/`tienePermiso(codigo)` es fail-open: si el catalogo de permisos resuelto para la sesion esta vacio, `tienePermiso` retorna `true` (no bloquea nada hasta que un admin configure permisos reales por rol).
+- `MenuPrincipalV2.resolverPermisosSesion()` puebla `SessionContext` via `PermisoRolService` antes de construir el menu; oculta botones de modulo sin permiso.
+- Bandejas sin permiso se deshabilitan con `tabs.setEnabledAt(indice, false)` (no se eliminan del `JTabbedPane`): `JPanelRegistroRecepcionV2`, `JPanelAsignacionV2` y `JPanelNotificacionV2` tienen logica interna que asume indices fijos de pestana (comparaciones `getSelectedIndex()==N`); remover pestanas correria el riesgo de desalinear esa logica.
 
 ## Base de datos y scripts
 
@@ -475,19 +536,20 @@ Tablas relevantes mencionadas por reglas vigentes:
 - `FLUJO_TRANSICION`.
 - `TIPO_DOCUMENTO_ADJUNTO`.
 - `UBIGEO_DEPARTAMENTO`, `UBIGEO_PROVINCIA`, `UBIGEO_DISTRITO`.
+- `USUARIO`, `USUARIO_ROL`, `EQUIPO_USUARIO`, `USUARIO_SUPERVISION`, `USUARIO_TOTP_BACKUP_CODE` (login/autenticacion V2).
+- `PERMISO`, `ROL_PERMISO` (control de acceso, ver seccion Permisos).
 
 Scripts recientes relevantes:
 
-- `27_grupo_familiar_fase1.sql`.
-- `29_patch_documento_analizado_respuesta.sql`.
-- `30_datos_maestros_plazos_por_procedimiento.sql`.
-- `31_datos_maestros_tipos_documento_analisis_plantillas.sql`.
-- `32_patch_documento_analizado_numero_documento.sql`.
-- `33_patch_documento_analizado_detalle_observacion.sql`.
-- `34_ubigeo_notificacion_registro_manual.sql`.
-- `37_carga_ubigeo_generada_para_xepdb1.sql`.
 - `38_analisis_multiple.sql` existe, pero la regla vigente vuelve a analisis unico.
-- `39_patch_documento_analizado_jerarquia.sql`.
+- `44_asignacion_notificacion_validacion.sql`: estados `ASIGNADO`/`VALIDADO`, equipo `EQ_VALIDACION`, columnas de asignacion de notificacion en `EXPEDIENTE_DOCUMENTO_ANALIZADO`.
+- `56_agregar_resultado_ejecucion_orec.sql`: catalogo de resultado de ejecucion.
+- `57_catalogo_resultado_validacion_notificacion.sql`: catalogo `APROBADO`/`OBSERVADO` para Bandeja Validacion de Notificacion.
+- `58_tipo_movimiento_notificacion.sql`: tipos `ASIGNACION_NOTIFICACION`/`REASIGNACION_NOTIFICACION` para historial.
+- `59_catalogo_permisos_menu.sql`: permisos por modulo (boton de menu lateral).
+- `60_catalogo_permisos_bandejas.sql`: permisos por bandeja (pestana superior) en Registro/Recepcion, Asignacion y Notificacion.
+- `61_login_2fa_usuario.sql`: columnas de autenticacion/TOTP en `USUARIO` + tabla `USUARIO_TOTP_BACKUP_CODE`. Ya ejecutado.
+- `62_reset_datos_prueba_y_superadmin.sql`: reset completo de datos de prueba (trunca tablas transaccionales, conserva catalogos, reinicia `IDENTITY` a 1) + creacion del superadmin. Ya ejecutado; no reejecutar sin autorizacion explicita (es destructivo).
 
 Ubigeo:
 
