@@ -6,6 +6,7 @@ import com.sdrerc.domain.dto.sdrercapp.RolFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioFiltroDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioResultadoDTO;
+import com.sdrerc.infrastructure.security.PasswordEncoder;
 import com.sdrerc.infrastructure.sdrercapp.dao.EquipoAsignacionDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.RolDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.UsuarioDAO;
@@ -16,6 +17,7 @@ import java.util.List;
 public class UsuarioService {
 
     private static final String CODIGO_ROL_ADMIN = "ADMIN_SISTEMA";
+    private static final int MIN_LONGITUD_PASSWORD_TEMPORAL = 8;
 
     private final UsuarioDAO usuarioDAO;
     private final RolDAO rolDAO;
@@ -107,6 +109,35 @@ public class UsuarioService {
                 ? "El usuario fue activado correctamente."
                 : "El usuario fue inactivado correctamente.";
         return UsuarioResultadoDTO.exito(mensaje, actualizado);
+    }
+
+    /**
+     * Usado por Administración &gt; Usuarios &gt; "Restablecer clave": el administrador fija una
+     * contraseña temporal para el usuario seleccionado, forzando el cambio en su próximo login.
+     * Opcionalmente reinicia también la verificación en dos pasos (cuando el usuario perdió su
+     * dispositivo autenticador), lo que obliga a un nuevo enrolamiento TOTP.
+     */
+    public UsuarioResultadoDTO restablecerClave(Long idUsuario, String passwordTemporal, boolean tambienReiniciarTotp)
+            throws SQLException {
+        if (idUsuario == null) {
+            throw new IllegalArgumentException("Seleccione un usuario.");
+        }
+        if (passwordTemporal == null || passwordTemporal.trim().length() < MIN_LONGITUD_PASSWORD_TEMPORAL) {
+            throw new IllegalArgumentException(
+                    "La contraseña temporal debe tener al menos " + MIN_LONGITUD_PASSWORD_TEMPORAL + " caracteres.");
+        }
+        UsuarioDTO actual = usuarioDAO.obtenerPorId(idUsuario);
+        if (actual == null) {
+            throw new IllegalArgumentException("El usuario seleccionado no existe.");
+        }
+
+        String hash = PasswordEncoder.hash(passwordTemporal.trim());
+        usuarioDAO.actualizarPasswordHash(idUsuario, hash, true, resolverUsuarioActualSdrercApp());
+        if (tambienReiniciarTotp) {
+            usuarioDAO.actualizarTotp(idUsuario, null, false);
+        }
+        return UsuarioResultadoDTO.exito(
+                "Se generó una contraseña temporal. El usuario deberá cambiarla en su próximo ingreso.", actual);
     }
 
     private void validarNoPierdeAdministracion(UsuarioDTO actual, boolean activoDestino, List<Long> idsRolesDestino) throws SQLException {

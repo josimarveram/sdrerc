@@ -32,6 +32,10 @@ $jars = @(
     (Join-Path $env:USERPROFILE ".m2\repository\org\mindrot\jbcrypt\0.4\jbcrypt-0.4.jar"),
     (Join-Path $env:USERPROFILE ".m2\repository\com\oracle\database\jdbc\ojdbc8\19.23.0.0\ojdbc8-19.23.0.0.jar"),
 
+    # ZXing para QR de enrolamiento TOTP
+    (Join-Path $env:USERPROFILE ".m2\repository\com\google\zxing\core\3.5.3\core-3.5.3.jar"),
+    (Join-Path $env:USERPROFILE ".m2\repository\com\google\zxing\javase\3.5.3\javase-3.5.3.jar"),
+
     # Apache POI para clases legacy presentes en el classpath
     (Join-Path $env:USERPROFILE ".m2\repository\org\apache\poi\poi\5.2.5\poi-5.2.5.jar"),
     (Join-Path $env:USERPROFILE ".m2\repository\org\apache\poi\poi-ooxml\5.2.5\poi-ooxml-5.2.5.jar"),

@@ -332,7 +332,7 @@ public class JPanelUsuariosV2 extends JPanel {
         chkActivo.setOpaque(false);
         chkActivo.setSelected(true);
         btnRestablecerClave.setEnabled(false);
-        btnRestablecerClave.setToolTipText("Gestión de clave pendiente de definir para SDRERC_APP.");
+        btnRestablecerClave.setToolTipText("Asigna una contraseña temporal; el usuario deberá cambiarla en su próximo ingreso.");
 
         estilizarBotonPrimario(btnBuscar);
         estilizarBotonSecundario(btnLimpiar);
@@ -383,6 +383,7 @@ public class JPanelUsuariosV2 extends JPanel {
         btnCancelar.addActionListener(e -> nuevoUsuario());
         btnGuardar.addActionListener(e -> guardarUsuario());
         btnActivarInactivar.addActionListener(e -> cambiarEstadoSeleccionado());
+        btnRestablecerClave.addActionListener(e -> restablecerClaveSeleccionado());
         txtBusqueda.addActionListener(e -> cargarUsuarios());
         cmbEquipo.addActionListener(e -> actualizarAreaSeleccionada());
 
@@ -634,6 +635,43 @@ public class JPanelUsuariosV2 extends JPanel {
         }.execute();
     }
 
+    private void restablecerClaveSeleccionado() {
+        UsuarioDTO usuario = obtenerUsuarioSeleccionado();
+        if (usuario == null) {
+            mostrarInfo("Seleccione un usuario.");
+            return;
+        }
+        DlgRestablecerClaveV2 dialogo = new DlgRestablecerClaveV2(
+                javax.swing.SwingUtilities.getWindowAncestor(this), usuario.getUsername());
+        dialogo.setVisible(true);
+        if (!dialogo.isConfirmado()) {
+            return;
+        }
+        String passwordTemporal = dialogo.getPasswordTemporal();
+        boolean reiniciarTotp = dialogo.isReiniciarTotp();
+
+        setBusy(true, "Restableciendo clave...");
+        new SwingWorker<UsuarioResultadoDTO, Void>() {
+            @Override
+            protected UsuarioResultadoDTO doInBackground() throws Exception {
+                return usuarioService.restablecerClave(usuario.getIdUsuario(), passwordTemporal, reiniciarTotp);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    UsuarioResultadoDTO resultado = get();
+                    mostrarInfo(resultado.getMensaje());
+                    recargarYSeleccionar(usuario.getIdUsuario());
+                } catch (Exception ex) {
+                    mostrarError("No se pudo restablecer la clave del usuario.", ex);
+                } finally {
+                    setBusy(false, null);
+                }
+            }
+        }.execute();
+    }
+
     private void recargarYSeleccionar(Long idUsuario) {
         UsuarioFiltroDTO filtro = new UsuarioFiltroDTO(
                 txtBusqueda.getText(),
@@ -802,6 +840,7 @@ public class JPanelUsuariosV2 extends JPanel {
         UsuarioDTO usuario = obtenerUsuarioSeleccionado();
         btnEditar.setEnabled(usuario != null);
         btnActivarInactivar.setEnabled(usuario != null);
+        btnRestablecerClave.setEnabled(usuario != null);
         if (usuario == null) {
             btnActivarInactivar.setText("Activar / Inactivar");
         } else {
@@ -815,6 +854,7 @@ public class JPanelUsuariosV2 extends JPanel {
         btnNuevo.setEnabled(!busy);
         btnEditar.setEnabled(!busy && obtenerUsuarioSeleccionado() != null);
         btnActivarInactivar.setEnabled(!busy && obtenerUsuarioSeleccionado() != null);
+        btnRestablecerClave.setEnabled(!busy && obtenerUsuarioSeleccionado() != null);
         btnRefrescar.setEnabled(!busy);
         btnGuardar.setEnabled(!busy);
         btnCancelar.setEnabled(!busy);

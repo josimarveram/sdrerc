@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.domain.dto.sdrercapp.UsuarioAutenticacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioFiltroDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
@@ -11,8 +12,10 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class UsuarioDAO {
 
@@ -182,6 +185,164 @@ public class UsuarioDAO {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             return usuarioRolDAO.contarUsuariosActivosConRol(conn, codigoRol);
         }
+    }
+
+    /**
+     * Datos de autenticación (password_hash, TOTP, bloqueo) de un usuario activo, usados
+     * exclusivamente por el flujo de login. Mismo criterio de coincidencia que
+     * {@code UsuarioAsignacionDAO.obtenerIdUsuarioActivoPorUsername}: UPPER(username), activo=1,
+     * estado='ACTIVO'.
+     */
+    public UsuarioAutenticacionDTO buscarPorUsername(String username) throws SQLException {
+        if (!hasText(username)) {
+            return null;
+        }
+        String sql = "SELECT id_usuario, username, nombre_completo, password_hash, activo, estado, "
+                + "debe_cambiar_password, totp_secret, totp_habilitado, intentos_fallidos, bloqueado_hasta "
+                + "FROM usuario "
+                + "WHERE UPPER(username) = ? AND activo = 1 AND UPPER(estado) = 'ACTIVO'";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username.trim().toUpperCase(Locale.ROOT));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? mapUsuarioAutenticacion(rs) : null;
+            }
+        }
+    }
+
+    /**
+     * Igual que {@link #buscarPorUsername(String)} pero por id, usado en los pasos posteriores
+     * al login (enrolamiento/verificación TOTP) donde ya se conoce el id_usuario autenticado.
+     */
+    public UsuarioAutenticacionDTO obtenerAutenticacionPorId(Long idUsuario) throws SQLException {
+        if (idUsuario == null) {
+            return null;
+        }
+        String sql = "SELECT id_usuario, username, nombre_completo, password_hash, activo, estado, "
+                + "debe_cambiar_password, totp_secret, totp_habilitado, intentos_fallidos, bloqueado_hasta "
+                + "FROM usuario WHERE id_usuario = ?";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? mapUsuarioAutenticacion(rs) : null;
+            }
+        }
+    }
+
+    public void actualizarPasswordHash(Long idUsuario, String passwordHash, boolean debeCambiarPassword,
+            Long idUsuarioActual) throws SQLException {
+        String sql = "UPDATE usuario SET password_hash = ?, debe_cambiar_password = ?, "
+                + "password_actualizado_en = SYSTIMESTAMP, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_usuario = ?";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, passwordHash);
+            ps.setInt(2, debeCambiarPassword ? 1 : 0);
+            setNullableLong(ps, 3, idUsuarioActual);
+            ps.setLong(4, idUsuario);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar la contraseña del usuario seleccionado.");
+            }
+        }
+    }
+
+    public void actualizarTotp(Long idUsuario, String totpSecretCifradoONull, boolean habilitado) throws SQLException {
+        String sql = "UPDATE usuario SET totp_secret = ?, totp_habilitado = ?, "
+                + "totp_confirmado_en = CASE WHEN ? = 1 THEN SYSTIMESTAMP ELSE totp_confirmado_en END "
+                + "WHERE id_usuario = ?";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (totpSecretCifradoONull == null) {
+                ps.setNull(1, Types.VARCHAR);
+            } else {
+                ps.setString(1, totpSecretCifradoONull);
+            }
+            ps.setInt(2, habilitado ? 1 : 0);
+            ps.setInt(3, habilitado ? 1 : 0);
+            ps.setLong(4, idUsuario);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo actualizar la verificación en dos pasos del usuario seleccionado.");
+            }
+        }
+    }
+
+    public void registrarIntentoFallido(Long idUsuario, int maxIntentos, int minutosBloqueo) throws SQLException {
+        String sql = "UPDATE usuario SET intentos_fallidos = intentos_fallidos + 1, "
+                + "bloqueado_hasta = CASE WHEN intentos_fallidos + 1 >= ? "
+                + "THEN SYSTIMESTAMP + NUMTODSINTERVAL(?, 'MINUTE') ELSE bloqueado_hasta END "
+                + "WHERE id_usuario = ?";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maxIntentos);
+            ps.setInt(2, minutosBloqueo);
+            ps.setLong(3, idUsuario);
+            ps.executeUpdate();
+        }
+    }
+
+    public void resetearIntentosFallidos(Long idUsuario) throws SQLException {
+        String sql = "UPDATE usuario SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id_usuario = ?";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            ps.executeUpdate();
+        }
+    }
+
+    public void registrarUltimoLogin(Long idUsuario) throws SQLException {
+        String sql = "UPDATE usuario SET ultimo_login_en = SYSTIMESTAMP WHERE id_usuario = ?";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Códigos de rol activos de un usuario (para poblar {@code User.setRoles(...)} tras el login).
+     * Mismo JOIN que ya usa {@code PermisoDAO.listarCodigosPermisoPorUsuario}.
+     */
+    public Set<String> listarCodigosRolPorUsuario(Long idUsuario) throws SQLException {
+        Set<String> codigos = new HashSet<>();
+        if (idUsuario == null) {
+            return codigos;
+        }
+        String sql = "SELECT DISTINCT r.codigo "
+                + "FROM usuario_rol ur "
+                + "JOIN rol r ON r.id_rol = ur.id_rol AND r.activo = 1 "
+                + "WHERE ur.id_usuario = ? AND ur.activo = 1";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String codigo = rs.getString("codigo");
+                    if (codigo != null) {
+                        codigos.add(codigo.trim().toUpperCase(Locale.ROOT));
+                    }
+                }
+            }
+        }
+        return codigos;
+    }
+
+    private UsuarioAutenticacionDTO mapUsuarioAutenticacion(ResultSet rs) throws SQLException {
+        UsuarioAutenticacionDTO dto = new UsuarioAutenticacionDTO();
+        dto.setIdUsuario(getLongOrNull(rs, "id_usuario"));
+        dto.setUsername(rs.getString("username"));
+        dto.setNombreCompleto(rs.getString("nombre_completo"));
+        dto.setPasswordHash(rs.getString("password_hash"));
+        dto.setActivo(rs.getInt("activo") == 1);
+        dto.setEstado(rs.getString("estado"));
+        dto.setDebeCambiarPassword(rs.getInt("debe_cambiar_password") == 1);
+        dto.setTotpSecretCifrado(rs.getString("totp_secret"));
+        dto.setTotpHabilitado(rs.getInt("totp_habilitado") == 1);
+        dto.setIntentosFallidos(rs.getInt("intentos_fallidos"));
+        dto.setBloqueadoHasta(toLocalDateTime(rs.getTimestamp("bloqueado_hasta")));
+        return dto;
     }
 
     private Long insertarUsuario(Connection conn, UsuarioDTO usuario, Long idUsuarioActual) throws SQLException {

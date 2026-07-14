@@ -1,6 +1,7 @@
 package com.sdrerc.appv2;
 
 import com.sdrerc.ui.appv2.MenuPrincipalV2;
+import com.sdrerc.ui.appv2.login.LoginFrameV2;
 import com.sdrerc.ui.common.AppUiConfig;
 import javax.swing.SwingUtilities;
 
@@ -11,8 +12,14 @@ public class MainV2 {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                MenuPrincipalV2 menu = new MenuPrincipalV2();
-                menu.setVisible(true);
+                LoginFrameV2 login = new LoginFrameV2(new Runnable() {
+                    @Override
+                    public void run() {
+                        MenuPrincipalV2 menu = new MenuPrincipalV2();
+                        menu.setVisible(true);
+                    }
+                });
+                login.setVisible(true);
             }
         });
     }
