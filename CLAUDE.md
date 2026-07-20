@@ -214,6 +214,7 @@ Alertas:
 - Observaciones extensas y datos incompletos pertenecen a previsualizacion de carga diaria/exportacion.
 - Alertas/incidencias persistentes se guardan en `EXPEDIENTE_ALERTA`.
 - Grupo familiar fase 1 se marca en `EXPEDIENTE_SOLICITUD`.
+- Fase 2 de Grupo Familiar (20/07/2026): ademas del flag de Fase 1, ahora existe un ID unico de grupo familiar (tabla `GRUPO_FAMILIAR` + `PERSONA.id_grupo_familiar`, vinculo a nivel persona, no por expediente) para saber que otras personas pertenecen al mismo grupo y que expedientes tienen. Panel "Grupo Familiar" (Registro, lengueta existente "Registrar G.F" evolucionada; Asignacion, lengueta nueva) con tabla de candidatos por apellidos (`GrupoFamiliarHeuristicaService`) + boton de asociacion + tabla de solo lectura "Grupo familiar actual". No se empatan expedientes entre si (no usa `EXPEDIENTE_RELACION`); solo se vincula a la persona titular y se marca "Si" en Grupo Familiar.
 
 Carga diaria:
 

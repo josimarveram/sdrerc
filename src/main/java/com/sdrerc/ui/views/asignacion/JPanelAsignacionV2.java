@@ -13,6 +13,9 @@ import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionResultadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarCandidatoDTO;
+import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarIntegranteDTO;
+import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
@@ -142,6 +145,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final String TAB_DATOS_EXPEDIENTE = "datosExpediente";
     private static final String TAB_PANEL_ASIGNACION = "panelAsignacion";
     private static final String TAB_PANEL_ASOCIAR = "panelAsociar";
+    private static final String TAB_PANEL_GRUPO_FAMILIAR = "panelGrupoFamiliar";
     private static final String TAB_PANEL_RESPUESTA = "panelRespuesta";
     private static final String MODO_PANEL_ASIGNACION = "asignacion";
     private static final String MODO_PANEL_RESPUESTA = "respuesta";
@@ -193,6 +197,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final DocumentoAnalisisService documentoAnalisisService = new DocumentoAnalisisService();
     private final ExpedienteRelacionadoDeteccionService relacionadoDeteccionService = new ExpedienteRelacionadoDeteccionService();
     private final ExpedienteRelacionadoService relacionadoService = new ExpedienteRelacionadoService();
+    private final com.sdrerc.application.sdrercapp.GrupoFamiliarService grupoFamiliarService =
+            new com.sdrerc.application.sdrercapp.GrupoFamiliarService();
     private final AppV2SearchField txtBusqueda = new AppV2SearchField("Buscar expediente, trámite/SGD, acta, titular o documento", 28);
     private final AppV2SearchField txtBusquedaCartasRespuesta = new AppV2SearchField(
             "Buscar expediente, SGD, titular, tipo o documento", 28);
@@ -277,6 +283,33 @@ public class JPanelAsignacionV2 extends JPanel {
     private JScrollPane documentosRelacionadosScroll;
     private JPanel documentosRelacionadosWrapper;
     private JPanel panelSolicitudesAsociadas;
+    private final JLabel lblEstadoDeteccionGrupoFamiliar = new JLabel("Seleccione un expediente en la bandeja.");
+    private final JLabel lblEstadoGrupoFamiliarActual = new JLabel("Sin grupo familiar.");
+    private final JButton btnAsociarGrupoFamiliar = new JButton("Asociar al grupo familiar");
+    private final DefaultTableModel integrantesGrupoFamiliarModel = new DefaultTableModel(
+            new Object[]{"", "N° expediente", "Titular", "Etapa/Estado", "Abogado asignado"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return column == 0;
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == 0 ? Boolean.class : Object.class;
+        }
+    };
+    private final JTable integrantesGrupoFamiliarTable = new AppV2Table(integrantesGrupoFamiliarModel);
+    private final DefaultTableModel grupoFamiliarActualModel = new DefaultTableModel(
+            new Object[]{"Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable grupoFamiliarActualTable = new AppV2Table(grupoFamiliarActualModel);
+    private List<GrupoFamiliarCandidatoDTO> candidatosGrupoFamiliarActuales = new ArrayList<>();
+    private AsignacionExpedienteDTO expedienteFocoGrupoFamiliar;
+    private long secuenciaCargaGrupoFamiliar;
     private final DefaultTableModel asignacionMultipleModel = new DefaultTableModel(
             new Object[]{"Nro. Expediente", "N° expediente SGD", "Hoja de envío nueva", "Hoja de envío actual", "Abogado actual"}, 0) {
         @Override
@@ -342,6 +375,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final AppV2StackedSideTab tabDatosExpediente = crearTabAsignacion("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
     private final AppV2StackedSideTab tabPanelAsignacionOperativa = crearTabAsignacion("Asignación", new Color(224, 243, 240), new Color(10, 118, 145));
     private final AppV2StackedSideTab tabPanelAsociar = crearTabAsignacion("Asociar", new Color(249, 239, 224), new Color(198, 121, 31));
+    private final AppV2StackedSideTab tabPanelGrupoFamiliar = crearTabAsignacion("Grupo Familiar", new Color(224, 245, 232), new Color(35, 138, 94));
     private final AppV2StackedSideTab tabPanelRespuesta = crearTabAsignacion("Respuesta", new Color(240, 233, 249), new Color(110, 78, 164));
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -379,6 +413,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideActionPanel panelAsignacion;
     private AppV2SideActionPanel panelDatosExpediente;
     private AppV2SideActionPanel panelAsociar;
+    private AppV2SideActionPanel panelGrupoFamiliar;
     private AppV2SideActionPanel panelCartasRespuesta;
     private CardLayout panelAsignacionCardsLayout;
     private JPanel panelAsignacionCards;
@@ -503,11 +538,13 @@ public class JPanelAsignacionV2 extends JPanel {
         panelDatosExpediente = crearPanelDatosExpediente();
         panelAsignacion = crearPanelAsignacionOperativa();
         panelAsociar = crearPanelAsociar();
+        panelGrupoFamiliar = crearPanelGrupoFamiliar();
         panelCartasRespuesta = crearPanelCartasRespuesta();
         JPanel panelAsignacionConTab = crearPanelAsignacionConTab(
                 panelDatosExpediente,
                 panelAsignacion,
                 panelAsociar,
+                panelGrupoFamiliar,
                 panelCartasRespuesta);
         splitOperativo = new AppV2OperationalSplitPanel(
                 tabsBandejas,
@@ -735,6 +772,74 @@ public class JPanelAsignacionV2 extends JPanel {
         return panel;
     }
 
+    private AppV2SideActionPanel crearPanelGrupoFamiliar() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Grupo Familiar", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAsignacion();
+            }
+        });
+        panel.setAccentColor(new Color(35, 138, 94));
+
+        AppV2SideSectionPanel seccionDeteccion = new AppV2SideSectionPanel("Posibles integrantes");
+        seccionDeteccion.addRow("Estado", lblEstadoDeteccionGrupoFamiliar);
+        JPanel contentDeteccion = new JPanel(new BorderLayout(6, 6));
+        contentDeteccion.setOpaque(false);
+        JPanel encabezadoDeteccion = new JPanel();
+        encabezadoDeteccion.setOpaque(false);
+        encabezadoDeteccion.setLayout(new BoxLayout(encabezadoDeteccion, BoxLayout.Y_AXIS));
+        JLabel tituloDeteccion = new JLabel("Coincidencias por apellidos del titular");
+        tituloDeteccion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tituloDeteccion.setForeground(AppV2Theme.TEXT_PRIMARY);
+        tituloDeteccion.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel ayudaDeteccion = new JLabel("<html>Marque las personas que realmente pertenecen a la misma familia. "
+                + "Solo se asigna \"Sí\" a Grupo Familiar; no se asocian expedientes entre sí ni se hereda "
+                + "número, equipo o abogado.</html>");
+        ayudaDeteccion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        ayudaDeteccion.setForeground(AppV2Theme.TEXT_SECONDARY);
+        ayudaDeteccion.setAlignmentX(Component.LEFT_ALIGNMENT);
+        encabezadoDeteccion.add(tituloDeteccion);
+        encabezadoDeteccion.add(ayudaDeteccion);
+        contentDeteccion.add(encabezadoDeteccion, BorderLayout.NORTH);
+        JScrollPane scrollIntegrantes = new JScrollPane(integrantesGrupoFamiliarTable);
+        scrollIntegrantes.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scrollIntegrantes.setPreferredSize(new Dimension(300, 170));
+        contentDeteccion.add(scrollIntegrantes, BorderLayout.CENTER);
+        seccionDeteccion.addContent(contentDeteccion);
+        panel.addSection(seccionDeteccion);
+
+        AppV2SideSectionPanel seccionAccion = new AppV2SideSectionPanel("Asociación");
+        AppV2Theme.estilizarBotonPrimario(btnAsociarGrupoFamiliar);
+        btnAsociarGrupoFamiliar.setEnabled(false);
+        btnAsociarGrupoFamiliar.setToolTipText("Asocia las personas marcadas al mismo grupo familiar.");
+        btnAsociarGrupoFamiliar.addActionListener(e -> asociarGrupoFamiliarSeleccion());
+        seccionAccion.addRow("Acción", btnAsociarGrupoFamiliar);
+        panel.addSection(seccionAccion);
+
+        AppV2SideSectionPanel seccionGrupoActual = new AppV2SideSectionPanel("Grupo familiar actual");
+        seccionGrupoActual.addRow("Estado", lblEstadoGrupoFamiliarActual);
+        JScrollPane scrollGrupoActual = new JScrollPane(grupoFamiliarActualTable);
+        scrollGrupoActual.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+        scrollGrupoActual.setPreferredSize(new Dimension(300, 120));
+        seccionGrupoActual.addContent(scrollGrupoActual);
+        panel.addSection(seccionGrupoActual);
+
+        integrantesGrupoFamiliarTable.setRowHeight(28);
+        integrantesGrupoFamiliarTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        AppV2TableColumnSizer.applyWidths(integrantesGrupoFamiliarTable, 34, 130, 150, 130, 150);
+        integrantesGrupoFamiliarModel.addTableModelListener(evento -> {
+            if (evento.getColumn() == 0) {
+                actualizarBotonAsociarGrupoFamiliar();
+            }
+        });
+
+        grupoFamiliarActualTable.setRowHeight(26);
+        grupoFamiliarActualTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        AppV2TableColumnSizer.applyWidths(grupoFamiliarActualTable, 150, 130, 130, 150);
+
+        return panel;
+    }
+
     private AppV2SideActionPanel crearPanelCartasRespuesta() {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Cartas de respuesta", new Runnable() {
             @Override
@@ -808,6 +913,7 @@ public class JPanelAsignacionV2 extends JPanel {
             tabs.add(tabDatosExpediente);
             tabs.add(tabPanelAsignacionOperativa);
             tabs.add(tabPanelAsociar);
+            tabs.add(tabPanelGrupoFamiliar);
         }
         return tabs;
     }
@@ -816,6 +922,7 @@ public class JPanelAsignacionV2 extends JPanel {
             final AppV2SideActionPanel panelDatos,
             final AppV2SideActionPanel panelOperativo,
             final AppV2SideActionPanel panelAsociarActual,
+            final AppV2SideActionPanel panelGrupoFamiliarActual,
             final AppV2SideActionPanel panelCartasActual) {
         JPanel wrapper = new JPanel(null) {
             @Override
@@ -841,10 +948,12 @@ public class JPanelAsignacionV2 extends JPanel {
         panelAsignacionCards.add(panelDatos, TAB_DATOS_EXPEDIENTE);
         panelAsignacionCards.add(panelOperativo, TAB_PANEL_ASIGNACION);
         panelAsignacionCards.add(panelAsociarActual, TAB_PANEL_ASOCIAR);
+        panelAsignacionCards.add(panelGrupoFamiliarActual, TAB_PANEL_GRUPO_FAMILIAR);
         panelAsignacionCards.add(panelCartasActual, TAB_PANEL_RESPUESTA);
         tabDatosExpediente.setToolTipText("Ver datos del expediente");
         tabPanelAsignacionOperativa.setToolTipText("Ver panel de asignación");
         tabPanelAsociar.setToolTipText("Ver panel para asociar expedientes");
+        tabPanelGrupoFamiliar.setToolTipText("Ver panel de grupo familiar");
         tabPanelRespuesta.setToolTipText("Ver panel de respuesta");
         tabDatosExpediente.addMouseListener(new MouseAdapter() {
             @Override
@@ -864,6 +973,12 @@ public class JPanelAsignacionV2 extends JPanel {
                 seleccionarTabAsignacion(TAB_PANEL_ASOCIAR);
             }
         });
+        tabPanelGrupoFamiliar.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAsignacion(TAB_PANEL_GRUPO_FAMILIAR);
+            }
+        });
         tabPanelRespuesta.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -873,6 +988,7 @@ public class JPanelAsignacionV2 extends JPanel {
         wrapper.add(tabDatosExpediente);
         wrapper.add(tabPanelAsignacionOperativa);
         wrapper.add(tabPanelAsociar);
+        wrapper.add(tabPanelGrupoFamiliar);
         wrapper.add(tabPanelRespuesta);
         wrapper.add(panelAsignacionCards);
         wrapper.setMinimumSize(new Dimension(
@@ -3299,6 +3415,7 @@ public class JPanelAsignacionV2 extends JPanel {
             lblIngreso.setText("Múltiple");
             lblIngreso.setToolTipText("Selección múltiple de expedientes marcados.");
             limpiarDocumentosRelacionadosPanel("Puede asociar la selección al expediente principal elegido automáticamente.");
+            cargarPosiblesIntegrantesGrupoFamiliar(null);
             AsociacionRapidaSeleccion seleccionMultiple = obtenerSeleccionAsociacionRapida();
             if (seleccionMultiple != null && seleccionMultiple.ambiguo) {
                 lblExpedientePrincipalAsociacion.setText("Ambiguo");
@@ -3352,6 +3469,7 @@ public class JPanelAsignacionV2 extends JPanel {
             }
             actualizarExpedientePrincipalAsociacion(item);
             cargarDocumentosRelacionadosPanel(item);
+            cargarPosiblesIntegrantesGrupoFamiliar(item);
             actualizarAccionRelacionadosParaPrincipal(item);
             actualizarDecisionNumero(item);
         } else if (filaPanel != null && filaPanel.esAsociada()) {
@@ -3381,12 +3499,14 @@ public class JPanelAsignacionV2 extends JPanel {
             limpiarDocumentosRelacionadosPanel("Asociado al expediente principal " + filaPanel.numeroExpedientePrincipal() + ". La asociación se gestiona desde el principal.");
             actualizarExpedientePrincipalAsociacion(filaPanel.principal);
             actualizarAccionRelacionadosParaAsociado(filaPanel);
+            cargarPosiblesIntegrantesGrupoFamiliar(filaPanel.principal);
         } else {
             actualizarDecisionNumero(null);
             aplicarIdentidadVisual(null, false);
             cargarPanelAsignacionMultiple(Collections.<AsignacionExpedienteDTO>emptyList());
             lblTitularSeleccionado.setText("-");
             limpiarPanelAsignacion();
+            cargarPosiblesIntegrantesGrupoFamiliar(null);
         }
         if (panelDatosExpediente != null) {
             panelDatosExpediente.revalidate();
@@ -4023,6 +4143,173 @@ public class JPanelAsignacionV2 extends JPanel {
                 : mensaje);
     }
 
+    private void cargarPosiblesIntegrantesGrupoFamiliar(AsignacionExpedienteDTO expedientePrincipal) {
+        expedienteFocoGrupoFamiliar = expedientePrincipal;
+        Long idExpediente = expedientePrincipal == null ? null : expedientePrincipal.getIdExpediente();
+        if (idExpediente == null) {
+            candidatosGrupoFamiliarActuales = new ArrayList<>();
+            integrantesGrupoFamiliarModel.setRowCount(0);
+            lblEstadoDeteccionGrupoFamiliar.setText("Seleccione un expediente en la bandeja.");
+            actualizarBotonAsociarGrupoFamiliar();
+            grupoFamiliarActualModel.setRowCount(0);
+            lblEstadoGrupoFamiliarActual.setText("Sin grupo familiar.");
+            return;
+        }
+        lblEstadoDeteccionGrupoFamiliar.setText("Buscando posibles integrantes...");
+        cargarGrupoFamiliarActual(idExpediente);
+        final long sequence = ++secuenciaCargaGrupoFamiliar;
+        SwingWorker<List<GrupoFamiliarCandidatoDTO>, Void> worker =
+                new SwingWorker<List<GrupoFamiliarCandidatoDTO>, Void>() {
+            @Override
+            protected List<GrupoFamiliarCandidatoDTO> doInBackground() throws Exception {
+                return grupoFamiliarService.listarPosiblesIntegrantes(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (sequence != secuenciaCargaGrupoFamiliar) {
+                    return;
+                }
+                try {
+                    candidatosGrupoFamiliarActuales = get();
+                } catch (Exception ex) {
+                    candidatosGrupoFamiliarActuales = new ArrayList<>();
+                    lblEstadoDeteccionGrupoFamiliar.setText("No se pudieron consultar posibles integrantes.");
+                }
+                integrantesGrupoFamiliarModel.setRowCount(0);
+                for (GrupoFamiliarCandidatoDTO candidato : candidatosGrupoFamiliarActuales) {
+                    integrantesGrupoFamiliarModel.addRow(new Object[]{
+                            Boolean.TRUE,
+                            valorUi(candidato.getNumeroExpediente()),
+                            valorUi(candidato.getTitular()),
+                            DisplayNameMapperV2.etapa(candidato.getEtapaCodigo()) + " / "
+                                    + DisplayNameMapperV2.estado(candidato.getEstadoCodigo()),
+                            valorUi(candidato.getAbogadoAsignado())
+                    });
+                }
+                if (candidatosGrupoFamiliarActuales.isEmpty()) {
+                    lblEstadoDeteccionGrupoFamiliar.setText("No se detectaron posibles integrantes por apellidos.");
+                } else {
+                    lblEstadoDeteccionGrupoFamiliar.setText(
+                            candidatosGrupoFamiliarActuales.size() + " posible(s) integrante(s) detectado(s).");
+                }
+                actualizarBotonAsociarGrupoFamiliar();
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarGrupoFamiliarActual(Long idExpediente) {
+        lblEstadoGrupoFamiliarActual.setText("Consultando grupo familiar...");
+        SwingWorker<List<GrupoFamiliarIntegranteDTO>, Void> worker =
+                new SwingWorker<List<GrupoFamiliarIntegranteDTO>, Void>() {
+            @Override
+            protected List<GrupoFamiliarIntegranteDTO> doInBackground() throws Exception {
+                return grupoFamiliarService.listarIntegrantesGrupoFamiliar(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                List<GrupoFamiliarIntegranteDTO> integrantes;
+                try {
+                    integrantes = get();
+                } catch (Exception ex) {
+                    integrantes = new ArrayList<>();
+                }
+                grupoFamiliarActualModel.setRowCount(0);
+                for (GrupoFamiliarIntegranteDTO integrante : integrantes) {
+                    grupoFamiliarActualModel.addRow(new Object[]{
+                            valorUi(integrante.getNombreCompleto()),
+                            valorUi(integrante.getNumeroExpediente()),
+                            DisplayNameMapperV2.etapa(integrante.getEtapaCodigo()) + " / "
+                                    + DisplayNameMapperV2.estado(integrante.getEstadoCodigo()),
+                            valorUi(integrante.getAbogadoAsignado())
+                    });
+                }
+                lblEstadoGrupoFamiliarActual.setText(integrantes.isEmpty()
+                        ? "Este expediente aún no pertenece a un grupo familiar."
+                        : integrantes.size() + " persona(s) en el grupo familiar.");
+            }
+        };
+        worker.execute();
+    }
+
+    private void actualizarBotonAsociarGrupoFamiliar() {
+        int marcados = 0;
+        for (int i = 0; i < integrantesGrupoFamiliarModel.getRowCount(); i++) {
+            if (Boolean.TRUE.equals(integrantesGrupoFamiliarModel.getValueAt(i, 0))) {
+                marcados++;
+            }
+        }
+        if (marcados <= 0) {
+            btnAsociarGrupoFamiliar.setText("Sin integrantes marcados");
+            btnAsociarGrupoFamiliar.setEnabled(false);
+            btnAsociarGrupoFamiliar.setToolTipText("Marque al menos una coincidencia para habilitar la asociación.");
+            return;
+        }
+        btnAsociarGrupoFamiliar.setText("Asociar al grupo familiar (" + marcados + ")");
+        btnAsociarGrupoFamiliar.setEnabled(true);
+        btnAsociarGrupoFamiliar.setToolTipText(
+                "Asocia las personas marcadas con el expediente actualmente seleccionado en un mismo grupo familiar.");
+    }
+
+    private void asociarGrupoFamiliarSeleccion() {
+        if (expedienteFocoGrupoFamiliar == null || expedienteFocoGrupoFamiliar.getIdExpediente() == null) {
+            return;
+        }
+        List<Long> ids = new ArrayList<>();
+        for (int i = 0; i < integrantesGrupoFamiliarModel.getRowCount() && i < candidatosGrupoFamiliarActuales.size(); i++) {
+            if (Boolean.TRUE.equals(integrantesGrupoFamiliarModel.getValueAt(i, 0))) {
+                Long idCandidato = candidatosGrupoFamiliarActuales.get(i).getIdExpediente();
+                if (idCandidato != null) {
+                    ids.add(idCandidato);
+                }
+            }
+        }
+        if (ids.isEmpty()) {
+            mostrarInfo("Marque al menos un posible integrante para asociar.");
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se asociarán " + ids.size() + " persona(s) al mismo grupo familiar del expediente seleccionado.\n"
+                        + "Solo se marca \"Sí\" en Grupo Familiar; no se asocian expedientes entre sí.\n\n"
+                        + "¿Desea continuar?",
+                "Grupo Familiar",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        final Long idPrincipal = expedienteFocoGrupoFamiliar.getIdExpediente();
+        setTrabajando(true, "Asociando grupo familiar...");
+        SwingWorker<GrupoFamiliarResultadoDTO, Void> worker = new SwingWorker<GrupoFamiliarResultadoDTO, Void>() {
+            @Override
+            protected GrupoFamiliarResultadoDTO doInBackground() throws Exception {
+                return grupoFamiliarService.asociarGrupoFamiliar(idPrincipal, ids);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    GrupoFamiliarResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            resultado.getMensaje(),
+                            "Grupo Familiar",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar();
+                    cargarPosiblesIntegrantesGrupoFamiliar(expedienteFocoGrupoFamiliar);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo asociar el grupo familiar.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void mostrarSolicitudesAsociadas(boolean visible) {
         if (panelSolicitudesAsociadas == null) {
             return;
@@ -4402,6 +4689,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (!TAB_DATOS_EXPEDIENTE.equals(tab)
                 && !TAB_PANEL_ASIGNACION.equals(tab)
                 && !TAB_PANEL_ASOCIAR.equals(tab)
+                && !TAB_PANEL_GRUPO_FAMILIAR.equals(tab)
                 && !TAB_PANEL_RESPUESTA.equals(tab)) {
             return;
         }
@@ -4413,7 +4701,8 @@ public class JPanelAsignacionV2 extends JPanel {
         if (MODO_PANEL_ASIGNACION.equals(modoPanelLateral)
                 && !TAB_DATOS_EXPEDIENTE.equals(tab)
                 && !TAB_PANEL_ASIGNACION.equals(tab)
-                && !TAB_PANEL_ASOCIAR.equals(tab)) {
+                && !TAB_PANEL_ASOCIAR.equals(tab)
+                && !TAB_PANEL_GRUPO_FAMILIAR.equals(tab)) {
             return;
         }
         boolean mismaTab = tab.equals(tabAsignacionActiva);
@@ -4423,6 +4712,9 @@ public class JPanelAsignacionV2 extends JPanel {
             splitOperativo.setSideExpanded(!splitOperativo.isSideExpanded());
         }
         actualizarLenguetasAsignacion();
+        if (TAB_PANEL_GRUPO_FAMILIAR.equals(tab)) {
+            cargarPosiblesIntegrantesGrupoFamiliar(obtenerExpedienteFoco());
+        }
         panelAsignacionCards.revalidate();
         panelAsignacionCards.repaint();
     }
@@ -4433,14 +4725,17 @@ public class JPanelAsignacionV2 extends JPanel {
         tabDatosExpediente.setVisible(visibles.contains(tabDatosExpediente));
         tabPanelAsignacionOperativa.setVisible(visibles.contains(tabPanelAsignacionOperativa));
         tabPanelAsociar.setVisible(visibles.contains(tabPanelAsociar));
+        tabPanelGrupoFamiliar.setVisible(visibles.contains(tabPanelGrupoFamiliar));
         tabPanelRespuesta.setVisible(visibles.contains(tabPanelRespuesta));
         tabDatosExpediente.setState(TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva), TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva) && expandido);
         tabPanelAsignacionOperativa.setState(TAB_PANEL_ASIGNACION.equals(tabAsignacionActiva), TAB_PANEL_ASIGNACION.equals(tabAsignacionActiva) && expandido);
         tabPanelAsociar.setState(TAB_PANEL_ASOCIAR.equals(tabAsignacionActiva), TAB_PANEL_ASOCIAR.equals(tabAsignacionActiva) && expandido);
+        tabPanelGrupoFamiliar.setState(TAB_PANEL_GRUPO_FAMILIAR.equals(tabAsignacionActiva), TAB_PANEL_GRUPO_FAMILIAR.equals(tabAsignacionActiva) && expandido);
         tabPanelRespuesta.setState(TAB_PANEL_RESPUESTA.equals(tabAsignacionActiva), TAB_PANEL_RESPUESTA.equals(tabAsignacionActiva) && expandido);
         tabDatosExpediente.setToolTipText("Datos del expediente · " + contextoChip);
         tabPanelAsignacionOperativa.setToolTipText("Panel de asignación · " + contextoChip);
         tabPanelAsociar.setToolTipText("Asociar expedientes · " + contextoChip);
+        tabPanelGrupoFamiliar.setToolTipText("Grupo familiar · " + contextoChip);
         tabPanelRespuesta.setToolTipText("Respuesta de carta · " + contextoChip);
     }
 
