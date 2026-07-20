@@ -9,6 +9,7 @@ import com.sdrerc.application.sdrercapp.GrupoFamiliarRegistroService;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteBandejaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteConsolaDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
@@ -101,6 +102,18 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private static final Color EXPANDED_ASSOCIATED_BACKGROUND = new Color(238, 250, 252);
     private static final Color ASSOCIATED_ROW_BACKGROUND = EXPANDED_ASSOCIATED_BACKGROUND;
     private static final Color ASSOCIATED_BLOCK_BORDER = new Color(224, 233, 240);
+    private static final Color[] GROUP_STRIPE_COLORS = new Color[]{
+        new Color(30, 59, 97),
+        new Color(56, 88, 128),
+        new Color(77, 132, 164),
+        new Color(94, 154, 183),
+        new Color(147, 186, 210),
+        new Color(10, 118, 145),
+        new Color(11, 142, 151),
+        new Color(65, 164, 181),
+        new Color(63, 95, 135),
+        new Color(84, 110, 154)
+    };
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final int COL_EXPANDIR_REGISTRO = 0;
     private static final int COL_SELECCION_REGISTRO = 1;
@@ -585,7 +598,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelRecepcion() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de recepción", this::ocultarPanelRecepcion);
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de datos", this::ocultarPanelRecepcion);
         panel.setAccentColor(new Color(57, 125, 199));
 
         AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
@@ -1793,7 +1806,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (panelRecepcion == null) {
             return;
         }
-        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de Registro</div>";
+        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de datos</div>";
         if (expediente != null) {
             String titular = expediente.getTitular();
             if (titular == null || titular.trim().isEmpty()) {
@@ -1897,7 +1910,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             panelRegistrarGrupoFamiliar.actualizarEstado();
         }
         if (PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId) && panelAsociarDuplicados != null) {
-            panelAsociarDuplicados.cargarDuplicados(obtenerIdExpedienteSeleccionado());
+            panelAsociarDuplicados.cargarDuplicados(obtenerExpedientePrincipalSeleccionado());
         }
     }
 
@@ -1921,7 +1934,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             panelRegistrarGrupoFamiliar.actualizarEstado();
         }
         if (PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId) && panelAsociarDuplicados != null) {
-            panelAsociarDuplicados.cargarDuplicados(obtenerIdExpedienteSeleccionado());
+            panelAsociarDuplicados.cargarDuplicados(obtenerExpedientePrincipalSeleccionado());
         }
     }
 
@@ -2076,6 +2089,22 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return selectedRow < 0 ? -1 : table.convertRowIndexToModel(selectedRow);
     }
 
+    private ExpedienteBandejaDTO obtenerExpedientePrincipalSeleccionado() {
+        RegistroTableRow fila = filaRegistro(obtenerModelRowSeleccionada());
+        return fila == null ? null : fila.principal;
+    }
+
+    private boolean requiereDecisionNumero(ExpedienteBandejaDTO item) {
+        if (item == null) {
+            return false;
+        }
+        String numero = item.getNumeroExpediente();
+        return "REGISTRO".equalsIgnoreCase(item.getEtapaCodigo())
+                && "REGISTRADO".equalsIgnoreCase(item.getEstadoCodigo())
+                && (numero == null || numero.trim().isEmpty())
+                && ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getProcedimiento());
+    }
+
     private static boolean pareceIdentificadorTecnico(String value) {
         if (value == null) {
             return false;
@@ -2209,8 +2238,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private final AppV2TablePanel panelTablaDuplicados = new AppV2TablePanel(
                 tablaDuplicados, "Sin duplicados detectados", "No hay posibles duplicados para el expediente seleccionado.");
         private final JLabel lblEstadoAsociar = new JLabel("Seleccione un expediente en la bandeja.");
+        private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
         private final JButton btnAsociarDuplicados = new JButton("Asociar seleccionados");
+        private final JButton btnAsociarRapido = new JButton("Asociar todo");
+        private final JButton btnGenerarNumeroExpediente = new JButton("Generar número de expediente");
+        private final AppV2SideSectionPanel seccionDecisionNumero = new AppV2SideSectionPanel("Decisión de número");
         private List<ExpedienteRelacionadoDTO> duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
+        private ExpedienteBandejaDTO expedientePrincipalDuplicados;
         private Long idExpedientePrincipalDuplicados;
         private long secuenciaCargaDuplicados;
 
@@ -2218,17 +2252,45 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             super("Asociar duplicados");
             setAccentColor(new Color(198, 121, 31));
 
-            AppV2SideSectionPanel resumen = new AppV2SideSectionPanel("Posibles duplicados");
-            resumen.addRow("Estado", lblEstadoAsociar);
-            addSection(resumen);
-
+            AppV2SideSectionPanel seccionSeleccion = new AppV2SideSectionPanel("Selección y alertas");
+            seccionSeleccion.addRow("Estado", lblEstadoAsociar);
             JPanel content = new JPanel(new BorderLayout(6, 6));
             content.setOpaque(false);
             content.setPreferredSize(new Dimension(320, 220));
+            JPanel encabezadoTabla = new JPanel();
+            encabezadoTabla.setOpaque(false);
+            encabezadoTabla.setLayout(new BoxLayout(encabezadoTabla, BoxLayout.Y_AXIS));
+            JLabel tituloTabla = new JLabel("Coincidencias por N° de acta y titular");
+            tituloTabla.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            tituloTabla.setForeground(AppV2Theme.TEXT_PRIMARY);
+            tituloTabla.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JLabel ayudaTabla = new JLabel("<html>El expediente <b>principal</b> es el que ya tiene número. "
+                    + "Marque el/los <b>potenciales duplicados</b> (sin número) para asociarlos a él.</html>");
+            ayudaTabla.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            ayudaTabla.setForeground(AppV2Theme.TEXT_SECONDARY);
+            ayudaTabla.setAlignmentX(Component.LEFT_ALIGNMENT);
+            encabezadoTabla.add(tituloTabla);
+            encabezadoTabla.add(ayudaTabla);
+            content.add(encabezadoTabla, BorderLayout.NORTH);
             content.add(panelTablaDuplicados, BorderLayout.CENTER);
-            AppV2SideSectionPanel seccionTabla = new AppV2SideSectionPanel("Coincidencias por N° de acta y titular");
-            seccionTabla.addContent(content);
-            addSection(seccionTabla);
+            seccionSeleccion.addContent(content);
+            addSection(seccionSeleccion);
+
+            AppV2SideSectionPanel seccionRapida = new AppV2SideSectionPanel("Asociación rápida");
+            seccionRapida.addRow("Expediente principal", lblExpedientePrincipalAsociacion);
+            AppV2Theme.estilizarBotonPrimario(btnAsociarRapido);
+            btnAsociarRapido.setEnabled(false);
+            btnAsociarRapido.setToolTipText(
+                    "Asociar todas las coincidencias detectadas por misma acta y titular, sin marcarlas una por una.");
+            seccionRapida.addRow("Acción", btnAsociarRapido);
+            addSection(seccionRapida);
+
+            AppV2Theme.estilizarBotonPrimario(btnGenerarNumeroExpediente);
+            btnGenerarNumeroExpediente.setEnabled(false);
+            btnGenerarNumeroExpediente.setToolTipText("Disponible solo para Reconsideración/Apelación registrada sin número.");
+            seccionDecisionNumero.addRow("Acción", btnGenerarNumeroExpediente);
+            addSection(seccionDecisionNumero);
+            seccionDecisionNumero.setVisible(false);
 
             tablaDuplicados.setRowHeight(28);
             tablaDuplicados.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
@@ -2236,22 +2298,34 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
             AppV2Theme.estilizarBotonPrimario(btnAsociarDuplicados);
             btnAsociarDuplicados.addActionListener(e -> asociarSeleccionados());
+            btnAsociarRapido.addActionListener(e -> asociarRapido());
+            btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpediente());
             JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             acciones.setOpaque(false);
             acciones.add(btnAsociarDuplicados);
             setFooter(acciones);
+            modeloDuplicados.addTableModelListener(evento -> {
+                if (evento.getColumn() == 0) {
+                    actualizarEtiquetaPrincipalPorSeleccion();
+                }
+            });
             actualizarEstadoBoton();
         }
 
-        private void cargarDuplicados(Long idExpediente) {
+        private void cargarDuplicados(ExpedienteBandejaDTO expedientePrincipal) {
+            expedientePrincipalDuplicados = expedientePrincipal;
+            Long idExpediente = expedientePrincipal == null ? null : expedientePrincipal.getIdExpediente();
             idExpedientePrincipalDuplicados = idExpediente;
+            actualizarDecisionNumero();
             if (idExpediente == null) {
                 duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
                 modeloDuplicados.setRowCount(0);
                 lblEstadoAsociar.setText("Seleccione un expediente en la bandeja.");
+                lblExpedientePrincipalAsociacion.setText("-");
                 actualizarEstadoBoton();
                 return;
             }
+            lblExpedientePrincipalAsociacion.setText(textoExpedientePrincipal(expedientePrincipal));
             lblEstadoAsociar.setText("Buscando posibles duplicados...");
             final long sequence = ++secuenciaCargaDuplicados;
             SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker = new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {
@@ -2275,7 +2349,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     for (ExpedienteRelacionadoDTO relacionado : duplicadosActuales) {
                         modeloDuplicados.addRow(new Object[]{
                                 Boolean.TRUE,
-                                relacionado.getNumeroExpediente(),
+                                tieneNumeroExpediente(relacionado) ? relacionado.getNumeroExpediente().trim() : "Sin número (potencial duplicado)",
                                 relacionado.getTitular(),
                                 (relacionado.getTipoActa() + " " + relacionado.getNumeroActa()).trim(),
                                 relacionado.getMotivoCoincidencia()
@@ -2287,20 +2361,36 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         lblEstadoAsociar.setText(duplicadosActuales.size() + " posible(s) duplicado(s) detectado(s).");
                     }
                     actualizarEstadoBoton();
+                    actualizarEtiquetaPrincipalPorSeleccion();
                 }
             };
             worker.execute();
         }
 
-        private void actualizarEstadoBoton() {
-            btnAsociarDuplicados.setEnabled(idExpedientePrincipalDuplicados != null && !duplicadosActuales.isEmpty());
+        private String textoExpedientePrincipal(ExpedienteBandejaDTO expedientePrincipal) {
+            String numero = expedientePrincipal.getNumeroExpediente();
+            String texto = (numero == null || numero.trim().isEmpty()) ? "(sin número)" : numero.trim();
+            String sgd = expedientePrincipal.getNumeroExpedienteSgd();
+            if (sgd != null && !sgd.trim().isEmpty()) {
+                texto += " / SGD " + sgd.trim();
+            }
+            return texto;
         }
 
-        private void asociarSeleccionados() {
-            if (idExpedientePrincipalDuplicados == null || duplicadosActuales.isEmpty()) {
-                return;
-            }
-            final List<Long> ids = new ArrayList<Long>();
+        private boolean tieneNumeroExpediente(ExpedienteBandejaDTO expediente) {
+            return expediente != null
+                    && expediente.getNumeroExpediente() != null
+                    && !expediente.getNumeroExpediente().trim().isEmpty();
+        }
+
+        private boolean tieneNumeroExpediente(ExpedienteRelacionadoDTO expediente) {
+            return expediente != null
+                    && expediente.getNumeroExpediente() != null
+                    && !expediente.getNumeroExpediente().trim().isEmpty();
+        }
+
+        private List<Long> obtenerIdsMarcados() {
+            List<Long> ids = new ArrayList<Long>();
             for (int i = 0; i < modeloDuplicados.getRowCount() && i < duplicadosActuales.size(); i++) {
                 Boolean marcado = (Boolean) modeloDuplicados.getValueAt(i, 0);
                 if (Boolean.TRUE.equals(marcado)) {
@@ -2310,7 +2400,102 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     }
                 }
             }
-            if (ids.isEmpty()) {
+            return ids;
+        }
+
+        /**
+         * Si el expediente seleccionado en la bandeja (potencial principal) no tiene numero, pero
+         * entre los marcados hay exactamente uno CON numero, ese es el principal real: se invierte
+         * la asociacion. Si hay mas de uno marcado con numero, es ambiguo y no se decide solo.
+         */
+        private ResolucionPrincipalDuplicados resolverPrincipal(List<Long> idsSeleccionados) {
+            if (expedientePrincipalDuplicados == null || idExpedientePrincipalDuplicados == null) {
+                return new ResolucionPrincipalDuplicados(null, null, new ArrayList<Long>(), false);
+            }
+            if (tieneNumeroExpediente(expedientePrincipalDuplicados)) {
+                return new ResolucionPrincipalDuplicados(
+                        idExpedientePrincipalDuplicados,
+                        textoExpedientePrincipal(expedientePrincipalDuplicados),
+                        idsSeleccionados,
+                        false);
+            }
+            ExpedienteRelacionadoDTO candidatoConNumero = null;
+            int totalConNumero = 0;
+            for (Long idSeleccionado : idsSeleccionados) {
+                for (ExpedienteRelacionadoDTO candidato : duplicadosActuales) {
+                    if (candidato != null && idSeleccionado.equals(candidato.getIdExpediente()) && tieneNumeroExpediente(candidato)) {
+                        candidatoConNumero = candidato;
+                        totalConNumero++;
+                    }
+                }
+            }
+            if (totalConNumero == 0) {
+                return new ResolucionPrincipalDuplicados(
+                        idExpedientePrincipalDuplicados,
+                        textoExpedientePrincipal(expedientePrincipalDuplicados),
+                        idsSeleccionados,
+                        false);
+            }
+            if (totalConNumero > 1) {
+                return new ResolucionPrincipalDuplicados(null, null, new ArrayList<Long>(), true);
+            }
+            List<Long> idsFinal = new ArrayList<Long>();
+            for (Long idSeleccionado : idsSeleccionados) {
+                if (!idSeleccionado.equals(candidatoConNumero.getIdExpediente())) {
+                    idsFinal.add(idSeleccionado);
+                }
+            }
+            idsFinal.add(idExpedientePrincipalDuplicados);
+            String texto = candidatoConNumero.getNumeroExpediente().trim();
+            String sgd = candidatoConNumero.getNumeroExpedienteSgd();
+            if (sgd != null && !sgd.trim().isEmpty()) {
+                texto += " / SGD " + sgd.trim();
+            }
+            return new ResolucionPrincipalDuplicados(candidatoConNumero.getIdExpediente(), texto, idsFinal, false);
+        }
+
+        private void actualizarEtiquetaPrincipalPorSeleccion() {
+            if (idExpedientePrincipalDuplicados == null) {
+                return;
+            }
+            ResolucionPrincipalDuplicados resolucion = resolverPrincipal(obtenerIdsMarcados());
+            if (resolucion.ambiguo) {
+                lblExpedientePrincipalAsociacion.setText("Ambiguo");
+                lblExpedientePrincipalAsociacion.setToolTipText(
+                        "Hay más de un expediente con número entre los marcados. Solo puede haber un principal: "
+                                + "marque únicamente los que no tienen número.");
+                btnAsociarDuplicados.setEnabled(false);
+                btnAsociarRapido.setEnabled(false);
+                return;
+            }
+            lblExpedientePrincipalAsociacion.setText(
+                    resolucion.textoPrincipal != null ? resolucion.textoPrincipal : textoExpedientePrincipal(expedientePrincipalDuplicados));
+            lblExpedientePrincipalAsociacion.setToolTipText(
+                    resolucion.idPrincipal != null && resolucion.idPrincipal.equals(idExpedientePrincipalDuplicados)
+                            ? "Expediente principal destino de la asociación."
+                            : "El expediente seleccionado no tiene número: se detectó automáticamente como principal "
+                                    + "al que sí tiene número entre las coincidencias.");
+            actualizarEstadoBoton();
+        }
+
+        private void actualizarEstadoBoton() {
+            boolean hayCandidatos = idExpedientePrincipalDuplicados != null && !duplicadosActuales.isEmpty();
+            btnAsociarDuplicados.setEnabled(hayCandidatos);
+            btnAsociarRapido.setEnabled(hayCandidatos);
+        }
+
+        private void actualizarDecisionNumero() {
+            boolean habilitado = requiereDecisionNumero(expedientePrincipalDuplicados);
+            seccionDecisionNumero.setVisible(habilitado);
+            btnGenerarNumeroExpediente.setEnabled(habilitado);
+        }
+
+        private void asociarSeleccionados() {
+            if (idExpedientePrincipalDuplicados == null || duplicadosActuales.isEmpty()) {
+                return;
+            }
+            List<Long> marcados = obtenerIdsMarcados();
+            if (marcados.isEmpty()) {
                 JOptionPane.showMessageDialog(
                         JPanelBandejaExpedientesNueva.this,
                         "Seleccione al menos un duplicado para asociar.",
@@ -2318,9 +2503,15 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
+            ResolucionPrincipalDuplicados resolucion = resolverPrincipal(marcados);
+            if (resolucion.ambiguo) {
+                mostrarAmbiguedadPrincipal();
+                return;
+            }
             int confirmacion = JOptionPane.showConfirmDialog(
                     JPanelBandejaExpedientesNueva.this,
-                    "Se asociarán " + ids.size() + " expediente(s) como duplicados del expediente principal seleccionado.\n"
+                    "Se asociarán " + resolucion.idsRelacionados.size() + " expediente(s) sin número como duplicados del "
+                            + "expediente principal " + resolucion.textoPrincipal + ".\n"
                             + "¿Desea continuar?",
                     "Asociar duplicados",
                     JOptionPane.YES_NO_OPTION,
@@ -2328,13 +2519,63 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (confirmacion != JOptionPane.YES_OPTION) {
                 return;
             }
-            final Long idPrincipal = idExpedientePrincipalDuplicados;
+            ejecutarAsociacion(resolucion.idPrincipal, resolucion.idsRelacionados,
+                    "Documento duplicado asociado desde Recepción por misma acta y titular.");
+        }
+
+        private void asociarRapido() {
+            if (idExpedientePrincipalDuplicados == null || duplicadosActuales.isEmpty()) {
+                return;
+            }
+            final List<Long> todos = new ArrayList<Long>();
+            for (ExpedienteRelacionadoDTO relacionado : duplicadosActuales) {
+                if (relacionado.getIdExpediente() != null) {
+                    todos.add(relacionado.getIdExpediente());
+                }
+            }
+            if (todos.isEmpty()) {
+                return;
+            }
+            ResolucionPrincipalDuplicados resolucion = resolverPrincipal(todos);
+            if (resolucion.ambiguo) {
+                mostrarAmbiguedadPrincipal();
+                return;
+            }
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    JPanelBandejaExpedientesNueva.this,
+                    "Se asociarán los " + resolucion.idsRelacionados.size() + " registro(s) detectados como documentos "
+                            + "duplicados del expediente principal si comparten el mismo número de acta y titular.\n"
+                            + "Expediente principal destino: " + resolucion.textoPrincipal + "\n"
+                            + "¿Desea continuar?",
+                    "Confirmar asociación rápida",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (confirmacion != JOptionPane.YES_OPTION) {
+                return;
+            }
+            ejecutarAsociacion(resolucion.idPrincipal, resolucion.idsRelacionados,
+                    "Documento duplicado asociado desde Recepción por misma acta y titular (asociación rápida).");
+        }
+
+        private void mostrarAmbiguedadPrincipal() {
+            JOptionPane.showMessageDialog(
+                    JPanelBandejaExpedientesNueva.this,
+                    "Hay más de un expediente con número entre los duplicados detectados/marcados. Solo puede haber un "
+                            + "expediente principal: desmarque los que no correspondan y deje marcado únicamente el "
+                            + "principal junto con los potenciales duplicados sin número.",
+                    "Asociar duplicados",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+
+        private void ejecutarAsociacion(Long idPrincipalResuelto, List<Long> ids, String motivo) {
+            final Long idPrincipal = idPrincipalResuelto;
+            final ExpedienteBandejaDTO principal = expedientePrincipalDuplicados;
             btnAsociarDuplicados.setEnabled(false);
+            btnAsociarRapido.setEnabled(false);
             SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
                 @Override
                 protected Void doInBackground() throws Exception {
-                    relacionadoService.asociarRelacionados(
-                            idPrincipal, ids, "Documento duplicado asociado desde Recepción por misma acta y titular.");
+                    relacionadoService.asociarRelacionados(idPrincipal, ids, motivo);
                     return null;
                 }
 
@@ -2343,7 +2584,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     try {
                         get();
                         refrescar();
-                        cargarDuplicados(idPrincipal);
+                        cargarDuplicados(principal);
                         JOptionPane.showMessageDialog(
                                 JPanelBandejaExpedientesNueva.this,
                                 "Duplicados asociados correctamente.",
@@ -2361,6 +2602,71 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 }
             };
             worker.execute();
+        }
+
+        private void generarNumeroExpediente() {
+            if (expedientePrincipalDuplicados == null || !requiereDecisionNumero(expedientePrincipalDuplicados)) {
+                return;
+            }
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    JPanelBandejaExpedientesNueva.this,
+                    "Se generará un nuevo número de expediente para esta solicitud.\n"
+                            + "Use esta opción solo si no corresponde asociarla a un expediente principal.\n\n"
+                            + "¿Desea continuar?",
+                    "Generar número de expediente",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (confirmacion != JOptionPane.YES_OPTION) {
+                return;
+            }
+            final Long idExpediente = expedientePrincipalDuplicados.getIdExpediente();
+            btnGenerarNumeroExpediente.setEnabled(false);
+            SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    return asignacionExpedienteServiceRecepcion.generarNumeroExpediente(idExpediente);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        String numero = get();
+                        refrescar();
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                "Número de expediente generado: " + numero,
+                                "Generación de número",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                ex.getMessage() == null ? "No se pudo generar el número de expediente." : ex.getMessage(),
+                                "Generación de número",
+                                JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        actualizarDecisionNumero();
+                    }
+                }
+            };
+            worker.execute();
+        }
+    }
+
+    private static final class ResolucionPrincipalDuplicados {
+        private final Long idPrincipal;
+        private final String textoPrincipal;
+        private final List<Long> idsRelacionados;
+        private final boolean ambiguo;
+
+        private ResolucionPrincipalDuplicados(
+                Long idPrincipal,
+                String textoPrincipal,
+                List<Long> idsRelacionados,
+                boolean ambiguo) {
+            this.idPrincipal = idPrincipal;
+            this.textoPrincipal = textoPrincipal;
+            this.idsRelacionados = idsRelacionados;
+            this.ambiguo = ambiguo;
         }
     }
 
@@ -2486,8 +2792,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             Color background = colorFondoFilaRegistro(row, fila, isSelected);
             setBackground(background);
             if (fila != null && fila.esAsociada()) {
-                setBorder(BorderFactory.createMatteBorder(0, 5, 0, 0, GRID_ACTION_ICON_BLUE));
-                glyph.configure(ExpandGlyphRegistro.NONE, GRID_ACTION_ICON_BLUE, background);
+                Color acento = acentoGrupoRegistro(fila.getIdPrincipal());
+                setBorder(BorderFactory.createMatteBorder(0, 5, 0, 0, acento));
+                glyph.configure(ExpandGlyphRegistro.NONE, acento, background);
                 setToolTipText("Expediente asociado al principal.");
                 return this;
             }
@@ -2675,6 +2982,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return TABLE_SELECTION_BACKGROUND;
         }
         return viewRow % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT;
+    }
+
+    private Color acentoGrupoRegistro(Long idExpedientePrincipal) {
+        long value = idExpedientePrincipal == null ? 0L : idExpedientePrincipal.longValue();
+        int indice = (int) Math.abs(value % GROUP_STRIPE_COLORS.length);
+        return GROUP_STRIPE_COLORS[indice];
     }
 
     private boolean esPrimerAsociadoRegistro(int modelRow) {
