@@ -342,6 +342,11 @@ Plantillas:
 - Al generar una RESOLUCION, la plantilla puede autocompletar `#numDocInforme#`/`#fechaDocInforme#` con los datos del documento analizado tipo `INFORME` mas reciente (activo, mayor `fecha_documento`) del mismo expediente; si no existe informe, esas variables quedan vacias. La logica vive en `AnalisisPlantillaDocumentoService`, no en el JPanel.
 - Clasificacion de negocio (`TIPO_DOCUMENTO_ADJUNTO.CLASIFICACION`): cartas finales y resoluciones -> `FINAL`; cartas intermedias y oficios -> `INTERMEDIO`; informes -> sin clasificar (`NULL`). Detalle completo en `docs/arquitectura_app/variables_plantillas_word.md`.
 
+Documentos/solicitudes asociadas (duplicados) en la Bandeja Analisis:
+
+- Doble clic en una fila asociada/duplicada carga el "Panel de datos" con los campos que trae `ExpedienteRelacionadoDTO` (N° expediente, SGD, tramite web, acta, N° documento, solicitante, estado, dias/vencimiento, equipo); campos que ese DTO no trae (contacto/ubigeo del solicitante, canal de ingreso, prioridad, etc.) quedan en "-", no se inventan ni se copian de otro expediente.
+- La mini-grilla de documentos asociados dentro del "Panel de datos" tiene una columna de accion "Recibir" (icono `AppV2ReceiveActionButton`, via `RecibirAsociadoRenderer`/`RecibirAsociadoEditor`), habilitada solo cuando el documento asociado esta en `ASIGNACION/ASIGNADO` (misma transicion de BD que exige `AnalisisExpedienteDAO.recibirDocumentoAsociado`); antes de llegar ahi o despues de ya recibido, el boton se muestra deshabilitado con tooltip explicativo, nunca ausente.
+
 No debe haber:
 
 - Pestana independiente de Resultado si el diseno vigente integra resultado al panel de analisis.

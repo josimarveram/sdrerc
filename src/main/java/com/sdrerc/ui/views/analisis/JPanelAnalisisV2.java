@@ -253,10 +253,10 @@ public class JPanelAnalisisV2 extends JPanel {
             "Seleccione filtros y presione Buscar.");
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private final DefaultTableModel documentosAsociadosModel = new DefaultTableModel(
-            new Object[]{"N° expediente SGD", "Estado"}, 0) {
+            new Object[]{"N° expediente SGD", "Estado", "Acción"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return false;
+            return column == 2;
         }
     };
     private final JTable documentosAsociadosTable = new AppV2Table(documentosAsociadosModel);
@@ -401,7 +401,7 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelDatosAnalisis() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de análisis", new Runnable() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de datos", new Runnable() {
             @Override
             public void run() {
                 cerrarPanelAnalisis();
@@ -427,7 +427,7 @@ public class JPanelAnalisisV2 extends JPanel {
         if (panelDatosAnalisis == null) {
             return;
         }
-        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de Análisis</div>";
+        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de datos</div>";
         if (titular != null && !titular.trim().isEmpty() && !"-".equals(titular.trim())) {
             titulo = titulo + "<div style='font-size:12px;font-weight:600;color:rgb(21,71,117);margin-top:2px;'>"
                     + escapeHtml(titular.trim()) + "</div>";
@@ -949,6 +949,11 @@ public class JPanelAnalisisV2 extends JPanel {
         documentosAsociadosTable.getColumnModel().getColumn(0).setMinWidth(140);
         documentosAsociadosTable.getColumnModel().getColumn(1).setPreferredWidth(125);
         documentosAsociadosTable.getColumnModel().getColumn(1).setMinWidth(105);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setPreferredWidth(60);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setMinWidth(50);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setMaxWidth(70);
+        documentosAsociadosTable.getColumnModel().getColumn(2).setCellRenderer(new RecibirAsociadoRenderer());
+        documentosAsociadosTable.getColumnModel().getColumn(2).setCellEditor(new RecibirAsociadoEditor());
     }
 
     private void configurarEventos() {
@@ -1092,6 +1097,7 @@ public class JPanelAnalisisV2 extends JPanel {
         String texto = txtBusqueda.getText();
         String estado = obtenerCodigo(cmbEstadoFiltro);
         int limite = ((Number) spnLimite.getValue()).intValue();
+        final boolean panelAnalisisAbiertoAntes = splitOperativo != null && splitOperativo.isSideVisible();
         SwingWorker<List<AnalisisExpedienteDTO>, Void> worker = new SwingWorker<List<AnalisisExpedienteDTO>, Void>() {
             @Override
             protected List<AnalisisExpedienteDTO> doInBackground() throws Exception {
@@ -1106,7 +1112,19 @@ public class JPanelAnalisisV2 extends JPanel {
                     }
                     cargarTabla(get());
                     if (idExpedienteASeleccionar != null) {
-                        seleccionarFilaPorId(idExpedienteASeleccionar);
+                        boolean reseleccionado = seleccionarFilaPorId(idExpedienteASeleccionar);
+                        // cargarTabla() limpia la seleccion antes de reconstruir la grilla; ese
+                        // instante intermedio "sin seleccion" cierra el panel derecho de forma
+                        // automatica (actualizarVisibilidadPanelAnalisis). Si el mismo expediente
+                        // se pudo reseleccionar y el panel estaba abierto antes de refrescar (p.ej.
+                        // tras "Recibir expediente" desde la lengueta), se reabre explicitamente en
+                        // vez de dejarlo cerrado: el usuario no cerro el panel, solo cambio el
+                        // estado del expediente que sigue viendo.
+                        if (reseleccionado && panelAnalisisAbiertoAntes && splitOperativo != null) {
+                            panelAnalisisCerradoPorUsuario = false;
+                            splitOperativo.setSideVisible(true);
+                            actualizarLenguetasAnalisis();
+                        }
                     }
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de análisis.", ex);
@@ -1586,7 +1604,7 @@ public class JPanelAnalisisV2 extends JPanel {
             lblResponsable.setText(valorUi(relacionado.getAbogadoAsignado()));
             lblEtapaEstado.setText("Expediente principal: " + fila.numeroExpedientePrincipal());
             lblAlertas.setText(textoRelacionAsociada(relacionado) + " · Disponible para análisis");
-            cargarDatosExpedienteAnalisis(null);
+            cargarDatosExpedienteAsociado(relacionado);
             txtComentarioMovimiento.setText("Este documento está asociado al expediente principal y se muestra como contexto del caso.");
             limpiarPublicacionLectura();
             lblExpedienteDigital.setText("El documento asociado se muestra como contexto del expediente principal.");
@@ -1707,6 +1725,27 @@ public class JPanelAnalisisV2 extends JPanel {
         actualizarBadgeDias(lblDatosDias, item.getDiasEnEtapa());
         lblDatosVencimiento.setText(formatDate(item.getFechaVencimiento()));
         lblDatosEquipo.setText(valorUi(item.getEquipo()));
+    }
+
+    private void cargarDatosExpedienteAsociado(ExpedienteRelacionadoDTO relacionado) {
+        limpiarDatosExpedienteAnalisis();
+        if (relacionado == null) {
+            return;
+        }
+        lblDatosResultadoInicial.setText("Documento asociado");
+        lblDatosTramiteWeb.setText(valorUi(relacionado.getNumeroTramiteDocumentario()));
+        lblDatosExpedienteSgd.setText(valorUi(relacionado.getNumeroExpedienteSgd()));
+        lblDatosFechaRecepcion.setText(formatDate(relacionado.getFechaRecepcion()));
+        lblDatosExpediente.setText(valorUi(relacionado.getNumeroExpediente()));
+        lblDatosEstado.setText(estadoAsociado(relacionado));
+        lblDatosObservacion.setText(valorUi(relacionado.getMotivoCoincidencia()));
+        lblDatosTipoActa.setText(valorUi(relacionado.getTipoActa()));
+        lblDatosNumeroActa.setText(valorUi(relacionado.getNumeroActa()));
+        lblDatosNumeroDocumentoSolicitud.setText(valorUi(relacionado.getNumeroDocumento()));
+        lblDatosSolicitante.setText(valorUi(relacionado.getSolicitante()));
+        actualizarBadgeDias(lblDatosDias, relacionado.getDiasRestantes());
+        lblDatosVencimiento.setText(formatDate(relacionado.getFechaVencimiento()));
+        lblDatosEquipo.setText(valorUi(relacionado.getEquipoAsignado()));
     }
 
     private static String extraerValorObservacion(String observacion, String etiqueta) {
@@ -2031,7 +2070,8 @@ public class JPanelAnalisisV2 extends JPanel {
                 }
                 documentosAsociadosModel.addRow(new Object[]{
                     valorUi(asociado.getNumeroExpedienteSgd()),
-                    recibido ? "Recibido" : "Pendiente de recibir"
+                    recibido ? "Recibido" : "Pendiente de recibir",
+                    "Recibir"
                 });
             }
         }
@@ -2187,6 +2227,19 @@ public class JPanelAnalisisV2 extends JPanel {
             return;
         }
         AnalisisRegistroDTO registro = construirRegistro(item);
+        // Se valida antes de pedir confirmacion: evita mostrar "¿Desea continuar?" para
+        // inmediatamente despues mostrar un error (p.ej. registrar sin seleccionar el
+        // resultado del analisis). El mensaje de validacion ya es claro (no una excepcion
+        // tecnica); se muestra directo, sin pasar por confirmarYEjecutar/mostrarError.
+        List<String> errores = analisisService.validarRegistroAnalisis(registro);
+        if (!errores.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    String.join("\n", errores),
+                    "Registrar resultado final",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         confirmarYEjecutar(
                 "Registrar resultado final",
                 "Se registrará el resultado final del expediente " + item.getNumeroExpediente() + ". ¿Desea continuar?",
@@ -2224,6 +2277,8 @@ public class JPanelAnalisisV2 extends JPanel {
         if (confirm != JOptionPane.YES_OPTION) {
             return;
         }
+        AnalisisExpedienteDTO seleccionActual = obtenerSeleccionado();
+        final Long idExpedienteSeleccionado = seleccionActual == null ? null : seleccionActual.getIdExpediente();
         setTrabajando(true, "Ejecutando operación de análisis...");
         SwingWorker<AnalisisResultadoDTO, Void> worker = new SwingWorker<AnalisisResultadoDTO, Void>() {
             @Override
@@ -2242,7 +2297,12 @@ public class JPanelAnalisisV2 extends JPanel {
                             JOptionPane.INFORMATION_MESSAGE);
                     if (limpiarYBuscarAlFinal) {
                         limpiarFormulario();
-                        buscar();
+                        // Se pasa el id previamente seleccionado para que buscar(...) lo
+                        // reseleccione y reabra el panel derecho si seguia visible antes de
+                        // ejecutar la operacion (ver comentario en buscar(Long)); si el
+                        // expediente ya no aparece en la bandeja (p.ej. quedo archivado), la
+                        // reseleccion simplemente falla y el panel se mantiene cerrado.
+                        buscar(idExpedienteSeleccionado);
                     } else {
                         recargarDetalleSeleccionado();
                     }
