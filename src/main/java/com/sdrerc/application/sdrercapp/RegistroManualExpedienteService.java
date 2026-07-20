@@ -38,9 +38,22 @@ public class RegistroManualExpedienteService {
         }
         registro.setPosibleDuplicado(false);
         registro.setMotivoDuplicado(null);
+        registro.setNumeroExpedienteSgdDuplicado(false);
+        registro.setMotivoNumeroExpedienteSgdDuplicado(null);
         registro.getSolicitud().limpiarDeteccionGrupoFamiliar();
         if (registro.getSolicitud().isGrupoFamiliar() && !hasText(registro.getSolicitud().getCriterioGrupoFamiliar())) {
             registro.getSolicitud().setCriterioGrupoFamiliar("MANUAL");
+        }
+
+        String numeroExpedienteSgd = registro.getSolicitud().getNumeroExpedienteSgd();
+        if (hasText(numeroExpedienteSgd)) {
+            String duplicadoSgd = expedienteRegistroDAO.detectarDuplicadoPorNumeroExpedienteSgd(numeroExpedienteSgd, null);
+            if (hasText(duplicadoSgd)) {
+                String motivo = "N° expediente SGD ya está registrado en " + duplicadoSgd + ".";
+                registro.setNumeroExpedienteSgdDuplicado(true);
+                registro.setMotivoNumeroExpedienteSgdDuplicado(motivo);
+                mensajes.add(motivo + " Ingrese un número distinto.");
+            }
         }
 
         String numeroActa = registro.getActa().getNumeroActa();
@@ -79,6 +92,9 @@ public class RegistroManualExpedienteService {
             throw new IllegalArgumentException("Complete los datos del formulario antes de registrar.");
         }
         List<String> errores = validarConDuplicados(registro);
+        if (registro.isNumeroExpedienteSgdDuplicado()) {
+            throw new IllegalArgumentException(registro.getMotivoNumeroExpedienteSgdDuplicado());
+        }
         if (!errores.isEmpty()) {
             registro.setObservacionesGenerales(unirObservaciones(
                     registro.getObservacionesGenerales(),

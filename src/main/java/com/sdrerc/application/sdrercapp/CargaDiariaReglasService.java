@@ -39,6 +39,8 @@ public class CargaDiariaReglasService {
         Map<String, Integer> primeraFilaActaTitular = new HashMap<String, Integer>();
         Map<String, Integer> apellidosTitular = new HashMap<String, Integer>();
         Map<String, Integer> titularesExactos = new HashMap<String, Integer>();
+        Map<String, Integer> numeroSgd = new HashMap<String, Integer>();
+        Map<String, Integer> primeraFilaNumeroSgd = new HashMap<String, Integer>();
         for (CargaDiariaPreviewDTO item : registros) {
             item.reiniciarValidacion();
             item.limpiarDeteccionGrupoFamiliar();
@@ -49,12 +51,18 @@ public class CargaDiariaReglasService {
             }
             sumarClave(apellidosTitular, claveApellidosTitular(item));
             sumarClave(titularesExactos, claveTitularExacto(item));
+            String claveSgd = clave(item.getNumeroExpedienteSgd());
+            sumarClave(numeroSgd, claveSgd);
+            if (hasText(claveSgd) && !primeraFilaNumeroSgd.containsKey(claveSgd)) {
+                primeraFilaNumeroSgd.put(claveSgd, item.getFila());
+            }
         }
 
         Map<Integer, String> duplicadosBase = expedienteRegistroDAO.detectarDuplicadosContraBase(registros);
         Map<Integer, String> duplicadosTitularExactoBase = expedienteRegistroDAO.detectarDuplicadosPorTitularExactoContraBase(registros);
         Map<Integer, String> posiblesGruposFamiliaresBase =
                 expedienteRegistroDAO.detectarPosiblesGruposFamiliaresContraBase(registros);
+        Map<Integer, String> duplicadosSgdBase = expedienteRegistroDAO.detectarDuplicadosPorNumeroSgdContraBase(registros);
 
         int siguienteCorrelativo = expedienteRegistroDAO.obtenerSiguienteCorrelativoExpediente(correlativoExpedienteService.anioActual());
         for (CargaDiariaPreviewDTO item : registros) {
@@ -160,12 +168,36 @@ public class CargaDiariaReglasService {
                 item.agregarMensaje(grupoFamiliarBd);
             }
 
+            boolean sgdBloqueante = false;
+            String claveSgd = clave(item.getNumeroExpedienteSgd());
+            Integer cantidadSgd = hasText(claveSgd) ? numeroSgd.get(claveSgd) : null;
+            if (cantidadSgd != null && cantidadSgd.intValue() > 1) {
+                Integer primeraFilaSgd = primeraFilaNumeroSgd.get(claveSgd);
+                if (primeraFilaSgd == null || item.getFila() != primeraFilaSgd.intValue()) {
+                    item.agregarMensaje("N° expediente SGD repetido en el archivo. Ya existe una primera ocurrencia en la fila "
+                            + primeraFilaSgd + ". Debe ser único.");
+                    sgdBloqueante = true;
+                }
+            }
+            String duplicadoSgdBd = duplicadosSgdBase.get(item.getFila());
+            if (hasText(duplicadoSgdBd)) {
+                item.agregarMensaje("N° expediente SGD ya está registrado en " + duplicadoSgdBd + ". Debe ser único.");
+                sgdBloqueante = true;
+            }
+
             boolean requiereDecisionAsignacionNumero =
                     ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getTipoProcedimiento());
             if (requiereDecisionAsignacionNumero) {
                 item.agregarMensaje(ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
             }
 
+            if (sgdBloqueante) {
+                item.setNumeroExpedienteGenerado(null);
+                item.setMotivoSinNumero(null);
+                item.setListoParaRegistrar(false);
+                item.setEstadoValidacion("Error");
+                continue;
+            }
             if (item.isPosibleDuplicado() || requiereDecisionAsignacionNumero) {
                 item.setNumeroExpedienteGenerado(null);
                 item.setMotivoSinNumero(item.isPosibleDuplicado()

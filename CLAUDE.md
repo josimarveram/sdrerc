@@ -191,6 +191,7 @@ Reglas principales:
 - Si canal no es `Mesa de partes virtual`, bloquear y mostrar `SIN TRAMITE`.
 - `N° expediente SGD` vive en el bloque `Datos del expediente`.
 - `N° expediente SGD` y `Tipo de acta` son obligatorios en Registro manual, Edicion manual y Carga diaria.
+- `N° expediente SGD` debe ser único (sin duplicados) en Registro manual, Edicion manual y Carga diaria (20/07/2026). Validado contra `EXPEDIENTE_SOLICITUD.numero_expediente_sgd` de expedientes activos y no asociados (`ExpedienteRegistroDAO.detectarDuplicadoPorNumeroExpedienteSgd`/`detectarDuplicadosPorNumeroSgdContraBase`); en Edicion manual se excluye el propio id_expediente para no marcarse a si mismo como duplicado. Es un bloqueo real (no una advertencia): en Registro manual y Edicion manual deshabilita el boton de guardar (`RegistroManualExpedienteService.registrar`/`ExpedienteEdicionManualService.validar` tambien lo rechazan del lado servidor); en Carga diaria la fila queda con `estadoValidacion="Error"` y `listoParaRegistrar=false`, por lo que Confirmar la salta sin bloquear el resto del lote. Carga diaria tambien detecta el mismo SGD repetido dentro del propio Excel (mismo patron que la deteccion de acta+titular). No se agrego una restriccion UNIQUE a nivel de BD (solo existe el indice no unico `ix_exp_sol_sgd`); si se requiere ese refuerzo adicional, es un paso aparte que requiere autorizacion y revisar datos historicos.
 - `Tipo documento` de solicitud debe normalizar equivalencias con y sin tilde.
 
 KPIs vigentes en Bandeja Registro:

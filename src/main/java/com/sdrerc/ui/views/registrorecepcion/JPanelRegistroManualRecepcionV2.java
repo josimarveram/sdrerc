@@ -737,12 +737,14 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             txtResumen.setText(resumen(dto));
             establecerNumeroExpedienteVisible(numeroPreview);
             lblNumeroExpediente.setText(dto.getNumeroExpedienteVistaPrevia());
-            lblEstado.setText(modoEdicion()
+            lblEstado.setText(dto.isNumeroExpedienteSgdDuplicado()
+                    ? dto.getMotivoNumeroExpedienteSgdDuplicado() + " Corrija el N° expediente SGD antes de continuar."
+                    : modoEdicion()
                     ? "Se encontraron observaciones. Corrija antes de guardar."
                     : dto.isPosibleDuplicado()
                     ? "Documento duplicado detectado. Puede registrarlo y quedará marcado para Asignación."
                     : "Se encontraron observaciones. Puede registrar el expediente y quedará marcado para revisión.");
-            btnRegistrar.setEnabled(!trabajando && !modoEdicion());
+            btnRegistrar.setEnabled(!trabajando && !modoEdicion() && !dto.isNumeroExpedienteSgdDuplicado());
         }
     }
 

@@ -80,6 +80,34 @@ public class ExpedienteRegistroDAO {
         }
     }
 
+    /**
+     * Busca si numeroExpedienteSgd ya esta en uso por otro expediente activo y no asociado
+     * (no un "relacionado" dentro de EXPEDIENTE_RELACION). idExpedienteExcluir permite que
+     * Edicion manual no se marque a si mismo como duplicado de su propio valor actual.
+     */
+    public String detectarDuplicadoPorNumeroExpedienteSgd(String numeroExpedienteSgd, Long idExpedienteExcluir) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            DuplicadoRegistro duplicado = buscarRegistroPorNumeroExpedienteSgd(conn, numeroExpedienteSgd, idExpedienteExcluir);
+            return duplicado == null ? null : duplicado.descripcion();
+        }
+    }
+
+    public Map<Integer, String> detectarDuplicadosPorNumeroSgdContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> duplicados = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return duplicados;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            for (CargaDiariaPreviewDTO item : registros) {
+                DuplicadoRegistro duplicado = buscarRegistroPorNumeroExpedienteSgd(conn, item.getNumeroExpedienteSgd(), null);
+                if (duplicado != null) {
+                    duplicados.put(item.getFila(), duplicado.descripcion());
+                }
+            }
+        }
+        return duplicados;
+    }
+
     public Map<Integer, String> detectarPosiblesGruposFamiliaresContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
         Map<Integer, String> coincidencias = new LinkedHashMap<>();
         if (registros == null || registros.isEmpty()) {
@@ -443,6 +471,36 @@ public class ExpedienteRegistroDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, acta.trim().toUpperCase(Locale.ROOT));
             ps.setString(2, titular.trim().toUpperCase(Locale.ROOT));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return new DuplicadoRegistro(rs.getLong("id_expediente"), rs.getString("numero_expediente"));
+            }
+        }
+    }
+
+    private DuplicadoRegistro buscarRegistroPorNumeroExpedienteSgd(
+            Connection conn,
+            String numeroExpedienteSgd,
+            Long idExpedienteExcluir) throws SQLException {
+        if (!hasText(numeroExpedienteSgd)) {
+            return null;
+        }
+        String sql = "SELECT e.id_expediente, e.numero_expediente FROM expediente e "
+                + "JOIN expediente_solicitud es ON es.id_expediente = e.id_expediente AND es.activo = 1 "
+                + "WHERE e.activo = 1 "
+                + "AND UPPER(TRIM(es.numero_expediente_sgd)) = ? "
+                + "AND NOT EXISTS (SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND r.id_expediente_relacionado = e.id_expediente) "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
+                + "AND ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int idx = 1;
+            ps.setString(idx++, numeroExpedienteSgd.trim().toUpperCase(Locale.ROOT));
+            if (idExpedienteExcluir != null) {
+                ps.setLong(idx++, idExpedienteExcluir);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
                     return null;

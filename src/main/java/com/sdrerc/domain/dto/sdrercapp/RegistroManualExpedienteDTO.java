@@ -10,6 +10,8 @@ public class RegistroManualExpedienteDTO {
     private String numeroExpedienteVistaPrevia;
     private boolean posibleDuplicado;
     private String motivoDuplicado;
+    private boolean numeroExpedienteSgdDuplicado;
+    private String motivoNumeroExpedienteSgdDuplicado;
 
     public DatosSolicitudDTO getSolicitud() {
         return solicitud;
@@ -73,6 +75,22 @@ public class RegistroManualExpedienteDTO {
 
     public void setMotivoDuplicado(String motivoDuplicado) {
         this.motivoDuplicado = trimToNull(motivoDuplicado);
+    }
+
+    public boolean isNumeroExpedienteSgdDuplicado() {
+        return numeroExpedienteSgdDuplicado;
+    }
+
+    public void setNumeroExpedienteSgdDuplicado(boolean numeroExpedienteSgdDuplicado) {
+        this.numeroExpedienteSgdDuplicado = numeroExpedienteSgdDuplicado;
+    }
+
+    public String getMotivoNumeroExpedienteSgdDuplicado() {
+        return motivoNumeroExpedienteSgdDuplicado;
+    }
+
+    public void setMotivoNumeroExpedienteSgdDuplicado(String motivoNumeroExpedienteSgdDuplicado) {
+        this.motivoNumeroExpedienteSgdDuplicado = trimToNull(motivoNumeroExpedienteSgdDuplicado);
     }
 
     private static String trimToNull(String value) {
