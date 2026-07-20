@@ -300,6 +300,7 @@ public class CierreArchivoDAO {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");
             }
         }
+        ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(conn, idExpediente, idEtapaDestino, idEstadoDestino, idUsuarioModificador);
     }
 
     private void insertarHistorial(

@@ -72,7 +72,7 @@ public class AnalisisExpedienteDAO {
     }
 
     public List<AnalisisExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
-        return buscarExpedientes(textoLibre, estadoCodigo, null, null, limite);
+        return buscarExpedientes(textoLibre, estadoCodigo, null, null, limite, true, null, null);
     }
 
     public AnalisisDetalleDTO obtenerAnalisisRegistrado(Long idExpediente) throws SQLException {
@@ -150,7 +150,10 @@ public class AnalisisExpedienteDAO {
             String estadoCodigo,
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
-            int limite) throws SQLException {
+            int limite,
+            boolean esAdmin,
+            Long idUsuarioActual,
+            List<Long> idsEquipoActual) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         boolean soportaNumeroHojaEnvio;
@@ -239,6 +242,9 @@ public class AnalisisExpedienteDAO {
         sql.append("OR et.codigo = ?");
         params.add(ETAPA_ANALISIS);
         sql.append(") ");
+        sql.append(VisibilidadBandejaSql.construirCondicion(
+                params, esAdmin, idUsuarioActual, idsEquipoActual,
+                "e.id_usuario_responsable_actual", "e.id_equipo_responsable_actual"));
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
@@ -312,25 +318,10 @@ public class AnalisisExpedienteDAO {
                         comentarioMovimiento(ACCION_RECEPCION, comentario),
                         idUsuario);
 
-                int asociadosRecibidos = 0;
-                for (Long idAsociado : listarIdsAsociadosConfirmados(conn, idExpediente)) {
-                    ExpedienteBloqueado asociado = bloquearExpediente(conn, idAsociado);
-                    if (estaRecibidoEnAnalisis(asociado)) {
-                        continue;
-                    }
-                    if (!estaPendienteRecepcion(asociado)) {
-                        continue;
-                    }
-                    recibirExpedienteAsignado(
-                            conn,
-                            asociado,
-                            transicion,
-                            idMovimiento,
-                            "Recepción automática junto con el expediente principal "
-                                    + principal.numeroExpediente + ".",
-                            idUsuario);
-                    asociadosRecibidos++;
-                }
+                // El cambio de etapa/estado ya se propagó a los asociados dentro de
+                // actualizarExpediente (ver ExpedienteEstadoPropagacionDAO); solo falta contar
+                // cuántos hay para el mensaje de confirmación.
+                int asociadosRecibidos = listarIdsAsociadosConfirmados(conn, idExpediente).size();
 
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);
@@ -1322,6 +1313,7 @@ public class AnalisisExpedienteDAO {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");
             }
         }
+        ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(conn, idExpediente, idEtapaDestino, idEstadoDestino, idUsuarioModificador);
     }
 
     private void insertarHistorial(
@@ -1339,6 +1331,7 @@ public class AnalisisExpedienteDAO {
             Long idRegistroRelacionado,
             String comentario,
             String motivo) throws SQLException {
+        Long idAutorHistorial = resolverAutorHistorial(conn, idUsuarioOrigen, idUsuarioDestino);
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
                 + "id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino, "
@@ -1352,16 +1345,28 @@ public class AnalisisExpedienteDAO {
             setLongOrNull(ps, 4, idEstadoOrigen);
             ps.setLong(5, idEtapaDestino);
             ps.setLong(6, idEstadoDestino);
-            setLongOrNull(ps, 7, idUsuarioOrigen);
+            setLongOrNull(ps, 7, idAutorHistorial);
             setLongOrNull(ps, 8, idUsuarioDestino);
             setLongOrNull(ps, 9, idEquipoDestino);
             ps.setString(10, tablaRelacionada);
             setLongOrNull(ps, 11, idRegistroRelacionado);
             ps.setString(12, limitar(comentario, 2000));
             ps.setString(13, limitar(motivo, 1000));
-            setLongOrNull(ps, 14, idUsuarioOrigen);
+            setLongOrNull(ps, 14, idAutorHistorial);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * Si quien ejecuta la accion es ADMIN_SISTEMA, el historial no debe quedar a su nombre:
+     * se sustituye por el usuario asignado/responsable/destino de esa misma accion. Si no hay
+     * un destino resuelto, se conserva el autor real.
+     */
+    private Long resolverAutorHistorial(Connection conn, Long idUsuarioActor, Long idUsuarioDestino) throws SQLException {
+        if (idUsuarioDestino == null || !catalogoLookupDAO.tieneRolAdminSistema(conn, idUsuarioActor)) {
+            return idUsuarioActor;
+        }
+        return idUsuarioDestino;
     }
 
     private Transicion requerirTransicion(

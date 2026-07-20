@@ -1107,6 +1107,7 @@ public class AsignacionExpedienteDAO {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");
             }
         }
+        ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(conn, idExpediente, idEtapaDestino, idEstadoDestino, idUsuarioModificador);
     }
 
     private void insertarHistorial(
@@ -1122,6 +1123,7 @@ public class AsignacionExpedienteDAO {
             Long idEquipoDestino,
             Long idAsignacion,
             String comentario) throws SQLException {
+        Long idAutorHistorial = resolverAutorHistorial(conn, idUsuarioAsignador, idAbogadoResponsable);
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
                 + "id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino, "
@@ -1135,7 +1137,7 @@ public class AsignacionExpedienteDAO {
             ps.setLong(4, idEstadoOrigen);
             ps.setLong(5, idEtapaDestino);
             ps.setLong(6, idEstadoDestino);
-            setLongOrNull(ps, 7, idUsuarioAsignador);
+            setLongOrNull(ps, 7, idAutorHistorial);
             ps.setLong(8, idAbogadoResponsable);
             ps.setLong(9, idEquipoDestino);
             ps.setLong(10, idAsignacion);
@@ -1143,9 +1145,22 @@ public class AsignacionExpedienteDAO {
                     ? "Asignación de expediente a abogado responsable."
                     : limitar(comentario.trim(), 2000));
             ps.setString(12, CODIGO_MOVIMIENTO);
-            setLongOrNull(ps, 13, idUsuarioAsignador);
+            setLongOrNull(ps, 13, idAutorHistorial);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * Si quien ejecuta la accion es ADMIN_SISTEMA, el historial no debe quedar a su nombre:
+     * se sustituye por el usuario asignado/responsable/destino de esa misma accion. Si no hay
+     * un destino resuelto (por ejemplo, acciones que no cambian responsable), se conserva el
+     * autor real.
+     */
+    private Long resolverAutorHistorial(Connection conn, Long idUsuarioActor, Long idUsuarioDestino) throws SQLException {
+        if (idUsuarioDestino == null || !catalogoLookupDAO.tieneRolAdminSistema(conn, idUsuarioActor)) {
+            return idUsuarioActor;
+        }
+        return idUsuarioDestino;
     }
 
     private int obtenerUltimoCorrelativoExpediente(Connection conn, int anio) throws SQLException {

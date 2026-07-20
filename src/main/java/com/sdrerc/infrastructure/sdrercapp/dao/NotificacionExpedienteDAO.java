@@ -72,7 +72,10 @@ public class NotificacionExpedienteDAO {
             String tipoNotificacionCodigo,
             String resultadoNotificacionCodigo,
             String requierePublicacionFiltro,
-            int limite) throws SQLException {
+            int limite,
+            boolean esAdmin,
+            Long idUsuarioActual,
+            List<Long> idsEquipoActual) throws SQLException {
         List<Object> params = new ArrayList<Object>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
@@ -136,6 +139,9 @@ public class NotificacionExpedienteDAO {
         sql.append("LEFT JOIN estado_cargo_acuse eca ON eca.id_estado_cargo_acuse = ca.id_estado_cargo_acuse ");
         sql.append("WHERE e.activo = 1 AND et.codigo = ? ");
         params.add(ETAPA_NOTIFICACION);
+        sql.append(VisibilidadBandejaSql.construirCondicion(
+                params, esAdmin, idUsuarioActual, idsEquipoActual,
+                "e.id_usuario_responsable_actual", "e.id_equipo_responsable_actual"));
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
@@ -705,6 +711,7 @@ public class NotificacionExpedienteDAO {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");
             }
         }
+        ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(conn, idExpediente, idEtapaDestino, idEstadoDestino, idUsuarioModificador);
     }
 
     private void insertarHistorial(
@@ -722,6 +729,7 @@ public class NotificacionExpedienteDAO {
             Long idRegistroRelacionado,
             String comentario,
             String motivo) throws SQLException {
+        Long idAutorHistorial = resolverAutorHistorial(conn, idUsuarioOrigen, idUsuarioDestino);
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
                 + "id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino, "
@@ -735,16 +743,28 @@ public class NotificacionExpedienteDAO {
             setLongOrNull(ps, 4, idEstadoOrigen);
             ps.setLong(5, idEtapaDestino);
             ps.setLong(6, idEstadoDestino);
-            setLongOrNull(ps, 7, idUsuarioOrigen);
+            setLongOrNull(ps, 7, idAutorHistorial);
             setLongOrNull(ps, 8, idUsuarioDestino);
             setLongOrNull(ps, 9, idEquipoDestino);
             ps.setString(10, tablaRelacionada);
             setLongOrNull(ps, 11, idRegistroRelacionado);
             ps.setString(12, limitar(comentario, 2000));
             ps.setString(13, limitar(motivo, 1000));
-            setLongOrNull(ps, 14, idUsuarioOrigen);
+            setLongOrNull(ps, 14, idAutorHistorial);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * Si quien ejecuta la accion es ADMIN_SISTEMA, el historial no debe quedar a su nombre:
+     * se sustituye por el usuario asignado/responsable/destino de esa misma accion. Si no hay
+     * un destino resuelto, se conserva el autor real.
+     */
+    private Long resolverAutorHistorial(Connection conn, Long idUsuarioActor, Long idUsuarioDestino) throws SQLException {
+        if (idUsuarioDestino == null || !catalogoLookupDAO.tieneRolAdminSistema(conn, idUsuarioActor)) {
+            return idUsuarioActor;
+        }
+        return idUsuarioDestino;
     }
 
     private Transicion requerirTransicion(

@@ -145,25 +145,32 @@ public class DocumentoAnalisisDAO {
     }
 
     private static final String CONDICION_ASIGNACION_NOTIFICACION =
-            "((UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO') "
-            + "OR (UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) IN ('EN_DESPACHO', 'VALIDADO')))";
+            "(UPPER(NVL(eest.codigo, '')) = 'POR_ASIGNAR' "
+            + "AND ((UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO') "
+            + "OR (UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) IN ('EN_DESPACHO', 'VALIDADO'))))";
 
     private static final String CONDICION_VALIDACION_NOTIFICACION =
-            "(UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) = 'EN_DESPACHO')";
+            "(UPPER(NVL(eest.codigo, '')) = 'POR_VALIDAR' "
+            + "AND UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) = 'EN_DESPACHO')";
 
     private static final String CONDICION_BANDEJA_NOTIFICACION =
-            "(UPPER(NVL(tda.clasificacion, '')) IN ('INTERMEDIO', 'FINAL') AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO')";
+            "(UPPER(NVL(eest.codigo, '')) = 'EN_NOTIFICACION' "
+            + "AND UPPER(NVL(tda.clasificacion, '')) IN ('INTERMEDIO', 'FINAL') AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO')";
 
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
-        return listarDocumentosNotificacionPareado(CONDICION_ASIGNACION_NOTIFICACION, false);
+        // Bandeja de coordinacion (SUPERVISOR_NOTIFICACION asigna a validadores/notificadores):
+        // no se filtra por visibilidad individual porque su funcion es ver y repartir toda la cola.
+        return listarDocumentosNotificacionPareado(CONDICION_ASIGNACION_NOTIFICACION, false, true, null, null);
     }
 
-    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion() throws SQLException {
-        return listarDocumentosNotificacionPareado(CONDICION_VALIDACION_NOTIFICACION, true);
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion(
+            boolean esAdmin, Long idUsuarioActual, List<Long> idsEquipoActual) throws SQLException {
+        return listarDocumentosNotificacionPareado(CONDICION_VALIDACION_NOTIFICACION, true, esAdmin, idUsuarioActual, idsEquipoActual);
     }
 
-    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion() throws SQLException {
-        return listarDocumentosNotificacionPareado(CONDICION_BANDEJA_NOTIFICACION, false);
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion(
+            boolean esAdmin, Long idUsuarioActual, List<Long> idsEquipoActual) throws SQLException {
+        return listarDocumentosNotificacionPareado(CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual);
     }
 
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosPublicacion() throws SQLException {
@@ -217,7 +224,8 @@ public class DocumentoAnalisisDAO {
                     + "(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 "
                     + "AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, "
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
-                    + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual "
+                    + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
+                    + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -227,6 +235,7 @@ public class DocumentoAnalisisDAO {
                     + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                     + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                     + "LEFT JOIN usuario un ON un.id_usuario = da.id_usuario_notificacion "
+                    + "LEFT JOIN estado_expediente eest ON eest.id_estado = e.id_estado_actual "
                     + "WHERE da.activo = 1 "
                     + "AND UPPER(NVL(tda.clasificacion, '')) IN (" + clasifPlaceholders + ") "
                     + "AND UPPER(NVL(ed.codigo, '')) IN (" + estadoPlaceholders + ") "
@@ -256,7 +265,9 @@ public class DocumentoAnalisisDAO {
                                 rs.getInt("relaciones_confirmadas"),
                                 rs.getInt("asignado") == 1,
                                 rs.getString("numero_hoja_envio_notificacion"),
-                                rs.getString("usuario_notificacion_actual")));
+                                rs.getString("usuario_notificacion_actual"),
+                                rs.getString("estado_expediente_codigo"),
+                                rs.getString("estado_expediente_nombre")));
                     }
                 }
             }
@@ -265,13 +276,21 @@ public class DocumentoAnalisisDAO {
     }
 
     private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacionPareado(
-            String condicionPareada, boolean soloAsignados) throws SQLException {
+            String condicionPareada,
+            boolean soloAsignados,
+            boolean esAdmin,
+            Long idUsuarioActual,
+            List<Long> idsEquipoActual) throws SQLException {
         List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
                 new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
         try (Connection conn = SdrercAppConnection.getConnection()) {
             if (!soportaClasificacionTipoDocumento(conn)) {
                 return items;
             }
+            List<Object> paramsVisibilidad = new ArrayList<Object>();
+            String condicionVisibilidad = VisibilidadBandejaSql.construirCondicion(
+                    paramsVisibilidad, esAdmin, idUsuarioActual, idsEquipoActual,
+                    "da.id_usuario_notificacion", "da.id_equipo_notificacion");
             String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, "
                     + "tda.clasificacion, tda.nombre AS tipo_documento_nombre, "
                     + "da.numero_documento, da.fecha_documento, "
@@ -280,7 +299,8 @@ public class DocumentoAnalisisDAO {
                     + "(SELECT COUNT(*) FROM expediente_relacion r WHERE r.activo = 1 "
                     + "AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, "
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
-                    + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual "
+                    + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
+                    + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -290,29 +310,37 @@ public class DocumentoAnalisisDAO {
                     + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                     + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                     + "LEFT JOIN usuario un ON un.id_usuario = da.id_usuario_notificacion "
+                    + "LEFT JOIN estado_expediente eest ON eest.id_estado = e.id_estado_actual "
                     + "WHERE da.activo = 1 "
                     + "AND " + condicionPareada + " "
                     + (soloAsignados ? "AND da.id_usuario_notificacion IS NOT NULL " : "")
+                    + condicionVisibilidad
                     + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
-            try (PreparedStatement ps = conn.prepareStatement(sql);
-                 ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    items.add(new com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO(
-                            getLongOrNull(rs, "id_documento_analizado"),
-                            getLongOrNull(rs, "id_expediente"),
-                            rs.getString("numero_expediente"),
-                            rs.getString("numero_expediente_sgd"),
-                            rs.getString("clasificacion"),
-                            rs.getString("tipo_documento_nombre"),
-                            rs.getString("numero_documento"),
-                            toLocalDate(rs.getDate("fecha_documento")),
-                            rs.getString("titular"),
-                            rs.getString("estado_documento_codigo"),
-                            rs.getString("estado_documento_nombre"),
-                            rs.getInt("relaciones_confirmadas"),
-                            rs.getInt("asignado") == 1,
-                            rs.getString("numero_hoja_envio_notificacion"),
-                            rs.getString("usuario_notificacion_actual")));
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                for (int i = 0; i < paramsVisibilidad.size(); i++) {
+                    ps.setObject(i + 1, paramsVisibilidad.get(i));
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        items.add(new com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO(
+                                getLongOrNull(rs, "id_documento_analizado"),
+                                getLongOrNull(rs, "id_expediente"),
+                                rs.getString("numero_expediente"),
+                                rs.getString("numero_expediente_sgd"),
+                                rs.getString("clasificacion"),
+                                rs.getString("tipo_documento_nombre"),
+                                rs.getString("numero_documento"),
+                                toLocalDate(rs.getDate("fecha_documento")),
+                                rs.getString("titular"),
+                                rs.getString("estado_documento_codigo"),
+                                rs.getString("estado_documento_nombre"),
+                                rs.getInt("relaciones_confirmadas"),
+                                rs.getInt("asignado") == 1,
+                                rs.getString("numero_hoja_envio_notificacion"),
+                                rs.getString("usuario_notificacion_actual"),
+                                rs.getString("estado_expediente_codigo"),
+                                rs.getString("estado_expediente_nombre")));
+                    }
                 }
             }
         }
@@ -360,13 +388,27 @@ public class DocumentoAnalisisDAO {
             try {
                 Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn,
                         reasignacion ? CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION : CODIGO_MOVIMIENTO_ASIGNACION_NOTIFICACION);
+                // El estado del expediente (columna "Estado" de las bandejas, distinta del estado
+                // del documento) refleja a que bandeja pasa segun el equipo destino: EQ_VALIDACION
+                // -> Por validar, EQ_NOTIFICACION -> Por notificar (codigo EN_NOTIFICACION, ya
+                // conectado al flujo de intentos/cargo/confirmacion existente). Si el equipo no es
+                // ninguno de los dos, no se toca el estado del expediente.
+                Long idEstadoExpedienteDestino = resolverEstadoExpedienteDestinoNotificacion(conn, idEquipoDestino);
                 String sql = "UPDATE expediente_documento_analizado SET "
                         + "id_equipo_notificacion = ?, id_usuario_notificacion = ?, numero_hoja_envio_notificacion = ?, "
                         + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                         + "WHERE id_documento_analizado = ? AND activo = 1";
-                String sqlExpediente = "SELECT id_expediente FROM expediente_documento_analizado WHERE id_documento_analizado = ?";
+                String sqlExpediente = "SELECT d.id_expediente, e.id_etapa_actual FROM expediente_documento_analizado d "
+                        + "JOIN expediente e ON e.id_expediente = d.id_expediente "
+                        + "WHERE d.id_documento_analizado = ?";
+                String sqlResponsable = "UPDATE expediente SET "
+                        + "id_equipo_responsable_actual = ?, id_usuario_responsable_actual = ?, "
+                        + (idEstadoExpedienteDestino != null ? "id_estado_actual = ?, " : "")
+                        + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                        + "WHERE id_expediente = ? AND activo = 1";
                 try (PreparedStatement ps = conn.prepareStatement(sql);
-                     PreparedStatement psExpediente = conn.prepareStatement(sqlExpediente)) {
+                     PreparedStatement psExpediente = conn.prepareStatement(sqlExpediente);
+                     PreparedStatement psResponsable = conn.prepareStatement(sqlResponsable)) {
                     for (Long idDocumento : idsDocumentoAnalizado) {
                         String numeroHojaEnvio = hojasEnvioPorDocumento == null ? null : hojasEnvioPorDocumento.get(idDocumento);
                         int index = 1;
@@ -380,15 +422,35 @@ public class DocumentoAnalisisDAO {
                         }
                         ps.setLong(index, idDocumento);
                         ps.executeUpdate();
-                        if (idMovimiento != null) {
-                            Long idExpediente = null;
-                            psExpediente.setLong(1, idDocumento);
-                            try (ResultSet rs = psExpediente.executeQuery()) {
-                                if (rs.next()) {
-                                    idExpediente = getLongOrNull(rs, "id_expediente");
-                                }
+
+                        Long idExpediente = null;
+                        Long idEtapaActualExpediente = null;
+                        psExpediente.setLong(1, idDocumento);
+                        try (ResultSet rs = psExpediente.executeQuery()) {
+                            if (rs.next()) {
+                                idExpediente = getLongOrNull(rs, "id_expediente");
+                                idEtapaActualExpediente = getLongOrNull(rs, "id_etapa_actual");
                             }
-                            if (idExpediente != null) {
+                        }
+                        if (idExpediente != null) {
+                            // Mantiene EXPEDIENTE.id_usuario_responsable_actual alineado con quien
+                            // trabaja el expediente ahora (validador/notificador), para que las
+                            // bandejas que muestran "Abogado actual" no sigan mostrando al abogado
+                            // de Analisis/Ejecucion una vez que Notificacion asigna el documento.
+                            int idxResp = 1;
+                            psResponsable.setLong(idxResp++, idEquipoDestino);
+                            psResponsable.setLong(idxResp++, idUsuarioDestino);
+                            if (idEstadoExpedienteDestino != null) {
+                                psResponsable.setLong(idxResp++, idEstadoExpedienteDestino);
+                            }
+                            setLongOrNull(psResponsable, idxResp++, idUsuario);
+                            psResponsable.setLong(idxResp, idExpediente);
+                            psResponsable.executeUpdate();
+                            if (idEstadoExpedienteDestino != null && idEtapaActualExpediente != null) {
+                                ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(
+                                        conn, idExpediente, idEtapaActualExpediente, idEstadoExpedienteDestino, idUsuario);
+                            }
+                            if (idMovimiento != null) {
                                 insertarHistorialNotificacion(
                                         conn, idExpediente, idDocumento, idMovimiento,
                                         idUsuarioDestino, idEquipoDestino, numeroHojaEnvio, idUsuario);
@@ -436,6 +498,7 @@ public class DocumentoAnalisisDAO {
             Long idEquipoDestino,
             String numeroHojaEnvio,
             Long idUsuarioCreador) throws SQLException {
+        Long idAutorHistorial = resolverAutorHistorial(conn, idUsuarioCreador, idUsuarioDestino);
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
                 + "id_usuario_destino, id_equipo_destino, "
@@ -448,9 +511,55 @@ public class DocumentoAnalisisDAO {
             setLongOrNull(ps, 4, idEquipoDestino);
             ps.setLong(5, idDocumentoAnalizado);
             setStringOrNull(ps, 6, numeroHojaEnvio);
-            setLongOrNull(ps, 7, idUsuarioCreador);
+            setLongOrNull(ps, 7, idAutorHistorial);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * Si quien ejecuta la accion es ADMIN_SISTEMA, el historial no debe quedar a su nombre:
+     * se sustituye por el usuario asignado/responsable/destino de esa misma accion. Si no hay
+     * un destino resuelto, se conserva el autor real.
+     */
+    private Long resolverAutorHistorial(Connection conn, Long idUsuarioActor, Long idUsuarioDestino) throws SQLException {
+        if (idUsuarioDestino == null || !catalogoLookupDAO.tieneRolAdminSistema(conn, idUsuarioActor)) {
+            return idUsuarioActor;
+        }
+        return idUsuarioDestino;
+    }
+
+    /**
+     * Resuelve a que estado de EXPEDIENTE (etapa NOTIFICACION) debe pasar el expediente segun el
+     * equipo al que se asigna un documento: EQ_VALIDACION -> Por validar, EQ_NOTIFICACION -> Por
+     * notificar (codigo EN_NOTIFICACION, reutilizado; ver script 73). Si el equipo no es ninguno
+     * de los dos, retorna null y el llamador no debe tocar el estado del expediente.
+     */
+    private Long resolverEstadoExpedienteDestinoNotificacion(Connection conn, Long idEquipoDestino) throws SQLException {
+        if (idEquipoDestino == null) {
+            return null;
+        }
+        String sql = "SELECT codigo FROM equipo WHERE id_equipo = ?";
+        String codigoEquipo = null;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idEquipoDestino);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    codigoEquipo = rs.getString("codigo");
+                }
+            }
+        }
+        if (codigoEquipo == null) {
+            return null;
+        }
+        String estadoDestino;
+        if ("EQ_VALIDACION".equalsIgnoreCase(codigoEquipo)) {
+            estadoDestino = "POR_VALIDAR";
+        } else if ("EQ_NOTIFICACION".equalsIgnoreCase(codigoEquipo)) {
+            estadoDestino = "EN_NOTIFICACION";
+        } else {
+            return null;
+        }
+        return catalogoLookupDAO.obtenerEstadoId(conn, estadoDestino);
     }
 
     public List<com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO> listarHistorialAsignacionesNotificacion(
@@ -571,6 +680,57 @@ public class DocumentoAnalisisDAO {
                 int updated = ps.executeUpdate();
                 if (updated != 1) {
                     throw new SQLException("No se pudo registrar el resultado de la validación.");
+                }
+            }
+            String sqlExpediente = "SELECT d.id_expediente, e.id_etapa_actual FROM expediente_documento_analizado d "
+                    + "JOIN expediente e ON e.id_expediente = d.id_expediente "
+                    + "WHERE d.id_documento_analizado = ?";
+            Long idExpediente = null;
+            Long idEtapaActualExpediente = null;
+            try (PreparedStatement psExpediente = conn.prepareStatement(sqlExpediente)) {
+                psExpediente.setLong(1, idDocumentoAnalizado);
+                try (ResultSet rs = psExpediente.executeQuery()) {
+                    if (rs.next()) {
+                        idExpediente = getLongOrNull(rs, "id_expediente");
+                        idEtapaActualExpediente = getLongOrNull(rs, "id_etapa_actual");
+                    }
+                }
+            }
+            if (idExpediente != null) {
+                if (observado) {
+                    // Libera el responsable actual del expediente (quedaba en el validador/notificador)
+                    // para que las bandejas vuelvan a resolver al abogado de Analisis/Ejecucion mediante
+                    // el fallback ya existente sobre EXPEDIENTE_ASIGNACION.
+                    String sqlResponsable = "UPDATE expediente SET "
+                            + "id_equipo_responsable_actual = NULL, id_usuario_responsable_actual = NULL, "
+                            + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                            + "WHERE id_expediente = ? AND activo = 1";
+                    try (PreparedStatement psResponsable = conn.prepareStatement(sqlResponsable)) {
+                        setLongOrNull(psResponsable, 1, idUsuario);
+                        psResponsable.setLong(2, idExpediente);
+                        psResponsable.executeUpdate();
+                    }
+                } else {
+                    // Aprobado (documento pasa a Validado): el expediente vuelve a "Por asignar"
+                    // para que reaparezca en la Bandeja Asignacion y el coordinador lo derive esta
+                    // vez al equipo de Notificacion (ver CONDICION_ASIGNACION_NOTIFICACION, que ya
+                    // acepta FINAL+Validado).
+                    Long idEstadoPorAsignar = catalogoLookupDAO.obtenerEstadoId(conn, "POR_ASIGNAR");
+                    if (idEstadoPorAsignar != null) {
+                        String sqlEstado = "UPDATE expediente SET "
+                                + "id_estado_actual = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                                + "WHERE id_expediente = ? AND activo = 1";
+                        try (PreparedStatement psEstado = conn.prepareStatement(sqlEstado)) {
+                            psEstado.setLong(1, idEstadoPorAsignar);
+                            setLongOrNull(psEstado, 2, idUsuario);
+                            psEstado.setLong(3, idExpediente);
+                            psEstado.executeUpdate();
+                        }
+                        if (idEtapaActualExpediente != null) {
+                            ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(
+                                    conn, idExpediente, idEtapaActualExpediente, idEstadoPorAsignar, idUsuario);
+                        }
+                    }
                 }
             }
         }

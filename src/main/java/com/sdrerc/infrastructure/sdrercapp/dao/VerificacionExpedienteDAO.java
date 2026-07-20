@@ -27,6 +27,7 @@ public class VerificacionExpedienteDAO {
     private static final String ETAPA_ANALISIS = "ANALISIS";
     private static final String ETAPA_FIRMA = "FIRMA_EMISION";
     private static final String ETAPA_EJECUCION = "EJECUCION";
+    private static final String ETAPA_NOTIFICACION = "NOTIFICACION";
     private static final String ESTADO_EN_EJECUCION = "EN_EJECUCION";
     private static final String ESTADO_EN_VERIFICACION = "EN_VERIFICACION";
     private static final String ESTADO_REQUIERE_CORRECCION = "REQUIERE_CORRECCION";
@@ -35,11 +36,15 @@ public class VerificacionExpedienteDAO {
     private static final String ESTADO_ATENDIDO = "ATENDIDO";
     private static final String ESTADO_ANALISIS_OBSERVADO = "OBSERVADO";
     private static final String ESTADO_PARA_FIRMA = "PARA_FIRMA";
+    private static final String ESTADO_POR_ASIGNAR = "POR_ASIGNAR";
     private static final String ACCION_APROBACION = "APROBACION_VERIFICACION";
     private static final String ACCION_OBSERVACION = "REGISTRO_OBSERVACION_VERIFICACION";
     private static final String ACCION_DOCUMENTO_INCONSISTENTE = "REVERSION_ESTADO_DOCUMENTO";
     private static final String ACCION_DEVOLUCION_ANALISIS = "DEVOLUCION_A_ANALISIS";
     private static final String ACCION_ENVIO_FIRMA = "ENVIO_FIRMA";
+    private static final String ACCION_DERIVACION_NOTIFICACION = "DERIVACION_A_NOTIFICACION";
+    private static final String EQUIPO_ANALISIS = "EQ_ANALISIS";
+    private static final String EQUIPO_EJECUCION = "EQ_EJECUCION";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final DocumentoAnalisisDAO documentoAnalisisDAO;
@@ -60,7 +65,7 @@ public class VerificacionExpedienteDAO {
     }
 
     public List<VerificacionExpedienteDTO> buscarExpedientes(String textoLibre, String estadoCodigo, int limite) throws SQLException {
-        return buscarExpedientes(textoLibre, estadoCodigo, null, null, limite);
+        return buscarExpedientes(textoLibre, estadoCodigo, null, null, limite, true, null, null);
     }
 
     public List<VerificacionExpedienteDTO> buscarExpedientes(
@@ -68,7 +73,10 @@ public class VerificacionExpedienteDAO {
             String estadoCodigo,
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
-            int limite) throws SQLException {
+            int limite,
+            boolean esAdmin,
+            Long idUsuarioActual,
+            List<Long> idsEquipoActual) throws SQLException {
         List<Object> params = new ArrayList<Object>();
         boolean soportaGrupoFamiliar;
         try (Connection connSoporte = SdrercAppConnection.getConnection()) {
@@ -177,6 +185,9 @@ public class VerificacionExpedienteDAO {
         params.add(ETAPA_FIRMA);
         params.add(ETAPA_ANALISIS);
         params.add(ESTADO_ATENDIDO);
+        sql.append(VisibilidadBandejaSql.construirCondicion(
+                params, esAdmin, idUsuarioActual, idsEquipoActual,
+                "e.id_usuario_responsable_actual", "e.id_equipo_responsable_actual"));
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
@@ -315,46 +326,17 @@ public class VerificacionExpedienteDAO {
                     throw new SQLException("El expediente ya no se encuentra en "
                             + ETAPA_VERIFICACION + " / " + ESTADO_EN_VERIFICACION + ".");
                 }
-                Transicion transicion = requerirTransicion(
-                        conn,
-                        ACCION_APROBACION,
-                        ETAPA_VERIFICACION,
-                        ESTADO_EN_VERIFICACION,
-                        ETAPA_VERIFICACION,
-                        ESTADO_VERIFICADO);
-                validarRequisitosTransicion(conn, transicion, comentario, idExpediente, true);
-                Long idMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_APROBACION), "movimiento " + ACCION_APROBACION);
-                actualizarExpedienteConDestino(
-                        conn,
-                        idExpediente,
-                        transicion.idEtapaDestino,
-                        transicion.idEstadoDestino,
-                        idEquipoDestino,
-                        idUsuarioDestino,
-                        idUsuario);
-                insertarHistorial(
-                        conn,
-                        idExpediente,
-                        idMovimiento,
-                        expediente.idEtapa,
-                        expediente.idEstado,
-                        transicion.idEtapaDestino,
-                        transicion.idEstadoDestino,
-                        idUsuario,
-                        idUsuarioDestino,
-                        idEquipoDestino,
-                        null,
-                        null,
-                        comentarioMovimiento(ACCION_APROBACION, comentario),
-                        ACCION_APROBACION);
+                String codigoEquipoDestino = obtenerCodigoEquipo(conn, idEquipoDestino);
+                VerificacionResultadoDTO resultado;
+                if (EQUIPO_ANALISIS.equalsIgnoreCase(codigoEquipoDestino)) {
+                    resultado = aprobarConDestinoAAnalisis(conn, expediente, comentario, idEquipoDestino, idUsuarioDestino, idUsuario);
+                } else if (EQUIPO_EJECUCION.equalsIgnoreCase(codigoEquipoDestino)) {
+                    resultado = aprobarConDestinoAEjecucion(conn, expediente, comentario, idEquipoDestino, idUsuarioDestino, idUsuario);
+                } else {
+                    resultado = aprobarConDestinoANotificacion(conn, expediente, comentario, idEquipoDestino, idUsuarioDestino, idUsuario);
+                }
                 conn.commit();
-                return new VerificacionResultadoDTO(
-                        idExpediente,
-                        expediente.numeroExpediente,
-                        ACCION_APROBACION,
-                        ETAPA_VERIFICACION,
-                        ESTADO_VERIFICADO,
-                        "La verificación fue aprobada y enviada al equipo destino correctamente.");
+                return resultado;
             } catch (Exception ex) {
                 rollbackSilencioso(conn);
                 if (ex instanceof SQLException) {
@@ -363,6 +345,206 @@ public class VerificacionExpedienteDAO {
                 throw new SQLException(ex.getMessage(), ex);
             } finally {
                 conn.setAutoCommit(previousAutoCommit);
+            }
+        }
+    }
+
+    /**
+     * Destino Eq. Analisis: el expediente vuelve directamente a Analisis/Observado
+     * (mismo destino que "Devolver a Analisis", pero disparado desde el combo de
+     * destino operativo en lugar del flujo dedicado de observacion/correccion).
+     */
+    private VerificacionResultadoDTO aprobarConDestinoAAnalisis(
+            Connection conn,
+            ExpedienteBloqueado expediente,
+            String comentario,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Long idUsuario) throws SQLException {
+        Transicion transicion = requerirTransicion(
+                conn,
+                ACCION_DEVOLUCION_ANALISIS,
+                ETAPA_VERIFICACION,
+                ESTADO_EN_VERIFICACION,
+                ETAPA_ANALISIS,
+                ESTADO_ANALISIS_OBSERVADO);
+        validarRequisitosTransicion(conn, transicion, comentario, expediente.idExpediente, true);
+        Long idMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_DEVOLUCION_ANALISIS), "movimiento " + ACCION_DEVOLUCION_ANALISIS);
+        actualizarExpedienteConDestino(
+                conn,
+                expediente.idExpediente,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                idEquipoDestino,
+                idUsuarioDestino,
+                idUsuario);
+        insertarHistorial(
+                conn,
+                expediente.idExpediente,
+                idMovimiento,
+                expediente.idEtapa,
+                expediente.idEstado,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                idUsuario,
+                idUsuarioDestino,
+                idEquipoDestino,
+                null,
+                null,
+                comentarioMovimiento(ACCION_DEVOLUCION_ANALISIS, comentario),
+                ACCION_DEVOLUCION_ANALISIS);
+        return new VerificacionResultadoDTO(
+                expediente.idExpediente,
+                expediente.numeroExpediente,
+                ACCION_DEVOLUCION_ANALISIS,
+                ETAPA_ANALISIS,
+                ESTADO_ANALISIS_OBSERVADO,
+                "El expediente fue devuelto a Análisis para corrección.");
+    }
+
+    /**
+     * Destino Eq. Ejecucion: mismo destino que la aprobacion directa de resoluciones
+     * (VERIFICACION/EN_VERIFICACION -> EJECUCION/EN_EJECUCION). No se reasigna el
+     * responsable: Ejecucion exige que la atienda el mismo abogado de Analisis, no el
+     * usuario elegido en el combo (que solo habilita/valida la accion).
+     */
+    private VerificacionResultadoDTO aprobarConDestinoAEjecucion(
+            Connection conn,
+            ExpedienteBloqueado expediente,
+            String comentario,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Long idUsuario) throws SQLException {
+        Transicion transicion = requerirTransicion(
+                conn,
+                ACCION_APROBACION,
+                ETAPA_VERIFICACION,
+                ESTADO_EN_VERIFICACION,
+                ETAPA_EJECUCION,
+                ESTADO_EN_EJECUCION);
+        validarRequisitosTransicion(conn, transicion, comentario, expediente.idExpediente, true);
+        Long idMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_APROBACION), "movimiento " + ACCION_APROBACION);
+        actualizarExpediente(conn, expediente.idExpediente, transicion.idEtapaDestino, transicion.idEstadoDestino, idUsuario);
+        insertarHistorial(
+                conn,
+                expediente.idExpediente,
+                idMovimiento,
+                expediente.idEtapa,
+                expediente.idEstado,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                idUsuario,
+                idUsuarioDestino,
+                idEquipoDestino,
+                null,
+                null,
+                comentarioMovimiento(ACCION_APROBACION, comentario),
+                ACCION_APROBACION);
+        return new VerificacionResultadoDTO(
+                expediente.idExpediente,
+                expediente.numeroExpediente,
+                ACCION_APROBACION,
+                ETAPA_EJECUCION,
+                ESTADO_EN_EJECUCION,
+                "El expediente fue aprobado y enviado a Ejecución.");
+    }
+
+    /**
+     * Destino Eq. Supervision: comportamiento historico de este metodo. El documento
+     * INTERMEDIO ya quedo Emitido desde Verificacion, asi que el expediente encadena
+     * 2 saltos automaticos e inmediatos hacia Notificacion/Por asignar, sin esperar
+     * una accion manual adicional.
+     */
+    private VerificacionResultadoDTO aprobarConDestinoANotificacion(
+            Connection conn,
+            ExpedienteBloqueado expediente,
+            String comentario,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Long idUsuario) throws SQLException {
+        Transicion transicion = requerirTransicion(
+                conn,
+                ACCION_APROBACION,
+                ETAPA_VERIFICACION,
+                ESTADO_EN_VERIFICACION,
+                ETAPA_VERIFICACION,
+                ESTADO_VERIFICADO);
+        validarRequisitosTransicion(conn, transicion, comentario, expediente.idExpediente, true);
+        Long idMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_APROBACION), "movimiento " + ACCION_APROBACION);
+        actualizarExpedienteConDestino(
+                conn,
+                expediente.idExpediente,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                idEquipoDestino,
+                idUsuarioDestino,
+                idUsuario);
+        insertarHistorial(
+                conn,
+                expediente.idExpediente,
+                idMovimiento,
+                expediente.idEtapa,
+                expediente.idEstado,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                idUsuario,
+                idUsuarioDestino,
+                idEquipoDestino,
+                null,
+                null,
+                comentarioMovimiento(ACCION_APROBACION, comentario),
+                ACCION_APROBACION);
+
+        Transicion transicionNotificacion = requerirTransicion(
+                conn,
+                ACCION_DERIVACION_NOTIFICACION,
+                ETAPA_VERIFICACION,
+                ESTADO_VERIFICADO,
+                ETAPA_NOTIFICACION,
+                ESTADO_POR_ASIGNAR);
+        Long idMovimientoNotificacion = requerirId(
+                catalogoLookupDAO.obtenerTipoMovimientoId(conn, ACCION_DERIVACION_NOTIFICACION),
+                "movimiento " + ACCION_DERIVACION_NOTIFICACION);
+        actualizarExpediente(
+                conn,
+                expediente.idExpediente,
+                transicionNotificacion.idEtapaDestino,
+                transicionNotificacion.idEstadoDestino,
+                idUsuario);
+        insertarHistorial(
+                conn,
+                expediente.idExpediente,
+                idMovimientoNotificacion,
+                transicion.idEtapaDestino,
+                transicion.idEstadoDestino,
+                transicionNotificacion.idEtapaDestino,
+                transicionNotificacion.idEstadoDestino,
+                idUsuario,
+                idUsuarioDestino,
+                idEquipoDestino,
+                null,
+                null,
+                "Documento intermedio emitido; derivado automaticamente a Notificacion.",
+                ACCION_DERIVACION_NOTIFICACION);
+
+        return new VerificacionResultadoDTO(
+                expediente.idExpediente,
+                expediente.numeroExpediente,
+                ACCION_APROBACION,
+                ETAPA_NOTIFICACION,
+                ESTADO_POR_ASIGNAR,
+                "La verificación fue aprobada y el documento quedó en Notificación, pendiente de asignar.");
+    }
+
+    private String obtenerCodigoEquipo(Connection conn, Long idEquipo) throws SQLException {
+        if (idEquipo == null) {
+            return null;
+        }
+        String sql = "SELECT codigo FROM equipo WHERE id_equipo = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idEquipo);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("codigo") : null;
             }
         }
     }
@@ -679,6 +861,7 @@ public class VerificacionExpedienteDAO {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");
             }
         }
+        ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(conn, idExpediente, idEtapaDestino, idEstadoDestino, idUsuarioModificador);
     }
 
     private void actualizarExpedienteConDestino(
@@ -707,6 +890,7 @@ public class VerificacionExpedienteDAO {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");
             }
         }
+        ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(conn, idExpediente, idEtapaDestino, idEstadoDestino, idUsuarioModificador);
     }
 
     private void insertarHistorial(
@@ -724,6 +908,7 @@ public class VerificacionExpedienteDAO {
             Long idRegistroRelacionado,
             String comentario,
             String motivo) throws SQLException {
+        Long idAutorHistorial = resolverAutorHistorial(conn, idUsuarioOrigen, idUsuarioDestino);
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
                 + "id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino, "
@@ -737,16 +922,28 @@ public class VerificacionExpedienteDAO {
             setLongOrNull(ps, 4, idEstadoOrigen);
             ps.setLong(5, idEtapaDestino);
             ps.setLong(6, idEstadoDestino);
-            setLongOrNull(ps, 7, idUsuarioOrigen);
+            setLongOrNull(ps, 7, idAutorHistorial);
             setLongOrNull(ps, 8, idUsuarioDestino);
             setLongOrNull(ps, 9, idEquipoDestino);
             ps.setString(10, tablaRelacionada);
             setLongOrNull(ps, 11, idRegistroRelacionado);
             ps.setString(12, limitar(comentario, 2000));
             ps.setString(13, limitar(motivo, 1000));
-            setLongOrNull(ps, 14, idUsuarioOrigen);
+            setLongOrNull(ps, 14, idAutorHistorial);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * Si quien ejecuta la accion es ADMIN_SISTEMA, el historial no debe quedar a su nombre:
+     * se sustituye por el usuario asignado/responsable/destino de esa misma accion. Si no hay
+     * un destino resuelto, se conserva el autor real.
+     */
+    private Long resolverAutorHistorial(Connection conn, Long idUsuarioActor, Long idUsuarioDestino) throws SQLException {
+        if (idUsuarioDestino == null || !catalogoLookupDAO.tieneRolAdminSistema(conn, idUsuarioActor)) {
+            return idUsuarioActor;
+        }
+        return idUsuarioDestino;
     }
 
     private Transicion requerirTransicion(
