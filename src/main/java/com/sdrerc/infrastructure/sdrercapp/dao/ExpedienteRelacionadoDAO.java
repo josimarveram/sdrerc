@@ -299,6 +299,7 @@ public class ExpedienteRelacionadoDAO {
             boolean previousAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             try {
+                idExpedientePrincipal = resolverPrincipalCanonico(conn, idExpedientePrincipal);
                 Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, MOVIMIENTO_ASOCIACION_DUPLICADO);
                 Long idMovimientoAsignacion = catalogoLookupDAO.obtenerTipoMovimientoId(
                         conn,
@@ -972,6 +973,38 @@ public class ExpedienteRelacionadoDAO {
             int updated = ps.executeUpdate();
             if (updated != 1) {
                 throw new SQLException("No se pudo sincronizar el número del expediente relacionado.");
+            }
+        }
+    }
+
+    /**
+     * Si idExpediente ya esta asociado como relacionado de otro principal (relacion activa),
+     * devuelve ese principal en vez de idExpediente; recorre la cadena por si hubiera mas de
+     * un salto. Evita que un expediente ya asociado se use como principal de una nueva relacion,
+     * lo que generaria un grupo partido en dos (bug reportado con SDRERC-EXP-2026-000179).
+     */
+    private Long resolverPrincipalCanonico(Connection conn, Long idExpediente) throws SQLException {
+        Long actual = idExpediente;
+        for (int saltos = 0; saltos < 20; saltos++) {
+            Long idPrincipal = obtenerPrincipalDeRelacionActiva(conn, actual);
+            if (idPrincipal == null || idPrincipal.equals(actual)) {
+                return actual;
+            }
+            actual = idPrincipal;
+        }
+        return actual;
+    }
+
+    private Long obtenerPrincipalDeRelacionActiva(Connection conn, Long idRelacionado) throws SQLException {
+        if (idRelacionado == null) {
+            return null;
+        }
+        String sql = "SELECT id_expediente_principal FROM expediente_relacion "
+                + "WHERE activo = 1 AND id_expediente_relacionado = ? AND ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idRelacionado);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? getLongOrNull(rs, "id_expediente_principal") : null;
             }
         }
     }

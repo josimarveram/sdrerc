@@ -263,6 +263,7 @@ Asociacion:
 - Confirmar relacion solo por coincidencia normalizada `numero de acta + titular`, salvo reglas futuras explicitas.
 - Principal canonico: primero expediente con numero SDRERC; si ambos tienen o ninguno tiene numero, el mas antiguo.
 - Duplicado asociado hereda numero de expediente, fecha de vencimiento, equipo/abogado cuando corresponda.
+- Antes de crear una relacion nueva, `ExpedienteRelacionadoDAO.asociarRelacionados` resuelve el `id_expediente_principal` recibido contra el grafo de `EXPEDIENTE_RELACION` ya existente (`resolverPrincipalCanonico`): si ese expediente ya es el "relacionado" (asociado) de otro principal activo, usa ese principal real en vez del expediente recibido. Evita que un expediente ya asociado se use como principal de una nueva asociacion y parta el grupo en 2 (bug reportado con SDRERC-EXP-2026-000179, corregido 20/07/2026); relevante porque el duplicado hereda el numero SDRERC del principal, asi que el criterio "primero el que tiene numero" ya no alcanza para desempatar una vez asociado.
 - Al resolver duplicidad, desactivar/atender alerta `Potencial duplicado` en BD.
 - En bandejas jerarquicas, asociado muestra su propia alerta funcional cuando corresponda.
 - UI no debe usar `padre` ni `hijo`; usar `expediente principal`, `expediente asociado` o `relacion confirmada`.
