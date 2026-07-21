@@ -19,6 +19,7 @@ import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2RemoveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
+import com.sdrerc.ui.appv2.components.AppV2SearchActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchAutocompleteSupport;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
@@ -2195,7 +2196,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private final JLabel lblEstadoDeteccion = new JLabel("Seleccione un expediente en la bandeja.");
         private final JButton btnAsociarGrupoFamiliar = new JButton("Asociar al grupo familiar");
         private final JLabel lblExpedienteFocoGrupoFamiliar = new JLabel("-");
-        private final JButton btnAgregarPosibleIntegranteManual = new JButton("+");
+        private final AppV2SearchActionButton btnAgregarPosibleIntegranteManual = new AppV2SearchActionButton();
         private final AppV2SearchField campoBusquedaPosibleIntegranteManual =
                 new AppV2SearchField("Buscar por titular, N° expediente o SGD...", 18);
         private final JPanel panelBusquedaPosibleIntegranteManual = new JPanel(new BorderLayout(4, 0));
@@ -2242,8 +2243,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             tituloDeteccion.setForeground(AppV2Theme.TEXT_PRIMARY);
             btnAgregarPosibleIntegranteManual.setToolTipText(
                     "Buscar y agregar manualmente otra solicitud como posible integrante, aunque no tenga alerta.");
-            btnAgregarPosibleIntegranteManual.setMargin(new Insets(0, 8, 0, 8));
-            btnAgregarPosibleIntegranteManual.setFocusable(false);
             filaTituloDeteccion.add(tituloDeteccion, BorderLayout.CENTER);
             filaTituloDeteccion.add(btnAgregarPosibleIntegranteManual, BorderLayout.EAST);
             JLabel ayudaDeteccion = new JLabel("<html>Marque las personas que realmente pertenecen a la misma familia. "
