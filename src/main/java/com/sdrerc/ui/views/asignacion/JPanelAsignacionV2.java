@@ -304,16 +304,17 @@ public class JPanelAsignacionV2 extends JPanel {
             integrantesGrupoFamiliarTable, "Sin coincidencias detectadas",
             "No se detectaron posibles integrantes por apellidos para el expediente seleccionado.");
     private final DefaultTableModel grupoFamiliarActualModel = new DefaultTableModel(
-            new Object[]{"Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
+            new Object[]{"", "Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return false;
+            return column == 0;
         }
     };
     private final JTable grupoFamiliarActualTable = new AppV2Table(grupoFamiliarActualModel);
     private final AppV2TablePanel panelTablaGrupoFamiliarActual = new AppV2TablePanel(
             grupoFamiliarActualTable, "Sin grupo familiar", "Este expediente aún no pertenece a un grupo familiar.");
     private List<GrupoFamiliarCandidatoDTO> candidatosGrupoFamiliarActuales = new ArrayList<>();
+    private List<GrupoFamiliarIntegranteDTO> integrantesGrupoFamiliarActuales = new ArrayList<>();
     private AsignacionExpedienteDTO expedienteFocoGrupoFamiliar;
     private long secuenciaCargaGrupoFamiliar;
     private final DefaultTableModel asignacionMultipleModel = new DefaultTableModel(
@@ -844,14 +845,20 @@ public class JPanelAsignacionV2 extends JPanel {
 
         grupoFamiliarActualTable.setRowHeight(26);
         grupoFamiliarActualTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        AppV2TableColumnSizer.applyWidths(grupoFamiliarActualTable, 150, 130, 130, 150);
+        AppV2TableColumnSizer.applyWidths(grupoFamiliarActualTable, 34, 150, 130, 130, 150);
+        grupoFamiliarActualTable.getColumnModel().getColumn(0).setPreferredWidth(34);
+        grupoFamiliarActualTable.getColumnModel().getColumn(0).setMinWidth(30);
+        grupoFamiliarActualTable.getColumnModel().getColumn(0).setMaxWidth(38);
+        grupoFamiliarActualTable.getColumnModel().getColumn(0).setCellRenderer(new EliminarIntegranteGrupoFamiliarRenderer());
+        grupoFamiliarActualTable.getColumnModel().getColumn(0).setCellEditor(new EliminarIntegranteGrupoFamiliarEditor());
         panelTablaGrupoFamiliarActual.getScrollPane().setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
         AppV2ColumnFilterSupport.install(
                 "AsignacionGrupoFamiliarActual",
                 grupoFamiliarActualTable,
                 panelTablaGrupoFamiliarActual.getScrollPane(),
                 panelTablaGrupoFamiliarActual,
-                null);
+                null,
+                0);
 
         return panel;
     }
@@ -4288,9 +4295,11 @@ public class JPanelAsignacionV2 extends JPanel {
                 } catch (Exception ex) {
                     integrantes = new ArrayList<>();
                 }
+                integrantesGrupoFamiliarActuales = integrantes;
                 grupoFamiliarActualModel.setRowCount(0);
                 for (GrupoFamiliarIntegranteDTO integrante : integrantes) {
                     grupoFamiliarActualModel.addRow(new Object[]{
+                            "Eliminar",
                             valorUi(integrante.getNombreCompleto()),
                             valorUi(integrante.getNumeroExpediente()),
                             DisplayNameMapperV2.etapa(integrante.getEtapaCodigo()) + " / "
@@ -4375,6 +4384,53 @@ public class JPanelAsignacionV2 extends JPanel {
                     buscar(idPrincipal);
                 } catch (Exception ex) {
                     mostrarError("No se pudo asociar el grupo familiar.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void eliminarIntegranteGrupoFamiliar(int modelRow) {
+        if (modelRow < 0 || modelRow >= integrantesGrupoFamiliarActuales.size()) {
+            return;
+        }
+        GrupoFamiliarIntegranteDTO integrante = integrantesGrupoFamiliarActuales.get(modelRow);
+        Long idExpedienteIntegrante = integrante.getIdExpediente();
+        if (idExpedienteIntegrante == null) {
+            return;
+        }
+        final Long idPrincipal = expedienteFocoGrupoFamiliar == null ? null : expedienteFocoGrupoFamiliar.getIdExpediente();
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se retirará a \"" + integrante.getNombreCompleto() + "\" del grupo familiar.\n\n"
+                        + "¿Desea continuar?",
+                "Grupo Familiar",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        setTrabajando(true, "Retirando del grupo familiar...");
+        SwingWorker<GrupoFamiliarResultadoDTO, Void> worker = new SwingWorker<GrupoFamiliarResultadoDTO, Void>() {
+            @Override
+            protected GrupoFamiliarResultadoDTO doInBackground() throws Exception {
+                return grupoFamiliarService.eliminarDeGrupoFamiliar(idExpedienteIntegrante);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    GrupoFamiliarResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            resultado.getMensaje(),
+                            "Grupo Familiar",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar(idPrincipal);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo retirar a la persona del grupo familiar.", ex);
                 } finally {
                     setTrabajando(false, null);
                 }
@@ -5868,6 +5924,57 @@ public class JPanelAsignacionV2 extends JPanel {
             }
             button.configure(false, permitido);
             button.setToolTipText("Eliminar la asociación del expediente asociado.");
+            return button;
+        }
+    }
+
+    private class EliminarIntegranteGrupoFamiliarRenderer extends AppV2RemoveActionButton implements TableCellRenderer {
+
+        private EliminarIntegranteGrupoFamiliarRenderer() {
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            configure(false, true);
+            setToolTipText("Retirar a esta persona del grupo familiar.");
+            return this;
+        }
+    }
+
+    private class EliminarIntegranteGrupoFamiliarEditor extends AbstractCellEditor implements TableCellEditor {
+
+        private final AppV2RemoveActionButton button = new AppV2RemoveActionButton();
+        private int modelRow = -1;
+
+        private EliminarIntegranteGrupoFamiliarEditor() {
+            button.addActionListener(e -> {
+                int row = modelRow;
+                fireEditingStopped();
+                eliminarIntegranteGrupoFamiliar(row);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Eliminar";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                int row,
+                int column) {
+            modelRow = table.convertRowIndexToModel(row);
+            button.configure(false, true);
+            button.setToolTipText("Retirar a esta persona del grupo familiar.");
             return button;
         }
     }

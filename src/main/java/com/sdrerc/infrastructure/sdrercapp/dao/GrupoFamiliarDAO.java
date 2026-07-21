@@ -248,6 +248,43 @@ public class GrupoFamiliarDAO {
         }
     }
 
+    public GrupoFamiliarResultadoDTO eliminarDeGrupoFamiliar(Long idExpediente, Long idUsuario) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione el expediente a retirar del grupo familiar.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                Long idPersona = obtenerIdPersonaTitular(conn, idExpediente);
+                if (idPersona == null) {
+                    throw new SQLException("El expediente no tiene titular registrado.");
+                }
+                Long idGrupoFamiliar = bloquearYObtenerGrupoPersona(conn, idPersona);
+                if (idGrupoFamiliar == null) {
+                    throw new SQLException("Este expediente ya no pertenece a ningún grupo familiar.");
+                }
+                actualizarGrupoPersona(conn, idPersona, null, idUsuario);
+                desmarcarFlagExpedienteSolicitud(conn, idExpediente, idUsuario);
+                Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_ASOCIACION_GF);
+                if (idMovimiento != null) {
+                    insertarHistorial(conn, idExpediente, idMovimiento, idPersona, idGrupoFamiliar, idUsuario,
+                            "Persona retirada del grupo familiar.");
+                }
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return new GrupoFamiliarResultadoDTO(1, 0, 0, 1, "Se retiró la persona del grupo familiar.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
     private String obtenerTitularTexto(Connection conn, Long idExpediente) throws SQLException {
         String sql = "SELECT " + TITULAR_SQL + " AS titular "
                 + "FROM expediente_persona ep JOIN persona p ON p.id_persona = ep.id_persona "
@@ -309,7 +346,7 @@ public class GrupoFamiliarDAO {
         String sql = "UPDATE persona SET id_grupo_familiar = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_persona = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, idGrupoFamiliar);
+            setLongOrNull(ps, 1, idGrupoFamiliar);
             setLongOrNull(ps, 2, idUsuario);
             ps.setLong(3, idPersona);
             ps.executeUpdate();
@@ -330,6 +367,20 @@ public class GrupoFamiliarDAO {
         }
     }
 
+    private void desmarcarFlagExpedienteSolicitud(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_solicitud SET grupo_familiar = 0, "
+                + "criterio_grupo_familiar = NULL, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente_solicitud = ("
+                + "  SELECT MAX(id_expediente_solicitud) FROM expediente_solicitud "
+                + "  WHERE id_expediente = ? AND activo = 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setLongOrNull(ps, 1, idUsuario);
+            ps.setLong(2, idExpediente);
+            ps.executeUpdate();
+        }
+    }
+
     private void insertarHistorial(
             Connection conn,
             Long idExpediente,
@@ -337,6 +388,18 @@ public class GrupoFamiliarDAO {
             Long idPersona,
             Long idGrupoFamiliar,
             Long idUsuario) throws SQLException {
+        insertarHistorial(conn, idExpediente, idMovimiento, idPersona, idGrupoFamiliar, idUsuario,
+                "Persona asociada al grupo familiar.");
+    }
+
+    private void insertarHistorial(
+            Connection conn,
+            Long idExpediente,
+            Long idMovimiento,
+            Long idPersona,
+            Long idGrupoFamiliar,
+            Long idUsuario,
+            String comentario) throws SQLException {
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_usuario_origen, "
                 + "tabla_relacionada, id_registro_relacionado, comentario, motivo, activo, creado_por, creado_en"
@@ -346,7 +409,7 @@ public class GrupoFamiliarDAO {
             ps.setLong(2, idMovimiento);
             setLongOrNull(ps, 3, idUsuario);
             setLongOrNull(ps, 4, idPersona);
-            ps.setString(5, "Persona asociada al grupo familiar.");
+            ps.setString(5, comentario);
             ps.setString(6, CODIGO_MOVIMIENTO_ASOCIACION_GF);
             setLongOrNull(ps, 7, idUsuario);
             ps.executeUpdate();

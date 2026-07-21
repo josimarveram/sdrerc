@@ -34,6 +34,10 @@ public class GrupoFamiliarService {
         return grupoFamiliarDAO.asociarGrupoFamiliar(idExpedientePrincipal, idsExpedientesCandidatos, resolverUsuarioActualSdrercApp());
     }
 
+    public GrupoFamiliarResultadoDTO eliminarDeGrupoFamiliar(Long idExpediente) throws SQLException {
+        return grupoFamiliarDAO.eliminarDeGrupoFamiliar(idExpediente, resolverUsuarioActualSdrercApp());
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();

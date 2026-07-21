@@ -17,6 +17,7 @@ import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
+import com.sdrerc.ui.appv2.components.AppV2RemoveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
@@ -40,6 +41,7 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import javax.swing.AbstractCellEditor;
 import javax.swing.Box;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -86,6 +88,7 @@ import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import java.util.Set;
 
@@ -2193,10 +2196,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private final JLabel lblExpedienteFocoGrupoFamiliar = new JLabel("-");
 
         private final DefaultTableModel modeloGrupoActual = new DefaultTableModel(
-                new Object[]{"Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
+                new Object[]{"", "Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false;
+                return column == 0;
             }
         };
         private final JTable tablaGrupoActual = new AppV2Table(modeloGrupoActual);
@@ -2205,6 +2208,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private final JLabel lblEstadoGrupoActual = new JLabel("Sin grupo familiar.");
 
         private List<GrupoFamiliarCandidatoDTO> candidatosActuales = new ArrayList<GrupoFamiliarCandidatoDTO>();
+        private List<GrupoFamiliarIntegranteDTO> integrantesGrupoActuales = new ArrayList<GrupoFamiliarIntegranteDTO>();
         private ExpedienteBandejaDTO expedienteFocoGrupoFamiliar;
         private long secuenciaCargaGrupoFamiliar;
 
@@ -2276,14 +2280,20 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
             tablaGrupoActual.setRowHeight(26);
             tablaGrupoActual.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-            AppV2TableColumnSizer.applyWidths(tablaGrupoActual, 150, 130, 130, 150);
+            AppV2TableColumnSizer.applyWidths(tablaGrupoActual, 34, 150, 130, 130, 150);
+            tablaGrupoActual.getColumnModel().getColumn(0).setPreferredWidth(34);
+            tablaGrupoActual.getColumnModel().getColumn(0).setMinWidth(30);
+            tablaGrupoActual.getColumnModel().getColumn(0).setMaxWidth(38);
+            tablaGrupoActual.getColumnModel().getColumn(0).setCellRenderer(new EliminarIntegranteGrupoFamiliarRendererRegistro());
+            tablaGrupoActual.getColumnModel().getColumn(0).setCellEditor(new EliminarIntegranteGrupoFamiliarEditorRegistro());
             panelTablaGrupoActual.getScrollPane().setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
             AppV2ColumnFilterSupport.install(
                     "RegistroGrupoFamiliarActual",
                     tablaGrupoActual,
                     panelTablaGrupoActual.getScrollPane(),
                     panelTablaGrupoActual,
-                    null);
+                    null,
+                    0);
 
             JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             acciones.setOpaque(false);
@@ -2442,9 +2452,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     } catch (Exception ex) {
                         integrantes = new ArrayList<GrupoFamiliarIntegranteDTO>();
                     }
+                    integrantesGrupoActuales = integrantes;
                     modeloGrupoActual.setRowCount(0);
                     for (GrupoFamiliarIntegranteDTO integrante : integrantes) {
                         modeloGrupoActual.addRow(new Object[]{
+                                "Eliminar",
                                 valorUiGrupoFamiliar(integrante.getNombreCompleto()),
                                 valorUiGrupoFamiliar(integrante.getNumeroExpediente()),
                                 DisplayNameMapperV2.etapa(integrante.getEtapaCodigo()) + " / "
@@ -2463,6 +2475,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
 
         private void limpiarGrupoActual() {
+            integrantesGrupoActuales = new ArrayList<GrupoFamiliarIntegranteDTO>();
             modeloGrupoActual.setRowCount(0);
             lblEstadoGrupoActual.setText("Sin grupo familiar.");
             panelTablaGrupoActual.setEmpty(true);
@@ -2552,9 +2565,110 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             worker.execute();
         }
 
+        private void eliminarIntegranteGrupoFamiliar(int modelRow) {
+            if (modelRow < 0 || modelRow >= integrantesGrupoActuales.size()) {
+                return;
+            }
+            GrupoFamiliarIntegranteDTO integrante = integrantesGrupoActuales.get(modelRow);
+            Long idExpedienteIntegrante = integrante.getIdExpediente();
+            if (idExpedienteIntegrante == null) {
+                return;
+            }
+            final Long idPrincipal = expedienteFocoGrupoFamiliar == null ? null : expedienteFocoGrupoFamiliar.getIdExpediente();
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    JPanelBandejaExpedientesNueva.this,
+                    "Se retirará a \"" + integrante.getNombreCompleto() + "\" del grupo familiar.\n\n"
+                            + "¿Desea continuar?",
+                    "Grupo Familiar",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (confirmacion != JOptionPane.YES_OPTION) {
+                return;
+            }
+            setEnabled(false);
+            SwingWorker<GrupoFamiliarResultadoDTO, Void> worker = new SwingWorker<GrupoFamiliarResultadoDTO, Void>() {
+                @Override
+                protected GrupoFamiliarResultadoDTO doInBackground() throws Exception {
+                    return grupoFamiliarService.eliminarDeGrupoFamiliar(idExpedienteIntegrante);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        GrupoFamiliarResultadoDTO resultado = get();
+                        refrescar(idPrincipal);
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                resultado.getMensaje(),
+                                "Grupo Familiar",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                                JPanelBandejaExpedientesNueva.this,
+                                ex.getMessage() == null ? "No se pudo retirar a la persona del grupo familiar." : ex.getMessage(),
+                                "Grupo Familiar",
+                                JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        setEnabled(true);
+                    }
+                }
+            };
+            worker.execute();
+        }
+
         private void limpiarSeleccion() {
             limpiarSeleccionGrupoFamiliar();
             actualizarEstado();
+        }
+
+        private class EliminarIntegranteGrupoFamiliarRendererRegistro extends AppV2RemoveActionButton
+                implements TableCellRenderer {
+
+            @Override
+            public Component getTableCellRendererComponent(
+                    JTable table,
+                    Object value,
+                    boolean isSelected,
+                    boolean hasFocus,
+                    int row,
+                    int column) {
+                configure(false, true);
+                setToolTipText("Retirar a esta persona del grupo familiar.");
+                return this;
+            }
+        }
+
+        private class EliminarIntegranteGrupoFamiliarEditorRegistro extends AbstractCellEditor
+                implements TableCellEditor {
+
+            private final AppV2RemoveActionButton button = new AppV2RemoveActionButton();
+            private int modelRow = -1;
+
+            private EliminarIntegranteGrupoFamiliarEditorRegistro() {
+                button.addActionListener(e -> {
+                    int row = modelRow;
+                    fireEditingStopped();
+                    eliminarIntegranteGrupoFamiliar(row);
+                });
+            }
+
+            @Override
+            public Object getCellEditorValue() {
+                return "Eliminar";
+            }
+
+            @Override
+            public Component getTableCellEditorComponent(
+                    JTable table,
+                    Object value,
+                    boolean isSelected,
+                    int row,
+                    int column) {
+                modelRow = table.convertRowIndexToModel(row);
+                button.configure(false, true);
+                button.setToolTipText("Retirar a esta persona del grupo familiar.");
+                return button;
+            }
         }
 
         @Override
