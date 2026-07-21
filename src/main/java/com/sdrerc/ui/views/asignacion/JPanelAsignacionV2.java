@@ -863,31 +863,45 @@ public class JPanelAsignacionV2 extends JPanel {
         return panel;
     }
 
-    private static void ajustarAlturaGrillaSinScrollVertical(JTable table, JScrollPane scrollPane) {
-        if (table == null || scrollPane == null) {
+    private static void ajustarAlturaGrillaSinScrollVertical(JTable table, AppV2TablePanel tablePanel) {
+        if (table == null || tablePanel == null) {
             return;
         }
+        JScrollPane scrollPane = tablePanel.getScrollPane();
         AppV2TableColumnSizer.sizeToContent(table);
         scrollPane.setPreferredSize(null);
+        scrollPane.setMinimumSize(null);
+        scrollPane.setMaximumSize(null);
+        tablePanel.setPreferredSize(null);
+        tablePanel.setMinimumSize(null);
+        tablePanel.setMaximumSize(null);
         int anchoNatural = scrollPane.getPreferredSize().width;
         int filas = Math.max(table.getModel().getRowCount(), 1);
         int alturaEncabezado = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
         int alturaFilas = filas * table.getRowHeight();
         int altura = alturaFilas + alturaEncabezado + 4;
         table.setPreferredScrollableViewportSize(new Dimension(anchoNatural, alturaFilas));
-        scrollPane.setPreferredSize(new Dimension(anchoNatural, altura));
-        Component ancestor = scrollPane;
+        Dimension tamanoPreferido = new Dimension(anchoNatural, altura);
+        Dimension tamanoMinimo = new Dimension(80, altura);
+        Dimension tamanoMaximo = new Dimension(Integer.MAX_VALUE, altura);
+        scrollPane.setPreferredSize(tamanoPreferido);
+        scrollPane.setMinimumSize(tamanoMinimo);
+        scrollPane.setMaximumSize(tamanoMaximo);
+        tablePanel.setPreferredSize(tamanoPreferido);
+        tablePanel.setMinimumSize(tamanoMinimo);
+        tablePanel.setMaximumSize(tamanoMaximo);
+        Component ancestor = tablePanel;
         while (ancestor != null) {
             ancestor.invalidate();
             ancestor = ancestor.getParent();
         }
-        Window window = SwingUtilities.getWindowAncestor(scrollPane);
+        Window window = SwingUtilities.getWindowAncestor(tablePanel);
         if (window != null) {
             window.validate();
             window.repaint();
         } else {
-            scrollPane.revalidate();
-            scrollPane.repaint();
+            tablePanel.revalidate();
+            tablePanel.repaint();
         }
     }
 
@@ -4279,7 +4293,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     });
                 }
                 panelTablaIntegrantesGrupoFamiliar.setEmpty(candidatosGrupoFamiliarActuales.isEmpty());
-                ajustarAlturaGrillaSinScrollVertical(integrantesGrupoFamiliarTable, panelTablaIntegrantesGrupoFamiliar.getScrollPane());
+                ajustarAlturaGrillaSinScrollVertical(integrantesGrupoFamiliarTable, panelTablaIntegrantesGrupoFamiliar);
                 if (candidatosGrupoFamiliarActuales.isEmpty()) {
                     lblEstadoDeteccionGrupoFamiliar.setText("No se detectaron posibles integrantes por apellidos.");
                 } else {
@@ -4322,7 +4336,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     });
                 }
                 panelTablaGrupoFamiliarActual.setEmpty(integrantes.isEmpty());
-                ajustarAlturaGrillaSinScrollVertical(grupoFamiliarActualTable, panelTablaGrupoFamiliarActual.getScrollPane());
+                ajustarAlturaGrillaSinScrollVertical(grupoFamiliarActualTable, panelTablaGrupoFamiliarActual);
                 lblEstadoGrupoFamiliarActual.setText(integrantes.isEmpty()
                         ? "Este expediente aún no pertenece a un grupo familiar."
                         : integrantes.size() + " persona(s) en el grupo familiar.");
