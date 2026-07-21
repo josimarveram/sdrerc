@@ -193,7 +193,7 @@ public class GrupoFamiliarDAO {
             }
             String sql = "SELECT p.id_persona, " + TITULAR_SQL + " AS nombre, "
                     + "e.id_expediente, e.numero_expediente, et.codigo etapa_codigo, es2.codigo estado_codigo, "
-                    + "ur.nombre_completo abogado_asignado "
+                    + "ur.nombre_completo abogado_asignado, ta.nombre tipo_acta "
                     + "FROM persona p "
                     + "LEFT JOIN expediente_persona ep ON ep.id_persona = p.id_persona AND ep.activo = 1 "
                     + "AND ep.tipo_relacion_persona = 'TITULAR' "
@@ -201,6 +201,8 @@ public class GrupoFamiliarDAO {
                     + "LEFT JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
                     + "LEFT JOIN estado_expediente es2 ON es2.id_estado = e.id_estado_actual "
                     + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
+                    + "LEFT JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 "
+                    + "LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta "
                     + "WHERE p.id_grupo_familiar = ? AND p.activo = 1 "
                     + "ORDER BY nombre";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -214,7 +216,8 @@ public class GrupoFamiliarDAO {
                                 rs.getString("numero_expediente"),
                                 rs.getString("etapa_codigo"),
                                 rs.getString("estado_codigo"),
-                                rs.getString("abogado_asignado")));
+                                rs.getString("abogado_asignado"),
+                                rs.getString("tipo_acta")));
                     }
                 }
             }

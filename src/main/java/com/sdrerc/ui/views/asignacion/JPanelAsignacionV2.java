@@ -310,7 +310,7 @@ public class JPanelAsignacionV2 extends JPanel {
             integrantesGrupoFamiliarTable, "Sin coincidencias detectadas",
             "No se detectaron posibles integrantes por apellidos para el expediente seleccionado.");
     private final DefaultTableModel grupoFamiliarActualModel = new DefaultTableModel(
-            new Object[]{"", "Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
+            new Object[]{"", "Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado", "Tipo Acta"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return column == 0;
@@ -891,7 +891,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
         grupoFamiliarActualTable.setRowHeight(26);
         grupoFamiliarActualTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        AppV2TableColumnSizer.applyWidths(grupoFamiliarActualTable, 34, 150, 130, 130, 150);
+        AppV2TableColumnSizer.applyWidths(grupoFamiliarActualTable, 34, 150, 130, 130, 150, 130);
         grupoFamiliarActualTable.getColumnModel().getColumn(0).setPreferredWidth(34);
         grupoFamiliarActualTable.getColumnModel().getColumn(0).setMinWidth(30);
         grupoFamiliarActualTable.getColumnModel().getColumn(0).setMaxWidth(38);
@@ -4363,7 +4363,8 @@ public class JPanelAsignacionV2 extends JPanel {
                             valorUi(integrante.getNumeroExpediente()),
                             DisplayNameMapperV2.etapa(integrante.getEtapaCodigo()) + " / "
                                     + DisplayNameMapperV2.estado(integrante.getEstadoCodigo()),
-                            valorUi(integrante.getAbogadoAsignado())
+                            valorUi(integrante.getAbogadoAsignado()),
+                            valorUi(integrante.getTipoActa())
                     });
                 }
                 AppV2TableColumnSizer.sizeToContent(grupoFamiliarActualTable);

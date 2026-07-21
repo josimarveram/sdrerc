@@ -9,6 +9,7 @@ public class GrupoFamiliarIntegranteDTO {
     private final String etapaCodigo;
     private final String estadoCodigo;
     private final String abogadoAsignado;
+    private final String tipoActa;
 
     public GrupoFamiliarIntegranteDTO(
             Long idPersona,
@@ -17,7 +18,8 @@ public class GrupoFamiliarIntegranteDTO {
             String numeroExpediente,
             String etapaCodigo,
             String estadoCodigo,
-            String abogadoAsignado) {
+            String abogadoAsignado,
+            String tipoActa) {
         this.idPersona = idPersona;
         this.nombreCompleto = safe(nombreCompleto);
         this.idExpediente = idExpediente;
@@ -25,6 +27,7 @@ public class GrupoFamiliarIntegranteDTO {
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
         this.abogadoAsignado = safe(abogadoAsignado);
+        this.tipoActa = safe(tipoActa);
     }
 
     public Long getIdPersona() {
@@ -53,6 +56,10 @@ public class GrupoFamiliarIntegranteDTO {
 
     public String getAbogadoAsignado() {
         return abogadoAsignado;
+    }
+
+    public String getTipoActa() {
+        return tipoActa;
     }
 
     private static String safe(String value) {

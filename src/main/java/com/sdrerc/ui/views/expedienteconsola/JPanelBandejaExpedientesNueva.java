@@ -2202,7 +2202,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private final JPanel panelBusquedaPosibleIntegranteManual = new JPanel(new BorderLayout(4, 0));
 
         private final DefaultTableModel modeloGrupoActual = new DefaultTableModel(
-                new Object[]{"", "Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
+                new Object[]{"", "Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado", "Tipo Acta"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return column == 0;
@@ -2324,7 +2324,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
             tablaGrupoActual.setRowHeight(26);
             tablaGrupoActual.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-            AppV2TableColumnSizer.applyWidths(tablaGrupoActual, 34, 150, 130, 130, 150);
+            AppV2TableColumnSizer.applyWidths(tablaGrupoActual, 34, 150, 130, 130, 150, 130);
             tablaGrupoActual.getColumnModel().getColumn(0).setPreferredWidth(34);
             tablaGrupoActual.getColumnModel().getColumn(0).setMinWidth(30);
             tablaGrupoActual.getColumnModel().getColumn(0).setMaxWidth(38);
@@ -2535,7 +2535,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                                 valorUiGrupoFamiliar(integrante.getNumeroExpediente()),
                                 DisplayNameMapperV2.etapa(integrante.getEtapaCodigo()) + " / "
                                         + DisplayNameMapperV2.estado(integrante.getEstadoCodigo()),
-                                valorUiGrupoFamiliar(integrante.getAbogadoAsignado())
+                                valorUiGrupoFamiliar(integrante.getAbogadoAsignado()),
+                                valorUiGrupoFamiliar(integrante.getTipoActa())
                         });
                     }
                     lblEstadoGrupoActual.setText(integrantes.isEmpty()
