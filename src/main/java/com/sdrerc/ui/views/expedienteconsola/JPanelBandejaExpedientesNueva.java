@@ -2466,6 +2466,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     lblEstadoGrupoActual.setText(integrantes.isEmpty()
                             ? "Este expediente aún no pertenece a un grupo familiar."
                             : integrantes.size() + " persona(s) en el grupo familiar.");
+                    AppV2TableColumnSizer.sizeToContent(tablaGrupoActual);
                     panelTablaGrupoActual.setEmpty(integrantes.isEmpty());
                 }
             };

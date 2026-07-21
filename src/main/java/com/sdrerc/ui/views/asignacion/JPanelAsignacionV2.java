@@ -4332,6 +4332,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             valorUi(integrante.getAbogadoAsignado())
                     });
                 }
+                AppV2TableColumnSizer.sizeToContent(grupoFamiliarActualTable);
                 panelTablaGrupoFamiliarActual.setEmpty(integrantes.isEmpty());
                 lblEstadoGrupoFamiliarActual.setText(integrantes.isEmpty()
                         ? "Este expediente aún no pertenece a un grupo familiar."
