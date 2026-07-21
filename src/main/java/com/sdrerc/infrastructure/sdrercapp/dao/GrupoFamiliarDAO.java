@@ -68,6 +68,7 @@ public class GrupoFamiliarDAO {
                 return candidatos;
             }
             Long idPersonaAncla = obtenerIdPersonaTitular(conn, idExpedientePrincipal);
+            Long idGrupoFamiliarAncla = idPersonaAncla == null ? null : obtenerGrupoFamiliarDePersona(conn, idPersonaAncla);
 
             String sql = "SELECT e.id_expediente, e.numero_expediente, et.codigo etapa_codigo, es2.codigo estado_codigo, "
                     + "p.id_persona, p.id_grupo_familiar, " + TITULAR_SQL + " AS titular, "
@@ -91,10 +92,11 @@ public class GrupoFamiliarDAO {
                             continue;
                         }
                         Long idGrupoFamiliarCandidato = getLongOrNull(rs, "id_grupo_familiar");
-                        if (idGrupoFamiliarCandidato != null) {
-                            // Ya pertenece a un grupo familiar (este u otro): deja de ser un
-                            // "posible integrante" pendiente de decidir, ver seccion Grupo familiar
-                            // actual para los integrantes ya confirmados.
+                        if (idGrupoFamiliarCandidato != null && idGrupoFamiliarCandidato.equals(idGrupoFamiliarAncla)) {
+                            // Ya pertenece al MISMO grupo familiar que el ancla: ya esta confirmado
+                            // junto a el, ver seccion Grupo familiar actual. Si el candidato pertenece
+                            // a otro grupo (o el ancla aun no tiene grupo), si debe listarse: asociar
+                            // fusiona al ancla con ese grupo existente (o crea uno si el ancla no tenia).
                             continue;
                         }
                         String titular = rs.getString("titular");
