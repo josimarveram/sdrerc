@@ -870,9 +870,11 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2TableColumnSizer.sizeToContent(table);
         scrollPane.setPreferredSize(null);
         int anchoNatural = scrollPane.getPreferredSize().width;
-        int filas = Math.max(table.getRowCount(), 1);
+        int filas = Math.max(table.getModel().getRowCount(), 1);
         int alturaEncabezado = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
-        int altura = filas * table.getRowHeight() + alturaEncabezado + 4;
+        int alturaFilas = filas * table.getRowHeight();
+        int altura = alturaFilas + alturaEncabezado + 4;
+        table.setPreferredScrollableViewportSize(new Dimension(anchoNatural, alturaFilas));
         scrollPane.setPreferredSize(new Dimension(anchoNatural, altura));
         Component ancestor = scrollPane;
         while (ancestor != null) {
