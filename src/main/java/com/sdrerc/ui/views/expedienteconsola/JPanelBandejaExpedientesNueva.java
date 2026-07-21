@@ -40,7 +40,6 @@ import java.awt.BasicStroke;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import javax.swing.AbstractCellEditor;
 import javax.swing.Box;
@@ -2189,7 +2188,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
         };
         private final JTable tablaIntegrantes = new AppV2Table(modeloIntegrantes);
-        private final JScrollPane scrollIntegrantes = new JScrollPane(tablaIntegrantes);
+        private final AppV2TablePanel panelTablaIntegrantes = new AppV2TablePanel(
+                tablaIntegrantes, "Sin coincidencias detectadas",
+                "No se detectaron posibles integrantes por apellidos para el expediente seleccionado.");
         private final JLabel lblEstadoDeteccion = new JLabel("Seleccione un expediente en la bandeja.");
         private final JButton btnAsociarGrupoFamiliar = new JButton("Asociar al grupo familiar");
         private final JLabel lblExpedienteFocoGrupoFamiliar = new JLabel("-");
@@ -2224,6 +2225,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             seccionDeteccion.addRow("Estado", lblEstadoDeteccion);
             JPanel contentDeteccion = new JPanel(new BorderLayout(6, 6));
             contentDeteccion.setOpaque(false);
+            contentDeteccion.setPreferredSize(new Dimension(420, 260));
             JPanel encabezadoDeteccion = new JPanel();
             encabezadoDeteccion.setOpaque(false);
             encabezadoDeteccion.setLayout(new BoxLayout(encabezadoDeteccion, BoxLayout.Y_AXIS));
@@ -2239,11 +2241,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             ayudaDeteccion.setAlignmentX(Component.LEFT_ALIGNMENT);
             encabezadoDeteccion.add(tituloDeteccion);
             encabezadoDeteccion.add(ayudaDeteccion);
-            scrollIntegrantes.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-            scrollIntegrantes.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            scrollIntegrantes.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
             contentDeteccion.add(encabezadoDeteccion, BorderLayout.NORTH);
-            contentDeteccion.add(scrollIntegrantes, BorderLayout.CENTER);
+            contentDeteccion.add(panelTablaIntegrantes, BorderLayout.CENTER);
             seccionDeteccion.addContent(contentDeteccion);
             addSection(seccionDeteccion);
 
@@ -2275,8 +2274,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             AppV2ColumnFilterSupport.install(
                     "RegistroGrupoFamiliarCandidatos",
                     tablaIntegrantes,
-                    scrollIntegrantes,
-                    scrollIntegrantes,
+                    panelTablaIntegrantes.getScrollPane(),
+                    panelTablaIntegrantes,
                     null,
                     0);
 
@@ -2381,6 +2380,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (idExpediente == null) {
                 candidatosActuales = new ArrayList<GrupoFamiliarCandidatoDTO>();
                 modeloIntegrantes.setRowCount(0);
+                panelTablaIntegrantes.setEmpty(true);
                 lblEstadoDeteccion.setText("Seleccione un expediente en la bandeja.");
                 lblExpedienteFocoGrupoFamiliar.setText("-");
                 actualizarBotonAsociarGrupoFamiliar();
@@ -2427,7 +2427,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     } else {
                         lblEstadoDeteccion.setText(candidatosActuales.size() + " posible(s) integrante(s) detectado(s).");
                     }
-                    ajustarAlturaGrillaSinScrollVertical(tablaIntegrantes, scrollIntegrantes);
+                    AppV2TableColumnSizer.sizeToContent(tablaIntegrantes);
+                    panelTablaIntegrantes.setEmpty(candidatosActuales.isEmpty());
                     actualizarBotonAsociarGrupoFamiliar();
                 }
             };
@@ -3999,42 +4000,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         return message == null ? "No se pudo cargar el panel de recepción." : message;
     }
 
-    private static void ajustarAlturaGrillaSinScrollVertical(JTable table, JScrollPane scrollPane) {
-        if (table == null || scrollPane == null) {
-            return;
-        }
-        AppV2TableColumnSizer.sizeToContent(table);
-        scrollPane.setPreferredSize(null);
-        scrollPane.setMinimumSize(null);
-        int anchoNatural = scrollPane.getPreferredSize().width;
-        int filas = Math.max(table.getModel().getRowCount(), 1);
-        int alturaEncabezado = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
-        int alturaFilas = filas * table.getRowHeight();
-        int altura = alturaFilas + alturaEncabezado + 4;
-        table.setPreferredScrollableViewportSize(new Dimension(anchoNatural, alturaFilas));
-        Dimension tamanoPreferido = new Dimension(anchoNatural, altura);
-        Dimension tamanoMinimo = new Dimension(80, altura);
-        scrollPane.setPreferredSize(tamanoPreferido);
-        scrollPane.setMinimumSize(tamanoMinimo);
-        Component ancestor = scrollPane;
-        while (ancestor != null) {
-            ancestor.invalidate();
-            ancestor = ancestor.getParent();
-        }
-        Container padre = scrollPane.getParent();
-        if (padre != null) {
-            padre.revalidate();
-            padre.repaint();
-        }
-        Window window = SwingUtilities.getWindowAncestor(scrollPane);
-        if (window != null) {
-            window.validate();
-            window.repaint();
-        } else {
-            scrollPane.revalidate();
-            scrollPane.repaint();
-        }
-    }
 
     private static Color colorPlazo(Long dias) {
         return PlazoVisualSupportV2.foregroundFor(PlazoVisualSupportV2.clasificarDias(dias));
