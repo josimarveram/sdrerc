@@ -392,7 +392,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final AppV2StackedSideTab tabDatosExpediente = crearTabAsignacion("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
     private final AppV2StackedSideTab tabPanelAsignacionOperativa = crearTabAsignacion("Asignación", new Color(224, 243, 240), new Color(10, 118, 145));
     private final AppV2StackedSideTab tabPanelAsociar = crearTabAsignacion("Asociar", new Color(249, 239, 224), new Color(198, 121, 31));
-    private final AppV2StackedSideTab tabPanelGrupoFamiliar = crearTabAsignacion("Grupo Familiar", new Color(224, 245, 232), new Color(35, 138, 94));
+    private final AppV2StackedSideTab tabPanelGrupoFamiliar = crearTabAsignacion("Grupo Fam.", new Color(224, 245, 232), new Color(35, 138, 94));
     private final AppV2StackedSideTab tabPanelRespuesta = crearTabAsignacion("Respuesta", new Color(240, 233, 249), new Color(110, 78, 164));
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
