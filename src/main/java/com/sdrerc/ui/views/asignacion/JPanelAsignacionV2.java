@@ -874,7 +874,19 @@ public class JPanelAsignacionV2 extends JPanel {
         int alturaEncabezado = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
         int altura = filas * table.getRowHeight() + alturaEncabezado + 4;
         scrollPane.setPreferredSize(new Dimension(anchoNatural, altura));
-        scrollPane.revalidate();
+        Component ancestor = scrollPane;
+        while (ancestor != null) {
+            ancestor.invalidate();
+            ancestor = ancestor.getParent();
+        }
+        Window window = SwingUtilities.getWindowAncestor(scrollPane);
+        if (window != null) {
+            window.validate();
+            window.repaint();
+        } else {
+            scrollPane.revalidate();
+            scrollPane.repaint();
+        }
     }
 
     private AppV2SideActionPanel crearPanelCartasRespuesta() {
