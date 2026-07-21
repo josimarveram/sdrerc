@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -36,16 +37,23 @@ public class GrupoFamiliarDAO {
                     + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
                     + "p.numero_documento)";
 
+    private static final String ALERTA_POSIBLE_GRUPO_FAMILIAR = "Posible Grupo Familiar";
+
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final GrupoFamiliarHeuristicaService heuristicaService;
+    private final ExpedienteAlertaDAO expedienteAlertaDAO;
 
     public GrupoFamiliarDAO() {
-        this(new CatalogoLookupDAO(), new GrupoFamiliarHeuristicaService());
+        this(new CatalogoLookupDAO(), new GrupoFamiliarHeuristicaService(), new ExpedienteAlertaDAO());
     }
 
-    public GrupoFamiliarDAO(CatalogoLookupDAO catalogoLookupDAO, GrupoFamiliarHeuristicaService heuristicaService) {
+    public GrupoFamiliarDAO(
+            CatalogoLookupDAO catalogoLookupDAO,
+            GrupoFamiliarHeuristicaService heuristicaService,
+            ExpedienteAlertaDAO expedienteAlertaDAO) {
         this.catalogoLookupDAO = catalogoLookupDAO;
         this.heuristicaService = heuristicaService;
+        this.expedienteAlertaDAO = expedienteAlertaDAO;
     }
 
     public List<GrupoFamiliarCandidatoDTO> listarPosiblesIntegrantes(Long idExpedientePrincipal) throws SQLException {
@@ -82,6 +90,13 @@ public class GrupoFamiliarDAO {
                         if (idPersona == null || idPersona.equals(idPersonaAncla) || !vistos.add(idPersona)) {
                             continue;
                         }
+                        Long idGrupoFamiliarCandidato = getLongOrNull(rs, "id_grupo_familiar");
+                        if (idGrupoFamiliarCandidato != null) {
+                            // Ya pertenece a un grupo familiar (este u otro): deja de ser un
+                            // "posible integrante" pendiente de decidir, ver seccion Grupo familiar
+                            // actual para los integrantes ya confirmados.
+                            continue;
+                        }
                         String titular = rs.getString("titular");
                         if (!claveAncla.equals(heuristicaService.claveApellidosTitular(titular))) {
                             continue;
@@ -94,7 +109,7 @@ public class GrupoFamiliarDAO {
                                 rs.getString("etapa_codigo"),
                                 rs.getString("estado_codigo"),
                                 rs.getString("abogado_asignado"),
-                                getLongOrNull(rs, "id_grupo_familiar")));
+                                idGrupoFamiliarCandidato));
                     }
                 }
             }
@@ -207,6 +222,8 @@ public class GrupoFamiliarDAO {
                     }
                     actualizarGrupoPersona(conn, idPersona, idGrupoFamiliar, idUsuario);
                     marcarFlagExpedienteSolicitud(conn, idExpediente, idUsuario);
+                    expedienteAlertaDAO.marcarAtendidas(
+                            conn, idExpediente, Collections.singletonList(ALERTA_POSIBLE_GRUPO_FAMILIAR), idUsuario);
                     if (idMovimiento != null) {
                         insertarHistorial(conn, idExpediente, idMovimiento, idPersona, idGrupoFamiliar, idUsuario);
                     }

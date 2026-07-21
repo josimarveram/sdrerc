@@ -284,6 +284,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private JPanel documentosRelacionadosWrapper;
     private JPanel panelSolicitudesAsociadas;
     private final JLabel lblEstadoDeteccionGrupoFamiliar = new JLabel("Seleccione un expediente en la bandeja.");
+    private final JLabel lblExpedienteFocoGrupoFamiliar = new JLabel("-");
     private final JLabel lblEstadoGrupoFamiliarActual = new JLabel("Sin grupo familiar.");
     private final JButton btnAsociarGrupoFamiliar = new JButton("Asociar al grupo familiar");
     private final DefaultTableModel integrantesGrupoFamiliarModel = new DefaultTableModel(
@@ -299,6 +300,9 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     };
     private final JTable integrantesGrupoFamiliarTable = new AppV2Table(integrantesGrupoFamiliarModel);
+    private final AppV2TablePanel panelTablaIntegrantesGrupoFamiliar = new AppV2TablePanel(
+            integrantesGrupoFamiliarTable, "Sin coincidencias detectadas",
+            "No se detectaron posibles integrantes por apellidos para el expediente seleccionado.");
     private final DefaultTableModel grupoFamiliarActualModel = new DefaultTableModel(
             new Object[]{"Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
         @Override
@@ -307,6 +311,8 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     };
     private final JTable grupoFamiliarActualTable = new AppV2Table(grupoFamiliarActualModel);
+    private final AppV2TablePanel panelTablaGrupoFamiliarActual = new AppV2TablePanel(
+            grupoFamiliarActualTable, "Sin grupo familiar", "Este expediente aún no pertenece a un grupo familiar.");
     private List<GrupoFamiliarCandidatoDTO> candidatosGrupoFamiliarActuales = new ArrayList<>();
     private AsignacionExpedienteDTO expedienteFocoGrupoFamiliar;
     private long secuenciaCargaGrupoFamiliar;
@@ -801,14 +807,12 @@ public class JPanelAsignacionV2 extends JPanel {
         encabezadoDeteccion.add(tituloDeteccion);
         encabezadoDeteccion.add(ayudaDeteccion);
         contentDeteccion.add(encabezadoDeteccion, BorderLayout.NORTH);
-        JScrollPane scrollIntegrantes = new JScrollPane(integrantesGrupoFamiliarTable);
-        scrollIntegrantes.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scrollIntegrantes.setPreferredSize(new Dimension(300, 170));
-        contentDeteccion.add(scrollIntegrantes, BorderLayout.CENTER);
+        contentDeteccion.add(panelTablaIntegrantesGrupoFamiliar, BorderLayout.CENTER);
         seccionDeteccion.addContent(contentDeteccion);
         panel.addSection(seccionDeteccion);
 
         AppV2SideSectionPanel seccionAccion = new AppV2SideSectionPanel("Asociación");
+        seccionAccion.addRow("Expediente", lblExpedienteFocoGrupoFamiliar);
         AppV2Theme.estilizarBotonPrimario(btnAsociarGrupoFamiliar);
         btnAsociarGrupoFamiliar.setEnabled(false);
         btnAsociarGrupoFamiliar.setToolTipText("Asocia las personas marcadas al mismo grupo familiar.");
@@ -818,10 +822,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
         AppV2SideSectionPanel seccionGrupoActual = new AppV2SideSectionPanel("Grupo familiar actual");
         seccionGrupoActual.addRow("Estado", lblEstadoGrupoFamiliarActual);
-        JScrollPane scrollGrupoActual = new JScrollPane(grupoFamiliarActualTable);
-        scrollGrupoActual.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scrollGrupoActual.setPreferredSize(new Dimension(300, 120));
-        seccionGrupoActual.addContent(scrollGrupoActual);
+        seccionGrupoActual.addContent(panelTablaGrupoFamiliarActual);
         panel.addSection(seccionGrupoActual);
 
         integrantesGrupoFamiliarTable.setRowHeight(28);
@@ -832,12 +833,41 @@ public class JPanelAsignacionV2 extends JPanel {
                 actualizarBotonAsociarGrupoFamiliar();
             }
         });
+        panelTablaIntegrantesGrupoFamiliar.getScrollPane().setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        AppV2ColumnFilterSupport.install(
+                "AsignacionGrupoFamiliarCandidatos",
+                integrantesGrupoFamiliarTable,
+                panelTablaIntegrantesGrupoFamiliar.getScrollPane(),
+                panelTablaIntegrantesGrupoFamiliar,
+                null,
+                0);
 
         grupoFamiliarActualTable.setRowHeight(26);
         grupoFamiliarActualTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         AppV2TableColumnSizer.applyWidths(grupoFamiliarActualTable, 150, 130, 130, 150);
+        panelTablaGrupoFamiliarActual.getScrollPane().setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        AppV2ColumnFilterSupport.install(
+                "AsignacionGrupoFamiliarActual",
+                grupoFamiliarActualTable,
+                panelTablaGrupoFamiliarActual.getScrollPane(),
+                panelTablaGrupoFamiliarActual,
+                null);
 
         return panel;
+    }
+
+    private static void ajustarAlturaGrillaSinScrollVertical(JTable table, JScrollPane scrollPane) {
+        if (table == null || scrollPane == null) {
+            return;
+        }
+        AppV2TableColumnSizer.sizeToContent(table);
+        scrollPane.setPreferredSize(null);
+        int anchoNatural = scrollPane.getPreferredSize().width;
+        int filas = Math.max(table.getRowCount(), 1);
+        int alturaEncabezado = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
+        int altura = filas * table.getRowHeight() + alturaEncabezado + 4;
+        scrollPane.setPreferredSize(new Dimension(anchoNatural, altura));
+        scrollPane.revalidate();
     }
 
     private AppV2SideActionPanel crearPanelCartasRespuesta() {
@@ -1809,6 +1839,16 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void buscar() {
+        buscar(null);
+    }
+
+    /**
+     * Igual que buscar(), pero si idExpedienteAReseleccionar no es null, reselecciona esa fila
+     * despues de recargar la tabla y, si el panel lateral estaba abierto antes (en la misma
+     * lengueta), lo vuelve a abrir. Evita que acciones que refrescan la bandeja (ej. asociar
+     * grupo familiar) cierren el panel de golpe solo porque cargarTabla limpia la seleccion.
+     */
+    private void buscar(final Long idExpedienteAReseleccionar) {
         busquedaInicialEjecutada = true;
         limpiarSeleccion();
         long secuencia = secuenciaBusqueda.incrementAndGet();
@@ -1838,7 +1878,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     if (secuencia != secuenciaBusqueda.get()) {
                         return;
                     }
-                    cargarTabla(get());
+                    cargarTabla(get(), idExpedienteAReseleccionar);
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de asignación.", ex);
                 } finally {
@@ -1853,6 +1893,13 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void cargarTabla(List<AsignacionExpedienteDTO> items) {
+        cargarTabla(items, null);
+    }
+
+    private void cargarTabla(List<AsignacionExpedienteDTO> items, Long idExpedienteAReseleccionar) {
+        boolean panelAbiertoAntes = idExpedienteAReseleccionar != null && panelAsignacionVisible;
+        boolean expandidoAntes = panelAbiertoAntes && splitOperativo != null && splitOperativo.isSideExpanded();
+        String tabActivaAntes = tabAsignacionActiva;
         expedientes.clear();
         expedientes.addAll(items);
         List<AsignacionExpedienteDTO> visibles = filtrarBandejaKpi(items);
@@ -1871,6 +1918,24 @@ public class JPanelAsignacionV2 extends JPanel {
                 : visibles.size() + " expediente(s) encontrado(s).");
         tablePanel.setEmpty(visibles.isEmpty());
         actualizarPanelSeleccion();
+        if (idExpedienteAReseleccionar == null) {
+            return;
+        }
+        int modelRow = indiceFilaPrincipal(idExpedienteAReseleccionar);
+        if (modelRow >= 0) {
+            int viewRow = table.convertRowIndexToView(modelRow);
+            if (viewRow >= 0 && viewRow < table.getRowCount()) {
+                table.setRowSelectionInterval(viewRow, viewRow);
+                table.scrollRectToVisible(table.getCellRect(viewRow, 0, true));
+            }
+        }
+        if (panelAbiertoAntes) {
+            actualizarVisibilidadPanelAsignacion(true);
+            if (expandidoAntes && splitOperativo != null && !splitOperativo.isSideExpanded()) {
+                splitOperativo.setSideExpanded(true);
+            }
+            seleccionarTabAsignacion(tabActivaAntes);
+        }
     }
 
     private void cargarTablaVisible(List<AsignacionExpedienteDTO> items) {
@@ -4149,12 +4214,17 @@ public class JPanelAsignacionV2 extends JPanel {
         if (idExpediente == null) {
             candidatosGrupoFamiliarActuales = new ArrayList<>();
             integrantesGrupoFamiliarModel.setRowCount(0);
+            panelTablaIntegrantesGrupoFamiliar.setEmpty(true);
             lblEstadoDeteccionGrupoFamiliar.setText("Seleccione un expediente en la bandeja.");
+            lblExpedienteFocoGrupoFamiliar.setText("-");
             actualizarBotonAsociarGrupoFamiliar();
             grupoFamiliarActualModel.setRowCount(0);
+            panelTablaGrupoFamiliarActual.setEmpty(true);
             lblEstadoGrupoFamiliarActual.setText("Sin grupo familiar.");
             return;
         }
+        lblExpedienteFocoGrupoFamiliar.setText(
+                valorUi(expedientePrincipal.getNumeroExpediente()) + " / " + titularPrincipalVisual(expedientePrincipal));
         lblEstadoDeteccionGrupoFamiliar.setText("Buscando posibles integrantes...");
         cargarGrupoFamiliarActual(idExpediente);
         final long sequence = ++secuenciaCargaGrupoFamiliar;
@@ -4187,6 +4257,8 @@ public class JPanelAsignacionV2 extends JPanel {
                             valorUi(candidato.getAbogadoAsignado())
                     });
                 }
+                panelTablaIntegrantesGrupoFamiliar.setEmpty(candidatosGrupoFamiliarActuales.isEmpty());
+                ajustarAlturaGrillaSinScrollVertical(integrantesGrupoFamiliarTable, panelTablaIntegrantesGrupoFamiliar.getScrollPane());
                 if (candidatosGrupoFamiliarActuales.isEmpty()) {
                     lblEstadoDeteccionGrupoFamiliar.setText("No se detectaron posibles integrantes por apellidos.");
                 } else {
@@ -4226,6 +4298,8 @@ public class JPanelAsignacionV2 extends JPanel {
                             valorUi(integrante.getAbogadoAsignado())
                     });
                 }
+                panelTablaGrupoFamiliarActual.setEmpty(integrantes.isEmpty());
+                ajustarAlturaGrillaSinScrollVertical(grupoFamiliarActualTable, panelTablaGrupoFamiliarActual.getScrollPane());
                 lblEstadoGrupoFamiliarActual.setText(integrantes.isEmpty()
                         ? "Este expediente aún no pertenece a un grupo familiar."
                         : integrantes.size() + " persona(s) en el grupo familiar.");
@@ -4298,8 +4372,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             resultado.getMensaje(),
                             "Grupo Familiar",
                             JOptionPane.INFORMATION_MESSAGE);
-                    buscar();
-                    cargarPosiblesIntegrantesGrupoFamiliar(expedienteFocoGrupoFamiliar);
+                    buscar(idPrincipal);
                 } catch (Exception ex) {
                     mostrarError("No se pudo asociar el grupo familiar.", ex);
                 } finally {

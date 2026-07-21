@@ -105,6 +105,7 @@ Modulos en uso o incorporados:
 - Administracion / Roles.
 - Administracion / Feriados.
 - Administracion / Plazos.
+- Administracion / Plantillas de documento.
 
 Reglas de menu:
 
@@ -181,8 +182,10 @@ Reglas principales:
 
 - Carga diaria y registro manual detectan duplicidad solo por `numero de acta + titular completo`.
 - Duplicados se registran para trazabilidad, pero no generan numero de expediente hasta resolverse (asociacion confirmada).
-- La asociacion de duplicados puede resolverse desde Registro (lengueta "Asociar duplicados" en el panel de Registro) o desde Asignacion (lengueta "Asociar"); ambas reutilizan el mismo servicio de asociacion.
-- Reconsideracion y Apelacion se registran sin numero; Asignacion decide asociar o generar numero.
+- La asociacion de duplicados puede resolverse desde Registro (lengueta "Asociar duplicados" en el panel de Registro) o desde Asignacion (lengueta "Asociar"); ambas reutilizan el mismo servicio de asociacion (`ExpedienteRelacionadoService`/`ExpedienteRelacionadoDeteccionService`).
+- Reconsideracion y Apelacion se registran sin numero; se puede asociar a un expediente principal o generar numero manualmente. La generacion manual de numero (bloque "Decision de numero", solo visible para Reconsideracion/Apelacion en etapa REGISTRO/estado REGISTRADO sin numero) esta disponible tanto desde Registro (panel "Asociar duplicados") como desde Asignacion (panel "Asociar"); ambas llaman `AsignacionExpedienteService.generarNumeroExpediente`, que exige que el expediente siga en etapa REGISTRO/estado REGISTRADO.
+- El panel "Asociar duplicados" de Registro replica el diseno del panel "Asociar" de Asignacion: seccion "Seleccion y alertas" (estado + tabla de coincidencias por acta/titular), "Asociacion rapida" (un clic asocia todas las coincidencias detectadas, sin marcar candidato por candidato) y "Decision de numero". El flujo manual con checkboxes ("Asociar seleccionados") se mantiene ademas de "Asociacion rapida", no se elimino.
+- La grilla principal de Registro (al igual que Asignacion/Ejecucion/Notificacion) pinta una franja de color a la izquierda de cada fila asociada que rota por grupo (paleta de 10 colores segun `id_expediente` principal), no un color unico fijo.
 - Numero SDRERC visible: `SDRERC-EXP-YYYY-000001`.
 - No usar `id_expediente` como correlativo visible.
 - Fecha visible en UI: `dd/MM/yyyy`.
@@ -191,7 +194,6 @@ Reglas principales:
 - Si canal no es `Mesa de partes virtual`, bloquear y mostrar `SIN TRAMITE`.
 - `N° expediente SGD` vive en el bloque `Datos del expediente`.
 - `N° expediente SGD` y `Tipo de acta` son obligatorios en Registro manual, Edicion manual y Carga diaria.
-- `N° expediente SGD` debe ser único (sin duplicados) en Registro manual, Edicion manual y Carga diaria (20/07/2026). Validado contra `EXPEDIENTE_SOLICITUD.numero_expediente_sgd` de expedientes activos y no asociados (`ExpedienteRegistroDAO.detectarDuplicadoPorNumeroExpedienteSgd`/`detectarDuplicadosPorNumeroSgdContraBase`); en Edicion manual se excluye el propio id_expediente para no marcarse a si mismo como duplicado. Es un bloqueo real (no una advertencia): en Registro manual y Edicion manual deshabilita el boton de guardar (`RegistroManualExpedienteService.registrar`/`ExpedienteEdicionManualService.validar` tambien lo rechazan del lado servidor); en Carga diaria la fila queda con `estadoValidacion="Error"` y `listoParaRegistrar=false`, por lo que Confirmar la salta sin bloquear el resto del lote. Carga diaria tambien detecta el mismo SGD repetido dentro del propio Excel (mismo patron que la deteccion de acta+titular). No se agrego una restriccion UNIQUE a nivel de BD (solo existe el indice no unico `ix_exp_sol_sgd`); si se requiere ese refuerzo adicional, es un paso aparte que requiere autorizacion y revisar datos historicos.
 - `Tipo documento` de solicitud debe normalizar equivalencias con y sin tilde.
 
 KPIs vigentes en Bandeja Registro:
@@ -213,8 +215,7 @@ Alertas:
   - `Posible Grupo Familiar`.
 - Observaciones extensas y datos incompletos pertenecen a previsualizacion de carga diaria/exportacion.
 - Alertas/incidencias persistentes se guardan en `EXPEDIENTE_ALERTA`.
-- Grupo familiar fase 1 se marca en `EXPEDIENTE_SOLICITUD`.
-- Fase 2 de Grupo Familiar (20/07/2026): ademas del flag de Fase 1, ahora existe un ID unico de grupo familiar (tabla `GRUPO_FAMILIAR` + `PERSONA.id_grupo_familiar`, vinculo a nivel persona, no por expediente) para saber que otras personas pertenecen al mismo grupo y que expedientes tienen. Panel "Grupo Familiar" (Registro, lengueta existente "Registrar G.F" evolucionada; Asignacion, lengueta nueva) con tabla de candidatos por apellidos (`GrupoFamiliarHeuristicaService`) + boton de asociacion + tabla de solo lectura "Grupo familiar actual". No se empatan expedientes entre si (no usa `EXPEDIENTE_RELACION`); solo se vincula a la persona titular y se marca "Si" en Grupo Familiar.
+- Grupo familiar Fase 1 (flag simple) se marca en `EXPEDIENTE_SOLICITUD`. Fase 2 (vigente) agrega un ID de grupo familiar real: tabla `GRUPO_FAMILIAR` + `PERSONA.id_grupo_familiar` (vinculo a nivel persona, no por expediente, para heredar el grupo en expedientes futuros del mismo titular). `GrupoFamiliarDAO`/`GrupoFamiliarService` detectan candidatos por apellidos del titular y asocian sin heredar numero/equipo/abogado (no reutiliza `EXPEDIENTE_RELACION`). Al asociar, se marca atendida la alerta `Posible Grupo Familiar` del expediente y los candidatos ya agrupados (propio o ajeno grupo) dejan de listarse como "posible integrante".
 
 Carga diaria:
 
@@ -229,12 +230,12 @@ Carga diaria:
 Panel derecho Registro:
 
 - Se abre con doble clic, no con clic simple.
-- Titulo: `Panel de Registro`.
+- Titulo: `Panel de datos` (generico, igual en todos los modulos; no debe decir el nombre del modulo).
 - Debajo del titulo mostrar titular en azul.
 - Informativo, sin botones.
 - Bloques: `Datos del plazo`, `Datos del expediente`, `Datos del acta`, `Datos de solicitud`, `Datos del titular`, `Datos del solicitante`, `Datos de Notificacion y Ubicacion`.
 - `Datos del plazo` muestra `Dias` como pill y `Fecha Vencimiento`.
-- `Registrar G.F` es lengueta/panel contextual por seleccion de casillas, no pestana superior.
+- `Registrar G.F` es lengueta/panel contextual por seleccion de casillas, no pestana superior. Su panel "Grupo Familiar" (`JPanelRegistrarGrupoFamiliarV2`) replica el patron de "Asociar duplicados": grilla de candidatos por apellidos con checkbox + boton "Asociar al grupo familiar" + grilla de solo lectura "Grupo familiar actual", ambas con filtro por columna (`AppV2ColumnFilterSupport`), sin scroll vertical (altura ajustada a las filas reales) y con scroll horizontal cuando el panel es angosto. Al asociar, el panel permanece abierto y reselecciona el mismo expediente (no se cierra solo).
 
 ## Asignacion
 
@@ -259,24 +260,23 @@ Reglas de bandeja:
 - Mostrar columna `Alertas` con la misma semantica que Registro.
 - Filas asociadas se despliegan con icono `+`, icono documental, franja/acento izquierdo, fondo celeste suave y texto atenuado.
 - Asociados no deben aparecer como principales independientes.
+- La columna se llama `Abogado actual` (no `Abogado asignado`) y muestra a quien tiene el expediente hoy segun su etapa/estado, no solo al abogado de Analisis. Se resuelve desde `EXPEDIENTE.id_usuario_responsable_actual` (con fallback a la asignacion activa en `EXPEDIENTE_ASIGNACION` si es nulo). `DocumentoAnalisisDAO.asignarNotificacionMultiple`/`reasignarNotificacion` actualizan ese campo al validador/notificador cuando Notificacion asigna o reasigna un documento; `registrarResultadoValidacion` lo limpia (vuelve a NULL) al marcar `Observado`, para que el fallback vuelva a mostrar al abogado de Analisis/Ejecucion. Esta bandeja no filtra por etapa, por lo que puede listar expedientes ya avanzados a Analisis/Verificacion/Ejecucion/Notificacion.
 
 Asociacion:
 
 - Confirmar relacion solo por coincidencia normalizada `numero de acta + titular`, salvo reglas futuras explicitas.
 - Principal canonico: primero expediente con numero SDRERC; si ambos tienen o ninguno tiene numero, el mas antiguo.
 - Duplicado asociado hereda numero de expediente, fecha de vencimiento, equipo/abogado cuando corresponda.
-- UX de asociacion (20/07/2026): en Asignacion ("Solicitudes asociadas") y en Registro ("Asociar duplicados"), si el expediente que el usuario tiene enfocado/seleccionado no tiene numero pero entre las coincidencias marcadas hay exactamente una CON numero, la interfaz detecta e invierte automaticamente cual es el principal real (muestra su numero en negrita en "Expediente principal" y lo usa como destino real de la asociacion), sin que el usuario tenga que adivinar cual fila seleccionar primero. Si hay mas de una marcada con numero, no se decide solo: se bloquea con mensaje pidiendo dejar marcado unicamente el principal. La columna de numero en las tablas de candidatos muestra "Sin número (potencial duplicado)" en vez de "-".
-- Propagacion de estado (20/07/2026): desde Asignacion en adelante (Asignacion, Analisis, Verificacion, Ejecucion, Notificacion, Cierre), cada cambio de etapa/estado del expediente principal se propaga automaticamente a todos sus expedientes asociados activos (mismo numero SDRERC), en la misma transaccion. Implementado en `ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(...)`, invocado desde el `actualizarExpediente` de cada DAO de transicion. Reemplaza el paso manual de "Recibir documento asociado" en Analisis (el boton sigue existiendo como fallback, pero normalmente el asociado ya llega recibido junto con el principal). No se propaga responsable/equipo, solo etapa/estado.
-- Antes de crear una relacion nueva, `ExpedienteRelacionadoDAO.asociarRelacionados` resuelve el `id_expediente_principal` recibido contra el grafo de `EXPEDIENTE_RELACION` ya existente (`resolverPrincipalCanonico`): si ese expediente ya es el "relacionado" (asociado) de otro principal activo, usa ese principal real en vez del expediente recibido. Evita que un expediente ya asociado se use como principal de una nueva asociacion y parta el grupo en 2 (bug reportado con SDRERC-EXP-2026-000179, corregido 20/07/2026); relevante porque el duplicado hereda el numero SDRERC del principal, asi que el criterio "primero el que tiene numero" ya no alcanza para desempatar una vez asociado.
 - Al resolver duplicidad, desactivar/atender alerta `Potencial duplicado` en BD.
 - En bandejas jerarquicas, asociado muestra su propia alerta funcional cuando corresponda.
 - UI no debe usar `padre` ni `hijo`; usar `expediente principal`, `expediente asociado` o `relacion confirmada`.
 
 Panel derecho Asignacion:
 
-- Lenguetas: `Datos`, `Asignacion`, `Asociar`.
+- Lenguetas: `Datos`, `Asignacion`, `Asociar`, `Grupo Familiar`.
+- `Grupo Familiar` sigue el mismo patron que el panel homonimo de Registro (candidatos por apellidos con checkbox + "Asociar al grupo familiar" + grupo familiar actual de solo lectura), con el bloque "Asociacion" mostrando "N° expediente / Nombres del Titular" del expediente en foco. Permanece abierto y reselecciona el expediente tras asociar.
 - La primera seleccion activa lengueta; segundo clic puede expandir/restaurar segun patron vigente.
-- `Datos` reutiliza contenido/estilo de Registro con titulo `Panel de Asignacion` y titular debajo.
+- `Datos` reutiliza contenido/estilo de Registro con titulo `Panel de datos` (generico, no `Panel de Asignacion`) y titular debajo.
 - `Asignacion` conserva siempre bloque `Asignacion de abogado` para uno o varios expedientes.
 - Accion principal: `Generar asignacion`.
 - No usar popup si la captura ya esta en el panel.
@@ -304,6 +304,9 @@ Reglas vigentes:
 - Guardar documentos no mueve el expediente a Verificacion.
 - Enviar a Verificacion sigue siendo accion explicita.
 - Guardar o eliminar un documento analizado (icono de diskette/eliminar en la grilla) refresca solo esa grilla y la lectura de Publicacion prevista; no debe resetear los combos/checks/fundamento del bloque "Resultado del analisis".
+- Recibir un expediente (desde la lengueta o el boton "Recibir expediente") refresca la grilla y reselecciona el mismo expediente; si el panel derecho estaba abierto antes de recibir, debe seguir abierto despues (no cerrarse solo). `JPanelAnalisisV2.buscar(Long)` reabre el panel explicitamente cuando la reseleccion tiene exito y estaba abierto antes de refrescar; `confirmarYEjecutar(...)` (usado por varias acciones, no solo recibir) pasa el expediente previamente seleccionado para que se reintente esa reseleccion.
+- En la grilla de documentos analizados (Analisis y Ejecucion), la `Fecha Emision` de un documento nuevo empieza en blanco, no con la fecha de hoy. Solo se autocompleta con la fecha actual cuando el combo `Estado` de esa fila pasa a `Emitido`; si se elige cualquier otro estado, la fecha se limpia. Sigue siendo editable a mano en cualquier momento.
+- "Registrar resultado final" valida (resultado seleccionado, documentos, etc.) antes de mostrar el dialogo de confirmacion "¿Desea continuar?"; si falta algo, se avisa de inmediato con un mensaje claro (`AnalisisExpedienteService.validarRegistroAnalisis(...)`) sin pedir confirmar una accion que de entrada no puede completarse.
 
 Documentos analizados:
 
@@ -341,11 +344,28 @@ Estado de documentos:
 
 Plantillas:
 
-- Plantillas Word viven bajo `docs/plantillas`.
+- Plantillas Word viven bajo `docs/plantillas` (archivo) o en `PLANTILLA_DOCUMENTO` (BLOB en Oracle, administradas desde Administracion > Plantillas de documento). Prioridad de resolucion en `AnalisisPlantillaDocumentoService.generarDocumento`: si el tipo de documento tiene una version `activo=1` en `PLANTILLA_DOCUMENTO`, esa BLOB gana siempre; si no existe fila activa (o la consulta falla por cualquier motivo), se usa el archivo en `docs/plantillas` por coincidencia aproximada de nombre (`resolverPlantilla`), igual que antes de este modulo.
 - La descarga/relleno de plantilla debe reemplazar variables como titular, DNI, solicitante, acta, etc., con datos de la solicitud.
 - Las variables usan el formato `#nomVariable#` (camelCase) dentro del Word; el listado completo por plantilla vive en `docs/arquitectura_app/variables_plantillas_word.md`.
 - Al generar una RESOLUCION, la plantilla puede autocompletar `#numDocInforme#`/`#fechaDocInforme#` con los datos del documento analizado tipo `INFORME` mas reciente (activo, mayor `fecha_documento`) del mismo expediente; si no existe informe, esas variables quedan vacias. La logica vive en `AnalisisPlantillaDocumentoService`, no en el JPanel.
 - Clasificacion de negocio (`TIPO_DOCUMENTO_ADJUNTO.CLASIFICACION`): cartas finales y resoluciones -> `FINAL`; cartas intermedias y oficios -> `INTERMEDIO`; informes -> sin clasificar (`NULL`). Detalle completo en `docs/arquitectura_app/variables_plantillas_word.md`.
+- Condicionales dentro del propio Word: marcadores `[[SI_<variable>:valor1|valor2]] ... [[FIN_SI]]` (parrafos aparte), evaluados por `AnalisisPlantillaDocumentoService.aplicarCondicionales` contra el mismo mapa que resuelve los `#variable#` (nombre de variable insensible a mayusculas/guiones bajos, valores insensibles a mayusculas/tildes). Pendiente (no hecho todavia): aplicar marcadores reales a `informe_rectificacion.docx`/`resolucion_rectificacion.docx`, que hoy solo tienen texto instructivo en lugar de marcadores funcionales. Alternativa recomendada para no editar el Word a mano: bloques de contenido (ver mas abajo).
+
+Administracion de plantillas de documento (modulo nuevo, implementado):
+
+- Tabla `PLANTILLA_DOCUMENTO` (script `75_plantilla_documento.sql`, ya ejecutado): versiona el contenido `.docx` como BLOB por `id_tipo_documento_adjunto`; solo una version `activo=1` por tipo a la vez (regla en Java, no en BD); nunca se borra fisicamente, solo se desactiva al activar otra version.
+- Adopcion gradual: mientras un tipo de documento no tenga fila activa, sigue usando el archivo en `docs/plantillas` sin cambios. Ningun `.docx` existente fue migrado/cargado a la tabla.
+- Clases: `PlantillaDocumentoDTO`, `PlantillaDocumentoDAO`, `PlantillaDocumentoService` (valida `.docx` y tamano maximo 15 MB), panel `JPanelPlantillasDocumentoV2` (Administracion > Plantillas de documento, permiso `MENU_ADMIN_PLANTILLAS`).
+- El modulo permite cargar nueva version (sube archivo, versiona automaticamente), descargar la version vigente, ver historial de versiones y activar una version anterior (rollback), y consultar la lista de variables/sintaxis de condicionales disponibles.
+- Se guarda como BLOB en Oracle (no como archivo en el file share) porque el despliegue vigente copia la app localmente a cada cliente (`C:\SDRERC_CLIENTE\app`); un archivo subido solo quedaria en la maquina de quien lo sube hasta el proximo release. Oracle es el unico recurso compartido en vivo por todos los clientes de la LAN.
+
+Bloques de contenido (evolucion del administrador de plantillas, implementado):
+
+- Tabla `PLANTILLA_BLOQUE` (script `76_plantilla_bloque.sql`, ya ejecutado): lista ordenada de bloques (titulo + contenido + condicion opcional) por `id_tipo_documento_adjunto`, independiente de la version de la plantilla base. Condicion opcional armada con `variable_condicion`/`operador_condicion` (`COINCIDE`/`NO_COINCIDE`)/`valores_condicion` (lista separada por `|`), reusa el mismo motor de comparacion que los marcadores `[[SI_...]]`.
+- Requiere que la plantilla base tenga un parrafo con el texto exacto `[[CONTENIDO]]` (marcador sin nombre) o `[[CONTENIDO:seccion]]` (marcador nombrado, columna `PLANTILLA_BLOQUE.SECCION`, script `77_plantilla_bloque_seccion.sql` ya ejecutado): ahi se insertan, en orden, los bloques de esa seccion cuya condicion se cumple. Una plantilla puede tener varios marcadores nombrados distintos (ej. `antecedentes`/`recomendaciones`) para documentos con mas de un punto de contenido dinamico. Sin el marcador correspondiente, esos bloques no se insertan (no rompe nada).
+- UI: dialogo `DlgBloquesPlantillaV2` (boton "Administrar bloques de contenido" en `JPanelPlantillasDocumentoV2`) con lista de bloques + formulario (seccion opcional, titulo, contenido, condicion via combos) + reordenar (subir/bajar).
+- Variable `resAnalisis` (resultado del analisis) esta disponible en el mapa de sustitucion junto con las demas `#variable#` (`AnalisisPlantillaDocumentoService.valores(...)`, viene de `expediente.getUltimoResultadoAnalisis()`).
+- Nota tecnica importante para mantenimiento futuro: `XWPFDocument.insertNewParagraph` (API oficial de Apache POI 5.2.5 para insertar parrafos en medio de un documento) tiene un `ClassCastException` reproducible con documentos reales de Word en esta version; se evita insertando los parrafos nuevos con `createParagraph()` (al final) y reubicandolos con `XmlCursor.moveXml`, seguido de un round-trip de serializar+reabrir el documento antes de continuar (necesario porque `moveXml` desincroniza la lista de parrafos que POI cachea en memoria). Ver detalle completo en AGENTS.md.
 
 Documentos/solicitudes asociadas (duplicados) en la Bandeja Analisis:
 
@@ -379,6 +399,13 @@ Reglas:
 - No crear modulo lateral `Firma / Emision`.
 - Resoluciones pasan a Ejecucion.
 - Oficios/cartas/no resolutivos pasan a Notificacion solo con transicion real.
+- `VerificacionExpedienteDAO.aprobarVerificacionConDestino` ramifica el destino final segun el equipo elegido en el combo "Equipo destino" del bloque "Destino operativo":
+  - `Eq. Analisis` -> `ANALISIS/OBSERVADO` (devuelve el expediente a Analisis; SI reasigna responsable al usuario/equipo elegido; no inserta `EXPEDIENTE_OBSERVACION` estructurada porque este punto de entrada solo recibe un comentario de texto plano, no un `ObservacionVerificacionDTO`).
+  - `Eq. Ejecucion` -> `EJECUCION/EN_EJECUCION` (mismo destino que `aprobarVerificacionDirecta` usa para resoluciones; NO reasigna responsable, porque la regla de Ejecucion exige que la atienda el mismo abogado de Analisis, no el usuario elegido en el combo).
+  - Cualquier otro equipo (hoy solo `Eq. Supervision`, unico restante del whitelist) -> comportamiento historico: se encadenan 2 saltos de estado automaticos e inmediatos en la misma transaccion, primero `VERIFICACION/EN_VERIFICACION` -> `VERIFICACION/VERIFICADO` (`APROBACION_VERIFICACION`), y de inmediato `VERIFICACION/VERIFICADO` -> `NOTIFICACION/POR_ASIGNAR` (`DERIVACION_A_NOTIFICACION`). El expediente nunca queda "parado" en Verificado a la espera de una accion manual adicional; ver seccion Notificacion para el significado de `POR_ASIGNAR`.
+  - Transicion de catalogo que faltaba (`DEVOLUCION_A_ANALISIS: VERIFICACION/EN_VERIFICACION -> ANALISIS/OBSERVADO`) sembrada por `74_transicion_verificacion_destino_analisis.sql` (ya ejecutado); la de `Eq. Ejecucion` ya existia en el catalogo (misma fila de `aprobarVerificacionDirecta`).
+- El combo "Usuario destino" (equipo `EQ_NOTIFICACION`/`EQ_VALIDACION`) usa `UsuarioAsignacionService.listarUsuariosAsignablesPorEquipo(idEquipo)` (filtra solo por pertenencia activa al equipo, sin restriccion de rol), no `listarAbogadosAsignables` (restringido a rol `ABOGADO`/`ANALISTA`, que dejaba el combo vacio para esos dos equipos).
+- El combo "Equipo destino" del bloque "Destino operativo" solo ofrece `EQ_ANALISIS`, `EQ_EJECUCION` y `EQ_SUPERVISION` (filtro por codigo en `cargarEquiposDestino()`, no en el DAO generico `listarEquiposActivos()`).
 
 Grilla de documentos revisados:
 
@@ -396,7 +423,7 @@ Pestana superior:
 
 Reglas:
 
-- Solo resoluciones pasan a Ejecucion.
+- Solo resoluciones pasan a Ejecucion, sin importar el resultado del analisis (Procedente, Improcedente y Procedente en parte deben verse igual en la Bandeja Ejecucion; el filtro real es la etapa del expediente `et.codigo = 'EJECUCION'`, no el resultado). `EjecucionExpedienteDAO.buscarExpedientes` tenia un filtro adicional bugueado `WHERE UPPER(resultado_analisis) IN ('PROCEDENTE','PROCEDENTE EN PARTE')` que excluia silenciosamente los expedientes Improcedentes de la bandeja aunque ya estuvieran correctamente en Ejecucion; se quito (corregido 17/07/2026).
 - El responsable debe ser el mismo abogado que realizo Analisis.
 - Ejecucion no es reasignacion manual general.
 - Procedente / procedente en parte: anotacion textual + carta de notificacion.
@@ -409,9 +436,11 @@ Grilla y panel derecho (implementado):
 
 - Grilla principal replica filtros/diseno de Verificacion, con icono `+` para expandir expedientes asociados (mismo patron que Asignacion/Verificacion: expande expedientes relacionados por acta+titular, no documentos ni intentos).
 - Panel derecho con lenguetas `Datos` y `Ejecutar`, oculto por defecto (se abre con doble clic).
-- Grilla de documentos usa las mismas columnas que Analisis, filtrada a documentos `Emitido`/`Resolucion`; permite `+Documento`/`+Relacionado` y descarga Word.
+- Grilla de documentos usa las mismas columnas que Analisis, filtrada a documentos `Emitido`/`Resolucion`; permite `+Documento`/`+Relacionado` y descarga Word. Un documento nuevo (`+Documento`) nace en estado `En proyecto` (mismo criterio que Analisis), no `Emitido`.
 - Bloque `Resultado de ejecucion` incluye `Fecha Ejecucion` con calendario condicional segun el resultado elegido.
 - Catalogo de resultado de ejecucion (`OREC`) sembrado por `56_agregar_resultado_ejecucion_orec.sql`.
+- `Guardar Ejecucion` valida que exista una carta de notificacion final en despacho (`DocumentoAnalisisService.tieneDocumentoFinalEnDespacho`) **antes** de tocar la base de datos; si falta, bloquea la accion completa con mensaje claro y no registra `INICIO_EJECUCION`. Si esta lista, registra `INICIO_EJECUCION` y `DERIVACION_A_NOTIFICACION` en la misma accion, de modo que un guardado exitoso siempre deja el expediente visible en la Bandeja Asignacion de Notificacion. Antes de esta regla, la ejecucion se guardaba igual sin carta y el boton quedaba bloqueado en un estado intermedio sin derivar.
+- El destino de `DERIVACION_A_NOTIFICACION` (Ejecucion) es `NOTIFICACION/POR_ASIGNAR`, no `EN_NOTIFICACION` (retargeteado por `72_estado_por_asignar_notificacion.sql`, ya ejecutado). Ver seccion Notificacion.
 
 ## Notificacion
 
@@ -440,12 +469,24 @@ Reglas:
 Bandeja Asignacion (implementado):
 
 - Grilla con columna `N° expediente SGD`, checkbox de seleccion individual/multiple e icono `+` que expande expedientes asociados (no documentos).
-- Panel derecho oculto por defecto (doble clic para abrir), con lenguetas `Datos`, `Asignacion` y `Firma`, mismo patron visual que el Panel de Asignacion de Asignacion (incluye `Habilitar reasignacion`, `Hoja de envio nueva` vs `Hoja de envio actual`, historial de asignaciones/reasignaciones).
+- Panel derecho oculto por defecto (doble clic para abrir), con lenguetas `Datos`, `Asignacion` y `Firma`, mismo patron visual que el Panel de Asignacion de Asignacion (incluye `Habilitar reasignacion`, `Hoja de envio nueva` vs `Hoja de envio actual`, historial de asignaciones/reasignaciones). Clic en la lengueta ya activa expande/restaura el panel (`splitAsigNotif.setSideExpanded(...)`), igual que en el Panel de Asignacion de Asignacion; la Bandeja Validacion (lenguetas `Datos`/`Validar`, `splitValidacionNotif`) sigue el mismo patron.
 - Enrutamiento por clasificacion de documento: `INTERMEDIO` se asigna al equipo `EQ_NOTIFICACION` (abogados de notificacion); `FINAL` se asigna al equipo `EQ_VALIDACION` (validadores). No se permite mezclar clasificaciones en una misma asignacion, ni asignar al equipo que no corresponde.
 - Ciclo de un documento `FINAL`: En despacho -> Bandeja Asignacion (asignar validador) -> Bandeja Validacion (Aprobado/Observado) -> Aprobado reaparece en Bandeja Asignacion con lengueta `Firma` habilitada (pasa de Validado a Emitido, con numero de documento y fecha) -> Bandeja Notificacion.
 - Ciclo de un documento `INTERMEDIO`: ya llega Emitido desde Verificacion; la lengueta `Asignacion` no aplica (deshabilitada) y `Firma` solo permite corregir numero/fecha si hace falta; ya es visible en Bandeja Notificacion sin accion adicional.
 - KPIs propios en la bandeja, con el mismo patron de filtros compactos de tres filas que Registro/Asignacion.
 - Historial de asignaciones/reasignaciones de Notificacion se guarda en la tabla generica `EXPEDIENTE_HISTORIAL` (no una tabla nueva), con `tipo_movimiento` `ASIGNACION_NOTIFICACION`/`REASIGNACION_NOTIFICACION` (`58_tipo_movimiento_notificacion.sql`).
+- El filtro `Fecha Emision desde/hasta` de esta bandeja NO debe excluir documentos sin `fecha_documento` (es el caso normal de un documento recien llegado `EN_DESPACHO`, aun no emitido/fechado): si `fecha_documento` es nulo, el documento se muestra sin importar el rango de fechas seleccionado; el rango solo aplica cuando el documento ya tiene fecha. Antes de esta correccion, cualquier documento sin fecha desaparecia de la bandeja en cuanto se activaba un filtro de fecha, aunque estuviera correctamente pendiente de asignar.
+- El combo "Usuario destino" del panel derecho (equipo `EQ_NOTIFICACION`/`EQ_VALIDACION`) usa `UsuarioAsignacionService.listarUsuariosAsignablesPorEquipo(idEquipo)` (solo pertenencia activa al equipo), no `listarAbogadosAsignables` (restringido a rol `ABOGADO`/`ANALISTA`, que dejaba el combo vacio para estos dos equipos porque sus miembros tienen rol `NOTIFICACION`/`VALIDACION`/`SUPERVISOR_NOTIFICACION`).
+
+Estado del expediente en Notificacion (columna "Estado", distinta de "Estado doc."):
+
+- Tres estados nuevos/reutilizados en etapa `NOTIFICACION` gobiernan que bandeja muestra cada expediente: `POR_ASIGNAR` ("Por asignar", `72_estado_por_asignar_notificacion.sql`), `POR_VALIDAR` ("Por validar", `73_estado_por_validar_y_renombrar_por_notificar.sql`) y `EN_NOTIFICACION` (renombrado a "Por notificar" por el mismo script 73; el codigo interno sigue siendo `EN_NOTIFICACION` a proposito, ver mas abajo). Ambos scripts ya ejecutados.
+- Ejecucion (`DERIVACION_A_NOTIFICACION` desde `EJECUCION/EJECUTADO`) y Verificacion (`DERIVACION_A_NOTIFICACION` desde `VERIFICACION/VERIFICADO`, encadenado automaticamente tras `APROBACION_VERIFICACION`) dejan el expediente en `NOTIFICACION/POR_ASIGNAR` de inmediato.
+- `DocumentoAnalisisDAO.asignarNotificacionMultiple`/`reasignarNotificacion` resuelven el codigo del equipo destino y actualizan `expediente.id_estado_actual` en la misma llamada: `EQ_VALIDACION` -> `POR_VALIDAR`, `EQ_NOTIFICACION` -> `EN_NOTIFICACION` ("Por notificar"). `registrarResultadoValidacion`, cuando el resultado es Aprobado (no Observado), revierte el expediente a `POR_ASIGNAR` para que reaparezca en Bandeja Asignacion y el coordinador lo derive esta vez a Notificacion (el documento FINAL ya quedo en `VALIDADO`, que `CONDICION_ASIGNACION_NOTIFICACION` ya acepta). Cuando es Observado, el estado del expediente no se toca (solo se limpia el responsable), igual que antes.
+- Cada una de las 3 bandejas exige ademas su propio estado de expediente en la condicion SQL (join a `estado_expediente` por `e.id_estado_actual`, alias `eest`): Asignacion exige `POR_ASIGNAR`, Validacion exige `POR_VALIDAR`, Notificacion exige `EN_NOTIFICACION`. No exigir esto ademas de la clasificacion/estado del documento era la brecha reportada por el usuario.
+- Decision de diseno importante: la bandeja final de Notificacion NO usa un codigo nuevo tipo `POR_NOTIFICAR`. Se reutiliza `EN_NOTIFICACION`, que ya era el origen exigido por el flujo completo de intentos/cargo/confirmacion (`NOTIFICACION_VIRTUAL`, `NOTIFICACION_PRESENCIAL_1/2`, `RECEPCION_CARGO_ACUSE`, `CONFIRMACION_NOTIFICACION` -> `NOTIFICADO`, este ultimo ya existente y sin cambios). Crear un codigo nuevo habria obligado a reescribir esa cadena de transiciones ya probada (`NotificacionExpedienteDAO.estadoOrigenNotificacion` la exige literalmente antes de intentar la transicion). Solo se cambio el `nombre` visible de "En notificacion" a "Por notificar"; el codigo y todo el flujo de intentos siguen intactos.
+- El DTO `NotificacionAsignacionDocumentoDTO` ahora expone `estadoExpedienteCodigo`/`estadoExpediente` ademas de `estadoDocumentoCodigo`/`estadoDocumento`; las 3 grillas de `JPanelNotificacionV2` (Asignacion, Validacion, Notificacion) muestran ambos: la columna que antes se llamaba `Estado` ahora es `Estado doc.` (estado del documento), y se agrego una columna `Estado` nueva con el estado del expediente.
+- El script 73 tambien corrigio puntualmente documentos ya asignados a un validador/notificador cuyo expediente habia quedado en `POR_ASIGNAR` (asignado antes de esta regla): se retargearon a `POR_VALIDAR`/`EN_NOTIFICACION` segun el equipo real del documento, para que no quedaran huerfanos con las condiciones nuevas.
 
 Bandeja Validacion (implementado):
 
@@ -498,6 +539,8 @@ Reglas:
 - No mostrar ni guardar passwords en texto plano.
 - `Usuarios`: tipo documento debe ser combo basado en catalogo de identidad.
 - `Usuarios`: `Restablecer clave` (implementado) asigna contrasena temporal al usuario seleccionado (`DlgRestablecerClaveV2`), fuerza cambio en el proximo login, y permite marcar "reiniciar verificacion en dos pasos" cuando corresponda.
+- `Equipo Juridico`: incluye una vista de solo lectura "Personal por supervisor" (combo de supervisores + grilla de abogados supervisados) respaldada por `UsuarioSupervisionDAO` (nuevo) y `EquipoJuridicoService.listarSupervisoresConAbogados()`/`listarAbogadosPorSupervisor()`; lee `USUARIO_SUPERVISION`, no crea ni edita relaciones de supervision desde la UI.
+- `Roles`/`Equipo Juridico`: el tooltip del campo `Codigo` ahora advierte no repetir un rol/equipo ya existente y lista los codigos oficiales ya sembrados (roles: los 10 reconocidos por scripts; equipos: prefijo `EQ_`), para evitar que se repita la duplicidad corregida por los scripts 66/70/71.
 
 ## Permisos (control de acceso)
 
@@ -509,6 +552,20 @@ Estado: implementado y en uso.
 - `SessionContext.setPermisos(...)`/`tienePermiso(codigo)` es fail-open: si el catalogo de permisos resuelto para la sesion esta vacio, `tienePermiso` retorna `true` (no bloquea nada hasta que un admin configure permisos reales por rol).
 - `MenuPrincipalV2.resolverPermisosSesion()` puebla `SessionContext` via `PermisoRolService` antes de construir el menu; oculta botones de modulo sin permiso.
 - Bandejas sin permiso se deshabilitan con `tabs.setEnabledAt(indice, false)` (no se eliminan del `JTabbedPane`): `JPanelRegistroRecepcionV2`, `JPanelAsignacionV2` y `JPanelNotificacionV2` tienen logica interna que asume indices fijos de pestana (comparaciones `getSelectedIndex()==N`); remover pestanas correria el riesgo de desalinear esa logica.
+- Matriz real de permisos por rol operativo (RECEPCION, ASIGNACION, ABOGADO, SUPERVISION, SUPERVISOR_NOTIFICACION, NOTIFICACION, VALIDACION, CONSULTA) preparada en `65_matriz_permisos_roles_operativos.sql`; agrega los roles nuevos `VALIDACION` y `SUPERVISOR_NOTIFICACION` (Notificacion se divide en 3 roles: quien asigna, quien notifica, quien valida). `REGISTRADOR_CIVIL` queda sin permisos a proposito (Firma/Emision ya esta integrada en Verificacion, nadie tiene ese rol hoy). Script preparado, no ejecutado contra BD.
+- Ademas de los 10 roles reconocidos por los scripts del proyecto, Administracion > Roles permite crear roles libremente por boton "Nuevo rol": asi aparecieron 4 roles redundantes sin uso (`ADMINISTRADOR`, `ANALISTA`, `PREASIGNADOR`, `SUPERVISOR`, 0 usuarios asignados) que solapan con roles oficiales, y permisos sueltos fuera de catalogo (prefijo `PERM_*`, distinto de `MENU_*`/`BANDEJA_*`). Diagnostico de solo lectura en `00_diagnostico_permisos_reales_vs_esperado.sql`; limpieza (desactivacion logica, nunca eliminacion fisica) en `70_desactivar_roles_redundantes.sql`/`71_desactivar_permisos_no_oficiales.sql`. Ninguno ejecutado contra BD.
+
+Visibilidad por asignacion dentro de una bandeja (dato, no permiso):
+
+- Ademas del control de acceso por rol (arriba), las bandejas de Analisis, Verificacion, Ejecucion y las pestanas Validacion/Notificacion de Notificacion filtran ademas por fila: un usuario normal solo ve expedientes/documentos cuyo responsable actual (`EXPEDIENTE.id_usuario_responsable_actual`/`id_equipo_responsable_actual`, o `EXPEDIENTE_DOCUMENTO_ANALIZADO.id_usuario_notificacion`/`id_equipo_notificacion` en Notificacion) coincide con su propio usuario o con alguno de sus equipos (`EQUIPO_USUARIO`). `ADMIN_SISTEMA` no tiene ese filtro y ve todo, este o no asignado/derivado a el. Implementado en `VisibilidadBandejaSql.construirCondicion(...)` (helper compartido en `infrastructure.sdrercapp.dao`), invocado desde `AnalisisExpedienteDAO`, `VerificacionExpedienteDAO`, `EjecucionExpedienteDAO`, `NotificacionExpedienteDAO` y `DocumentoAnalisisDAO.listarDocumentosValidacion/listarDocumentosNotificacion`. Si no se pudo resolver ni usuario ni equipo del actor, se deniega por defecto (`1=0`), no se muestra todo.
+- Excluidas a proposito de este filtro por fila (siguen mostrando toda la cola, como antes): `Registro/Recepcion` (incluida la Bandeja de Expedientes general, que comparte el mismo `ExpedienteBandejaDAO`/`JPanelBandejaExpedientesNueva`), la Bandeja Asignacion del modulo Asignacion, y la Bandeja Asignacion de Notificacion. Estas tres son pantallas de coordinacion/despacho (quien registra, quien asigna, quien reasigna) cuyo trabajo exige ver toda la cola entrante, no solo lo ya asignado a si mismos; ademas, en Registro/Asignacion el responsable todavia es `NULL` para la mayoria de expedientes (recien se completa cuando Asignacion actua), por lo que un filtro por fila las dejaria vacias. Revisar si se pide extender el filtro a estas bandejas mas adelante.
+- `UsuarioAsignacionService.resolverUsuarioActualSdrercApp()`/`esAdminSistemaActual()`/`listarIdsEquipoDeUsuario(idUsuario)` son los helpers nuevos para resolver usuario/rol/equipos de la sesion actual contra SDRERC_APP; los `*ExpedienteService` existentes conservan su propio `resolverUsuarioActualSdrercApp()` privado (no se refactorizo esa duplicacion) y ahora ademas calculan `esAdmin`/`idsEquipoActual` para pasarlos al DAO.
+
+Autor del historial cuando actua ADMIN_SISTEMA:
+
+- Cuando quien ejecuta una accion de Analisis, Verificacion, Ejecucion, Asignacion (expediente), o asignacion/reasignacion de Notificacion tiene el rol `ADMIN_SISTEMA`, `EXPEDIENTE_HISTORIAL` NO guarda al administrador como autor (`id_usuario_origen`/`creado_por`): se sustituye por el usuario asignado/reasignado/derivado de esa misma accion (el destino ya resuelto en cada llamada). Si la accion no cambia de responsable (por ejemplo, generar numero de expediente o editar datos de asignacion), no hay a quien sustituir y se conserva el autor real.
+- Implementado como `resolverAutorHistorial(conn, idUsuarioActor, idUsuarioDestino)` (metodo privado duplicado con la misma logica en cada DAO, no centralizado) en `AsignacionExpedienteDAO`, `AnalisisExpedienteDAO`, `VerificacionExpedienteDAO`, `EjecucionExpedienteDAO`, `NotificacionExpedienteDAO` y `DocumentoAnalisisDAO` (este ultimo solo en `insertarHistorialNotificacion`, la asignacion/reasignacion a validador/notificador). Usa `CatalogoLookupDAO.tieneRolAdminSistema(conn, idUsuario)` (nuevo) para decidir dentro de la misma transaccion.
+- Esta sustitucion es deliberada y fue confirmada explicitamente por el usuario pese a que implica que el historial ya no refleja literalmente quien hizo clic; no revertir sin pedirlo de nuevo.
 
 ## Base de datos y scripts
 
@@ -560,6 +617,21 @@ Scripts recientes relevantes:
 - `60_catalogo_permisos_bandejas.sql`: permisos por bandeja (pestana superior) en Registro/Recepcion, Asignacion y Notificacion.
 - `61_login_2fa_usuario.sql`: columnas de autenticacion/TOTP en `USUARIO` + tabla `USUARIO_TOTP_BACKUP_CODE`. Ya ejecutado.
 - `62_reset_datos_prueba_y_superadmin.sql`: reset completo de datos de prueba (trunca tablas transaccionales, conserva catalogos, reinicia `IDENTITY` a 1) + creacion del superadmin. Ya ejecutado; no reejecutar sin autorizacion explicita (es destructivo).
+- `63_carga_personal_sdrerc_usuarios.sql`: carga 111 usuarios reales del personal SDRERC con rol/equipo segun su area (fuente `docs/arquitectura_app/Personal_SDRERC_Usuarios_Herramienta_Interna.xlsx`), agrega `USUARIO.TELEFONO` y el rol nuevo `CONSULTA`. No ejecutado.
+- `64_carga_supervision_abogados.sql`: relacion supervisor-abogado en `USUARIO_SUPERVISION` para el area de Analisis (74 relaciones, fuente `docs/arquitectura_app/personal_supervisores.xlsx`). Requiere el script 63 ya ejecutado. No ejecutado.
+- `65_matriz_permisos_roles_operativos.sql`: matriz de permisos por rol operativo y roles nuevos `VALIDACION`/`SUPERVISOR_NOTIFICACION` (ver seccion Permisos). No ejecutado.
+- `66_consolidar_equipos_redundantes.sql`: consolida equipos duplicados creados a mano (`EQUIPO_ANALISIS`/`EQUIPO_VERIFICACION`/`EQUIPO_EJECUCION`/`EQUIPO_NOTIFICACION`/`EQ_FIRMA_EMISION`) hacia el equipo canonico `EQ_*`, migrando membresias activas antes de desactivar el redundante; nunca elimina fisicamente. No ejecutado.
+- `67_carga_supervision_recepcion_notificacion.sql`: extiende `USUARIO_SUPERVISION` a Recepcion/Asignacion y Notificacion (25 relaciones adicionales, mismo Excel del script 64, hoja distinta). Requiere el script 63 ya ejecutado. No ejecutado.
+- `68_espejar_equipo_ejecucion_analisis.sql`: sincroniza miembros de `EQ_EJECUCION` con `EQ_ANALISIS` (mismo abogado en Analisis y Ejecucion, regla vigente de Ejecucion); re-ejecutable para mantener ambos equipos alineados. No ejecutado.
+- `69_distribuir_notificacion_validacion_publicacion.sql`: distribuye el personal de `EQ_NOTIFICACION` cargado por 63 entre Notificacion/Validacion/Publicacion (el Excel de origen no distinguia esos 3 roles); reparto autorizado por el usuario sin criterio de negocio especifico, documentado con semilla fija en el propio script. No ejecutado.
+- `70_desactivar_roles_redundantes.sql` / `71_desactivar_permisos_no_oficiales.sql`: desactivan roles y permisos creados fuera de los scripts del proyecto (ver seccion Permisos). No ejecutados.
+- `72_estado_por_asignar_notificacion.sql`: siembra el estado `POR_ASIGNAR` en etapa `NOTIFICACION`, retarget de `DERIVACION_A_NOTIFICACION` (Ejecucion) hacia ese estado, nueva fila de transicion para Verificacion, y correccion puntual de expedientes ya varados en `EN_NOTIFICACION` con documento pendiente de asignar (ver seccion Notificacion). Ya ejecutado.
+- `73_estado_por_validar_y_renombrar_por_notificar.sql`: siembra el estado `POR_VALIDAR` en etapa `NOTIFICACION`, renombra el `nombre` de `EN_NOTIFICACION` a "Por notificar" (mismo codigo), y corrige puntualmente expedientes ya asignados cuyo estado habia quedado desalineado (ver seccion Notificacion). Ya ejecutado.
+- `74_transicion_verificacion_destino_analisis.sql`: agrega la fila de `FLUJO_TRANSICION` que faltaba `DEVOLUCION_A_ANALISIS: VERIFICACION/EN_VERIFICACION -> ANALISIS/OBSERVADO`, para que `aprobarVerificacionConDestino` pueda enviar el expediente a Analisis cuando el destino elegido es `Eq. Analisis` (ver seccion Verificacion). Ya ejecutado.
+- `75_plantilla_documento.sql`: crea la tabla `PLANTILLA_DOCUMENTO` (plantillas Word versionadas como BLOB por tipo de documento) y siembra el permiso `MENU_ADMIN_PLANTILLAS` otorgado a `ADMIN_SISTEMA` (ver seccion Plantillas). Ya ejecutado.
+- `76_plantilla_bloque.sql`: crea la tabla `PLANTILLA_BLOQUE` (bloques de contenido con condicion opcional, insertados en el marcador `[[CONTENIDO]]` de la plantilla base) (ver seccion Plantillas). Ya ejecutado.
+- `77_plantilla_bloque_seccion.sql`: agrega la columna `PLANTILLA_BLOQUE.SECCION` para soportar marcadores nombrados `[[CONTENIDO:seccion]]` (varios puntos de contenido dinamico por plantilla) (ver seccion Plantillas). Ya ejecutado.
+- Diagnosticos de solo lectura (no forman parte de la numeracion incremental): `00_diagnostico_roles_permisos_equipos.sql`, `00_diagnostico_permisos_reales_vs_esperado.sql`.
 
 Ubigeo:
 
@@ -587,6 +659,7 @@ Reglas generales:
 - No usar scroll horizontal global para tablas.
 - Columna `Dias` como pill con color segun configuracion de plazos.
 - Renderers de columnas no deben depender de indices fragiles; preferir nombres/constantes.
+- En las grillas de "documentos analizados" (Analisis, Cartas de respuesta de Asignacion, Verificacion, Ejecucion, y la grilla de Notificacion que reutiliza la clase de Ejecucion), el bloque de iconos de accion va al inicio de las columnas, en el orden `Guardar, Word, Eliminar` (cada grilla muestra solo los iconos que le aplican; Verificacion y la grilla de Notificacion solo tienen `Guardar`, Ejecucion tiene `Guardar, Word`, Cartas de respuesta solo tiene `Guardar` en su tabla de documentos hijo).
 
 Bandejas:
 

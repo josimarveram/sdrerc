@@ -74,6 +74,7 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
@@ -954,6 +955,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         buscar();
     }
 
+    public void refrescar(Long idExpedienteAReseleccionar) {
+        buscar(false, idExpedienteAReseleccionar);
+    }
+
     public List<Long> obtenerIdsGrupoFamiliarSeleccionados() {
         List<Long> ids = new ArrayList<Long>();
         if (!perfilRegistroRecepcion) {
@@ -1035,6 +1040,17 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void buscar(boolean conservarFiltroAlerta) {
+        buscar(conservarFiltroAlerta, null);
+    }
+
+    /**
+     * Igual que buscar(...), pero si idExpedienteAReseleccionar no es null, reselecciona esa fila
+     * despues de recargar la tabla y reabre el panel lateral en la misma lengueta si estaba
+     * abierto antes. cargarTabla(...) cierra el panel (ocultarPanelRecepcion()) y limpia la
+     * seleccion de forma incondicional; sin este parametro, acciones que refrescan la bandeja
+     * (ej. asociar grupo familiar) lo cerrarian de golpe.
+     */
+    private void buscar(boolean conservarFiltroAlerta, final Long idExpedienteAReseleccionar) {
         long secuencia = secuenciaBusqueda.incrementAndGet();
         if (perfilRegistroRecepcion) {
             grupoFamiliarSeleccionados.clear();
@@ -1086,7 +1102,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         }
                         ultimoResultadoBuscado = expedientes == null ? Collections.emptyList() : new ArrayList<>(expedientes);
                         actualizarMetricasAlertasRegistro(expedientes);
-                        cargarTabla(expedientes);
+                        cargarTabla(expedientes, idExpedienteAReseleccionar);
                     } catch (Exception ex) {
                         mostrarError(ex);
                     } finally {
@@ -1136,6 +1152,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void cargarTabla(List<ExpedienteBandejaDTO> expedientes) {
+        cargarTabla(expedientes, null);
+    }
+
+    private void cargarTabla(List<ExpedienteBandejaDTO> expedientes, Long idExpedienteAReseleccionar) {
+        boolean panelAbiertoAntes = idExpedienteAReseleccionar != null
+                && splitBandeja != null && splitBandeja.isSideVisible();
+        boolean expandidoAntes = panelAbiertoAntes && splitBandeja.isSideExpanded();
+        String panelActivoAntes = panelRecepcionActivo;
         ocultarPanelRecepcion();
         principalesExpandidos.clear();
         principalesCargando.clear();
@@ -1164,6 +1188,20 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     : expedientes.size() + " expediente(s) encontrado(s). Seleccione uno y presione Ver detalle.");
         }
         actualizarTextoSeleccionadosRegistro();
+        if (idExpedienteAReseleccionar == null) {
+            return;
+        }
+        int modelRow = indiceFilaPrincipalRegistro(idExpedienteAReseleccionar);
+        if (modelRow >= 0) {
+            int viewRow = table.convertRowIndexToView(modelRow);
+            if (viewRow >= 0 && viewRow < table.getRowCount()) {
+                table.setRowSelectionInterval(viewRow, viewRow);
+                table.scrollRectToVisible(table.getCellRect(viewRow, 0, true));
+            }
+        }
+        if (panelAbiertoAntes && panelActivoAntes != null) {
+            mostrarPanelRecepcion(panelActivoAntes, expandidoAntes);
+        }
     }
 
     private List<ExpedienteBandejaDTO> filtrarPorAlertaRegistro(List<ExpedienteBandejaDTO> expedientes) {
@@ -2152,6 +2190,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 "No se detectaron posibles integrantes por apellidos para el expediente seleccionado.");
         private final JLabel lblEstadoDeteccion = new JLabel("Seleccione un expediente en la bandeja.");
         private final JButton btnAsociarGrupoFamiliar = new JButton("Asociar al grupo familiar");
+        private final JLabel lblExpedienteFocoGrupoFamiliar = new JLabel("-");
 
         private final DefaultTableModel modeloGrupoActual = new DefaultTableModel(
                 new Object[]{"Integrante", "N° expediente", "Etapa/Estado", "Abogado asignado"}, 0) {
@@ -2182,7 +2221,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             seccionDeteccion.addRow("Estado", lblEstadoDeteccion);
             JPanel contentDeteccion = new JPanel(new BorderLayout(6, 6));
             contentDeteccion.setOpaque(false);
-            contentDeteccion.setPreferredSize(new Dimension(320, 200));
             JPanel encabezadoDeteccion = new JPanel();
             encabezadoDeteccion.setOpaque(false);
             encabezadoDeteccion.setLayout(new BoxLayout(encabezadoDeteccion, BoxLayout.Y_AXIS));
@@ -2204,6 +2242,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             addSection(seccionDeteccion);
 
             AppV2SideSectionPanel seccionAccion = new AppV2SideSectionPanel("Asociación");
+            seccionAccion.addRow("Expediente", lblExpedienteFocoGrupoFamiliar);
             AppV2Theme.estilizarBotonPrimario(btnAsociarGrupoFamiliar);
             btnAsociarGrupoFamiliar.setEnabled(false);
             btnAsociarGrupoFamiliar.setToolTipText("Asocia las personas marcadas al mismo grupo familiar.");
@@ -2214,7 +2253,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             seccionGrupoActual.addRow("Estado", lblEstadoGrupoActual);
             JPanel contentGrupoActual = new JPanel(new BorderLayout(6, 6));
             contentGrupoActual.setOpaque(false);
-            contentGrupoActual.setPreferredSize(new Dimension(320, 140));
             contentGrupoActual.add(panelTablaGrupoActual, BorderLayout.CENTER);
             seccionGrupoActual.addContent(contentGrupoActual);
             addSection(seccionGrupoActual);
@@ -2227,10 +2265,25 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     actualizarBotonAsociarGrupoFamiliar();
                 }
             });
+            panelTablaIntegrantes.getScrollPane().setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+            AppV2ColumnFilterSupport.install(
+                    "RegistroGrupoFamiliarCandidatos",
+                    tablaIntegrantes,
+                    panelTablaIntegrantes.getScrollPane(),
+                    panelTablaIntegrantes,
+                    null,
+                    0);
 
             tablaGrupoActual.setRowHeight(26);
             tablaGrupoActual.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
             AppV2TableColumnSizer.applyWidths(tablaGrupoActual, 150, 130, 130, 150);
+            panelTablaGrupoActual.getScrollPane().setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+            AppV2ColumnFilterSupport.install(
+                    "RegistroGrupoFamiliarActual",
+                    tablaGrupoActual,
+                    panelTablaGrupoActual.getScrollPane(),
+                    panelTablaGrupoActual,
+                    null);
 
             JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             acciones.setOpaque(false);
@@ -2290,7 +2343,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     try {
                         GrupoFamiliarResultadoDTO resultado = get();
                         limpiarSeleccionGrupoFamiliar();
-                        refrescar();
+                        refrescar(idPrincipal);
                         JOptionPane.showMessageDialog(
                                 JPanelBandejaExpedientesNueva.this,
                                 resultado.getMensaje(),
@@ -2318,10 +2371,15 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 candidatosActuales = new ArrayList<GrupoFamiliarCandidatoDTO>();
                 modeloIntegrantes.setRowCount(0);
                 lblEstadoDeteccion.setText("Seleccione un expediente en la bandeja.");
+                lblExpedienteFocoGrupoFamiliar.setText("-");
+                panelTablaIntegrantes.setEmpty(true);
                 actualizarBotonAsociarGrupoFamiliar();
                 limpiarGrupoActual();
                 return;
             }
+            lblExpedienteFocoGrupoFamiliar.setText(
+                    valorUiGrupoFamiliar(expedientePrincipal.getNumeroExpediente()) + " / "
+                            + valorUiGrupoFamiliar(expedientePrincipal.getTitular()));
             lblEstadoDeteccion.setText("Buscando posibles integrantes...");
             cargarGrupoActual(idExpediente);
             final long sequence = ++secuenciaCargaGrupoFamiliar;
@@ -2359,6 +2417,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     } else {
                         lblEstadoDeteccion.setText(candidatosActuales.size() + " posible(s) integrante(s) detectado(s).");
                     }
+                    panelTablaIntegrantes.setEmpty(candidatosActuales.isEmpty());
+                    ajustarAlturaGrillaSinScrollVertical(tablaIntegrantes, panelTablaIntegrantes.getScrollPane());
                     actualizarBotonAsociarGrupoFamiliar();
                 }
             };
@@ -2395,6 +2455,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     lblEstadoGrupoActual.setText(integrantes.isEmpty()
                             ? "Este expediente aún no pertenece a un grupo familiar."
                             : integrantes.size() + " persona(s) en el grupo familiar.");
+                    panelTablaGrupoActual.setEmpty(integrantes.isEmpty());
+                    ajustarAlturaGrillaSinScrollVertical(tablaGrupoActual, panelTablaGrupoActual.getScrollPane());
                 }
             };
             worker.execute();
@@ -2403,6 +2465,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private void limpiarGrupoActual() {
             modeloGrupoActual.setRowCount(0);
             lblEstadoGrupoActual.setText("Sin grupo familiar.");
+            panelTablaGrupoActual.setEmpty(true);
         }
 
         private void actualizarBotonAsociarGrupoFamiliar() {
@@ -2469,8 +2532,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 protected void done() {
                     try {
                         GrupoFamiliarResultadoDTO resultado = get();
-                        refrescar();
-                        cargarPosiblesIntegrantes(expedienteFocoGrupoFamiliar);
+                        refrescar(idPrincipal);
                         JOptionPane.showMessageDialog(
                                 JPanelBandejaExpedientesNueva.this,
                                 resultado.getMensaje(),
@@ -3822,6 +3884,20 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             message = ex.getCause().getMessage();
         }
         return message == null ? "No se pudo cargar el panel de recepción." : message;
+    }
+
+    private static void ajustarAlturaGrillaSinScrollVertical(JTable table, JScrollPane scrollPane) {
+        if (table == null || scrollPane == null) {
+            return;
+        }
+        AppV2TableColumnSizer.sizeToContent(table);
+        scrollPane.setPreferredSize(null);
+        int anchoNatural = scrollPane.getPreferredSize().width;
+        int filas = Math.max(table.getRowCount(), 1);
+        int alturaEncabezado = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
+        int altura = filas * table.getRowHeight() + alturaEncabezado + 4;
+        scrollPane.setPreferredSize(new Dimension(anchoNatural, altura));
+        scrollPane.revalidate();
     }
 
     private static Color colorPlazo(Long dias) {
