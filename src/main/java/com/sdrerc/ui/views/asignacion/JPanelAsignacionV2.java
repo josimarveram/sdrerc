@@ -23,6 +23,7 @@ import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2RemoveActionButton;
+import com.sdrerc.ui.appv2.components.AppV2SearchAutocompleteSupport;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
@@ -287,6 +288,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblExpedienteFocoGrupoFamiliar = new JLabel("-");
     private final JLabel lblEstadoGrupoFamiliarActual = new JLabel("Sin grupo familiar.");
     private final JButton btnAsociarGrupoFamiliar = new JButton("Asociar al grupo familiar");
+    private final JButton btnAgregarPosibleIntegranteManual = new JButton("+");
+    private final AppV2SearchField campoBusquedaPosibleIntegranteManual =
+            new AppV2SearchField("Buscar por titular, N° expediente o SGD...", 18);
+    private final JPanel panelBusquedaPosibleIntegranteManual = new JPanel(new BorderLayout(4, 0));
     private final DefaultTableModel integrantesGrupoFamiliarModel = new DefaultTableModel(
             new Object[]{"", "N° expediente", "Titular", "Etapa/Estado", "Abogado asignado"}, 0) {
         @Override
@@ -796,22 +801,60 @@ public class JPanelAsignacionV2 extends JPanel {
         JPanel encabezadoDeteccion = new JPanel();
         encabezadoDeteccion.setOpaque(false);
         encabezadoDeteccion.setLayout(new BoxLayout(encabezadoDeteccion, BoxLayout.Y_AXIS));
+        JPanel filaTituloDeteccion = new JPanel(new BorderLayout(6, 0));
+        filaTituloDeteccion.setOpaque(false);
+        filaTituloDeteccion.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel tituloDeteccion = new JLabel("Coincidencias por apellidos del titular");
         tituloDeteccion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tituloDeteccion.setForeground(AppV2Theme.TEXT_PRIMARY);
-        tituloDeteccion.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnAgregarPosibleIntegranteManual.setToolTipText(
+                "Buscar y agregar manualmente otra solicitud como posible integrante, aunque no tenga alerta.");
+        btnAgregarPosibleIntegranteManual.setMargin(new Insets(0, 8, 0, 8));
+        btnAgregarPosibleIntegranteManual.setFocusable(false);
+        filaTituloDeteccion.add(tituloDeteccion, BorderLayout.CENTER);
+        filaTituloDeteccion.add(btnAgregarPosibleIntegranteManual, BorderLayout.EAST);
         JLabel ayudaDeteccion = new JLabel("<html>Marque las personas que realmente pertenecen a la misma familia. "
                 + "Solo se asigna \"Sí\" a Grupo Familiar; no se asocian expedientes entre sí ni se hereda "
                 + "número, equipo o abogado.</html>");
         ayudaDeteccion.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         ayudaDeteccion.setForeground(AppV2Theme.TEXT_SECONDARY);
         ayudaDeteccion.setAlignmentX(Component.LEFT_ALIGNMENT);
-        encabezadoDeteccion.add(tituloDeteccion);
+        panelBusquedaPosibleIntegranteManual.setOpaque(false);
+        panelBusquedaPosibleIntegranteManual.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panelBusquedaPosibleIntegranteManual.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+        panelBusquedaPosibleIntegranteManual.add(campoBusquedaPosibleIntegranteManual, BorderLayout.CENTER);
+        panelBusquedaPosibleIntegranteManual.setVisible(false);
+        encabezadoDeteccion.add(filaTituloDeteccion);
         encabezadoDeteccion.add(ayudaDeteccion);
+        encabezadoDeteccion.add(panelBusquedaPosibleIntegranteManual);
         contentDeteccion.add(encabezadoDeteccion, BorderLayout.NORTH);
         contentDeteccion.add(panelTablaIntegrantesGrupoFamiliar, BorderLayout.CENTER);
         seccionDeteccion.addContent(contentDeteccion);
         panel.addSection(seccionDeteccion);
+
+        btnAgregarPosibleIntegranteManual.addActionListener(e -> {
+            boolean mostrar = !panelBusquedaPosibleIntegranteManual.isVisible();
+            panelBusquedaPosibleIntegranteManual.setVisible(mostrar);
+            panelBusquedaPosibleIntegranteManual.revalidate();
+            panelBusquedaPosibleIntegranteManual.repaint();
+            if (mostrar) {
+                campoBusquedaPosibleIntegranteManual.requestFocusInWindow();
+            } else {
+                campoBusquedaPosibleIntegranteManual.setText("");
+            }
+        });
+        AppV2SearchAutocompleteSupport.attach(
+                campoBusquedaPosibleIntegranteManual,
+                2,
+                texto -> {
+                    Long idExpediente = expedienteFocoGrupoFamiliar == null
+                            ? null : expedienteFocoGrupoFamiliar.getIdExpediente();
+                    return idExpediente == null
+                            ? java.util.Collections.emptyList()
+                            : grupoFamiliarService.buscarPosiblesIntegrantesManual(idExpediente, texto);
+                },
+                candidato -> valorUi(candidato.getTitular()) + " — " + valorUi(candidato.getNumeroExpediente()),
+                this::agregarPosibleIntegranteManual);
 
         AppV2SideSectionPanel seccionAccion = new AppV2SideSectionPanel("Asociación");
         seccionAccion.addRow("Expediente", lblExpedienteFocoGrupoFamiliar);
@@ -4206,6 +4249,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void cargarPosiblesIntegrantesGrupoFamiliar(AsignacionExpedienteDTO expedientePrincipal) {
         expedienteFocoGrupoFamiliar = expedientePrincipal;
+        campoBusquedaPosibleIntegranteManual.setText("");
+        panelBusquedaPosibleIntegranteManual.setVisible(false);
         Long idExpediente = expedientePrincipal == null ? null : expedientePrincipal.getIdExpediente();
         if (idExpediente == null) {
             candidatosGrupoFamiliarActuales = new ArrayList<>();
@@ -4265,6 +4310,32 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         };
         worker.execute();
+    }
+
+    private void agregarPosibleIntegranteManual(GrupoFamiliarCandidatoDTO candidato) {
+        if (candidato == null || candidato.getIdExpediente() == null) {
+            return;
+        }
+        for (GrupoFamiliarCandidatoDTO existente : candidatosGrupoFamiliarActuales) {
+            if (candidato.getIdExpediente().equals(existente.getIdExpediente())) {
+                mostrarInfo("Esa solicitud ya está en la lista de posibles integrantes.");
+                return;
+            }
+        }
+        candidatosGrupoFamiliarActuales.add(candidato);
+        integrantesGrupoFamiliarModel.addRow(new Object[]{
+                Boolean.TRUE,
+                valorUi(candidato.getNumeroExpediente()),
+                valorUi(candidato.getTitular()),
+                DisplayNameMapperV2.etapa(candidato.getEtapaCodigo()) + " / "
+                        + DisplayNameMapperV2.estado(candidato.getEstadoCodigo()),
+                valorUi(candidato.getAbogadoAsignado())
+        });
+        AppV2TableColumnSizer.sizeToContent(integrantesGrupoFamiliarTable);
+        panelTablaIntegrantesGrupoFamiliar.setEmpty(false);
+        lblEstadoDeteccionGrupoFamiliar.setText(
+                candidatosGrupoFamiliarActuales.size() + " posible(s) integrante(s) detectado(s).");
+        actualizarBotonAsociarGrupoFamiliar();
     }
 
     private void cargarGrupoFamiliarActual(Long idExpediente) {

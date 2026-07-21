@@ -26,6 +26,10 @@ public class GrupoFamiliarService {
         return grupoFamiliarDAO.listarPosiblesIntegrantes(idExpediente);
     }
 
+    public List<GrupoFamiliarCandidatoDTO> buscarPosiblesIntegrantesManual(Long idExpediente, String texto) throws SQLException {
+        return grupoFamiliarDAO.buscarPosiblesIntegrantesManual(idExpediente, texto);
+    }
+
     public List<GrupoFamiliarIntegranteDTO> listarIntegrantesGrupoFamiliar(Long idExpediente) throws SQLException {
         return grupoFamiliarDAO.listarIntegrantesGrupoFamiliar(idExpediente);
     }

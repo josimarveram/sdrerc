@@ -119,6 +119,64 @@ public class GrupoFamiliarDAO {
         return candidatos;
     }
 
+    public List<GrupoFamiliarCandidatoDTO> buscarPosiblesIntegrantesManual(
+            Long idExpedientePrincipal, String texto) throws SQLException {
+        List<GrupoFamiliarCandidatoDTO> candidatos = new ArrayList<GrupoFamiliarCandidatoDTO>();
+        if (idExpedientePrincipal == null || !hasText(texto)) {
+            return candidatos;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String patron = "%" + texto.trim().toUpperCase(java.util.Locale.ROOT) + "%";
+            String sql = "SELECT e.id_expediente, e.numero_expediente, et.codigo etapa_codigo, es2.codigo estado_codigo, "
+                    + "p.id_persona, p.id_grupo_familiar, " + TITULAR_SQL + " AS titular, "
+                    + "ur.nombre_completo AS abogado_asignado "
+                    + "FROM expediente e "
+                    + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 "
+                    + "AND ep.tipo_relacion_persona = 'TITULAR' "
+                    + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                    + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                    + "JOIN estado_expediente es2 ON es2.id_estado = e.id_estado_actual "
+                    + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
+                    + "WHERE e.activo = 1 AND e.id_expediente <> ? "
+                    + "AND NVL((SELECT MAX(esol.grupo_familiar) FROM expediente_solicitud esol "
+                    + "  WHERE esol.id_expediente = e.id_expediente AND esol.activo = 1), 0) = 0 "
+                    + "AND NOT EXISTS (SELECT 1 FROM expediente_alerta eal "
+                    + "  WHERE eal.id_expediente = e.id_expediente AND eal.activo = 1 AND eal.atendida = 0 "
+                    + "  AND UPPER(TRIM(eal.mensaje)) = '" + ALERTA_POSIBLE_GRUPO_FAMILIAR.toUpperCase(java.util.Locale.ROOT) + "') "
+                    + "AND (UPPER(e.numero_expediente) LIKE ? "
+                    + "  OR UPPER(" + TITULAR_SQL + ") LIKE ? "
+                    + "  OR UPPER((SELECT MAX(esol2.numero_expediente_sgd) FROM expediente_solicitud esol2 "
+                    + "            WHERE esol2.id_expediente = e.id_expediente AND esol2.activo = 1)) LIKE ?) "
+                    + "AND ROWNUM <= 20 "
+                    + "ORDER BY " + TITULAR_SQL;
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpedientePrincipal);
+                ps.setString(2, patron);
+                ps.setString(3, patron);
+                ps.setString(4, patron);
+                try (ResultSet rs = ps.executeQuery()) {
+                    Set<Long> vistos = new HashSet<Long>();
+                    while (rs.next()) {
+                        Long idPersona = getLongOrNull(rs, "id_persona");
+                        if (idPersona == null || !vistos.add(idPersona)) {
+                            continue;
+                        }
+                        candidatos.add(new GrupoFamiliarCandidatoDTO(
+                                getLongOrNull(rs, "id_expediente"),
+                                rs.getString("numero_expediente"),
+                                idPersona,
+                                rs.getString("titular"),
+                                rs.getString("etapa_codigo"),
+                                rs.getString("estado_codigo"),
+                                rs.getString("abogado_asignado"),
+                                getLongOrNull(rs, "id_grupo_familiar")));
+                    }
+                }
+            }
+        }
+        return candidatos;
+    }
+
     public List<GrupoFamiliarIntegranteDTO> listarIntegrantesGrupoFamiliar(Long idExpediente) throws SQLException {
         List<GrupoFamiliarIntegranteDTO> integrantes = new ArrayList<GrupoFamiliarIntegranteDTO>();
         if (idExpediente == null) {
