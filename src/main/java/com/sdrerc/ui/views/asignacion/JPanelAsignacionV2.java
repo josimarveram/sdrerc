@@ -310,7 +310,8 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     };
     private final JTable grupoFamiliarActualTable = new AppV2Table(grupoFamiliarActualModel);
-    private final JScrollPane scrollGrupoFamiliarActual = new JScrollPane(grupoFamiliarActualTable);
+    private final AppV2TablePanel panelTablaGrupoFamiliarActual = new AppV2TablePanel(
+            grupoFamiliarActualTable, "Sin grupo familiar", "Este expediente aún no pertenece a un grupo familiar.");
     private List<GrupoFamiliarCandidatoDTO> candidatosGrupoFamiliarActuales = new ArrayList<>();
     private List<GrupoFamiliarIntegranteDTO> integrantesGrupoFamiliarActuales = new ArrayList<>();
     private AsignacionExpedienteDTO expedienteFocoGrupoFamiliar;
@@ -824,10 +825,11 @@ public class JPanelAsignacionV2 extends JPanel {
 
         AppV2SideSectionPanel seccionGrupoActual = new AppV2SideSectionPanel("Grupo familiar actual");
         seccionGrupoActual.addRow("Estado", lblEstadoGrupoFamiliarActual);
-        scrollGrupoFamiliarActual.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
-        scrollGrupoFamiliarActual.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollGrupoFamiliarActual.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
-        seccionGrupoActual.addContent(scrollGrupoFamiliarActual);
+        JPanel contentGrupoFamiliarActual = new JPanel(new BorderLayout());
+        contentGrupoFamiliarActual.setOpaque(false);
+        contentGrupoFamiliarActual.setPreferredSize(new Dimension(420, 180));
+        contentGrupoFamiliarActual.add(panelTablaGrupoFamiliarActual, BorderLayout.CENTER);
+        seccionGrupoActual.addContent(contentGrupoFamiliarActual);
         panel.addSection(seccionGrupoActual);
 
         integrantesGrupoFamiliarTable.setRowHeight(28);
@@ -857,8 +859,8 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2ColumnFilterSupport.install(
                 "AsignacionGrupoFamiliarActual",
                 grupoFamiliarActualTable,
-                scrollGrupoFamiliarActual,
-                scrollGrupoFamiliarActual,
+                panelTablaGrupoFamiliarActual.getScrollPane(),
+                panelTablaGrupoFamiliarActual,
                 null,
                 0);
 
@@ -4250,6 +4252,7 @@ public class JPanelAsignacionV2 extends JPanel {
             lblExpedienteFocoGrupoFamiliar.setText("-");
             actualizarBotonAsociarGrupoFamiliar();
             grupoFamiliarActualModel.setRowCount(0);
+            panelTablaGrupoFamiliarActual.setEmpty(true);
             lblEstadoGrupoFamiliarActual.setText("Sin grupo familiar.");
             return;
         }
@@ -4329,7 +4332,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             valorUi(integrante.getAbogadoAsignado())
                     });
                 }
-                ajustarAlturaGrillaSinScrollVertical(grupoFamiliarActualTable, scrollGrupoFamiliarActual);
+                panelTablaGrupoFamiliarActual.setEmpty(integrantes.isEmpty());
                 lblEstadoGrupoFamiliarActual.setText(integrantes.isEmpty()
                         ? "Este expediente aún no pertenece a un grupo familiar."
                         : integrantes.size() + " persona(s) en el grupo familiar.");
