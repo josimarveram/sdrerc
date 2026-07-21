@@ -2,6 +2,7 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 
 import com.sdrerc.application.sdrercapp.GrupoFamiliarHeuristicaService;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarCandidatoDTO;
+import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarEstadoAlertaDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarResultadoDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
@@ -345,6 +346,42 @@ public class GrupoFamiliarDAO {
                 }
                 throw new SQLException(ex.getMessage(), ex);
             }
+        }
+    }
+
+    public GrupoFamiliarEstadoAlertaDTO obtenerEstadoAlerta(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return new GrupoFamiliarEstadoAlertaDTO(false, null);
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String sql = "SELECT "
+                    + "NVL((SELECT MAX(esol.grupo_familiar) FROM expediente_solicitud esol "
+                    + "  WHERE esol.id_expediente = ? AND esol.activo = 1), 0) AS grupo_familiar, "
+                    + "(SELECT MAX(eal.mensaje) FROM expediente_alerta eal "
+                    + "  WHERE eal.id_expediente = ? AND eal.activo = 1 AND eal.atendida = 0 "
+                    + "  AND UPPER(TRIM(eal.mensaje)) = '" + ALERTA_POSIBLE_GRUPO_FAMILIAR.toUpperCase(java.util.Locale.ROOT) + "') AS mensaje_alerta "
+                    + "FROM dual";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                ps.setLong(2, idExpediente);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        boolean confirmado = rs.getInt("grupo_familiar") == 1;
+                        return new GrupoFamiliarEstadoAlertaDTO(confirmado, rs.getString("mensaje_alerta"));
+                    }
+                }
+            }
+        }
+        return new GrupoFamiliarEstadoAlertaDTO(false, null);
+    }
+
+    public void eliminarAlertaPosibleGrupoFamiliar(Long idExpediente, Long idUsuario) throws SQLException {
+        if (idExpediente == null) {
+            return;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            expedienteAlertaDAO.marcarAtendidas(
+                    conn, idExpediente, Collections.singletonList(ALERTA_POSIBLE_GRUPO_FAMILIAR), idUsuario);
         }
     }
 

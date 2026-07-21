@@ -14,6 +14,7 @@ import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarCandidatoDTO;
+import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarEstadoAlertaDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
@@ -24,6 +25,7 @@ import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2RemoveActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchActionButton;
+import com.sdrerc.ui.appv2.components.AppV2TrashActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchAutocompleteSupport;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
@@ -287,6 +289,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private JPanel panelSolicitudesAsociadas;
     private final JLabel lblEstadoDeteccionGrupoFamiliar = new JLabel("Seleccione un expediente en la bandeja.");
     private final JLabel lblExpedienteFocoGrupoFamiliar = new JLabel("-");
+    private final JLabel lblAlertaGrupoFamiliar = new JLabel("-");
+    private final AppV2TrashActionButton btnEliminarAlertaGrupoFamiliar = new AppV2TrashActionButton();
     private final JLabel lblEstadoGrupoFamiliarActual = new JLabel("Sin grupo familiar.");
     private final JButton btnAsociarGrupoFamiliar = new JButton("Asociar al grupo familiar");
     private final AppV2SearchActionButton btnAgregarPosibleIntegranteManual = new AppV2SearchActionButton();
@@ -856,7 +860,15 @@ public class JPanelAsignacionV2 extends JPanel {
                 this::agregarPosibleIntegranteManual);
 
         AppV2SideSectionPanel seccionAccion = new AppV2SideSectionPanel("Asociación");
-        seccionAccion.addRow("Expediente", lblExpedienteFocoGrupoFamiliar);
+        JPanel filaExpedienteFoco = new JPanel(new BorderLayout(6, 0));
+        filaExpedienteFoco.setOpaque(false);
+        btnEliminarAlertaGrupoFamiliar.setToolTipText("Eliminar alerta de Posible Grupo Familiar");
+        btnEliminarAlertaGrupoFamiliar.setVisible(false);
+        btnEliminarAlertaGrupoFamiliar.addActionListener(e -> eliminarAlertaGrupoFamiliarSeleccion());
+        filaExpedienteFoco.add(lblExpedienteFocoGrupoFamiliar, BorderLayout.CENTER);
+        filaExpedienteFoco.add(btnEliminarAlertaGrupoFamiliar, BorderLayout.EAST);
+        seccionAccion.addRow("Expediente", filaExpedienteFoco);
+        seccionAccion.addRow("Alerta", lblAlertaGrupoFamiliar);
         AppV2Theme.estilizarBotonPrimario(btnAsociarGrupoFamiliar);
         btnAsociarGrupoFamiliar.setEnabled(false);
         btnAsociarGrupoFamiliar.setToolTipText("Asocia las personas marcadas al mismo grupo familiar.");
@@ -4261,12 +4273,14 @@ public class JPanelAsignacionV2 extends JPanel {
             grupoFamiliarActualModel.setRowCount(0);
             panelTablaGrupoFamiliarActual.setEmpty(true);
             lblEstadoGrupoFamiliarActual.setText("Sin grupo familiar.");
+            actualizarAlertaGrupoFamiliar(null);
             return;
         }
         lblExpedienteFocoGrupoFamiliar.setText(
                 valorUi(expedientePrincipal.getNumeroExpediente()) + " / " + titularPrincipalVisual(expedientePrincipal));
         lblEstadoDeteccionGrupoFamiliar.setText("Buscando posibles integrantes...");
         cargarGrupoFamiliarActual(idExpediente);
+        cargarEstadoAlertaGrupoFamiliar(idExpediente);
         final long sequence = ++secuenciaCargaGrupoFamiliar;
         SwingWorker<List<GrupoFamiliarCandidatoDTO>, Void> worker =
                 new SwingWorker<List<GrupoFamiliarCandidatoDTO>, Void>() {
@@ -4335,6 +4349,92 @@ public class JPanelAsignacionV2 extends JPanel {
         lblEstadoDeteccionGrupoFamiliar.setText(
                 candidatosGrupoFamiliarActuales.size() + " posible(s) integrante(s) detectado(s).");
         actualizarBotonAsociarGrupoFamiliar();
+    }
+
+    private void cargarEstadoAlertaGrupoFamiliar(Long idExpediente) {
+        SwingWorker<GrupoFamiliarEstadoAlertaDTO, Void> worker = new SwingWorker<GrupoFamiliarEstadoAlertaDTO, Void>() {
+            @Override
+            protected GrupoFamiliarEstadoAlertaDTO doInBackground() throws Exception {
+                return grupoFamiliarService.obtenerEstadoAlerta(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (expedienteFocoGrupoFamiliar == null
+                        || !idExpediente.equals(expedienteFocoGrupoFamiliar.getIdExpediente())) {
+                    return;
+                }
+                GrupoFamiliarEstadoAlertaDTO estado;
+                try {
+                    estado = get();
+                } catch (Exception ex) {
+                    estado = null;
+                }
+                actualizarAlertaGrupoFamiliar(estado);
+            }
+        };
+        worker.execute();
+    }
+
+    private void actualizarAlertaGrupoFamiliar(GrupoFamiliarEstadoAlertaDTO estado) {
+        boolean tieneAlerta = estado != null && estado.tieneAlertaPosibleGrupoFamiliar();
+        if (tieneAlerta) {
+            lblAlertaGrupoFamiliar.setText(estado.getMensajeAlertaPosibleGrupoFamiliar());
+            lblAlertaGrupoFamiliar.setOpaque(true);
+            lblAlertaGrupoFamiliar.setBackground(AppV2Theme.SOFT_ORANGE);
+            lblAlertaGrupoFamiliar.setForeground(AppV2Theme.WARNING);
+            lblAlertaGrupoFamiliar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            lblAlertaGrupoFamiliar.setBorder(BorderFactory.createEmptyBorder(5, 9, 5, 9));
+        } else {
+            lblAlertaGrupoFamiliar.setText("-");
+            lblAlertaGrupoFamiliar.setOpaque(false);
+            lblAlertaGrupoFamiliar.setForeground(AppV2Theme.TEXT_SECONDARY);
+            lblAlertaGrupoFamiliar.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            lblAlertaGrupoFamiliar.setBorder(null);
+        }
+        lblAlertaGrupoFamiliar.revalidate();
+        lblAlertaGrupoFamiliar.repaint();
+        boolean confirmado = estado != null && estado.isGrupoFamiliarConfirmado();
+        btnEliminarAlertaGrupoFamiliar.setVisible(tieneAlerta && !confirmado);
+        btnEliminarAlertaGrupoFamiliar.getParent().revalidate();
+        btnEliminarAlertaGrupoFamiliar.getParent().repaint();
+    }
+
+    private void eliminarAlertaGrupoFamiliarSeleccion() {
+        if (expedienteFocoGrupoFamiliar == null || expedienteFocoGrupoFamiliar.getIdExpediente() == null) {
+            return;
+        }
+        final Long idExpediente = expedienteFocoGrupoFamiliar.getIdExpediente();
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se eliminará la alerta de Posible Grupo Familiar de este expediente.\n\n¿Desea continuar?",
+                "Grupo Familiar",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        setTrabajando(true, "Eliminando alerta...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                grupoFamiliarService.eliminarAlertaPosibleGrupoFamiliar(idExpediente);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    buscar(idExpediente);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo eliminar la alerta de Posible Grupo Familiar.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void cargarGrupoFamiliarActual(Long idExpediente) {
