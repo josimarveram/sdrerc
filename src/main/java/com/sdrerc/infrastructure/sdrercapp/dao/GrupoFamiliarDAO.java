@@ -382,6 +382,28 @@ public class GrupoFamiliarDAO {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             expedienteAlertaDAO.marcarAtendidas(
                     conn, idExpediente, Collections.singletonList(ALERTA_POSIBLE_GRUPO_FAMILIAR), idUsuario);
+            limpiarCriterioGrupoFamiliar(conn, idExpediente, idUsuario);
+        }
+    }
+
+    /**
+     * Al descartar la alerta "Posible Grupo Familiar" tambien se limpian los campos heuristicos
+     * de deteccion (criterio_grupo_familiar/observacion_grupo_familiar) en la solicitud activa mas
+     * reciente. Sin esto, la Bandeja Registro seguia contando el expediente como "Posible Grupo
+     * Familiar" en su KPI (revisa esos campos ademas de la alerta) aunque la alerta ya estuviera
+     * atendida, a diferencia de Asignacion (que solo confia en la alerta).
+     */
+    private void limpiarCriterioGrupoFamiliar(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_solicitud SET criterio_grupo_familiar = NULL, "
+                + "observacion_grupo_familiar = NULL, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente_solicitud = ("
+                + "  SELECT MAX(id_expediente_solicitud) FROM expediente_solicitud "
+                + "  WHERE id_expediente = ? AND activo = 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setLongOrNull(ps, 1, idUsuario);
+            ps.setLong(2, idExpediente);
+            ps.executeUpdate();
         }
     }
 
