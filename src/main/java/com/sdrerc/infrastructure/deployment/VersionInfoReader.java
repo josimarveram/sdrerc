@@ -23,16 +23,25 @@ import org.w3c.dom.NodeList;
  * cliente tiene instalado localmente en este momento, sin depender de una libreria JSON externa
  * (el formato es plano y lo controla el propio launcher/publish-sdrerc-release.ps1).
  *
- * <p>Si la app se ejecuta fuera del flujo del launcher (por ejemplo con {@code run-v2.ps1} en
- * desarrollo, donde no existe instalacion local con {@code version-local.json}), se usa como
- * respaldo la version declarada en {@code pom.xml} (la del directorio de trabajo actual, que en
- * desarrollo es la raiz del repositorio), etiquetada explicitamente como "desarrollo local" para
- * no confundirla con una version de release real publicada por el launcher.</p>
+ * <p>Orden de resolucion de {@link #leerEtiquetaVersion()}:</p>
+ * <ol>
+ *   <li>{@code version-local.json} de la copia que esta corriendo ahora mismo (directorio de
+ *   trabajo actual o junto al JAR en ejecucion) - caso normal cuando la app se abre via el
+ *   launcher real.</li>
+ *   <li>{@code version-local.json} del cliente instalado en {@code C:\SDRERC_CLIENTE\app} en esta
+ *   misma maquina, si existe - cubre desarrollo local (ej. {@code run-v2.ps1}) en una maquina que
+ *   tambien tiene el cliente LAN instalado, mostrando la version realmente desplegada como
+ *   referencia aunque se este corriendo la app desde el codigo fuente.</li>
+ *   <li>Version declarada en {@code pom.xml} del directorio de trabajo actual (en desarrollo, la
+ *   raiz del repositorio), etiquetada "(desarrollo local)" - ultimo respaldo cuando no hay ninguna
+ *   instalacion de cliente detectable en la maquina.</li>
+ * </ol>
  */
 public final class VersionInfoReader {
 
     private static final String ARCHIVO = "version-local.json";
     private static final String ARCHIVO_POM = "pom.xml";
+    private static final String RUTA_CLIENTE_INSTALADO = "C:\\SDRERC_CLIENTE\\app\\version-local.json";
     private static final Pattern CAMPO_VERSION = Pattern.compile("\"version\"\\s*:\\s*\"([^\"]*)\"");
     private static final Pattern CAMPO_FECHA = Pattern.compile("\"releaseDate\"\\s*:\\s*\"([^\"]*)\"");
 
@@ -40,12 +49,26 @@ public final class VersionInfoReader {
     }
 
     public static String leerEtiquetaVersion() {
-        String etiquetaInstalada = leerEtiquetaVersionInstalada();
-        return etiquetaInstalada != null ? etiquetaInstalada : leerEtiquetaVersionDesarrollo();
+        String etiquetaInstalada = leerEtiquetaVersionEnEjecucion();
+        if (etiquetaInstalada != null) {
+            return etiquetaInstalada;
+        }
+        String etiquetaClienteInstalado = leerEtiquetaVersionClienteInstalado();
+        if (etiquetaClienteInstalado != null) {
+            return etiquetaClienteInstalado;
+        }
+        return leerEtiquetaVersionDesarrollo();
     }
 
-    private static String leerEtiquetaVersionInstalada() {
-        File archivo = resolverArchivo();
+    private static String leerEtiquetaVersionEnEjecucion() {
+        return formatearEtiquetaDesdeArchivo(resolverArchivo(), "Versión ");
+    }
+
+    private static String leerEtiquetaVersionClienteInstalado() {
+        return formatearEtiquetaDesdeArchivo(new File(RUTA_CLIENTE_INSTALADO), "Versión cliente instalada ");
+    }
+
+    private static String formatearEtiquetaDesdeArchivo(File archivo, String prefijo) {
         if (archivo == null || !archivo.isFile()) {
             return null;
         }
@@ -56,7 +79,9 @@ public final class VersionInfoReader {
                 return null;
             }
             String fecha = formatearFecha(extraer(CAMPO_FECHA, contenido));
-            return fecha != null ? ("Versión " + version.trim() + " · " + fecha) : ("Versión " + version.trim());
+            return fecha != null
+                    ? (prefijo + version.trim() + " · " + fecha)
+                    : (prefijo + version.trim());
         } catch (IOException ex) {
             return null;
         }
