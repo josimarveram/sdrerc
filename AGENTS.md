@@ -739,6 +739,13 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Registro: se elimino el campo `lblGrupoFamiliarAsociar` (agregado en la tarea anterior de esta misma sesion junto con el resto de "Selección y alertas") y sus referencias en el constructor y en `actualizarResumenSeleccion(...)`.
 - La seccion "Selección y alertas" queda con 3 filas en ambos modulos: `Seleccionados`, `Recepción`, `Alertas`.
 
+### Correccion de datos: alertas "Posible Grupo Familiar" no atendidas en expedientes ya confirmados (22/07/2026)
+
+- Pedido del usuario: en el KPI "Posible Grupo Familiar" de la Bandeja Asignacion aparecian varios expedientes con Grupo Familiar = "Si" (ya confirmado) porque la alerta `EXPEDIENTE_ALERTA` correspondiente nunca se marco como atendida.
+- Causa: antes del fix de esta misma sesion en `GrupoFamiliarDAO.asociarGrupoFamiliar` (entrada "Panel de Grupo Familiar... se cerraba al asociar..."), ese flujo no llamaba a `ExpedienteAlertaDAO.marcarAtendidas` para la alerta `Posible Grupo Familiar`. El fix de codigo ya evita el problema hacia adelante; faltaba corregir los datos ya persistidos con esa inconsistencia.
+- `db/sdrerc_app/scripts/81_correccion_alerta_grupo_familiar_confirmado.sql` (autorizado y ejecutado): marca `atendida=1, activo=0` en `EXPEDIENTE_ALERTA` solo para alertas `Posible Grupo Familiar` activas cuyo expediente tiene, en su fila mas reciente y activa de `EXPEDIENTE_SOLICITUD`, `grupo_familiar = 1`. No toca expedientes con Grupo Familiar = "No" (siguen mostrando la alerta con normalidad). Idempotente (incluye diagnostico antes/despues, ambos de solo lectura).
+- Resultado de la ejecucion: 45 expedientes tenian la inconsistencia; el `UPDATE` corrigio las 45 filas; la verificacion posterior confirmo 0 pendientes. Esos expedientes ahora deberian mostrar "Sin Alerta" en la columna Alertas y ya no cuentan en el KPI "Posible Grupo Familiar".
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
