@@ -734,12 +734,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         tabY,
                         PANEL_RECEPCION_TAB_OVERHANG - 6,
                         PANEL_RECEPCION_TAB_HEIGHT);
-                tabPanelRegistrarGF.setBounds(
+                tabPanelAsociarDuplicados.setBounds(
                         0,
                         Math.min(height - (PANEL_RECEPCION_TAB_HEIGHT * 2) - 18, tabY + PANEL_RECEPCION_TAB_HEIGHT + 10),
                         PANEL_RECEPCION_TAB_OVERHANG - 6,
                         PANEL_RECEPCION_TAB_HEIGHT);
-                tabPanelAsociarDuplicados.setBounds(
+                tabPanelRegistrarGF.setBounds(
                         0,
                         Math.min(height - PANEL_RECEPCION_TAB_HEIGHT - 8, tabY + (PANEL_RECEPCION_TAB_HEIGHT + 10) * 2),
                         PANEL_RECEPCION_TAB_OVERHANG - 6,
@@ -749,8 +749,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         wrapper.setOpaque(false);
         wrapper.add(panelRecepcionCards);
         wrapper.add(tabPanelRecepcion);
-        wrapper.add(tabPanelRegistrarGF);
         wrapper.add(tabPanelAsociarDuplicados);
+        wrapper.add(tabPanelRegistrarGF);
         wrapper.setMinimumSize(new Dimension(PANEL_RECEPCION_ANCHO_MINIMO + PANEL_RECEPCION_TAB_OVERHANG, 0));
         wrapper.setPreferredSize(new Dimension(PANEL_RECEPCION_ANCHO_NORMAL + PANEL_RECEPCION_TAB_OVERHANG, 0));
         return wrapper;
@@ -1898,13 +1898,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private AppV2StackedSideTab crearTabRegistrarGF() {
+        Color accent = new Color(35, 138, 94);
         return new AppV2StackedSideTab(
-                "Registrar G.F",
+                "Grupo Fam.",
                 PANEL_RECEPCION_TAB_OVERHANG - 6,
                 PANEL_RECEPCION_TAB_HEIGHT,
-                new Color(248, 240, 225),
-                new Color(201, 129, 42),
-                new Color(156, 96, 22));
+                new Color(224, 245, 232),
+                accent,
+                accent.darker());
     }
 
     private AppV2StackedSideTab crearTabAsociarDuplicados() {
@@ -2224,7 +2225,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         private JPanelRegistrarGrupoFamiliarV2() {
             super("Grupo Familiar");
-            setAccentColor(AppV2Theme.TEAL);
+            setAccentColor(new Color(35, 138, 94));
 
             AppV2SideSectionPanel seccionMultiple = new AppV2SideSectionPanel("Selección múltiple marcada");
             seccionMultiple.addRow("Marcados", lblSeleccionados);
