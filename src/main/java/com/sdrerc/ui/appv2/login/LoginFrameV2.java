@@ -6,6 +6,7 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.sdrerc.application.sdrercapp.AutenticacionService;
 import com.sdrerc.domain.model.User;
+import com.sdrerc.infrastructure.deployment.VersionInfoReader;
 import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
@@ -265,12 +266,26 @@ public class LoginFrameV2 extends JFrame {
     }
 
     private JPanel crearFooter() {
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        JPanel footer = new JPanel();
         footer.setOpaque(false);
+        footer.setLayout(new BoxLayout(footer, BoxLayout.Y_AXIS));
+
         JLabel lbl = new JLabel("Registro Nacional de Identificación y Estado Civil");
+        lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
         lbl.setFont(AppV2Theme.fontPlain(11));
         lbl.setForeground(AppV2Theme.MUTED);
         footer.add(lbl);
+
+        String etiquetaVersion = VersionInfoReader.leerEtiquetaVersion();
+        if (etiquetaVersion != null) {
+            JLabel lblVersion = new JLabel(etiquetaVersion);
+            lblVersion.setAlignmentX(Component.CENTER_ALIGNMENT);
+            lblVersion.setFont(AppV2Theme.fontPlain(10));
+            lblVersion.setForeground(AppV2Theme.MUTED);
+            footer.add(Box.createVerticalStrut(2));
+            footer.add(lblVersion);
+        }
+
         return footer;
     }
 

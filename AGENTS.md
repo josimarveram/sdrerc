@@ -758,6 +758,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/domain/dto/sdrercapp/ExpedienteBandejaDTO.java`, `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/ExpedienteBandejaDAO.java`, `src/main/java/com/sdrerc/ui/views/expedienteconsola/JPanelBandejaExpedientesNueva.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores, `target/SDRERC-V2.jar` generado. No se ejecuto SQL (no aplicaba, es un fix de lectura/calculo en Java).
 
+### Version del paquete visible en el login (22/07/2026)
+
+- Pedido del usuario: mostrar en el login la version actual del empaquetado que se genera cada vez que el cliente se conecta/actualiza.
+- Fuente de la version: `scripts/client/sdrerc-launcher.ps1` ya escribia `version-local.json` (`app`, `version`, `releaseDate`, `zipFile`, `mainJar`, `minJavaVersion`, `notes`) dentro de `C:\SDRERC_CLIENTE\app` cada vez que aplicaba una actualizacion descargada de `D:\SDRERC_RELEASES\latest` (ver seccion Despliegue cliente-servidor); ese archivo queda junto a `SDRERC-V2.jar` y es el que el launcher usa para comparar version local vs remota en cada arranque. No existia forma de verla desde la UI.
+- Nueva clase `VersionInfoReader` (`infrastructure.deployment`, sin dependencia de libreria JSON externa: el formato lo controla el propio launcher, se parsea con regex simple sobre `"version"`/`"releaseDate"`). `leerEtiquetaVersion()` busca `version-local.json` primero en el directorio de trabajo actual (caso normal: el launcher inicia la app con `-WorkingDirectory $AppDir`) y si no esta ahi, junto al JAR en ejecucion (via `ProtectionDomain`/`CodeSource`); si no encuentra el archivo (por ejemplo corriendo con `run-v2.ps1` en desarrollo, sin pasar por el launcher) retorna `null` y no se muestra nada, no se inventa una version.
+- `LoginFrameV2.crearFooter()` agrega una segunda linea pequena bajo "Registro Nacional de Identificación y Estado Civil" con el texto `Versión <version> · <releaseDate en dd/MM/yyyy>` (mismo estilo `AppV2Theme.MUTED`), solo cuando `VersionInfoReader.leerEtiquetaVersion()` no es null.
+- Archivos: `src/main/java/com/sdrerc/infrastructure/deployment/VersionInfoReader.java` (nuevo), `src/main/java/com/sdrerc/ui/appv2/login/LoginFrameV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores, `target/SDRERC-V2.jar` generado; se verifico manualmente el parseo de un `version-local.json` de ejemplo (formato real que genera `ConvertTo-Json` de PowerShell, con `\r\n` y espacios extra alrededor de `:`) contra `VersionInfoReader.leerEtiquetaVersion()`, resultado correcto `"Versión 1.0.3 · 22/07/2026"`. No se ejecuto SQL.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
