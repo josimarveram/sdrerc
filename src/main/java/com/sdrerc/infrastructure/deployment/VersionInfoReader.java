@@ -9,12 +9,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
  * Lee {@code version-local.json}, el archivo que {@code scripts/client/sdrerc-launcher.ps1} escribe
@@ -30,17 +24,17 @@ import org.w3c.dom.NodeList;
  *   launcher real.</li>
  *   <li>{@code version-local.json} del cliente instalado en {@code C:\SDRERC_CLIENTE\app} en esta
  *   misma maquina, si existe - cubre desarrollo local (ej. {@code run-v2.ps1}) en una maquina que
- *   tambien tiene el cliente LAN instalado, mostrando la version realmente desplegada como
- *   referencia aunque se este corriendo la app desde el codigo fuente.</li>
- *   <li>Version declarada en {@code pom.xml} del directorio de trabajo actual (en desarrollo, la
- *   raiz del repositorio), etiquetada "(desarrollo local)" - ultimo respaldo cuando no hay ninguna
- *   instalacion de cliente detectable en la maquina.</li>
+ *   tambien tiene el cliente LAN instalado, mostrando la version realmente desplegada por el
+ *   launcher aunque se este corriendo la app desde el codigo fuente.</li>
  * </ol>
+ *
+ * <p>Deliberadamente NO hay un tercer respaldo que invente una version a partir de
+ * {@code pom.xml}: si ninguna de las dos fuentes reales existe, no se muestra nada. Mostrar la
+ * version de build de Maven confundia (aparecia como version real del cliente cuando no lo era).</p>
  */
 public final class VersionInfoReader {
 
     private static final String ARCHIVO = "version-local.json";
-    private static final String ARCHIVO_POM = "pom.xml";
     private static final String RUTA_CLIENTE_INSTALADO = "C:\\SDRERC_CLIENTE\\app\\version-local.json";
     private static final Pattern CAMPO_VERSION = Pattern.compile("\"version\"\\s*:\\s*\"([^\"]*)\"");
     private static final Pattern CAMPO_FECHA = Pattern.compile("\"releaseDate\"\\s*:\\s*\"([^\"]*)\"");
@@ -53,11 +47,7 @@ public final class VersionInfoReader {
         if (etiquetaInstalada != null) {
             return etiquetaInstalada;
         }
-        String etiquetaClienteInstalado = leerEtiquetaVersionClienteInstalado();
-        if (etiquetaClienteInstalado != null) {
-            return etiquetaClienteInstalado;
-        }
-        return leerEtiquetaVersionDesarrollo();
+        return leerEtiquetaVersionClienteInstalado();
     }
 
     private static String leerEtiquetaVersionEnEjecucion() {
@@ -83,36 +73,6 @@ public final class VersionInfoReader {
                     ? (prefijo + version.trim() + " · " + fecha)
                     : (prefijo + version.trim());
         } catch (IOException ex) {
-            return null;
-        }
-    }
-
-    private static String leerEtiquetaVersionDesarrollo() {
-        String version = leerVersionPomLocal();
-        return version == null ? null : ("Versión " + version + " (desarrollo local)");
-    }
-
-    private static String leerVersionPomLocal() {
-        File pom = new File(ARCHIVO_POM);
-        if (!pom.isFile()) {
-            return null;
-        }
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Element raiz = builder.parse(pom).getDocumentElement();
-            NodeList hijos = raiz.getChildNodes();
-            for (int i = 0; i < hijos.getLength(); i++) {
-                Node nodo = hijos.item(i);
-                if (nodo.getNodeType() == Node.ELEMENT_NODE && "version".equals(nodo.getNodeName())) {
-                    String texto = nodo.getTextContent();
-                    return texto == null || texto.trim().isEmpty() ? null : texto.trim();
-                }
-            }
-            return null;
-        } catch (Exception ex) {
             return null;
         }
     }
