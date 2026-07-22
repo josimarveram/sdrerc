@@ -2887,7 +2887,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private JPanel duplicadosWrapper;
         private final JLabel lblSeleccionadosAsociar = new JLabel("0 expediente(s) seleccionados");
         private final JLabel lblRecepcionAsociar = new JLabel("-");
-        private final JLabel lblGrupoFamiliarAsociar = new JLabel("-");
         private final JLabel lblEstadoAsociar = new JLabel("Seleccione un expediente en la bandeja.");
         private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
         private JPanel contentCoincidenciasDuplicados;
@@ -2910,8 +2909,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             seccionSeleccion.addRow("Seleccionados", lblSeleccionadosAsociar);
             lblRecepcionAsociar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
             seccionSeleccion.addRow("Recepción", lblRecepcionAsociar);
-            lblGrupoFamiliarAsociar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-            seccionSeleccion.addRow("Grupo familiar", lblGrupoFamiliarAsociar);
             seccionSeleccion.addRow("Alertas", lblEstadoAsociar);
             addSection(seccionSeleccion);
 
@@ -3043,15 +3040,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (expedientePrincipal == null) {
                 lblSeleccionadosAsociar.setText("0 expediente(s) seleccionados");
                 aplicarEstadoRecepcionAsociar("-");
-                lblGrupoFamiliarAsociar.setText("-");
                 return;
             }
             lblSeleccionadosAsociar.setText("1 expediente(s) seleccionados");
             String responsable = expedientePrincipal.getResponsableActual();
             aplicarEstadoRecepcionAsociar(responsable == null || responsable.trim().isEmpty()
                     ? "Sin abogado asignado" : responsable.trim());
-            String grupoFamiliar = expedientePrincipal.getGrupoFamiliar();
-            lblGrupoFamiliarAsociar.setText(grupoFamiliar == null || grupoFamiliar.trim().isEmpty() ? "No" : grupoFamiliar.trim());
         }
 
         private void aplicarEstadoRecepcionAsociar(String estado) {

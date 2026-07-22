@@ -732,6 +732,13 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
   4. `actualizarEstadoBoton()` ahora tambien actualiza el texto de `btnAsociarRapido` dinamicamente: `"Asociar todo (N)"` cuando hay candidatos, `"Sin relacionados pendientes"` cuando no hay (mismo mensaje literal que usa Asignacion para el caso vacio).
 - Deliberadamente NO se importo la arquitectura de seleccion multiple de Asignacion (checkboxes en la grilla principal que alimentan un resumen "Seleccionados: N" real y un modo "múltiple" completo en `actualizarPanelSeleccion`): Registro no tiene ese mecanismo para este flujo y agregarlo hubiera sido una funcionalidad nueva mucho mas grande que lo pedido (paridad visual/de contenido), con alto riesgo de romper el resto del archivo (que ya es muy extenso). El campo "Seleccionados" en Registro por eso siempre vale 1 o 0, reflejando el foco unico real de este panel, no una cuenta de multiples marcados.
 
+### Fila "Grupo familiar" eliminada de "Selección y alertas" en el panel Asociar (22/07/2026)
+
+- Pedido del usuario: quitar el campo "Grupo familiar" de la sección "Selección y alertas" en el panel "Asociar"/"Panel de Asociación" de ambos modulos (Registro y Asignacion); no es necesario en ese contexto.
+- Asignacion: se elimino el campo `lblGrupoFamiliar` (usado unicamente en esa fila del panel Asociar) y todas sus referencias (`crearResumenAsignacion()`, la rama de seleccion multiple de `actualizarPanelSeleccion()`, y `aplicarGrupoFamiliarPanel(...)`). Se conservo intacto `lblMarcaOperativaSeleccionada` (campo *distinto*, con el mismo texto "Grupo familiar" pero en la seccion "Datos de solicitud" de la lengueta "Datos" — ese si sigue mostrando la marca de grupo familiar, no fue parte de este pedido).
+- Registro: se elimino el campo `lblGrupoFamiliarAsociar` (agregado en la tarea anterior de esta misma sesion junto con el resto de "Selección y alertas") y sus referencias en el constructor y en `actualizarResumenSeleccion(...)`.
+- La seccion "Selección y alertas" queda con 3 filas en ambos modulos: `Seleccionados`, `Recepción`, `Alertas`.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

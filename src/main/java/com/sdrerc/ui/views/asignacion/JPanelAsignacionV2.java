@@ -258,7 +258,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblHojaEnvioSeleccionada = new JLabel("-");
     private final JLabel lblObservacionSeleccionada = new JLabel("-");
     private final JLabel lblRecepcionAbogado = new JLabel("-");
-    private final JLabel lblGrupoFamiliar = new JLabel("No");
     private final JLabel lblMarcaOperativaSeleccionada = new JLabel("No");
     private final JLabel lblOrigen = new JLabel("Registro / Registrado");
     private final JLabel lblDestino = new JLabel("Asignación / Asignado");
@@ -1085,7 +1084,6 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Selección y alertas");
         section.addRow("Seleccionados", lblSeleccionadosPanel);
         section.addRow("Recepción", lblRecepcionAbogado);
-        section.addRow("Grupo familiar", lblGrupoFamiliar);
         section.addRow("Alertas", lblRelacionados);
         panelSolicitudesAsociadas = crearPanelDocumentosRelacionados();
         panelSolicitudesAsociadas.setVisible(false);
@@ -1377,7 +1375,6 @@ public class JPanelAsignacionV2 extends JPanel {
         txtHojaEnvioAsignacion.setToolTipText("Número de hoja de envío de la asignación.");
         configurarLabelsDatosExpediente();
         lblRecepcionAbogado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lblGrupoFamiliar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         lblAbogadoAnalisisAsignacionValor.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         AppV2Theme.estilizarBotonPrimario(btnBuscar);
         AppV2Theme.estilizarBotonPrimario(btnAsignarSeleccionado);
@@ -3523,8 +3520,6 @@ public class JPanelAsignacionV2 extends JPanel {
             lblAbogadoAnalisisAsignacionValor.setText("Selección múltiple");
             lblAbogadoAnalisisAsignacionValor.setToolTipText("Los expedientes seleccionados pueden tener asignaciones diferentes.");
             aplicarEstadoRecepcion(lblRecepcionAbogado, "No aplica");
-            lblGrupoFamiliar.setText("Múltiple");
-            lblGrupoFamiliar.setToolTipText("Revise la columna Alertas de cada expediente seleccionado.");
             lblOrigen.setText("Registro / Registrado");
             lblDestino.setText("Asignación / Asignado");
             lblIngreso.setText("Múltiple");
@@ -4793,14 +4788,11 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void aplicarGrupoFamiliarPanel(AsignacionExpedienteDTO item) {
         if (item == null) {
-            lblGrupoFamiliar.setText("No");
-            lblGrupoFamiliar.setToolTipText(null);
             lblMarcaOperativaSeleccionada.setText("No");
             lblMarcaOperativaSeleccionada.setToolTipText(null);
             return;
         }
         String valorGrupo = item.isGrupoFamiliar() ? "Sí" : "No";
-        lblGrupoFamiliar.setText(valorGrupo);
         lblMarcaOperativaSeleccionada.setText(valorGrupo);
         StringBuilder tooltip = new StringBuilder();
         if (!item.getCriterioGrupoFamiliar().isEmpty()) {
@@ -4818,7 +4810,6 @@ public class JPanelAsignacionV2 extends JPanel {
             }
             tooltip.append("Considere asignar solicitudes relacionadas al mismo abogado.");
         }
-        lblGrupoFamiliar.setToolTipText(tooltip.length() == 0 ? null : tooltip.toString());
         lblMarcaOperativaSeleccionada.setToolTipText(tooltip.length() == 0 ? null : tooltip.toString());
     }
 
