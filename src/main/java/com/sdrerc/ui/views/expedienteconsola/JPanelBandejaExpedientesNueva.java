@@ -2883,10 +2883,14 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
         };
         private final JTable tablaDuplicados = new AppV2Table(modeloDuplicados);
-        private final AppV2TablePanel panelTablaDuplicados = new AppV2TablePanel(
-                tablaDuplicados, "Sin duplicados detectados", "No hay posibles duplicados para el expediente seleccionado.");
+        private final JScrollPane duplicadosScroll = new JScrollPane(tablaDuplicados);
+        private JPanel duplicadosWrapper;
+        private final JLabel lblSeleccionadosAsociar = new JLabel("0 expediente(s) seleccionados");
+        private final JLabel lblRecepcionAsociar = new JLabel("-");
+        private final JLabel lblGrupoFamiliarAsociar = new JLabel("-");
         private final JLabel lblEstadoAsociar = new JLabel("Seleccione un expediente en la bandeja.");
         private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
+        private JPanel contentCoincidenciasDuplicados;
         private final JButton btnAsociarDuplicados = new JButton("Asociar seleccionados");
         private final JButton btnAsociarRapido = new JButton("Asociar todo");
         private final JButton btnGenerarNumeroExpediente = new JButton("Generar número de expediente");
@@ -2897,32 +2901,48 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private long secuenciaCargaDuplicados;
 
         private JPanelAsociarDuplicadosRecepcionV2() {
-            super("Asociar duplicados");
+            super("Panel de Asociación");
             setAccentColor(new Color(198, 121, 31));
 
             AppV2SideSectionPanel seccionSeleccion = new AppV2SideSectionPanel("Selección y alertas");
-            seccionSeleccion.addRow("Estado", lblEstadoAsociar);
-            JPanel content = new JPanel(new BorderLayout(6, 6));
-            content.setOpaque(false);
-            content.setPreferredSize(new Dimension(320, 220));
+            lblSeleccionadosAsociar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            lblSeleccionadosAsociar.setForeground(AppV2Theme.PRIMARY);
+            seccionSeleccion.addRow("Seleccionados", lblSeleccionadosAsociar);
+            lblRecepcionAsociar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            seccionSeleccion.addRow("Recepción", lblRecepcionAsociar);
+            lblGrupoFamiliarAsociar.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+            seccionSeleccion.addRow("Grupo familiar", lblGrupoFamiliarAsociar);
+            seccionSeleccion.addRow("Alertas", lblEstadoAsociar);
+            addSection(seccionSeleccion);
+
+            contentCoincidenciasDuplicados = new JPanel(new BorderLayout(6, 6));
+            contentCoincidenciasDuplicados.setOpaque(false);
             JPanel encabezadoTabla = new JPanel();
             encabezadoTabla.setOpaque(false);
             encabezadoTabla.setLayout(new BoxLayout(encabezadoTabla, BoxLayout.Y_AXIS));
-            JLabel tituloTabla = new JLabel("Coincidencias por N° de acta y titular");
+            JLabel tituloTabla = new JLabel("Solicitudes asociadas");
             tituloTabla.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
             tituloTabla.setForeground(AppV2Theme.TEXT_PRIMARY);
             tituloTabla.setAlignmentX(Component.LEFT_ALIGNMENT);
-            JLabel ayudaTabla = new JLabel("<html>El expediente <b>principal</b> es el que ya tiene número. "
-                    + "Marque el/los <b>potenciales duplicados</b> (sin número) para asociarlos a él.</html>");
+            JLabel ayudaTabla = new JLabel("<html>Marque el/los expedientes <b>sin número</b> (potenciales duplicados) "
+                    + "para asociarlos al expediente principal, que es el que ya tiene número.</html>");
             ayudaTabla.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
             ayudaTabla.setForeground(AppV2Theme.TEXT_SECONDARY);
             ayudaTabla.setAlignmentX(Component.LEFT_ALIGNMENT);
             encabezadoTabla.add(tituloTabla);
             encabezadoTabla.add(ayudaTabla);
-            content.add(encabezadoTabla, BorderLayout.NORTH);
-            content.add(panelTablaDuplicados, BorderLayout.CENTER);
-            seccionSeleccion.addContent(content);
-            addSection(seccionSeleccion);
+            contentCoincidenciasDuplicados.add(encabezadoTabla, BorderLayout.NORTH);
+
+            duplicadosScroll.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
+            duplicadosScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            duplicadosScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+            duplicadosWrapper = new JPanel(new BorderLayout(0, 0));
+            duplicadosWrapper.setOpaque(false);
+            duplicadosWrapper.add(duplicadosScroll, BorderLayout.WEST);
+            contentCoincidenciasDuplicados.add(duplicadosWrapper, BorderLayout.CENTER);
+            seccionSeleccion.addContent(contentCoincidenciasDuplicados);
+            mostrarCoincidenciasDuplicados(false);
+            ajustarTamanoDuplicados();
 
             AppV2SideSectionPanel seccionRapida = new AppV2SideSectionPanel("Asociación rápida");
             seccionRapida.addRow("Expediente principal", lblExpedientePrincipalAsociacion);
@@ -2965,9 +2985,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             Long idExpediente = expedientePrincipal == null ? null : expedientePrincipal.getIdExpediente();
             idExpedientePrincipalDuplicados = idExpediente;
             actualizarDecisionNumero();
+            actualizarResumenSeleccion(expedientePrincipal);
             if (idExpediente == null) {
                 duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
                 modeloDuplicados.setRowCount(0);
+                mostrarCoincidenciasDuplicados(false);
                 lblEstadoAsociar.setText("Seleccione un expediente en la bandeja.");
                 lblExpedientePrincipalAsociacion.setText("-");
                 actualizarEstadoBoton();
@@ -3004,15 +3026,80 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         });
                     }
                     if (duplicadosActuales.isEmpty()) {
-                        lblEstadoAsociar.setText("No se detectaron posibles duplicados.");
+                        lblEstadoAsociar.setText("Sin alerta de relacionados.");
                     } else {
                         lblEstadoAsociar.setText(duplicadosActuales.size() + " posible(s) duplicado(s) detectado(s).");
                     }
+                    mostrarCoincidenciasDuplicados(!duplicadosActuales.isEmpty());
+                    ajustarTamanoDuplicados();
                     actualizarEstadoBoton();
                     actualizarEtiquetaPrincipalPorSeleccion();
                 }
             };
             worker.execute();
+        }
+
+        private void actualizarResumenSeleccion(ExpedienteBandejaDTO expedientePrincipal) {
+            if (expedientePrincipal == null) {
+                lblSeleccionadosAsociar.setText("0 expediente(s) seleccionados");
+                aplicarEstadoRecepcionAsociar("-");
+                lblGrupoFamiliarAsociar.setText("-");
+                return;
+            }
+            lblSeleccionadosAsociar.setText("1 expediente(s) seleccionados");
+            String responsable = expedientePrincipal.getResponsableActual();
+            aplicarEstadoRecepcionAsociar(responsable == null || responsable.trim().isEmpty()
+                    ? "Sin abogado asignado" : responsable.trim());
+            String grupoFamiliar = expedientePrincipal.getGrupoFamiliar();
+            lblGrupoFamiliarAsociar.setText(grupoFamiliar == null || grupoFamiliar.trim().isEmpty() ? "No" : grupoFamiliar.trim());
+        }
+
+        private void aplicarEstadoRecepcionAsociar(String estado) {
+            String text = estado == null || estado.trim().isEmpty() ? "-" : estado.trim();
+            lblRecepcionAsociar.setText(text);
+            lblRecepcionAsociar.setToolTipText(text);
+            if ("Recibido por abogado".equalsIgnoreCase(text)) {
+                lblRecepcionAsociar.setForeground(AppV2Theme.SUCCESS);
+            } else if ("Sin abogado asignado".equalsIgnoreCase(text)) {
+                lblRecepcionAsociar.setForeground(AppV2Theme.WARNING);
+            } else {
+                lblRecepcionAsociar.setForeground(AppV2Theme.TEXT_SECONDARY);
+            }
+        }
+
+        private void mostrarCoincidenciasDuplicados(boolean visible) {
+            if (contentCoincidenciasDuplicados == null) {
+                return;
+            }
+            contentCoincidenciasDuplicados.setVisible(visible);
+        }
+
+        private void ajustarTamanoDuplicados() {
+            if (duplicadosScroll == null || tablaDuplicados == null) {
+                return;
+            }
+            int ancho = 0;
+            for (int i = 0; i < tablaDuplicados.getColumnCount(); i++) {
+                ancho += tablaDuplicados.getColumnModel().getColumn(i).getPreferredWidth();
+            }
+            ancho += tablaDuplicados.getIntercellSpacing().width;
+            int altoEncabezado = tablaDuplicados.getTableHeader() != null
+                    ? tablaDuplicados.getTableHeader().getPreferredSize().height
+                    : 28;
+            int altoFilas = tablaDuplicados.getRowCount() * tablaDuplicados.getRowHeight();
+            int altoHorizontalBarra = duplicadosScroll.getHorizontalScrollBar() != null
+                    ? duplicadosScroll.getHorizontalScrollBar().getPreferredSize().height
+                    : 16;
+            int alto = Math.max(altoEncabezado + altoFilas + altoHorizontalBarra + 8,
+                    altoEncabezado + tablaDuplicados.getRowHeight() + altoHorizontalBarra + 8);
+            Dimension size = new Dimension(Math.max(ancho, 240), Math.max(alto, 64));
+            tablaDuplicados.setPreferredScrollableViewportSize(size);
+            duplicadosScroll.setPreferredSize(size);
+            duplicadosScroll.setMinimumSize(size);
+            if (duplicadosWrapper != null) {
+                duplicadosWrapper.revalidate();
+                duplicadosWrapper.repaint();
+            }
         }
 
         private String textoExpedientePrincipal(ExpedienteBandejaDTO expedientePrincipal) {
@@ -3130,6 +3217,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             boolean hayCandidatos = idExpedientePrincipalDuplicados != null && !duplicadosActuales.isEmpty();
             btnAsociarDuplicados.setEnabled(hayCandidatos);
             btnAsociarRapido.setEnabled(hayCandidatos);
+            btnAsociarRapido.setText(hayCandidatos
+                    ? "Asociar todo (" + duplicadosActuales.size() + ")"
+                    : "Sin relacionados pendientes");
         }
 
         private void actualizarDecisionNumero() {
