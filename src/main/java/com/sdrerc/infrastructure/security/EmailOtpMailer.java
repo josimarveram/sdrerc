@@ -71,7 +71,7 @@ public final class EmailOtpMailer {
         String host = resolveValue(config, PROP_HOST, ENV_HOST);
         String puerto = resolveValueConDefecto(config, PROP_PORT, ENV_PORT, "587");
         String usuario = resolveValue(config, PROP_USER, ENV_USER);
-        String password = resolveValue(config, PROP_PASSWORD, ENV_PASSWORD);
+        String password = quitarEspacios(resolveValue(config, PROP_PASSWORD, ENV_PASSWORD));
         String remitente = resolveValue(config, PROP_FROM, ENV_FROM);
         if (remitente == null) {
             remitente = usuario;
@@ -163,6 +163,16 @@ public final class EmailOtpMailer {
     private static String resolveValueConDefecto(Properties config, String propertyName, String envName, String defecto) {
         String value = resolveValue(config, propertyName, envName);
         return value != null ? value : defecto;
+    }
+
+    /**
+     * Las contraseñas de aplicación de Gmail se muestran agrupadas en bloques de 4 caracteres
+     * separados por espacios (ej. "abcd efgh ijkl mnop") solo para que se lean fácil; el valor
+     * real no tiene espacios. Se quitan todos (no solo los de los extremos) para que la
+     * autenticación SMTP no falle si se pegó tal cual la muestra Google.
+     */
+    private static String quitarEspacios(String value) {
+        return value == null ? null : value.replaceAll("\\s+", "");
     }
 
     private static String trimToNull(String value) {
