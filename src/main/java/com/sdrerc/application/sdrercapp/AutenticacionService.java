@@ -2,10 +2,12 @@ package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAutenticacionDTO;
 import com.sdrerc.domain.model.User;
+import com.sdrerc.infrastructure.security.EmailOtpMailer;
 import com.sdrerc.infrastructure.security.PasswordEncoder;
 import com.sdrerc.infrastructure.security.TotpSecretCipher;
 import com.sdrerc.infrastructure.security.TotpService;
 import com.sdrerc.infrastructure.sdrercapp.dao.UsuarioDAO;
+import com.sdrerc.infrastructure.sdrercapp.dao.UsuarioEmailOtpDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.UsuarioTotpBackupCodeDAO;
 import java.security.SecureRandom;
 import java.sql.SQLException;
@@ -38,14 +40,17 @@ public class AutenticacionService {
 
     private final UsuarioDAO usuarioDAO;
     private final UsuarioTotpBackupCodeDAO backupCodeDAO;
+    private final UsuarioEmailOtpDAO emailOtpDAO;
 
     public AutenticacionService() {
-        this(new UsuarioDAO(), new UsuarioTotpBackupCodeDAO());
+        this(new UsuarioDAO(), new UsuarioTotpBackupCodeDAO(), new UsuarioEmailOtpDAO());
     }
 
-    public AutenticacionService(UsuarioDAO usuarioDAO, UsuarioTotpBackupCodeDAO backupCodeDAO) {
+    public AutenticacionService(UsuarioDAO usuarioDAO, UsuarioTotpBackupCodeDAO backupCodeDAO,
+            UsuarioEmailOtpDAO emailOtpDAO) {
         this.usuarioDAO = usuarioDAO;
         this.backupCodeDAO = backupCodeDAO;
+        this.emailOtpDAO = emailOtpDAO;
     }
 
     public ResultadoLogin iniciarLogin(String username, String password) throws SQLException {
@@ -66,7 +71,8 @@ public class AutenticacionService {
                 usuario.getUsername(),
                 usuario.getNombreCompleto(),
                 usuario.isDebeCambiarPassword(),
-                usuario.isTotpHabilitado());
+                usuario.isTotpHabilitado(),
+                usuario.getCorreo());
     }
 
     public void cambiarPasswordObligatorio(Long idUsuario, String nuevaPassword) throws SQLException {
@@ -139,6 +145,53 @@ public class AutenticacionService {
         throw new IllegalArgumentException(MENSAJE_CODIGO_INVALIDO);
     }
 
+    /**
+     * Genera un código nuevo y lo envía al correo registrado del usuario. Se usa tanto para el
+     * primer envío tras las credenciales como para "reenviar código".
+     */
+    public void enviarCodigoCorreo(Long idUsuario) throws SQLException {
+        if (idUsuario == null) {
+            throw new IllegalStateException("Sesión de login inválida.");
+        }
+        UsuarioAutenticacionDTO usuario = usuarioDAO.obtenerAutenticacionPorId(idUsuario);
+        if (usuario == null || usuario.getCorreo() == null || usuario.getCorreo().trim().isEmpty()) {
+            throw new IllegalStateException("El usuario no tiene un correo registrado.");
+        }
+        String codigo = emailOtpDAO.generarYGuardar(idUsuario);
+        EmailOtpMailer.enviarCodigo(usuario.getCorreo().trim(), usuario.getNombreCompleto(), codigo);
+    }
+
+    public void validarCodigoCorreo(Long idUsuario, String codigoIngresado) throws SQLException {
+        if (idUsuario == null) {
+            throw new IllegalStateException("Sesión de login inválida.");
+        }
+        UsuarioAutenticacionDTO usuario = usuarioDAO.obtenerAutenticacionPorId(idUsuario);
+        if (usuario == null) {
+            throw new IllegalStateException("Sesión de login inválida.");
+        }
+        validarNoBloqueado(usuario);
+        if (!emailOtpDAO.consumirSiValido(idUsuario, codigoIngresado)) {
+            usuarioDAO.registrarIntentoFallido(idUsuario, MAX_INTENTOS_FALLIDOS, MINUTOS_BLOQUEO);
+            throw new IllegalArgumentException(MENSAJE_CODIGO_INVALIDO);
+        }
+    }
+
+    /** Enmascara el correo para mostrarlo en el login sin exponerlo completo (ej. "jo***@gmail.com"). */
+    public static String enmascararCorreo(String correo) {
+        if (correo == null || correo.trim().isEmpty()) {
+            return "";
+        }
+        String valor = correo.trim();
+        int arroba = valor.indexOf('@');
+        if (arroba <= 1) {
+            return valor;
+        }
+        String local = valor.substring(0, arroba);
+        String dominio = valor.substring(arroba);
+        String visible = local.substring(0, Math.min(2, local.length()));
+        return visible + "***" + dominio;
+    }
+
     public User completarLogin(Long idUsuario) throws SQLException {
         if (idUsuario == null) {
             throw new IllegalStateException("Sesión de login inválida.");
@@ -202,14 +255,16 @@ public class AutenticacionService {
         private final String nombreCompleto;
         private final boolean debeCambiarPassword;
         private final boolean totpHabilitado;
+        private final String correo;
 
         public ResultadoLogin(Long idUsuario, String username, String nombreCompleto,
-                boolean debeCambiarPassword, boolean totpHabilitado) {
+                boolean debeCambiarPassword, boolean totpHabilitado, String correo) {
             this.idUsuario = idUsuario;
             this.username = username;
             this.nombreCompleto = nombreCompleto;
             this.debeCambiarPassword = debeCambiarPassword;
             this.totpHabilitado = totpHabilitado;
+            this.correo = correo;
         }
 
         public Long getIdUsuario() {
@@ -230,6 +285,14 @@ public class AutenticacionService {
 
         public boolean isTotpHabilitado() {
             return totpHabilitado;
+        }
+
+        public String getCorreo() {
+            return correo;
+        }
+
+        public boolean isTieneCorreo() {
+            return correo != null && !correo.trim().isEmpty();
         }
     }
 

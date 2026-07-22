@@ -198,7 +198,7 @@ public class UsuarioDAO {
             return null;
         }
         String sql = "SELECT id_usuario, username, nombre_completo, password_hash, activo, estado, "
-                + "debe_cambiar_password, totp_secret, totp_habilitado, intentos_fallidos, bloqueado_hasta "
+                + "debe_cambiar_password, totp_secret, totp_habilitado, intentos_fallidos, bloqueado_hasta, correo "
                 + "FROM usuario "
                 + "WHERE UPPER(username) = ? AND activo = 1 AND UPPER(estado) = 'ACTIVO'";
         try (Connection conn = SdrercAppConnection.getConnection();
@@ -219,7 +219,7 @@ public class UsuarioDAO {
             return null;
         }
         String sql = "SELECT id_usuario, username, nombre_completo, password_hash, activo, estado, "
-                + "debe_cambiar_password, totp_secret, totp_habilitado, intentos_fallidos, bloqueado_hasta "
+                + "debe_cambiar_password, totp_secret, totp_habilitado, intentos_fallidos, bloqueado_hasta, correo "
                 + "FROM usuario WHERE id_usuario = ?";
         try (Connection conn = SdrercAppConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -342,6 +342,7 @@ public class UsuarioDAO {
         dto.setTotpHabilitado(rs.getInt("totp_habilitado") == 1);
         dto.setIntentosFallidos(rs.getInt("intentos_fallidos"));
         dto.setBloqueadoHasta(toLocalDateTime(rs.getTimestamp("bloqueado_hasta")));
+        dto.setCorreo(rs.getString("correo"));
         return dto;
     }
 

@@ -70,6 +70,13 @@
             <version>3.5.3</version>
         </dependency>
 
+        <!-- Jakarta Mail: envio de codigo OTP por correo electronico (2FA, login) -->
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>

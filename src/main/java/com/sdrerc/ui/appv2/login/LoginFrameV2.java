@@ -42,9 +42,13 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 /**
- * Login premium con doble autenticación (contraseña + TOTP) para SDRERC V2, contra la tabla
+ * Login premium con doble autenticación (contraseña + 2FA) para SDRERC V2, contra la tabla
  * {@code usuario} de SDRERC_APP. Orquesta los pasos: credenciales -&gt; cambio de contraseña
- * obligatorio (si aplica) -&gt; enrolamiento o verificación TOTP -&gt; sesión.
+ * obligatorio (si aplica) -&gt; segundo factor -&gt; sesión. El segundo factor es correo electrónico
+ * (código de un solo uso enviado por SMTP) si el usuario tiene {@code correo} registrado, con
+ * authenticator TOTP como alternativa (enlace "Prefiero usar una app autenticadora"); si no tiene
+ * correo, cae directo a TOTP (enrolamiento la primera vez, verificación después), igual que antes
+ * de agregar el correo.
  *
  * <p>Al autenticar con éxito, fija {@code SessionContext.setUsuarioActual(...)} y luego invoca el
  * callback {@code onLoginExitoso}, que típicamente abre {@code MenuPrincipalV2}.</p>
@@ -76,6 +80,7 @@ public class LoginFrameV2 extends JFrame {
     private PasoCambioPasswordPanel panelCambioPassword;
     private PasoTotpEnrolarPanel panelTotpEnrolar;
     private PasoTotpVerificarPanel panelTotpVerificar;
+    private PasoEmailVerificarPanel panelEmailVerificar;
 
     private AutenticacionService.ResultadoLogin resultadoLoginActual;
 
@@ -136,6 +141,27 @@ public class LoginFrameV2 extends JFrame {
             @Override
             public void onConfirmarCodigo(String codigo) {
                 verificarTotp(codigo);
+            }
+
+            @Override
+            public void onCancelar() {
+                volverACredenciales();
+            }
+        });
+        panelEmailVerificar = new PasoEmailVerificarPanel(new PasoEmailVerificarPanel.Listener() {
+            @Override
+            public void onConfirmarCodigo(String codigo) {
+                verificarCodigoCorreo(codigo);
+            }
+
+            @Override
+            public void onReenviarCodigo() {
+                reenviarCodigoCorreo();
+            }
+
+            @Override
+            public void onUsarAutenticador() {
+                usarAutenticadorComoAlternativa();
             }
 
             @Override
@@ -348,6 +374,19 @@ public class LoginFrameV2 extends JFrame {
         if (resultadoLoginActual.isDebeCambiarPassword()) {
             panelCambioPassword.limpiar();
             mostrarPaso(panelCambioPassword);
+        } else {
+            enrutarSegundoFactor();
+        }
+    }
+
+    /**
+     * Decide el segundo factor a mostrar: correo electrónico como primera opción (si el usuario
+     * tiene {@code correo} registrado), authenticator TOTP como alternativa (enrolamiento la
+     * primera vez, verificación en logins posteriores) exactamente como antes de agregar correo.
+     */
+    private void enrutarSegundoFactor() {
+        if (resultadoLoginActual.isTieneCorreo()) {
+            enviarCodigoCorreoYMostrarPaso();
         } else if (!resultadoLoginActual.isTotpHabilitado()) {
             iniciarEnrolamientoTotp();
         } else {
@@ -387,13 +426,7 @@ public class LoginFrameV2 extends JFrame {
                     mostrarErrorEnPaso(mensajeAmigable(error));
                     return;
                 }
-                if (!resultadoLoginActual.isTotpHabilitado()) {
-                    iniciarEnrolamientoTotp();
-                } else {
-                    panelTotpVerificar.reset();
-                    mostrarPaso(panelTotpVerificar);
-                    panelTotpVerificar.enfocar();
-                }
+                enrutarSegundoFactor();
             }
         }.execute();
     }
@@ -511,6 +544,109 @@ public class LoginFrameV2 extends JFrame {
                 completarLogin();
             }
         }.execute();
+    }
+
+    // ---------------------------------------------------------------
+    // Paso 3c: verificación por correo (primera opción de 2FA)
+    // ---------------------------------------------------------------
+
+    private void enviarCodigoCorreoYMostrarPaso() {
+        overlay.mostrar("Enviando código a tu correo");
+        new SwingWorker<Void, Void>() {
+            private Exception error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    autenticacionService.enviarCodigoCorreo(resultadoLoginActual.getIdUsuario());
+                } catch (Exception ex) {
+                    error = ex;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                overlay.ocultar();
+                if (error != null) {
+                    mostrarErrorEnvioCorreoYUsarAlternativa(error);
+                    return;
+                }
+                panelEmailVerificar.reset();
+                mostrarPaso(panelEmailVerificar);
+                panelEmailVerificar.mostrarCorreoEnviado(
+                        AutenticacionService.enmascararCorreo(resultadoLoginActual.getCorreo()));
+                panelEmailVerificar.enfocar();
+            }
+        }.execute();
+    }
+
+    private void reenviarCodigoCorreo() {
+        new SwingWorker<Void, Void>() {
+            private Exception error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    autenticacionService.enviarCodigoCorreo(resultadoLoginActual.getIdUsuario());
+                } catch (Exception ex) {
+                    error = ex;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                if (error != null) {
+                    mostrarErrorEnPaso(mensajeAmigable(error));
+                }
+            }
+        }.execute();
+    }
+
+    private void verificarCodigoCorreo(String codigo) {
+        overlay.mostrar("Verificando código");
+        new SwingWorker<Void, Void>() {
+            private Exception error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    autenticacionService.validarCodigoCorreo(resultadoLoginActual.getIdUsuario(), codigo);
+                } catch (Exception ex) {
+                    error = ex;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                overlay.ocultar();
+                if (error != null) {
+                    mostrarErrorEnPaso(mensajeAmigable(error));
+                    return;
+                }
+                completarLogin();
+            }
+        }.execute();
+    }
+
+    /** Si falla el envío (ej. SMTP mal configurado), no bloquea el login: cae a la app autenticadora. */
+    private void mostrarErrorEnvioCorreoYUsarAlternativa(Exception error) {
+        JOptionPane.showMessageDialog(this,
+                mensajeAmigable(error) + " Continuaremos con la app autenticadora.",
+                "Verificación", JOptionPane.WARNING_MESSAGE);
+        usarAutenticadorComoAlternativa();
+    }
+
+    private void usarAutenticadorComoAlternativa() {
+        if (resultadoLoginActual.isTotpHabilitado()) {
+            panelTotpVerificar.reset();
+            mostrarPaso(panelTotpVerificar);
+            panelTotpVerificar.enfocar();
+        } else {
+            iniciarEnrolamientoTotp();
+        }
     }
 
     // ---------------------------------------------------------------

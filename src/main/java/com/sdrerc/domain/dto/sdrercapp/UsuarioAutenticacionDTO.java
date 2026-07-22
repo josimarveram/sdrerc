@@ -21,6 +21,7 @@ public class UsuarioAutenticacionDTO {
     private boolean totpHabilitado;
     private int intentosFallidos;
     private LocalDateTime bloqueadoHasta;
+    private String correo;
 
     public Long getIdUsuario() {
         return idUsuario;
@@ -108,5 +109,13 @@ public class UsuarioAutenticacionDTO {
 
     public void setBloqueadoHasta(LocalDateTime bloqueadoHasta) {
         this.bloqueadoHasta = bloqueadoHasta;
+    }
+
+    public String getCorreo() {
+        return correo;
+    }
+
+    public void setCorreo(String correo) {
+        this.correo = correo;
     }
 }
