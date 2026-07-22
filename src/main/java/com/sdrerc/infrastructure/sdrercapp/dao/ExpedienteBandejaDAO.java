@@ -168,9 +168,10 @@ public class ExpedienteBandejaDAO {
     private ExpedienteBandejaDTO map(Connection conn, ResultSet rs) throws SQLException {
         Date fechaVencimiento = rs.getDate("fecha_vencimiento");
         String alertasPersistidas = rs.getString("alertas_persistidas");
+        boolean grupoFamiliarConfirmado = rs.getInt("grupo_familiar_marca") == 1;
         String alertasVisuales = grupoFamiliar(
                 rs.getInt("cantidad_relaciones"),
-                rs.getInt("grupo_familiar_marca") == 1,
+                grupoFamiliarConfirmado,
                 rs.getString("criterio_grupo_familiar"),
                 rs.getString("observacion_grupo_familiar"));
         return new ExpedienteBandejaDTO(
@@ -198,7 +199,8 @@ public class ExpedienteBandejaDAO {
                 rs.getString("titular"),
                 rs.getInt("relaciones_confirmadas_principal"),
                 getBooleanFromNumber(rs, "es_relacionado_hijo"),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)
+                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento),
+                grupoFamiliarConfirmado
         );
     }
 

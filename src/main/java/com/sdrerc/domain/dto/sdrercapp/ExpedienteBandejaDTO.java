@@ -32,6 +32,7 @@ public class ExpedienteBandejaDTO {
     private final String titular;
     private final int relacionesConfirmadasComoPrincipal;
     private final boolean relacionadoComoHijo;
+    private final boolean grupoFamiliarConfirmado;
 
     public ExpedienteBandejaDTO(
             Long idExpediente,
@@ -122,7 +123,8 @@ public class ExpedienteBandejaDTO {
                 titular,
                 0,
                 false,
-                null);
+                null,
+                false);
     }
 
     public ExpedienteBandejaDTO(
@@ -150,7 +152,8 @@ public class ExpedienteBandejaDTO {
             String titular,
             int relacionesConfirmadasComoPrincipal,
             boolean relacionadoComoHijo,
-            Long diasRestantes) {
+            Long diasRestantes,
+            boolean grupoFamiliarConfirmado) {
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
         this.numeroTramiteDocumentario = safe(numeroTramiteDocumentario);
@@ -176,6 +179,7 @@ public class ExpedienteBandejaDTO {
         this.titular = safe(titular);
         this.relacionesConfirmadasComoPrincipal = relacionesConfirmadasComoPrincipal;
         this.relacionadoComoHijo = relacionadoComoHijo;
+        this.grupoFamiliarConfirmado = grupoFamiliarConfirmado;
     }
 
     public Long getIdExpediente() {
@@ -272,6 +276,10 @@ public class ExpedienteBandejaDTO {
 
     public boolean isRelacionadoComoHijo() {
         return relacionadoComoHijo;
+    }
+
+    public boolean isGrupoFamiliarConfirmado() {
+        return grupoFamiliarConfirmado;
     }
 
     public Long getDiasRestantes() {

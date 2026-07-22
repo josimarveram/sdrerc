@@ -1655,20 +1655,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private boolean esGrupoFamiliar(ExpedienteBandejaDTO item) {
-        if (item == null) {
-            return false;
-        }
-        String valor = normalizarFiltro(item.getGrupoFamiliar());
-        if (valor.isEmpty()) {
-            return false;
-        }
-        return valor.contains("GRUPO FAMILIAR")
-                || valor.contains("IDENTIFICADO")
-                || valor.contains("POSIBLE")
-                || "SI".equals(valor)
-                || "S".equals(valor)
-                || "1".equals(valor)
-                || "TRUE".equals(valor);
+        return item != null && item.isGrupoFamiliarConfirmado();
     }
 
     private void mostrarPanelRecepcionSeleccionado() {
