@@ -5,8 +5,12 @@ import java.util.List;
 /**
  * Arma la condicion SQL de visibilidad por asignacion usada por las bandejas operativas:
  * ADMIN_SISTEMA ve todo (sin condicion); el resto de usuarios solo ve expedientes/documentos
- * cuyo responsable actual (usuario o equipo) coincide con su propio acceso. Si no se pudo
- * resolver ni usuario ni equipo del actor, se deniega por defecto (falla cerrado) en vez de
+ * cuyo responsable actual coincide con su propio acceso. Prioridad: si el expediente/documento
+ * ya tiene un responsable individual (columnaUsuario no nulo), solo ese usuario (o su supervisor,
+ * ver incluirAbogadosSupervisados) lo ve; el match por equipo es unicamente un fallback para el
+ * caso en que todavia no se asigno a una persona especifica (columnaUsuario nulo, responsabilidad
+ * solo de equipo), para no dejar sin visibilidad el trabajo aun no reclamado por nadie. Si no se
+ * pudo resolver ni usuario ni equipo del actor, se deniega por defecto (falla cerrado) en vez de
  * mostrar todo.
  */
 final class VisibilidadBandejaSql {
@@ -53,7 +57,7 @@ final class VisibilidadBandejaSql {
             if (condiciones.length() > 0) {
                 condiciones.append(" OR ");
             }
-            condiciones.append(columnaEquipo).append(" IN (");
+            condiciones.append("(").append(columnaUsuario).append(" IS NULL AND ").append(columnaEquipo).append(" IN (");
             for (int i = 0; i < idsEquipoActual.size(); i++) {
                 if (i > 0) {
                     condiciones.append(", ");
@@ -61,7 +65,7 @@ final class VisibilidadBandejaSql {
                 condiciones.append("?");
                 params.add(idsEquipoActual.get(i));
             }
-            condiciones.append(")");
+            condiciones.append("))");
         }
         if (incluirAbogadosSupervisados && idUsuarioActual != null) {
             if (condiciones.length() > 0) {

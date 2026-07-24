@@ -1030,6 +1030,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/application/sdrercapp/CargaDiariaReglasService.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Visibilidad por equipo dejaba ver expedientes asignados a OTRO abogado del mismo equipo (24/07/2026)
+
+- Reporte del usuario: con el acceso de `kalhuay` (abogada, rol ABOGADO, miembro de `EQ_ANALISIS`/`EQ_EJECUCION`) visualizaba en su bandeja el expediente `SDRERC-EXP-2026-000199`, pese a que su responsable individual era otro abogado del mismo equipo (`jalvarado`, no `kalhuay`). Pedido explicito: un abogado normal solo debe ver expedientes cuyo responsable individual sea el mismo, no los de un companero de equipo; `ADMIN_SISTEMA` sigue viendo todo sin importar el abogado asignado.
+- Causa raiz confirmada contra BD real (solo lectura): `VisibilidadBandejaSql.construirCondicion` armaba la condicion como `columnaUsuario = ? OR columnaEquipo IN (...)`, un OR sin prioridad. Como el expediente tenia `id_usuario_responsable_actual = jalvarado` pero `id_equipo_responsable_actual = EQ_ANALISIS`, y `kalhuay` tambien pertenece a `EQ_ANALISIS`, el OR por equipo la dejaba ver expedientes de sus companeros aunque el responsable individual fuera otra persona. Este helper es compartido por `AnalisisExpedienteDAO`, `EjecucionExpedienteDAO`, `NotificacionExpedienteDAO` y `DocumentoAnalisisDAO` (Validacion/Notificacion), asi que el mismo hueco aplicaba a las 4 bandejas, no solo a Analisis.
+- Fix: el match por equipo ahora solo aplica como fallback cuando el expediente/documento **todavia no tiene responsable individual** (`columnaUsuario IS NULL`): `(columnaUsuario IS NULL AND columnaEquipo IN (...))`. Si ya hay un responsable individual asignado, solo ese usuario (o su supervisor, via `incluirAbogadosSupervisados` en Verificacion) lo ve; el equipo deja de ser un OR incondicional. En la practica, como Asignacion siempre asigna a un abogado especifico (nunca deja el expediente solo a nivel de equipo), este fallback rara vez se activa hoy, que es justamente el comportamiento pedido.
+- Verificado con una simulacion de la condicion nueva contra Oracle real (solo lectura, `sqlplus` con `SDRERC_APP_DB_PASSWORD`): con la condicion nueva, `kalhuay` ya no matchea el expediente 000199 (0 filas), mientras `jalvarado` (responsable real) si lo matchea (1 fila). Archivo de consulta temporal creado y eliminado, nunca comiteado.
+- Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VisibilidadBandejaSql.java` (unico archivo tocado; los DAOs que lo llaman no cambiaron su firma).
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado (solo SELECT de diagnostico).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
