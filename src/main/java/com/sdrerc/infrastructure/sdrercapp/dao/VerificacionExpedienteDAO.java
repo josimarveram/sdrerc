@@ -44,6 +44,8 @@ public class VerificacionExpedienteDAO {
     private static final String ACCION_DERIVACION_NOTIFICACION = "DERIVACION_A_NOTIFICACION";
     private static final String EQUIPO_ANALISIS = "EQ_ANALISIS";
     private static final String EQUIPO_EJECUCION = "EQ_EJECUCION";
+    private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
+    private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final DocumentoAnalisisDAO documentoAnalisisDAO;
@@ -182,6 +184,7 @@ public class VerificacionExpedienteDAO {
         sql.append("WHERE e.activo = 1 AND et.codigo IN (?, ?) ");
         params.add(ETAPA_VERIFICACION);
         params.add(ETAPA_FIRMA);
+        appendFiltroPrincipalCanonico(sql, params, "e");
         sql.append(VisibilidadBandejaSql.construirCondicion(
                 params, esAdmin, idUsuarioActual, idsEquipoActual,
                 "e.id_usuario_responsable_actual", "e.id_equipo_responsable_actual", true));
@@ -759,6 +762,36 @@ public class VerificacionExpedienteDAO {
         if (transicion.requiereDocumento && documentoAnalisisDAO.contarPorExpediente(conn, idExpediente) <= 0) {
             throw new SQLException("No existen documentos analizados para sustentar la verificación.");
         }
+    }
+
+    private void appendFiltroPrincipalCanonico(StringBuilder sql, List<Object> params, String aliasExpediente) {
+        sql.append("AND (");
+        sql.append("NOT EXISTS (SELECT 1 FROM expediente_relacion r_excl ");
+        sql.append("WHERE r_excl.activo = 1 ");
+        sql.append("AND UPPER(r_excl.tipo_relacion) IN (?, ?) ");
+        sql.append("AND r_excl.id_expediente_relacionado = ").append(aliasExpediente).append(".id_expediente) ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
+        sql.append("OR EXISTS (SELECT 1 FROM (");
+        sql.append("SELECT DISTINCT ");
+        sql.append("CASE ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') <> '' AND NVL(TRIM(orrel.numero_expediente), '') = '' THEN op.id_expediente ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') = '' AND NVL(TRIM(orrel.numero_expediente), '') <> '' THEN orrel.id_expediente ");
+        sql.append("WHEN NVL(TRIM(op.numero_expediente), '') <> '' AND NVL(TRIM(orrel.numero_expediente), '') <> '' THEN ");
+        sql.append("CASE WHEN NVL(op.fecha_registro, DATE '1900-01-01') <= NVL(orrel.fecha_registro, DATE '1900-01-01') THEN op.id_expediente ELSE orrel.id_expediente END ");
+        sql.append("ELSE CASE WHEN NVL(op.fecha_registro, DATE '1900-01-01') <= NVL(orrel.fecha_registro, DATE '1900-01-01') THEN op.id_expediente ELSE orrel.id_expediente END ");
+        sql.append("END AS id_canonico ");
+        sql.append("FROM expediente_relacion r_canon ");
+        sql.append("JOIN expediente op ON op.id_expediente = r_canon.id_expediente_principal AND op.activo = 1 ");
+        sql.append("JOIN expediente orrel ON orrel.id_expediente = r_canon.id_expediente_relacionado AND orrel.activo = 1 ");
+        sql.append("WHERE r_canon.activo = 1 ");
+        sql.append("AND UPPER(r_canon.tipo_relacion) IN (?, ?) ");
+        sql.append("AND (r_canon.id_expediente_principal = ").append(aliasExpediente).append(".id_expediente ");
+        sql.append("OR r_canon.id_expediente_relacionado = ").append(aliasExpediente).append(".id_expediente)) canon ");
+        params.add(TIPO_RELACION_DOCUMENTO_DUPLICADO);
+        params.add(TIPO_RELACION_MISMA_ACTA_TITULAR);
+        sql.append("WHERE canon.id_canonico = ").append(aliasExpediente).append(".id_expediente)");
+        sql.append(") ");
     }
 
     private VerificacionExpedienteDTO map(Connection conn, ResultSet rs) throws SQLException {
