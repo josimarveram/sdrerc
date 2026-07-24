@@ -15,19 +15,23 @@ public class UsuarioAsignacionDAO {
     public List<UsuarioAsignableDTO> listarAbogadosAsignables(Long idEquipo) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT DISTINCT u.id_usuario, u.username, u.nombre_completo, ");
-        sql.append("eu.id_equipo, eq.nombre AS equipo_nombre, r.codigo AS rol_codigo, ");
-        sql.append("sup.nombre_completo AS supervisor_nombre ");
+        sql.append("SELECT u.id_usuario, u.username, u.nombre_completo, ");
+        sql.append("eu.id_equipo, eq.nombre AS equipo_nombre, ");
+        sql.append("(SELECT LISTAGG(r.codigo, ', ') WITHIN GROUP (ORDER BY r.codigo) ");
+        sql.append("   FROM usuario_rol ur JOIN rol r ON r.id_rol = ur.id_rol AND r.activo = 1 ");
+        sql.append("  WHERE ur.id_usuario = u.id_usuario AND ur.activo = 1) AS rol_codigo, ");
+        sql.append("(SELECT MAX(sup.nombre_completo) FROM usuario_supervision us ");
+        sql.append("   JOIN usuario sup ON sup.id_usuario = us.id_supervisor AND sup.activo = 1 ");
+        sql.append("  WHERE us.id_abogado = u.id_usuario AND us.activo = 1) AS supervisor_nombre ");
         sql.append("FROM usuario u ");
-        sql.append("JOIN usuario_rol ur ON ur.id_usuario = u.id_usuario AND ur.activo = 1 ");
-        sql.append("JOIN rol r ON r.id_rol = ur.id_rol AND r.activo = 1 ");
         sql.append("LEFT JOIN equipo_usuario eu ON eu.id_usuario = u.id_usuario AND eu.activo = 1 ");
         sql.append("LEFT JOIN equipo eq ON eq.id_equipo = eu.id_equipo AND eq.activo = 1 ");
-        sql.append("LEFT JOIN usuario_supervision us ON us.id_abogado = u.id_usuario AND us.activo = 1 ");
-        sql.append("LEFT JOIN usuario sup ON sup.id_usuario = us.id_supervisor AND sup.activo = 1 ");
         sql.append("WHERE u.activo = 1 ");
         sql.append("AND UPPER(u.estado) = 'ACTIVO' ");
-        sql.append("AND UPPER(r.codigo) IN ('ABOGADO', 'ANALISTA') ");
+        sql.append("AND EXISTS (SELECT 1 FROM usuario_rol ur2 ");
+        sql.append("  JOIN rol r2 ON r2.id_rol = ur2.id_rol AND r2.activo = 1 ");
+        sql.append(" WHERE ur2.id_usuario = u.id_usuario AND ur2.activo = 1 ");
+        sql.append("   AND UPPER(r2.codigo) IN ('ABOGADO', 'ANALISTA')) ");
         if (idEquipo != null) {
             sql.append("AND eu.id_equipo = ? ");
             params.add(idEquipo);
