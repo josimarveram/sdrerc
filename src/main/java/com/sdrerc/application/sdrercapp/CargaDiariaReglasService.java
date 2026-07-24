@@ -169,6 +169,7 @@ public class CargaDiariaReglasService {
             }
 
             boolean sgdBloqueante = !hasText(item.getNumeroExpedienteSgd());
+            boolean documentoBloqueante = !hasText(item.getNumeroDocumento());
             String claveSgd = clave(item.getNumeroExpedienteSgd());
             Integer cantidadSgd = hasText(claveSgd) ? numeroSgd.get(claveSgd) : null;
             if (cantidadSgd != null && cantidadSgd.intValue() > 1) {
@@ -191,7 +192,7 @@ public class CargaDiariaReglasService {
                 item.agregarMensaje(ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
             }
 
-            if (sgdBloqueante) {
+            if (sgdBloqueante || documentoBloqueante) {
                 item.setNumeroExpedienteGenerado(null);
                 item.setMotivoSinNumero(null);
                 item.setListoParaRegistrar(false);

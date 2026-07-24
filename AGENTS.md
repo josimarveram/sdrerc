@@ -1022,6 +1022,14 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/ui/views/registrorecepcion/JPanelCargaDiariaRecepcionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Carga diaria: N° Documento vacio tampoco bloqueaba el registro (24/07/2026)
+
+- Seguimiento inmediato del fix anterior: el usuario confirmo que la misma inconsistencia (Valido en la previsualizacion, Error recien al pulsar Validar) tambien ocurria con la columna N° DOCUMENTO, no solo con N° expediente SGD.
+- Causa raiz identica a la de SGD: en `CargaDiariaReglasService.validar(...)`, "Número de documento obligatorio." ya se agregaba al mensaje (`error = true`), pero esa bandera `error` solo degradaba `estadoValidacion` a `"Con observaciones"` sin tocar `listoParaRegistrar` (quedaba `true`); solo `sgdBloqueante` bloqueaba de verdad. Osea, una fila sin N° Documento podia registrarse igual, y el "Error" solo aparecia si ademas coincidia con el SGD vacio/duplicado de esa misma fila.
+- Fix: se agrego `boolean documentoBloqueante = !hasText(item.getNumeroDocumento());` junto a `sgdBloqueante`, y el `if` que bloquea el registro paso de `if (sgdBloqueante)` a `if (sgdBloqueante || documentoBloqueante)`. El chequeo local en `JPanelCargaDiariaRecepcionV2.actualizarValidacionLocal` para N° Documento ya existia desde antes (no le faltaba, a diferencia del SGD), asi que la previsualizacion ya mostraba "Con observaciones" correctamente para este campo; lo que faltaba era que el Validar real tambien lo bloqueara.
+- Archivos: `src/main/java/com/sdrerc/application/sdrercapp/CargaDiariaReglasService.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
