@@ -967,6 +967,16 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/ui/views/verificacion/DocumentoVerificacionTreeGridPanelV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Reordenar "Resultado de verificacion" y quitar "Comentario"/"Sustento" no usados (24/07/2026)
+
+- Pedido del usuario: en el panel de Verificacion, mover el bloque "Resultado de verificación" al inicio (arriba de "Documentos Analizados"), igual que ya esta en Analisis (`crearFormularioAnalisis()` se agrega antes que `crearDocumentosPanel()` en `crearPanelAnalisis()`). Ademas, quitar el campo "Comentario" de ese bloque (Verificacion) y el campo "Sustento" del bloque "Resultado del análisis" (Analisis); en ambos casos el usuario indico que no se van a usar, ni siquiera en BD.
+- Antes de tocar codigo se verifico que ninguno de los 2 campos era realmente huerfano: `txtFundamento` (Sustento) se persiste en `expediente_evaluacion.fundamento` via `insertarEvaluacion`/`actualizarEvaluacion`, y `txtComentario` (Comentario) se usa activamente como comentario general en `aprobarVerificacionDirecta`/`aprobarVerificacionConDestino`/`enviarFirma` y como motivo dentro de `ObservacionVerificacionDTO` cuando el resultado es "Observado". Se le informo esto al usuario antes de proceder; confirmo la opcion "quitar solo el campo visible, dejar de enviar ese dato" (no revisar cada flujo uno por uno).
+- Implementacion elegida (minima, sin tocar los flujos que usan esos campos): se quito unicamente la fila del formulario (`addRow(...)`) que muestra cada campo. Como ninguno de los dos `JTextArea` (`txtFundamento`, `txtComentario`) queda ya agregado a ningun contenedor visible, el usuario nunca puede escribir en ellos: quedan permanentemente vacios, y todo el codigo que ya llama `.getText()` sobre ellos (para guardar en BD o pasar como comentario/motivo) sigue compilando y funcionando igual, solo que ahora siempre recibe cadena vacia. No se toco ninguna DAO, DTO ni columna de BD.
+- `JPanelVerificacionV2.crearPanelVerificacionOperativa()`: orden de secciones cambiado de `[Documentos, Resultado de verificación, Destino operativo]` a `[Resultado de verificación, Documentos, Destino operativo]`. `crearResultadoVerificacion()` quedo con una sola fila ("Resultado").
+- `JPanelAnalisisV2.crearFormularioAnalisis()`: ya estaba primero en el orden de secciones (sin cambios ahi); se quito la fila "Sustento", dejando "Fecha análisis" como ultima fila del bloque.
+- Archivos: `src/main/java/com/sdrerc/ui/views/verificacion/JPanelVerificacionV2.java`, `src/main/java/com/sdrerc/ui/views/analisis/JPanelAnalisisV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

@@ -673,8 +673,7 @@ public class JPanelAnalisisV2 extends JPanel {
         checks.add(chkLegitimidad);
         checks.add(chkMediosProbatorios);
         addRow(grid, row++, "Evaluaciones", checks);
-        addRow(grid, row++, "Fecha análisis", lblFechaAnalisis);
-        addRow(grid, row, "Sustento", scrollText(txtFundamento, 96));
+        addRow(grid, row, "Fecha análisis", lblFechaAnalisis);
         panel.add(grid, BorderLayout.CENTER);
         return panel;
     }

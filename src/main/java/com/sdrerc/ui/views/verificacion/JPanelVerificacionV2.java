@@ -421,8 +421,8 @@ public class JPanelVerificacionV2 extends JPanel {
             }
         });
         panel.setAccentColor(new Color(10, 118, 145));
-        panel.addSection(crearDocumentosPanel());
         panel.addSection(crearResultadoVerificacion());
+        panel.addSection(crearDocumentosPanel());
         panel.addSection(crearDestinoVerificacion());
         panel.setFooter(crearAccionesPanelVerificacion());
         return panel;
@@ -434,8 +434,7 @@ public class JPanelVerificacionV2 extends JPanel {
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         int row = 0;
-        addRow(grid, row++, "Resultado", cmbResultadoVerificacion);
-        addRow(grid, row, "Comentario", scrollText(txtComentario, 60));
+        addRow(grid, row, "Resultado", cmbResultadoVerificacion);
         panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
