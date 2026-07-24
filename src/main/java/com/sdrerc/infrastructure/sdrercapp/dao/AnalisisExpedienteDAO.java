@@ -436,7 +436,8 @@ public class AnalisisExpedienteDAO {
                         : null;
 
                 Long idAnalisis = resolverIdAnalisisParaEscritura(conn, registro.getIdExpediente(), registro.getIdExpedienteAnalisis(), idUsuario);
-                Long idEvaluacion = guardarEvaluacion(conn, registro, idAnalisis, idResultado, idMotivoNoCorresponde, idUsuario);
+                Long idAutorEvaluacion = resolverAutorHistorial(conn, idUsuario, expediente.idUsuarioResponsable);
+                Long idEvaluacion = guardarEvaluacion(conn, registro, idAnalisis, idResultado, idMotivoNoCorresponde, idAutorEvaluacion);
                 registrarDocumentoNoCorrespondeSiInformado(conn, registro, idUsuario);
                 for (DocumentoAnalizadoDTO documento : registro.getDocumentosAnalizados()) {
                     DocumentoAnalizadoDTO documentoPersistencia = documentoConAnalisis(documento, idAnalisis);
