@@ -941,6 +941,14 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VerificacionExpedienteDAO.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Correccion del fix anterior: exigir EN_DESPACHO sobre VERIFICACION/EN_VERIFICACION, no sobre ANALISIS/ATENDIDO (24/07/2026)
+
+- Correccion explicita del usuario sobre la entrada anterior (mismo dia): el filtro no debia aplicarse sobre la rama `ANALISIS + ATENDIDO` (estado previo, dentro de Analisis), sino sobre el estado que le sigue una vez que el expediente ya fue enviado a Verificacion: `VERIFICACION + EN_VERIFICACION`. La rama `ANALISIS/ATENDIDO` se elimino del `WHERE`.
+- `WHERE` reescrito como 3 ramas: `et.codigo = 'FIRMA_EMISION'` (sin cambios) OR `et.codigo = 'VERIFICACION' AND est.codigo != 'EN_VERIFICACION'` (los estados ya revisados dentro de Verificacion — `VERIFICADO`, `REQUIERE_CORRECCION`, `DOCUMENTO_INCONSISTENTE` — sin exigir `EN_DESPACHO`, porque esos ya pasaron la revision inicial) OR `et.codigo = 'VERIFICACION' AND est.codigo = 'EN_VERIFICACION' AND EXISTS (...EN_DESPACHO...)` (el caso "recien llegado, pendiente de revisar" es el unico que ahora exige el `EXISTS` real contra `expediente_documento_analizado`/`estado_documento`). Constante `ESTADO_ATENDIDO` eliminada de la clase por quedar sin uso.
+- El usuario tambien pidio confirmar (no implementar, ya estaba hecho) que solo el abogado de Analisis designado ve el expediente en su propia bandeja, salvo `ADMIN_SISTEMA` que ve todo sin importar asignacion. Confirmado releyendo el codigo real: `VisibilidadBandejaSql.construirCondicion(...)` hace `if (esAdmin) return "";` (sin condicion, ve todo) y para el resto exige `id_usuario_responsable_actual = idUsuarioActual OR id_equipo_responsable_actual IN (equipos del usuario)`; ya esta invocado tanto en `AnalisisExpedienteDAO.buscarExpedientes` como en `VerificacionExpedienteDAO.buscarExpedientes` (ver seccion "Visibilidad de bandejas por asignacion...", 15/07/2026). No se toco codigo para este punto, solo se confirmo con cita textual del archivo.
+- Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VerificacionExpedienteDAO.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

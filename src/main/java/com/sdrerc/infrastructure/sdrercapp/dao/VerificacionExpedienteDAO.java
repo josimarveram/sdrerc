@@ -33,7 +33,6 @@ public class VerificacionExpedienteDAO {
     private static final String ESTADO_REQUIERE_CORRECCION = "REQUIERE_CORRECCION";
     private static final String ESTADO_DOCUMENTO_INCONSISTENTE = "DOCUMENTO_INCONSISTENTE";
     private static final String ESTADO_VERIFICADO = "VERIFICADO";
-    private static final String ESTADO_ATENDIDO = "ATENDIDO";
     private static final String ESTADO_ANALISIS_OBSERVADO = "OBSERVADO";
     private static final String ESTADO_PARA_FIRMA = "PARA_FIRMA";
     private static final String ESTADO_POR_ASIGNAR = "POR_ASIGNAR";
@@ -180,15 +179,17 @@ public class VerificacionExpedienteDAO {
         sql.append("ON res_pick.id_expediente = e.id_expediente ");
         sql.append("LEFT JOIN expediente_resolucion res ON res.id_expediente_resolucion = res_pick.id_expediente_resolucion ");
         sql.append("LEFT JOIN tipo_resolucion tr ON tr.id_tipo_resolucion = res.id_tipo_resolucion ");
-        sql.append("WHERE e.activo = 1 AND (et.codigo IN (?, ?) OR (et.codigo = ? AND est.codigo = ? AND EXISTS ( ");
+        sql.append("WHERE e.activo = 1 AND (et.codigo = ? OR (et.codigo = ? AND est.codigo != ?) ");
+        sql.append("OR (et.codigo = ? AND est.codigo = ? AND EXISTS ( ");
         sql.append("SELECT 1 FROM expediente_documento_analizado dda ");
         sql.append("JOIN estado_documento edd ON edd.id_estado_documento = dda.id_estado_documento ");
         sql.append("WHERE dda.id_expediente = e.id_expediente AND dda.activo = 1 ");
         sql.append("AND UPPER(edd.codigo) = 'EN_DESPACHO'))) ");
-        params.add(ETAPA_VERIFICACION);
         params.add(ETAPA_FIRMA);
-        params.add(ETAPA_ANALISIS);
-        params.add(ESTADO_ATENDIDO);
+        params.add(ETAPA_VERIFICACION);
+        params.add(ESTADO_EN_VERIFICACION);
+        params.add(ETAPA_VERIFICACION);
+        params.add(ESTADO_EN_VERIFICACION);
         sql.append(VisibilidadBandejaSql.construirCondicion(
                 params, esAdmin, idUsuarioActual, idsEquipoActual,
                 "e.id_usuario_responsable_actual", "e.id_equipo_responsable_actual"));
