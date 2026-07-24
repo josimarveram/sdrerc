@@ -82,9 +82,14 @@ public class GrupoFamiliarDAO {
                     + "JOIN estado_expediente es2 ON es2.id_estado = e.id_estado_actual "
                     + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
                     + "WHERE e.activo = 1 AND e.id_expediente <> ? "
+                    + "AND NOT EXISTS (SELECT 1 FROM expediente_relacion er WHERE er.activo = 1 "
+                    + "  AND ((er.id_expediente_principal = ? AND er.id_expediente_relacionado = e.id_expediente) "
+                    + "    OR (er.id_expediente_relacionado = ? AND er.id_expediente_principal = e.id_expediente))) "
                     + "AND ROWNUM <= 3000";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, idExpedientePrincipal);
+                ps.setLong(2, idExpedientePrincipal);
+                ps.setLong(3, idExpedientePrincipal);
                 try (ResultSet rs = ps.executeQuery()) {
                     Set<Long> vistos = new HashSet<Long>();
                     while (rs.next()) {
@@ -144,6 +149,9 @@ public class GrupoFamiliarDAO {
                     + "AND NOT EXISTS (SELECT 1 FROM expediente_alerta eal "
                     + "  WHERE eal.id_expediente = e.id_expediente AND eal.activo = 1 AND eal.atendida = 0 "
                     + "  AND UPPER(TRIM(eal.mensaje)) = '" + ALERTA_POSIBLE_GRUPO_FAMILIAR.toUpperCase(java.util.Locale.ROOT) + "') "
+                    + "AND NOT EXISTS (SELECT 1 FROM expediente_relacion er WHERE er.activo = 1 "
+                    + "  AND ((er.id_expediente_principal = ? AND er.id_expediente_relacionado = e.id_expediente) "
+                    + "    OR (er.id_expediente_relacionado = ? AND er.id_expediente_principal = e.id_expediente))) "
                     + "AND (UPPER(e.numero_expediente) LIKE ? "
                     + "  OR UPPER(" + TITULAR_SQL + ") LIKE ? "
                     + "  OR UPPER((SELECT MAX(esol2.numero_expediente_sgd) FROM expediente_solicitud esol2 "
@@ -152,9 +160,11 @@ public class GrupoFamiliarDAO {
                     + "ORDER BY " + TITULAR_SQL;
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, idExpedientePrincipal);
-                ps.setString(2, patron);
-                ps.setString(3, patron);
+                ps.setLong(2, idExpedientePrincipal);
+                ps.setLong(3, idExpedientePrincipal);
                 ps.setString(4, patron);
+                ps.setString(5, patron);
+                ps.setString(6, patron);
                 try (ResultSet rs = ps.executeQuery()) {
                     Set<Long> vistos = new HashSet<Long>();
                     while (rs.next()) {

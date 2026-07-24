@@ -806,6 +806,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/GrupoFamiliarDAO.java`, `db/sdrerc_app/scripts/84_correccion_criterio_grupo_familiar_alerta_atendida.sql` (nuevo, ya ejecutado).
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores, `target/SDRERC-V2.jar` generado.
 
+### Fix: candidatos de Grupo Familiar incluian expedientes ya marcados como Potencial duplicado (23/07/2026)
+
+- Reporte del usuario (con captura del panel "Grupo Familiar"): la grilla "Coincidencias por apellidos del titular" ofrecia "Asociar al grupo familiar" un expediente que en realidad ya estaba vinculado como **Potencial duplicado** (mismo acta+titular, via `EXPEDIENTE_RELACION`) del expediente ancla, no un familiar distinto.
+- Causa raiz confirmada contra datos reales: `GrupoFamiliarDAO.listarPosiblesIntegrantes`/`buscarPosiblesIntegrantesManual` detectan candidatos comparando unicamente apellidos normalizados del titular; no revisaban si el candidato ya esta relacionado con el ancla via `EXPEDIENTE_RELACION` (duplicados confirmados). El expediente `SDRERC-EXP-2026-000008` tenia alerta `Potencial duplicado` (atendida) y relacion activa (`EXPEDIENTE_RELACION.activo=1`) con el expediente ancla, pero igual aparecia como candidato de grupo familiar porque comparte apellidos (logico: es la misma persona/tramite duplicado, no otro familiar).
+- Fix de codigo: ambos metodos de `GrupoFamiliarDAO` ahora excluyen (`NOT EXISTS` contra `expediente_relacion` con `activo=1`, en ambas direcciones principal/relacionado) cualquier candidato ya vinculado al ancla como duplicado. Grupo Familiar y "Potencial duplicado"/Asociar siguen siendo conceptos distintos (regla ya vigente en AGENTS.md), pero ahora son ademas mutuamente excluyentes en la UI: un expediente no puede ofrecerse simultaneamente como "posible duplicado a asociar" y como "posible familiar a asociar".
+- Verificado contra datos reales: con el nuevo filtro, el expediente relacionado (id 13) deja de calificar como candidato del ancla (id 12) que ya tiene relacion activa con el.
+- Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/GrupoFamiliarDAO.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores, `target/SDRERC-V2.jar` generado. No se ejecuto SQL de correccion de datos (no aplicaba: no hay dato incorrecto que corregir, solo el candidato no debia ofrecerse en la UI).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
