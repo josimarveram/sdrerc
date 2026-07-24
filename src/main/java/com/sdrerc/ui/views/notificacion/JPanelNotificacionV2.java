@@ -685,8 +685,8 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void restaurarFechasAsigNotif() {
-        fechaEmisionDesdeAsigNotif.setDate(null);
-        fechaEmisionHastaAsigNotif.setDate(null);
+        fechaEmisionDesdeAsigNotif.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
+        fechaEmisionHastaAsigNotif.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 
     private void limpiarFiltrosAsigNotif() {
@@ -3344,7 +3344,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void inicializarFechasFiltro() {
-        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
         fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 

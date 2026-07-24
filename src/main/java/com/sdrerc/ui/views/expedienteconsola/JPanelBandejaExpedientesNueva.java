@@ -3910,16 +3910,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     }
 
     private void restaurarFechasRegistro() {
-        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
         fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 
     private void restaurarFechasBandejaGeneral() {
-        LocalDate inicio = LocalDate.of(2026, 1, 1);
-        Date desde = Date.from(inicio.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        Date hasta = new Date();
-        fechaSolicitudDesde.setDate(desde);
-        fechaSolicitudHasta.setDate(hasta);
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
+        fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 
     private void seleccionarEtapaInicial() {

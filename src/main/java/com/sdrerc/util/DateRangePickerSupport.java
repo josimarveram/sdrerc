@@ -153,6 +153,16 @@ public final class DateRangePickerSupport {
         return new Date();
     }
 
+    public static Date defaultSearchFromDateCurrentMonth() {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
+    }
+
     public static JDateChooser replaceSpinnerDeferred(
         final JSpinner spinner,
         final JPanel parent,

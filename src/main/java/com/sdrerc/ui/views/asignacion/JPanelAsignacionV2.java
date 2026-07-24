@@ -2422,7 +2422,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void restaurarFechasBusqueda() {
-        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDate());
+        fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
         fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 
