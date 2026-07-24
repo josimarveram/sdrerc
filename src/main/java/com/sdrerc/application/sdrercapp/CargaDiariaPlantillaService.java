@@ -51,8 +51,6 @@ public class CargaDiariaPlantillaService {
     private static final int COL_TITULAR = 13;
     private static final int COL_TIPO_DOC_TITULAR = 14;
     private static final int COL_NUM_DOC_TITULAR = 15;
-    private static final int COL_GRUPO_FAMILIAR = 16;
-    private static final int COL_OBSERVACION = 17;
 
     private static final String[] COLUMNAS = {
         "TIPO DE SOLICITUD",
@@ -70,13 +68,11 @@ public class CargaDiariaPlantillaService {
         "N° ACTA",
         "TITULAR",
         "TIPO DOCUMENTO IDENTIDAD TITULAR",
-        "N° DOCUMENTO IDENTIDAD TITULAR",
-        "GRUPO FAMILIAR",
-        "OBSERVACIÓN INICIAL"
+        "N° DOCUMENTO IDENTIDAD TITULAR"
     };
 
     private static final int[] ANCHOS = {
-        22, 20, 36, 30, 32, 28, 30, 32, 22, 28, 34, 22, 20, 38, 28, 30, 20, 44
+        22, 20, 36, 30, 32, 28, 30, 32, 22, 28, 34, 22, 20, 38, 28, 30
     };
 
     private static final String[] CATALOGO_TIPO_SOLICITUD = {"PARTE", "OFICIO"};
@@ -89,7 +85,6 @@ public class CargaDiariaPlantillaService {
         "OR Presencial",
         "OR Pasivo"
     };
-    private static final String[] CATALOGO_GRUPO_FAMILIAR = {"No", "Sí"};
     private static final String[] CATALOGO_PROCEDIMIENTO = {
         "Rectificación administrativa",
         "Título de Nacionalidad",
@@ -181,8 +176,7 @@ public class CargaDiariaPlantillaService {
         crearCatalogo(workbook, sheet, 4, "CAT_TIPO_ACTA", "TIPO DE ACTA", CATALOGO_TIPO_ACTA);
         crearCatalogo(workbook, sheet, 5, "CAT_TIPO_DOCUMENTO", "TIPO DOCUMENTO", CATALOGO_TIPO_DOCUMENTO);
         crearCatalogo(workbook, sheet, 6, "CAT_CANAL_RECEPCION", "CANAL RECEPCIÓN", CATALOGO_CANAL_RECEPCION);
-        crearCatalogo(workbook, sheet, 7, "CAT_GRUPO_FAMILIAR", "GRUPO FAMILIAR", CATALOGO_GRUPO_FAMILIAR);
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 7; i++) {
             sheet.autoSizeColumn(i);
         }
     }
@@ -215,7 +209,6 @@ public class CargaDiariaPlantillaService {
         aplicarLista(sheet, helper, COL_PROCEDIMIENTO, "CAT_PROCEDIMIENTO");
         aplicarLista(sheet, helper, COL_TIPO_ACTA, "CAT_TIPO_ACTA");
         aplicarLista(sheet, helper, COL_TIPO_DOC_TITULAR, "CAT_IDENTIDAD_TITULAR");
-        aplicarLista(sheet, helper, COL_GRUPO_FAMILIAR, "CAT_GRUPO_FAMILIAR");
         aplicarValidacionIdentidad(sheet, helper, COL_TIPO_DOC_SOLICITANTE, COL_NUM_DOC_SOLICITANTE, true);
         aplicarValidacionIdentidad(sheet, helper, COL_TIPO_DOC_TITULAR, COL_NUM_DOC_TITULAR, false);
     }
@@ -297,7 +290,7 @@ public class CargaDiariaPlantillaService {
         String[] instrucciones = {
             "Complete la informacion en la hoja CARGA_DIARIA desde la fila 2.",
             "No cambie los nombres de las columnas.",
-            "No elimine columnas. Puede dejar OBSERVACION INICIAL vacia si no aplica.",
+            "No elimine columnas.",
             "La hoja CARGA_DIARIA mantiene las listas desplegables y permite escribir, pegar o arrastrar valores en las celdas de carga sin modificar las opciones de los combos.",
             "FECHA DE SOLICITUD debe ingresarse en formato dd/MM/yyyy.",
             "TIPO DOCUMENTO IDENTIDAD SOLICITANTE permite SIN DNI, DNI, RUC, CE o PASAPORTE.",
@@ -314,7 +307,6 @@ public class CargaDiariaPlantillaService {
             "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante contiene numeros, el canal se deriva como MP PRESENCIAL.",
             "Si N° TRAMITE WEB es SIN TRAMITE, CANAL RECEPCIÓN esta vacio y el documento del solicitante esta vacio, SOLICITADO POR permite derivar OR o INTERNO segun el origen RENIEC informado.",
             "N° EXPEDIENTE SGD es la referencia externa SGD; no reemplaza el numero de expediente SDRERC.",
-            "GRUPO FAMILIAR es una marca operativa Si/No. Puede quedar vacio; el importador lo interpreta como No. No bloquea el registro ni reemplaza la deteccion de duplicidad.",
             "N° DOCUMENTO corresponde al numero del documento recibido y se guarda como metadata documental.",
             "TIPO DE SOLICITUD debe corresponder a Parte u Oficio segun el documento recibido.",
             "PROCEDIMIENTO REGISTRAL, TIPO DE ACTA, TIPO DOCUMENTO y TIPO DE SOLICITUD tienen lista desplegable en la plantilla.",

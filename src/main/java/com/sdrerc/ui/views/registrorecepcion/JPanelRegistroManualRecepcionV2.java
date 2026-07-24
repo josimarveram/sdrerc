@@ -35,7 +35,6 @@ import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -77,8 +76,6 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         new FiltroCatalogoItemV2("ALTA", "Alta"),
         new FiltroCatalogoItemV2("URGENTE", "Urgente")
     });
-    private final JCheckBox chkGrupoFamiliar = new JCheckBox("Grupo familiar");
-
     private final JComboBox<FiltroCatalogoItemV2> cmbTipoActa = comboBase("Seleccione tipo acta");
     private final JTextField txtNumeroActa = new JTextField();
 
@@ -110,6 +107,19 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
     private boolean cargandoUbigeo;
     private RegistroManualExpedienteDTO registroValidado;
     private ExpedienteEdicionManualDTO edicionValidada;
+
+    /**
+     * Grupo familiar ya no se registra desde este formulario (ver panel dedicado "Grupo Fam.").
+     * En modo edición, estos campos guardan el valor ya existente del expediente (cargado en
+     * {@link #aplicarExpedienteEdicion}) para que {@link #construirRegistro()} lo reenvíe sin
+     * cambios al guardar — si no se preservara, el UPDATE de edición manual lo sobrescribiría con
+     * los valores por defecto (false/null) y borraría una confirmación hecha desde el panel de
+     * Grupo Familiar. En modo registro nuevo quedan en sus valores por defecto (false/null), que
+     * es lo correcto: un expediente nuevo nunca debe nacer con grupo familiar marcado desde aquí.
+     */
+    private boolean grupoFamiliarCargado;
+    private String criterioGrupoFamiliarCargado;
+    private String observacionGrupoFamiliarCargado;
 
     public JPanelRegistroManualRecepcionV2(Runnable onRegistroConfirmado) {
         this(null, onRegistroConfirmado, null, false);
@@ -237,7 +247,6 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         agregarFila(panel, 5, "N° documento", txtNumeroDocumento);
         agregarFila(panel, 6, "Tipo de solicitud *", cmbTipoSolicitud);
         agregarFila(panel, 7, "Prioridad", cmbPrioridad);
-        agregarFila(panel, 8, "Marca operativa", chkGrupoFamiliar);
         return panel;
     }
 
@@ -395,7 +404,6 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         configurarCombo(cmbDistrito);
         cmbProvincia.setEnabled(false);
         cmbDistrito.setEnabled(false);
-        configurarCheck(chkGrupoFamiliar);
         actualizarEstadoHojaEnvio();
         actualizarEstadoNumeroTramite();
         txtResumen.setText(modoEdicion() ? "Cargando datos del expediente..." : "Validación pendiente.");
@@ -433,13 +441,6 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         radio.setOpaque(false);
         radio.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         radio.setForeground(AppV2Theme.TEXT_PRIMARY);
-    }
-
-    private void configurarCheck(JCheckBox check) {
-        check.setOpaque(false);
-        check.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        check.setForeground(AppV2Theme.TEXT_PRIMARY);
-        check.setToolTipText("Marque esta opción si la solicitud pertenece o podría pertenecer a un grupo familiar. No restringe el registro.");
     }
 
     private void configurarEventos() {
@@ -491,7 +492,6 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         rdoNoCorrespondeSdrerc.addActionListener(e -> invalidarValidacion());
         rdoCorrespondeSdrerc.addActionListener(e -> actualizarEstadoHojaEnvio());
         rdoNoCorrespondeSdrerc.addActionListener(e -> actualizarEstadoHojaEnvio());
-        chkGrupoFamiliar.addActionListener(e -> invalidarValidacion());
         cmbDepartamento.addActionListener(e -> cargarProvinciasSeleccionadas());
         cmbProvincia.addActionListener(e -> cargarDistritosSeleccionados());
     }
@@ -815,7 +815,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
             actualizarEstadoHojaEnvio();
             actualizarEstadoNumeroTramite();
             txtHojaEnvio.setText(safeText(dto.getSolicitud().getHojaEnvio()));
-            chkGrupoFamiliar.setSelected(dto.getSolicitud().isGrupoFamiliar());
+            grupoFamiliarCargado = dto.getSolicitud().isGrupoFamiliar();
+            criterioGrupoFamiliarCargado = dto.getSolicitud().getCriterioGrupoFamiliar();
+            observacionGrupoFamiliarCargado = dto.getSolicitud().getObservacionGrupoFamiliar();
             establecerNumeroExpedienteVisible(safe(dto.getNumeroExpediente()));
             lblNumeroExpediente.setText(safe(dto.getNumeroExpedienteVistaPrevia()));
             txtErrores.setBackground(AppV2Theme.SOFT_GREEN);
@@ -964,8 +966,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         solicitud.setCanalCodigo(codigo(cmbCanal));
         solicitud.setCanalNombre(nombre(cmbCanal));
         solicitud.setPrioridad(codigo(cmbPrioridad));
-        solicitud.setGrupoFamiliar(chkGrupoFamiliar.isSelected());
-        solicitud.setCriterioGrupoFamiliar(chkGrupoFamiliar.isSelected() ? "MANUAL" : null);
+        solicitud.setGrupoFamiliar(grupoFamiliarCargado);
+        solicitud.setCriterioGrupoFamiliar(criterioGrupoFamiliarCargado);
+        solicitud.setObservacionGrupoFamiliar(observacionGrupoFamiliarCargado);
         dto.setSolicitud(solicitud);
 
         DatosActaDTO acta = new DatosActaDTO();
@@ -1077,7 +1080,9 @@ public class JPanelRegistroManualRecepcionV2 extends JPanel {
         }
         fechaRecepcionField.setDate(toDate(LocalDate.now()));
         rdoCorrespondeSdrerc.setSelected(true);
-        chkGrupoFamiliar.setSelected(false);
+        grupoFamiliarCargado = false;
+        criterioGrupoFamiliarCargado = null;
+        observacionGrupoFamiliarCargado = null;
         actualizarEstadoHojaEnvio();
         actualizarEstadoNumeroTramite();
         seleccionarPrimero(cmbProcedimiento);

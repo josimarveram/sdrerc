@@ -73,12 +73,10 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_INPUT_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final int COL_GRUPO_FAMILIAR = 16;
-    private static final int COL_ESTADO_VALIDACION = 17;
-    private static final int COL_POSIBLE_DUPLICADO = 18;
-    private static final int COL_NUMERO_EXPEDIENTE_GENERADO = 19;
-    private static final int COL_OBSERVACION_ARCHIVO = 20;
-    private static final int COL_OBSERVACIONES_VALIDACION = 21;
+    private static final int COL_ESTADO_VALIDACION = 16;
+    private static final int COL_POSIBLE_DUPLICADO = 17;
+    private static final int COL_NUMERO_EXPEDIENTE_GENERADO = 18;
+    private static final int COL_OBSERVACIONES_VALIDACION = 19;
 
     private final CargaDiariaArchivoParserService parserService = new CargaDiariaArchivoParserService();
     private final CargaDiariaPlantillaService plantillaService = new CargaDiariaPlantillaService();
@@ -122,11 +120,9 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                 "TITULAR",
                 "TIPO DOCUMENTO IDENTIDAD TITULAR",
                 "N° DOCUMENTO IDENTIDAD TITULAR",
-                "GRUPO FAMILIAR",
                 "RESULTADO DEL SISTEMA",
                 "DUPLICIDAD",
                 "NÚMERO EXPEDIENTE",
-                "OBSERVACIÓN DEL ARCHIVO",
                 "OBSERVACIÓN"
             },
             0) {
@@ -703,37 +699,8 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             case 15:
                 item.setNumeroDocumentoIdentidadTitular(value);
                 break;
-            case COL_GRUPO_FAMILIAR:
-                aplicarGrupoFamiliarEditado(item, value);
-                break;
-            case COL_OBSERVACION_ARCHIVO:
-                item.setObservacionInicial(value);
-                break;
             default:
                 break;
-        }
-    }
-
-    private void aplicarGrupoFamiliarEditado(CargaDiariaPreviewDTO item, String value) {
-        item.setGrupoFamiliar(false);
-        item.setCriterioGrupoFamiliar(null);
-        item.setObservacionGrupoFamiliar(null);
-        if (!hasText(value)) {
-            return;
-        }
-        String normalizado = value.trim()
-                .toUpperCase()
-                .replace('Á', 'A')
-                .replace('É', 'E')
-                .replace('Í', 'I')
-                .replace('Ó', 'O')
-                .replace('Ú', 'U');
-        if ("SI".equals(normalizado) || "S".equals(normalizado)) {
-            item.setGrupoFamiliar(true);
-            item.setCriterioGrupoFamiliar("EXCEL");
-        } else if (!"NO".equals(normalizado) && !"N".equals(normalizado)) {
-            item.agregarObservacionGrupoFamiliar(null,
-                    "Valor de Grupo familiar no reconocido: " + value.trim() + ". Se tomó No.");
         }
     }
 
@@ -767,11 +734,9 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             safe(item.getTitular()),
             safe(item.getTipoDocumentoIdentidadTitular()),
             documentoVisual(item.getNumeroDocumentoIdentidadTitular()),
-            item.getGrupoFamiliarTexto(),
             safe(item.getEstadoValidacion()),
             item.isPosibleDuplicado() ? "Sí" : "No",
             numeroExpedientePreview(item),
-            observacionArchivoTabla(item),
             observacionValidacionTabla(item)
         };
     }
@@ -786,7 +751,7 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
     }
 
     private static boolean esColumnaEditable(int column) {
-        return (column >= 0 && column < COL_ESTADO_VALIDACION) || column == COL_OBSERVACION_ARCHIVO;
+        return column >= 0 && column < COL_ESTADO_VALIDACION;
     }
 
     private String valorTabla(int modelRow, int column) {
@@ -818,10 +783,6 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
             text = item.getMensajeValidacion();
         } else if (modelColumn == COL_POSIBLE_DUPLICADO) {
             text = item.getMotivoDuplicado();
-        } else if (modelColumn == COL_GRUPO_FAMILIAR) {
-            text = item.getObservacionGrupoFamiliar();
-        } else if (modelColumn == COL_OBSERVACION_ARCHIVO) {
-            text = item.getObservacionInicial();
         } else if (modelColumn == COL_OBSERVACIONES_VALIDACION) {
             text = observacionValidacionTabla(item);
         } else if (modelColumn == COL_NUMERO_EXPEDIENTE_GENERADO && item.isRegistrado()) {
@@ -894,7 +855,6 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
                         || item.isListoParaRegistrar();
             case ALERTAS:
                 return hasText(item.getMensajeValidacion())
-                        || hasText(item.getObservacionInicial())
                         || item.isPosibleDuplicado()
                         || item.isGrupoFamiliar()
                         || item.isPosibleGrupoFamiliar();
@@ -964,10 +924,6 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
 
     private static String safe(String value) {
         return value == null ? "" : value;
-    }
-
-    private static String observacionArchivoTabla(CargaDiariaPreviewDTO item) {
-        return safe(item.getObservacionInicial());
     }
 
     private static String observacionValidacionTabla(CargaDiariaPreviewDTO item) {
