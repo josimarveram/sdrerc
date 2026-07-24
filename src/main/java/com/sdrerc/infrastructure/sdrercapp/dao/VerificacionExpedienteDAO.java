@@ -180,7 +180,11 @@ public class VerificacionExpedienteDAO {
         sql.append("ON res_pick.id_expediente = e.id_expediente ");
         sql.append("LEFT JOIN expediente_resolucion res ON res.id_expediente_resolucion = res_pick.id_expediente_resolucion ");
         sql.append("LEFT JOIN tipo_resolucion tr ON tr.id_tipo_resolucion = res.id_tipo_resolucion ");
-        sql.append("WHERE e.activo = 1 AND (et.codigo IN (?, ?) OR (et.codigo = ? AND est.codigo = ?)) ");
+        sql.append("WHERE e.activo = 1 AND (et.codigo IN (?, ?) OR (et.codigo = ? AND est.codigo = ? AND EXISTS ( ");
+        sql.append("SELECT 1 FROM expediente_documento_analizado dda ");
+        sql.append("JOIN estado_documento edd ON edd.id_estado_documento = dda.id_estado_documento ");
+        sql.append("WHERE dda.id_expediente = e.id_expediente AND dda.activo = 1 ");
+        sql.append("AND UPPER(edd.codigo) = 'EN_DESPACHO'))) ");
         params.add(ETAPA_VERIFICACION);
         params.add(ETAPA_FIRMA);
         params.add(ETAPA_ANALISIS);

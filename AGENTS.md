@@ -933,6 +933,14 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/AnalisisExpedienteDAO.java`, `db/sdrerc_app/scripts/89_correccion_creado_por_evaluacion_admin_sistema.sql` (nuevo, no ejecutado).
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado.
 
+### Fix: Bandeja Verificacion mostraba expedientes "Atendido" en Analisis sin documento en despacho (24/07/2026)
+
+- El usuario pidio confirmar que documentos/estados entran a la Bandeja Verificacion; al revisar la consulta se detecto y confirmo con el usuario un hueco: la rama `ANALISIS + ATENDIDO` del `WHERE` de `VerificacionExpedienteDAO.buscarExpedientes` no exigia que el expediente tuviera un documento de analisis en estado `EN_DESPACHO`; las columnas "Tipo documento" que sugieren eso (`id_documento_pendiente`/`tipo_documento_pendiente`) son subconsultas puramente informativas en el `SELECT`, no filtros en el `WHERE`, asi que un expediente `ANALISIS/ATENDIDO` sin ningun documento en despacho igual aparecia en la bandeja (con esas columnas en blanco).
+- Pedido explicito del usuario: filtrar esa rama con un `JOIN`/`EXISTS` real contra `expediente_documento_analizado` en estado `EN_DESPACHO`, no solo mostrar la columna vacia.
+- Fix: se agrego `AND EXISTS (SELECT 1 FROM expediente_documento_analizado dda JOIN estado_documento edd ON edd.id_estado_documento = dda.id_estado_documento WHERE dda.id_expediente = e.id_expediente AND dda.activo = 1 AND UPPER(edd.codigo) = 'EN_DESPACHO')` dentro de la rama `(et.codigo = 'ANALISIS' AND est.codigo = 'ATENDIDO')`. Deliberadamente **no** se toco la rama `et.codigo IN ('VERIFICACION', 'FIRMA_EMISION')`: un expediente ya transicionado formalmente a Verificacion (via "Enviar a Verificacion" en Analisis, que solo exige al menos 1 documento analizado de cualquier estado) es un caso legitimo de trabajo en curso y no debe desaparecer de la bandeja solo porque su documento ya no este literalmente en `EN_DESPACHO`; exigir `EN_DESPACHO` en la rama `FIRMA_EMISION` ademas habria roto el KPI "Emitidos" (esos documentos ya avanzaron mas alla de `EN_DESPACHO` por definicion).
+- Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VerificacionExpedienteDAO.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
