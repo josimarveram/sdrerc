@@ -437,6 +437,13 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
                 case PADRE_COL_ESTADO_DOCUMENTO:
                     if (value instanceof CatalogoItemDTO) {
                         row.estadoDocumento = (CatalogoItemDTO) value;
+                        if ("EMITIDO".equalsIgnoreCase(row.estadoDocumento.getCodigo())) {
+                            if (row.fechaDocumento == null) {
+                                row.fechaDocumento = LocalDate.now();
+                            }
+                        } else {
+                            row.fechaDocumento = null;
+                        }
                     }
                     break;
                 case PADRE_COL_FECHA:

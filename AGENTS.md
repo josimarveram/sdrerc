@@ -959,6 +959,14 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VisibilidadBandejaSql.java` (nuevo para git, ya existia en el working tree), `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VerificacionExpedienteDAO.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Verificacion: autocompletar Fecha Emision al elegir estado "Emitido" en documentos revisados (24/07/2026)
+
+- Pedido del usuario: en el bloque de documentos revisados de Verificacion, al elegir "Emitido" en el combo "Estado documento" de una fila, la columna "Fecha Emisión" debe autocompletarse con la fecha actual (mismo comportamiento ya vigente en Analisis y Ejecucion, documentado en la seccion "Analisis" del propio AGENTS.md: "la Fecha Emision de un documento nuevo empieza en blanco... solo se autocompleta con la fecha actual cuando el combo Estado pasa a Emitido; si se elige cualquier otro estado, la fecha se limpia").
+- Causa: `DocumentoVerificacionTreeGridPanelV2.PadreTableModel.setValueAt(...)`, caso `PADRE_COL_ESTADO_DOCUMENTO`, solo asignaba `row.estadoDocumento` sin tocar `row.fechaDocumento`; el patron ya existente en `DocumentoAnalisisTreeGridPanelV2` (usado por Analisis/Ejecucion) nunca se replico en el panel de Verificacion.
+- Fix: mismo patron exacto — si el nuevo estado es `EMITIDO` y `fechaDocumento` esta vacio, se completa con `LocalDate.now()`; si es cualquier otro estado, se limpia a `null`. `fireTableRowsUpdated(...)` (ya existente al final del metodo) refresca la columna "Fecha Emisión" visible sin cambios adicionales.
+- Archivos: `src/main/java/com/sdrerc/ui/views/verificacion/DocumentoVerificacionTreeGridPanelV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
