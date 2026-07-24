@@ -1013,6 +1013,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/application/sdrercapp/CargaDiariaReglasService.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Carga diaria: validacion local tras editar una celda no revisaba N° expediente SGD (24/07/2026)
+
+- Pedido del usuario: el boton "Validar" debe considerar tambien los datos editados en la previsualizacion, no solo los que vienen del Excel. Sintoma reportado: al corregir un dato incompleto en la grilla, la fila pasaba a "Valido" de inmediato, pero al pulsar "Validar" volvia a mostrar "Error".
+- Causa raiz: cada edicion de celda dispara `sincronizarEdicionTabla` -> `actualizarValidacionLocal(item)`, una revalidacion local ligera (sin ir a BD) que recalcula el estado de la fila usando su propia lista de campos "obligatorios". Esa lista **no incluia el N° expediente SGD**, a diferencia de la validacion real del boton "Validar" (`CargaDiariaReglasService.validar(...)`, que si lo exige desde el fix anterior). Por eso, si el SGD seguia vacio y el usuario editaba cualquier otro campo, la revalidacion local no detectaba el vacio y marcaba la fila como "Valido", generando la inconsistencia con el resultado real del boton "Validar" (que si opera sobre la misma lista `registros` ya editada, incluyendo el SGD).
+- Fix: se agrego el mismo chequeo (`if (!hasText(item.getNumeroExpedienteSgd())) { observaciones.add("Dato incompleto: N° expediente SGD"); }`) a `actualizarValidacionLocal`, junto a los demas campos obligatorios (entre `N° Acta` y `Titular`, mismo orden que el DTO). La revalidacion local sigue sin poder producir el estado `"Error"` (eso solo lo hace la validacion real, que ademas verifica duplicados contra el archivo y la BD); ahora, con el SGD vacio, muestra correctamente `"Con observaciones"` en vez de `"Valido"`, evitando el salto enganoso a `"Error"` recien al pulsar "Validar".
+- No se toco `validar()`/`confirmarCarga()`: ya operaban correctamente sobre la lista `registros` mutada por las ediciones inline (confirmado leyendo el codigo), asi que la validacion real siempre reflejaba las ediciones; el problema era exclusivamente que el preview local mostraba un estado desactualizado/incompleto respecto de esa validacion real.
+- Archivos: `src/main/java/com/sdrerc/ui/views/registrorecepcion/JPanelCargaDiariaRecepcionV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

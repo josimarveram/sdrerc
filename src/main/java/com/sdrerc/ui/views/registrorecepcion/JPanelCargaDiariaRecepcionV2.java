@@ -613,6 +613,9 @@ public class JPanelCargaDiariaRecepcionV2 extends JPanel {
         if (!hasText(item.getNumeroActa())) {
             observaciones.add("Dato incompleto: N° Acta");
         }
+        if (!hasText(item.getNumeroExpedienteSgd())) {
+            observaciones.add("Dato incompleto: N° expediente SGD");
+        }
         if (!hasText(item.getTitular())) {
             observaciones.add("Dato incompleto: Titular");
         }
