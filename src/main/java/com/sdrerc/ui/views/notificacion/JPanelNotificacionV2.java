@@ -678,6 +678,7 @@ public class JPanelNotificacionV2 extends JPanel {
         cardAsigNotifListosFirma.setOnClick(() -> activarKpiAsigNotif(FiltroKpiAsigNotif.LISTOS_FIRMA));
         cardAsigNotifIntermedios.setOnClick(() -> activarKpiAsigNotif(FiltroKpiAsigNotif.INTERMEDIOS));
         btnBuscarAsigNotif.addActionListener(e -> aplicarFiltrosAsigNotif());
+        txtBusquedaAsigNotif.addActionListener(e -> aplicarFiltrosAsigNotif());
         btnLimpiarAsigNotif.addActionListener(e -> limpiarFiltrosAsigNotif());
         btnRefrescarAsigNotif.addActionListener(e -> cargarBandejaAsignacionNotificacion());
         restaurarFechasAsigNotif();
@@ -3240,6 +3241,7 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
+        txtBusqueda.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
         btnRegistrarNotificacion.addActionListener(e -> registrarNotificacion());

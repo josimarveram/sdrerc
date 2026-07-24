@@ -919,6 +919,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
+        txtBusqueda.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnVerDetalle.addActionListener(e -> abrirDetalleSeleccionado());
         btnEditar.addActionListener(e -> editarSeleccionado());

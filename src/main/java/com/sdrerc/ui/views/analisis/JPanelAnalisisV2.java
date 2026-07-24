@@ -958,6 +958,7 @@ public class JPanelAnalisisV2 extends JPanel {
 
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
+        txtBusqueda.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
         btnRecibir.addActionListener(e -> recibir());

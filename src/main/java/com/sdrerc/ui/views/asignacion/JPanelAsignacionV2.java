@@ -1618,6 +1618,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
+        txtBusqueda.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnEditarRegistro.addActionListener(e -> editarRegistroSeleccionado());
         btnEliminarRegistro.addActionListener(e -> eliminarRegistroSeleccionado());

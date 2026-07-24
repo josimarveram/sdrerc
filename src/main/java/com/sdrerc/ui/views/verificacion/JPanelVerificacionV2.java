@@ -859,6 +859,7 @@ public class JPanelVerificacionV2 extends JPanel {
 
     private void configurarEventos() {
         btnBuscar.addActionListener(e -> buscar());
+        txtBusqueda.addActionListener(e -> buscar());
         btnLimpiar.addActionListener(e -> limpiar());
         btnRefrescar.addActionListener(e -> buscar());
         btnRegistrarVerificacion.addActionListener(e -> registrarVerificacion());
