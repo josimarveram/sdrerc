@@ -851,6 +851,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `db/sdrerc_app/scripts/86_indices_fk_faltantes.sql` (nuevo, ya ejecutado).
 - Pendiente: prioridad 3 (bind-variable short-circuit en las bandejas mas usadas) sigue sin implementar.
 
+### Fix: run-v2.ps1 sin las dependencias nuevas (HikariCP, Jakarta Mail) (24/07/2026)
+
+- Reporte del usuario: al loguearse con `run-v2.ps1` aparecia `java.lang.NoClassDefFoundError: com/zaxxer/hikari/Hi...` en la propia pantalla de login (el error se ve en el `lblError` del formulario porque `AutenticacionService.iniciarLogin` intenta usar `SdrercAppConnection.getConnection()`, que ahora requiere las clases de HikariCP).
+- Causa: `run-v2.ps1` arma el classpath a mano listando cada JAR individual de `~/.m2/repository` (no usa el JAR sombreado de `mvn package`, que si trae todo empaquetado). Cuando se agrego la dependencia `HikariCP` al `pom.xml` (ver entrada "Pool de conexiones JDBC...") nunca se actualizo esta lista manual de `run-v2.ps1`. Mismo problema, ya presente desde antes sin haberlo notado: `jakarta.mail`/`jakarta.activation` (agregados para el 2FA por correo, ver entrada "2FA por correo electronico...") tampoco estaban en esta lista.
+- Fix: se agregaron a `run-v2.ps1` las 4 entradas faltantes: `HikariCP-4.0.3.jar`, `slf4j-api-1.7.30.jar` (dependencia transitiva de HikariCP, confirmada en su POM), `jakarta.mail-2.0.1.jar`, `jakarta.activation-2.0.1.jar`.
+- Validado sin abrir la ventana Swing (el sandbox de este entorno no maneja bien lanzar y luego cerrar un proceso GUI persistente): se armo el mismo classpath exacto que genera `run-v2.ps1` y se cargaron (`Class.forName`) las clases criticas (`LoginFrameV2`, `SdrercAppConnection`, `HikariDataSource`, `EmailOtpMailer`, `jakarta.mail.Transport`, `MainV2`) sin ningun `NoClassDefFoundError`.
+- Archivos: `run-v2.ps1`.
+- Nota para el futuro: cualquier dependencia nueva agregada a `pom.xml` debe reflejarse tambien en la lista manual de `run-v2.ps1`, porque ese script no lee el `pom.xml` ni usa el jar sombreado — son dos mecanismos de classpath independientes.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

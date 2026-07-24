@@ -50,7 +50,15 @@ $jars = @(
 
     # Log4j 2
     (Join-Path $env:USERPROFILE ".m2\repository\org\apache\logging\log4j\log4j-api\2.20.0\log4j-api-2.20.0.jar"),
-    (Join-Path $env:USERPROFILE ".m2\repository\org\apache\logging\log4j\log4j-core\2.20.0\log4j-core-2.20.0.jar")
+    (Join-Path $env:USERPROFILE ".m2\repository\org\apache\logging\log4j\log4j-core\2.20.0\log4j-core-2.20.0.jar"),
+
+    # HikariCP: pool de conexiones JDBC
+    (Join-Path $env:USERPROFILE ".m2\repository\com\zaxxer\HikariCP\4.0.3\HikariCP-4.0.3.jar"),
+    (Join-Path $env:USERPROFILE ".m2\repository\org\slf4j\slf4j-api\1.7.30\slf4j-api-1.7.30.jar"),
+
+    # Jakarta Mail: envio de codigo OTP por correo (2FA, login)
+    (Join-Path $env:USERPROFILE ".m2\repository\com\sun\mail\jakarta.mail\2.0.1\jakarta.mail-2.0.1.jar"),
+    (Join-Path $env:USERPROFILE ".m2\repository\com\sun\activation\jakarta.activation\2.0.1\jakarta.activation-2.0.1.jar")
 )
 
 $missing = $jars | Where-Object { -not (Test-Path $_) }
