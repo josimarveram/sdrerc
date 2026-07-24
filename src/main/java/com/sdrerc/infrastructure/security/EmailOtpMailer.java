@@ -11,6 +11,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Envia el codigo de un solo uso del 2FA por correo (login V2) via SMTP con Jakarta Mail.
@@ -25,6 +27,8 @@ import java.util.Properties;
  * repositorio.</p>
  */
 public final class EmailOtpMailer {
+
+    private static final Logger LOG = LogManager.getLogger(EmailOtpMailer.class);
 
     private static final String CONFIG_FILE_NAME = "sdrerc-app.properties";
 
@@ -100,6 +104,8 @@ public final class EmailOtpMailer {
             mensaje.setText(construirCuerpo(nombreDestino, codigo));
             Transport.send(mensaje);
         } catch (MessagingException | java.io.UnsupportedEncodingException ex) {
+            LOG.error("Fallo el envio del codigo de verificacion por correo (host={}, puerto={}, usuario={})",
+                    host, puerto, usuario, ex);
             throw new IllegalStateException(
                     "No se pudo enviar el código de verificación al correo registrado. "
                             + "Verifique la configuración SMTP o intente con otro método.", ex);

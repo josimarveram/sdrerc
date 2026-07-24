@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Configuracion minima de Log4j2 para SDRERC V2. El proyecto ya declaraba log4j-api/log4j-core
+    como dependencia pero no se usaba en ningun lado; se activa para poder diagnosticar fallas que
+    hoy solo se le muestran al usuario como un mensaje generico (ej. envio de correo del 2FA),
+    sin dejar ningun rastro. El archivo de log queda junto al JAR en ejecucion (mismo directorio de
+    trabajo que usa el launcher/run-v2.ps1), con rotacion diaria y por tamano para no crecer sin
+    limite.
+-->
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{1} - %msg%n"/>
+        </Console>
+        <RollingFile name="RollingFile" fileName="logs/sdrerc-app.log"
+                     filePattern="logs/sdrerc-app-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{1} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Root>
+    </Loggers>
+</Configuration>

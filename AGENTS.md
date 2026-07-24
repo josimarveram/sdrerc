@@ -860,6 +860,16 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `run-v2.ps1`.
 - Nota para el futuro: cualquier dependencia nueva agregada a `pom.xml` debe reflejarse tambien en la lista manual de `run-v2.ps1`, porque ese script no lee el `pom.xml` ni usa el jar sombreado — son dos mecanismos de classpath independientes.
 
+### Log4j2 activado: primer logging real del proyecto (24/07/2026)
+
+- Reporte del usuario (mismo dia, seguimiento del fix anterior): tras corregir `run-v2.ps1`, el login avanzo mas alla del error de classpath pero fallo al enviar el codigo por correo, con el mensaje generico de `EmailOtpMailer` ("No se pudo enviar el código de verificación... Verifique la configuración SMTP o intente con otro método."). Se reprodujo el envio real con el mismo JDK/classpath que usa `run-v2.ps1` y funciono sin problema (`ENVIADO_OK`), sugiriendo que fue algo transitorio (red o limite temporal de Gmail por la cantidad de correos de prueba enviados hoy desde esa cuenta nueva). Como no habia forma de confirmar la causa exacta si volvia a pasar, se aprovecho para cerrar un hueco real: **el proyecto declaraba `log4j-api`/`log4j-core` como dependencia desde siempre pero no se usaba en ningun lado**, asi que cualquier fallo como este solo le llegaba al usuario como mensaje generico, sin ningun rastro que revisar.
+- `src/main/resources/log4j2.xml` (nuevo): configuracion minima con appender de consola (visible en desarrollo con `run-v2.ps1`) y appender de archivo rotativo (`logs/sdrerc-app.log`, junto al JAR en ejecucion — mismo directorio de trabajo que usa el launcher/`run-v2.ps1`, con rotacion diaria y por tamano de 10MB, maximo 10 archivos), nivel `INFO` en el logger raiz.
+- `EmailOtpMailer.enviarCodigo` ahora registra la excepcion completa (`LOG.error(...)`, con host/puerto/usuario y el stacktrace real de Jakarta Mail) antes de envolverla en el mensaje amigable que ve el usuario. El mensaje que ve el usuario en pantalla no cambio (sigue siendo generico a proposito, para no exponer detalle tecnico en la UI), pero ahora queda el detalle real en `logs/sdrerc-app.log` para diagnosticar sin tener que reproducir el envio a mano.
+- Probado forzando una falla real (host SMTP invalido): se confirmo que el stacktrace completo (`MailConnectException`/`UnknownHostException` en este caso) queda tanto en consola como en `logs/sdrerc-app.log`.
+- Alcance deliberadamente acotado: solo se instrumento `EmailOtpMailer` (el punto que motivo este cambio). El resto del proyecto sigue sin logging — es un gap real que valdria la pena cerrar en otros DAOs/Services criticos mas adelante, pero no se amplio el alcance de este fix puntual.
+- Archivos: `src/main/resources/log4j2.xml` (nuevo), `src/main/java/com/sdrerc/infrastructure/security/EmailOtpMailer.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores; `jar tf` confirmo `log4j2.xml` incluido en el jar; prueba real forzando un host SMTP invalido confirmo el log en consola y en `logs/sdrerc-app.log`.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
