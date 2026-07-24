@@ -168,7 +168,7 @@ public class CargaDiariaReglasService {
                 item.agregarMensaje(grupoFamiliarBd);
             }
 
-            boolean sgdBloqueante = false;
+            boolean sgdBloqueante = !hasText(item.getNumeroExpedienteSgd());
             String claveSgd = clave(item.getNumeroExpedienteSgd());
             Integer cantidadSgd = hasText(claveSgd) ? numeroSgd.get(claveSgd) : null;
             if (cantidadSgd != null && cantidadSgd.intValue() > 1) {
