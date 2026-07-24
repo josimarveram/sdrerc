@@ -204,6 +204,9 @@ public class JPanelEjecucionV2 extends JPanel {
     private final JComboBox<SimpleItem> cmbResultado = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbTipoObservacion = new JComboBox<SimpleItem>();
     private final JComboBox<SimpleItem> cmbMotivoCorreccion = new JComboBox<SimpleItem>();
+    private final JComboBox<EquipoItem> cmbEquipoDestino = new JComboBox<EquipoItem>();
+    private final JComboBox<UsuarioItem> cmbUsuarioDestino = new JComboBox<UsuarioItem>();
+    private boolean cargandoCombosDestino;
     private final PremiumDateFieldV2 fechaEjecucion = new PremiumDateFieldV2();
     private final JTextArea txtComentario = new JTextArea(4, 22);
     private final JTextArea txtMotivoReversion = new JTextArea(3, 22);
@@ -269,6 +272,7 @@ public class JPanelEjecucionV2 extends JPanel {
         restaurarFechasBusqueda();
         cargarFiltrosBase();
         cargarCatalogos();
+        cargarEquiposDestino();
         inicializarFecha();
         actualizarSeleccion();
     }
@@ -376,7 +380,20 @@ public class JPanelEjecucionV2 extends JPanel {
         panel.setAccentColor(AppV2Theme.PRIMARY);
         panel.addSection(crearResultadoEjecucion());
         panel.addSection(crearDocumentosPanel());
+        panel.addSection(crearDestinoEjecucion());
         panel.setFooter(crearAccionesPanelEjecucion());
+        return panel;
+    }
+
+    private JPanel crearDestinoEjecucion() {
+        JPanel panel = section("Destino operativo");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        int row = 0;
+        addRow(grid, row++, "Equipo destino", cmbEquipoDestino);
+        addRow(grid, row, "Usuario destino", cmbUsuarioDestino);
+        panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
 
@@ -898,6 +915,11 @@ public class JPanelEjecucionV2 extends JPanel {
         btnRevertirAnalisis.addActionListener(e -> revertirAnalisis());
         btnDerivarNotificacion.addActionListener(e -> derivarNotificacion());
         cmbResultado.addActionListener(e -> actualizarVisibilidadFechaEjecucion());
+        cmbEquipoDestino.addActionListener(e -> {
+            if (!cargandoCombosDestino) {
+                cargarUsuariosDestino();
+            }
+        });
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 actualizarSeleccion();
@@ -957,6 +979,87 @@ public class JPanelEjecucionV2 extends JPanel {
                         busquedaInicialEjecutada = true;
                         buscar();
                     }
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    /**
+     * El combo "Equipo destino" del bloque "Destino operativo" de Ejecucion solo debe
+     * ofrecer Eq. Supervision (equipo de Shirley Dioses, quien se encarga de las
+     * asignaciones en la Bandeja de Asignacion de Notificacion).
+     */
+    private static boolean esEquipoDestinoEjecucionValido(String codigo) {
+        return "EQ_SUPERVISION".equalsIgnoreCase(codigo);
+    }
+
+    private void cargarEquiposDestino() {
+        cargandoCombosDestino = true;
+        cmbEquipoDestino.removeAllItems();
+        cmbEquipoDestino.addItem(EquipoItem.placeholder("Seleccione equipo"));
+        cmbUsuarioDestino.removeAllItems();
+        cmbUsuarioDestino.addItem(UsuarioItem.placeholder("Seleccione usuario"));
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO> doInBackground() throws Exception {
+                return ejecucionService.listarEquiposActivos();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    for (com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo : get()) {
+                        if (esEquipoDestinoEjecucionValido(equipo.getCodigo())) {
+                            cmbEquipoDestino.addItem(new EquipoItem(equipo));
+                        }
+                    }
+                    if (cmbEquipoDestino.getItemCount() > 1) {
+                        cmbEquipoDestino.setSelectedIndex(1);
+                        cargarUsuariosDestino();
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los equipos destino.", ex);
+                } finally {
+                    cargandoCombosDestino = false;
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarUsuariosDestino() {
+        EquipoItem equipoItem = (EquipoItem) cmbEquipoDestino.getSelectedItem();
+        cmbUsuarioDestino.removeAllItems();
+        cmbUsuarioDestino.addItem(UsuarioItem.placeholder("Seleccione usuario"));
+        if (equipoItem == null || equipoItem.equipo == null) {
+            return;
+        }
+        final Long idEquipo = equipoItem.equipo.getIdEquipo();
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> doInBackground() throws Exception {
+                return ejecucionService.listarUsuariosAsignablesPorEquipo(idEquipo);
+            }
+
+            @Override
+            protected void done() {
+                EquipoItem equipoActual = (EquipoItem) cmbEquipoDestino.getSelectedItem();
+                if (equipoActual == null || equipoActual.equipo == null || !idEquipo.equals(equipoActual.equipo.getIdEquipo())) {
+                    return;
+                }
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> usuarios = get();
+                    for (com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario : usuarios) {
+                        cmbUsuarioDestino.addItem(new UsuarioItem(usuario));
+                    }
+                    if (usuarios.size() == 1) {
+                        cmbUsuarioDestino.setSelectedIndex(1);
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los usuarios del equipo destino.", ex);
                 }
             }
         };
@@ -1631,6 +1734,8 @@ public class JPanelEjecucionV2 extends JPanel {
             return;
         }
         final Long idExpediente = expediente.getIdExpediente();
+        final Long idEquipoDestino = equipoDestinoSeleccionado();
+        final Long idUsuarioDestino = usuarioDestinoSeleccionado();
         ejecutarOperacion("Registrando ejecución...", new Callable<EjecucionResultadoDTO>() {
             @Override
             public EjecucionResultadoDTO call() throws Exception {
@@ -1647,7 +1752,8 @@ public class JPanelEjecucionV2 extends JPanel {
                                     + " Falta registrar la carta de notificación en despacho para derivar a Notificación.");
                 }
                 EjecucionResultadoDTO derivado = ejecucionService.derivarNotificacion(
-                        crearRegistro(EjecucionExpedienteService.ACCION_DERIVACION_NOTIFICACION));
+                        crearRegistro(EjecucionExpedienteService.ACCION_DERIVACION_NOTIFICACION),
+                        idEquipoDestino, idUsuarioDestino);
                 return new EjecucionResultadoDTO(
                         derivado.getIdExpediente(),
                         derivado.getNumeroExpediente(),
@@ -1716,12 +1822,26 @@ public class JPanelEjecucionV2 extends JPanel {
         if (expediente == null || !confirmar("El expediente " + expediente.getNumeroExpediente() + " será derivado a Notificación. ¿Desea continuar?")) {
             return;
         }
+        final Long idEquipoDestino = equipoDestinoSeleccionado();
+        final Long idUsuarioDestino = usuarioDestinoSeleccionado();
         ejecutarOperacion("Derivando expediente a Notificación...", new Callable<EjecucionResultadoDTO>() {
             @Override
             public EjecucionResultadoDTO call() throws Exception {
-                return ejecucionService.derivarNotificacion(crearRegistro(EjecucionExpedienteService.ACCION_DERIVACION_NOTIFICACION));
+                return ejecucionService.derivarNotificacion(
+                        crearRegistro(EjecucionExpedienteService.ACCION_DERIVACION_NOTIFICACION),
+                        idEquipoDestino, idUsuarioDestino);
             }
         });
+    }
+
+    private Long equipoDestinoSeleccionado() {
+        EquipoItem item = (EquipoItem) cmbEquipoDestino.getSelectedItem();
+        return item == null || item.equipo == null ? null : item.equipo.getIdEquipo();
+    }
+
+    private Long usuarioDestinoSeleccionado() {
+        UsuarioItem item = (UsuarioItem) cmbUsuarioDestino.getSelectedItem();
+        return item == null || item.usuario == null ? null : item.usuario.getIdUsuario();
     }
 
     private void ejecutarOperacion(String mensajeTrabajo, Callable<EjecucionResultadoDTO> operacion) {
@@ -2273,6 +2393,54 @@ public class JPanelEjecucionV2 extends JPanel {
         @Override
         public String toString() {
             return nombre;
+        }
+    }
+
+    private static class EquipoItem {
+        private final com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo;
+        private final String label;
+
+        private EquipoItem(com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo) {
+            this.equipo = equipo;
+            this.label = equipo.getDisplayName();
+        }
+
+        private EquipoItem(String label) {
+            this.equipo = null;
+            this.label = label;
+        }
+
+        private static EquipoItem placeholder(String label) {
+            return new EquipoItem(label);
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private static class UsuarioItem {
+        private final com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario;
+        private final String label;
+
+        private UsuarioItem(com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario) {
+            this.usuario = usuario;
+            this.label = usuario.getDisplayName();
+        }
+
+        private UsuarioItem(String label) {
+            this.usuario = null;
+            this.label = label;
+        }
+
+        private static UsuarioItem placeholder(String label) {
+            return new UsuarioItem(label);
+        }
+
+        @Override
+        public String toString() {
+            return label;
         }
     }
 }

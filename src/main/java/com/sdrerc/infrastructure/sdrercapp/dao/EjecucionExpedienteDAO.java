@@ -227,7 +227,11 @@ public class EjecucionExpedienteDAO {
                 "El documento inconsistente fue registrado correctamente.");
     }
 
-    public EjecucionResultadoDTO derivarNotificacion(EjecucionRegistroDTO registro, Long idUsuario) throws SQLException {
+    public EjecucionResultadoDTO derivarNotificacion(
+            EjecucionRegistroDTO registro,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            Long idUsuario) throws SQLException {
         return moverDesdeEjecucion(
                 registro,
                 ACCION_DERIVACION_NOTIFICACION,
@@ -236,7 +240,9 @@ public class EjecucionExpedienteDAO {
                 ESTADO_POR_ASIGNAR,
                 false,
                 idUsuario,
-                "El expediente fue derivado a Notificación, pendiente de asignar.");
+                "El expediente fue derivado a Notificación, pendiente de asignar.",
+                idEquipoDestino,
+                idUsuarioDestino);
     }
 
     public EjecucionResultadoDTO revertirAnalisis(EjecucionReversionDTO reversion, Long idUsuario) throws SQLException {
@@ -378,6 +384,28 @@ public class EjecucionExpedienteDAO {
             boolean requiereResolucion,
             Long idUsuario,
             String mensaje) throws SQLException {
+        return moverDesdeEjecucion(
+                registro, accionCodigo, estadoOrigenCodigo, etapaDestinoCodigo, estadoDestinoCodigo,
+                requiereResolucion, idUsuario, mensaje, null, null);
+    }
+
+    /**
+     * Igual que la sobrecarga de 8 parametros, pero permite ademas fijar un equipo/usuario
+     * destino (ej. "Eq. Supervision" al derivar a Notificacion desde Ejecucion) como
+     * responsable actual del expediente. Si ambos son null, el responsable no se toca
+     * (mismo comportamiento de siempre).
+     */
+    private EjecucionResultadoDTO moverDesdeEjecucion(
+            EjecucionRegistroDTO registro,
+            String accionCodigo,
+            String estadoOrigenCodigo,
+            String etapaDestinoCodigo,
+            String estadoDestinoCodigo,
+            boolean requiereResolucion,
+            Long idUsuario,
+            String mensaje,
+            Long idEquipoDestino,
+            Long idUsuarioDestino) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             boolean previousAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
@@ -401,7 +429,9 @@ public class EjecucionExpedienteDAO {
                         estadoDestinoCodigo);
                 validarRequisitosTransicion(conn, transicion, registro.getComentario(), registro.getIdExpediente(), false);
                 Long idMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, accionCodigo), "movimiento " + accionCodigo);
-                actualizarExpediente(conn, registro.getIdExpediente(), transicion.idEtapaDestino, transicion.idEstadoDestino, idUsuario);
+                actualizarExpediente(
+                        conn, registro.getIdExpediente(), transicion.idEtapaDestino, transicion.idEstadoDestino,
+                        idUsuarioDestino, idEquipoDestino, idUsuario);
                 insertarHistorial(
                         conn,
                         registro.getIdExpediente(),
@@ -411,8 +441,8 @@ public class EjecucionExpedienteDAO {
                         transicion.idEtapaDestino,
                         transicion.idEstadoDestino,
                         idUsuario,
-                        expediente.idUsuarioResponsable,
-                        expediente.idEquipoResponsable,
+                        idUsuarioDestino != null ? idUsuarioDestino : expediente.idUsuarioResponsable,
+                        idEquipoDestino != null ? idEquipoDestino : expediente.idEquipoResponsable,
                         idResolucion == null ? "EXPEDIENTE" : "EXPEDIENTE_RESOLUCION",
                         idResolucion,
                         comentarioMovimiento(accionCodigo, registro.getComentario(), mensaje),
@@ -525,16 +555,37 @@ public class EjecucionExpedienteDAO {
             Long idEtapaDestino,
             Long idEstadoDestino,
             Long idUsuarioModificador) throws SQLException {
+        actualizarExpediente(conn, idExpediente, idEtapaDestino, idEstadoDestino, null, null, idUsuarioModificador);
+    }
+
+    /**
+     * Igual que la sobrecarga de 5 parametros, pero permite ademas fijar el responsable
+     * actual (usuario/equipo) del expediente, ej. al derivar a Notificacion con un destino
+     * operativo elegido (Eq. Supervision). Si ambos son null, el responsable actual no se
+     * toca (NVL conserva el valor previo), igual que la sobrecarga original.
+     */
+    private void actualizarExpediente(
+            Connection conn,
+            Long idExpediente,
+            Long idEtapaDestino,
+            Long idEstadoDestino,
+            Long idUsuarioResponsable,
+            Long idEquipoResponsable,
+            Long idUsuarioModificador) throws SQLException {
         String sql = "UPDATE expediente SET "
                 + "id_etapa_actual = ?, id_estado_actual = ?, "
+                + "id_usuario_responsable_actual = NVL(?, id_usuario_responsable_actual), "
+                + "id_equipo_responsable_actual = NVL(?, id_equipo_responsable_actual), "
                 + "fecha_ultimo_movimiento = SYSTIMESTAMP, "
                 + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente = ? AND activo = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idEtapaDestino);
             ps.setLong(2, idEstadoDestino);
-            setLongOrNull(ps, 3, idUsuarioModificador);
-            ps.setLong(4, idExpediente);
+            setLongOrNull(ps, 3, idUsuarioResponsable);
+            setLongOrNull(ps, 4, idEquipoResponsable);
+            setLongOrNull(ps, 5, idUsuarioModificador);
+            ps.setLong(6, idExpediente);
             int updated = ps.executeUpdate();
             if (updated != 1) {
                 throw new SQLException("No se pudo actualizar el expediente seleccionado.");

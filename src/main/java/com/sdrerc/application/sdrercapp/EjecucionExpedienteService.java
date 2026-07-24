@@ -108,8 +108,24 @@ public class EjecucionExpedienteService {
     }
 
     public EjecucionResultadoDTO derivarNotificacion(EjecucionRegistroDTO registro) throws SQLException {
+        return derivarNotificacion(registro, null, null);
+    }
+
+    public EjecucionResultadoDTO derivarNotificacion(
+            EjecucionRegistroDTO registro,
+            Long idEquipoDestino,
+            Long idUsuarioDestino) throws SQLException {
         validar(registro, false);
-        return ejecucionExpedienteDAO.derivarNotificacion(normalizarRegistro(registro), resolverUsuarioActualSdrercApp());
+        return ejecucionExpedienteDAO.derivarNotificacion(
+                normalizarRegistro(registro), idEquipoDestino, idUsuarioDestino, resolverUsuarioActualSdrercApp());
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO> listarEquiposActivos() throws SQLException {
+        return usuarioAsignacionService.listarEquiposActivos();
+    }
+
+    public List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> listarUsuariosAsignablesPorEquipo(Long idEquipo) throws SQLException {
+        return usuarioAsignacionService.listarUsuariosAsignablesPorEquipo(idEquipo);
     }
 
     public EjecucionResultadoDTO revertirAnalisis(EjecucionReversionDTO reversion) throws SQLException {
