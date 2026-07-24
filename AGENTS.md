@@ -816,6 +816,14 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/GrupoFamiliarDAO.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores, `target/SDRERC-V2.jar` generado. No se ejecuto SQL de correccion de datos.
 
+### Script 85: reset de datos de prueba preservando usuarios (23/07/2026)
+
+- Pedido del usuario, motivado directamente por el incidente de reset accidental documentado arriba ("Incidente: reset inesperado de USUARIO/EXPEDIENTE..."): quiere poder limpiar expedientes/datos operativos de prueba **sin** volver a perder los usuarios (ni el superadmin).
+- Causa identificada del incidente original: en `62_reset_datos_prueba_y_superadmin.sql`, el Paso 5 (INSERT del superadmin) esta envuelto en un bloque de comentario `/* ... */` a proposito (para que el analista pegue el hash real antes de descomentarlo). Si el script se ejecuta tal cual sin descomentar ese bloque, los Pasos 1-4 igual truncan `usuario` (no esta en su lista de catalogos preservados) y el Paso 5 nunca reinserta a nadie porque esta comentado: resultado, `usuario` queda en 0 filas sin que el analista lo haya pedido explicitamente.
+- `db/sdrerc_app/scripts/85_reset_datos_prueba_preservando_usuarios.sql` (nuevo, **no ejecutado**): mismo mecanismo que el script 62 (disable FKs -> truncate por exclusion -> reset IDENTITY -> enable FKs), pero agrega a la lista de tablas preservadas (ademas de los catalogos) las 6 tablas de usuario del esquema: `USUARIO`, `USUARIO_ROL`, `EQUIPO_USUARIO`, `USUARIO_SUPERVISION`, `USUARIO_TOTP_BACKUP_CODE`, `USUARIO_EMAIL_OTP` (lista confirmada contra `user_tables LIKE 'USUARIO%'`). No tiene Paso 5 (no hace falta recrear a nadie, los usuarios nunca se tocan). Idempotente, con verificacion posterior que muestra el conteo de usuarios/expedientes y el listado de roles activos tras la corrida.
+- No se toco `62_reset_datos_prueba_y_superadmin.sql` (script historico ya documentado y ejecutado antes; no se edita, se crea uno nuevo con numeracion correlativa, tal como indica la regla de scripts del proyecto).
+- No ejecutado: requiere autorizacion explicita antes de correrlo (es destructivo para expedientes/datos operativos, igual que el 62).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
