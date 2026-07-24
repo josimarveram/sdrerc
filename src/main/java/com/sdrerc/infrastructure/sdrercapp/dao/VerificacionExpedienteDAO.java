@@ -192,7 +192,7 @@ public class VerificacionExpedienteDAO {
         params.add(ESTADO_EN_VERIFICACION);
         sql.append(VisibilidadBandejaSql.construirCondicion(
                 params, esAdmin, idUsuarioActual, idsEquipoActual,
-                "e.id_usuario_responsable_actual", "e.id_equipo_responsable_actual"));
+                "e.id_usuario_responsable_actual", "e.id_equipo_responsable_actual", true));
 
         if (hasText(estadoCodigo) && !"TODOS".equalsIgnoreCase(estadoCodigo)) {
             sql.append("AND UPPER(est.codigo) = ? ");
