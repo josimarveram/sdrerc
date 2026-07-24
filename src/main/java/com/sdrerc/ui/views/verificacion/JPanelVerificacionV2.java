@@ -1163,7 +1163,7 @@ public class JPanelVerificacionV2 extends JPanel {
             "",
             "",
             valorUi(principal.getNumeroExpediente()),
-            valorUi(principal.getNumeroExpedienteSgd()),
+            valorUi(asociado.getNumeroExpedienteSgd()),
             formatDate(asociado.getFechaRecepcion()),
             "-",
             "-",

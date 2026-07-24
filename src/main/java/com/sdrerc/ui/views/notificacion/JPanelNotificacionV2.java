@@ -1632,7 +1632,7 @@ public class JPanelNotificacionV2 extends JPanel {
             "",
             "",
             valorAsigNotif(principal.getNumeroExpediente()),
-            valorAsigNotif(principal.getNumeroExpedienteSgd()),
+            valorAsigNotif(asociado.getNumeroExpedienteSgd()),
             "-",
             "-",
             "-",

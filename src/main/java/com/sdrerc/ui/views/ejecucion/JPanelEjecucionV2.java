@@ -1287,7 +1287,7 @@ public class JPanelEjecucionV2 extends JPanel {
             "",
             "",
             valor(principal.getNumeroExpediente()),
-            valor(principal.getNumeroExpedienteSgd()),
+            valor(asociado.getNumeroExpedienteSgd()),
             format(asociado.getFechaRecepcion()),
             "-",
             "-",

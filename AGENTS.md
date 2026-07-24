@@ -1050,6 +1050,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VerificacionExpedienteDAO.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado (solo SELECT de diagnostico).
 
+### Fila asociada mostraba el N° expediente SGD del principal, no el propio (24/07/2026)
+
+- Seguimiento inmediato del fix anterior: con el expediente ya mostrandose como una sola fila top-level en Verificacion, el usuario reporto que la fila expandida del asociado mostraba el N° expediente SGD del PRINCIPAL (001-2026) en vez del propio del asociado (001-2027). El numero de expediente SDRERC si debe replicarse (regla vigente: "Duplicado asociado hereda numero de expediente..."), pero el SGD es un dato propio de cada solicitud, no algo que se herede.
+- Causa raiz: `JPanelVerificacionV2.agregarFilaAsociada(...)` armaba la fila de la tabla con `valorUi(principal.getNumeroExpedienteSgd())` en vez de `valorUi(asociado.getNumeroExpedienteSgd())` (copy-paste de la columna anterior, que si debe ser `principal.getNumeroExpediente()`). Se encontro el mismo error, copiado literal, en `JPanelEjecucionV2.agregarFilaAsociada` y `JPanelNotificacionV2.agregarFilaAsociadaAsigNotif`. `JPanelAnalisisV2` y `JPanelAsignacionV2` (las 2 bandejas que ya mostraban esto bien) SI usaban `asociado.getNumeroExpedienteSgd()` correctamente; de ahi se confirmo cual era el patron correcto a replicar.
+- Fix: se cambio `principal.getNumeroExpedienteSgd()` por `asociado.getNumeroExpedienteSgd()` en las 3 filas asociadas (Verificacion, Ejecucion, y la fila asociada de la Bandeja Asignacion de Notificacion). Se corrigieron los 3 aunque el reporte del usuario fue solo sobre Verificacion, porque es exactamente el mismo bug, copiado literal, en las 3 grillas que reutilizan el mismo patron `agregarFilaAsociada`.
+- `JPanelVerificacionV2.java`, `JPanelEjecucionV2.java` y `JPanelNotificacionV2.java` ya tenian otros cambios sin comitear de tareas previas de esta sesion (bloque "Destino operativo" de Ejecucion/Verificacion, ajustes de paneles de Notificacion, etc.). Se aislo este fix puntual con la tecnica habitual de esta sesion (copia limpia desde `git show HEAD:<archivo>`, aplicar solo esta linea, generar diff, `git apply --cached`) para comitear unicamente el cambio de SGD sin arrastrar esos otros cambios pendientes.
+- Archivos: `src/main/java/com/sdrerc/ui/views/verificacion/JPanelVerificacionV2.java`, `src/main/java/com/sdrerc/ui/views/ejecucion/JPanelEjecucionV2.java`, `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
