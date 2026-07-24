@@ -66,6 +66,8 @@ Dependencias relevantes:
 - Log4j2.
 - BCrypt.
 - ZXing (`core` + `javase`): generacion de codigo QR para enrolamiento TOTP del login V2.
+- HikariCP: pool de conexiones JDBC hacia SDRERC_APP. `SdrercAppConnection.getConnection()` ya no usa `DriverManager` directo (una conexion fisica nueva por cada consulta no escala con varios usuarios conectados a la vez); ningun DAO cambio, la firma publica es identica.
+- Jakarta Mail: envio del codigo OTP del 2FA por correo (login V2).
 
 ## Documentacion funcional clave
 
