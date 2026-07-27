@@ -1059,6 +1059,14 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/ui/views/verificacion/JPanelVerificacionV2.java`, `src/main/java/com/sdrerc/ui/views/ejecucion/JPanelEjecucionV2.java`, `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Paneles "Asociar" y "Grupo Familiar" de Registro/Recepcion sin boton X (24/07/2026)
+
+- Pedido del usuario: el panel "Asociar" (Panel de Asociacion) y el panel "Grupo Familiar" del modulo Registro/Recepcion no tenian el boton `X` para cerrar el panel derecho, a diferencia del panel `Datos`.
+- Causa raiz: `AppV2SideActionPanel` solo dibuja el boton `X` cuando se le pasa un callback `onClose` no nulo al constructor (`new AppV2SideActionPanel(title, onClose)`); el constructor de un solo parametro (`new AppV2SideActionPanel(title)`) delega al de 2 parametros con `onClose = null`, omitiendo el boton. En `JPanelBandejaExpedientesNueva` (implementa la Bandeja Registro/Recepcion), el panel `Datos` ya llamaba `super("Panel de datos", this::ocultarPanelRecepcion)` correctamente, pero las clases internas `JPanelRegistrarGrupoFamiliarV2` y `JPanelAsociarDuplicadosRecepcionV2` llamaban `super("Grupo Familiar")`/`super("Panel de Asociación")` sin el segundo parametro.
+- Fix: se agrego el mismo callback `JPanelBandejaExpedientesNueva.this::ocultarPanelRecepcion` (calificado con el nombre de la clase externa por ser clases internas no estaticas) a ambos `super(...)`, reutilizando el mismo metodo que ya usa el panel `Datos` para ocultar el panel lateral completo (`splitBandeja.setSideVisible(false)`), sin importar cual de las 3 lenguetas estuviera activa.
+- Archivos: `src/main/java/com/sdrerc/ui/views/expedienteconsola/JPanelBandejaExpedientesNueva.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

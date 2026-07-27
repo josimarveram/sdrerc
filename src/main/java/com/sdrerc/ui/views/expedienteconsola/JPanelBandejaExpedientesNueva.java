@@ -2212,7 +2212,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private long secuenciaCargaGrupoFamiliar;
 
         private JPanelRegistrarGrupoFamiliarV2() {
-            super("Grupo Familiar");
+            super("Grupo Familiar", JPanelBandejaExpedientesNueva.this::ocultarPanelRecepcion);
             setAccentColor(new Color(35, 138, 94));
 
             AppV2SideSectionPanel seccionMultiple = new AppV2SideSectionPanel("Selección múltiple marcada");
@@ -2888,7 +2888,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private long secuenciaCargaDuplicados;
 
         private JPanelAsociarDuplicadosRecepcionV2() {
-            super("Panel de Asociación");
+            super("Panel de Asociación", JPanelBandejaExpedientesNueva.this::ocultarPanelRecepcion);
             setAccentColor(new Color(198, 121, 31));
 
             AppV2SideSectionPanel seccionSeleccion = new AppV2SideSectionPanel("Selección y alertas");
