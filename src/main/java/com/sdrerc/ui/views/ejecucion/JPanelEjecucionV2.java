@@ -1530,6 +1530,7 @@ public class JPanelEjecucionV2 extends JPanel {
         lblExpediente.setText(valor(expediente.getNumeroExpediente()));
         lblExpedienteSgd.setText(valor(expediente.getNumeroExpedienteSgd()));
         lblTitular.setText(valor(expediente.getTitular()));
+        actualizarSubtituloPanelesEjecucion(expediente.getTitular());
         lblActa.setText(valor(expediente.getTipoActa()) + " " + valor(expediente.getNumeroActa()));
         lblProcedimiento.setText(valor(expediente.getProcedimiento()));
         lblResponsable.setText(valor(expediente.getResponsable()) + " / " + valor(expediente.getEquipo()));
@@ -1555,8 +1556,19 @@ public class JPanelEjecucionV2 extends JPanel {
         actualizarAcciones(expediente);
     }
 
+    private void actualizarSubtituloPanelesEjecucion(String titular) {
+        String valor = titular == null || titular.trim().isEmpty() ? "" : titular.trim();
+        if (panelDatosEjecucion != null) {
+            panelDatosEjecucion.setSubtitle(valor);
+        }
+        if (panelEjecucion != null) {
+            panelEjecucion.setSubtitle(valor);
+        }
+    }
+
     private void limpiarDetalle() {
         cargarDatosExpedienteEjecucion(null);
+        actualizarSubtituloPanelesEjecucion(null);
         lblExpediente.setText("-");
         lblExpedienteSgd.setText("-");
         lblTitular.setText("-");

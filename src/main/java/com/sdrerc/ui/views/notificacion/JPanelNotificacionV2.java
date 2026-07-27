@@ -196,6 +196,9 @@ public class JPanelNotificacionV2 extends JPanel {
     private AppV2OperationalSplitPanel splitOperativo;
     private AppV2SideActionPanel panelNotificacion;
     private AppV2SideActionPanel panelCierre;
+    private AppV2SideActionPanel panelAsignacionOperativaNotif;
+    private AppV2SideActionPanel panelFirmaNotif;
+    private AppV2SideActionPanel panelValidarOperativo;
     private JTabbedPane tabsBandejasTop;
     private JPanel bandejaAsignacionTab;
     private JPanel bandejaValidacionTab;
@@ -851,9 +854,21 @@ public class JPanelNotificacionV2 extends JPanel {
             AsignacionNotifTableRow fila = filaAsignacionNotif(modelRow);
             documentoAsigNotifFoco = fila != null && fila.esPrincipal() ? fila.principal : null;
         }
+        actualizarSubtituloPanelesAsigNotif();
         actualizarPanelDatosAsigNotif();
         actualizarPanelFirmaAsigNotif();
         actualizarPanelAsignacionSeleccionNotif();
+    }
+
+    private void actualizarSubtituloPanelesAsigNotif() {
+        String titular = documentoAsigNotifFoco == null || documentoAsigNotifFoco.getTitular() == null
+                ? "" : documentoAsigNotifFoco.getTitular().trim();
+        if (panelAsignacionOperativaNotif != null) {
+            panelAsignacionOperativaNotif.setSubtitle(titular);
+        }
+        if (panelFirmaNotif != null) {
+            panelFirmaNotif.setSubtitle(titular);
+        }
     }
 
     private void actualizarPanelDatosAsigNotif() {
@@ -919,6 +934,8 @@ public class JPanelNotificacionV2 extends JPanel {
                 "Panel de Asignación", new Color(57, 125, 199), this::cerrarPanelAsignacionNotif);
         AppV2SideActionPanel panelAsignacion = crearPanelAsignacionOperativaNotif();
         AppV2SideActionPanel panelFirma = crearPanelFirmaNotif();
+        panelAsignacionOperativaNotif = panelAsignacion;
+        panelFirmaNotif = panelFirma;
         return crearPanelAsignacionConTabNotif(panelDatos, panelAsignacion, panelFirma);
     }
 
@@ -2079,9 +2096,10 @@ public class JPanelNotificacionV2 extends JPanel {
         private final JLabel lblProvincia = new JLabel("-");
         private final JLabel lblDistrito = new JLabel("-");
         private final JLabel lblDireccion = new JLabel("-");
+        private AppV2SideActionPanel panel;
 
         private AppV2SideActionPanel crearPanel(String titulo, Color accentColor, Runnable onClose) {
-            AppV2SideActionPanel panel = new AppV2SideActionPanel(titulo, onClose);
+            panel = new AppV2SideActionPanel(titulo, onClose);
             panel.setAccentColor(accentColor);
             AppV2ResponsiveGridPanel secciones = new AppV2ResponsiveGridPanel(320, 2, 12, 12);
             secciones.add(seccionPlazo());
@@ -2189,9 +2207,15 @@ public class JPanelNotificacionV2 extends JPanel {
             lblProvincia.setText(valorNotif(dto.getProvinciaSolicitante()));
             lblDistrito.setText(valorNotif(dto.getDistritoSolicitante()));
             lblDireccion.setText(valorNotif(dto.getDireccionSolicitante()));
+            if (panel != null) {
+                panel.setSubtitle(dto.getTitular() == null ? "" : dto.getTitular().trim());
+            }
         }
 
         private void limpiar() {
+            if (panel != null) {
+                panel.setSubtitle("");
+            }
             JLabel[] labels = {
                 lblDias, lblFechaVencimiento, lblExpediente, lblExpedienteSgd, lblFechaRecepcion,
                 lblCanalIngreso, lblTramiteWeb, lblProcedimiento, lblTipoDocumento, lblNumeroDocumento,
@@ -2260,6 +2284,7 @@ public class JPanelNotificacionV2 extends JPanel {
         AppV2SideActionPanel panelDatos = datosValidacionNotif.crearPanel(
                 "Panel de Validación", new Color(57, 125, 199), this::cerrarPanelValidacionNotif);
         AppV2SideActionPanel panelValidar = crearPanelValidarOperativo();
+        panelValidarOperativo = panelValidar;
         return crearPanelValidacionConTab(panelDatos, panelValidar);
     }
 
@@ -2442,6 +2467,9 @@ public class JPanelNotificacionV2 extends JPanel {
         idDocumentoValidacionSeleccionado = item.getIdDocumentoAnalizado();
         idExpedienteValidacionSeleccionado = item.getIdExpediente();
         lblPanelValidacionTitulo.setText("Panel de Validación - " + item.getNumeroExpediente());
+        if (panelValidarOperativo != null) {
+            panelValidarOperativo.setSubtitle(item.getTitular() == null ? "" : item.getTitular().trim());
+        }
         btnRegistrarValidacion.setEnabled(true);
         if (cmbResultadoValidacion.getItemCount() > 0) {
             cmbResultadoValidacion.setSelectedIndex(0);
@@ -3553,6 +3581,7 @@ public class JPanelNotificacionV2 extends JPanel {
         lblExpediente.setText(valor(expediente.getNumeroExpediente()));
         lblExpedienteSgd.setText(valor(expediente.getNumeroExpedienteSgd()));
         lblTitular.setText(valor(expediente.getTitular()));
+        actualizarSubtituloPanelesNotificacion(expediente.getTitular());
         lblActa.setText(valor(expediente.getTipoActa()) + " · " + valor(expediente.getNumeroActa()));
         lblProcedimiento.setText(valor(expediente.getProcedimiento()));
         lblEtapaEstado.setText(DisplayNameMapperV2.etapa(expediente.getEtapaCodigo()) + " / " + DisplayNameMapperV2.estado(expediente.getEstadoCodigo()));
@@ -3581,7 +3610,18 @@ public class JPanelNotificacionV2 extends JPanel {
         actualizarAcciones(expediente);
     }
 
+    private void actualizarSubtituloPanelesNotificacion(String titular) {
+        String valor = titular == null || titular.trim().isEmpty() ? "" : titular.trim();
+        if (panelNotificacion != null) {
+            panelNotificacion.setSubtitle(valor);
+        }
+        if (panelCierre != null) {
+            panelCierre.setSubtitle(valor);
+        }
+    }
+
     private void limpiarResumen() {
+        actualizarSubtituloPanelesNotificacion(null);
         lblExpediente.setText("-");
         lblExpedienteSgd.setText("-");
         lblTitular.setText("-");

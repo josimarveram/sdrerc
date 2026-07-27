@@ -2432,11 +2432,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 actualizarBotonAsociarGrupoFamiliar();
                 limpiarGrupoActual();
                 actualizarAlertaGrupoFamiliar(null);
+                setSubtitle("");
                 return;
             }
             lblExpedienteFocoGrupoFamiliar.setText(
                     valorUiGrupoFamiliar(expedientePrincipal.getNumeroExpediente()) + " / "
                             + valorUiGrupoFamiliar(expedientePrincipal.getTitular()));
+            setSubtitle(expedientePrincipal.getTitular());
             lblEstadoDeteccion.setText("Buscando posibles integrantes...");
             cargarGrupoActual(idExpediente);
             cargarEstadoAlertaGrupoFamiliar(idExpediente);
@@ -2978,9 +2980,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 lblEstadoAsociar.setText("Seleccione un expediente en la bandeja.");
                 lblExpedientePrincipalAsociacion.setText("-");
                 actualizarEstadoBoton();
+                setSubtitle("");
                 return;
             }
             lblExpedientePrincipalAsociacion.setText(textoExpedientePrincipal(expedientePrincipal));
+            setSubtitle(expedientePrincipal.getTitular());
             lblEstadoAsociar.setText("Buscando posibles duplicados...");
             final long sequence = ++secuenciaCargaDuplicados;
             SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker = new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {

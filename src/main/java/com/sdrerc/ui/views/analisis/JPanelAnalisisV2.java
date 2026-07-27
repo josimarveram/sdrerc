@@ -424,16 +424,18 @@ public class JPanelAnalisisV2 extends JPanel {
     }
 
     private void actualizarTituloPanelAnalisis(String titular) {
-        if (panelDatosAnalisis == null) {
-            return;
-        }
-        String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de datos</div>";
+        String tituloDatos = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de datos</div>";
         if (titular != null && !titular.trim().isEmpty() && !"-".equals(titular.trim())) {
-            titulo = titulo + "<div style='font-size:12px;font-weight:600;color:rgb(21,71,117);margin-top:2px;'>"
+            tituloDatos = tituloDatos + "<div style='font-size:12px;font-weight:600;color:rgb(21,71,117);margin-top:2px;'>"
                     + escapeHtml(titular.trim()) + "</div>";
         }
-        titulo += "</html>";
-        panelDatosAnalisis.setTitle(titulo);
+        tituloDatos += "</html>";
+        if (panelDatosAnalisis != null) {
+            panelDatosAnalisis.setTitle(tituloDatos);
+        }
+        if (panelAnalisis != null) {
+            panelAnalisis.setSubtitle(titular == null || "-".equals(titular.trim()) ? "" : titular.trim());
+        }
     }
 
     private static String escapeHtml(String value) {

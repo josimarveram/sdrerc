@@ -3924,11 +3924,19 @@ public class JPanelAsignacionV2 extends JPanel {
             panelDatosExpediente.setTitle(titulo);
             panelDatosExpediente.setSubtitle(subtitulo);
         }
+        if (panelAsignacion != null) {
+            panelAsignacion.setSubtitle(subtitulo);
+        }
         if (panelAsociar != null) {
             panelAsociar.setTitle("Panel de Asociación");
+            panelAsociar.setSubtitle(subtitulo);
+        }
+        if (panelGrupoFamiliar != null) {
+            panelGrupoFamiliar.setSubtitle(subtitulo);
         }
         if (panelCartasRespuesta != null) {
             panelCartasRespuesta.setTitle(titulo);
+            panelCartasRespuesta.setSubtitle(subtitulo);
         }
     }
 

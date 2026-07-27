@@ -1417,16 +1417,18 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private void actualizarTituloPanelVerificacion(String titular) {
-        if (panelDatosVerificacion == null) {
-            return;
-        }
         String titulo = "<html><div style='font-size:18px;font-weight:700;color:#1c242e;'>Panel de Verificación</div>";
         if (titular != null && !titular.trim().isEmpty() && !"-".equals(titular.trim())) {
             titulo = titulo + "<div style='font-size:12px;font-weight:600;color:rgb(21,71,117);margin-top:2px;'>"
                     + escapeHtml(titular.trim()) + "</div>";
         }
         titulo += "</html>";
-        panelDatosVerificacion.setTitle(titulo);
+        if (panelDatosVerificacion != null) {
+            panelDatosVerificacion.setTitle(titulo);
+        }
+        if (panelVerificacion != null) {
+            panelVerificacion.setSubtitle(titular == null || "-".equals(titular.trim()) ? "" : titular.trim());
+        }
     }
 
     private static String escapeHtml(String value) {
