@@ -1110,6 +1110,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Launcher cliente: auto-actualizacion fallaba con "Acceso denegado" a la carpeta app (30/07/2026)
+
+- Reporte del usuario con log real (`launcher-20260730.log.txt`): al detectar la version remota 1.0.88, el launcher descargaba y validaba el checksum del zip correctamente, pero fallaba con `Fallo la actualizacion... Error: Acceso denegado a la ruta de acceso 'C:\SDRERC_CLIENTE\app'` al intentar reemplazar la carpeta local, dos intentos seguidos (13:16 y 13:17), quedando la app sin poder actualizarse (aunque `Test-SdrercAlreadyOpen` no habia detectado ninguna instancia abierta en ese momento).
+- Causa mas probable: bloqueo transitorio del sistema de archivos sobre `C:\SDRERC_CLIENTE\app` justo despues de mover/recrear la carpeta (antivirus escaneando los archivos recien copiados del zip, o el proceso Java anterior liberando el handle del JAR con un pequeno retraso) — no un problema de permisos NTFS permanente, ya que la misma carpeta se uso sin problema en instalaciones/lanzamientos previos (version local 1.0.87 corria normalmente). `Invoke-Update`/`Restore-Backup` en `sdrerc-launcher.ps1` no tenian ningun reintento: al primer `UnauthorizedAccessException` en `Move-Item`/`Ensure-Directory`/`Copy-Item`, abortaban toda la actualizacion.
+- Fix: se agrego `Invoke-WithRetry` (helper generico: ejecuta un scriptblock hasta 5 veces con 1 segundo de espera entre intentos, relanzando la excepcion solo si el ultimo intento tambien falla) y se envolvieron las operaciones de archivo criticas de `Invoke-Update` (`Move-Item` del backup, `Ensure-Directory`/`Copy-Item` al recrear `AppDir`) y de `Restore-Backup` (`Remove-Item`/`Move-Item`) con este helper, para tolerar el bloqueo transitorio sin fallar la actualizacion completa.
+- Guia inmediata dada al usuario para desbloquear esa laptop sin esperar el redespliegue del script: cerrar cualquier ventana/proceso `java.exe` de SDRERC abierto (Administrador de tareas) antes de reintentar el launcher, y revisar si Norton (antivirus ya conocido en esta laptop por interceptar TLS del SMTP, ver seccion 2FA por correo) esta escaneando/bloqueando `C:\SDRERC_CLIENTE` en tiempo real.
+- Archivos: `scripts/client/sdrerc-launcher.ps1`.
+- Validacion: sintaxis validada con `[System.Management.Automation.PSParser]::Tokenize(...)` (los 2 avisos que reporta son preexistentes, en `Invoke-HttpTextRequest`/`Download-HttpFile`, patron inofensivo de PowerShell con `$Var:` dentro de un string, no relacionados con este cambio). Sin `mvn` (no es codigo Java). Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

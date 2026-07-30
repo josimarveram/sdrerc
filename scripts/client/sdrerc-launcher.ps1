@@ -39,6 +39,30 @@ function Read-JsonFile {
     return (Get-Content -LiteralPath $PathValue -Raw -Encoding UTF8 | ConvertFrom-Json)
 }
 
+# Reintenta una operacion de archivo ante bloqueos transitorios (antivirus escaneando
+# archivos recien creados/movidos, o el proceso anterior de SDRERC liberando el JAR
+# con un pequeno retraso), en vez de fallar la actualizacion completa al primer intento.
+function Invoke-WithRetry {
+    param(
+        [scriptblock]$Action,
+        [int]$MaxAttempts = 5,
+        [int]$DelayMilliseconds = 1000
+    )
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            & $Action
+            return
+        }
+        catch {
+            if ($attempt -eq $MaxAttempts) {
+                throw
+            }
+            Write-Log "Operacion de archivo fallo (intento $attempt de $MaxAttempts): $($_.Exception.Message). Reintentando en $DelayMilliseconds ms." "WARN"
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+    }
+}
+
 function Read-JsonText {
     param([string]$JsonText)
     if ([string]::IsNullOrWhiteSpace($JsonText)) {
@@ -202,9 +226,9 @@ function Restore-Backup {
         return
     }
     if (Test-Path -LiteralPath $AppDir) {
-        Remove-Item -LiteralPath $AppDir -Recurse -Force
+        Invoke-WithRetry { Remove-Item -LiteralPath $AppDir -Recurse -Force }
     }
-    Move-Item -LiteralPath $BackupDir -Destination $AppDir -Force
+    Invoke-WithRetry { Move-Item -LiteralPath $BackupDir -Destination $AppDir -Force }
 }
 
 function Get-ReleaseMode {
@@ -354,12 +378,12 @@ function Invoke-Update {
     try {
         if (Test-Path -LiteralPath $AppDir) {
             Ensure-Directory $BackupRoot
-            Move-Item -LiteralPath $AppDir -Destination $backupDir -Force
+            Invoke-WithRetry { Move-Item -LiteralPath $AppDir -Destination $backupDir -Force }
             Write-Log "Backup creado: $backupDir"
         }
 
-        Ensure-Directory $AppDir
-        Copy-Item -Path (Join-Path $stagingDir "*") -Destination $AppDir -Recurse -Force
+        Invoke-WithRetry { Ensure-Directory $AppDir }
+        Invoke-WithRetry { Copy-Item -Path (Join-Path $stagingDir "*") -Destination $AppDir -Recurse -Force }
 
         if ($previousConfig) {
             Ensure-Directory (Split-Path -Parent $configFile)
