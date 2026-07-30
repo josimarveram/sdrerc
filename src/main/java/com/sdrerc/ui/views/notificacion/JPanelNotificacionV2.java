@@ -20,7 +20,6 @@ import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
-import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
@@ -36,16 +35,21 @@ import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import com.sdrerc.util.DateRangePickerSupport;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -423,7 +427,8 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JTable tablaNotifBandeja = new AppV2Table(notifBandejaModel);
     private final AppV2TablePanel tablaNotifBandejaPanel = new AppV2TablePanel(
             tablaNotifBandeja, "Sin documentos para notificar", "No hay documentos pendientes de notificación.");
-    private final JLabel lblEstadoNotifBandeja = new JLabel("Haga clic en \"+\" para desplegar los intentos de notificación.");
+    private final JLabel lblEstadoNotifBandeja = new JLabel(
+            "Seleccione un documento y presione \"Agregar intento\". Los documentos con intentos registrados muestran un icono para desplegarlos.");
     private final JButton btnAgregarIntento = new JButton("+ Agregar intento");
     private Long idDocumentoNotifSeleccionado;
 
@@ -467,8 +472,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new JPanel(new GridLayout(2, 3, 12, 12));
-        metricas.setOpaque(false);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 10);
         metricas.add(cardPendientes);
         metricas.add(cardRevision);
         metricas.add(cardNotificados);
@@ -2826,11 +2830,16 @@ public class JPanelNotificacionV2 extends JPanel {
                     return;
                 }
                 idDocumentoNotifSeleccionado = fila.idDocumento;
+                btnAgregarIntento.setEnabled(fila.esPadre());
                 seleccionarExpedienteDesdeDocumentoNotif(fila.idDocumento);
                 if (e.getClickCount() == 2) {
-                    panelNotificacionCerradoPorUsuario = false;
-                    if (splitOperativo != null) {
-                        splitOperativo.setSideVisible(true);
+                    if (fila.esPadre()) {
+                        panelNotificacionCerradoPorUsuario = false;
+                        if (splitOperativo != null) {
+                            splitOperativo.setSideVisible(true);
+                        }
+                    } else if (fila.intento != null) {
+                        mostrarDialogoEditarIntento(fila.intento);
                     }
                 }
             }
@@ -2839,6 +2848,7 @@ public class JPanelNotificacionV2 extends JPanel {
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         toolbar.setOpaque(false);
         AppV2Theme.estilizarBotonPrimario(btnAgregarIntento);
+        btnAgregarIntento.setEnabled(false);
         toolbar.add(btnAgregarIntento);
         btnAgregarIntento.addActionListener(e -> mostrarDialogoAgregarIntento());
 
@@ -2913,8 +2923,12 @@ public class JPanelNotificacionV2 extends JPanel {
         for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
             filasNotifBandeja.add(NotifFilaTabla.padre(item));
             List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos = intentosNotifCache.get(item.getIdDocumentoAnalizado());
+            String iconoIntentos = item.getTotalIntentos() <= 0
+                    ? ""
+                    : (documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) ? "collapse" : "expand")
+                            + ":" + item.getTotalIntentos();
             notifBandejaModel.addRow(new Object[]{
-                documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) ? "collapse" : "expand",
+                iconoIntentos,
                 item.getNumeroExpediente(),
                 item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
                 item.getTipoDocumento().isEmpty() ? "-" : item.getTipoDocumento(),
@@ -2926,7 +2940,7 @@ public class JPanelNotificacionV2 extends JPanel {
             });
             if (documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) && intentos != null) {
                 for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
-                    filasNotifBandeja.add(NotifFilaTabla.hijo(item.getIdDocumentoAnalizado()));
+                    filasNotifBandeja.add(NotifFilaTabla.hijo(item.getIdDocumentoAnalizado(), intento));
                     notifBandejaModel.addRow(new Object[]{
                         "",
                         "↳ Intento " + intento.getNumeroIntento(),
@@ -3016,10 +3030,28 @@ public class JPanelNotificacionV2 extends JPanel {
         if (documento == null) {
             return;
         }
-        JComboBox<SimpleItem> cmbModalidad = new JComboBox<SimpleItem>();
-        cmbModalidad.addItem(new SimpleItem("VIRTUAL", "Virtual"));
-        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
-        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentosActuales =
+                intentosNotifCache.get(documento.getIdDocumentoAnalizado());
+        int totalIntentosActual = intentosActuales != null ? intentosActuales.size() : documento.getTotalIntentos();
+        int siguienteIntento = totalIntentosActual + 1;
+        if (siguienteIntento > 3) {
+            JOptionPane.showMessageDialog(this,
+                    "Ya se registraron los 3 intentos permitidos para este documento.",
+                    "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final String tipoNotificacionCodigo;
+        final String modalidadNombre;
+        if (siguienteIntento == 1) {
+            tipoNotificacionCodigo = "VIRTUAL";
+            modalidadNombre = "Virtual";
+        } else if (siguienteIntento == 2) {
+            tipoNotificacionCodigo = "PRESENCIAL_1";
+            modalidadNombre = "Presencial";
+        } else {
+            tipoNotificacionCodigo = "PRESENCIAL_2";
+            modalidadNombre = "Presencial";
+        }
         JTextField txtCodigo = new JTextField(16);
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gbcLabel = new GridBagConstraints();
@@ -3032,10 +3064,14 @@ public class JPanelNotificacionV2 extends JPanel {
         gbcValue.insets = new Insets(4, 0, 4, 0);
         gbcLabel.gridy = 0;
         gbcValue.gridy = 0;
-        form.add(new JLabel("Modalidad"), gbcLabel);
-        form.add(cmbModalidad, gbcValue);
+        form.add(new JLabel("Intento N°"), gbcLabel);
+        form.add(new JLabel(String.valueOf(siguienteIntento)), gbcValue);
         gbcLabel.gridy = 1;
         gbcValue.gridy = 1;
+        form.add(new JLabel("Modalidad"), gbcLabel);
+        form.add(new JLabel(modalidadNombre), gbcValue);
+        gbcLabel.gridy = 2;
+        gbcValue.gridy = 2;
         form.add(new JLabel("Código notificación"), gbcLabel);
         form.add(txtCodigo, gbcValue);
 
@@ -3044,10 +3080,8 @@ public class JPanelNotificacionV2 extends JPanel {
         if (confirm != JOptionPane.OK_OPTION) {
             return;
         }
-        SimpleItem modalidad = (SimpleItem) cmbModalidad.getSelectedItem();
         final Long idExpediente = documento.getIdExpediente();
         final Long idDocumento = documento.getIdDocumentoAnalizado();
-        final String tipoNotificacionCodigo = modalidad == null ? "VIRTUAL" : modalidad.codigo;
         final String codigoNotificacion = txtCodigo.getText();
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
@@ -3076,21 +3110,113 @@ public class JPanelNotificacionV2 extends JPanel {
         alternarExpansionNotif(idDocumento);
     }
 
+    private void mostrarDialogoEditarIntento(com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
+        JComboBox<SimpleItem> cmbModalidad = new JComboBox<SimpleItem>();
+        cmbModalidad.addItem(new SimpleItem("VIRTUAL", "Virtual"));
+        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
+        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
+        seleccionarItemPorCodigo(cmbModalidad, intento.getTipoNotificacionCodigo());
+
+        JComboBox<SimpleItem> cmbEstado = new JComboBox<SimpleItem>();
+        cmbEstado.addItem(new SimpleItem("PENDIENTE", "Pendiente"));
+        cmbEstado.addItem(new SimpleItem("ENVIADA", "Enviada"));
+        cmbEstado.addItem(new SimpleItem("EXITOSA", "Exitosa (ubicado)"));
+        cmbEstado.addItem(new SimpleItem("FALLIDA", "Fallida (no ubicado)"));
+        seleccionarItemPorCodigo(cmbEstado, intento.getEstadoNotificacionCodigo());
+
+        JTextField txtCodigo = new JTextField(intento.getCodigoNotificacion(), 16);
+
+        JPanel form = new JPanel(new GridBagLayout());
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = 0;
+        gbcLabel.anchor = GridBagConstraints.WEST;
+        gbcLabel.insets = new Insets(4, 0, 4, 8);
+        GridBagConstraints gbcValue = new GridBagConstraints();
+        gbcValue.gridx = 1;
+        gbcValue.fill = GridBagConstraints.HORIZONTAL;
+        gbcValue.insets = new Insets(4, 0, 4, 0);
+        gbcLabel.gridy = 0;
+        gbcValue.gridy = 0;
+        form.add(new JLabel("Intento N°"), gbcLabel);
+        form.add(new JLabel(String.valueOf(intento.getNumeroIntento())), gbcValue);
+        gbcLabel.gridy = 1;
+        gbcValue.gridy = 1;
+        form.add(new JLabel("Modalidad"), gbcLabel);
+        form.add(cmbModalidad, gbcValue);
+        gbcLabel.gridy = 2;
+        gbcValue.gridy = 2;
+        form.add(new JLabel("Estado"), gbcLabel);
+        form.add(cmbEstado, gbcValue);
+        gbcLabel.gridy = 3;
+        gbcValue.gridy = 3;
+        form.add(new JLabel("Código notificación"), gbcLabel);
+        form.add(txtCodigo, gbcValue);
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this, form, "Editar intento de notificación", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (confirm != JOptionPane.OK_OPTION) {
+            return;
+        }
+        SimpleItem modalidad = (SimpleItem) cmbModalidad.getSelectedItem();
+        SimpleItem estado = (SimpleItem) cmbEstado.getSelectedItem();
+        final Long idExpedienteNotificacion = intento.getIdExpedienteNotificacion();
+        final Long idDocumento = intento.getIdDocumentoAnalizado();
+        final String tipoNotificacionCodigo = modalidad == null ? intento.getTipoNotificacionCodigo() : modalidad.getCodigo();
+        final String estadoNotificacionCodigo = estado == null ? intento.getEstadoNotificacionCodigo() : estado.getCodigo();
+        final String codigoNotificacion = txtCodigo.getText();
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.actualizarIntentoNotificacion(
+                        idExpedienteNotificacion, tipoNotificacionCodigo, estadoNotificacionCodigo, codigoNotificacion, null);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    intentosNotifCache.remove(idDocumento);
+                    documentosNotifExpandidos.add(idDocumento);
+                    alternarExpansionNotifForzado(idDocumento);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo actualizar el intento de notificación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private static void seleccionarItemPorCodigo(JComboBox<SimpleItem> combo, String codigo) {
+        if (codigo == null || codigo.trim().isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            SimpleItem item = combo.getItemAt(i);
+            if (item != null && item.getCodigo().equalsIgnoreCase(codigo.trim())) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
     private static class NotifFilaTabla {
         private final boolean padre;
         private final Long idDocumento;
+        private final com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento;
 
-        private NotifFilaTabla(boolean padre, Long idDocumento) {
+        private NotifFilaTabla(boolean padre, Long idDocumento, com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
             this.padre = padre;
             this.idDocumento = idDocumento;
+            this.intento = intento;
         }
 
         private static NotifFilaTabla padre(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
-            return new NotifFilaTabla(true, item.getIdDocumentoAnalizado());
+            return new NotifFilaTabla(true, item.getIdDocumentoAnalizado(), null);
         }
 
-        private static NotifFilaTabla hijo(Long idDocumento) {
-            return new NotifFilaTabla(false, idDocumento);
+        private static NotifFilaTabla hijo(Long idDocumento, com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
+            return new NotifFilaTabla(false, idDocumento, intento);
         }
 
         private boolean esPadre() {
@@ -3098,8 +3224,78 @@ public class JPanelNotificacionV2 extends JPanel {
         }
     }
 
+    /**
+     * Insignia de intentos de notificacion: chevron dentro de un cuadrado redondeado
+     * (en vez del circulo con +/- que usan las bandejas de expedientes asociados/
+     * duplicados), con el numero de intentos registrados como sello. No dibuja nada
+     * si el documento aun no tiene intentos (estado NONE).
+     */
+    private static final class NotifIntentoGlyph extends JPanel {
+        static final int NONE = 0;
+        static final int EXPAND = 1;
+        static final int COLLAPSE = 2;
+
+        private int state = NONE;
+        private int totalIntentos;
+        private Color accent = AppV2Theme.TEAL;
+
+        private NotifIntentoGlyph() {
+            setOpaque(true);
+            setPreferredSize(new Dimension(40, 28));
+        }
+
+        private void configure(int state, int totalIntentos, Color accent, Color background) {
+            this.state = state;
+            this.totalIntentos = totalIntentos;
+            this.accent = accent == null ? AppV2Theme.TEAL : accent;
+            setBackground(background);
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (state == NONE) {
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int cy = getHeight() / 2;
+                int size = 18;
+                int x = 6;
+                int y = cy - size / 2;
+                Color fill = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 30);
+                g2.setColor(fill);
+                g2.fillRoundRect(x, y, size, size, 7, 7);
+                g2.setColor(accent);
+                g2.setStroke(new BasicStroke(1.6f));
+                g2.drawRoundRect(x, y, size, size, 7, 7);
+                int cx = x + size / 2;
+                int pad = 4;
+                if (state == COLLAPSE) {
+                    g2.drawPolyline(
+                            new int[]{cx - pad, cx, cx + pad},
+                            new int[]{cy - 3, cy + 2, cy - 3}, 3);
+                } else {
+                    g2.drawPolyline(
+                            new int[]{cx - 3, cx + 2, cx - 3},
+                            new int[]{cy - pad, cy, cy + pad}, 3);
+                }
+                if (totalIntentos > 0) {
+                    g2.setFont(AppV2Theme.fontBold(9));
+                    FontMetrics fm = g2.getFontMetrics();
+                    String texto = String.valueOf(totalIntentos);
+                    g2.drawString(texto, x + size + 4, cy + fm.getAscent() / 2 - 1);
+                }
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
     private class NotifExpandirRenderer extends JPanel implements TableCellRenderer {
-        private final AppV2ExpandCollapseGlyph glyph = new AppV2ExpandCollapseGlyph();
+        private final NotifIntentoGlyph glyph = new NotifIntentoGlyph();
 
         private NotifExpandirRenderer() {
             setOpaque(true);
@@ -3112,12 +3308,23 @@ public class JPanelNotificacionV2 extends JPanel {
                 JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             Color background = isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
             setBackground(background);
-            if ("expand".equals(value)) {
-                glyph.configure(AppV2ExpandCollapseGlyph.EXPAND, AppV2Theme.PRIMARY, background);
-            } else if ("collapse".equals(value)) {
-                glyph.configure(AppV2ExpandCollapseGlyph.COLLAPSE, AppV2Theme.PRIMARY, background);
+            String texto = value == null ? "" : value.toString();
+            int totalIntentos = 0;
+            int separador = texto.indexOf(':');
+            String estado = separador >= 0 ? texto.substring(0, separador) : texto;
+            if (separador >= 0) {
+                try {
+                    totalIntentos = Integer.parseInt(texto.substring(separador + 1));
+                } catch (NumberFormatException ignored) {
+                    totalIntentos = 0;
+                }
+            }
+            if ("expand".equals(estado)) {
+                glyph.configure(NotifIntentoGlyph.EXPAND, totalIntentos, AppV2Theme.TEAL, background);
+            } else if ("collapse".equals(estado)) {
+                glyph.configure(NotifIntentoGlyph.COLLAPSE, totalIntentos, AppV2Theme.TEAL, background);
             } else {
-                glyph.configure(AppV2ExpandCollapseGlyph.NONE, AppV2Theme.PRIMARY, background);
+                glyph.configure(NotifIntentoGlyph.NONE, 0, AppV2Theme.TEAL, background);
             }
             return this;
         }
@@ -3182,20 +3389,22 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private JPanel crearBuscador() {
         configurarControles();
-        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
         JPanel accionesFiltro = AppV2ActionPanel.right();
         accionesFiltro.add(btnBuscar);
         accionesFiltro.add(btnLimpiar);
         accionesFiltro.add(btnRefrescar);
-        toolbar.addSearchRow("Búsqueda", txtBusqueda, accionesFiltro);
-        toolbar.addFilter("Fecha desde", fechaSolicitudDesde);
-        toolbar.addFilter("Fecha hasta", fechaSolicitudHasta);
-        toolbar.addFilter("Estado", cmbEstadoFiltro);
-        toolbar.addFilter("Tipo notificación", cmbTipoNotificacionFiltro);
-        toolbar.addFilter("Resultado", cmbResultadoFiltro);
-        toolbar.addFilter("Publicación prevista", cmbPublicacionFiltro);
-        toolbar.addCompactFilter(spnLimite);
-        return toolbar;
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusqueda,
+                accionesFiltro,
+                fechaSolicitudDesde,
+                fechaSolicitudHasta,
+                cmbEstadoFiltro,
+                null,
+                spnLimite,
+                new AppV2ExpedientePanelFactory.CampoFiltro("Tipo notificación", cmbTipoNotificacionFiltro),
+                new AppV2ExpedientePanelFactory.CampoFiltro("Resultado", cmbResultadoFiltro),
+                new AppV2ExpedientePanelFactory.CampoFiltro("Publicación prevista", cmbPublicacionFiltro));
     }
 
     private AppV2SideActionPanel crearPanelNotificacion() {

@@ -88,7 +88,10 @@ public class DocumentoAnalisisService {
     }
 
     public List<NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion() throws SQLException {
-        return documentoAnalisisDAO.listarDocumentosValidacion();
+        Long idUsuarioActual = resolverUsuarioActualSdrercApp();
+        boolean esAdmin = SessionContext.hasRole("ADMIN_SISTEMA");
+        return documentoAnalisisDAO.listarDocumentosValidacion(
+                esAdmin, idUsuarioActual, esAdmin ? null : usuarioAsignacionService.listarIdsEquipoDeUsuario(idUsuarioActual));
     }
 
     public void registrarResultadoValidacion(
@@ -100,7 +103,10 @@ public class DocumentoAnalisisService {
     }
 
     public List<NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion() throws SQLException {
-        return documentoAnalisisDAO.listarDocumentosNotificacion();
+        Long idUsuarioActual = resolverUsuarioActualSdrercApp();
+        boolean esAdmin = SessionContext.hasRole("ADMIN_SISTEMA");
+        return documentoAnalisisDAO.listarDocumentosNotificacion(
+                esAdmin, idUsuarioActual, esAdmin ? null : usuarioAsignacionService.listarIdsEquipoDeUsuario(idUsuarioActual));
     }
 
     public List<NotificacionAsignacionDocumentoDTO> listarDocumentosPublicacion() throws SQLException {
@@ -121,6 +127,21 @@ public class DocumentoAnalisisService {
                 idDocumentoAnalizado,
                 tipoNotificacionCodigo,
                 codigoNotificacion,
+                resolverUsuarioActualSdrercApp());
+    }
+
+    public void actualizarIntentoNotificacion(
+            Long idExpedienteNotificacion,
+            String tipoNotificacionCodigo,
+            String estadoNotificacionCodigo,
+            String codigoNotificacion,
+            String observacion) throws SQLException {
+        documentoAnalisisDAO.actualizarIntentoNotificacion(
+                idExpedienteNotificacion,
+                tipoNotificacionCodigo,
+                estadoNotificacionCodigo,
+                codigoNotificacion,
+                observacion,
                 resolverUsuarioActualSdrercApp());
     }
 

@@ -22,6 +22,17 @@ public final class AppV2ExpedientePanelFactory {
     private AppV2ExpedientePanelFactory() {
     }
 
+    /** Etiqueta + control para un filtro adicional en la fila de estado (ver sobrecarga con varargs). */
+    public static final class CampoFiltro {
+        private final String etiqueta;
+        private final JComponent control;
+
+        public CampoFiltro(String etiqueta, JComponent control) {
+            this.etiqueta = etiqueta;
+            this.control = control;
+        }
+    }
+
     public static JPanel crearPanelBusquedaEstiloRegistro(
             String etiquetaBusqueda,
             Component campoBusqueda,
@@ -31,6 +42,27 @@ public final class AppV2ExpedientePanelFactory {
             Component estado,
             JCheckBox grupoFamiliar,
             JSpinner limite) {
+        return crearPanelBusquedaEstiloRegistro(
+                etiquetaBusqueda, campoBusqueda, acciones, fechaDesde, fechaHasta, estado, grupoFamiliar, limite,
+                (CampoFiltro[]) null);
+    }
+
+    /**
+     * Igual que la sobrecarga de 8 parametros, pero permite agregar filtros adicionales
+     * (etiqueta + control) en la misma fila de "Estado", antes del limite. Pensado para
+     * bandejas con mas de un combo de filtro (ej. Notificacion: estado, tipo, resultado,
+     * publicacion prevista).
+     */
+    public static JPanel crearPanelBusquedaEstiloRegistro(
+            String etiquetaBusqueda,
+            Component campoBusqueda,
+            Component acciones,
+            JComponent fechaDesde,
+            JComponent fechaHasta,
+            Component estado,
+            JCheckBox grupoFamiliar,
+            JSpinner limite,
+            CampoFiltro... filtrosAdicionales) {
         AppV2FilterPanel filtros = new AppV2FilterPanel();
 
         JPanel contenido = new JPanel();
@@ -71,6 +103,15 @@ public final class AppV2ExpedientePanelFactory {
         filaEstado.add(crearCampoInline("Estado", estado, 240), gbcEstado);
 
         int columnaEstado = 1;
+        if (filtrosAdicionales != null) {
+            for (CampoFiltro campo : filtrosAdicionales) {
+                if (campo == null) {
+                    continue;
+                }
+                gbcEstado.gridx = columnaEstado++;
+                filaEstado.add(crearCampoInline(campo.etiqueta, campo.control, 200), gbcEstado);
+            }
+        }
         if (grupoFamiliar != null) {
             gbcEstado.gridx = columnaEstado++;
             filaEstado.add(crearFiltroGrupoFamiliarInline(grupoFamiliar), gbcEstado);

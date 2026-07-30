@@ -210,6 +210,7 @@ public class DocumentoAnalisisDAO {
             if (!soportaClasificacionTipoDocumento(conn)) {
                 return items;
             }
+            boolean soportaIntentos = soportaIntentosNotificacionDocumento(conn);
             StringBuilder estadoPlaceholders = new StringBuilder();
             for (int i = 0; i < estadosCodigo.size(); i++) {
                 estadoPlaceholders.append(i == 0 ? "?" : ", ?");
@@ -228,7 +229,11 @@ public class DocumentoAnalisisDAO {
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
                     + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
                     + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre, "
-                    + "e.fecha_vencimiento "
+                    + "e.fecha_vencimiento, "
+                    + (soportaIntentos
+                            ? "(SELECT COUNT(*) FROM expediente_notificacion en2 "
+                            + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos "
+                            : "0 AS total_intentos ")
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -272,7 +277,8 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("estado_expediente_codigo"),
                                 rs.getString("estado_expediente_nombre"),
                                 toLocalDate(rs.getDate("fecha_vencimiento")),
-                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento"))));
+                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                                rs.getInt("total_intentos")));
                     }
                 }
             }
@@ -292,6 +298,7 @@ public class DocumentoAnalisisDAO {
             if (!soportaClasificacionTipoDocumento(conn)) {
                 return items;
             }
+            boolean soportaIntentos = soportaIntentosNotificacionDocumento(conn);
             List<Object> paramsVisibilidad = new ArrayList<Object>();
             String condicionVisibilidad = VisibilidadBandejaSql.construirCondicion(
                     paramsVisibilidad, esAdmin, idUsuarioActual, idsEquipoActual,
@@ -306,7 +313,11 @@ public class DocumentoAnalisisDAO {
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
                     + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
                     + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre, "
-                    + "e.fecha_vencimiento "
+                    + "e.fecha_vencimiento, "
+                    + (soportaIntentos
+                            ? "(SELECT COUNT(*) FROM expediente_notificacion en2 "
+                            + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos "
+                            : "0 AS total_intentos ")
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -347,7 +358,8 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("estado_expediente_codigo"),
                                 rs.getString("estado_expediente_nombre"),
                                 toLocalDate(rs.getDate("fecha_vencimiento")),
-                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento"))));
+                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                                rs.getInt("total_intentos")));
                     }
                 }
             }
@@ -850,6 +862,53 @@ public class DocumentoAnalisisDAO {
         }
     }
 
+    public void actualizarIntentoNotificacion(
+            Long idExpedienteNotificacion,
+            String tipoNotificacionCodigo,
+            String estadoNotificacionCodigo,
+            String codigoNotificacion,
+            String observacion,
+            Long idUsuario) throws SQLException {
+        if (idExpedienteNotificacion == null) {
+            throw new IllegalArgumentException("Seleccione el intento de notificación a actualizar.");
+        }
+        String tipoCodigo = hasText(tipoNotificacionCodigo) ? tipoNotificacionCodigo.trim().toUpperCase() : "VIRTUAL";
+        String estadoCodigo = hasText(estadoNotificacionCodigo) ? estadoNotificacionCodigo.trim().toUpperCase() : "PENDIENTE";
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaIntentosNotificacionDocumento(conn)) {
+                throw new SQLException("La base de datos no soporta intentos de notificación por documento. Ejecute el script 45_intentos_notificacion_documento.sql.");
+            }
+            Long idTipoNotificacion = catalogoLookupDAO.obtenerTipoNotificacionId(conn, tipoCodigo);
+            if (idTipoNotificacion == null) {
+                throw new SQLException("No se encontró el tipo de notificación " + tipoCodigo + ".");
+            }
+            Long idEstadoNotificacion = catalogoLookupDAO.obtenerEstadoNotificacionId(conn, estadoCodigo);
+            if (idEstadoNotificacion == null) {
+                throw new SQLException("No se encontró el estado de notificación " + estadoCodigo + ".");
+            }
+            String sql = "UPDATE expediente_notificacion SET "
+                    + "id_tipo_notificacion = ?, id_estado_notificacion = ?, resultado = ?, "
+                    + "codigo_notificacion = ?, observacion = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                    + "WHERE id_expediente_notificacion = ? AND activo = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idTipoNotificacion);
+                ps.setLong(2, idEstadoNotificacion);
+                ps.setString(3, estadoCodigo);
+                setStringOrNull(ps, 4, limitar(codigoNotificacion, 60));
+                setStringOrNull(ps, 5, limitar(observacion, 500));
+                if (idUsuario == null) {
+                    ps.setNull(6, Types.NUMERIC);
+                } else {
+                    ps.setLong(6, idUsuario);
+                }
+                ps.setLong(7, idExpedienteNotificacion);
+                int filas = ps.executeUpdate();
+                if (filas == 0) {
+                    throw new SQLException("No se encontró el intento de notificación indicado.");
+                }
+            }
+        }
+    }
 
     public void guardarCartaRespuesta(
             Long idExpediente,
