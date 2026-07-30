@@ -1,5 +1,6 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
@@ -27,6 +28,7 @@ public class DocumentoAnalisisDAO {
     private static final String CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION = "REASIGNACION_NOTIFICACION";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
+    private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
 
     public DocumentoAnalisisDAO() {
         this(new CatalogoLookupDAO());
@@ -225,7 +227,8 @@ public class DocumentoAnalisisDAO {
                     + "AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, "
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
                     + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
-                    + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre "
+                    + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre, "
+                    + "e.fecha_vencimiento "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -267,7 +270,9 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("numero_hoja_envio_notificacion"),
                                 rs.getString("usuario_notificacion_actual"),
                                 rs.getString("estado_expediente_codigo"),
-                                rs.getString("estado_expediente_nombre")));
+                                rs.getString("estado_expediente_nombre"),
+                                toLocalDate(rs.getDate("fecha_vencimiento")),
+                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento"))));
                     }
                 }
             }
@@ -300,7 +305,8 @@ public class DocumentoAnalisisDAO {
                     + "AND (r.id_expediente_principal = e.id_expediente OR r.id_expediente_relacionado = e.id_expediente)) AS relaciones_confirmadas, "
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
                     + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
-                    + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre "
+                    + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre, "
+                    + "e.fecha_vencimiento "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -339,7 +345,9 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("numero_hoja_envio_notificacion"),
                                 rs.getString("usuario_notificacion_actual"),
                                 rs.getString("estado_expediente_codigo"),
-                                rs.getString("estado_expediente_nombre")));
+                                rs.getString("estado_expediente_nombre"),
+                                toLocalDate(rs.getDate("fecha_vencimiento")),
+                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento"))));
                     }
                 }
             }

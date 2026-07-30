@@ -208,7 +208,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private static final int COL_ASIG_EXPANDIR = 0;
     private static final int COL_ASIG_SELECCION = 1;
     private static final int COL_ASIG_EXPEDIENTE = 2;
-    private static final int COL_ASIG_ID = 10;
+    private static final int COL_ASIG_ID = 11;
     private static final int GROUP_STRIPE_WIDTH = 5;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
     private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;
@@ -342,7 +342,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final DefaultTableModel validacionModel = new DefaultTableModel(
             new Object[]{
                 "N° expediente", "N° expediente SGD", "Clas. Documentos", "Tipo documento",
-                "N° Documento", "Fecha Emisión", "Titular", "Estado"
+                "N° Documento", "Fecha Emisión", "Titular", "Estado", "Estado doc."
             },
             0) {
         @Override
@@ -354,6 +354,31 @@ public class JPanelNotificacionV2 extends JPanel {
     private final AppV2TablePanel tablaValidacionPanel = new AppV2TablePanel(
             tablaValidacion, "Sin documentos para validar", "No hay documentos pendientes de validación.");
     private final JLabel lblEstadoValidacion = new JLabel("Haga doble clic en un documento para abrir el Panel de Validación.");
+
+    private enum FiltroKpiValidacion {
+        TODOS,
+        PENDIENTES,
+        POR_VENCER,
+        VENCIDOS
+    }
+
+    private FiltroKpiValidacion kpiActivoValidacion = FiltroKpiValidacion.TODOS;
+    private final MetricCardV2 cardValidacionPendientes =
+            new MetricCardV2("Pendientes de validar", "0", "Documentos en despacho asignados", AppV2Theme.INFO);
+    private final MetricCardV2 cardValidacionPorVencer =
+            new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
+    private final MetricCardV2 cardValidacionVencidos =
+            new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
+
+    private final AppV2SearchField txtBusquedaValidacion =
+            new AppV2SearchField("Buscar expediente, trámite/SGD, titular o documento", 28);
+    private final PremiumDateFieldV2 fechaEmisionDesdeValidacion = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaEmisionHastaValidacion = new PremiumDateFieldV2();
+    private final JComboBox<SimpleItem> cmbEstadoValidacion = new JComboBox<SimpleItem>();
+    private final JSpinner spnLimiteValidacion = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
+    private final JButton btnBuscarValidacion = new JButton("Buscar");
+    private final JButton btnLimpiarValidacion = new JButton("Limpiar");
+    private final JButton btnRefrescarValidacion = new JButton("Refrescar");
     private final com.sdrerc.ui.views.ejecucion.DocumentoEjecucionTreeGridPanelV2 documentosValidacionTreePanel =
             new com.sdrerc.ui.views.ejecucion.DocumentoEjecucionTreeGridPanelV2();
     private final JButton btnRegistrarValidacion = new JButton("Registrar Validación");
@@ -388,7 +413,7 @@ public class JPanelNotificacionV2 extends JPanel {
             new java.util.HashMap<Long, List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>>();
     private final java.util.Set<Long> documentosNotifExpandidos = new java.util.HashSet<Long>();
     private final DefaultTableModel notifBandejaModel = new DefaultTableModel(
-            new Object[]{"", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado"},
+            new Object[]{"", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado", "Estado doc."},
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -787,10 +812,7 @@ public class JPanelNotificacionV2 extends JPanel {
             if (!texto.isEmpty() && !coincideTextoAsigNotif(item, texto)) {
                 continue;
             }
-            if (desde != null || hasta != null) {
-                if (item.getFechaDocumento() == null) {
-                    continue;
-                }
+            if (item.getFechaDocumento() != null) {
                 if (desde != null && item.getFechaDocumento().isBefore(desde)) {
                     continue;
                 }
@@ -931,7 +953,7 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private JPanel crearPanelDetalleAsignacionNotif() {
         AppV2SideActionPanel panelDatos = datosAsigNotif.crearPanel(
-                "Panel de Asignación", new Color(57, 125, 199), this::cerrarPanelAsignacionNotif);
+                "Panel de datos", new Color(57, 125, 199), this::cerrarPanelAsignacionNotif);
         AppV2SideActionPanel panelAsignacion = crearPanelAsignacionOperativaNotif();
         AppV2SideActionPanel panelFirma = crearPanelFirmaNotif();
         panelAsignacionOperativaNotif = panelAsignacion;
@@ -1332,17 +1354,22 @@ public class JPanelNotificacionV2 extends JPanel {
         if (tab == null || panelAsigNotifCardsLayout == null || panelAsigNotifCards == null) {
             return;
         }
+        boolean mismaTab = tab.equals(tabAsigNotifActiva);
         tabAsigNotifActiva = tab;
         panelAsigNotifCardsLayout.show(panelAsigNotifCards, tab);
+        if (splitAsigNotif != null && splitAsigNotif.isSideVisible() && mismaTab) {
+            splitAsigNotif.setSideExpanded(!splitAsigNotif.isSideExpanded());
+        }
         panelAsigNotifCards.revalidate();
         panelAsigNotifCards.repaint();
         actualizarLenguetasAsigNotif();
     }
 
     private void actualizarLenguetasAsigNotif() {
-        tabAsigNotifDatos.setState(TAB_ASIG_NOTIF_DATOS.equals(tabAsigNotifActiva), false);
-        tabAsigNotifAsignacion.setState(TAB_ASIG_NOTIF_ASIGNACION.equals(tabAsigNotifActiva), false);
-        tabAsigNotifFirma.setState(TAB_ASIG_NOTIF_FIRMA.equals(tabAsigNotifActiva), false);
+        boolean expandido = splitAsigNotif != null && splitAsigNotif.isSideExpanded();
+        tabAsigNotifDatos.setState(TAB_ASIG_NOTIF_DATOS.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_DATOS.equals(tabAsigNotifActiva) && expandido);
+        tabAsigNotifAsignacion.setState(TAB_ASIG_NOTIF_ASIGNACION.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_ASIGNACION.equals(tabAsigNotifActiva) && expandido);
+        tabAsigNotifFirma.setState(TAB_ASIG_NOTIF_FIRMA.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_FIRMA.equals(tabAsigNotifActiva) && expandido);
     }
 
     private void cargarBandejaAsignacionNotificacion() {
@@ -1392,7 +1419,8 @@ public class JPanelNotificacionV2 extends JPanel {
                 try {
                     for (com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo : get()) {
                         String codigo = equipo.getCodigo() == null ? "" : equipo.getCodigo().toUpperCase();
-                        if ("EQ_NOTIFICACION".equals(codigo) || "EQ_VALIDACION".equals(codigo)) {
+                        if ("EQ_NOTIFICACION".equals(codigo) || "EQ_VALIDACION".equals(codigo)
+                                || "EQ_ANALISIS".equals(codigo) || "EQ_EJECUCION".equals(codigo)) {
                             cmbEquipoNotif.addItem(new EquipoNotifItem(equipo));
                         }
                     }
@@ -1418,7 +1446,7 @@ public class JPanelNotificacionV2 extends JPanel {
                 new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void>() {
             @Override
             protected List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> doInBackground() throws Exception {
-                return usuarioAsignacionServiceNotif.listarAbogadosAsignables(idEquipo);
+                return usuarioAsignacionServiceNotif.listarUsuariosAsignablesPorEquipo(idEquipo);
             }
 
             @Override
@@ -1634,6 +1662,7 @@ public class JPanelNotificacionV2 extends JPanel {
             item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
             item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
             item.getTitular().isEmpty() ? "-" : item.getTitular(),
+            item.getEstadoExpediente().isEmpty() ? "-" : item.getEstadoExpediente(),
             item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento(),
             item.getIdDocumentoAnalizado()
         });
@@ -1647,7 +1676,7 @@ public class JPanelNotificacionV2 extends JPanel {
         filasAsignacionNotif.add(index, row);
         asignacionNotifModel.insertRow(index, new Object[]{
             "",
-            "",
+            null,
             valorAsigNotif(principal.getNumeroExpediente()),
             valorAsigNotif(asociado.getNumeroExpedienteSgd()),
             "-",
@@ -1656,6 +1685,7 @@ public class JPanelNotificacionV2 extends JPanel {
             "-",
             valorAsigNotif(asociado.getTitular()),
             estadoAsociadoAsigNotif(asociado),
+            "-",
             asociado.getIdExpediente()
         });
     }
@@ -1876,7 +1906,7 @@ public class JPanelNotificacionV2 extends JPanel {
         private AsignacionNotifTableModel() {
             super(new Object[]{
                 "", "", "N° expediente", "N° expediente SGD", "Clas. Documentos",
-                "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado", "_ID"
+                "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado", "Estado doc.", "_ID"
             }, 0);
         }
 
@@ -2262,8 +2292,16 @@ public class JPanelNotificacionV2 extends JPanel {
             }
         });
 
+        configurarFiltrosValidacion();
+
+        JPanel superior = new JPanel(new BorderLayout(4, 4));
+        superior.setOpaque(false);
+        superior.add(crearHeaderValidacion(), BorderLayout.NORTH);
+        superior.add(crearBuscadorValidacion(), BorderLayout.CENTER);
+
         JPanel izquierda = new JPanel(new BorderLayout(6, 6));
         izquierda.setOpaque(false);
+        izquierda.add(superior, BorderLayout.NORTH);
         AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablaValidacionPanel);
         section.setStatus(lblEstadoValidacion);
         izquierda.add(section, BorderLayout.CENTER);
@@ -2280,9 +2318,168 @@ public class JPanelNotificacionV2 extends JPanel {
         return panel;
     }
 
+    private JPanel crearHeaderValidacion() {
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 10);
+        metricas.add(cardValidacionPendientes);
+        metricas.add(cardValidacionPorVencer);
+        metricas.add(cardValidacionVencidos);
+        return metricas;
+    }
+
+    private JPanel crearBuscadorValidacion() {
+        JPanel acciones = AppV2ActionPanel.right();
+        acciones.add(btnBuscarValidacion);
+        acciones.add(btnLimpiarValidacion);
+        acciones.add(btnRefrescarValidacion);
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusquedaValidacion,
+                acciones,
+                fechaEmisionDesdeValidacion,
+                fechaEmisionHastaValidacion,
+                cmbEstadoValidacion,
+                null,
+                spnLimiteValidacion);
+    }
+
+    private void configurarFiltrosValidacion() {
+        cmbEstadoValidacion.removeAllItems();
+        cmbEstadoValidacion.addItem(new SimpleItem("", "Pendientes de validar"));
+        AppV2Theme.estilizarBotonPrimario(btnBuscarValidacion);
+        cardValidacionPendientes.setOnClick(() -> activarKpiValidacion(FiltroKpiValidacion.PENDIENTES));
+        cardValidacionPorVencer.setOnClick(() -> activarKpiValidacion(FiltroKpiValidacion.POR_VENCER));
+        cardValidacionVencidos.setOnClick(() -> activarKpiValidacion(FiltroKpiValidacion.VENCIDOS));
+        btnBuscarValidacion.addActionListener(e -> aplicarFiltrosValidacion());
+        txtBusquedaValidacion.addActionListener(e -> aplicarFiltrosValidacion());
+        btnLimpiarValidacion.addActionListener(e -> limpiarFiltrosValidacion());
+        btnRefrescarValidacion.addActionListener(e -> cargarBandejaValidacion());
+        restaurarFechasValidacion();
+    }
+
+    private void restaurarFechasValidacion() {
+        fechaEmisionDesdeValidacion.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
+        fechaEmisionHastaValidacion.setDate(DateRangePickerSupport.defaultSearchToDate());
+    }
+
+    private void limpiarFiltrosValidacion() {
+        txtBusquedaValidacion.setText("");
+        restaurarFechasValidacion();
+        cmbEstadoValidacion.setSelectedIndex(0);
+        spnLimiteValidacion.setValue(200);
+        kpiActivoValidacion = FiltroKpiValidacion.TODOS;
+        marcarKpisValidacion();
+        aplicarFiltrosValidacion();
+    }
+
+    private void activarKpiValidacion(FiltroKpiValidacion filtro) {
+        kpiActivoValidacion = kpiActivoValidacion == filtro ? FiltroKpiValidacion.TODOS : filtro;
+        marcarKpisValidacion();
+        aplicarFiltrosValidacion();
+    }
+
+    private void marcarKpisValidacion() {
+        cardValidacionPendientes.setSelected(kpiActivoValidacion == FiltroKpiValidacion.PENDIENTES);
+        cardValidacionPorVencer.setSelected(kpiActivoValidacion == FiltroKpiValidacion.POR_VENCER);
+        cardValidacionVencidos.setSelected(kpiActivoValidacion == FiltroKpiValidacion.VENCIDOS);
+    }
+
+    private void actualizarMetricasValidacion() {
+        int pendientes = documentosValidacion.size();
+        int porVencer = 0;
+        int vencidos = 0;
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosValidacion) {
+            Long dias = item.getDiasRestantes();
+            if (dias != null && dias < 0) {
+                vencidos++;
+            } else if (dias != null && dias <= 5) {
+                porVencer++;
+            }
+        }
+        cardValidacionPendientes.setValue(String.valueOf(pendientes));
+        cardValidacionPorVencer.setValue(String.valueOf(porVencer));
+        cardValidacionVencidos.setValue(String.valueOf(vencidos));
+    }
+
+    private boolean coincideKpiValidacion(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
+        Long dias = item.getDiasRestantes();
+        switch (kpiActivoValidacion) {
+            case PENDIENTES:
+                return true;
+            case POR_VENCER:
+                return dias != null && dias >= 0 && dias <= 5;
+            case VENCIDOS:
+                return dias != null && dias < 0;
+            case TODOS:
+            default:
+                return true;
+        }
+    }
+
+    private boolean coincideTextoValidacion(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item, String texto) {
+        return contieneTextoAsigNotif(item.getNumeroExpediente(), texto)
+                || contieneTextoAsigNotif(item.getNumeroExpedienteSgd(), texto)
+                || contieneTextoAsigNotif(item.getTitular(), texto)
+                || contieneTextoAsigNotif(item.getNumeroDocumento(), texto);
+    }
+
+    private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> filtrarDocumentosValidacion() {
+        String texto = txtBusquedaValidacion.getText() == null ? "" : txtBusquedaValidacion.getText().trim().toLowerCase();
+        LocalDate desde = fechaSeleccionadaAsigNotif(fechaEmisionDesdeValidacion);
+        LocalDate hasta = fechaSeleccionadaAsigNotif(fechaEmisionHastaValidacion);
+        int limite = (Integer) spnLimiteValidacion.getValue();
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> resultado =
+                new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosValidacion) {
+            if (!coincideKpiValidacion(item)) {
+                continue;
+            }
+            if (!texto.isEmpty() && !coincideTextoValidacion(item, texto)) {
+                continue;
+            }
+            if (item.getFechaDocumento() != null) {
+                if (desde != null && item.getFechaDocumento().isBefore(desde)) {
+                    continue;
+                }
+                if (hasta != null && item.getFechaDocumento().isAfter(hasta)) {
+                    continue;
+                }
+            }
+            resultado.add(item);
+            if (resultado.size() >= limite) {
+                break;
+            }
+        }
+        return resultado;
+    }
+
+    private void aplicarFiltrosValidacion() {
+        poblarGrillaValidacion(filtrarDocumentosValidacion());
+    }
+
+    private void poblarGrillaValidacion(List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items) {
+        validacionModel.setRowCount(0);
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : items) {
+            validacionModel.addRow(new Object[]{
+                item.getNumeroExpediente(),
+                item.getNumeroExpedienteSgd().isEmpty() ? "-" : item.getNumeroExpedienteSgd(),
+                item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
+                item.getTipoDocumento().isEmpty() ? "-" : item.getTipoDocumento(),
+                item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
+                item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
+                item.getTitular().isEmpty() ? "-" : item.getTitular(),
+                item.getEstadoExpediente().isEmpty() ? "-" : item.getEstadoExpediente(),
+                item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento()
+            });
+        }
+        tablaValidacionPanel.setEmpty(items.isEmpty());
+        lblEstadoValidacion.setText(items.isEmpty()
+                ? "No hay documentos pendientes de validación con los filtros aplicados."
+                : items.size() + " documento(s) encontrados de " + documentosValidacion.size() + " en total.");
+    }
+
     private JPanel crearPanelDetalleValidacion() {
         AppV2SideActionPanel panelDatos = datosValidacionNotif.crearPanel(
-                "Panel de Validación", new Color(57, 125, 199), this::cerrarPanelValidacionNotif);
+                "Panel de datos", new Color(57, 125, 199), this::cerrarPanelValidacionNotif);
         AppV2SideActionPanel panelValidar = crearPanelValidarOperativo();
         panelValidarOperativo = panelValidar;
         return crearPanelValidacionConTab(panelDatos, panelValidar);
@@ -2415,12 +2612,17 @@ public class JPanelNotificacionV2 extends JPanel {
         if (tab == null || panelValidacionCardsLayout == null || panelValidacionCards == null) {
             return;
         }
+        boolean mismaTab = tab.equals(tabValidacionActiva);
         tabValidacionActiva = tab;
         panelValidacionCardsLayout.show(panelValidacionCards, tab);
+        if (splitValidacionNotif != null && splitValidacionNotif.isSideVisible() && mismaTab) {
+            splitValidacionNotif.setSideExpanded(!splitValidacionNotif.isSideExpanded());
+        }
         panelValidacionCards.revalidate();
         panelValidacionCards.repaint();
-        tabValidacionDatos.setState(TAB_VALIDACION_DATOS.equals(tabValidacionActiva), false);
-        tabValidacionValidar.setState(TAB_VALIDACION_VALIDAR.equals(tabValidacionActiva), false);
+        boolean expandido = splitValidacionNotif != null && splitValidacionNotif.isSideExpanded();
+        tabValidacionDatos.setState(TAB_VALIDACION_DATOS.equals(tabValidacionActiva), TAB_VALIDACION_DATOS.equals(tabValidacionActiva) && expandido);
+        tabValidacionValidar.setState(TAB_VALIDACION_VALIDAR.equals(tabValidacionActiva), TAB_VALIDACION_VALIDAR.equals(tabValidacionActiva) && expandido);
     }
 
     private void cargarBandejaValidacion() {
@@ -2438,25 +2640,14 @@ public class JPanelNotificacionV2 extends JPanel {
                     List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items = get();
                     documentosValidacion.clear();
                     documentosValidacion.addAll(items);
-                    validacionModel.setRowCount(0);
-                    for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : items) {
-                        validacionModel.addRow(new Object[]{
-                            item.getNumeroExpediente(),
-                            item.getNumeroExpedienteSgd().isEmpty() ? "-" : item.getNumeroExpedienteSgd(),
-                            item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
-                            item.getTipoDocumento().isEmpty() ? "-" : item.getTipoDocumento(),
-                            item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
-                            item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
-                            item.getTitular().isEmpty() ? "-" : item.getTitular(),
-                            item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento()
-                        });
-                    }
-                    tablaValidacionPanel.setEmpty(items.isEmpty());
-                    lblEstadoValidacion.setText(items.isEmpty()
-                            ? "No hay documentos pendientes de validación."
-                            : items.size() + " documento(s) pendientes de validación.");
+                    actualizarMetricasValidacion();
+                    aplicarFiltrosValidacion();
                 } catch (Exception ex) {
+                    documentosValidacion.clear();
+                    actualizarMetricasValidacion();
+                    poblarGrillaValidacion(new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>());
                     lblEstadoValidacion.setText("No se pudieron cargar los documentos pendientes de validación.");
+                    mostrarError("No se pudieron cargar los documentos pendientes de validación.", ex);
                 }
             }
         };
@@ -2683,6 +2874,7 @@ public class JPanelNotificacionV2 extends JPanel {
                 item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
                 item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
                 item.getTitular().isEmpty() ? "-" : item.getTitular(),
+                item.getEstadoExpediente().isEmpty() ? "-" : item.getEstadoExpediente(),
                 estadoNotificacionCalculado(intentos, item.getEstadoDocumento())
             });
             if (documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) && intentos != null) {
@@ -2696,6 +2888,7 @@ public class JPanelNotificacionV2 extends JPanel {
                         intento.getCodigoNotificacion().isEmpty() ? "-" : intento.getCodigoNotificacion(),
                         intento.getFechaEnvio() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio()),
                         intento.getFechaRecepcion() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaRecepcion()),
+                        "-",
                         intento.isUbicado() ? "Ubicado" : "No ubicado"
                     });
                 }

@@ -19,6 +19,10 @@ public class NotificacionAsignacionDocumentoDTO {
     private final boolean asignado;
     private final String numeroHojaEnvioNotificacion;
     private final String usuarioNotificacionActual;
+    private final String estadoExpedienteCodigo;
+    private final String estadoExpediente;
+    private final LocalDate fechaVencimiento;
+    private final Long diasRestantes;
 
     public NotificacionAsignacionDocumentoDTO(
             Long idDocumentoAnalizado,
@@ -35,7 +39,11 @@ public class NotificacionAsignacionDocumentoDTO {
             int totalRelacionados,
             boolean asignado,
             String numeroHojaEnvioNotificacion,
-            String usuarioNotificacionActual) {
+            String usuarioNotificacionActual,
+            String estadoExpedienteCodigo,
+            String estadoExpediente,
+            LocalDate fechaVencimiento,
+            Long diasRestantes) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
@@ -51,6 +59,10 @@ public class NotificacionAsignacionDocumentoDTO {
         this.asignado = asignado;
         this.numeroHojaEnvioNotificacion = safe(numeroHojaEnvioNotificacion);
         this.usuarioNotificacionActual = safe(usuarioNotificacionActual);
+        this.estadoExpedienteCodigo = safe(estadoExpedienteCodigo);
+        this.estadoExpediente = safe(estadoExpediente);
+        this.fechaVencimiento = fechaVencimiento;
+        this.diasRestantes = diasRestantes;
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -111,6 +123,22 @@ public class NotificacionAsignacionDocumentoDTO {
 
     public String getUsuarioNotificacionActual() {
         return usuarioNotificacionActual;
+    }
+
+    public String getEstadoExpedienteCodigo() {
+        return estadoExpedienteCodigo;
+    }
+
+    public String getEstadoExpediente() {
+        return estadoExpediente;
+    }
+
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
+    }
+
+    public Long getDiasRestantes() {
+        return diasRestantes;
     }
 
     private static String safe(String value) {
