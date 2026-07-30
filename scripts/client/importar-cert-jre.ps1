@@ -33,6 +33,12 @@ if (-not (Test-Path $Certificado)) {
     exit 1
 }
 
+& $keytool -list -keystore $cacerts -alias $Alias -storepass changeit *> $null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "Ya existe un certificado con el alias '$Alias' (de una importacion anterior); se elimina para reemplazarlo por el vigente." -ForegroundColor Yellow
+    & $keytool -delete -keystore $cacerts -alias $Alias -storepass changeit | Out-Null
+}
+
 & $keytool -importcert -keystore $cacerts -trustcacerts -alias $Alias -file $Certificado -storepass changeit -noprompt
 
 if ($LASTEXITCODE -eq 0) {

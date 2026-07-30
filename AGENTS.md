@@ -1082,6 +1082,15 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `JPanelBandejaExpedientesNueva.java`, `JPanelAsignacionV2.java`, `JPanelAnalisisV2.java`, `JPanelVerificacionV2.java`, `JPanelEjecucionV2.java`, `JPanelNotificacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
 
+### Certificado de Norton interceptando SMTP en laptop cliente: `importar-cert-jre.ps1` no era idempotente (30/07/2026)
+
+- Contexto: `scripts/client/diagnosticar-cert-smtp.ps1` y `scripts/client/importar-cert-jre.ps1` (creados en una sesion anterior, commit `c4f5612`) son la version reutilizable del mismo diagnostico/fix documentado arriba para el problema de Norton Web/Mail Shield interceptando TLS hacia `smtp.gmail.com` (certificado raiz de Norton en vez de Google, no confiable por el `cacerts` de Java aunque si por Windows): el primero conecta por `openssl s_client -starttls smtp -showcerts`, muestra la cadena y exporta la raiz a `smtp-root-cert.cer`; el segundo la importa al `cacerts` del JRE indicado con `keytool -importcert -alias smtp-mail-shield-root`.
+- Incidente: en una laptop cliente (no la maquina de desarrollo) donde este fix ya se habia aplicado antes, el envio de OTP por correo volvio a fallar. Al re-ejecutar `diagnosticar-cert-smtp.ps1` se confirmo el mismo emisor `CN=Norton Web/Mail Shield Root` (Norton sigue interceptando), pero `importar-cert-jre.ps1` fallo con `keytool error: java.lang.Exception: Certificado no importado, el alias <smtp-mail-shield-root> ya existe`, porque `keytool -importcert -noprompt` rechaza sobreescribir un alias existente. Causa mas probable: Norton regenero su certificado raiz de inspeccion (ocurre tras actualizaciones/reinstalaciones del antivirus), asi que el certificado bajo ese alias ya no coincide con el que Norton presenta ahora, y el script no tenia forma de reemplazarlo.
+- Fix: `importar-cert-jre.ps1` ahora primero intenta `keytool -list` para ese alias; si ya existe, lo borra (`keytool -delete`) antes de importar el certificado recien exportado, dejando la operacion idempotente (se puede re-ejecutar sin editar nada aunque Norton haya rotado su certificado).
+- Fix inmediato aplicado en la laptop afectada (sin esperar a que se re-despliegue el script corregido): borrar el alias a mano y volver a importar (`keytool -delete -alias smtp-mail-shield-root -keystore <cacerts> -storepass changeit` seguido de `importar-cert-jre.ps1` de nuevo).
+- Archivos: `scripts/client/importar-cert-jre.ps1`.
+- Validacion: sintaxis validada con `[System.Management.Automation.PSParser]::Tokenize(...)` (sin `mvn`, no es codigo Java ni afecta el build/empaquetado del jar). Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
