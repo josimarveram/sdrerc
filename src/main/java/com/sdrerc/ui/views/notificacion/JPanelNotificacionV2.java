@@ -2271,6 +2271,13 @@ public class JPanelNotificacionV2 extends JPanel {
         tablaValidacion.setGridColor(AppV2Theme.BORDER);
         tablaValidacion.setShowVerticalLines(false);
         AppV2TableColumnSizer.applyFriendlyDefaults(tablaValidacion);
+        AppV2TableColumnSizer.applyWidths(tablaValidacion, 150, 130, 110, 150, 130, 110, 200, 130);
+        AppV2ColumnFilterSupport.install(
+                "notificacionValidacion",
+                tablaValidacion,
+                tablaValidacionPanel.getScrollPane(),
+                tablaValidacionPanel,
+                null);
         tablaValidacion.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {

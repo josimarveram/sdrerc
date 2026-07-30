@@ -1102,6 +1102,14 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/domain/dto/sdrercapp/NotificacionAsignacionDocumentoDTO.java`, `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/DocumentoAnalisisDAO.java`, `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores; consulta real contra Oracle (solo lectura) confirmo que `e.fecha_vencimiento` resuelve correctamente en la consulta de Validacion. Sin SQL ejecutado ni modificado (solo SELECT de diagnostico).
 
+### Bandeja Validacion: mismos anchos de columna que Asignacion + filtros por columna (30/07/2026)
+
+- Seguimiento inmediato del punto anterior: el usuario pidio que la Bandeja Validacion tenga las mismas columnas que la Bandeja Asignacion y que le agreguen filtros por columna.
+- Verificado que los datos mostrados ya coincidian: la lista de columnas de `AsignacionNotifTableModel` ("N° expediente", "N° expediente SGD", "Clas. Documentos", "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado", "Estado doc.") es identica a la de `validacionModel`, quitando las columnas estructurales exclusivas de Asignacion (icono `+` de expandir, checkbox de seleccion multiple, `_ID` oculto) que Validacion no necesita por diseno (sin checkbox ni `+`, solo doble clic, ver seccion Notificacion). Lo que realmente faltaba: los **anchos de columna** explicitos (Asignacion usa `AppV2TableColumnSizer.applyWidths(...)` con valores fijos; Validacion solo tenia `applyFriendlyDefaults`, generando proporciones distintas) y el **filtro por columna** (`AppV2ColumnFilterSupport.install(...)`, presente en Asignacion pero nunca agregado a Validacion).
+- Fix: se agrego `AppV2TableColumnSizer.applyWidths(tablaValidacion, 150, 130, 110, 150, 130, 110, 200, 130)` (mismos anchos que Asignacion usa para las columnas equivalentes: N° expediente, SGD, Clas. Documentos, Tipo documento, N° Documento, Fecha Emision, Titular, Estado; "Estado doc." queda en el ancho por defecto, igual que en Asignacion, que tampoco le fija un ancho explicito) y `AppV2ColumnFilterSupport.install("notificacionValidacion", tablaValidacion, tablaValidacionPanel.getScrollPane(), tablaValidacionPanel, null)` (sin columnas excluidas ni callback de "antes de cambiar de vista", porque Validacion no tiene filas expandibles que colapsar).
+- Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni modificado.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
