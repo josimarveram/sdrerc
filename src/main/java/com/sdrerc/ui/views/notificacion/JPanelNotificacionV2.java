@@ -433,6 +433,7 @@ public class JPanelNotificacionV2 extends JPanel {
         NOTIFICACION
     }
     private ModoBandejaNotificacion modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
+    private boolean construccionCompleta;
     private boolean panelNotificacionCerradoPorUsuario;
 
     public JPanelNotificacionV2() {
@@ -462,6 +463,7 @@ public class JPanelNotificacionV2 extends JPanel {
         cargarResultadosValidacion();
         cargarBandejaValidacion();
         cargarBandejaNotifV2();
+        construccionCompleta = true;
     }
 
     private JPanel crearHeader() {
@@ -484,7 +486,7 @@ public class JPanelNotificacionV2 extends JPanel {
         JPanel contenidoOperativo = new JPanel(new BorderLayout(4, 4));
         contenidoOperativo.setOpaque(false);
         contenidoOperativo.add(crearBuscador(), BorderLayout.NORTH);
-        contenidoOperativo.add(crearBandeja(), BorderLayout.CENTER);
+        contenidoOperativo.add(crearBandejaNotifV2(), BorderLayout.CENTER);
         contenidoPrincipal.add(contenidoOperativo, BorderLayout.CENTER);
 
         panelNotificacion = crearPanelNotificacion();
@@ -514,11 +516,6 @@ public class JPanelNotificacionV2 extends JPanel {
         bandejaValidacionTab.add(crearBandejaValidacion(), BorderLayout.CENTER);
         bandejaNotificacionTab = new JPanel(new BorderLayout());
         bandejaNotificacionTab.setOpaque(false);
-        JPanel notifBandejaWrapper = new JPanel(new BorderLayout());
-        notifBandejaWrapper.setOpaque(false);
-        notifBandejaWrapper.setPreferredSize(new Dimension(10, 320));
-        notifBandejaWrapper.add(crearBandejaNotifV2(), BorderLayout.CENTER);
-        bandejaNotificacionTab.add(notifBandejaWrapper, BorderLayout.NORTH);
         notifSharedContentHost = new JPanel(new BorderLayout());
         notifSharedContentHost.setOpaque(false);
         bandejaNotificacionTab.add(notifSharedContentHost, BorderLayout.CENTER);
@@ -2801,6 +2798,16 @@ public class JPanelNotificacionV2 extends JPanel {
         tablaNotifBandeja.getColumnModel().getColumn(0).setMinWidth(36);
         tablaNotifBandeja.getColumnModel().getColumn(0).setCellRenderer(new NotifExpandirRenderer());
         tablaNotifBandeja.setDefaultRenderer(Object.class, new NotifBandejaRenderer());
+        AppV2ColumnFilterSupport.install(
+                "bandejaNotificacion",
+                tablaNotifBandeja,
+                tablaNotifBandejaPanel.getScrollPane(),
+                tablaNotifBandejaPanel,
+                () -> {
+                    documentosNotifExpandidos.clear();
+                    reconstruirFilasNotifBandeja();
+                },
+                0);
         tablaNotifBandeja.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -2819,6 +2826,13 @@ public class JPanelNotificacionV2 extends JPanel {
                     return;
                 }
                 idDocumentoNotifSeleccionado = fila.idDocumento;
+                seleccionarExpedienteDesdeDocumentoNotif(fila.idDocumento);
+                if (e.getClickCount() == 2) {
+                    panelNotificacionCerradoPorUsuario = false;
+                    if (splitOperativo != null) {
+                        splitOperativo.setSideVisible(true);
+                    }
+                }
             }
         });
 
@@ -2835,6 +2849,32 @@ public class JPanelNotificacionV2 extends JPanel {
         section.setStatus(lblEstadoNotifBandeja);
         izquierda.add(section, BorderLayout.CENTER);
         return izquierda;
+    }
+
+    private void seleccionarExpedienteDesdeDocumentoNotif(Long idDocumento) {
+        if (idDocumento == null) {
+            return;
+        }
+        Long idExpediente = null;
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
+            if (idDocumento.equals(item.getIdDocumentoAnalizado())) {
+                idExpediente = item.getIdExpediente();
+                break;
+            }
+        }
+        if (idExpediente == null) {
+            return;
+        }
+        for (int modelRow = 0; modelRow < expedientesVisibles.size(); modelRow++) {
+            if (idExpediente.equals(expedientesVisibles.get(modelRow).getIdExpediente())) {
+                int viewRow = table.convertRowIndexToView(modelRow);
+                if (viewRow >= 0) {
+                    table.getSelectionModel().setSelectionInterval(viewRow, viewRow);
+                }
+                return;
+            }
+        }
+        table.clearSelection();
     }
 
     private void cargarBandejaNotifV2() {
@@ -3128,6 +3168,16 @@ public class JPanelNotificacionV2 extends JPanel {
         if (splitOperativo != null) {
             moverContenidoATabSeleccionada(splitOperativo);
         }
+        if (construccionCompleta) {
+            if (modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
+                cargarBandejaAsignacionNotificacion();
+            } else if (modoBandejaNotificacion == ModoBandejaNotificacion.VALIDACION) {
+                cargarBandejaValidacion();
+            } else {
+                buscar();
+                cargarBandejaNotifV2();
+            }
+        }
     }
 
     private JPanel crearBuscador() {
@@ -3146,14 +3196,6 @@ public class JPanelNotificacionV2 extends JPanel {
         toolbar.addFilter("Publicación prevista", cmbPublicacionFiltro);
         toolbar.addCompactFilter(spnLimite);
         return toolbar;
-    }
-
-    private JPanel crearBandeja() {
-        lblEstado.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
-        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablePanel);
-        section.setStatus(lblEstado);
-        return section;
     }
 
     private AppV2SideActionPanel crearPanelNotificacion() {
