@@ -24,6 +24,8 @@ public class NotificacionAsignacionDocumentoDTO {
     private final LocalDate fechaVencimiento;
     private final Long diasRestantes;
     private final int totalIntentos;
+    private final String estadoFinalNotificacionCodigo;
+    private final String estadoFinalNotificacion;
 
     public NotificacionAsignacionDocumentoDTO(
             Long idDocumentoAnalizado,
@@ -45,7 +47,9 @@ public class NotificacionAsignacionDocumentoDTO {
             String estadoExpediente,
             LocalDate fechaVencimiento,
             Long diasRestantes,
-            int totalIntentos) {
+            int totalIntentos,
+            String estadoFinalNotificacionCodigo,
+            String estadoFinalNotificacion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
@@ -66,6 +70,8 @@ public class NotificacionAsignacionDocumentoDTO {
         this.fechaVencimiento = fechaVencimiento;
         this.diasRestantes = diasRestantes;
         this.totalIntentos = totalIntentos;
+        this.estadoFinalNotificacionCodigo = safe(estadoFinalNotificacionCodigo);
+        this.estadoFinalNotificacion = safe(estadoFinalNotificacion);
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -146,6 +152,14 @@ public class NotificacionAsignacionDocumentoDTO {
 
     public int getTotalIntentos() {
         return totalIntentos;
+    }
+
+    public String getEstadoFinalNotificacionCodigo() {
+        return estadoFinalNotificacionCodigo;
+    }
+
+    public String getEstadoFinalNotificacion() {
+        return estadoFinalNotificacion;
     }
 
     private static String safe(String value) {

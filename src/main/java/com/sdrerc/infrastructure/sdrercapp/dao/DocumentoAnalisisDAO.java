@@ -159,6 +159,40 @@ public class DocumentoAnalisisDAO {
             "(UPPER(NVL(eest.codigo, '')) = 'EN_NOTIFICACION' "
             + "AND UPPER(NVL(tda.clasificacion, '')) IN ('INTERMEDIO', 'FINAL') AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO')";
 
+    // Estado Final del documento en la Bandeja Notificacion (4 estados, ver AGENTS.md):
+    // POR_NOTIFICAR (sin intentos), ATENDIDO (algun intento EXITOSA/ubicado), POR_PUBLICAR
+    // (intento 1 y 2 ambos FALLIDA/no ubicado) y PENDIENTE (resto de casos con intentos).
+    // No requiere columna nueva: se deriva de expediente_notificacion + estado_notificacion.
+    private static final String ESTADO_FINAL_NOTIFICACION_SQL =
+            "(SELECT CASE "
+            + "WHEN COUNT(*) = 0 THEN 'POR_NOTIFICAR' "
+            + "WHEN MAX(CASE WHEN en3.codigo = 'EXITOSA' THEN 1 ELSE 0 END) = 1 THEN 'ATENDIDO' "
+            + "WHEN MAX(CASE WHEN n3.numero_intento = 1 AND en3.codigo = 'FALLIDA' THEN 1 ELSE 0 END) = 1 "
+            + "AND MAX(CASE WHEN n3.numero_intento = 2 AND en3.codigo = 'FALLIDA' THEN 1 ELSE 0 END) = 1 "
+            + "THEN 'POR_PUBLICAR' "
+            + "ELSE 'PENDIENTE' END "
+            + "FROM expediente_notificacion n3 "
+            + "JOIN estado_notificacion en3 ON en3.id_estado_notificacion = n3.id_estado_notificacion "
+            + "WHERE n3.id_documento_analizado = da.id_documento_analizado AND n3.activo = 1) "
+            + "AS estado_final_notificacion_codigo";
+
+    private static String nombreEstadoFinalNotificacion(String codigo) {
+        if (codigo == null) {
+            return "Por notificar";
+        }
+        switch (codigo.trim().toUpperCase()) {
+            case "ATENDIDO":
+                return "Atendido";
+            case "POR_PUBLICAR":
+                return "Por publicar";
+            case "PENDIENTE":
+                return "Pendiente";
+            case "POR_NOTIFICAR":
+            default:
+                return "Por notificar";
+        }
+    }
+
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
         // Bandeja de coordinacion (SUPERVISOR_NOTIFICACION asigna a validadores/notificadores):
         // no se filtra por visibilidad individual porque su funcion es ver y repartir toda la cola.
@@ -232,8 +266,9 @@ public class DocumentoAnalisisDAO {
                     + "e.fecha_vencimiento, "
                     + (soportaIntentos
                             ? "(SELECT COUNT(*) FROM expediente_notificacion en2 "
-                            + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos "
-                            : "0 AS total_intentos ")
+                            + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos, "
+                            + ESTADO_FINAL_NOTIFICACION_SQL + " "
+                            : "0 AS total_intentos, 'POR_NOTIFICAR' AS estado_final_notificacion_codigo ")
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -278,7 +313,9 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("estado_expediente_nombre"),
                                 toLocalDate(rs.getDate("fecha_vencimiento")),
                                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
-                                rs.getInt("total_intentos")));
+                                rs.getInt("total_intentos"),
+                                rs.getString("estado_final_notificacion_codigo"),
+                                nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo"))));
                     }
                 }
             }
@@ -316,8 +353,9 @@ public class DocumentoAnalisisDAO {
                     + "e.fecha_vencimiento, "
                     + (soportaIntentos
                             ? "(SELECT COUNT(*) FROM expediente_notificacion en2 "
-                            + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos "
-                            : "0 AS total_intentos ")
+                            + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos, "
+                            + ESTADO_FINAL_NOTIFICACION_SQL + " "
+                            : "0 AS total_intentos, 'POR_NOTIFICAR' AS estado_final_notificacion_codigo ")
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -359,7 +397,9 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("estado_expediente_nombre"),
                                 toLocalDate(rs.getDate("fecha_vencimiento")),
                                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
-                                rs.getInt("total_intentos")));
+                                rs.getInt("total_intentos"),
+                                rs.getString("estado_final_notificacion_codigo"),
+                                nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo"))));
                     }
                 }
             }
@@ -906,6 +946,69 @@ public class DocumentoAnalisisDAO {
                 if (filas == 0) {
                     throw new SQLException("No se encontró el intento de notificación indicado.");
                 }
+            }
+        }
+    }
+
+    /**
+     * Confirma la recepcion (Fecha Recepcion = Fecha Acuse) de un intento de notificacion:
+     * marca el intento como EXITOSA/ubicado y registra el cargo en expediente_cargo_acuse con
+     * el codigo digitado (Codigo Notificacion si la modalidad es virtual, Usuario Notificacion
+     * si es presencial; ambos se persisten en el mismo campo de texto, expediente_cargo_acuse.recibido_por).
+     */
+    public void confirmarRecepcionIntentoNotificacion(
+            Long idExpediente,
+            Long idExpedienteNotificacion,
+            String codigoORecibidoPor,
+            Long idUsuario) throws SQLException {
+        if (idExpediente == null || idExpedienteNotificacion == null) {
+            throw new IllegalArgumentException("Seleccione el intento de notificación a confirmar.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaIntentosNotificacionDocumento(conn)) {
+                throw new SQLException("La base de datos no soporta intentos de notificación por documento.");
+            }
+            Long idEstadoNotificacion = catalogoLookupDAO.obtenerEstadoNotificacionId(conn, "EXITOSA");
+            if (idEstadoNotificacion == null) {
+                throw new SQLException("No se encontró el estado de notificación EXITOSA.");
+            }
+            String sqlUpdate = "UPDATE expediente_notificacion SET "
+                    + "id_estado_notificacion = ?, resultado = 'EXITOSA', codigo_notificacion = ?, "
+                    + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                    + "WHERE id_expediente_notificacion = ? AND activo = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
+                ps.setLong(1, idEstadoNotificacion);
+                setStringOrNull(ps, 2, limitar(codigoORecibidoPor, 60));
+                if (idUsuario == null) {
+                    ps.setNull(3, Types.NUMERIC);
+                } else {
+                    ps.setLong(3, idUsuario);
+                }
+                ps.setLong(4, idExpedienteNotificacion);
+                int filas = ps.executeUpdate();
+                if (filas == 0) {
+                    throw new SQLException("No se encontró el intento de notificación indicado.");
+                }
+            }
+            Long idEstadoCargo = catalogoLookupDAO.obtenerEstadoCargoAcuseId(conn, "CARGO_RECIBIDO");
+            if (idEstadoCargo == null) {
+                throw new SQLException("No se encontró el estado de cargo CARGO_RECIBIDO.");
+            }
+            String sqlInsert = "INSERT INTO expediente_cargo_acuse ("
+                    + "id_expediente, id_expediente_notificacion, id_estado_cargo_acuse, fecha_recepcion, "
+                    + "recibido_por, activo, creado_por, creado_en"
+                    + ") VALUES (?, ?, ?, SYSTIMESTAMP, ?, 1, ?, SYSTIMESTAMP)";
+            try (PreparedStatement ps = conn.prepareStatement(sqlInsert)) {
+                ps.setLong(1, idExpediente);
+                ps.setLong(2, idExpedienteNotificacion);
+                ps.setLong(3, idEstadoCargo);
+                setStringOrNull(ps, 4, limitar(codigoORecibidoPor, 250));
+                if (idUsuario == null) {
+                    ps.setNull(5, Types.NUMERIC);
+                } else {
+                    ps.setLong(5, idUsuario);
+                }
+                ps.executeUpdate();
             }
         }
     }

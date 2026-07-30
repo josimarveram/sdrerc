@@ -40,6 +40,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.FontMetrics;
@@ -63,8 +64,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -84,6 +87,7 @@ import javax.swing.SwingWorker;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 
 public class JPanelNotificacionV2 extends JPanel {
@@ -416,21 +420,72 @@ public class JPanelNotificacionV2 extends JPanel {
     private final java.util.Map<Long, List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>> intentosNotifCache =
             new java.util.HashMap<Long, List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>>();
     private final java.util.Set<Long> documentosNotifExpandidos = new java.util.HashSet<Long>();
+    private final java.util.Set<Long> documentosNotifSeleccionados = new java.util.HashSet<Long>();
+    private final java.util.Map<Long, List<IntentoBorrador>> borradoresNotifPorDocumento =
+            new java.util.HashMap<Long, List<IntentoBorrador>>();
+    private final AtomicLong secuenciaBorradorIntento = new AtomicLong(-1L);
+    private static final int COL_NOTIF_SEL = 0;
+    private static final int COL_NOTIF_EXPAND = 1;
+    private static final int COL_NOTIF_MODALIDAD = 3;
+    private static final int COL_NOTIF_FECHA_ENVIO = 4;
+    private static final int COL_NOTIF_ESTADO = 5;
+    private static final int COL_NOTIF_CODIGO = 6;
+    private static final int COL_NOTIF_FECHA_RECEPCION = 7;
+    private static final int COL_NOTIF_ESTADO_NOTIF = 8;
+    private static final int COL_NOTIF_ACCION = 10;
     private final DefaultTableModel notifBandejaModel = new DefaultTableModel(
-            new Object[]{"", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento", "Fecha Emisión", "Titular", "Estado", "Estado doc."},
+            new Object[]{"", "", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento",
+                "Fecha Emisión", "Titular", "Estado Final", "Estado doc.", ""},
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
+            if (row < 0 || row >= filasNotifBandeja.size()) {
+                return false;
+            }
+            NotifFilaTabla fila = filasNotifBandeja.get(row);
+            if (fila.esPadre()) {
+                return column == COL_NOTIF_SEL;
+            }
+            if (column == COL_NOTIF_ACCION || column == COL_NOTIF_MODALIDAD || column == COL_NOTIF_CODIGO) {
+                return true;
+            }
+            if (column == COL_NOTIF_ESTADO) {
+                return fila.esBorrador() || !"EXITOSA".equalsIgnoreCase(fila.intento.getEstadoNotificacionCodigo());
+            }
+            if (column == COL_NOTIF_ESTADO_NOTIF) {
+                return !fila.esBorrador();
+            }
             return false;
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == COL_NOTIF_SEL ? Boolean.class : Object.class;
         }
     };
     private final JTable tablaNotifBandeja = new AppV2Table(notifBandejaModel);
     private final AppV2TablePanel tablaNotifBandejaPanel = new AppV2TablePanel(
             tablaNotifBandeja, "Sin documentos para notificar", "No hay documentos pendientes de notificación.");
     private final JLabel lblEstadoNotifBandeja = new JLabel(
-            "Seleccione un documento y presione \"Agregar intento\". Los documentos con intentos registrados muestran un icono para desplegarlos.");
+            "Marque uno o varios documentos y presione \"Agregar intento\" para registrar el envío al ciudadano.");
     private final JButton btnAgregarIntento = new JButton("+ Agregar intento");
     private Long idDocumentoNotifSeleccionado;
+
+    private static final class IntentoBorrador {
+        private final long tempId;
+        private final Long idExpediente;
+        private final Long idDocumento;
+        private final int numeroIntento;
+        private String modalidadCodigo;
+
+        private IntentoBorrador(long tempId, Long idExpediente, Long idDocumento, int numeroIntento, String modalidadCodigo) {
+            this.tempId = tempId;
+            this.idExpediente = idExpediente;
+            this.idDocumento = idDocumento;
+            this.numeroIntento = numeroIntento;
+            this.modalidadCodigo = modalidadCodigo;
+        }
+    }
 
     private enum ModoBandejaNotificacion {
         ASIGNACION,
@@ -2798,9 +2853,23 @@ public class JPanelNotificacionV2 extends JPanel {
         tablaNotifBandeja.setGridColor(AppV2Theme.BORDER);
         tablaNotifBandeja.setShowVerticalLines(false);
         AppV2TableColumnSizer.applyFriendlyDefaults(tablaNotifBandeja);
-        tablaNotifBandeja.getColumnModel().getColumn(0).setMaxWidth(40);
-        tablaNotifBandeja.getColumnModel().getColumn(0).setMinWidth(36);
-        tablaNotifBandeja.getColumnModel().getColumn(0).setCellRenderer(new NotifExpandirRenderer());
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_SEL).setMaxWidth(34);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_SEL).setMinWidth(30);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_SEL).setCellRenderer(new NotifSeleccionRenderer());
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_SEL).setCellEditor(new NotifSeleccionEditor());
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_EXPAND).setMaxWidth(46);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_EXPAND).setMinWidth(40);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_EXPAND).setCellRenderer(new NotifExpandirRenderer());
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_MODALIDAD).setCellEditor(
+                new NotifComboCellEditor(crearComboModalidad()));
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ESTADO).setCellEditor(
+                new NotifComboCellEditor(crearComboEstadoHija()));
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ESTADO_NOTIF).setCellEditor(
+                new NotifComboCellEditor(crearComboEstadoNotifHija()));
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setMaxWidth(70);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setMinWidth(60);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setCellRenderer(new NotifAccionRenderer());
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setCellEditor(new NotifAccionEditor());
         tablaNotifBandeja.setDefaultRenderer(Object.class, new NotifBandejaRenderer());
         AppV2ColumnFilterSupport.install(
                 "bandejaNotificacion",
@@ -2811,7 +2880,27 @@ public class JPanelNotificacionV2 extends JPanel {
                     documentosNotifExpandidos.clear();
                     reconstruirFilasNotifBandeja();
                 },
-                0);
+                COL_NOTIF_SEL, COL_NOTIF_EXPAND, COL_NOTIF_ACCION);
+        notifBandejaModel.addTableModelListener(evento -> {
+            if (evento.getColumn() != COL_NOTIF_SEL || evento.getType() != javax.swing.event.TableModelEvent.UPDATE) {
+                return;
+            }
+            int fila = evento.getFirstRow();
+            if (fila < 0 || fila >= filasNotifBandeja.size()) {
+                return;
+            }
+            NotifFilaTabla filaTabla = filasNotifBandeja.get(fila);
+            if (!filaTabla.esPadre()) {
+                return;
+            }
+            boolean marcado = Boolean.TRUE.equals(notifBandejaModel.getValueAt(fila, COL_NOTIF_SEL));
+            if (marcado) {
+                documentosNotifSeleccionados.add(filaTabla.idDocumento);
+            } else {
+                documentosNotifSeleccionados.remove(filaTabla.idDocumento);
+            }
+            actualizarEstadoBotonAgregarIntento();
+        });
         tablaNotifBandeja.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -2824,22 +2913,22 @@ public class JPanelNotificacionV2 extends JPanel {
                 if (modelRow < 0 || modelRow >= filasNotifBandeja.size()) {
                     return;
                 }
+                int modelCol = tablaNotifBandeja.convertColumnIndexToModel(viewCol);
                 NotifFilaTabla fila = filasNotifBandeja.get(modelRow);
-                if (viewCol == 0 && fila.esPadre()) {
+                if (modelCol == COL_NOTIF_SEL) {
+                    return;
+                }
+                if (modelCol == COL_NOTIF_EXPAND && fila.esPadre()) {
                     alternarExpansionNotif(fila.idDocumento);
                     return;
                 }
                 idDocumentoNotifSeleccionado = fila.idDocumento;
-                btnAgregarIntento.setEnabled(fila.esPadre());
+                actualizarEstadoBotonAgregarIntento();
                 seleccionarExpedienteDesdeDocumentoNotif(fila.idDocumento);
-                if (e.getClickCount() == 2) {
-                    if (fila.esPadre()) {
-                        panelNotificacionCerradoPorUsuario = false;
-                        if (splitOperativo != null) {
-                            splitOperativo.setSideVisible(true);
-                        }
-                    } else if (fila.intento != null) {
-                        mostrarDialogoEditarIntento(fila.intento);
+                if (e.getClickCount() == 2 && fila.esPadre()) {
+                    panelNotificacionCerradoPorUsuario = false;
+                    if (splitOperativo != null) {
+                        splitOperativo.setSideVisible(true);
                     }
                 }
             }
@@ -2848,9 +2937,11 @@ public class JPanelNotificacionV2 extends JPanel {
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         toolbar.setOpaque(false);
         AppV2Theme.estilizarBotonPrimario(btnAgregarIntento);
+        btnAgregarIntento.setToolTipText(
+                "Marque una o varias filas de documentos (o selecciónelas con clic simple) para registrar el siguiente intento de notificación.");
         btnAgregarIntento.setEnabled(false);
         toolbar.add(btnAgregarIntento);
-        btnAgregarIntento.addActionListener(e -> mostrarDialogoAgregarIntento());
+        btnAgregarIntento.addActionListener(e -> agregarIntentosInline());
 
         JPanel izquierda = new JPanel(new BorderLayout(6, 6));
         izquierda.setOpaque(false);
@@ -2859,6 +2950,49 @@ public class JPanelNotificacionV2 extends JPanel {
         section.setStatus(lblEstadoNotifBandeja);
         izquierda.add(section, BorderLayout.CENTER);
         return izquierda;
+    }
+
+    private void actualizarEstadoBotonAgregarIntento() {
+        boolean habilitado = !documentosNotifSeleccionados.isEmpty();
+        if (!habilitado && idDocumentoNotifSeleccionado != null) {
+            habilitado = buscarDocumentoNotif(idDocumentoNotifSeleccionado) != null;
+        }
+        btnAgregarIntento.setEnabled(habilitado);
+    }
+
+    private com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO buscarDocumentoNotif(Long idDocumento) {
+        if (idDocumento == null) {
+            return null;
+        }
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
+            if (idDocumento.equals(item.getIdDocumentoAnalizado())) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private JComboBox<SimpleItem> crearComboModalidad() {
+        JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
+        combo.addItem(new SimpleItem("VIRTUAL", "Virtual"));
+        combo.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
+        combo.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
+        return combo;
+    }
+
+    private JComboBox<SimpleItem> crearComboEstadoHija() {
+        JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
+        combo.addItem(new SimpleItem("PENDIENTE", "Pendiente"));
+        combo.addItem(new SimpleItem("ENVIADA", "Enviado"));
+        return combo;
+    }
+
+    private JComboBox<SimpleItem> crearComboEstadoNotifHija() {
+        JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
+        combo.addItem(new SimpleItem("", "(sin definir)"));
+        combo.addItem(new SimpleItem("FALLIDA", "No ubicado"));
+        combo.addItem(new SimpleItem("EXITOSA", "Ubicado"));
+        return combo;
     }
 
     private void seleccionarExpedienteDesdeDocumentoNotif(Long idDocumento) {
@@ -2921,13 +3055,16 @@ public class JPanelNotificacionV2 extends JPanel {
         filasNotifBandeja.clear();
         notifBandejaModel.setRowCount(0);
         for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
+            Long idDocumento = item.getIdDocumentoAnalizado();
+            List<IntentoBorrador> borradores = borradoresNotifPorDocumento.get(idDocumento);
+            int totalIntentosMostrar = item.getTotalIntentos() + (borradores == null ? 0 : borradores.size());
+            boolean expandido = documentosNotifExpandidos.contains(idDocumento);
             filasNotifBandeja.add(NotifFilaTabla.padre(item));
-            List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos = intentosNotifCache.get(item.getIdDocumentoAnalizado());
-            String iconoIntentos = item.getTotalIntentos() <= 0
+            String iconoIntentos = totalIntentosMostrar <= 0
                     ? ""
-                    : (documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) ? "collapse" : "expand")
-                            + ":" + item.getTotalIntentos();
+                    : (expandido ? "collapse" : "expand") + ":" + totalIntentosMostrar;
             notifBandejaModel.addRow(new Object[]{
+                Boolean.valueOf(documentosNotifSeleccionados.contains(idDocumento)),
                 iconoIntentos,
                 item.getNumeroExpediente(),
                 item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
@@ -2935,48 +3072,115 @@ public class JPanelNotificacionV2 extends JPanel {
                 item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
                 item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
                 item.getTitular().isEmpty() ? "-" : item.getTitular(),
-                item.getEstadoExpediente().isEmpty() ? "-" : item.getEstadoExpediente(),
-                estadoNotificacionCalculado(intentos, item.getEstadoDocumento())
+                item.getEstadoFinalNotificacion().isEmpty() ? "Por notificar" : item.getEstadoFinalNotificacion(),
+                item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento(),
+                ""
             });
-            if (documentosNotifExpandidos.contains(item.getIdDocumentoAnalizado()) && intentos != null) {
+            if (!expandido) {
+                continue;
+            }
+            List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos = intentosNotifCache.get(idDocumento);
+            if (intentos != null) {
                 for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
-                    filasNotifBandeja.add(NotifFilaTabla.hijo(item.getIdDocumentoAnalizado(), intento));
-                    notifBandejaModel.addRow(new Object[]{
-                        "",
-                        "↳ Intento " + intento.getNumeroIntento(),
-                        intento.getTipoNotificacion().isEmpty() ? "-" : intento.getTipoNotificacion(),
-                        intento.getEstadoNotificacion().isEmpty() ? "-" : intento.getEstadoNotificacion(),
-                        intento.getCodigoNotificacion().isEmpty() ? "-" : intento.getCodigoNotificacion(),
-                        intento.getFechaEnvio() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio()),
-                        intento.getFechaRecepcion() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaRecepcion()),
-                        "-",
-                        intento.isUbicado() ? "Ubicado" : "No ubicado"
-                    });
+                    filasNotifBandeja.add(NotifFilaTabla.hijo(idDocumento, intento));
+                    notifBandejaModel.addRow(filaHijoDesdeIntento(intento));
+                }
+            }
+            if (borradores != null) {
+                for (IntentoBorrador borrador : borradores) {
+                    filasNotifBandeja.add(NotifFilaTabla.hijoBorrador(idDocumento, borrador));
+                    notifBandejaModel.addRow(filaHijoDesdeBorrador(borrador));
                 }
             }
         }
     }
 
-    private String estadoNotificacionCalculado(List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos, String estadoDocumentoFallback) {
-        if (intentos == null || intentos.isEmpty()) {
-            return estadoDocumentoFallback == null || estadoDocumentoFallback.isEmpty() ? "-" : estadoDocumentoFallback;
+    private Object[] filaHijoDesdeIntento(com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
+        return new Object[]{
+            null,
+            "",
+            "↳ Intento " + intento.getNumeroIntento(),
+            intento.getTipoNotificacionCodigo(),
+            intento.getFechaEnvio() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio()),
+            codigoEstadoParaColumnaEstado(intento.getEstadoNotificacionCodigo()),
+            intento.getCodigoNotificacion(),
+            intento.getFechaRecepcion() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaRecepcion()),
+            codigoEstadoNotifParaColumna(intento.getEstadoNotificacionCodigo()),
+            "",
+            "guardar"
+        };
+    }
+
+    private Object[] filaHijoDesdeBorrador(IntentoBorrador borrador) {
+        return new Object[]{
+            null,
+            "",
+            "↳ Intento " + borrador.numeroIntento + " (nuevo)",
+            borrador.modalidadCodigo,
+            "-",
+            "PENDIENTE",
+            "",
+            "-",
+            "",
+            "",
+            "guardar-borrador"
+        };
+    }
+
+    private static String codigoEstadoParaColumnaEstado(String estadoNotificacionCodigo) {
+        String c = estadoNotificacionCodigo == null ? "" : estadoNotificacionCodigo.trim().toUpperCase();
+        if ("EXITOSA".equals(c)) {
+            return "EXITOSA";
         }
-        boolean algunoUbicado = false;
-        int intentosNoUbicados = 0;
-        for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
-            if (intento.isUbicado()) {
-                algunoUbicado = true;
-            } else {
-                intentosNoUbicados++;
-            }
+        if ("PENDIENTE".equals(c)) {
+            return "PENDIENTE";
         }
-        if (algunoUbicado) {
+        return "ENVIADA";
+    }
+
+    private static String codigoEstadoNotifParaColumna(String estadoNotificacionCodigo) {
+        String c = estadoNotificacionCodigo == null ? "" : estadoNotificacionCodigo.trim().toUpperCase();
+        if ("EXITOSA".equals(c)) {
+            return "EXITOSA";
+        }
+        if ("FALLIDA".equals(c)) {
+            return "FALLIDA";
+        }
+        return "";
+    }
+
+    private static String textoModalidad(String codigo) {
+        String c = codigo == null ? "" : codigo.trim().toUpperCase();
+        if ("VIRTUAL".equals(c)) {
+            return "Virtual";
+        }
+        if ("PRESENCIAL_1".equals(c)) {
+            return "Presencial 1";
+        }
+        if ("PRESENCIAL_2".equals(c)) {
+            return "Presencial 2";
+        }
+        return c.isEmpty() ? "-" : c;
+    }
+
+    private static String textoEstadoHija(String codigoColumnaEstado) {
+        if ("EXITOSA".equals(codigoColumnaEstado)) {
             return "Atendido";
         }
-        if (intentosNoUbicados >= 2) {
-            return "Pendiente de publicación";
+        if ("ENVIADA".equals(codigoColumnaEstado)) {
+            return "Enviado";
         }
         return "Pendiente";
+    }
+
+    private static String textoEstadoNotifHija(String codigoColumnaEstadoNotif) {
+        if ("EXITOSA".equals(codigoColumnaEstadoNotif)) {
+            return "Ubicado";
+        }
+        if ("FALLIDA".equals(codigoColumnaEstadoNotif)) {
+            return "No ubicado";
+        }
+        return "";
     }
 
     private void alternarExpansionNotif(Long idDocumento) {
@@ -3014,161 +3218,190 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
-    private void mostrarDialogoAgregarIntento() {
-        if (idDocumentoNotifSeleccionado == null) {
-            JOptionPane.showMessageDialog(this, "Seleccione un documento de la bandeja de notificación.",
-                    "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documento = null;
-        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
-            if (idDocumentoNotifSeleccionado.equals(item.getIdDocumentoAnalizado())) {
-                documento = item;
-                break;
-            }
-        }
-        if (documento == null) {
-            return;
-        }
-        List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentosActuales =
-                intentosNotifCache.get(documento.getIdDocumentoAnalizado());
-        int totalIntentosActual = intentosActuales != null ? intentosActuales.size() : documento.getTotalIntentos();
-        int siguienteIntento = totalIntentosActual + 1;
-        if (siguienteIntento > 3) {
-            JOptionPane.showMessageDialog(this,
-                    "Ya se registraron los 3 intentos permitidos para este documento.",
-                    "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        final String tipoNotificacionCodigo;
-        final String modalidadNombre;
-        if (siguienteIntento == 1) {
-            tipoNotificacionCodigo = "VIRTUAL";
-            modalidadNombre = "Virtual";
-        } else if (siguienteIntento == 2) {
-            tipoNotificacionCodigo = "PRESENCIAL_1";
-            modalidadNombre = "Presencial";
-        } else {
-            tipoNotificacionCodigo = "PRESENCIAL_2";
-            modalidadNombre = "Presencial";
-        }
-        JTextField txtCodigo = new JTextField(16);
-        JPanel form = new JPanel(new GridBagLayout());
-        GridBagConstraints gbcLabel = new GridBagConstraints();
-        gbcLabel.gridx = 0;
-        gbcLabel.anchor = GridBagConstraints.WEST;
-        gbcLabel.insets = new Insets(4, 0, 4, 8);
-        GridBagConstraints gbcValue = new GridBagConstraints();
-        gbcValue.gridx = 1;
-        gbcValue.fill = GridBagConstraints.HORIZONTAL;
-        gbcValue.insets = new Insets(4, 0, 4, 0);
-        gbcLabel.gridy = 0;
-        gbcValue.gridy = 0;
-        form.add(new JLabel("Intento N°"), gbcLabel);
-        form.add(new JLabel(String.valueOf(siguienteIntento)), gbcValue);
-        gbcLabel.gridy = 1;
-        gbcValue.gridy = 1;
-        form.add(new JLabel("Modalidad"), gbcLabel);
-        form.add(new JLabel(modalidadNombre), gbcValue);
-        gbcLabel.gridy = 2;
-        gbcValue.gridy = 2;
-        form.add(new JLabel("Código notificación"), gbcLabel);
-        form.add(txtCodigo, gbcValue);
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this, form, "Agregar intento de notificación", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (confirm != JOptionPane.OK_OPTION) {
-            return;
-        }
-        final Long idExpediente = documento.getIdExpediente();
-        final Long idDocumento = documento.getIdDocumentoAnalizado();
-        final String codigoNotificacion = txtCodigo.getText();
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                documentoAnalisisService.registrarIntentoNotificacion(idExpediente, idDocumento, tipoNotificacionCodigo, codigoNotificacion);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    get();
-                    intentosNotifCache.remove(idDocumento);
-                    documentosNotifExpandidos.add(idDocumento);
-                    alternarExpansionNotifForzado(idDocumento);
-                } catch (Exception ex) {
-                    mostrarError("No se pudo registrar el intento de notificación.", ex);
-                }
-            }
-        };
-        worker.execute();
-    }
-
     private void alternarExpansionNotifForzado(Long idDocumento) {
         documentosNotifExpandidos.remove(idDocumento);
         alternarExpansionNotif(idDocumento);
     }
 
-    private void mostrarDialogoEditarIntento(com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
-        JComboBox<SimpleItem> cmbModalidad = new JComboBox<SimpleItem>();
-        cmbModalidad.addItem(new SimpleItem("VIRTUAL", "Virtual"));
-        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
-        cmbModalidad.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
-        seleccionarItemPorCodigo(cmbModalidad, intento.getTipoNotificacionCodigo());
-
-        JComboBox<SimpleItem> cmbEstado = new JComboBox<SimpleItem>();
-        cmbEstado.addItem(new SimpleItem("PENDIENTE", "Pendiente"));
-        cmbEstado.addItem(new SimpleItem("ENVIADA", "Enviada"));
-        cmbEstado.addItem(new SimpleItem("EXITOSA", "Exitosa (ubicado)"));
-        cmbEstado.addItem(new SimpleItem("FALLIDA", "Fallida (no ubicado)"));
-        seleccionarItemPorCodigo(cmbEstado, intento.getEstadoNotificacionCodigo());
-
-        JTextField txtCodigo = new JTextField(intento.getCodigoNotificacion(), 16);
-
-        JPanel form = new JPanel(new GridBagLayout());
-        GridBagConstraints gbcLabel = new GridBagConstraints();
-        gbcLabel.gridx = 0;
-        gbcLabel.anchor = GridBagConstraints.WEST;
-        gbcLabel.insets = new Insets(4, 0, 4, 8);
-        GridBagConstraints gbcValue = new GridBagConstraints();
-        gbcValue.gridx = 1;
-        gbcValue.fill = GridBagConstraints.HORIZONTAL;
-        gbcValue.insets = new Insets(4, 0, 4, 0);
-        gbcLabel.gridy = 0;
-        gbcValue.gridy = 0;
-        form.add(new JLabel("Intento N°"), gbcLabel);
-        form.add(new JLabel(String.valueOf(intento.getNumeroIntento())), gbcValue);
-        gbcLabel.gridy = 1;
-        gbcValue.gridy = 1;
-        form.add(new JLabel("Modalidad"), gbcLabel);
-        form.add(cmbModalidad, gbcValue);
-        gbcLabel.gridy = 2;
-        gbcValue.gridy = 2;
-        form.add(new JLabel("Estado"), gbcLabel);
-        form.add(cmbEstado, gbcValue);
-        gbcLabel.gridy = 3;
-        gbcValue.gridy = 3;
-        form.add(new JLabel("Código notificación"), gbcLabel);
-        form.add(txtCodigo, gbcValue);
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this, form, "Editar intento de notificación", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (confirm != JOptionPane.OK_OPTION) {
+    /**
+     * "+ Agregar intento": ya no abre un dialogo. Por cada documento marcado (o el
+     * seleccionado con clic simple si no hay ninguno marcado) inserta una fila hija
+     * "borrador" editable directamente en la grilla, para elegir Modalidad y digitar el
+     * Codigo/Usuario de notificacion antes de presionar Guardar en esa misma fila.
+     */
+    private void agregarIntentosInline() {
+        final java.util.LinkedHashSet<Long> objetivos = new java.util.LinkedHashSet<Long>(documentosNotifSeleccionados);
+        if (objetivos.isEmpty() && idDocumentoNotifSeleccionado != null) {
+            objetivos.add(idDocumentoNotifSeleccionado);
+        }
+        if (objetivos.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione uno o varios documentos de la bandeja de notificación.",
+                    "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        SimpleItem modalidad = (SimpleItem) cmbModalidad.getSelectedItem();
-        SimpleItem estado = (SimpleItem) cmbEstado.getSelectedItem();
-        final Long idExpedienteNotificacion = intento.getIdExpedienteNotificacion();
-        final Long idDocumento = intento.getIdDocumentoAnalizado();
-        final String tipoNotificacionCodigo = modalidad == null ? intento.getTipoNotificacionCodigo() : modalidad.getCodigo();
-        final String estadoNotificacionCodigo = estado == null ? intento.getEstadoNotificacionCodigo() : estado.getCodigo();
-        final String codigoNotificacion = txtCodigo.getText();
+        final List<Long> pendientesDeCarga = new ArrayList<Long>();
+        for (Long idDocumento : objetivos) {
+            com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documento = buscarDocumentoNotif(idDocumento);
+            if (documento != null && documento.getTotalIntentos() > 0 && !intentosNotifCache.containsKey(idDocumento)) {
+                pendientesDeCarga.add(idDocumento);
+            }
+        }
+        if (pendientesDeCarga.isEmpty()) {
+            crearBorradoresIntento(objetivos);
+            return;
+        }
+        final java.util.concurrent.atomic.AtomicInteger restantes =
+                new java.util.concurrent.atomic.AtomicInteger(pendientesDeCarga.size());
+        for (final Long idDocumento : pendientesDeCarga) {
+            SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void> worker =
+                    new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void>() {
+                @Override
+                protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> doInBackground() throws Exception {
+                    return documentoAnalisisService.listarIntentosNotificacion(idDocumento);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        intentosNotifCache.put(idDocumento, get());
+                    } catch (Exception ex) {
+                        intentosNotifCache.put(idDocumento, new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>());
+                    }
+                    if (restantes.decrementAndGet() == 0) {
+                        crearBorradoresIntento(objetivos);
+                    }
+                }
+            };
+            worker.execute();
+        }
+    }
+
+    private void crearBorradoresIntento(java.util.Collection<Long> idsDocumento) {
+        int agregados = 0;
+        for (Long idDocumento : idsDocumento) {
+            com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documento = buscarDocumentoNotif(idDocumento);
+            if (documento == null) {
+                continue;
+            }
+            List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentosActuales = intentosNotifCache.get(idDocumento);
+            List<IntentoBorrador> borradores = borradoresNotifPorDocumento.get(idDocumento);
+            int totalActual = (intentosActuales != null ? intentosActuales.size() : 0) + (borradores != null ? borradores.size() : 0);
+            int siguienteIntento = totalActual + 1;
+            if (siguienteIntento > 3) {
+                continue;
+            }
+            String modalidadPorDefecto = siguienteIntento == 1 ? "VIRTUAL" : "PRESENCIAL_1";
+            if (borradores == null) {
+                borradores = new ArrayList<IntentoBorrador>();
+                borradoresNotifPorDocumento.put(idDocumento, borradores);
+            }
+            borradores.add(new IntentoBorrador(
+                    secuenciaBorradorIntento.getAndDecrement(), documento.getIdExpediente(), idDocumento,
+                    siguienteIntento, modalidadPorDefecto));
+            documentosNotifExpandidos.add(idDocumento);
+            agregados++;
+        }
+        if (agregados == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Los documentos seleccionados ya alcanzaron el máximo de 3 intentos de notificación.",
+                    "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        reconstruirFilasNotifBandeja();
+    }
+
+    private void cancelarBorradorIntento(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasNotifBandeja.size()) {
+            return;
+        }
+        NotifFilaTabla fila = filasNotifBandeja.get(modelRow);
+        if (!fila.esBorrador()) {
+            return;
+        }
+        List<IntentoBorrador> lista = borradoresNotifPorDocumento.get(fila.idDocumento);
+        if (lista != null) {
+            lista.remove(fila.borrador);
+            if (lista.isEmpty()) {
+                borradoresNotifPorDocumento.remove(fila.idDocumento);
+            }
+        }
+        reconstruirFilasNotifBandeja();
+    }
+
+    /**
+     * Guarda la edicion inline de una fila hija (borrador nuevo o intento existente).
+     * En existentes, si "Estado Notificación" quedo en UBICADO se confirma la recepcion
+     * (fecha_recepcion/recibido_por en expediente_cargo_acuse) en vez de un simple update.
+     */
+    private void guardarFilaIntento(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasNotifBandeja.size()) {
+            return;
+        }
+        NotifFilaTabla fila = filasNotifBandeja.get(modelRow);
+        if (fila.esPadre()) {
+            return;
+        }
+        Object modalidadValor = notifBandejaModel.getValueAt(modelRow, COL_NOTIF_MODALIDAD);
+        Object codigoValor = notifBandejaModel.getValueAt(modelRow, COL_NOTIF_CODIGO);
+        final String modalidadCodigo = modalidadValor == null ? "VIRTUAL" : modalidadValor.toString();
+        final String codigoTexto = codigoValor == null ? "" : codigoValor.toString();
+
+        if (fila.esBorrador()) {
+            final IntentoBorrador borrador = fila.borrador;
+            final Long idDocumento = fila.idDocumento;
+            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    documentoAnalisisService.registrarIntentoNotificacion(
+                            borrador.idExpediente, idDocumento, modalidadCodigo, codigoTexto);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        List<IntentoBorrador> lista = borradoresNotifPorDocumento.get(idDocumento);
+                        if (lista != null) {
+                            lista.remove(borrador);
+                            if (lista.isEmpty()) {
+                                borradoresNotifPorDocumento.remove(idDocumento);
+                            }
+                        }
+                        recargarBandejaYExpandir(idDocumento);
+                    } catch (Exception ex) {
+                        mostrarError("No se pudo registrar el intento de notificación.", ex);
+                    }
+                }
+            };
+            worker.execute();
+            return;
+        }
+
+        Object estadoValor = notifBandejaModel.getValueAt(modelRow, COL_NOTIF_ESTADO);
+        Object estadoNotifValor = notifBandejaModel.getValueAt(modelRow, COL_NOTIF_ESTADO_NOTIF);
+        String estadoColumna = estadoValor == null ? "PENDIENTE" : estadoValor.toString();
+        String estadoNotifColumna = estadoNotifValor == null ? "" : estadoNotifValor.toString();
+        final String estadoFinalCodigo;
+        if ("EXITOSA".equals(estadoNotifColumna)) {
+            estadoFinalCodigo = "EXITOSA";
+        } else if ("FALLIDA".equals(estadoNotifColumna)) {
+            estadoFinalCodigo = "FALLIDA";
+        } else {
+            estadoFinalCodigo = "ENVIADA".equals(estadoColumna) ? "ENVIADA" : "PENDIENTE";
+        }
+        final com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento = fila.intento;
+        final Long idDocumento = fila.idDocumento;
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                documentoAnalisisService.actualizarIntentoNotificacion(
-                        idExpedienteNotificacion, tipoNotificacionCodigo, estadoNotificacionCodigo, codigoNotificacion, null);
+                if ("EXITOSA".equals(estadoFinalCodigo)) {
+                    documentoAnalisisService.confirmarRecepcionIntentoNotificacion(
+                            intento.getIdExpediente(), intento.getIdExpedienteNotificacion(), codigoTexto);
+                } else {
+                    documentoAnalisisService.actualizarIntentoNotificacion(
+                            intento.getIdExpedienteNotificacion(), modalidadCodigo, estadoFinalCodigo, codigoTexto, null);
+                }
                 return null;
             }
 
@@ -3176,9 +3409,7 @@ public class JPanelNotificacionV2 extends JPanel {
             protected void done() {
                 try {
                     get();
-                    intentosNotifCache.remove(idDocumento);
-                    documentosNotifExpandidos.add(idDocumento);
-                    alternarExpansionNotifForzado(idDocumento);
+                    recargarBandejaYExpandir(idDocumento);
                 } catch (Exception ex) {
                     mostrarError("No se pudo actualizar el intento de notificación.", ex);
                 }
@@ -3187,16 +3418,58 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
+    /** Recarga la bandeja completa (Estado Final depende del servidor) y re-expande el documento editado. */
+    private void recargarBandejaYExpandir(final Long idDocumento) {
+        lblEstadoNotifBandeja.setText("Actualizando bandeja de notificación...");
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
+            private List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentosDocumento;
+
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> doInBackground() throws Exception {
+                List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
+                        documentoAnalisisService.listarDocumentosNotificacion();
+                if (idDocumento != null) {
+                    intentosDocumento = documentoAnalisisService.listarIntentosNotificacion(idDocumento);
+                }
+                return items;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items = get();
+                    documentosNotifBandeja.clear();
+                    documentosNotifBandeja.addAll(items);
+                    intentosNotifCache.clear();
+                    if (idDocumento != null) {
+                        intentosNotifCache.put(idDocumento, intentosDocumento == null
+                                ? new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>()
+                                : intentosDocumento);
+                        documentosNotifExpandidos.add(idDocumento);
+                    }
+                    reconstruirFilasNotifBandeja();
+                    tablaNotifBandejaPanel.setEmpty(items.isEmpty());
+                    lblEstadoNotifBandeja.setText(items.size() + " documento(s) pendientes de notificación.");
+                } catch (Exception ex) {
+                    lblEstadoNotifBandeja.setText("No se pudieron actualizar los documentos pendientes de notificación.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private static void seleccionarItemPorCodigo(JComboBox<SimpleItem> combo, String codigo) {
-        if (codigo == null || codigo.trim().isEmpty()) {
-            return;
-        }
+        String buscado = codigo == null ? "" : codigo.trim();
         for (int i = 0; i < combo.getItemCount(); i++) {
             SimpleItem item = combo.getItemAt(i);
-            if (item != null && item.getCodigo().equalsIgnoreCase(codigo.trim())) {
+            if (item != null && item.getCodigo().equalsIgnoreCase(buscado)) {
                 combo.setSelectedIndex(i);
                 return;
             }
+        }
+        if (combo.getItemCount() > 0) {
+            combo.setSelectedIndex(0);
         }
     }
 
@@ -3204,23 +3477,37 @@ public class JPanelNotificacionV2 extends JPanel {
         private final boolean padre;
         private final Long idDocumento;
         private final com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento;
+        private final IntentoBorrador borrador;
 
-        private NotifFilaTabla(boolean padre, Long idDocumento, com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
+        private NotifFilaTabla(
+                boolean padre,
+                Long idDocumento,
+                com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento,
+                IntentoBorrador borrador) {
             this.padre = padre;
             this.idDocumento = idDocumento;
             this.intento = intento;
+            this.borrador = borrador;
         }
 
         private static NotifFilaTabla padre(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
-            return new NotifFilaTabla(true, item.getIdDocumentoAnalizado(), null);
+            return new NotifFilaTabla(true, item.getIdDocumentoAnalizado(), null, null);
         }
 
         private static NotifFilaTabla hijo(Long idDocumento, com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
-            return new NotifFilaTabla(false, idDocumento, intento);
+            return new NotifFilaTabla(false, idDocumento, intento, null);
+        }
+
+        private static NotifFilaTabla hijoBorrador(Long idDocumento, IntentoBorrador borrador) {
+            return new NotifFilaTabla(false, idDocumento, null, borrador);
         }
 
         private boolean esPadre() {
             return padre;
+        }
+
+        private boolean esBorrador() {
+            return borrador != null;
         }
     }
 
@@ -3334,9 +3621,23 @@ public class JPanelNotificacionV2 extends JPanel {
         @Override
         public Component getTableCellRendererComponent(
                 JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             int modelRow = table.convertRowIndexToModel(row);
+            int modelCol = table.convertColumnIndexToModel(column);
             boolean esHijo = modelRow >= 0 && modelRow < filasNotifBandeja.size() && !filasNotifBandeja.get(modelRow).esPadre();
+            Object valorMostrado = value;
+            if (esHijo) {
+                String texto = value == null ? "" : value.toString();
+                if (modelCol == COL_NOTIF_MODALIDAD) {
+                    valorMostrado = textoModalidad(texto);
+                } else if (modelCol == COL_NOTIF_ESTADO) {
+                    valorMostrado = textoEstadoHija(texto);
+                } else if (modelCol == COL_NOTIF_ESTADO_NOTIF) {
+                    valorMostrado = textoEstadoNotifHija(texto);
+                } else if (modelCol == COL_NOTIF_CODIGO && texto.isEmpty()) {
+                    valorMostrado = "-";
+                }
+            }
+            Component c = super.getTableCellRendererComponent(table, valorMostrado, isSelected, hasFocus, row, column);
             setFont(esHijo ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL) : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
             setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             if (!isSelected) {
@@ -3344,6 +3645,211 @@ public class JPanelNotificacionV2 extends JPanel {
                 setForeground(esHijo ? AppV2Theme.TEXT_SECONDARY : AppV2Theme.TEXT_PRIMARY);
             }
             return c;
+        }
+    }
+
+    private class NotifSeleccionRenderer extends JPanel implements TableCellRenderer {
+        private final JCheckBox checkBox = new JCheckBox();
+
+        private NotifSeleccionRenderer() {
+            setOpaque(true);
+            setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            checkBox.setOpaque(false);
+            add(checkBox);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Color background = isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            setBackground(background);
+            int modelRow = table.convertRowIndexToModel(row);
+            boolean esPadre = modelRow >= 0 && modelRow < filasNotifBandeja.size() && filasNotifBandeja.get(modelRow).esPadre();
+            checkBox.setVisible(esPadre);
+            checkBox.setSelected(Boolean.TRUE.equals(value));
+            return this;
+        }
+    }
+
+    private class NotifSeleccionEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JCheckBox checkBox = new JCheckBox();
+
+        private NotifSeleccionEditor() {
+            checkBox.addActionListener(e -> fireEditingStopped());
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return Boolean.valueOf(checkBox.isSelected());
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            checkBox.setSelected(Boolean.TRUE.equals(value));
+            JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            panel.setOpaque(true);
+            panel.setBackground(table.getSelectionBackground());
+            panel.add(checkBox);
+            return panel;
+        }
+    }
+
+    private class NotifComboCellEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JComboBox<SimpleItem> combo;
+
+        private NotifComboCellEditor(JComboBox<SimpleItem> combo) {
+            this.combo = combo;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            SimpleItem item = (SimpleItem) combo.getSelectedItem();
+            return item == null ? "" : item.getCodigo();
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            seleccionarItemPorCodigo(combo, value == null ? "" : value.toString());
+            return combo;
+        }
+    }
+
+    private class NotifAccionRenderer extends JPanel implements TableCellRenderer {
+        private final JButton btnGuardar = crearBotonAccionNotif(new NotifSaveIcon(), "Guardar intento");
+        private final JButton btnCancelar = crearBotonAccionNotif(new NotifCancelIcon(), "Descartar intento sin guardar");
+
+        private NotifAccionRenderer() {
+            setOpaque(true);
+            setLayout(new FlowLayout(FlowLayout.CENTER, 2, 0));
+            add(btnGuardar);
+            add(btnCancelar);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            setBackground(isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            boolean esBorrador = "guardar-borrador".equals(value);
+            boolean esGuardable = esBorrador || "guardar".equals(value);
+            btnGuardar.setVisible(esGuardable);
+            btnCancelar.setVisible(esBorrador);
+            return this;
+        }
+    }
+
+    private class NotifAccionEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
+        private final JButton btnGuardar = crearBotonAccionNotif(new NotifSaveIcon(), "Guardar intento");
+        private final JButton btnCancelar = crearBotonAccionNotif(new NotifCancelIcon(), "Descartar intento sin guardar");
+        private int editingRow = -1;
+
+        private NotifAccionEditor() {
+            panel.setOpaque(true);
+            panel.add(btnGuardar);
+            panel.add(btnCancelar);
+            btnGuardar.addActionListener(e -> {
+                int fila = editingRow;
+                fireEditingStopped();
+                guardarFilaIntento(fila);
+            });
+            btnCancelar.addActionListener(e -> {
+                int fila = editingRow;
+                fireEditingStopped();
+                cancelarBorradorIntento(fila);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            editingRow = table.convertRowIndexToModel(row);
+            boolean esBorrador = "guardar-borrador".equals(value);
+            boolean esGuardable = esBorrador || "guardar".equals(value);
+            btnGuardar.setVisible(esGuardable);
+            btnCancelar.setVisible(esBorrador);
+            panel.setBackground(table.getSelectionBackground());
+            return panel;
+        }
+    }
+
+    private static JButton crearBotonAccionNotif(Icon icon, String tooltip) {
+        JButton boton = new JButton();
+        boton.setText("");
+        boton.setIcon(icon);
+        boton.setToolTipText(tooltip);
+        boton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        boton.setFocusPainted(false);
+        boton.setBorderPainted(false);
+        boton.setContentAreaFilled(false);
+        boton.setOpaque(false);
+        return boton;
+    }
+
+    private static class NotifSaveIcon implements Icon {
+        private static final int SIZE = 16;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = AppV2Theme.PRIMARY;
+                g2.setColor(new Color(238, 247, 252));
+                g2.fillRoundRect(x + 1, y + 1, 14, 14, 4, 4);
+                g2.setColor(stroke);
+                g2.drawRoundRect(x + 1, y + 1, 14, 14, 4, 4);
+                g2.fillRect(x + 4, y + 2, 7, 4);
+                g2.setColor(Color.WHITE);
+                g2.fillRect(x + 5, y + 3, 4, 2);
+                g2.setColor(stroke);
+                g2.fillRoundRect(x + 4, y + 9, 8, 5, 2, 2);
+                g2.setColor(Color.WHITE);
+                g2.drawLine(x + 6, y + 11, x + 10, y + 11);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private static class NotifCancelIcon implements Icon {
+        private static final int SIZE = 16;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(196, 60, 60));
+                g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(x + 4, y + 4, x + 12, y + 12);
+                g2.drawLine(x + 12, y + 4, x + 4, y + 12);
+            } finally {
+                g2.dispose();
+            }
         }
     }
 

@@ -145,6 +145,14 @@ public class DocumentoAnalisisService {
                 resolverUsuarioActualSdrercApp());
     }
 
+    public void confirmarRecepcionIntentoNotificacion(
+            Long idExpediente,
+            Long idExpedienteNotificacion,
+            String codigoORecibidoPor) throws SQLException {
+        documentoAnalisisDAO.confirmarRecepcionIntentoNotificacion(
+                idExpediente, idExpedienteNotificacion, codigoORecibidoPor, resolverUsuarioActualSdrercApp());
+    }
+
     public void asignarNotificacion(
             List<Long> idsDocumentoAnalizado,
             Long idEquipoDestino,

@@ -498,6 +498,14 @@ Bandeja Validacion (implementado):
 - `Validar` incluye la grilla de documentos del expediente (editable en `Estado`) y el bloque `Resultado de validacion`: `Aprobado`/`Observado` (catalogo `tipo_resultado_validacion`, `57_catalogo_resultado_validacion_notificacion.sql`) con comentario obligatorio si es Observado.
 - Marcar `Observado` cambia el documento a estado `OBSERVADO` y limpia la asignacion (equipo/usuario/hoja de envio de notificacion), sin tocar `expediente.id_etapa_actual`/`id_estado_actual`; el abogado responsable (Ejecucion para `FINAL`, Analisis/Verificacion para `INTERMEDIO`) lo ve en su propia grilla de documentos, que ya no filtra por estado.
 
+Bandeja Notificacion, intentos al ciudadano (implementado):
+
+- Grilla arbol unica (documento padre + intentos hijo), sin dividir en 2 grillas. Fila padre con checkbox de seleccion multiple (para agregar intentos a varios documentos a la vez) e icono de expandir/colapsar que solo aparece si el documento ya tiene intentos.
+- `Estado Final` del documento (columna de la fila padre, calculado en servidor via `DocumentoAnalisisDAO`, no en el cliente) tiene 4 valores: `POR NOTIFICAR` (sin intentos), `PENDIENTE` (intento ENVIADO con Estado Notificacion en blanco/NO UBICADO), `ATENDIDO` (intento con Estado Notificacion UBICADO) y `POR PUBLICAR` (intento 1 y 2 ambos ENVIADO + NO UBICADO). Se deriva de `expediente_notificacion`/`estado_notificacion` (codigos PENDIENTE/ENVIADA/FALLIDA/EXITOSA); no requiere columna nueva.
+- `+ Agregar intento` no abre dialogo: inserta una fila hija "borrador" editable (Modalidad por combo, Codigo/Usuario Notificacion por texto) para cada documento marcado (o el ultimo con clic simple si no hay ninguno marcado). Se persiste con el icono Guardar de esa misma fila; hay un icono Cancelar para descartarla sin guardar.
+- Fila hija (intento) editable inline: Modalidad, Estado (`Pendiente`/`Enviado`, bloqueado si ya es `Atendido`) y Estado Notificacion (en blanco/`No ubicado`/`Ubicado`); elegir `Ubicado` y guardar confirma la recepcion (Fecha Recepcion = Fecha Acuse, la misma que ve Cartas de Respuesta) y marca el intento `Atendido`.
+- "Codigo Notificacion" (modalidad virtual) y "Usuario Notificacion" (modalidad presencial) son el mismo campo de texto libre reutilizado segun la modalidad de esa fila; se guardan en `expediente_notificacion.codigo_notificacion` y, al confirmar recepcion, tambien en `expediente_cargo_acuse.recibido_por`. No existe columna separada "usuario_notificacion".
+
 Cierre:
 
 - Es pestana interna de Notificacion.
