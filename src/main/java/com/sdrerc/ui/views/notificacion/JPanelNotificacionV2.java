@@ -16,7 +16,6 @@ import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2ExpandCollapseGlyph;
 import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
-import com.sdrerc.ui.appv2.components.AppV2NotebookToggleTab;
 import com.sdrerc.ui.appv2.components.AppV2OperationalSplitPanel;
 import com.sdrerc.ui.appv2.components.AppV2ResponsiveGridPanel;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
@@ -106,8 +105,11 @@ public class JPanelNotificacionV2 extends JPanel {
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final int PANEL_NOTIFICACION_ANCHO_MINIMO = 380;
     private static final int PANEL_NOTIFICACION_ANCHO_NORMAL = 430;
-    private static final int PANEL_NOTIFICACION_TAB_OVERHANG = 18;
+    private static final int PANEL_NOTIFICACION_TAB_OVERHANG = 46;
     private static final int PANEL_NOTIFICACION_TAB_TOP = 18;
+    private static final int PANEL_NOTIFICACION_TAB_HEIGHT = 94;
+    private static final String TAB_NOTIF_PANEL_NOTIFICACION = "NOTIFICACION";
+    private static final String TAB_NOTIF_PANEL_CIERRE = "CIERRE";
     private static final int TAB_BANDEJA_NOTIF_ASIGNACION = 0;
     private static final int TAB_BANDEJA_NOTIF_VALIDACION = 1;
     private static final int TAB_BANDEJA_NOTIF_NOTIFICACION = 2;
@@ -170,8 +172,13 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JTextArea txtMotivoPublicacion = new JTextArea(3, 22);
     private final JTextArea txtObservacion = new JTextArea(3, 22);
     private final JTextArea txtComentarioCierre = new JTextArea(4, 22);
-    private final AppV2NotebookToggleTab tabPanelNotificacion = new AppV2NotebookToggleTab();
-    private final JTabbedPane tabsNotificacion = new JTabbedPane();
+    private final AppV2StackedSideTab tabNotifPanelNotificacion =
+            crearTabPanelNotificacion("Notificación", new Color(230, 241, 245), new Color(57, 125, 199));
+    private final AppV2StackedSideTab tabNotifPanelCierre =
+            crearTabPanelNotificacion("Cierre", new Color(224, 243, 240), new Color(10, 118, 145));
+    private CardLayout panelNotifCardsLayout;
+    private JPanel panelNotifCards;
+    private String tabNotifPanelActiva = TAB_NOTIF_PANEL_NOTIFICACION;
 
     private final NotificacionTableModel tableModel = new NotificacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -445,6 +452,9 @@ public class JPanelNotificacionV2 extends JPanel {
             NotifFilaTabla fila = filasNotifBandeja.get(row);
             if (fila.esPadre()) {
                 return column == COL_NOTIF_SEL;
+            }
+            if (fila.esSubEncabezado()) {
+                return false;
             }
             if (column == COL_NOTIF_ACCION || column == COL_NOTIF_MODALIDAD || column == COL_NOTIF_CODIGO) {
                 return true;
@@ -2150,6 +2160,16 @@ public class JPanelNotificacionV2 extends JPanel {
                 accentColor.darker());
     }
 
+    private static AppV2StackedSideTab crearTabPanelNotificacion(String label, Color idleColor, Color accentColor) {
+        return new AppV2StackedSideTab(
+                label,
+                PANEL_NOTIFICACION_TAB_OVERHANG - 6,
+                PANEL_NOTIFICACION_TAB_HEIGHT,
+                idleColor,
+                accentColor,
+                accentColor.darker());
+    }
+
     private static String valorNotif(String value) {
         return value == null || value.trim().isEmpty() ? "-" : value;
     }
@@ -2866,8 +2886,8 @@ public class JPanelNotificacionV2 extends JPanel {
                 new NotifComboCellEditor(crearComboEstadoHija()));
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ESTADO_NOTIF).setCellEditor(
                 new NotifComboCellEditor(crearComboEstadoNotifHija()));
-        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setMaxWidth(70);
-        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setMinWidth(60);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setMaxWidth(76);
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setMinWidth(64);
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setCellRenderer(new NotifAccionRenderer());
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setCellEditor(new NotifAccionEditor());
         tablaNotifBandeja.setDefaultRenderer(Object.class, new NotifBandejaRenderer());
@@ -2975,8 +2995,8 @@ public class JPanelNotificacionV2 extends JPanel {
     private JComboBox<SimpleItem> crearComboModalidad() {
         JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
         combo.addItem(new SimpleItem("VIRTUAL", "Virtual"));
-        combo.addItem(new SimpleItem("PRESENCIAL_1", "Presencial 1"));
-        combo.addItem(new SimpleItem("PRESENCIAL_2", "Presencial 2"));
+        combo.addItem(new SimpleItem("PRESENCIAL_1", "Presencial"));
+        combo.addItem(new SimpleItem("PRESENCIAL_2", "Presencial"));
         return combo;
     }
 
@@ -3079,6 +3099,10 @@ public class JPanelNotificacionV2 extends JPanel {
             if (!expandido) {
                 continue;
             }
+            if (totalIntentosMostrar > 0) {
+                filasNotifBandeja.add(NotifFilaTabla.subEncabezado(idDocumento));
+                notifBandejaModel.addRow(filaSubEncabezadoIntentos());
+            }
             List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos = intentosNotifCache.get(idDocumento);
             if (intentos != null) {
                 for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
@@ -3095,11 +3119,34 @@ public class JPanelNotificacionV2 extends JPanel {
         }
     }
 
+    /**
+     * Fila "sub-encabezado" no editable e insertada solo cuando el padre esta expandido y
+     * tiene al menos un intento: rotula las columnas de la mini-grilla de intentos con sus
+     * nombres reales del Excel (Modalidad/Fecha Envío/Estado/Código.../Fecha Recepción/Estado
+     * Notificación), en vez de dejar que el usuario adivine el significado reutilizando los
+     * encabezados del documento padre.
+     */
+    private Object[] filaSubEncabezadoIntentos() {
+        return new Object[]{
+            null,
+            "",
+            "NOTIFICACIONES AL CIUDADANO",
+            "Modalidad",
+            "Fecha Envío",
+            "Estado",
+            "Código/Usuario Notif.",
+            "Fecha Recepción",
+            "Estado Notificación",
+            "",
+            ""
+        };
+    }
+
     private Object[] filaHijoDesdeIntento(com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
         return new Object[]{
             null,
             "",
-            "↳ Intento " + intento.getNumeroIntento(),
+            "└ Intento " + intento.getNumeroIntento(),
             intento.getTipoNotificacionCodigo(),
             intento.getFechaEnvio() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio()),
             codigoEstadoParaColumnaEstado(intento.getEstadoNotificacionCodigo()),
@@ -3115,7 +3162,7 @@ public class JPanelNotificacionV2 extends JPanel {
         return new Object[]{
             null,
             "",
-            "↳ Intento " + borrador.numeroIntento + " (nuevo)",
+            "└ Intento " + borrador.numeroIntento + " (nuevo)",
             borrador.modalidadCodigo,
             "-",
             "PENDIENTE",
@@ -3154,11 +3201,8 @@ public class JPanelNotificacionV2 extends JPanel {
         if ("VIRTUAL".equals(c)) {
             return "Virtual";
         }
-        if ("PRESENCIAL_1".equals(c)) {
-            return "Presencial 1";
-        }
-        if ("PRESENCIAL_2".equals(c)) {
-            return "Presencial 2";
+        if ("PRESENCIAL_1".equals(c) || "PRESENCIAL_2".equals(c)) {
+            return "Presencial";
         }
         return c.isEmpty() ? "-" : c;
     }
@@ -3328,6 +3372,46 @@ public class JPanelNotificacionV2 extends JPanel {
         reconstruirFilasNotifBandeja();
     }
 
+    /** Baja logica de un intento ya guardado (no un borrador), con confirmacion previa. */
+    private void eliminarFilaIntento(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasNotifBandeja.size()) {
+            return;
+        }
+        NotifFilaTabla fila = filasNotifBandeja.get(modelRow);
+        if (fila.esPadre() || fila.esBorrador() || fila.intento == null) {
+            return;
+        }
+        int confirmar = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea eliminar el intento " + fila.intento.getNumeroIntento() + " de notificación?",
+                "Eliminar intento",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirmar != JOptionPane.YES_OPTION) {
+            return;
+        }
+        final Long idExpedienteNotificacion = fila.intento.getIdExpedienteNotificacion();
+        final Long idDocumento = fila.idDocumento;
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.darBajaIntentoNotificacion(idExpedienteNotificacion);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    recargarBandejaYExpandir(idDocumento);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo eliminar el intento de notificación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     /**
      * Guarda la edicion inline de una fila hija (borrador nuevo o intento existente).
      * En existentes, si "Estado Notificación" quedo en UBICADO se confirma la recepcion
@@ -3475,35 +3559,46 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private static class NotifFilaTabla {
         private final boolean padre;
+        private final boolean subEncabezado;
         private final Long idDocumento;
         private final com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento;
         private final IntentoBorrador borrador;
 
         private NotifFilaTabla(
                 boolean padre,
+                boolean subEncabezado,
                 Long idDocumento,
                 com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento,
                 IntentoBorrador borrador) {
             this.padre = padre;
+            this.subEncabezado = subEncabezado;
             this.idDocumento = idDocumento;
             this.intento = intento;
             this.borrador = borrador;
         }
 
         private static NotifFilaTabla padre(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
-            return new NotifFilaTabla(true, item.getIdDocumentoAnalizado(), null, null);
+            return new NotifFilaTabla(true, false, item.getIdDocumentoAnalizado(), null, null);
+        }
+
+        private static NotifFilaTabla subEncabezado(Long idDocumento) {
+            return new NotifFilaTabla(false, true, idDocumento, null, null);
         }
 
         private static NotifFilaTabla hijo(Long idDocumento, com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
-            return new NotifFilaTabla(false, idDocumento, intento, null);
+            return new NotifFilaTabla(false, false, idDocumento, intento, null);
         }
 
         private static NotifFilaTabla hijoBorrador(Long idDocumento, IntentoBorrador borrador) {
-            return new NotifFilaTabla(false, idDocumento, null, borrador);
+            return new NotifFilaTabla(false, false, idDocumento, null, borrador);
         }
 
         private boolean esPadre() {
             return padre;
+        }
+
+        private boolean esSubEncabezado() {
+            return subEncabezado;
         }
 
         private boolean esBorrador() {
@@ -3623,7 +3718,9 @@ public class JPanelNotificacionV2 extends JPanel {
                 JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             int modelRow = table.convertRowIndexToModel(row);
             int modelCol = table.convertColumnIndexToModel(column);
-            boolean esHijo = modelRow >= 0 && modelRow < filasNotifBandeja.size() && !filasNotifBandeja.get(modelRow).esPadre();
+            NotifFilaTabla fila = modelRow >= 0 && modelRow < filasNotifBandeja.size() ? filasNotifBandeja.get(modelRow) : null;
+            boolean esSubEncabezado = fila != null && fila.esSubEncabezado();
+            boolean esHijo = fila != null && !fila.esPadre() && !esSubEncabezado;
             Object valorMostrado = value;
             if (esHijo) {
                 String texto = value == null ? "" : value.toString();
@@ -3638,11 +3735,18 @@ public class JPanelNotificacionV2 extends JPanel {
                 }
             }
             Component c = super.getTableCellRendererComponent(table, valorMostrado, isSelected, hasFocus, row, column);
-            setFont(esHijo ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL) : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            setFont(esSubEncabezado
+                    ? AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL - 1)
+                    : (esHijo ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL) : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE)));
             setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             if (!isSelected) {
-                setBackground(esHijo ? new Color(238, 250, 252) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
-                setForeground(esHijo ? AppV2Theme.TEXT_SECONDARY : AppV2Theme.TEXT_PRIMARY);
+                if (esSubEncabezado) {
+                    setBackground(new Color(224, 238, 241));
+                    setForeground(AppV2Theme.TEAL.darker());
+                } else {
+                    setBackground(esHijo ? new Color(238, 250, 252) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+                    setForeground(esHijo ? AppV2Theme.TEXT_SECONDARY : AppV2Theme.TEXT_PRIMARY);
+                }
             }
             return c;
         }
@@ -3717,12 +3821,14 @@ public class JPanelNotificacionV2 extends JPanel {
     private class NotifAccionRenderer extends JPanel implements TableCellRenderer {
         private final JButton btnGuardar = crearBotonAccionNotif(new NotifSaveIcon(), "Guardar intento");
         private final JButton btnCancelar = crearBotonAccionNotif(new NotifCancelIcon(), "Descartar intento sin guardar");
+        private final JButton btnEliminar = crearBotonAccionNotif(new NotifDeleteIcon(), "Eliminar intento");
 
         private NotifAccionRenderer() {
             setOpaque(true);
             setLayout(new FlowLayout(FlowLayout.CENTER, 2, 0));
             add(btnGuardar);
             add(btnCancelar);
+            add(btnEliminar);
         }
 
         @Override
@@ -3730,9 +3836,10 @@ public class JPanelNotificacionV2 extends JPanel {
                 JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             setBackground(isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
             boolean esBorrador = "guardar-borrador".equals(value);
-            boolean esGuardable = esBorrador || "guardar".equals(value);
-            btnGuardar.setVisible(esGuardable);
+            boolean esPersistido = "guardar".equals(value);
+            btnGuardar.setVisible(esBorrador || esPersistido);
             btnCancelar.setVisible(esBorrador);
+            btnEliminar.setVisible(esPersistido);
             return this;
         }
     }
@@ -3741,12 +3848,14 @@ public class JPanelNotificacionV2 extends JPanel {
         private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
         private final JButton btnGuardar = crearBotonAccionNotif(new NotifSaveIcon(), "Guardar intento");
         private final JButton btnCancelar = crearBotonAccionNotif(new NotifCancelIcon(), "Descartar intento sin guardar");
+        private final JButton btnEliminar = crearBotonAccionNotif(new NotifDeleteIcon(), "Eliminar intento");
         private int editingRow = -1;
 
         private NotifAccionEditor() {
             panel.setOpaque(true);
             panel.add(btnGuardar);
             panel.add(btnCancelar);
+            panel.add(btnEliminar);
             btnGuardar.addActionListener(e -> {
                 int fila = editingRow;
                 fireEditingStopped();
@@ -3756,6 +3865,11 @@ public class JPanelNotificacionV2 extends JPanel {
                 int fila = editingRow;
                 fireEditingStopped();
                 cancelarBorradorIntento(fila);
+            });
+            btnEliminar.addActionListener(e -> {
+                int fila = editingRow;
+                fireEditingStopped();
+                eliminarFilaIntento(fila);
             });
         }
 
@@ -3768,9 +3882,10 @@ public class JPanelNotificacionV2 extends JPanel {
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             editingRow = table.convertRowIndexToModel(row);
             boolean esBorrador = "guardar-borrador".equals(value);
-            boolean esGuardable = esBorrador || "guardar".equals(value);
-            btnGuardar.setVisible(esGuardable);
+            boolean esPersistido = "guardar".equals(value);
+            btnGuardar.setVisible(esBorrador || esPersistido);
             btnCancelar.setVisible(esBorrador);
+            btnEliminar.setVisible(esPersistido);
             panel.setBackground(table.getSelectionBackground());
             return panel;
         }
@@ -3853,6 +3968,41 @@ public class JPanelNotificacionV2 extends JPanel {
         }
     }
 
+    private static class NotifDeleteIcon implements Icon {
+        private static final int SIZE = 16;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = new Color(196, 60, 60);
+                g2.setColor(stroke);
+                g2.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(x + 4, y + 5, x + 12, y + 5);
+                g2.drawLine(x + 6, y + 5, x + 6, y + 3);
+                g2.drawLine(x + 10, y + 5, x + 10, y + 3);
+                g2.drawLine(x + 6, y + 3, x + 10, y + 3);
+                g2.drawLine(x + 5, y + 5, x + 5, y + 13);
+                g2.drawLine(x + 11, y + 5, x + 11, y + 13);
+                g2.drawLine(x + 5, y + 13, x + 11, y + 13);
+                g2.drawLine(x + 8, y + 7, x + 8, y + 11);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
     private JPanel panelParaModoBandejaNotificacion() {
         if (tabsBandejasTop == null) {
             return notifSharedContentHost;
@@ -3871,13 +4021,9 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void actualizarTabBandejaNotificacion() {
-        if (tabsNotificacion != null && tabsNotificacion.getTabCount() > 0) {
-            if (modoBandejaNotificacion == ModoBandejaNotificacion.VALIDACION) {
-                tabsNotificacion.setSelectedIndex(Math.min(1, tabsNotificacion.getTabCount() - 1));
-            } else {
-                tabsNotificacion.setSelectedIndex(0);
-            }
-        }
+        mostrarTabPanelNotificacion(modoBandejaNotificacion == ModoBandejaNotificacion.VALIDACION
+                ? TAB_NOTIF_PANEL_CIERRE
+                : TAB_NOTIF_PANEL_NOTIFICACION);
         if (splitOperativo != null) {
             moverContenidoATabSeleccionada(splitOperativo);
         }
@@ -3921,10 +4067,6 @@ public class JPanelNotificacionV2 extends JPanel {
             }
         });
         panel.setAccentColor(AppV2Theme.PRIMARY);
-        tabPanelNotificacion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
-        tabPanelNotificacion.setExpanded(false);
-        tabPanelNotificacion.setToolTipText("Ampliar panel de notificación");
-        tabPanelNotificacion.addActionListener(e -> alternarExpansionPanelNotificacion());
         panel.addSection(crearResumenSeleccion());
         panel.addSection(crearAntecedentes());
         panel.addSection(crearDocumentosPanel());
@@ -3943,7 +4085,6 @@ public class JPanelNotificacionV2 extends JPanel {
             }
         });
         panel.setAccentColor(AppV2Theme.PRIMARY);
-        tabPanelNotificacion.setAccent(AppV2Theme.PRIMARY, AppV2Theme.SOFT_BLUE);
         panel.addSection(crearCierreResumenPanel());
         panel.addSection(crearCierrePanel());
         panel.setFooter(crearAccionesCierrePanel());
@@ -3951,32 +4092,80 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private JPanel crearPanelNotificacionConTab(final AppV2SideActionPanel panelNotificacion, final AppV2SideActionPanel panelCierre) {
-        tabsNotificacion.setOpaque(false);
-        tabsNotificacion.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
-        tabsNotificacion.addTab("Notificación", panelNotificacion);
-        tabsNotificacion.addTab("Cierre", panelCierre);
-
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
                 int width = getWidth();
                 int height = getHeight();
                 int panelX = PANEL_NOTIFICACION_TAB_OVERHANG;
-                tabsNotificacion.setBounds(panelX, 0, Math.max(0, width - panelX), height);
-                int tabY = Math.min(PANEL_NOTIFICACION_TAB_TOP, Math.max(0, height - AppV2NotebookToggleTab.DEFAULT_HEIGHT));
-                tabPanelNotificacion.setBounds(
-                        0,
-                        tabY,
-                        AppV2NotebookToggleTab.DEFAULT_WIDTH,
-                        AppV2NotebookToggleTab.DEFAULT_HEIGHT);
+                int panelWidth = Math.max(0, width - panelX);
+                int[] positions = calcularPosicionesLenguetasNotif(
+                        2, PANEL_NOTIFICACION_TAB_HEIGHT, 8, height, PANEL_NOTIFICACION_TAB_TOP);
+                tabNotifPanelNotificacion.setBounds(0, positions[0], PANEL_NOTIFICACION_TAB_OVERHANG - 6, PANEL_NOTIFICACION_TAB_HEIGHT);
+                tabNotifPanelCierre.setBounds(0, positions[1], PANEL_NOTIFICACION_TAB_OVERHANG - 6, PANEL_NOTIFICACION_TAB_HEIGHT);
+                panelNotifCards.setBounds(panelX, 0, panelWidth, height);
             }
         };
         wrapper.setOpaque(false);
-        wrapper.add(tabsNotificacion);
-        wrapper.add(tabPanelNotificacion);
+        panelNotifCardsLayout = new CardLayout();
+        panelNotifCards = new JPanel(panelNotifCardsLayout);
+        panelNotifCards.setOpaque(false);
+        panelNotifCards.add(panelNotificacion, TAB_NOTIF_PANEL_NOTIFICACION);
+        panelNotifCards.add(panelCierre, TAB_NOTIF_PANEL_CIERRE);
+        tabNotifPanelNotificacion.setToolTipText("Registrar notificación al ciudadano");
+        tabNotifPanelCierre.setToolTipText("Cerrar el expediente");
+        tabNotifPanelNotificacion.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabPanelNotificacion(TAB_NOTIF_PANEL_NOTIFICACION);
+            }
+        });
+        tabNotifPanelCierre.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabPanelNotificacion(TAB_NOTIF_PANEL_CIERRE);
+            }
+        });
+        wrapper.add(tabNotifPanelNotificacion);
+        wrapper.add(tabNotifPanelCierre);
+        wrapper.add(panelNotifCards);
         wrapper.setMinimumSize(new Dimension(PANEL_NOTIFICACION_ANCHO_MINIMO + PANEL_NOTIFICACION_TAB_OVERHANG, 0));
         wrapper.setPreferredSize(new Dimension(PANEL_NOTIFICACION_ANCHO_NORMAL + PANEL_NOTIFICACION_TAB_OVERHANG, 0));
+        mostrarTabPanelNotificacion(TAB_NOTIF_PANEL_NOTIFICACION);
         return wrapper;
+    }
+
+    private void seleccionarTabPanelNotificacion(String tab) {
+        if (tab == null || panelNotifCardsLayout == null || panelNotifCards == null) {
+            return;
+        }
+        boolean mismaTab = tab.equals(tabNotifPanelActiva);
+        mostrarTabPanelNotificacion(tab);
+        if (splitOperativo != null && splitOperativo.isSideVisible() && mismaTab) {
+            splitOperativo.setSideExpanded(!splitOperativo.isSideExpanded());
+            actualizarLenguetasPanelNotificacion();
+        }
+    }
+
+    private void mostrarTabPanelNotificacion(String tab) {
+        if (tab == null || panelNotifCardsLayout == null || panelNotifCards == null) {
+            return;
+        }
+        tabNotifPanelActiva = tab;
+        panelNotifCardsLayout.show(panelNotifCards, tab);
+        panelNotifCards.revalidate();
+        panelNotifCards.repaint();
+        actualizarLenguetasPanelNotificacion();
+    }
+
+    private void actualizarLenguetasPanelNotificacion() {
+        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
+        tabNotifPanelNotificacion.setState(
+                TAB_NOTIF_PANEL_NOTIFICACION.equals(tabNotifPanelActiva),
+                TAB_NOTIF_PANEL_NOTIFICACION.equals(tabNotifPanelActiva) && expandido);
+        tabNotifPanelCierre.setState(
+                TAB_NOTIF_PANEL_CIERRE.equals(tabNotifPanelActiva),
+                TAB_NOTIF_PANEL_CIERRE.equals(tabNotifPanelActiva) && expandido);
     }
 
     private JPanel crearAccionesPanelNotificacion() {
@@ -4601,9 +4790,7 @@ public class JPanelNotificacionV2 extends JPanel {
         lblCierreDestino.setText("-");
         lblCierrePublicacion.setText("-");
         lblCierreAlertas.setText("Sin alertas.");
-        if (tabsNotificacion != null && tabsNotificacion.getSelectedIndex() < 0 && tabsNotificacion.getTabCount() > 0) {
-            tabsNotificacion.setSelectedIndex(0);
-        }
+        mostrarTabPanelNotificacion(TAB_NOTIF_PANEL_NOTIFICACION);
         txtDestinatario.setText("");
         txtResultado.setText("");
         txtRecibidoPor.setText("");
@@ -4969,8 +5156,6 @@ public class JPanelNotificacionV2 extends JPanel {
         if (splitOperativo != null) {
             splitOperativo.setSideVisible(false);
         }
-        tabPanelNotificacion.setExpanded(false);
-        actualizarTooltipTabPanelNotificacion();
     }
 
     private void actualizarVisibilidadPanelNotificacion() {
@@ -4981,26 +5166,7 @@ public class JPanelNotificacionV2 extends JPanel {
             return;
         }
         splitOperativo.setSideVisible(seleccionado() != null && !panelNotificacionCerradoPorUsuario);
-        tabPanelNotificacion.setExpanded(splitOperativo.isSideExpanded());
-        actualizarTooltipTabPanelNotificacion();
-    }
-
-    private void alternarExpansionPanelNotificacion() {
-        if (splitOperativo == null || !splitOperativo.isSideVisible()) {
-            return;
-        }
-        boolean expandido = splitOperativo.toggleSideExpanded();
-        tabPanelNotificacion.setExpanded(expandido);
-        actualizarTooltipTabPanelNotificacion();
-        revalidate();
-        repaint();
-    }
-
-    private void actualizarTooltipTabPanelNotificacion() {
-        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
-        tabPanelNotificacion.setToolTipText(expandido
-                ? "Restaurar panel de notificación"
-                : "Ampliar panel de notificación");
+        actualizarLenguetasPanelNotificacion();
     }
 
     private String intentosTexto(NotificacionExpedienteDTO expediente) {

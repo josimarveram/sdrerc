@@ -153,6 +153,10 @@ public class DocumentoAnalisisService {
                 idExpediente, idExpedienteNotificacion, codigoORecibidoPor, resolverUsuarioActualSdrercApp());
     }
 
+    public void darBajaIntentoNotificacion(Long idExpedienteNotificacion) throws SQLException {
+        documentoAnalisisDAO.darBajaIntentoNotificacion(idExpedienteNotificacion, resolverUsuarioActualSdrercApp());
+    }
+
     public void asignarNotificacion(
             List<Long> idsDocumentoAnalizado,
             Long idEquipoDestino,

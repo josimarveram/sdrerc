@@ -1013,6 +1013,27 @@ public class DocumentoAnalisisDAO {
         }
     }
 
+    /** Baja logica de un intento de notificacion ya registrado (mismo patron que darBajaDocumentoAnalizado). */
+    public void darBajaIntentoNotificacion(Long idExpedienteNotificacion, Long idUsuario) throws SQLException {
+        if (idExpedienteNotificacion == null) {
+            return;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String sql = "UPDATE expediente_notificacion SET activo = 0, "
+                    + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                    + "WHERE id_expediente_notificacion = ? AND activo = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                if (idUsuario == null) {
+                    ps.setNull(1, Types.NUMERIC);
+                } else {
+                    ps.setLong(1, idUsuario);
+                }
+                ps.setLong(2, idExpedienteNotificacion);
+                ps.executeUpdate();
+            }
+        }
+    }
+
     public void guardarCartaRespuesta(
             Long idExpediente,
             DocumentoAnalizadoDTO carta,
