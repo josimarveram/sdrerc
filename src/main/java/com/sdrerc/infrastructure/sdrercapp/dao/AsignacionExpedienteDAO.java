@@ -38,6 +38,9 @@ public class AsignacionExpedienteDAO {
     private static final String CODIGO_ESTADO_DESTINO = "ASIGNADO";
     private static final String CODIGO_MOVIMIENTO = "ASIGNACION_ABOGADO";
     private static final String CODIGO_MOVIMIENTO_REASIGNACION = "REASIGNACION_ABOGADO";
+    private static final String CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS = "DEVOLUCION_A_ANALISIS";
+    private static final String CODIGO_ETAPA_ANALISIS_DESTINO = "ANALISIS";
+    private static final String CODIGO_ESTADO_ANALISIS_OBSERVADO = "OBSERVADO";
     private static final String CODIGO_MOVIMIENTO_GENERACION_NUMERO = "GENERACION_CODIGO_EXPEDIENTE";
     private static final String CODIGO_MOVIMIENTO_EDICION_DATOS = "RECEPCION_DOCUMENTO";
     private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
@@ -470,6 +473,142 @@ public class AsignacionExpedienteDAO {
                     throw (SQLException) ex;
                 }
                 throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    /**
+     * Registrar asignación desde el panel "Cartas de Respuesta" reasigna el equipo/abogado
+     * responsable y ademas deriva el expediente de vuelta a la Bandeja Analisis del abogado
+     * elegido (etapa ANALISIS/OBSERVADO), via la transicion real DEVOLUCION_A_ANALISIS resuelta
+     * dinamicamente desde la etapa/estado en que se encuentre el expediente en ese momento (no
+     * es una etapa fija: llega desde distintos puntos del flujo, siempre que el documento este
+     * marcado requiere_respuesta=1 y notificado=1). Este panel no captura hoja de envio, por eso
+     * se usa insertarAsignacionSinHojaEnvio en vez de insertarAsignacion.
+     */
+    public AsignacionResultadoDTO reasignarDesdeCartaRespuesta(
+            Long idExpediente,
+            Long idEquipoNuevo,
+            Long idAbogadoNuevo,
+            String comentario,
+            Long idUsuarioAsignador) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para reasignar.");
+        }
+        if (idEquipoNuevo == null) {
+            throw new IllegalArgumentException("Seleccione el equipo destino.");
+        }
+        if (idAbogadoNuevo == null) {
+            throw new IllegalArgumentException("Seleccione el abogado responsable.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteEdicionDatos expediente = bloquearExpedienteParaEdicionDatos(conn, idExpediente);
+                validarEquipoActivo(conn, idEquipoNuevo);
+                validarAbogadoAsignable(conn, idAbogadoNuevo, idEquipoNuevo);
+
+                long[] destino = resolverTransicionPorCodigo(
+                        conn,
+                        CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS,
+                        expediente.etapaCodigo,
+                        expediente.estadoCodigo,
+                        CODIGO_ETAPA_ANALISIS_DESTINO,
+                        CODIGO_ESTADO_ANALISIS_OBSERVADO);
+                Long idEtapaDestino = destino[0];
+                Long idEstadoDestino = destino[1];
+
+                desactivarAsignacionesActivas(conn, idExpediente, idUsuarioAsignador);
+
+                Long idAsignacion = insertarAsignacionSinHojaEnvio(
+                        conn,
+                        idExpediente,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idEtapaDestino,
+                        comentario,
+                        idUsuarioAsignador,
+                        true);
+
+                actualizarExpediente(
+                        conn,
+                        idExpediente,
+                        idEtapaDestino,
+                        idEstadoDestino,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idUsuarioAsignador);
+
+                Long idMovimiento = requerirId(
+                        catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS),
+                        "movimiento " + CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS);
+                insertarHistorial(
+                        conn,
+                        idExpediente,
+                        idMovimiento,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        idEtapaDestino,
+                        idEstadoDestino,
+                        idUsuarioAsignador,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idAsignacion,
+                        hasText(comentario) ? comentario : "Derivado a Análisis desde Cartas de respuesta.");
+
+                expedienteRelacionadoDAO.sincronizarAsignacionAsociados(conn, idExpediente, idUsuarioAsignador);
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return AsignacionResultadoDTO.exito(
+                        1,
+                        expediente.numeroExpediente + " derivado a la Bandeja Análisis correctamente.",
+                        java.util.Collections.singletonList(expediente.numeroExpediente + " derivado a Análisis."));
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    private long[] resolverTransicionPorCodigo(
+            Connection conn,
+            String accionCodigo,
+            String etapaOrigenCodigo,
+            String estadoOrigenCodigo,
+            String etapaDestinoCodigo,
+            String estadoDestinoCodigo) throws SQLException {
+        String sql = "SELECT ft.id_etapa_destino, ft.id_estado_destino "
+                + "FROM flujo f "
+                + "JOIN flujo_transicion ft ON ft.id_flujo = f.id_flujo "
+                + "JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen "
+                + "JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen "
+                + "JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino "
+                + "JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino "
+                + "WHERE f.codigo = ? AND f.activo = 1 AND ft.activo = 1 "
+                + "AND ft.codigo_accion = ? "
+                + "AND eo.codigo = ? AND so.codigo = ? "
+                + "AND ed.codigo = ? AND sd.codigo = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, CODIGO_FLUJO);
+            ps.setString(2, accionCodigo);
+            ps.setString(3, etapaOrigenCodigo);
+            ps.setString(4, estadoOrigenCodigo);
+            ps.setString(5, etapaDestinoCodigo);
+            ps.setString(6, estadoDestinoCodigo);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("No existe transición activa "
+                            + etapaOrigenCodigo + "/" + estadoOrigenCodigo + " -> "
+                            + etapaDestinoCodigo + "/" + estadoDestinoCodigo
+                            + " para " + accionCodigo + " en " + CODIGO_FLUJO + ".");
+                }
+                return new long[]{rs.getLong("id_etapa_destino"), rs.getLong("id_estado_destino")};
             }
         }
     }

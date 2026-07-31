@@ -127,6 +127,28 @@ public class AsignacionExpedienteService {
                 resolverUsuarioActualSdrercApp());
     }
 
+    public AsignacionResultadoDTO reasignarDesdeCartaRespuesta(
+            Long idExpediente,
+            EquipoAsignacionDTO equipo,
+            UsuarioAsignableDTO abogado,
+            String comentario) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para reasignar.");
+        }
+        if (equipo == null || equipo.getIdEquipo() == null) {
+            throw new IllegalArgumentException("Seleccione el equipo destino.");
+        }
+        if (abogado == null || abogado.getIdUsuario() == null) {
+            throw new IllegalArgumentException("Seleccione el abogado responsable.");
+        }
+        return asignacionExpedienteDAO.reasignarDesdeCartaRespuesta(
+                idExpediente,
+                equipo.getIdEquipo(),
+                abogado.getIdUsuario(),
+                comentario,
+                resolverUsuarioActualSdrercApp());
+    }
+
     public List<AsignacionHistorialDTO> listarHistorialAsignaciones(Long idExpediente) throws SQLException {
         return asignacionExpedienteDAO.listarHistorialAsignaciones(idExpediente);
     }

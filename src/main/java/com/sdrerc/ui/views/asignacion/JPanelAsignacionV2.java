@@ -4108,7 +4108,8 @@ public class JPanelAsignacionV2 extends JPanel {
         SwingWorker<AsignacionResultadoDTO, Void> worker = new SwingWorker<AsignacionResultadoDTO, Void>() {
             @Override
             protected AsignacionResultadoDTO doInBackground() throws Exception {
-                return asignacionService.reasignar(idExpediente, equipo, abogado, "", "Reasignado desde Cartas de respuesta.");
+                return asignacionService.reasignarDesdeCartaRespuesta(
+                        idExpediente, equipo, abogado, "Derivado a Análisis desde Cartas de respuesta.");
             }
 
             @Override
