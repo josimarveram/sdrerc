@@ -3888,6 +3888,9 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         panelAsignacionCerradoPorUsuario = false;
+        if (sectionCartasRespuesta != null) {
+            sectionCartasRespuesta.setVisible(true);
+        }
         actualizarVisibilidadPanelAsignacion(true);
         if (!TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva)) {
             seleccionarTabAsignacion(TAB_DATOS_EXPEDIENTE);

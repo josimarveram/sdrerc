@@ -1227,6 +1227,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/DocumentoAnalisisDAO.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Consulta de solo lectura contra SDRERC_APP para verificar datos reales (sin modificar nada). Sin SQL ejecutado que cambie datos ni esquema.
 
+### Fix: seccion "Cartas de Rpta" del panel lateral nunca se hacia visible (31/07/2026)
+
+- Pedido del usuario (reporte de seguimiento a la entrada anterior "Fecha Acuse hacia documentos analizados..."): la lengueta "Respuesta" del panel de Asignacion no mostraba nada en su interior.
+- Causa raiz: `crearPanelCartasRespuesta()` llama `sectionCartasRespuesta.setVisible(false)` justo despues de construir la seccion (linea que ya existia antes de la sesion, no introducida por los cambios anteriores) para que arranque oculta hasta seleccionar una carta -- pero en ningun punto del archivo se volvia a llamar `sectionCartasRespuesta.setVisible(true)`. La unica otra referencia a esa seccion (`limpiarCartasRespuestaPanel()`) tambien la oculta, nunca la muestra. Resultado: una vez construido el panel, la seccion (que contiene TODO su contenido: la grilla de Cartas de Rpta ya existente, mas la grilla de Documentos de analisis y el bloque Destino operativo agregados en la entrada anterior) quedaba invisible para siempre, sin importar que carta se seleccionara.
+- Fix: `actualizarPanelCartasRespuestaSeleccion()` ahora llama `sectionCartasRespuesta.setVisible(true)` en el mismo punto donde ya se confirma una seleccion valida (junto a `actualizarVisibilidadPanelAsignacion(true)`), antes de cargar el detalle.
+- Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/JPanelAsignacionV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
