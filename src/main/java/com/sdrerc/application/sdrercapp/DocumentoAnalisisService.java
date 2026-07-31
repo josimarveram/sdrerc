@@ -160,11 +160,12 @@ public class DocumentoAnalisisService {
     public void confirmarRecepcionIntentoNotificacion(
             Long idExpediente,
             Long idExpedienteNotificacion,
+            Long idDocumentoAnalizado,
             String codigoORecibidoPor,
             LocalDate fechaEnvio,
             LocalDate fechaRecepcion) throws SQLException {
         documentoAnalisisDAO.confirmarRecepcionIntentoNotificacion(
-                idExpediente, idExpedienteNotificacion, codigoORecibidoPor, fechaEnvio, fechaRecepcion,
+                idExpediente, idExpedienteNotificacion, idDocumentoAnalizado, codigoORecibidoPor, fechaEnvio, fechaRecepcion,
                 resolverUsuarioActualSdrercApp());
     }
 

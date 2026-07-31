@@ -964,13 +964,16 @@ public class DocumentoAnalisisDAO {
 
     /**
      * Confirma la recepcion (Fecha Recepcion = Fecha Acuse) de un intento de notificacion:
-     * marca el intento como EXITOSA/ubicado y registra el cargo en expediente_cargo_acuse con
+     * marca el intento como EXITOSA/ubicado, registra el cargo en expediente_cargo_acuse con
      * el codigo digitado (Codigo Notificacion si la modalidad es virtual, Usuario Notificacion
-     * si es presencial; ambos se persisten en el mismo campo de texto, expediente_cargo_acuse.recibido_por).
+     * si es presencial; ambos se persisten en el mismo campo de texto, expediente_cargo_acuse.recibido_por)
+     * y refleja la misma fecha como "fecha acuse" del documento analizado (expediente_documento_analizado,
+     * columnas ya existentes fecha_acuse/notificado, usadas por el panel de Analisis/Cartas de respuesta).
      */
     public void confirmarRecepcionIntentoNotificacion(
             Long idExpediente,
             Long idExpedienteNotificacion,
+            Long idDocumentoAnalizado,
             String codigoORecibidoPor,
             LocalDate fechaEnvio,
             LocalDate fechaRecepcion,
@@ -1013,6 +1016,7 @@ public class DocumentoAnalisisDAO {
             if (idEstadoCargo == null) {
                 throw new SQLException("No se encontró el estado de cargo CARGO_RECIBIDO.");
             }
+            LocalDate fechaAcuse = fechaRecepcion == null ? LocalDate.now() : fechaRecepcion;
             String sqlInsert = "INSERT INTO expediente_cargo_acuse ("
                     + "id_expediente, id_expediente_notificacion, id_estado_cargo_acuse, fecha_recepcion, "
                     + "recibido_por, activo, creado_por, creado_en"
@@ -1021,11 +1025,7 @@ public class DocumentoAnalisisDAO {
                 ps.setLong(1, idExpediente);
                 ps.setLong(2, idExpedienteNotificacion);
                 ps.setLong(3, idEstadoCargo);
-                if (fechaRecepcion == null) {
-                    ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-                } else {
-                    ps.setTimestamp(4, Timestamp.valueOf(fechaRecepcion.atStartOfDay()));
-                }
+                ps.setTimestamp(4, Timestamp.valueOf(fechaAcuse.atStartOfDay()));
                 setStringOrNull(ps, 5, limitar(codigoORecibidoPor, 250));
                 if (idUsuario == null) {
                     ps.setNull(6, Types.NUMERIC);
@@ -1033,6 +1033,21 @@ public class DocumentoAnalisisDAO {
                     ps.setLong(6, idUsuario);
                 }
                 ps.executeUpdate();
+            }
+            if (idDocumentoAnalizado != null) {
+                String sqlAcuse = "UPDATE expediente_documento_analizado SET "
+                        + "fecha_acuse = ?, notificado = 1, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                        + "WHERE id_documento_analizado = ? AND activo = 1";
+                try (PreparedStatement ps = conn.prepareStatement(sqlAcuse)) {
+                    ps.setDate(1, Date.valueOf(fechaAcuse));
+                    if (idUsuario == null) {
+                        ps.setNull(2, Types.NUMERIC);
+                    } else {
+                        ps.setLong(2, idUsuario);
+                    }
+                    ps.setLong(3, idDocumentoAnalizado);
+                    ps.executeUpdate();
+                }
             }
         }
     }
