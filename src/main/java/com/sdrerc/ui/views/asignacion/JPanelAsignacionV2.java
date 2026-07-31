@@ -372,7 +372,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Titular",
                 "Tipo documento",
                 "N° Documento",
-                "Fecha Recepción",
+                "Fecha Acuse",
                 "Fecha Publicación",
                 "Estado"
             }, 0) {
