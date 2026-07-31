@@ -131,6 +131,10 @@ public class AsignacionExpedienteService {
         return asignacionExpedienteDAO.listarHistorialAsignaciones(idExpediente);
     }
 
+    public Long obtenerIdAbogadoActivoPorEquipo(Long idExpediente, String codigoEquipo) throws SQLException {
+        return asignacionExpedienteDAO.obtenerIdAbogadoActivoPorEquipo(idExpediente, codigoEquipo);
+    }
+
     public String generarNumeroExpediente(Long idExpediente) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para generar número.");

@@ -512,6 +512,33 @@ public class AsignacionExpedienteDAO {
         return items;
     }
 
+    /**
+     * Resuelve el abogado con asignacion ACTIVA en un equipo especifico (ej. EQ_ANALISIS) para un
+     * expediente, leyendo expediente_asignacion directamente. A diferencia de
+     * EXPEDIENTE.id_usuario_responsable_actual (que Notificacion sobreescribe al asignar/reasignar
+     * un documento a un validador/notificador), este valor no cambia cuando otro modulo distinto
+     * a Asignacion mueve la "posesion" operativa del expediente.
+     */
+    public Long obtenerIdAbogadoActivoPorEquipo(Long idExpediente, String codigoEquipo) throws SQLException {
+        if (idExpediente == null || codigoEquipo == null || codigoEquipo.trim().isEmpty()) {
+            return null;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String sql = "SELECT axa.id_usuario_asignado FROM expediente_asignacion axa "
+                    + "JOIN equipo eq ON eq.id_equipo = axa.id_equipo_asignado "
+                    + "WHERE axa.id_expediente = ? AND UPPER(eq.codigo) = ? AND axa.activa = 1 AND axa.activo = 1 "
+                    + "ORDER BY axa.fecha_asignacion DESC, axa.id_expediente_asignacion DESC "
+                    + "FETCH FIRST 1 ROW ONLY";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                ps.setString(2, codigoEquipo.trim().toUpperCase());
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? getLongOrNull(rs, "id_usuario_asignado") : null;
+                }
+            }
+        }
+    }
+
     private void desactivarAsignacionesActivas(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
         String sql = "UPDATE expediente_asignacion SET activa = 0, modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente = ? AND activa = 1 AND activo = 1";

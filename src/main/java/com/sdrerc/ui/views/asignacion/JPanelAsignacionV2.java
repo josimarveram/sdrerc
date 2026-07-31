@@ -3926,6 +3926,14 @@ public class JPanelAsignacionV2 extends JPanel {
      * "Asignación" (que maneja seleccion multiple y reparto inicial). El combo "Equipo destino"
      * replica el mismo diseño del combo cmbEquipo del panel de Asignación, aunque solo carga
      * el equipo EQ_ANALISIS (la unica opcion valida para este flujo).
+     *
+     * "Abogado actual" se resuelve con AsignacionExpedienteService.obtenerIdAbogadoActivoPorEquipo(
+     * idExpediente, "EQ_ANALISIS") -- que lee expediente_asignacion directamente -- y NO con
+     * AsignacionExpedienteDTO.getAbogadoAsignado()/getIdAbogadoResponsable() (que reflejan
+     * EXPEDIENTE.id_usuario_responsable_actual). Ese campo generico lo sobreescribe Notificacion
+     * al asignar/reasignar un documento a un validador/notificador, asi que mientras el expediente
+     * esta en el ciclo de Notificacion mostraba al notificador/validador en vez del abogado de
+     * Analisis que realmente lleva el caso.
      */
     private void cargarDestinoOperativoCarta(final AsignacionExpedienteDTO expediente) {
         if (expediente == null || expediente.getIdExpediente() == null) {
@@ -3936,9 +3944,7 @@ public class JPanelAsignacionV2 extends JPanel {
             btnRegistrarAsignacionCarta.setEnabled(false);
             return;
         }
-        String abogadoActual = expediente.getAbogadoAsignado();
-        lblAbogadoActualCarta.setText(abogadoActual == null || abogadoActual.trim().isEmpty() ? "Sin asignar" : abogadoActual);
-        idAbogadoActualCarta = expediente.getIdAbogadoResponsable();
+        lblAbogadoActualCarta.setText("Cargando...");
         final Long idExpedienteSolicitado = expediente.getIdExpediente();
         cargandoComboEquipoCarta = true;
         cmbEquipoCarta.removeAllItems();
@@ -3950,20 +3956,26 @@ public class JPanelAsignacionV2 extends JPanel {
         cargandoComboAbogadoCarta = false;
         lblSupervisorCarta.setText("-");
         btnRegistrarAsignacionCarta.setEnabled(false);
-        SwingWorker<List<EquipoAsignacionDTO>, Void> worker = new SwingWorker<List<EquipoAsignacionDTO>, Void>() {
+        SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
             @Override
-            protected List<EquipoAsignacionDTO> doInBackground() throws Exception {
-                return usuarioService.listarEquiposActivos();
+            protected Object[] doInBackground() throws Exception {
+                Long idAbogadoAnalisis = asignacionService.obtenerIdAbogadoActivoPorEquipo(idExpedienteSolicitado, "EQ_ANALISIS");
+                List<EquipoAsignacionDTO> equipos = usuarioService.listarEquiposActivos();
+                return new Object[]{idAbogadoAnalisis, equipos};
             }
 
             @Override
+            @SuppressWarnings("unchecked")
             protected void done() {
                 if (!idExpedienteSolicitado.equals(idExpedienteCartasRespuesta)) {
                     return;
                 }
+                Long idAbogadoAnalisis = null;
                 EquipoAsignacionDTO equipoAnalisis = null;
                 try {
-                    for (EquipoAsignacionDTO equipo : get()) {
+                    Object[] resultado = get();
+                    idAbogadoAnalisis = (Long) resultado[0];
+                    for (EquipoAsignacionDTO equipo : (List<EquipoAsignacionDTO>) resultado[1]) {
                         if ("EQ_ANALISIS".equalsIgnoreCase(equipo.getCodigo())) {
                             equipoAnalisis = equipo;
                             break;
@@ -3972,12 +3984,14 @@ public class JPanelAsignacionV2 extends JPanel {
                 } catch (Exception ex) {
                     equipoAnalisis = null;
                 }
+                idAbogadoActualCarta = idAbogadoAnalisis;
                 equipoAnalisisCartaDTO = equipoAnalisis;
                 cargandoComboEquipoCarta = true;
                 cmbEquipoCarta.removeAllItems();
                 if (equipoAnalisis == null) {
                     cmbEquipoCarta.addItem(EquipoItem.placeholder("EQ_ANALISIS no configurado"));
                     cargandoComboEquipoCarta = false;
+                    lblAbogadoActualCarta.setText("-");
                     cmbAbogadoCarta.removeAllItems();
                     cmbAbogadoCarta.addItem(UsuarioItem.placeholder("Equipo EQ_ANALISIS no configurado"));
                     return;
@@ -4011,7 +4025,13 @@ public class JPanelAsignacionV2 extends JPanel {
                         cmbAbogadoCarta.addItem(new UsuarioItem(abogado));
                     }
                     cargandoComboAbogadoCarta = false;
-                    seleccionarAbogadoCartaPorId(idAbogadoActualCarta);
+                    boolean seleccionado = seleccionarAbogadoCartaPorId(idAbogadoActualCarta);
+                    Object seleccionActual = cmbAbogadoCarta.getSelectedItem();
+                    UsuarioAsignableDTO abogadoActual = seleccionActual instanceof UsuarioItem
+                            ? ((UsuarioItem) seleccionActual).usuario : null;
+                    lblAbogadoActualCarta.setText(seleccionado && abogadoActual != null
+                            ? abogadoActual.getNombreCompleto()
+                            : "Sin asignar");
                     actualizarSupervisorCarta();
                     btnRegistrarAsignacionCarta.setEnabled(cmbAbogadoCarta.getItemCount() > 0);
                 } catch (Exception ex) {
