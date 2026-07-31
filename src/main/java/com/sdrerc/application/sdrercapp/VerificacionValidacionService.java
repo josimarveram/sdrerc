@@ -24,19 +24,6 @@ public class VerificacionValidacionService {
         if (!hasText(registro.getAccionCodigo())) {
             errores.add("Seleccione el resultado de verificación.");
         }
-        String accion = registro.getAccionCodigo();
-        if (("REGISTRO_OBSERVACION_VERIFICACION".equalsIgnoreCase(accion)
-                || "REVERSION_ESTADO_DOCUMENTO".equalsIgnoreCase(accion)
-                || "DEVOLUCION_A_ANALISIS".equalsIgnoreCase(accion))
-                && !hasText(registro.getComentario())) {
-            errores.add("Ingrese el motivo o sustento de la verificación.");
-        }
-        if (("REGISTRO_OBSERVACION_VERIFICACION".equalsIgnoreCase(accion)
-                || "REVERSION_ESTADO_DOCUMENTO".equalsIgnoreCase(accion)
-                || "DEVOLUCION_A_ANALISIS".equalsIgnoreCase(accion))
-                && (registro.getObservacion() == null || !registro.getObservacion().hasDescripcion())) {
-            errores.add("Ingrese la observación o inconsistencia detectada.");
-        }
         return errores;
     }
 

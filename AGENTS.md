@@ -1356,6 +1356,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/CartaRespuestaTreeGridPanelV2.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Fix: "Registrar Verificación" con resultado Observado bloqueado por validación huérfana (31/07/2026)
+
+- Reporte del usuario: en el panel de Verificación, al elegir resultado "Observado" y hacer clic en "Registrar Verificación", aparecía el error `IllegalArgumentException: Ingrese el motivo o sustento de la verificación. / Ingrese la observación o inconsistencia detectada.` e impedía registrar, aunque el campo "Sustento"/"Comentario" ya no debía exigirse (se había quitado del panel visible en una entrega anterior, ver "Reordenar 'Resultado de verificacion' y quitar 'Comentario'/'Sustento' no usados").
+- Causa raíz: esa entrega anterior quitó únicamente la fila visible del formulario (`addRow`) que mostraba `txtComentario` (Sustento/Comentario), dejando el campo huérfano y siempre vacío (nunca agregado a ningún contenedor visible, así que el usuario no puede escribir en él). Pero `VerificacionValidacionService.validarRegistroVerificacion(...)` seguía exigiendo `hasText(registro.getComentario())` y `registro.getObservacion().hasDescripcion()` (ambos alimentados por `txtComentario.getText()`) para las acciones `REGISTRO_OBSERVACION_VERIFICACION`, `REVERSION_ESTADO_DOCUMENTO` y `DEVOLUCION_A_ANALISIS` — como el campo nunca se llena, esa validación fallaba siempre, bloqueando permanentemente "Registrar Verificación" con resultado Observado (y también "Documento inconsistente" y "Devolver a análisis"). Esta validación no se revisó como parte del cambio anterior porque solo se tocaron los 2 JPanel, no `VerificacionValidacionService`.
+- Fix: se quitaron esas 2 reglas de `VerificacionValidacionService.validarRegistroVerificacion(...)`. La validación restante exige únicamente `idExpediente` y `accionCodigo` (resultado de verificación seleccionado), consistente con que el campo de texto que alimentaba esas reglas ya no existe en la UI.
+- Archivos: `src/main/java/com/sdrerc/application/sdrercapp/VerificacionValidacionService.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
