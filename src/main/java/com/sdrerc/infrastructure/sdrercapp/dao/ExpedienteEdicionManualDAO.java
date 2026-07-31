@@ -31,6 +31,7 @@ public class ExpedienteEdicionManualDAO {
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService;
     private final ExpedienteAlertaDAO expedienteAlertaDAO = new ExpedienteAlertaDAO();
+    private final GrupoFamiliarDAO grupoFamiliarDAO = new GrupoFamiliarDAO();
 
     public ExpedienteEdicionManualDAO() {
         this(new CatalogoLookupDAO(), new CalendarioLaboralService());
@@ -204,6 +205,8 @@ public class ExpedienteEdicionManualDAO {
                         throw new SQLException("No se pudo eliminar el expediente seleccionado.");
                     }
                 }
+
+                grupoFamiliarDAO.limpiarAlertasGrupoFamiliarDeMiembrosRestantes(conn, idExpediente, idUsuario);
 
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);

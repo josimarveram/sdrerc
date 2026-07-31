@@ -385,9 +385,57 @@ public class GrupoFamiliarDAO {
             return;
         }
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            expedienteAlertaDAO.marcarAtendidas(
-                    conn, idExpediente, Collections.singletonList(ALERTA_POSIBLE_GRUPO_FAMILIAR), idUsuario);
-            limpiarCriterioGrupoFamiliar(conn, idExpediente, idUsuario);
+            eliminarAlertaPosibleGrupoFamiliar(conn, idExpediente, idUsuario);
+        }
+    }
+
+    private void eliminarAlertaPosibleGrupoFamiliar(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        expedienteAlertaDAO.marcarAtendidas(
+                conn, idExpediente, Collections.singletonList(ALERTA_POSIBLE_GRUPO_FAMILIAR), idUsuario);
+        limpiarCriterioGrupoFamiliar(conn, idExpediente, idUsuario);
+    }
+
+    /**
+     * Cuando se elimina (baja logica) el expediente de un integrante de un grupo familiar, los
+     * demas integrantes que sigan con expediente activo en ese mismo grupo (PERSONA.id_grupo_familiar)
+     * pueden quedar mostrando "Posible Grupo Familiar" en el KPI/columna Alertas de Registro y
+     * Asignacion aunque ya estaban confirmados, porque esa columna solo lee si queda una alerta
+     * EXPEDIENTE_ALERTA activa (no si el grupo tiene 2+ miembros activos). Pedido explicito del
+     * usuario: limpiar esa alerta remanente en los integrantes que NO se eliminaron, sin tocar
+     * PERSONA.id_grupo_familiar (el vinculo de grupo se mantiene por si aparece otro familiar
+     * futuro). Debe llamarse en la MISMA transaccion que la baja logica del expediente eliminado.
+     */
+    public void limpiarAlertasGrupoFamiliarDeMiembrosRestantes(
+            Connection conn, Long idExpedienteEliminado, Long idUsuario) throws SQLException {
+        if (conn == null || idExpedienteEliminado == null) {
+            return;
+        }
+        Long idPersona = obtenerIdPersonaTitular(conn, idExpedienteEliminado);
+        if (idPersona == null) {
+            return;
+        }
+        Long idGrupoFamiliar = obtenerGrupoFamiliarDePersona(conn, idPersona);
+        if (idGrupoFamiliar == null) {
+            return;
+        }
+        String sql = "SELECT DISTINCT e.id_expediente "
+                + "FROM persona p "
+                + "JOIN expediente_persona ep ON ep.id_persona = p.id_persona AND ep.activo = 1 "
+                + "  AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "JOIN expediente e ON e.id_expediente = ep.id_expediente AND e.activo = 1 "
+                + "WHERE p.id_grupo_familiar = ? AND p.activo = 1 AND e.id_expediente <> ?";
+        List<Long> idsRestantes = new ArrayList<Long>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idGrupoFamiliar);
+            ps.setLong(2, idExpedienteEliminado);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    idsRestantes.add(getLongOrNull(rs, "id_expediente"));
+                }
+            }
+        }
+        for (Long idExpedienteRestante : idsRestantes) {
+            eliminarAlertaPosibleGrupoFamiliar(conn, idExpedienteRestante, idUsuario);
         }
     }
 
