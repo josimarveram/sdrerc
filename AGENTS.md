@@ -1263,6 +1263,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/AsignacionExpedienteDAO.java`, `src/main/java/com/sdrerc/application/sdrercapp/AsignacionExpedienteService.java`, `src/main/java/com/sdrerc/ui/views/asignacion/JPanelAsignacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Consulta de solo lectura contra SDRERC_APP para verificar el fix con datos reales del expediente 224 (sin modificar nada). Sin SQL ejecutado que cambie datos ni esquema.
 
+### Fix: "X" y "Cancelar" no cerraban el panel en la bandeja Cartas de Respuesta (31/07/2026)
+
+- Pedido del usuario: en las lenguetas "Datos" y "Respuesta" del panel lateral (bandeja Cartas de Respuesta), el boton "X" no cerraba el panel; ademas "Cancelar" del bloque Destino operativo deberia cerrar el panel y no lo hacia.
+- Causa raiz: ambos paneles ("Panel de datos" y "Cartas de respuesta") pasan `cerrarPanelAsignacion()` como callback de cierre al `AppV2SideActionPanel`, pero ese metodo esta escrito exclusivamente para la bandeja principal "Bandeja Asignación": arranca con `if (contarSeleccionOperativa() == 0) { return; }`, y `contarSeleccionOperativa()` cuenta checkboxes marcados o la fila seleccionada de `tableModel`/`table` (la grilla de la bandeja principal). Al estar parado en la bandeja "Cartas de respuesta", esa grilla no tiene nada seleccionado (la seleccion real esta en `bandejaCartasRespuestaTable`, una tabla distinta), asi que el metodo retornaba de inmediato sin cerrar nada.
+- Fix: `cerrarPanelAsignacion()` ahora primero verifica `esBandejaCartasActiva()`; si es asi, delega a un metodo nuevo `cerrarPanelCartasRespuesta()` (limpia `cartaRespuestaSeleccionada`, hace `bandejaCartasRespuestaTable.clearSelection()`, y llama `limpiarCartasRespuestaPanel()`/`limpiarPanelAsignacion()`/`actualizarVisibilidadPanelAsignacion(false)`, el mismo camino que ya usaba `actualizarPanelCartasRespuestaSeleccion()` cuando no hay fila seleccionada). Si la bandeja activa es la principal, se conserva el comportamiento original sin cambios. El boton "Cancelar" (`btnCancelarAsignacionCarta`) ahora llama directamente `cerrarPanelCartasRespuesta()` en vez de solo recargar el detalle sin cerrar (`cancelarAsignacionCarta()`, metodo que quedo sin uso, se elimino).
+- Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/JPanelAsignacionV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

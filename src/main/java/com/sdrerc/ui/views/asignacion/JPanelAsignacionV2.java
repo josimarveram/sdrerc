@@ -1222,7 +1222,7 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2Theme.estilizarBotonSecundario(btnCancelarAsignacionCarta);
         btnRegistrarAsignacionCarta.setEnabled(false);
         btnRegistrarAsignacionCarta.addActionListener(e -> registrarAsignacionCarta());
-        btnCancelarAsignacionCarta.addActionListener(e -> cancelarAsignacionCarta());
+        btnCancelarAsignacionCarta.addActionListener(e -> cerrarPanelCartasRespuesta());
         cmbAbogadoCarta.addActionListener(e -> {
             if (!cargandoComboAbogadoCarta) {
                 actualizarSupervisorCarta();
@@ -4107,12 +4107,6 @@ public class JPanelAsignacionV2 extends JPanel {
         worker.execute();
     }
 
-    private void cancelarAsignacionCarta() {
-        if (cartaRespuestaSeleccionada != null) {
-            cargarDetalleCartaRespuestaSeleccionada(cartaRespuestaSeleccionada);
-        }
-    }
-
     private void cargarCargaLaboralBandeja() {
         lblEstadoCarga.setText("Cargando carga laboral...");
         SwingWorker<List<CargaLaboralAbogadoDTO>, Void> worker = new SwingWorker<List<CargaLaboralAbogadoDTO>, Void>() {
@@ -5377,10 +5371,24 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void cerrarPanelAsignacion() {
+        if (esBandejaCartasActiva()) {
+            cerrarPanelCartasRespuesta();
+            return;
+        }
         if (contarSeleccionOperativa() == 0) {
             return;
         }
         panelAsignacionCerradoPorUsuario = true;
+        actualizarVisibilidadPanelAsignacion(false);
+    }
+
+    /** Cierra el panel lateral ("X" o "Cancelar") cuando se esta en la bandeja Cartas de respuesta. */
+    private void cerrarPanelCartasRespuesta() {
+        cartaRespuestaSeleccionada = null;
+        bandejaCartasRespuestaTable.clearSelection();
+        limpiarCartasRespuestaPanel();
+        limpiarPanelAsignacion();
+        actualizarTituloPanelAsignacionPorItem(null, null);
         actualizarVisibilidadPanelAsignacion(false);
     }
 
