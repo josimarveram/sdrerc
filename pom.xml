@@ -108,6 +108,16 @@
             <artifactId>log4j-core</artifactId>
             <version>2.20.0</version>
         </dependency>
+
+        <!-- Puente SLF4J -> Log4j2: sin esto, librerias que loguean via SLF4J (ej. HikariCP)
+             no encuentran un binding y el proceso imprime el aviso "Failed to load class
+             org.slf4j.impl.StaticLoggerBinder... Defaulting to no-operation (NOP) logger" al
+             iniciar. Con el puente, esos logs se enrutan al mismo log4j2.xml del resto de la app. -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.20.0</version>
+        </dependency>
     </dependencies>
 
     <build>

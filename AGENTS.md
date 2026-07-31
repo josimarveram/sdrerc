@@ -1244,6 +1244,15 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/JPanelAsignacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Fix: aviso SLF4J "Failed to load class StaticLoggerBinder" al iniciar (31/07/2026)
+
+- Pedido del usuario: reporto el mensaje `SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder"... Defaulting to no-operation (NOP) logger implementation` al ejecutar la aplicacion.
+- Causa: el proyecto ya usa Log4j2 (`log4j-api`/`log4j-core`) para su propio logging, pero al menos una dependencia (HikariCP, que loguea via SLF4J) trae `slf4j-api` de forma transitiva sin ningun binding SLF4J en el classpath. Sin binding, SLF4J cae a un logger no-operativo e imprime ese aviso una vez al iniciar; es informativo, no rompe funcionalidad, pero silencia cualquier log de esas librerias.
+- Fix: se agrego `org.apache.logging.log4j:log4j-slf4j-impl:2.20.0` (mismo `groupId`/version que `log4j-api`/`log4j-core` ya presentes) a `pom.xml`. Este puente aporta el `org.slf4j.impl.StaticLoggerBinder` que faltaba y enruta cualquier log SLF4J de terceros al mismo `log4j2.xml` que ya usa el resto de la app, en vez de solo suprimir el aviso.
+- Verificado en el jar final (`target/SDRERC-V2.jar`, `maven-shade-plugin`) que `org/slf4j/impl/StaticLoggerBinder.class` quedo empaquetado correctamente.
+- Archivos: `pom.xml`.
+- Validacion: `mvn -q clean compile` (descarga de la dependencia nueva; el entorno de este agente necesito red sin `-o` para la primera descarga, ya quedo cacheada localmente) y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
