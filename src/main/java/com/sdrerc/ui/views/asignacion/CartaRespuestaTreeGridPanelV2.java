@@ -62,6 +62,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     private static final String TIPO_CARTA_RESPUESTA_NOMBRE = "Carta de Respuesta";
     private static final String TIPO_PEDIDO_CODIGO = "ANALISIS_DOC_21_PEDIDO";
     private static final String TIPO_PEDIDO_NOMBRE = "Pedido";
+    private static final CatalogoItemDTO TIPO_PEDIDO_ITEM = new CatalogoItemDTO(TIPO_PEDIDO_CODIGO, TIPO_PEDIDO_NOMBRE);
     private static final String ESTADO_EN_PROYECTO_CODIGO = "EN_PROYECTO";
     private static final String ESTADO_EN_PROYECTO_NOMBRE = "En proyecto";
 
@@ -253,6 +254,9 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         tablaPadre.setDefaultRenderer(Boolean.class, new RequiereRespuestaRenderer());
         tablaHijo.setDefaultRenderer(Object.class, textoRenderer);
 
+        List<CatalogoItemDTO> tiposPedido = new ArrayList<CatalogoItemDTO>();
+        tiposPedido.add(TIPO_PEDIDO_ITEM);
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(tiposPedido)));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_NUMERO).setCellEditor(new DefaultCellEditor(new JTextField()));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_FECHA).setCellEditor(new FechaCellEditor());
         tablaPadre.getColumnModel().getColumn(PADRE_COL_COMENTARIO).setCellEditor(new DefaultCellEditor(new JTextField()));
@@ -595,9 +599,14 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
 
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
-            return getRow(rowIndex) != null
-                    && columnIndex != PADRE_COL_TIPO
-                    && columnIndex != PADRE_COL_REQUIERE_RESPUESTA
+            DocumentoRow row = getRow(rowIndex);
+            if (row == null) {
+                return false;
+            }
+            if (columnIndex == PADRE_COL_TIPO) {
+                return TIPO_PEDIDO_CODIGO.equals(row.tipoCodigo);
+            }
+            return columnIndex != PADRE_COL_REQUIERE_RESPUESTA
                     && columnIndex != PADRE_COL_FECHA_ACUSE;
         }
 
@@ -609,7 +618,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
             }
             switch (columnIndex) {
                 case PADRE_COL_TIPO:
-                    return row.tipoNombre;
+                    return TIPO_PEDIDO_CODIGO.equals(row.tipoCodigo) ? TIPO_PEDIDO_ITEM : row.tipoNombre;
                 case PADRE_COL_NUMERO:
                     return row.numeroDocumento;
                 case PADRE_COL_ESTADO:
@@ -634,6 +643,13 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                 return;
             }
             switch (columnIndex) {
+                case PADRE_COL_TIPO:
+                    if (value instanceof CatalogoItemDTO) {
+                        CatalogoItemDTO item = (CatalogoItemDTO) value;
+                        row.tipoCodigo = item.getCodigo();
+                        row.tipoNombre = item.getNombre();
+                    }
+                    break;
                 case PADRE_COL_NUMERO:
                     row.numeroDocumento = text(value);
                     break;

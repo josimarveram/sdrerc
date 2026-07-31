@@ -1347,6 +1347,15 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/GrupoFamiliarDAO.java`, `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/ExpedienteEdicionManualDAO.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### "Tipo documento" editable solo a "Pedido" al agregar documento en la grilla padre (31/07/2026)
+
+- Pedido del usuario: en el panel de Documentos de la Bandeja Asignación (y el resto de paneles que reusan `CartaRespuestaTreeGridPanelV2`), al hacer clic en "+ Documento" solo debe poder registrarse el tipo de documento "Pedido"; si se edita la columna "Tipo documento" de esa fila, el combo debe mostrar únicamente la opción "Pedido".
+- Contexto: `agregarDocumento()` ya creaba la fila nueva hardcodeada a "Pedido" (`TIPO_PEDIDO_CODIGO`/`TIPO_PEDIDO_NOMBRE`, ver entrada "Corregir '+Documento'..."), pero la columna "Tipo documento" (`PADRE_COL_TIPO`) de la grilla padre nunca fue editable (`isCellEditable` la excluía siempre), así que no existía forma de confirmar/editar el tipo vía combo como sí ocurre con "Estado documento".
+- Fix en `CartaRespuestaTreeGridPanelV2`: `PADRE_COL_TIPO` ahora es editable únicamente cuando la fila ya es de tipo Pedido (`TIPO_PEDIDO_CODIGO.equals(row.tipoCodigo)`); para cualquier otro tipo de documento (los ya existentes, cargados desde Análisis: Carta Edicto, Informe, Resolución, etc.) la celda sigue sin ser editable, igual que antes. El editor de esa columna es un combo (`comboCatalogo(...)`) con un único ítem (`TIPO_PEDIDO_ITEM`, instancia estática reutilizada también por `getValueAt`/`getRow` para que el combo preseleccione el valor correcto por identidad de objeto). `setValueAt` gana el caso `PADRE_COL_TIPO` (mismo patrón que `PADRE_COL_ESTADO`), completando el ciclo aunque en la práctica el combo no ofrezca otra opción que "Pedido".
+- Este cambio es genérico al componente compartido (`documentosTreePanel` del panel "Documentos" y `cartasRespuestaTreePanel` del panel "Respuesta" usan la misma clase); no se distinguió por panel porque la regla de negocio ("+Documento" = Pedido) ya era igual en ambos antes de este ajuste.
+- Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/CartaRespuestaTreeGridPanelV2.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
