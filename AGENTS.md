@@ -1389,6 +1389,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/CartaRespuestaTreeGridPanelV2.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Fix: "Registrar Asignación" desde Cartas de Respuesta fallaba si el expediente ya estaba en ANALISIS/OBSERVADO (31/07/2026)
+
+- Reporte del usuario (con captura de pantalla): al hacer clic en "Registrar Asignación" en el panel de Respuesta, aparecía `java.sql.SQLException: No existe transición activa ANALISIS/OBSERVADO -> ANALISIS/OBSERVADO para DEVOLUCION_A_ANALISIS en SDRERC_TO_BE.`
+- Causa raíz: `AsignacionExpedienteDAO.reasignarDesdeCartaRespuesta(...)` (ver entrada "'Registrar Asignación' desde Cartas de Respuesta ahora deriva a Bandeja Análisis") siempre buscaba una fila de `FLUJO_TRANSICION` real desde la etapa/estado ACTUAL del expediente hacia `ANALISIS/OBSERVADO`, sin contemplar el caso en que el expediente **ya** estuviera en `ANALISIS/OBSERVADO` (por ejemplo, si ya había sido derivado antes y el coordinador solo quiere reasignar el abogado responsable, no cambiar de etapa/estado). Las transiciones del catálogo representan cambio de estado, nunca hay una fila `ANALISIS/OBSERVADO -> ANALISIS/OBSERVADO`, así que ese caso siempre fallaba con "No existe transición activa".
+- Fix: si `expediente.etapaCodigo`/`estadoCodigo` ya son `ANALISIS`/`OBSERVADO`, se usa directamente `expediente.idEtapa`/`idEstado` como destino (sin consultar `FLUJO_TRANSICION`); solo se resuelve la transición dinámica cuando el expediente viene de una etapa/estado distinto. El resto del método (reasignación de responsable/equipo, historial `DEVOLUCION_A_ANALISIS`, sincronización de asociados) no cambió.
+- Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/AsignacionExpedienteDAO.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

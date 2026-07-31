@@ -509,15 +509,23 @@ public class AsignacionExpedienteDAO {
                 validarEquipoActivo(conn, idEquipoNuevo);
                 validarAbogadoAsignable(conn, idAbogadoNuevo, idEquipoNuevo);
 
-                long[] destino = resolverTransicionPorCodigo(
-                        conn,
-                        CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS,
-                        expediente.etapaCodigo,
-                        expediente.estadoCodigo,
-                        CODIGO_ETAPA_ANALISIS_DESTINO,
-                        CODIGO_ESTADO_ANALISIS_OBSERVADO);
-                Long idEtapaDestino = destino[0];
-                Long idEstadoDestino = destino[1];
+                Long idEtapaDestino;
+                Long idEstadoDestino;
+                if (CODIGO_ETAPA_ANALISIS_DESTINO.equalsIgnoreCase(expediente.etapaCodigo)
+                        && CODIGO_ESTADO_ANALISIS_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)) {
+                    idEtapaDestino = expediente.idEtapa;
+                    idEstadoDestino = expediente.idEstado;
+                } else {
+                    long[] destino = resolverTransicionPorCodigo(
+                            conn,
+                            CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS,
+                            expediente.etapaCodigo,
+                            expediente.estadoCodigo,
+                            CODIGO_ETAPA_ANALISIS_DESTINO,
+                            CODIGO_ESTADO_ANALISIS_OBSERVADO);
+                    idEtapaDestino = destino[0];
+                    idEstadoDestino = destino[1];
+                }
 
                 desactivarAsignacionesActivas(conn, idExpediente, idUsuarioAsignador);
 
