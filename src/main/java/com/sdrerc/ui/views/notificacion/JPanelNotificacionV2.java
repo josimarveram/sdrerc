@@ -534,7 +534,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private JPanel crearHeader() {
-        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 10);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 6, 12, 0);
         metricas.add(cardPendientes);
         metricas.add(cardRevision);
         metricas.add(cardNotificados);

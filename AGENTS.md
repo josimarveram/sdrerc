@@ -1191,6 +1191,13 @@ Esta seccion resume reglas recientes que deben guiar nuevos prompts o asistentes
 - Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`, `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/DocumentoAnalisisDAO.java`, `src/main/java/com/sdrerc/application/sdrercapp/DocumentoAnalisisService.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Bandeja Notificacion: KPIs mas angostos igual que Analisis (30/07/2026)
+
+- Pedido del usuario: los 6 KPIs de la Bandeja Notificacion (3ra pestaña) ocupaban demasiada altura porque el grid responsivo solo permitia 4 columnas (con 6 tarjetas eso arma 2 filas); pidio el mismo diseño/ancho responsivo que usa Analisis, que con las mismas 6 tarjetas las acomoda en una sola fila mas angosta.
+- `crearHeader()`: `new AppV2ResponsiveGridPanel(190, 4, 12, 10)` -> `new AppV2ResponsiveGridPanel(190, 6, 12, 0)`, exactamente los mismos parametros que usa `JPanelAnalisisV2.crearHeader()` (6 columnas maximas en vez de 4, sin espacio vertical entre filas). No se toco `crearHeaderAsigNotif()` (Bandeja Asignacion) ni el header de Bandeja Validacion en este mismo archivo, que siguen con su propio ancho porque el pedido fue especificamente sobre "bandeja de notificacion".
+- Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
+- Validacion: `mvn -o -q clean compile` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
