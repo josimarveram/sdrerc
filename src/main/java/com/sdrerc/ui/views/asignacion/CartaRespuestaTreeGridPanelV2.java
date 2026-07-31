@@ -653,7 +653,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     private static class HijoTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "", "Tipo documento", "Confirmación de respuesta", "Fecha Respuesta",
+            "", "", "Tipo documento", "Confirmación de respuesta", "Fecha Respuesta",
             "Fecha Publicación", "Existe Oposición", "Hoja de Envío"
         };
 
