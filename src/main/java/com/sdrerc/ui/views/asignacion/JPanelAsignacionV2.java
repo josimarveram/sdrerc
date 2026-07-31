@@ -1,6 +1,5 @@
 package com.sdrerc.ui.views.asignacion;
 
-import com.sdrerc.application.sdrercapp.AnalisisExpedienteService;
 import com.sdrerc.application.sdrercapp.AsignacionExpedienteService;
 import com.sdrerc.application.sdrercapp.DocumentoAnalisisService;
 import com.sdrerc.application.sdrercapp.ExpedienteRelacionadoDeteccionService;
@@ -10,7 +9,6 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaLaboralAbogadoDTO;
-import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
@@ -48,7 +46,6 @@ import com.sdrerc.ui.appv2.helpers.EstadoExpedienteComboSupportV2;
 import com.sdrerc.ui.appv2.helpers.FiltroCatalogoItemV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.DisplayNameMapperV2;
-import com.sdrerc.ui.views.analisis.DocumentoAnalisisTreeGridPanelV2;
 import com.sdrerc.ui.views.expedienteconsola.DlgConsolaExpedienteV2;
 import com.sdrerc.shared.session.SessionContext;
 import com.sdrerc.util.DateRangePickerSupport;
@@ -354,10 +351,8 @@ public class JPanelAsignacionV2 extends JPanel {
             tablaHistorialAsignacion, "Sin historial de asignación", "Aún no hay asignaciones registradas para este expediente.");
     private long secuenciaHistorialAsignacion;
     private CartaRespuestaTreeGridPanelV2 cartasRespuestaTreePanel;
-    private final AnalisisExpedienteService analisisExpedienteServiceCartas = new AnalisisExpedienteService();
-    private final DocumentoAnalisisTreeGridPanelV2 documentosAnalisisCartaPanel = new DocumentoAnalisisTreeGridPanelV2();
     private final JLabel lblAbogadoActualCarta = new JLabel("-");
-    private final JLabel lblEquipoDestinoCarta = new JLabel("Eq. Análisis");
+    private final JComboBox<EquipoItem> cmbEquipoCarta = new JComboBox<EquipoItem>();
     private final JComboBox<UsuarioItem> cmbAbogadoCarta = new JComboBox<UsuarioItem>();
     private final JLabel lblSupervisorCarta = new JLabel("-");
     private final JButton btnRegistrarAsignacionCarta = new JButton("Registrar Asignación");
@@ -365,7 +360,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private EquipoAsignacionDTO equipoAnalisisCartaDTO;
     private Long idAbogadoActualCarta;
     private boolean cargandoComboAbogadoCarta;
-    private boolean catalogosDocumentosAnalisisCartaCargados;
+    private boolean cargandoComboEquipoCarta;
     private final DefaultTableModel bandejaCartasRespuestaModel = new DefaultTableModel(
             new Object[]{
                 "N° expediente",
@@ -1192,14 +1187,11 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideSectionPanel crearCartasRespuesta() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Cartas de Rpta");
-        documentosAnalisisCartaPanel.setHandlers(
-                documento -> analisisExpedienteServiceCartas.guardarDocumentoAnalisisJerarquico(
-                        idExpedienteCartasRespuesta, documento),
-                (idExp, ids) -> analisisExpedienteServiceCartas.darBajaDocumentosAnalisis(idExp, ids),
-                documento -> mostrarInfo("La descarga de plantilla Word está disponible desde el módulo Análisis."),
-                () -> cargarDocumentosAnalisisCarta(idExpedienteCartasRespuesta));
-        section.addContent(documentosAnalisisCartaPanel);
-
+        // CartaRespuestaTreeGridPanelV2 ya es un componente de 2 grillas (padre "Documentos de
+        // análisis" con los documentos que requieren respuesta + hijo "Documentos de cartas de
+        // respuesta" con sus botones "+ Relacionados"/"+ Documentos"), igual que el patron de
+        // Analisis. No se embebe aqui un DocumentoAnalisisTreeGridPanelV2 adicional porque
+        // duplicaria la misma grilla padre "Documentos de análisis".
         cartasRespuestaTreePanel = new CartaRespuestaTreeGridPanelV2();
         cartasRespuestaTreePanel.setHandlers(
                 carta -> documentoAnalisisService.guardarCartaRespuesta(idExpedienteCartasRespuesta, carta),
@@ -1213,7 +1205,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideSectionPanel crearDestinoOperativoCarta() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Destino operativo");
         section.addRow("Abogado actual", lblAbogadoActualCarta);
-        section.addRow("Equipo destino", lblEquipoDestinoCarta);
+        section.addRow("Equipo destino", cmbEquipoCarta);
         section.addRow("Abogado responsable", cmbAbogadoCarta);
         section.addRow("Supervisor", lblSupervisorCarta);
         return section;
@@ -1222,6 +1214,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private JPanel crearAccionesDestinoOperativoCarta() {
         JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
         panel.setOpaque(false);
+        cmbEquipoCarta.setPreferredSize(new Dimension(230, 34));
+        cmbEquipoCarta.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         cmbAbogadoCarta.setPreferredSize(new Dimension(230, 34));
         cmbAbogadoCarta.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
         AppV2Theme.estilizarBotonPrimario(btnRegistrarAsignacionCarta);
@@ -3916,7 +3910,6 @@ public class JPanelAsignacionV2 extends JPanel {
                     actualizarDatosExpedientePanel(expediente);
                     aplicarGrupoFamiliarPanel(expediente);
                     cargarCartasRespuestaPorDocumento(carta.getIdExpediente(), carta.getIdDocumentoAnalizado());
-                    cargarDocumentosAnalisisCarta(carta.getIdExpediente());
                     cargarDestinoOperativoCarta(expediente);
                     lblEstadoCartas.setText("Carta lista para registrar respuesta.");
                 } catch (Exception ex) {
@@ -3927,72 +3920,17 @@ public class JPanelAsignacionV2 extends JPanel {
         worker.execute();
     }
 
-    private void cargarCatalogosDocumentosAnalisisCarta() {
-        if (catalogosDocumentosAnalisisCartaCargados) {
-            return;
-        }
-        catalogosDocumentosAnalisisCartaCargados = true;
-        SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
-            @Override
-            protected Object[] doInBackground() throws Exception {
-                List<CatalogoItemDTO> tipos = documentoAnalisisService.listarTiposDocumentoAnalizado();
-                List<CatalogoItemDTO> estados = documentoAnalisisService.listarEstadosDocumento();
-                java.util.Set<String> intermedios = documentoAnalisisService.listarCodigosTipoDocumentoIntermedio();
-                return new Object[]{tipos, estados, intermedios};
-            }
-
-            @SuppressWarnings("unchecked")
-            @Override
-            protected void done() {
-                try {
-                    Object[] resultado = get();
-                    documentosAnalisisCartaPanel.setCatalogos(
-                            (List<CatalogoItemDTO>) resultado[0], (List<CatalogoItemDTO>) resultado[1]);
-                    documentosAnalisisCartaPanel.setTiposIntermedios((java.util.Set<String>) resultado[2]);
-                } catch (Exception ex) {
-                    catalogosDocumentosAnalisisCartaCargados = false;
-                }
-            }
-        };
-        worker.execute();
-    }
-
-    private void cargarDocumentosAnalisisCarta(final Long idExpediente) {
-        cargarCatalogosDocumentosAnalisisCarta();
-        if (idExpediente == null) {
-            documentosAnalisisCartaPanel.setDocumentos(null, null, new ArrayList<DocumentoAnalizadoDTO>());
-            return;
-        }
-        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
-            @Override
-            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
-                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    List<DocumentoAnalizadoDTO> documentos = get();
-                    if (idExpediente.equals(idExpedienteCartasRespuesta)) {
-                        documentosAnalisisCartaPanel.setDocumentos(idExpediente, null, documentos);
-                    }
-                } catch (Exception ex) {
-                    mostrarError("No se pudieron cargar los documentos de análisis del expediente.", ex);
-                }
-            }
-        };
-        worker.execute();
-    }
-
     /**
      * Destino operativo del panel Cartas de respuesta: permite reasignar el expediente a otro
      * abogado del mismo equipo EQ_ANALISIS (o confirmar el mismo), independiente de la lengueta
-     * "Asignación" (que maneja seleccion multiple y reparto inicial). El equipo destino esta fijo
-     * a Eq. Análisis, sin combo editable, segun lo pedido.
+     * "Asignación" (que maneja seleccion multiple y reparto inicial). El combo "Equipo destino"
+     * replica el mismo diseño del combo cmbEquipo del panel de Asignación, aunque solo carga
+     * el equipo EQ_ANALISIS (la unica opcion valida para este flujo).
      */
     private void cargarDestinoOperativoCarta(final AsignacionExpedienteDTO expediente) {
         if (expediente == null || expediente.getIdExpediente() == null) {
             lblAbogadoActualCarta.setText("-");
+            cmbEquipoCarta.removeAllItems();
             cmbAbogadoCarta.removeAllItems();
             lblSupervisorCarta.setText("-");
             btnRegistrarAsignacionCarta.setEnabled(false);
@@ -4002,6 +3940,10 @@ public class JPanelAsignacionV2 extends JPanel {
         lblAbogadoActualCarta.setText(abogadoActual == null || abogadoActual.trim().isEmpty() ? "Sin asignar" : abogadoActual);
         idAbogadoActualCarta = expediente.getIdAbogadoResponsable();
         final Long idExpedienteSolicitado = expediente.getIdExpediente();
+        cargandoComboEquipoCarta = true;
+        cmbEquipoCarta.removeAllItems();
+        cmbEquipoCarta.addItem(EquipoItem.placeholder("Cargando..."));
+        cargandoComboEquipoCarta = false;
         cargandoComboAbogadoCarta = true;
         cmbAbogadoCarta.removeAllItems();
         cmbAbogadoCarta.addItem(UsuarioItem.placeholder("Cargando..."));
@@ -4031,11 +3973,18 @@ public class JPanelAsignacionV2 extends JPanel {
                     equipoAnalisis = null;
                 }
                 equipoAnalisisCartaDTO = equipoAnalisis;
+                cargandoComboEquipoCarta = true;
+                cmbEquipoCarta.removeAllItems();
                 if (equipoAnalisis == null) {
+                    cmbEquipoCarta.addItem(EquipoItem.placeholder("EQ_ANALISIS no configurado"));
+                    cargandoComboEquipoCarta = false;
                     cmbAbogadoCarta.removeAllItems();
                     cmbAbogadoCarta.addItem(UsuarioItem.placeholder("Equipo EQ_ANALISIS no configurado"));
                     return;
                 }
+                cmbEquipoCarta.addItem(new EquipoItem(equipoAnalisis));
+                cmbEquipoCarta.setSelectedIndex(0);
+                cargandoComboEquipoCarta = false;
                 cargarAbogadosDestinoOperativoCarta(idExpedienteSolicitado, equipoAnalisis.getIdEquipo());
             }
         };
@@ -4292,7 +4241,6 @@ public class JPanelAsignacionV2 extends JPanel {
         if (cartasRespuestaTreePanel != null) {
             cartasRespuestaTreePanel.setDocumentos(null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
         }
-        documentosAnalisisCartaPanel.setDocumentos(null, null, new ArrayList<DocumentoAnalizadoDTO>());
         cargarDestinoOperativoCarta(null);
         if (sectionCartasRespuesta != null) {
             sectionCartasRespuesta.setVisible(false);

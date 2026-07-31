@@ -1235,6 +1235,15 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/JPanelAsignacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Fix: grilla duplicada en panel Cartas de Respuesta + Equipo destino como combo (31/07/2026)
+
+- Pedido del usuario tras ver el panel ya visible (entrada anterior "seccion Cartas de Rpta... nunca se hacia visible"): "solo debe haber 2 tipos de grillas... no debiste poner destino operativo como label sino combo".
+- Causa raiz de la duplicacion: `CartaRespuestaTreeGridPanelV2` (el componente ya existente en este panel) **ya es en si mismo** un componente de 2 grillas, con el mismo patron que Analisis: grilla padre con banner literal "Documentos de análisis" (Tipo documento/N° Documento/Estado documento/Fecha Emisión/Comentario/¿Requiere respuesta?, filtrada a `requiere_respuesta=1`) + grilla hija "Documentos de cartas de respuesta" (Confirmación de respuesta/Fecha Respuesta/Fecha Publicación/Existe Oposición/Hoja de Envío, con botones propios "+ Relacionados"/"+ Documentos"). El `DocumentoAnalisisTreeGridPanelV2` que se embebio en la entrada anterior ("Panel de Cartas de Respuesta enriquecido con Destino Operativo") agregaba una TERCERA grilla con el mismo banner "Documentos de análisis" que la grilla padre de `CartaRespuestaTreeGridPanelV2` -- mismo tipo de informacion mostrada 2 veces.
+- Fix: se elimino por completo la instancia de `DocumentoAnalisisTreeGridPanelV2` embebida en `crearCartasRespuesta()` (campo, `setHandlers`, `addContent`, y los metodos de soporte `cargarCatalogosDocumentosAnalisisCarta()`/`cargarDocumentosAnalisisCarta(...)` que ya no tienen consumidor), junto con la instancia de `AnalisisExpedienteService` que solo se usaba para esos handlers. El panel "Cartas de Rpta" vuelve a mostrar exactamente 2 grillas (las que ya traia `CartaRespuestaTreeGridPanelV2`), sin informacion repetida.
+- "Equipo destino" del bloque Destino operativo: paso de `JLabel` fijo ("Eq. Análisis") a `JComboBox<EquipoItem>` (`cmbEquipoCarta`, reutilizando la misma clase `EquipoItem` del combo `cmbEquipo` de la lengueta "Asignación"), cargado con el unico equipo valido (`EQ_ANALISIS`, resuelto via `usuarioService.listarEquiposActivos()` igual que antes) y preseleccionado automaticamente. Replica el mismo tipo de control visual que el panel de Asignación, aunque en este flujo solo exista una opcion real.
+- Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/JPanelAsignacionV2.java`.
+- Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
