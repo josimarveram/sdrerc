@@ -5,6 +5,7 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO;
+import com.sdrerc.domain.dto.sdrercapp.PlazoConfiguracionDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
 import java.sql.Date;
@@ -29,6 +30,7 @@ public class DocumentoAnalisisDAO {
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
+    private final PlazoConfiguracionDAO plazoConfiguracionDAO = new PlazoConfiguracionDAO();
 
     public DocumentoAnalisisDAO() {
         this(new CatalogoLookupDAO());
@@ -78,6 +80,10 @@ public class DocumentoAnalisisDAO {
     }
 
     public List<AsignacionCartaRespuestaDTO> listarCartasRespuestaPendientes() throws SQLException {
+        return listarCartasRespuestaPendientes(null);
+    }
+
+    public List<AsignacionCartaRespuestaDTO> listarCartasRespuestaPendientes(Long idExpedienteFiltro) throws SQLException {
         List<AsignacionCartaRespuestaDTO> items = new ArrayList<AsignacionCartaRespuestaDTO>();
         try (Connection conn = SdrercAppConnection.getConnection()) {
             if (!soportaRespuestaDocumentoAnalizado(conn)) {
@@ -89,7 +95,9 @@ public class DocumentoAnalisisDAO {
             String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
                     + "esol.numero_expediente_sgd, "
                     + nombrePersona("p") + " AS titular, "
-                    + "tda.nombre AS tipo_documento_nombre, ed.nombre AS estado_documento_nombre, "
+                    + "tda.codigo AS tipo_documento_codigo, tda.nombre AS tipo_documento_nombre, "
+                    + "ed.nombre AS estado_documento_nombre, "
+                    + "et.codigo AS etapa_codigo, "
                     + "da.fecha_documento, "
                     + (soportaNumeroDocumento
                             ? "da.numero_documento, "
@@ -107,6 +115,7 @@ public class DocumentoAnalisisDAO {
                             : ", 0 AS requiere_publicacion, CAST(NULL AS DATE) AS fecha_publicacion ")
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
+                    + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
                     + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
                     + " AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
@@ -117,33 +126,131 @@ public class DocumentoAnalisisDAO {
                     + "AND NVL(da.requiere_respuesta, 0) = 1 "
                     + "AND NVL(da.notificado, 0) = 1 "
                     + (soportaClasificacion ? "AND UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' " : "")
+                    + (idExpedienteFiltro != null ? "AND da.id_expediente = ? " : "")
                     + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
-            try (PreparedStatement ps = conn.prepareStatement(sql);
-                 ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    items.add(new AsignacionCartaRespuestaDTO(
-                            getLongOrNull(rs, "id_documento_analizado"),
-                            getLongOrNull(rs, "id_expediente"),
-                            rs.getString("numero_expediente"),
-                            rs.getString("numero_expediente_sgd"),
-                            rs.getString("titular"),
-                            rs.getString("tipo_documento_nombre"),
-                            rs.getString("estado_documento_nombre"),
-                            toLocalDate(rs.getDate("fecha_documento")),
-                            rs.getString("numero_documento"),
-                            rs.getString("descripcion"),
-                            rs.getInt("requiere_respuesta") == 1,
-                            rs.getInt("notificado") == 1,
-                            toLocalDate(rs.getDate("fecha_acuse")),
-                            rs.getString("confirmacion_respuesta"),
-                            toLocalDate(rs.getDate("fecha_respuesta")),
-                            rs.getString("numero_hoja_envio_respuesta"),
-                            rs.getInt("requiere_publicacion") == 1,
-                            toLocalDate(rs.getDate("fecha_publicacion"))));
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                if (idExpedienteFiltro != null) {
+                    ps.setLong(1, idExpedienteFiltro);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    Map<String, Integer> diasPlazoCache = new HashMap<String, Integer>();
+                    while (rs.next()) {
+                        String tipoDocumentoCodigo = rs.getString("tipo_documento_codigo");
+                        String etapaCodigo = rs.getString("etapa_codigo");
+                        LocalDate fechaAcuse = toLocalDate(rs.getDate("fecha_acuse"));
+                        LocalDate fechaPublicacion = toLocalDate(rs.getDate("fecha_publicacion"));
+                        boolean yaDerivadoAAnalisis = "ANALISIS".equalsIgnoreCase(etapaCodigo);
+
+                        VencimientoCarta vencimiento = yaDerivadoAAnalisis
+                                ? null
+                                : resolverVencimientoCarta(
+                                        conn, tipoDocumentoCodigo, fechaAcuse, fechaPublicacion, diasPlazoCache);
+
+                        items.add(new AsignacionCartaRespuestaDTO(
+                                getLongOrNull(rs, "id_documento_analizado"),
+                                getLongOrNull(rs, "id_expediente"),
+                                rs.getString("numero_expediente"),
+                                rs.getString("numero_expediente_sgd"),
+                                rs.getString("titular"),
+                                rs.getString("tipo_documento_nombre"),
+                                rs.getString("estado_documento_nombre"),
+                                toLocalDate(rs.getDate("fecha_documento")),
+                                rs.getString("numero_documento"),
+                                rs.getString("descripcion"),
+                                rs.getInt("requiere_respuesta") == 1,
+                                rs.getInt("notificado") == 1,
+                                fechaAcuse,
+                                rs.getString("confirmacion_respuesta"),
+                                toLocalDate(rs.getDate("fecha_respuesta")),
+                                rs.getString("numero_hoja_envio_respuesta"),
+                                rs.getInt("requiere_publicacion") == 1,
+                                fechaPublicacion,
+                                tipoDocumentoCodigo,
+                                etapaCodigo,
+                                vencimiento == null ? null : vencimiento.dias,
+                                vencimiento == null ? null : vencimiento.diasPlazo,
+                                vencimiento == null ? null : vencimiento.fecha,
+                                vencimiento == null ? null : vencimiento.tipoAlerta));
+                    }
                 }
             }
         }
         return items;
+    }
+
+    private static final class VencimientoCarta {
+        private final Long dias;
+        private final Integer diasPlazo;
+        private final LocalDate fecha;
+        private final String tipoAlerta;
+
+        private VencimientoCarta(Long dias, Integer diasPlazo, LocalDate fecha, String tipoAlerta) {
+            this.dias = dias;
+            this.diasPlazo = diasPlazo;
+            this.fecha = fecha;
+            this.tipoAlerta = tipoAlerta;
+        }
+    }
+
+    /**
+     * Alerta de vencimiento en cascada de una carta intermedia (ver AGENTS.md, "Alertas de
+     * vencimiento de respuesta/publicación en Cartas de Respuesta"): mientras el documento no
+     * tenga Fecha Publicación registrada, la alerta activa es el vencimiento de RESPUESTA (desde
+     * Fecha Acuse, plazo = código de tipo_documento_adjunto). En cuanto se registra Fecha
+     * Publicación (hoy solo posible en Carta Edicto), la alerta cambia automáticamente a
+     * PUBLICACION (desde Fecha Publicación, plazo = código + "_PUBLICACION"), sin esperar a que
+     * se derive el expediente a Análisis. Si no hay plazo configurado para el tipo/etapa que
+     * corresponda, no hay alerta (null) en vez de inventar un valor.
+     */
+    private VencimientoCarta resolverVencimientoCarta(
+            Connection conn,
+            String tipoDocumentoCodigo,
+            LocalDate fechaAcuse,
+            LocalDate fechaPublicacion,
+            Map<String, Integer> diasPlazoCache) throws SQLException {
+        if (fechaPublicacion != null) {
+            Integer diasPlazoPublicacion = resolverDiasPlazoCarta(
+                    conn, tipoDocumentoCodigo + "_PUBLICACION", diasPlazoCache);
+            if (diasPlazoPublicacion != null) {
+                LocalDate fechaVencimiento = calendarioLaboralService.calcularFechaVencimientoHabil(
+                        conn, fechaPublicacion, diasPlazoPublicacion.intValue());
+                long dias = calendarioLaboralService.calcularDiasHabilesRestantes(conn, LocalDate.now(), fechaVencimiento);
+                return new VencimientoCarta(Long.valueOf(dias), diasPlazoPublicacion, fechaVencimiento, "PUBLICACION");
+            }
+        }
+        if (fechaAcuse != null) {
+            Integer diasPlazoRespuesta = resolverDiasPlazoCarta(conn, tipoDocumentoCodigo, diasPlazoCache);
+            if (diasPlazoRespuesta != null) {
+                LocalDate fechaVencimiento = calendarioLaboralService.calcularFechaVencimientoHabil(
+                        conn, fechaAcuse, diasPlazoRespuesta.intValue());
+                long dias = calendarioLaboralService.calcularDiasHabilesRestantes(conn, LocalDate.now(), fechaVencimiento);
+                return new VencimientoCarta(Long.valueOf(dias), diasPlazoRespuesta, fechaVencimiento, "RESPUESTA");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Días configurados en PLAZO_CONFIGURACION para el código de plazo de una carta intermedia
+     * (el propio código de tipo_documento_adjunto para el plazo de respuesta, o ese código con
+     * sufijo "_PUBLICACION" para el plazo de publicación del edicto). Cacheado por código dentro
+     * de la misma consulta para no repetir el SELECT por cada fila. Null si no hay fila de plazo
+     * configurada (tipo sin plazo, o "_PUBLICACION" para tipos que no publican edicto).
+     */
+    private Integer resolverDiasPlazoCarta(
+            Connection conn, String codigoPlazo, Map<String, Integer> cache) throws SQLException {
+        if (codigoPlazo == null) {
+            return null;
+        }
+        if (cache.containsKey(codigoPlazo)) {
+            return cache.get(codigoPlazo);
+        }
+        PlazoConfiguracionDTO plazo = plazoConfiguracionDAO.obtenerPlazoPorCodigo(conn, codigoPlazo);
+        Integer dias = plazo == null || plazo.getDiasPlazo() == null || plazo.getDiasPlazo().intValue() <= 0
+                ? null
+                : plazo.getDiasPlazo();
+        cache.put(codigoPlazo, dias);
+        return dias;
     }
 
     private static final String CONDICION_ASIGNACION_NOTIFICACION =

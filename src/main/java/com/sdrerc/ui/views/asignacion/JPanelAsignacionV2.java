@@ -127,7 +127,8 @@ public class JPanelAsignacionV2 extends JPanel {
         TODOS,
         CON_ACUSE,
         PENDIENTES,
-        PUBLICACION
+        PUBLICACION,
+        VENCIMIENTO
     }
 
     private enum FiltroKpiCarga {
@@ -364,6 +365,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean cargandoComboEquipoCarta;
     private final DefaultTableModel bandejaCartasRespuestaModel = new DefaultTableModel(
             new Object[]{
+                "Días",
+                "Fecha Vencimiento",
                 "N° expediente",
                 "N° expediente SGD",
                 "Titular",
@@ -434,6 +437,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardCartasNotificadas = new MetricCardV2("Con acuse", "0", "Listas para respuesta", AppV2Theme.TEAL);
     private final MetricCardV2 cardCartasPendientes = new MetricCardV2("Pendientes", "0", "Sin confirmación final", AppV2Theme.WARNING);
     private final MetricCardV2 cardCartasPublicacion = new MetricCardV2("Publicación", "0", "Preparadas para publicar", AppV2Theme.INDIGO);
+    private final MetricCardV2 cardCartasVencimiento = new MetricCardV2("Vencimiento", "0", "Plazo de respuesta o publicación activo", AppV2Theme.WARNING);
     private final MetricCardV2 cardCargaAbogados = new MetricCardV2("Abogados", "0", "Activos", AppV2Theme.INFO);
     private final MetricCardV2 cardCargaConAsignacion = new MetricCardV2("Con carga", "0", "Con solicitudes asignadas", AppV2Theme.TEAL);
     private final MetricCardV2 cardCargaSinAsignacion = new MetricCardV2("Sin carga", "0", "Disponibles", AppV2Theme.WARNING);
@@ -531,11 +535,12 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeaderCartasRespuesta() {
-        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 0);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 5, 12, 0);
         metricas.add(cardCartasTotal);
         metricas.add(cardCartasNotificadas);
         metricas.add(cardCartasPendientes);
         metricas.add(cardCartasPublicacion);
+        metricas.add(cardCartasVencimiento);
         return metricas;
     }
 
@@ -1663,9 +1668,10 @@ public class JPanelAsignacionV2 extends JPanel {
         bandejaCartasRespuestaTable.setShowVerticalLines(false);
         bandejaCartasRespuestaTable.setIntercellSpacing(new Dimension(0, 1));
         bandejaCartasRespuestaTable.setDefaultRenderer(Object.class, new CartaRespuestaPendienteRenderer());
+        bandejaCartasRespuestaTable.getColumnModel().getColumn(0).setCellRenderer(new CartaVencimientoRenderer());
         AppV2TableColumnSizer.applyWidths(
                 bandejaCartasRespuestaTable,
-                165, 150, 220, 170, 140, 96, 130, 260);
+                90, 130, 165, 150, 220, 170, 140, 96, 130, 150);
         cartasRespuestaColumnFilterSupport = AppV2ColumnFilterSupport.install(
                     "Asignacion.BandejaCartasRespuesta",
                     bandejaCartasRespuestaTable,
@@ -2127,6 +2133,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardCartasNotificadas.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.CON_ACUSE));
         cardCartasPendientes.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.PENDIENTES));
         cardCartasPublicacion.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.PUBLICACION));
+        cardCartasVencimiento.setOnClick(() -> activarKpiCartas(FiltroKpiCartas.VENCIMIENTO));
 
         cardCargaAbogados.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.TODOS));
         cardCargaConAsignacion.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.CON_CARGA));
@@ -2181,6 +2188,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cardCartasNotificadas.setSelected(kpiCartasActiva == FiltroKpiCartas.CON_ACUSE);
         cardCartasPendientes.setSelected(kpiCartasActiva == FiltroKpiCartas.PENDIENTES);
         cardCartasPublicacion.setSelected(kpiCartasActiva == FiltroKpiCartas.PUBLICACION);
+        cardCartasVencimiento.setSelected(kpiCartasActiva == FiltroKpiCartas.VENCIMIENTO);
     }
 
     private void marcarKpisCarga() {
@@ -2266,6 +2274,8 @@ public class JPanelAsignacionV2 extends JPanel {
                 return !"SI".equals(confirmacion) && !"NO".equals(confirmacion);
             case PUBLICACION:
                 return item != null && item.isRequierePublicacion();
+            case VENCIMIENTO:
+                return item != null && item.getDiasVencimiento() != null;
             case TODOS:
             default:
                 return true;
@@ -3839,6 +3849,8 @@ public class JPanelAsignacionV2 extends JPanel {
             cartasRespuestaVisibles.addAll(items);
             for (AsignacionCartaRespuestaDTO item : cartasRespuestaVisibles) {
                 bandejaCartasRespuestaModel.addRow(new Object[]{
+                    item.getDiasVencimiento(),
+                    formatDate(item.getFechaVencimiento()),
                     valorUi(item.getNumeroExpediente()),
                     valorUi(item.getNumeroExpedienteSgd()),
                     valorUi(item.getTitular()),
@@ -3862,6 +3874,7 @@ public class JPanelAsignacionV2 extends JPanel {
         int conAcuse = 0;
         int pendientes = 0;
         int publicacion = 0;
+        int vencimiento = 0;
         if (items != null) {
             total = items.size();
             for (AsignacionCartaRespuestaDTO item : items) {
@@ -3877,12 +3890,16 @@ public class JPanelAsignacionV2 extends JPanel {
                 if (item.isRequierePublicacion()) {
                     publicacion++;
                 }
+                if (item.getDiasVencimiento() != null) {
+                    vencimiento++;
+                }
             }
         }
         cardCartasTotal.setValue(String.valueOf(total));
         cardCartasNotificadas.setValue(String.valueOf(conAcuse));
         cardCartasPendientes.setValue(String.valueOf(pendientes));
         cardCartasPublicacion.setValue(String.valueOf(publicacion));
+        cardCartasVencimiento.setValue(String.valueOf(vencimiento));
         marcarKpisCartas();
     }
 
@@ -4238,21 +4255,28 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteCartasRespuesta = idExpediente;
         final long secuencia = ++secuenciaCargaCartasRespuesta;
         if (cartasRespuestaTreePanel != null) {
-            cartasRespuestaTreePanel.setDocumentos(idExpediente, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
+            cartasRespuestaTreePanel.setDocumentos(
+                    idExpediente, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>(),
+                    new ArrayList<AsignacionCartaRespuestaDTO>());
         }
-        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
+        SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
             @Override
-            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
-                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
+            protected Object[] doInBackground() throws Exception {
+                List<DocumentoAnalizadoDTO> todos = documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
+                List<AsignacionCartaRespuestaDTO> vencimientos = documentoAnalisisService.listarCartasRespuestaPendientes(idExpediente);
+                return new Object[]{todos, vencimientos};
             }
 
             @Override
+            @SuppressWarnings("unchecked")
             protected void done() {
                 if (secuencia != secuenciaCargaCartasRespuesta || !idExpediente.equals(idExpedienteCartasRespuesta)) {
                     return;
                 }
                 try {
-                    List<DocumentoAnalizadoDTO> todos = get();
+                    Object[] resultado = get();
+                    List<DocumentoAnalizadoDTO> todos = (List<DocumentoAnalizadoDTO>) resultado[0];
+                    List<AsignacionCartaRespuestaDTO> vencimientos = (List<AsignacionCartaRespuestaDTO>) resultado[1];
                     List<DocumentoAnalizadoDTO> documentosAnalisis = new ArrayList<DocumentoAnalizadoDTO>();
                     List<DocumentoAnalizadoDTO> cartasRespuesta = new ArrayList<DocumentoAnalizadoDTO>();
                     for (DocumentoAnalizadoDTO documento : todos) {
@@ -4266,7 +4290,7 @@ public class JPanelAsignacionV2 extends JPanel {
                         }
                     }
                     if (cartasRespuestaTreePanel != null) {
-                        cartasRespuestaTreePanel.setDocumentos(idExpediente, documentosAnalisis, cartasRespuesta);
+                        cartasRespuestaTreePanel.setDocumentos(idExpediente, documentosAnalisis, cartasRespuesta, vencimientos);
                     }
                 } catch (Exception ex) {
                     lblEstadoCartas.setText("No se pudieron cargar cartas de respuesta.");
@@ -4280,7 +4304,9 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteCartasRespuesta = null;
         ++secuenciaCargaCartasRespuesta;
         if (cartasRespuestaTreePanel != null) {
-            cartasRespuestaTreePanel.setDocumentos(null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
+            cartasRespuestaTreePanel.setDocumentos(
+                    null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>(),
+                    new ArrayList<AsignacionCartaRespuestaDTO>());
         }
         cargarDestinoOperativoCarta(null);
         if (sectionCartasRespuesta != null) {
@@ -5809,6 +5835,31 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
+    /** Pill de días hábiles restantes de vencimiento (respuesta o publicación) de una carta
+     * intermedia, coloreado según el plazo propio de esa carta (no el plazo general de 30 días
+     * de solicitud). En blanco si el expediente ya fue derivado a Análisis desde este mismo panel
+     * (ver AsignacionExpedienteDAO.reasignarDesdeCartaRespuesta): la alerta se desactiva ahí. */
+    private class CartaVencimientoRenderer implements TableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            int modelRow = table.convertRowIndexToModel(row);
+            AsignacionCartaRespuestaDTO item = modelRow >= 0 && modelRow < cartasRespuestaVisibles.size()
+                    ? cartasRespuestaVisibles.get(modelRow) : null;
+            Long dias = item == null ? null : item.getDiasVencimiento();
+            Integer diasPlazo = item == null ? null : item.getDiasPlazoVencimiento();
+            Color cellBackground = isSelected
+                    ? TABLE_SELECTION_BACKGROUND
+                    : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            return StatusBadgeV2.forDias(dias, cellBackground, diasPlazo);
+        }
+    }
+
     private class CartaRespuestaPendienteRenderer extends DefaultTableCellRenderer {
 
         private CartaRespuestaPendienteRenderer() {
@@ -5827,7 +5878,7 @@ public class JPanelAsignacionV2 extends JPanel {
             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
             setToolTipText(getText());
-            setHorizontalAlignment(column == 5 || column == 6 ? SwingConstants.CENTER : SwingConstants.LEFT);
+            setHorizontalAlignment(column == 1 || column == 7 || column == 8 ? SwingConstants.CENTER : SwingConstants.LEFT);
             setBackground(isSelected
                     ? TABLE_SELECTION_BACKGROUND
                     : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));

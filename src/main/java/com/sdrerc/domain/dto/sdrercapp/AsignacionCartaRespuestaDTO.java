@@ -22,6 +22,12 @@ public class AsignacionCartaRespuestaDTO {
     private final String numeroHojaEnvioRespuesta;
     private final boolean requierePublicacion;
     private final LocalDate fechaPublicacion;
+    private final String tipoDocumentoCodigo;
+    private final String etapaCodigo;
+    private final Long diasVencimiento;
+    private final Integer diasPlazoVencimiento;
+    private final LocalDate fechaVencimiento;
+    private final String tipoAlertaVencimiento;
 
     public AsignacionCartaRespuestaDTO(
             Long idDocumentoAnalizado,
@@ -41,7 +47,13 @@ public class AsignacionCartaRespuestaDTO {
             LocalDate fechaRespuesta,
             String numeroHojaEnvioRespuesta,
             boolean requierePublicacion,
-            LocalDate fechaPublicacion) {
+            LocalDate fechaPublicacion,
+            String tipoDocumentoCodigo,
+            String etapaCodigo,
+            Long diasVencimiento,
+            Integer diasPlazoVencimiento,
+            LocalDate fechaVencimiento,
+            String tipoAlertaVencimiento) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
@@ -60,6 +72,12 @@ public class AsignacionCartaRespuestaDTO {
         this.numeroHojaEnvioRespuesta = safe(numeroHojaEnvioRespuesta);
         this.requierePublicacion = requierePublicacion;
         this.fechaPublicacion = fechaPublicacion;
+        this.tipoDocumentoCodigo = safe(tipoDocumentoCodigo);
+        this.etapaCodigo = safe(etapaCodigo);
+        this.diasVencimiento = diasVencimiento;
+        this.diasPlazoVencimiento = diasPlazoVencimiento;
+        this.fechaVencimiento = fechaVencimiento;
+        this.tipoAlertaVencimiento = safe(tipoAlertaVencimiento);
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -132,6 +150,30 @@ public class AsignacionCartaRespuestaDTO {
 
     public LocalDate getFechaPublicacion() {
         return fechaPublicacion;
+    }
+
+    public String getTipoDocumentoCodigo() {
+        return tipoDocumentoCodigo;
+    }
+
+    public String getEtapaCodigo() {
+        return etapaCodigo;
+    }
+
+    public Long getDiasVencimiento() {
+        return diasVencimiento;
+    }
+
+    public Integer getDiasPlazoVencimiento() {
+        return diasPlazoVencimiento;
+    }
+
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
+    }
+
+    public String getTipoAlertaVencimiento() {
+        return tipoAlertaVencimiento;
     }
 
     private static String safe(String value) {

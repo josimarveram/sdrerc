@@ -50,6 +50,33 @@ public final class PlazoVisualSupportV2 {
         return Nivel.ROJO;
     }
 
+    /**
+     * Variante para plazos con un total de días propio (ej. 10/15/30 días de una carta
+     * intermedia específica), distinto del plazo general de solicitud (30 días) que usa
+     * {@link #clasificarDias(Long)} como denominador fijo. Usa los mismos umbrales por defecto
+     * (51%/21%/0%) de PLAZO_CONFIGURACION en vez de resolverlos por fila, para no encadenar una
+     * consulta adicional por cada plazo distinto.
+     */
+    public static Nivel clasificarDias(Long diasRestantes, Integer diasPlazoTotal) {
+        if (diasRestantes == null) {
+            return Nivel.SIN_CONFIG;
+        }
+        if (diasRestantes.longValue() < 0L) {
+            return Nivel.VENCIDO;
+        }
+        if (diasPlazoTotal == null || diasPlazoTotal.intValue() <= 0) {
+            return clasificarDias(diasRestantes);
+        }
+        int porcentajeRestante = Math.round((diasRestantes.longValue() * 100f) / diasPlazoTotal.intValue());
+        if (porcentajeRestante >= 51) {
+            return Nivel.VERDE;
+        }
+        if (porcentajeRestante >= 21) {
+            return Nivel.AMARILLO;
+        }
+        return Nivel.ROJO;
+    }
+
     public static Color foregroundFor(Nivel nivel) {
         if (nivel == null) {
             return AppV2Theme.MUTED;

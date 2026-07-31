@@ -1,10 +1,12 @@
 package com.sdrerc.ui.views.asignacion;
 
+import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableScrollDiagnostics;
 import com.sdrerc.ui.appv2.components.PremiumDateFieldV2;
+import com.sdrerc.ui.appv2.components.StatusBadgeV2;
 import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -73,6 +75,8 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     private static final int PADRE_COL_COMENTARIO = 5;
     private static final int PADRE_COL_REQUIERE_RESPUESTA = 6;
     private static final int PADRE_COL_FECHA_ACUSE = 7;
+    private static final int PADRE_COL_DIAS = 8;
+    private static final int PADRE_COL_FECHA_VENCIMIENTO = 9;
 
     private static final int HIJO_COL_GUARDAR = 0;
     private static final int HIJO_COL_ELIMINAR = 1;
@@ -132,7 +136,11 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         tablaPadre.getColumnModel().getColumn(PADRE_COL_ESTADO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.estados)));
     }
 
-    public void setDocumentos(Long idExpediente, List<DocumentoAnalizadoDTO> documentosAnalisis, List<DocumentoAnalizadoDTO> cartasRespuesta) {
+    public void setDocumentos(
+            Long idExpediente,
+            List<DocumentoAnalizadoDTO> documentosAnalisis,
+            List<DocumentoAnalizadoDTO> cartasRespuesta,
+            List<AsignacionCartaRespuestaDTO> vencimientos) {
         this.idExpediente = idExpediente;
         padreRows.clear();
         hijoRows.clear();
@@ -143,6 +151,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                 }
             }
         }
+        aplicarVencimientos(vencimientos);
         if (cartasRespuesta != null) {
             for (DocumentoAnalizadoDTO documento : cartasRespuesta) {
                 if (documento != null) {
@@ -154,6 +163,25 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         rebuildPadre();
         rebuildHijo();
         actualizarEstado();
+    }
+
+    private void aplicarVencimientos(List<AsignacionCartaRespuestaDTO> vencimientos) {
+        if (vencimientos == null) {
+            return;
+        }
+        for (AsignacionCartaRespuestaDTO vencimiento : vencimientos) {
+            if (vencimiento == null || vencimiento.getIdDocumentoAnalizado() == null) {
+                continue;
+            }
+            for (DocumentoRow row : padreRows) {
+                if (vencimiento.getIdDocumentoAnalizado().equals(row.id)) {
+                    row.diasVencimiento = vencimiento.getDiasVencimiento();
+                    row.diasPlazoVencimiento = vencimiento.getDiasPlazoVencimiento();
+                    row.fechaVencimiento = vencimiento.getFechaVencimiento();
+                    break;
+                }
+            }
+        }
     }
 
     private JComboBox<CatalogoItemDTO> comboCatalogo(List<CatalogoItemDTO> items) {
@@ -259,6 +287,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellEditor(
                 new RowActionEditor(new SaveDocumentIcon(), "Guardar documento",
                         row -> guardarFila(padreModel.getRow(row))));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_DIAS).setCellRenderer(new DiasVencimientoRenderer());
 
         tablaHijo.getColumnModel().getColumn(HIJO_COL_CONFIRMACION_RESPUESTA)
                 .setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
@@ -278,7 +307,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                 new RowActionEditor(new DeleteDocumentIcon(), "Eliminar carta de respuesta",
                         row -> eliminarFila(hijoModel.getRow(row))));
 
-        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140, 130});
+        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140, 130, 90, 90});
         ajustarAnchos(tablaHijo, HIJO_COL_TIPO, new int[]{170, 170, 130, 130, 130, 140});
         configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR});
         configurarColumnasAccion(tablaHijo, new int[]{HIJO_COL_GUARDAR, HIJO_COL_ELIMINAR});
@@ -538,7 +567,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
             "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
-            "Comentario", "¿Requiere respuesta?", "Fecha Acuse"
+            "Comentario", "¿Requiere respuesta?", "Fecha Acuse", "Días", "Fecha Vencimiento"
         };
         private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
 
@@ -595,7 +624,9 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
             return getRow(rowIndex) != null
                     && columnIndex != PADRE_COL_TIPO
                     && columnIndex != PADRE_COL_REQUIERE_RESPUESTA
-                    && columnIndex != PADRE_COL_FECHA_ACUSE;
+                    && columnIndex != PADRE_COL_FECHA_ACUSE
+                    && columnIndex != PADRE_COL_DIAS
+                    && columnIndex != PADRE_COL_FECHA_VENCIMIENTO;
         }
 
         @Override
@@ -619,6 +650,10 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     return row.requiereRespuesta;
                 case PADRE_COL_FECHA_ACUSE:
                     return row.fechaAcuse != null ? DATE_FORMAT.format(row.fechaAcuse) : "";
+                case PADRE_COL_DIAS:
+                    return row.diasVencimiento;
+                case PADRE_COL_FECHA_VENCIMIENTO:
+                    return row.fechaVencimiento != null ? DATE_FORMAT.format(row.fechaVencimiento) : "";
                 default:
                     return "";
             }
@@ -762,6 +797,9 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         private boolean requiereRespuesta;
         private boolean notificado;
         private LocalDate fechaAcuse;
+        private Long diasVencimiento;
+        private Integer diasPlazoVencimiento;
+        private LocalDate fechaVencimiento;
         private String confirmacionRespuesta = "";
         private LocalDate fechaRespuesta;
         private LocalDate fechaPublicacion;
@@ -855,6 +893,26 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     "",
                     null,
                     existeOposicion);
+        }
+    }
+
+    /** Pill de días hábiles restantes (vencimiento respuesta/publicación), coloreado según el
+     * plazo propio de la carta (no el plazo general de 30 días de solicitud). Busca la fila por
+     * índice en vez de depender del valor de la celda porque necesita tanto los días restantes
+     * como el total de días configurado para ese tipo de carta (denominador del color). */
+    private class DiasVencimientoRenderer implements TableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            DocumentoRow documentoRow = padreModel.getRow(row);
+            Long dias = documentoRow == null ? null : documentoRow.diasVencimiento;
+            Integer diasPlazo = documentoRow == null ? null : documentoRow.diasPlazoVencimiento;
+            return StatusBadgeV2.forDias(dias, table.getBackground(), diasPlazo);
         }
     }
 

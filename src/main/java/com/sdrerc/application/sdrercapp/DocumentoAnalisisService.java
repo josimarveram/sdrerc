@@ -61,6 +61,10 @@ public class DocumentoAnalisisService {
         return documentoAnalisisDAO.listarCartasRespuestaPendientes();
     }
 
+    public List<AsignacionCartaRespuestaDTO> listarCartasRespuestaPendientes(Long idExpediente) throws SQLException {
+        return documentoAnalisisDAO.listarCartasRespuestaPendientes(idExpediente);
+    }
+
     public void guardarRespuestaDocumentoAnalizado(
             Long idExpediente,
             DocumentoAnalizadoDTO documento) throws SQLException {

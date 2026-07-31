@@ -74,6 +74,31 @@ public final class StatusBadgeV2 {
         }
     }
 
+    /** Variante de {@link #forDias(Object, Color)} para plazos con total de días propio (ver {@link PlazoVisualSupportV2#clasificarDias(Long, Integer)}). */
+    public static BadgeV2 forDias(Object value, Color cellBackground, Integer diasPlazoTotal) {
+        if (value == null || value.toString().isEmpty()) {
+            BadgeV2 badge = pill("", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED, cellBackground);
+            badge.setToolTipText("Sin días calculados");
+            return badge;
+        }
+        try {
+            long dias = Long.parseLong(value.toString());
+            PlazoVisualSupportV2.Nivel nivel = PlazoVisualSupportV2.clasificarDias(Long.valueOf(dias), diasPlazoTotal);
+            String tooltip = nivel == PlazoVisualSupportV2.Nivel.VENCIDO
+                    ? "Vencido. Días hábiles restantes: " + dias
+                    : "Días hábiles restantes: " + dias;
+            BadgeV2 badge = pill(
+                    String.valueOf(dias),
+                    PlazoVisualSupportV2.backgroundFor(nivel),
+                    PlazoVisualSupportV2.foregroundFor(nivel),
+                    cellBackground);
+            badge.setToolTipText(tooltip);
+            return badge;
+        } catch (NumberFormatException ex) {
+            return pill(value.toString(), AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED, cellBackground);
+        }
+    }
+
     public static BadgeV2 small(String text, Color background, Color foreground) {
         return new BadgeV2(text, background, foreground);
     }
