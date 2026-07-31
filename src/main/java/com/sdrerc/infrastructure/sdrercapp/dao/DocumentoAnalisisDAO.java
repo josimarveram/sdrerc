@@ -114,8 +114,8 @@ public class DocumentoAnalisisDAO {
                     + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                     + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                     + "WHERE da.activo = 1 "
-                    + "AND UPPER(NVL(da.confirmacion_respuesta, '')) = 'SI' "
-                    + "AND UPPER(NVL(ed.codigo, '')) IN ('ATENDIDO', 'FINALIZADO') "
+                    + "AND NVL(da.requiere_respuesta, 0) = 1 "
+                    + "AND NVL(da.notificado, 0) = 1 "
                     + (soportaClasificacion ? "AND UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' " : "")
                     + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql);
