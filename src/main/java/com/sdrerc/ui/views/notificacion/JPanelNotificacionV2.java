@@ -456,16 +456,13 @@ public class JPanelNotificacionV2 extends JPanel {
             if (fila.esSubEncabezado()) {
                 return false;
             }
-            if (column == COL_NOTIF_ACCION || column == COL_NOTIF_MODALIDAD || column == COL_NOTIF_CODIGO) {
-                return true;
-            }
-            if (column == COL_NOTIF_ESTADO) {
-                return fila.esBorrador() || !"EXITOSA".equalsIgnoreCase(fila.intento.getEstadoNotificacionCodigo());
-            }
-            if (column == COL_NOTIF_ESTADO_NOTIF) {
-                return !fila.esBorrador();
-            }
-            return false;
+            return column == COL_NOTIF_ACCION
+                    || column == COL_NOTIF_MODALIDAD
+                    || column == COL_NOTIF_CODIGO
+                    || column == COL_NOTIF_FECHA_ENVIO
+                    || column == COL_NOTIF_FECHA_RECEPCION
+                    || column == COL_NOTIF_ESTADO
+                    || column == COL_NOTIF_ESTADO_NOTIF;
         }
 
         @Override
@@ -2882,8 +2879,10 @@ public class JPanelNotificacionV2 extends JPanel {
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_EXPAND).setCellRenderer(new NotifExpandirRenderer());
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_MODALIDAD).setCellEditor(
                 new NotifComboCellEditor(crearComboModalidad()));
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_FECHA_ENVIO).setCellEditor(new NotifFechaCellEditor());
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ESTADO).setCellEditor(
                 new NotifComboCellEditor(crearComboEstadoHija()));
+        tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_FECHA_RECEPCION).setCellEditor(new NotifFechaCellEditor());
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ESTADO_NOTIF).setCellEditor(
                 new NotifComboCellEditor(crearComboEstadoNotifHija()));
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setMaxWidth(76);
@@ -2995,8 +2994,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private JComboBox<SimpleItem> crearComboModalidad() {
         JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
         combo.addItem(new SimpleItem("VIRTUAL", "Virtual"));
-        combo.addItem(new SimpleItem("PRESENCIAL_1", "Presencial"));
-        combo.addItem(new SimpleItem("PRESENCIAL_2", "Presencial"));
+        combo.addItem(new SimpleItem("PRESENCIAL", "Presencial"));
         return combo;
     }
 
@@ -3004,6 +3002,7 @@ public class JPanelNotificacionV2 extends JPanel {
         JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
         combo.addItem(new SimpleItem("PENDIENTE", "Pendiente"));
         combo.addItem(new SimpleItem("ENVIADA", "Enviado"));
+        combo.addItem(new SimpleItem("EXITOSA", "Atendido"));
         return combo;
     }
 
@@ -3130,7 +3129,7 @@ public class JPanelNotificacionV2 extends JPanel {
         return new Object[]{
             null,
             "",
-            "NOTIFICACIONES AL CIUDADANO",
+            "Nro. Intento",
             "Modalidad",
             "Fecha Envío",
             "Estado",
@@ -3146,8 +3145,8 @@ public class JPanelNotificacionV2 extends JPanel {
         return new Object[]{
             null,
             "",
-            "└ Intento " + intento.getNumeroIntento(),
-            intento.getTipoNotificacionCodigo(),
+            "Intento " + intento.getNumeroIntento(),
+            codigoModalidadColumna(intento.getTipoNotificacionCodigo()),
             intento.getFechaEnvio() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio()),
             codigoEstadoParaColumnaEstado(intento.getEstadoNotificacionCodigo()),
             intento.getCodigoNotificacion(),
@@ -3162,7 +3161,7 @@ public class JPanelNotificacionV2 extends JPanel {
         return new Object[]{
             null,
             "",
-            "└ Intento " + borrador.numeroIntento + " (nuevo)",
+            "Intento " + borrador.numeroIntento + " (nuevo)",
             borrador.modalidadCodigo,
             "-",
             "PENDIENTE",
@@ -3196,15 +3195,26 @@ public class JPanelNotificacionV2 extends JPanel {
         return "";
     }
 
+    /** Colapsa el codigo real del catalogo (VIRTUAL/PRESENCIAL_1/PRESENCIAL_2) al codigo que maneja el combo (VIRTUAL/PRESENCIAL). */
+    private static String codigoModalidadColumna(String tipoNotificacionCodigo) {
+        String c = tipoNotificacionCodigo == null ? "" : tipoNotificacionCodigo.trim().toUpperCase();
+        return "VIRTUAL".equals(c) ? "VIRTUAL" : "PRESENCIAL";
+    }
+
+    /** Expande la seleccion del combo (VIRTUAL/PRESENCIAL) al codigo real de catalogo segun el numero de intento. */
+    private static String codigoModalidadParaGuardar(String seleccionCombo, int numeroIntento) {
+        if ("VIRTUAL".equalsIgnoreCase(seleccionCombo)) {
+            return "VIRTUAL";
+        }
+        return numeroIntento >= 3 ? "PRESENCIAL_2" : "PRESENCIAL_1";
+    }
+
     private static String textoModalidad(String codigo) {
         String c = codigo == null ? "" : codigo.trim().toUpperCase();
         if ("VIRTUAL".equals(c)) {
             return "Virtual";
         }
-        if ("PRESENCIAL_1".equals(c) || "PRESENCIAL_2".equals(c)) {
-            return "Presencial";
-        }
-        return c.isEmpty() ? "-" : c;
+        return c.isEmpty() ? "-" : "Presencial";
     }
 
     private static String textoEstadoHija(String codigoColumnaEstado) {
@@ -3334,7 +3344,7 @@ public class JPanelNotificacionV2 extends JPanel {
             if (siguienteIntento > 3) {
                 continue;
             }
-            String modalidadPorDefecto = siguienteIntento == 1 ? "VIRTUAL" : "PRESENCIAL_1";
+            String modalidadPorDefecto = siguienteIntento == 1 ? "VIRTUAL" : "PRESENCIAL";
             if (borradores == null) {
                 borradores = new ArrayList<IntentoBorrador>();
                 borradoresNotifPorDocumento.put(idDocumento, borradores);
@@ -3427,17 +3437,20 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         Object modalidadValor = notifBandejaModel.getValueAt(modelRow, COL_NOTIF_MODALIDAD);
         Object codigoValor = notifBandejaModel.getValueAt(modelRow, COL_NOTIF_CODIGO);
-        final String modalidadCodigo = modalidadValor == null ? "VIRTUAL" : modalidadValor.toString();
+        String modalidadSeleccion = modalidadValor == null ? "VIRTUAL" : modalidadValor.toString();
         final String codigoTexto = codigoValor == null ? "" : codigoValor.toString();
+        final LocalDate fechaEnvio = parseFechaCeldaNotif(notifBandejaModel.getValueAt(modelRow, COL_NOTIF_FECHA_ENVIO));
+        final LocalDate fechaRecepcion = parseFechaCeldaNotif(notifBandejaModel.getValueAt(modelRow, COL_NOTIF_FECHA_RECEPCION));
 
         if (fila.esBorrador()) {
             final IntentoBorrador borrador = fila.borrador;
             final Long idDocumento = fila.idDocumento;
+            final String modalidadCodigo = codigoModalidadParaGuardar(modalidadSeleccion, borrador.numeroIntento);
             SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
                 @Override
                 protected Void doInBackground() throws Exception {
                     documentoAnalisisService.registrarIntentoNotificacion(
-                            borrador.idExpediente, idDocumento, modalidadCodigo, codigoTexto);
+                            borrador.idExpediente, idDocumento, modalidadCodigo, codigoTexto, fechaEnvio);
                     return null;
                 }
 
@@ -3467,7 +3480,7 @@ public class JPanelNotificacionV2 extends JPanel {
         String estadoColumna = estadoValor == null ? "PENDIENTE" : estadoValor.toString();
         String estadoNotifColumna = estadoNotifValor == null ? "" : estadoNotifValor.toString();
         final String estadoFinalCodigo;
-        if ("EXITOSA".equals(estadoNotifColumna)) {
+        if ("EXITOSA".equals(estadoColumna) || "EXITOSA".equals(estadoNotifColumna)) {
             estadoFinalCodigo = "EXITOSA";
         } else if ("FALLIDA".equals(estadoNotifColumna)) {
             estadoFinalCodigo = "FALLIDA";
@@ -3476,15 +3489,18 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         final com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento = fila.intento;
         final Long idDocumento = fila.idDocumento;
+        final String modalidadCodigo = codigoModalidadParaGuardar(modalidadSeleccion, intento.getNumeroIntento());
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
                 if ("EXITOSA".equals(estadoFinalCodigo)) {
                     documentoAnalisisService.confirmarRecepcionIntentoNotificacion(
-                            intento.getIdExpediente(), intento.getIdExpedienteNotificacion(), codigoTexto);
+                            intento.getIdExpediente(), intento.getIdExpedienteNotificacion(), codigoTexto,
+                            fechaEnvio, fechaRecepcion);
                 } else {
                     documentoAnalisisService.actualizarIntentoNotificacion(
-                            intento.getIdExpedienteNotificacion(), modalidadCodigo, estadoFinalCodigo, codigoTexto, null);
+                            intento.getIdExpedienteNotificacion(), modalidadCodigo, estadoFinalCodigo, codigoTexto,
+                            fechaEnvio, null);
                 }
                 return null;
             }
@@ -3500,6 +3516,18 @@ public class JPanelNotificacionV2 extends JPanel {
             }
         };
         worker.execute();
+    }
+
+    private static LocalDate parseFechaCeldaNotif(Object valor) {
+        String texto = valor == null ? "" : valor.toString().trim();
+        if (texto.isEmpty() || "-".equals(texto)) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(texto, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
     }
 
     /** Recarga la bandeja completa (Estado Final depende del servidor) y re-expande el documento editado. */
@@ -3815,6 +3843,33 @@ public class JPanelNotificacionV2 extends JPanel {
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             seleccionarItemPorCodigo(combo, value == null ? "" : value.toString());
             return combo;
+        }
+    }
+
+    /** Editor de fecha inline para Fecha Envío/Fecha Recepción, mismo patrón que documentos analizados. */
+    private static class NotifFechaCellEditor extends AbstractCellEditor implements TableCellEditor {
+        private static final DateTimeFormatter FORMATO = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        private final PremiumDateFieldV2 field = new PremiumDateFieldV2();
+
+        private NotifFechaCellEditor() {
+            field.setPreferredSize(new Dimension(130, 28));
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            Date fecha = field.getDate();
+            if (fecha == null) {
+                return "-";
+            }
+            LocalDate local = fecha.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            return FORMATO.format(local);
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            LocalDate local = parseFechaCeldaNotif(value);
+            field.setDate(local == null ? null : Date.from(local.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+            return field;
         }
     }
 

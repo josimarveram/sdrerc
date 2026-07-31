@@ -122,11 +122,21 @@ public class DocumentoAnalisisService {
             Long idDocumentoAnalizado,
             String tipoNotificacionCodigo,
             String codigoNotificacion) throws SQLException {
+        registrarIntentoNotificacion(idExpediente, idDocumentoAnalizado, tipoNotificacionCodigo, codigoNotificacion, null);
+    }
+
+    public void registrarIntentoNotificacion(
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            String tipoNotificacionCodigo,
+            String codigoNotificacion,
+            LocalDate fechaEnvio) throws SQLException {
         documentoAnalisisDAO.registrarIntentoNotificacion(
                 idExpediente,
                 idDocumentoAnalizado,
                 tipoNotificacionCodigo,
                 codigoNotificacion,
+                fechaEnvio,
                 resolverUsuarioActualSdrercApp());
     }
 
@@ -135,12 +145,14 @@ public class DocumentoAnalisisService {
             String tipoNotificacionCodigo,
             String estadoNotificacionCodigo,
             String codigoNotificacion,
+            LocalDate fechaEnvio,
             String observacion) throws SQLException {
         documentoAnalisisDAO.actualizarIntentoNotificacion(
                 idExpedienteNotificacion,
                 tipoNotificacionCodigo,
                 estadoNotificacionCodigo,
                 codigoNotificacion,
+                fechaEnvio,
                 observacion,
                 resolverUsuarioActualSdrercApp());
     }
@@ -148,9 +160,12 @@ public class DocumentoAnalisisService {
     public void confirmarRecepcionIntentoNotificacion(
             Long idExpediente,
             Long idExpedienteNotificacion,
-            String codigoORecibidoPor) throws SQLException {
+            String codigoORecibidoPor,
+            LocalDate fechaEnvio,
+            LocalDate fechaRecepcion) throws SQLException {
         documentoAnalisisDAO.confirmarRecepcionIntentoNotificacion(
-                idExpediente, idExpedienteNotificacion, codigoORecibidoPor, resolverUsuarioActualSdrercApp());
+                idExpediente, idExpedienteNotificacion, codigoORecibidoPor, fechaEnvio, fechaRecepcion,
+                resolverUsuarioActualSdrercApp());
     }
 
     public void darBajaIntentoNotificacion(Long idExpedienteNotificacion) throws SQLException {

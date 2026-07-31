@@ -857,6 +857,7 @@ public class DocumentoAnalisisDAO {
             Long idDocumentoAnalizado,
             String tipoNotificacionCodigo,
             String codigoNotificacion,
+            LocalDate fechaEnvio,
             Long idUsuario) throws SQLException {
         if (idExpediente == null || idDocumentoAnalizado == null) {
             throw new IllegalArgumentException("Seleccione expediente y documento para registrar el intento.");
@@ -882,20 +883,25 @@ public class DocumentoAnalisisDAO {
                     + "id_expediente, id_documento_analizado, id_tipo_notificacion, id_estado_notificacion, "
                     + "numero_intento, fecha_envio, resultado, requiere_publicacion, codigo_notificacion, "
                     + "observacion, activo, creado_por, creado_en"
-                    + ") VALUES (?, ?, ?, ?, ?, SYSTIMESTAMP, 'PENDIENTE', ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+                    + ") VALUES (?, ?, ?, ?, ?, ?, 'PENDIENTE', ?, ?, ?, 1, ?, SYSTIMESTAMP)";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, idExpediente);
                 ps.setLong(2, idDocumentoAnalizado);
                 ps.setLong(3, idTipoNotificacion);
                 ps.setLong(4, idEstadoPendiente);
                 ps.setInt(5, numeroIntento);
-                ps.setInt(6, "PUBLICACION".equalsIgnoreCase(tipoCodigo) ? 1 : 0);
-                setStringOrNull(ps, 7, limitar(codigoNotificacion, 60));
-                setStringOrNull(ps, 8, "Intento registrado desde bandeja de documentos.");
-                if (idUsuario == null) {
-                    ps.setNull(9, Types.NUMERIC);
+                if (fechaEnvio == null) {
+                    ps.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
                 } else {
-                    ps.setLong(9, idUsuario);
+                    ps.setTimestamp(6, Timestamp.valueOf(fechaEnvio.atStartOfDay()));
+                }
+                ps.setInt(7, "PUBLICACION".equalsIgnoreCase(tipoCodigo) ? 1 : 0);
+                setStringOrNull(ps, 8, limitar(codigoNotificacion, 60));
+                setStringOrNull(ps, 9, "Intento registrado desde bandeja de documentos.");
+                if (idUsuario == null) {
+                    ps.setNull(10, Types.NUMERIC);
+                } else {
+                    ps.setLong(10, idUsuario);
                 }
                 ps.executeUpdate();
             }
@@ -907,6 +913,7 @@ public class DocumentoAnalisisDAO {
             String tipoNotificacionCodigo,
             String estadoNotificacionCodigo,
             String codigoNotificacion,
+            LocalDate fechaEnvio,
             String observacion,
             Long idUsuario) throws SQLException {
         if (idExpedienteNotificacion == null) {
@@ -928,20 +935,25 @@ public class DocumentoAnalisisDAO {
             }
             String sql = "UPDATE expediente_notificacion SET "
                     + "id_tipo_notificacion = ?, id_estado_notificacion = ?, resultado = ?, "
-                    + "codigo_notificacion = ?, observacion = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                    + "codigo_notificacion = ?, fecha_envio = ?, observacion = ?, modificado_por = ?, modificado_en = SYSTIMESTAMP "
                     + "WHERE id_expediente_notificacion = ? AND activo = 1";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, idTipoNotificacion);
                 ps.setLong(2, idEstadoNotificacion);
                 ps.setString(3, estadoCodigo);
                 setStringOrNull(ps, 4, limitar(codigoNotificacion, 60));
-                setStringOrNull(ps, 5, limitar(observacion, 500));
-                if (idUsuario == null) {
-                    ps.setNull(6, Types.NUMERIC);
+                if (fechaEnvio == null) {
+                    ps.setNull(5, Types.TIMESTAMP);
                 } else {
-                    ps.setLong(6, idUsuario);
+                    ps.setTimestamp(5, Timestamp.valueOf(fechaEnvio.atStartOfDay()));
                 }
-                ps.setLong(7, idExpedienteNotificacion);
+                setStringOrNull(ps, 6, limitar(observacion, 500));
+                if (idUsuario == null) {
+                    ps.setNull(7, Types.NUMERIC);
+                } else {
+                    ps.setLong(7, idUsuario);
+                }
+                ps.setLong(8, idExpedienteNotificacion);
                 int filas = ps.executeUpdate();
                 if (filas == 0) {
                     throw new SQLException("No se encontró el intento de notificación indicado.");
@@ -960,6 +972,8 @@ public class DocumentoAnalisisDAO {
             Long idExpediente,
             Long idExpedienteNotificacion,
             String codigoORecibidoPor,
+            LocalDate fechaEnvio,
+            LocalDate fechaRecepcion,
             Long idUsuario) throws SQLException {
         if (idExpediente == null || idExpedienteNotificacion == null) {
             throw new IllegalArgumentException("Seleccione el intento de notificación a confirmar.");
@@ -974,17 +988,22 @@ public class DocumentoAnalisisDAO {
             }
             String sqlUpdate = "UPDATE expediente_notificacion SET "
                     + "id_estado_notificacion = ?, resultado = 'EXITOSA', codigo_notificacion = ?, "
+                    + (fechaEnvio != null ? "fecha_envio = ?, " : "")
                     + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                     + "WHERE id_expediente_notificacion = ? AND activo = 1";
             try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
-                ps.setLong(1, idEstadoNotificacion);
-                setStringOrNull(ps, 2, limitar(codigoORecibidoPor, 60));
-                if (idUsuario == null) {
-                    ps.setNull(3, Types.NUMERIC);
-                } else {
-                    ps.setLong(3, idUsuario);
+                int index = 1;
+                ps.setLong(index++, idEstadoNotificacion);
+                setStringOrNull(ps, index++, limitar(codigoORecibidoPor, 60));
+                if (fechaEnvio != null) {
+                    ps.setTimestamp(index++, Timestamp.valueOf(fechaEnvio.atStartOfDay()));
                 }
-                ps.setLong(4, idExpedienteNotificacion);
+                if (idUsuario == null) {
+                    ps.setNull(index++, Types.NUMERIC);
+                } else {
+                    ps.setLong(index++, idUsuario);
+                }
+                ps.setLong(index, idExpedienteNotificacion);
                 int filas = ps.executeUpdate();
                 if (filas == 0) {
                     throw new SQLException("No se encontró el intento de notificación indicado.");
@@ -997,16 +1016,21 @@ public class DocumentoAnalisisDAO {
             String sqlInsert = "INSERT INTO expediente_cargo_acuse ("
                     + "id_expediente, id_expediente_notificacion, id_estado_cargo_acuse, fecha_recepcion, "
                     + "recibido_por, activo, creado_por, creado_en"
-                    + ") VALUES (?, ?, ?, SYSTIMESTAMP, ?, 1, ?, SYSTIMESTAMP)";
+                    + ") VALUES (?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
             try (PreparedStatement ps = conn.prepareStatement(sqlInsert)) {
                 ps.setLong(1, idExpediente);
                 ps.setLong(2, idExpedienteNotificacion);
                 ps.setLong(3, idEstadoCargo);
-                setStringOrNull(ps, 4, limitar(codigoORecibidoPor, 250));
-                if (idUsuario == null) {
-                    ps.setNull(5, Types.NUMERIC);
+                if (fechaRecepcion == null) {
+                    ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
                 } else {
-                    ps.setLong(5, idUsuario);
+                    ps.setTimestamp(4, Timestamp.valueOf(fechaRecepcion.atStartOfDay()));
+                }
+                setStringOrNull(ps, 5, limitar(codigoORecibidoPor, 250));
+                if (idUsuario == null) {
+                    ps.setNull(6, Types.NUMERIC);
+                } else {
+                    ps.setLong(6, idUsuario);
                 }
                 ps.executeUpdate();
             }
