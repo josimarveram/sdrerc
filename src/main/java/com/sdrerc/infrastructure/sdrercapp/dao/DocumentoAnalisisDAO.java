@@ -1231,7 +1231,7 @@ public class DocumentoAnalisisDAO {
             ps.setInt(index++, 1);
             ps.setLong(index++, idTipoDocumento);
             setDateOrNull(ps, index++, carta.getFechaDocumento());
-            setStringOrNull(ps, index++, emptyToNull(carta.getConfirmacionRespuesta()));
+            setStringOrNull(ps, index++, normalizarConfirmacionRespuesta(carta.getConfirmacionRespuesta()));
             setDateOrNull(ps, index++, carta.getFechaRespuesta());
             setStringOrNull(ps, index++, limitar(emptyToNull(carta.getNumeroHojaEnvioRespuesta()), 120));
             if (soportaOposicion) {
@@ -1259,7 +1259,7 @@ public class DocumentoAnalisisDAO {
                 + "WHERE id_documento_analizado = ? AND id_expediente = ? AND activo = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             int index = 1;
-            setStringOrNull(ps, index++, emptyToNull(carta.getConfirmacionRespuesta()));
+            setStringOrNull(ps, index++, normalizarConfirmacionRespuesta(carta.getConfirmacionRespuesta()));
             setDateOrNull(ps, index++, carta.getFechaRespuesta());
             setStringOrNull(ps, index++, limitar(emptyToNull(carta.getNumeroHojaEnvioRespuesta()), 120));
             if (soportaOposicion) {

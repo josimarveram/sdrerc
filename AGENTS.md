@@ -1373,6 +1373,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VerificacionExpedienteDAO.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Fix: no se podía guardar Fecha Publicación en Carta de Respuesta (ORA-02290 CK_EXP_DOC_ANA_CONF_RESP) (31/07/2026)
+
+- Reporte del usuario (con captura `docs/arquitectura_app/SCREEN-PANEL-CARTAS-RESPUESTA.png`): en el panel de Respuesta (Asignación), al registrar "Fecha Publicación" en una fila de la grilla "Documentos de cartas de respuesta" y guardar, aparecía `java.sql.SQLIntegrityConstraintViolationException: ORA-02290: restricción de control (SDRERC_APP.CK_EXP_DOC_ANA_CONF_RESP) violada`, impidiendo guardar.
+- Causa raíz: el `CHECK` de BD (`29_patch_documento_analizado_respuesta.sql`, ya ejecutado) exige `confirmacion_respuesta IS NULL OR confirmacion_respuesta IN ('SI', 'NO', 'PENDIENTE')` (mayúsculas exactas). El combo "Confirmación de respuesta" de `CartaRespuestaTreeGridPanelV2.comboConfirmacionRespuesta()` ofrece los valores de UI `"Pendiente"`, `"Si"`, `"No"` (con mayúscula inicial únicamente, para mostrar). `DocumentoAnalisisDAO.insertarCartaRespuesta`/`actualizarCartaRespuesta` (las 2 rutas que persisten la grilla hija "Documentos de cartas de respuesta") enviaban ese valor de UI tal cual (`emptyToNull(carta.getConfirmacionRespuesta())`) sin pasar por el normalizador que sí usa el resto del código (`normalizarConfirmacionRespuesta(...)`, ya existente y usado por `respuestaPersistencia(...)` en la ruta de guardado del documento padre) — cualquier guardado de una carta de respuesta con "Si"/"No"/"Pendiente" (mayúscula inicial, no coincide con el `IN` en mayúsculas) violaba el `CHECK`, sin importar qué otro campo se estuviera editando (Fecha Publicación en este caso, pero el mismo error ocurriría al editar cualquier otro campo de esa fila).
+- Fix: `insertarCartaRespuesta`/`actualizarCartaRespuesta` ahora usan `normalizarConfirmacionRespuesta(carta.getConfirmacionRespuesta())` (mismo helper ya existente en la clase: pasa a mayúsculas, normaliza tilde y cae a `"PENDIENTE"` si el valor no coincide con ninguna de las 3 opciones), igual que ya hacía `respuestaPersistencia(...)`.
+- Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/DocumentoAnalisisDAO.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados (el `CHECK` afectado ya existía desde el script 29).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
