@@ -1364,6 +1364,15 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/application/sdrercapp/VerificacionValidacionService.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Fix (segunda capa): "Registrar Verificación" seguía pidiendo sustento vía FLUJO_TRANSICION (31/07/2026)
+
+- Reporte del usuario tras el fix anterior ("Fix: 'Registrar Verificación' con resultado Observado bloqueado por validación huérfana"): seguía apareciendo el mensaje "Ingrese el sustento requerido para esta acción." al registrar verificación. Pidió que el campo sustento/motivo quede opcional (o directamente no se exija), tal como se había configurado.
+- Causa raíz (segunda capa, distinta de la ya corregida): además de la validación en `VerificacionValidacionService` (ya quitada), `VerificacionExpedienteDAO.validarRequisitosTransicion(...)` tiene su propio gate independiente, alimentado por el catálogo `FLUJO_TRANSICION.requiere_comentario` (columna leída en `Transicion.requiereComentario`, ver `requerirTransicion`): si la fila de transición activa para la acción (`REGISTRO_OBSERVACION_VERIFICACION`/`DEVOLUCION_A_ANALISIS`, ambas encadenadas por `registrarObservacionYDevolverAnalisis`) tiene `requiere_comentario=1`, exige `comentario` no vacío — y como el campo "Sustento"/"Comentario" quedó permanentemente vacío desde que se ocultó de la UI (ver entrada "Reordenar 'Resultado de verificacion'..."), esta segunda validación bloqueaba igual, sin relación con el fix anterior.
+- Se descartó cambiar el dato en `FLUJO_TRANSICION` (requeriría autorización explícita para ejecutar SQL/modificar catálogo, regla permanente del proyecto) a favor de un fix a nivel de código: es la misma decisión de negocio ya tomada (el sustento no se usa en Verificación) aplicada a esta segunda capa, sin tocar BD.
+- Fix: se quitó el bloque `if (transicion.requiereComentario && !hasText(comentario)) { throw ... }` de `VerificacionExpedienteDAO.validarRequisitosTransicion(...)`. El resto de validaciones de esa transición (evaluación activa, documentos analizados) sigue intacto; el campo `Transicion.requiereComentario` y la columna `requiere_comentario` del catálogo quedan sin efecto para Verificación, pero no se tocaron (otros módulos con el mismo patrón — Ejecución, Notificación, Publicación, Cierre, Firma/Emisión, Expediente Digital — no se modificaron, porque el pedido del usuario fue puntual sobre el panel de Verificación).
+- Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/VerificacionExpedienteDAO.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

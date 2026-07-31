@@ -753,9 +753,6 @@ public class VerificacionExpedienteDAO {
             String comentario,
             Long idExpediente,
             boolean exigirEvaluacion) throws SQLException {
-        if (transicion.requiereComentario && !hasText(comentario)) {
-            throw new SQLException("Ingrese el sustento requerido para esta acción.");
-        }
         if (exigirEvaluacion && !tieneEvaluacionActiva(conn, idExpediente)) {
             throw new SQLException("No existe análisis registrado para el expediente seleccionado.");
         }
