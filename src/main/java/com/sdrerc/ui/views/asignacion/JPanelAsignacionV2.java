@@ -153,6 +153,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final String TAB_PANEL_ASIGNACION = "panelAsignacion";
     private static final String TAB_PANEL_ASOCIAR = "panelAsociar";
     private static final String TAB_PANEL_GRUPO_FAMILIAR = "panelGrupoFamiliar";
+    private static final String TAB_PANEL_DOCUMENTOS = "panelDocumentos";
     private static final String TAB_PANEL_RESPUESTA = "panelRespuesta";
     private static final String MODO_PANEL_ASIGNACION = "asignacion";
     private static final String MODO_PANEL_RESPUESTA = "respuesta";
@@ -363,6 +364,19 @@ public class JPanelAsignacionV2 extends JPanel {
     private Long idAbogadoActualCarta;
     private boolean cargandoComboAbogadoCarta;
     private boolean cargandoComboEquipoCarta;
+    private CartaRespuestaTreeGridPanelV2 documentosTreePanel;
+    private final JLabel lblAbogadoActualDocumento = new JLabel("-");
+    private final JComboBox<EquipoItem> cmbEquipoDocumento = new JComboBox<EquipoItem>();
+    private final JComboBox<UsuarioItem> cmbAbogadoDocumento = new JComboBox<UsuarioItem>();
+    private final JLabel lblSupervisorDocumento = new JLabel("-");
+    private final JButton btnRegistrarAsignacionDocumento = new JButton("Registrar Asignación");
+    private final JButton btnCancelarAsignacionDocumento = new JButton("Cancelar");
+    private EquipoAsignacionDTO equipoAnalisisDocumentoDTO;
+    private Long idAbogadoActualDocumento;
+    private boolean cargandoComboAbogadoDocumento;
+    private boolean cargandoComboEquipoDocumento;
+    private Long idExpedienteDocumentos;
+    private long secuenciaCargaDocumentos;
     private final DefaultTableModel bandejaCartasRespuestaModel = new DefaultTableModel(
             new Object[]{
                 "Días",
@@ -407,6 +421,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final AppV2StackedSideTab tabPanelAsignacionOperativa = crearTabAsignacion("Asignación", new Color(224, 243, 240), new Color(10, 118, 145));
     private final AppV2StackedSideTab tabPanelAsociar = crearTabAsignacion("Asociar", new Color(249, 239, 224), new Color(198, 121, 31));
     private final AppV2StackedSideTab tabPanelGrupoFamiliar = crearTabAsignacion("Grupo Fam.", new Color(224, 245, 232), new Color(35, 138, 94));
+    private final AppV2StackedSideTab tabPanelDocumentos = crearTabAsignacion("Documentos", new Color(232, 234, 246), new Color(63, 81, 181));
     private final AppV2StackedSideTab tabPanelRespuesta = crearTabAsignacion("Respuesta", new Color(240, 233, 249), new Color(110, 78, 164));
     private final AsignacionTableModel tableModel = new AsignacionTableModel();
     private final JTable table = new AppV2Table(tableModel);
@@ -447,6 +462,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideActionPanel panelAsociar;
     private AppV2SideActionPanel panelGrupoFamiliar;
     private AppV2SideActionPanel panelCartasRespuesta;
+    private AppV2SideActionPanel panelDocumentos;
     private CardLayout panelAsignacionCardsLayout;
     private JPanel panelAsignacionCards;
     private String tabAsignacionActiva = TAB_DATOS_EXPEDIENTE;
@@ -461,6 +477,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private AppV2SideSectionPanel sectionResumenAsignacion;
     private AppV2SideSectionPanel sectionAsignacionMultiple;
     private AppV2SideSectionPanel sectionCartasRespuesta;
+    private AppV2SideSectionPanel sectionDocumentos;
     private AppV2SideSectionPanel sectionAccionesRelacionados;
     private AppV2SideSectionPanel sectionDecisionNumero;
     private AppV2SideSectionPanel sectionFlujoAsignacion;
@@ -573,12 +590,14 @@ public class JPanelAsignacionV2 extends JPanel {
         panelAsociar = crearPanelAsociar();
         panelGrupoFamiliar = crearPanelGrupoFamiliar();
         panelCartasRespuesta = crearPanelCartasRespuesta();
+        panelDocumentos = crearPanelDocumentos();
         JPanel panelAsignacionConTab = crearPanelAsignacionConTab(
                 panelDatosExpediente,
                 panelAsignacion,
                 panelAsociar,
                 panelGrupoFamiliar,
-                panelCartasRespuesta);
+                panelCartasRespuesta,
+                panelDocumentos);
         splitOperativo = new AppV2OperationalSplitPanel(
                 tabsBandejas,
                 panelAsignacionConTab,
@@ -951,6 +970,20 @@ public class JPanelAsignacionV2 extends JPanel {
         return panel;
     }
 
+    private AppV2SideActionPanel crearPanelDocumentos() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Documentos", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelAsignacion();
+            }
+        });
+        panel.setAccentColor(new Color(63, 81, 181));
+        sectionDocumentos = crearDocumentos();
+        panel.addSection(sectionDocumentos);
+        panel.setFooter(crearAccionesDestinoOperativoDocumento());
+        return panel;
+    }
+
     private void configurarTablaCargaLaboral() {
         lblCargaLaboralEquipo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         lblCargaLaboralEquipo.setForeground(AppV2Theme.TEXT_PRIMARY);
@@ -1011,6 +1044,7 @@ public class JPanelAsignacionV2 extends JPanel {
             tabs.add(tabPanelAsignacionOperativa);
             tabs.add(tabPanelAsociar);
             tabs.add(tabPanelGrupoFamiliar);
+            tabs.add(tabPanelDocumentos);
         }
         return tabs;
     }
@@ -1020,7 +1054,8 @@ public class JPanelAsignacionV2 extends JPanel {
             final AppV2SideActionPanel panelOperativo,
             final AppV2SideActionPanel panelAsociarActual,
             final AppV2SideActionPanel panelGrupoFamiliarActual,
-            final AppV2SideActionPanel panelCartasActual) {
+            final AppV2SideActionPanel panelCartasActual,
+            final AppV2SideActionPanel panelDocumentosActual) {
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
@@ -1047,10 +1082,12 @@ public class JPanelAsignacionV2 extends JPanel {
         panelAsignacionCards.add(panelAsociarActual, TAB_PANEL_ASOCIAR);
         panelAsignacionCards.add(panelGrupoFamiliarActual, TAB_PANEL_GRUPO_FAMILIAR);
         panelAsignacionCards.add(panelCartasActual, TAB_PANEL_RESPUESTA);
+        panelAsignacionCards.add(panelDocumentosActual, TAB_PANEL_DOCUMENTOS);
         tabDatosExpediente.setToolTipText("Ver datos del expediente");
         tabPanelAsignacionOperativa.setToolTipText("Ver panel de asignación");
         tabPanelAsociar.setToolTipText("Ver panel para asociar expedientes");
         tabPanelGrupoFamiliar.setToolTipText("Ver panel de grupo familiar");
+        tabPanelDocumentos.setToolTipText("Ver panel de documentos");
         tabPanelRespuesta.setToolTipText("Ver panel de respuesta");
         tabDatosExpediente.addMouseListener(new MouseAdapter() {
             @Override
@@ -1076,6 +1113,12 @@ public class JPanelAsignacionV2 extends JPanel {
                 seleccionarTabAsignacion(TAB_PANEL_GRUPO_FAMILIAR);
             }
         });
+        tabPanelDocumentos.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabAsignacion(TAB_PANEL_DOCUMENTOS);
+            }
+        });
         tabPanelRespuesta.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -1086,6 +1129,7 @@ public class JPanelAsignacionV2 extends JPanel {
         wrapper.add(tabPanelAsignacionOperativa);
         wrapper.add(tabPanelAsociar);
         wrapper.add(tabPanelGrupoFamiliar);
+        wrapper.add(tabPanelDocumentos);
         wrapper.add(tabPanelRespuesta);
         wrapper.add(panelAsignacionCards);
         wrapper.setMinimumSize(new Dimension(
@@ -1261,6 +1305,79 @@ public class JPanelAsignacionV2 extends JPanel {
         });
         panel.add(btnRegistrarAsignacionCarta);
         panel.add(btnCancelarAsignacionCarta);
+        return panel;
+    }
+
+    private AppV2SideSectionPanel crearDocumentos() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Documentos");
+        // Mismo componente que Cartas de Rpta (CartaRespuestaTreeGridPanelV2), pero aqui se le
+        // pasan TODOS los documentos de analisis del expediente (no solo los que requieren
+        // respuesta) y todas las cartas de respuesta ya registradas -- ver
+        // cargarDocumentosPorExpediente. Instancia separada (documentosTreePanel) porque un
+        // componente Swing no puede vivir en 2 lenguetas a la vez.
+        documentosTreePanel = new CartaRespuestaTreeGridPanelV2();
+        documentosTreePanel.setHandlers(
+                documento -> documentoAnalisisService.guardarDocumentoJerarquico(idExpedienteDocumentos, documento),
+                carta -> documentoAnalisisService.guardarCartaRespuesta(idExpedienteDocumentos, carta),
+                (idExp, idDoc) -> documentoAnalisisService.darBajaDocumentoAnalizado(idExp, idDoc),
+                () -> cargarDocumentosPorExpediente(idExpedienteDocumentos));
+        section.addContent(documentosTreePanel);
+        cargarCatalogosDocumentos();
+
+        section.addContent(crearDestinoOperativoDocumento());
+        return section;
+    }
+
+    private void cargarCatalogosDocumentos() {
+        SwingWorker<List<CatalogoItemDTO>, Void> worker = new SwingWorker<List<CatalogoItemDTO>, Void>() {
+            @Override
+            protected List<CatalogoItemDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarEstadosDocumento();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<CatalogoItemDTO> estados = get();
+                    if (documentosTreePanel != null) {
+                        documentosTreePanel.setCatalogos(estados);
+                    }
+                } catch (Exception ex) {
+                    // Los estados no son indispensables para ver el panel; se omite silenciosamente.
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private AppV2SideSectionPanel crearDestinoOperativoDocumento() {
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Destino operativo");
+        section.addRow("Abogado actual", lblAbogadoActualDocumento);
+        section.addRow("Equipo destino", cmbEquipoDocumento);
+        section.addRow("Abogado responsable", cmbAbogadoDocumento);
+        section.addRow("Supervisor", lblSupervisorDocumento);
+        return section;
+    }
+
+    private JPanel crearAccionesDestinoOperativoDocumento() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 8));
+        panel.setOpaque(false);
+        cmbEquipoDocumento.setPreferredSize(new Dimension(230, 34));
+        cmbEquipoDocumento.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        cmbAbogadoDocumento.setPreferredSize(new Dimension(230, 34));
+        cmbAbogadoDocumento.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarAsignacionDocumento);
+        AppV2Theme.estilizarBotonSecundario(btnCancelarAsignacionDocumento);
+        btnRegistrarAsignacionDocumento.setEnabled(false);
+        btnRegistrarAsignacionDocumento.addActionListener(e -> registrarAsignacionDocumento());
+        btnCancelarAsignacionDocumento.addActionListener(e -> cerrarPanelAsignacion());
+        cmbAbogadoDocumento.addActionListener(e -> {
+            if (!cargandoComboAbogadoDocumento) {
+                actualizarSupervisorDocumento();
+            }
+        });
+        panel.add(btnRegistrarAsignacionDocumento);
+        panel.add(btnCancelarAsignacionDocumento);
         return panel;
     }
 
@@ -4151,6 +4268,176 @@ public class JPanelAsignacionV2 extends JPanel {
         worker.execute();
     }
 
+    private void cargarDestinoOperativoDocumento(final AsignacionExpedienteDTO expediente) {
+        if (expediente == null || expediente.getIdExpediente() == null) {
+            lblAbogadoActualDocumento.setText("-");
+            cmbEquipoDocumento.removeAllItems();
+            cmbAbogadoDocumento.removeAllItems();
+            lblSupervisorDocumento.setText("-");
+            btnRegistrarAsignacionDocumento.setEnabled(false);
+            return;
+        }
+        lblAbogadoActualDocumento.setText("Cargando...");
+        final Long idExpedienteSolicitado = expediente.getIdExpediente();
+        cargandoComboEquipoDocumento = true;
+        cmbEquipoDocumento.removeAllItems();
+        cmbEquipoDocumento.addItem(EquipoItem.placeholder("Cargando..."));
+        cargandoComboEquipoDocumento = false;
+        cargandoComboAbogadoDocumento = true;
+        cmbAbogadoDocumento.removeAllItems();
+        cmbAbogadoDocumento.addItem(UsuarioItem.placeholder("Cargando..."));
+        cargandoComboAbogadoDocumento = false;
+        lblSupervisorDocumento.setText("-");
+        btnRegistrarAsignacionDocumento.setEnabled(false);
+        SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
+            @Override
+            protected Object[] doInBackground() throws Exception {
+                Long idAbogadoAnalisis = asignacionService.obtenerIdAbogadoActivoPorEquipo(idExpedienteSolicitado, "EQ_ANALISIS");
+                List<EquipoAsignacionDTO> equipos = usuarioService.listarEquiposActivos();
+                return new Object[]{idAbogadoAnalisis, equipos};
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            protected void done() {
+                if (!idExpedienteSolicitado.equals(idExpedienteDocumentos)) {
+                    return;
+                }
+                Long idAbogadoAnalisis = null;
+                EquipoAsignacionDTO equipoAnalisis = null;
+                try {
+                    Object[] resultado = get();
+                    idAbogadoAnalisis = (Long) resultado[0];
+                    for (EquipoAsignacionDTO equipo : (List<EquipoAsignacionDTO>) resultado[1]) {
+                        if ("EQ_ANALISIS".equalsIgnoreCase(equipo.getCodigo())) {
+                            equipoAnalisis = equipo;
+                            break;
+                        }
+                    }
+                } catch (Exception ex) {
+                    equipoAnalisis = null;
+                }
+                idAbogadoActualDocumento = idAbogadoAnalisis;
+                equipoAnalisisDocumentoDTO = equipoAnalisis;
+                cargandoComboEquipoDocumento = true;
+                cmbEquipoDocumento.removeAllItems();
+                if (equipoAnalisis == null) {
+                    cmbEquipoDocumento.addItem(EquipoItem.placeholder("EQ_ANALISIS no configurado"));
+                    cargandoComboEquipoDocumento = false;
+                    lblAbogadoActualDocumento.setText("-");
+                    cmbAbogadoDocumento.removeAllItems();
+                    cmbAbogadoDocumento.addItem(UsuarioItem.placeholder("Equipo EQ_ANALISIS no configurado"));
+                    return;
+                }
+                cmbEquipoDocumento.addItem(new EquipoItem(equipoAnalisis));
+                cmbEquipoDocumento.setSelectedIndex(0);
+                cargandoComboEquipoDocumento = false;
+                cargarAbogadosDestinoOperativoDocumento(idExpedienteSolicitado, equipoAnalisis.getIdEquipo());
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarAbogadosDestinoOperativoDocumento(final Long idExpedienteSolicitado, final Long idEquipo) {
+        SwingWorker<List<UsuarioAsignableDTO>, Void> worker = new SwingWorker<List<UsuarioAsignableDTO>, Void>() {
+            @Override
+            protected List<UsuarioAsignableDTO> doInBackground() throws Exception {
+                return usuarioService.listarAbogadosAsignables(idEquipo);
+            }
+
+            @Override
+            protected void done() {
+                if (!idExpedienteSolicitado.equals(idExpedienteDocumentos)) {
+                    return;
+                }
+                try {
+                    List<UsuarioAsignableDTO> abogados = get();
+                    cargandoComboAbogadoDocumento = true;
+                    cmbAbogadoDocumento.removeAllItems();
+                    for (UsuarioAsignableDTO abogado : abogados) {
+                        cmbAbogadoDocumento.addItem(new UsuarioItem(abogado));
+                    }
+                    cargandoComboAbogadoDocumento = false;
+                    boolean seleccionado = seleccionarAbogadoDocumentoPorId(idAbogadoActualDocumento);
+                    Object seleccionActual = cmbAbogadoDocumento.getSelectedItem();
+                    UsuarioAsignableDTO abogadoActual = seleccionActual instanceof UsuarioItem
+                            ? ((UsuarioItem) seleccionActual).usuario : null;
+                    lblAbogadoActualDocumento.setText(seleccionado && abogadoActual != null
+                            ? abogadoActual.getNombreCompleto()
+                            : "Sin asignar");
+                    actualizarSupervisorDocumento();
+                    btnRegistrarAsignacionDocumento.setEnabled(cmbAbogadoDocumento.getItemCount() > 0);
+                } catch (Exception ex) {
+                    cmbAbogadoDocumento.removeAllItems();
+                    cmbAbogadoDocumento.addItem(UsuarioItem.placeholder("No se pudieron cargar los abogados"));
+                    mostrarError("No se pudieron cargar los abogados de Eq. Análisis.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private boolean seleccionarAbogadoDocumentoPorId(Long idAbogado) {
+        if (idAbogado == null) {
+            return false;
+        }
+        for (int i = 0; i < cmbAbogadoDocumento.getItemCount(); i++) {
+            UsuarioItem item = cmbAbogadoDocumento.getItemAt(i);
+            if (item.usuario != null && idAbogado.equals(item.usuario.getIdUsuario())) {
+                cmbAbogadoDocumento.setSelectedIndex(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void actualizarSupervisorDocumento() {
+        Object selected = cmbAbogadoDocumento.getSelectedItem();
+        UsuarioAsignableDTO abogado = selected instanceof UsuarioItem ? ((UsuarioItem) selected).usuario : null;
+        lblSupervisorDocumento.setText(abogado == null || abogado.getSupervisorNombre().isEmpty() ? "-" : abogado.getSupervisorNombre());
+    }
+
+    private void registrarAsignacionDocumento() {
+        if (idExpedienteDocumentos == null || equipoAnalisisDocumentoDTO == null) {
+            mostrarInfo("Seleccione un expediente antes de registrar la asignación.");
+            return;
+        }
+        Object selected = cmbAbogadoDocumento.getSelectedItem();
+        UsuarioAsignableDTO abogado = selected instanceof UsuarioItem ? ((UsuarioItem) selected).usuario : null;
+        if (abogado == null) {
+            mostrarInfo("Seleccione el abogado responsable.");
+            return;
+        }
+        final Long idExpediente = idExpedienteDocumentos;
+        final EquipoAsignacionDTO equipo = equipoAnalisisDocumentoDTO;
+        btnRegistrarAsignacionDocumento.setEnabled(false);
+        SwingWorker<AsignacionResultadoDTO, Void> worker = new SwingWorker<AsignacionResultadoDTO, Void>() {
+            @Override
+            protected AsignacionResultadoDTO doInBackground() throws Exception {
+                return asignacionService.reasignarDesdeCartaRespuesta(
+                        idExpediente, equipo, abogado, "Derivado a Análisis desde Panel de documentos.");
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    AsignacionResultadoDTO resultado = get();
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            resultado.getMensaje(),
+                            "Registrar asignación",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    cargarDocumentosPorExpedienteFoco();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo registrar la asignación.", ex);
+                } finally {
+                    btnRegistrarAsignacionDocumento.setEnabled(true);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void cargarCargaLaboralBandeja() {
         lblEstadoCarga.setText("Cargando carga laboral...");
         SwingWorker<List<CargaLaboralAbogadoDTO>, Void> worker = new SwingWorker<List<CargaLaboralAbogadoDTO>, Void>() {
@@ -4237,8 +4524,12 @@ public class JPanelAsignacionV2 extends JPanel {
             panelGrupoFamiliar.setSubtitle(subtitulo);
         }
         if (panelCartasRespuesta != null) {
-            panelCartasRespuesta.setTitle(titulo);
+            panelCartasRespuesta.setTitle("Panel de respuesta");
             panelCartasRespuesta.setSubtitle(subtitulo);
+        }
+        if (panelDocumentos != null) {
+            panelDocumentos.setTitle("Panel de documentos");
+            panelDocumentos.setSubtitle(subtitulo);
         }
     }
 
@@ -4255,28 +4546,21 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteCartasRespuesta = idExpediente;
         final long secuencia = ++secuenciaCargaCartasRespuesta;
         if (cartasRespuestaTreePanel != null) {
-            cartasRespuestaTreePanel.setDocumentos(
-                    idExpediente, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>(),
-                    new ArrayList<AsignacionCartaRespuestaDTO>());
+            cartasRespuestaTreePanel.setDocumentos(idExpediente, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
         }
-        SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
+        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
             @Override
-            protected Object[] doInBackground() throws Exception {
-                List<DocumentoAnalizadoDTO> todos = documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
-                List<AsignacionCartaRespuestaDTO> vencimientos = documentoAnalisisService.listarCartasRespuestaPendientes(idExpediente);
-                return new Object[]{todos, vencimientos};
+            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
             }
 
             @Override
-            @SuppressWarnings("unchecked")
             protected void done() {
                 if (secuencia != secuenciaCargaCartasRespuesta || !idExpediente.equals(idExpedienteCartasRespuesta)) {
                     return;
                 }
                 try {
-                    Object[] resultado = get();
-                    List<DocumentoAnalizadoDTO> todos = (List<DocumentoAnalizadoDTO>) resultado[0];
-                    List<AsignacionCartaRespuestaDTO> vencimientos = (List<AsignacionCartaRespuestaDTO>) resultado[1];
+                    List<DocumentoAnalizadoDTO> todos = get();
                     List<DocumentoAnalizadoDTO> documentosAnalisis = new ArrayList<DocumentoAnalizadoDTO>();
                     List<DocumentoAnalizadoDTO> cartasRespuesta = new ArrayList<DocumentoAnalizadoDTO>();
                     for (DocumentoAnalizadoDTO documento : todos) {
@@ -4290,7 +4574,7 @@ public class JPanelAsignacionV2 extends JPanel {
                         }
                     }
                     if (cartasRespuestaTreePanel != null) {
-                        cartasRespuestaTreePanel.setDocumentos(idExpediente, documentosAnalisis, cartasRespuesta, vencimientos);
+                        cartasRespuestaTreePanel.setDocumentos(idExpediente, documentosAnalisis, cartasRespuesta);
                     }
                 } catch (Exception ex) {
                     lblEstadoCartas.setText("No se pudieron cargar cartas de respuesta.");
@@ -4304,14 +4588,73 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteCartasRespuesta = null;
         ++secuenciaCargaCartasRespuesta;
         if (cartasRespuestaTreePanel != null) {
-            cartasRespuestaTreePanel.setDocumentos(
-                    null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>(),
-                    new ArrayList<AsignacionCartaRespuestaDTO>());
+            cartasRespuestaTreePanel.setDocumentos(null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
         }
         cargarDestinoOperativoCarta(null);
         if (sectionCartasRespuesta != null) {
             sectionCartasRespuesta.setVisible(false);
         }
+    }
+
+    private void cargarDocumentosPorExpediente(final Long idExpediente) {
+        idExpedienteDocumentos = idExpediente;
+        final long secuencia = ++secuenciaCargaDocumentos;
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setDocumentos(idExpediente, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
+        }
+        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
+            @Override
+            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (secuencia != secuenciaCargaDocumentos || !idExpediente.equals(idExpedienteDocumentos)) {
+                    return;
+                }
+                try {
+                    List<DocumentoAnalizadoDTO> todos = get();
+                    List<DocumentoAnalizadoDTO> documentosAnalisis = new ArrayList<DocumentoAnalizadoDTO>();
+                    List<DocumentoAnalizadoDTO> cartasRespuesta = new ArrayList<DocumentoAnalizadoDTO>();
+                    for (DocumentoAnalizadoDTO documento : todos) {
+                        if (documento == null) {
+                            continue;
+                        }
+                        if (documento.getNivel() == 1) {
+                            cartasRespuesta.add(documento);
+                        } else {
+                            documentosAnalisis.add(documento);
+                        }
+                    }
+                    if (documentosTreePanel != null) {
+                        documentosTreePanel.setDocumentos(idExpediente, documentosAnalisis, cartasRespuesta);
+                    }
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los documentos de análisis.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarDocumentosPorExpedienteFoco() {
+        AsignacionExpedienteDTO expediente = obtenerExpedienteFoco();
+        if (expediente == null || expediente.getIdExpediente() == null) {
+            limpiarDocumentosPanel();
+            return;
+        }
+        cargarDocumentosPorExpediente(expediente.getIdExpediente());
+        cargarDestinoOperativoDocumento(expediente);
+    }
+
+    private void limpiarDocumentosPanel() {
+        idExpedienteDocumentos = null;
+        ++secuenciaCargaDocumentos;
+        if (documentosTreePanel != null) {
+            documentosTreePanel.setDocumentos(null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
+        }
+        cargarDestinoOperativoDocumento(null);
     }
 
     private static LocalDate parseFechaUi(String value) {
@@ -5291,6 +5634,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 && !TAB_PANEL_ASIGNACION.equals(tab)
                 && !TAB_PANEL_ASOCIAR.equals(tab)
                 && !TAB_PANEL_GRUPO_FAMILIAR.equals(tab)
+                && !TAB_PANEL_DOCUMENTOS.equals(tab)
                 && !TAB_PANEL_RESPUESTA.equals(tab)) {
             return;
         }
@@ -5303,7 +5647,8 @@ public class JPanelAsignacionV2 extends JPanel {
                 && !TAB_DATOS_EXPEDIENTE.equals(tab)
                 && !TAB_PANEL_ASIGNACION.equals(tab)
                 && !TAB_PANEL_ASOCIAR.equals(tab)
-                && !TAB_PANEL_GRUPO_FAMILIAR.equals(tab)) {
+                && !TAB_PANEL_GRUPO_FAMILIAR.equals(tab)
+                && !TAB_PANEL_DOCUMENTOS.equals(tab)) {
             return;
         }
         boolean mismaTab = tab.equals(tabAsignacionActiva);
@@ -5316,6 +5661,9 @@ public class JPanelAsignacionV2 extends JPanel {
         if (TAB_PANEL_GRUPO_FAMILIAR.equals(tab)) {
             cargarPosiblesIntegrantesGrupoFamiliar(obtenerExpedienteFoco());
         }
+        if (TAB_PANEL_DOCUMENTOS.equals(tab)) {
+            cargarDocumentosPorExpedienteFoco();
+        }
         panelAsignacionCards.revalidate();
         panelAsignacionCards.repaint();
     }
@@ -5327,16 +5675,19 @@ public class JPanelAsignacionV2 extends JPanel {
         tabPanelAsignacionOperativa.setVisible(visibles.contains(tabPanelAsignacionOperativa));
         tabPanelAsociar.setVisible(visibles.contains(tabPanelAsociar));
         tabPanelGrupoFamiliar.setVisible(visibles.contains(tabPanelGrupoFamiliar));
+        tabPanelDocumentos.setVisible(visibles.contains(tabPanelDocumentos));
         tabPanelRespuesta.setVisible(visibles.contains(tabPanelRespuesta));
         tabDatosExpediente.setState(TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva), TAB_DATOS_EXPEDIENTE.equals(tabAsignacionActiva) && expandido);
         tabPanelAsignacionOperativa.setState(TAB_PANEL_ASIGNACION.equals(tabAsignacionActiva), TAB_PANEL_ASIGNACION.equals(tabAsignacionActiva) && expandido);
         tabPanelAsociar.setState(TAB_PANEL_ASOCIAR.equals(tabAsignacionActiva), TAB_PANEL_ASOCIAR.equals(tabAsignacionActiva) && expandido);
         tabPanelGrupoFamiliar.setState(TAB_PANEL_GRUPO_FAMILIAR.equals(tabAsignacionActiva), TAB_PANEL_GRUPO_FAMILIAR.equals(tabAsignacionActiva) && expandido);
+        tabPanelDocumentos.setState(TAB_PANEL_DOCUMENTOS.equals(tabAsignacionActiva), TAB_PANEL_DOCUMENTOS.equals(tabAsignacionActiva) && expandido);
         tabPanelRespuesta.setState(TAB_PANEL_RESPUESTA.equals(tabAsignacionActiva), TAB_PANEL_RESPUESTA.equals(tabAsignacionActiva) && expandido);
         tabDatosExpediente.setToolTipText("Datos del expediente · " + contextoChip);
         tabPanelAsignacionOperativa.setToolTipText("Panel de asignación · " + contextoChip);
         tabPanelAsociar.setToolTipText("Asociar expedientes · " + contextoChip);
         tabPanelGrupoFamiliar.setToolTipText("Grupo familiar · " + contextoChip);
+        tabPanelDocumentos.setToolTipText("Documentos de análisis · " + contextoChip);
         tabPanelRespuesta.setToolTipText("Respuesta de carta · " + contextoChip);
     }
 
