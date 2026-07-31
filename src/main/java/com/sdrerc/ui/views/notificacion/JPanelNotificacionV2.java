@@ -3121,7 +3121,7 @@ public class JPanelNotificacionV2 extends JPanel {
     /**
      * Fila "sub-encabezado" no editable e insertada solo cuando el padre esta expandido y
      * tiene al menos un intento: rotula las columnas de la mini-grilla de intentos con sus
-     * nombres reales del Excel (Modalidad/Fecha Envío/Estado/Código.../Fecha Recepción/Estado
+     * nombres reales del Excel (Modalidad/Fecha Envío/Estado/Código.../Fecha Acuse/Estado
      * Notificación), en vez de dejar que el usuario adivine el significado reutilizando los
      * encabezados del documento padre.
      */
@@ -3134,7 +3134,7 @@ public class JPanelNotificacionV2 extends JPanel {
             "Fecha Envío",
             "Estado",
             "Código/Usuario Notif.",
-            "Fecha Recepción",
+            "Fecha Acuse",
             "Estado Notificación",
             "",
             ""
@@ -3495,8 +3495,8 @@ public class JPanelNotificacionV2 extends JPanel {
             protected Void doInBackground() throws Exception {
                 if ("EXITOSA".equals(estadoFinalCodigo)) {
                     documentoAnalisisService.confirmarRecepcionIntentoNotificacion(
-                            intento.getIdExpediente(), intento.getIdExpedienteNotificacion(), codigoTexto,
-                            fechaEnvio, fechaRecepcion);
+                            intento.getIdExpediente(), intento.getIdExpedienteNotificacion(),
+                            intento.getIdDocumentoAnalizado(), codigoTexto, fechaEnvio, fechaRecepcion);
                 } else {
                     documentoAnalisisService.actualizarIntentoNotificacion(
                             intento.getIdExpedienteNotificacion(), modalidadCodigo, estadoFinalCodigo, codigoTexto,
@@ -3846,7 +3846,7 @@ public class JPanelNotificacionV2 extends JPanel {
         }
     }
 
-    /** Editor de fecha inline para Fecha Envío/Fecha Recepción, mismo patrón que documentos analizados. */
+    /** Editor de fecha inline para Fecha Envío/Fecha Acuse, mismo patrón que documentos analizados. */
     private static class NotifFechaCellEditor extends AbstractCellEditor implements TableCellEditor {
         private static final DateTimeFormatter FORMATO = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         private final PremiumDateFieldV2 field = new PremiumDateFieldV2();

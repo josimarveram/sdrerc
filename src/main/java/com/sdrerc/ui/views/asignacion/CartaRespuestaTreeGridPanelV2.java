@@ -72,6 +72,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     private static final int PADRE_COL_FECHA = 4;
     private static final int PADRE_COL_COMENTARIO = 5;
     private static final int PADRE_COL_REQUIERE_RESPUESTA = 6;
+    private static final int PADRE_COL_FECHA_ACUSE = 7;
 
     private static final int HIJO_COL_GUARDAR = 0;
     private static final int HIJO_COL_ELIMINAR = 1;
@@ -277,7 +278,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                 new RowActionEditor(new DeleteDocumentIcon(), "Eliminar carta de respuesta",
                         row -> eliminarFila(hijoModel.getRow(row))));
 
-        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140});
+        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140, 130});
         ajustarAnchos(tablaHijo, HIJO_COL_TIPO, new int[]{170, 170, 130, 130, 130, 140});
         configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR});
         configurarColumnasAccion(tablaHijo, new int[]{HIJO_COL_GUARDAR, HIJO_COL_ELIMINAR});
@@ -537,7 +538,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
             "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
-            "Comentario", "¿Requiere respuesta?"
+            "Comentario", "¿Requiere respuesta?", "Fecha Acuse"
         };
         private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
 
@@ -593,7 +594,8 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return getRow(rowIndex) != null
                     && columnIndex != PADRE_COL_TIPO
-                    && columnIndex != PADRE_COL_REQUIERE_RESPUESTA;
+                    && columnIndex != PADRE_COL_REQUIERE_RESPUESTA
+                    && columnIndex != PADRE_COL_FECHA_ACUSE;
         }
 
         @Override
@@ -615,6 +617,8 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     return row.descripcion;
                 case PADRE_COL_REQUIERE_RESPUESTA:
                     return row.requiereRespuesta;
+                case PADRE_COL_FECHA_ACUSE:
+                    return row.fechaAcuse != null ? DATE_FORMAT.format(row.fechaAcuse) : "";
                 default:
                     return "";
             }
@@ -756,6 +760,8 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         private String numeroDocumento;
         private String descripcion;
         private boolean requiereRespuesta;
+        private boolean notificado;
+        private LocalDate fechaAcuse;
         private String confirmacionRespuesta = "";
         private LocalDate fechaRespuesta;
         private LocalDate fechaPublicacion;
@@ -774,6 +780,8 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
             row.numeroDocumento = dto.getNumeroDocumento();
             row.descripcion = dto.getDescripcion();
             row.requiereRespuesta = dto.isRequiereRespuesta();
+            row.notificado = dto.isNotificado();
+            row.fechaAcuse = dto.getFechaAcuse();
             return row;
         }
 
@@ -828,8 +836,8 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     fechaDocumento,
                     numeroDocumento == null ? "" : numeroDocumento,
                     descripcion == null ? "" : descripcion,
-                    false,
-                    null,
+                    notificado,
+                    fechaAcuse,
                     requiereRespuesta,
                     confirmacionRespuesta,
                     fechaRespuesta,

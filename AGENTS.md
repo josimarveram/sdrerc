@@ -1287,6 +1287,17 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/CartaRespuestaTreeGridPanelV2.java`, `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/DocumentoAnalisisDAO.java`, `src/main/java/com/sdrerc/application/sdrercapp/DocumentoAnalisisService.java`, `src/main/java/com/sdrerc/ui/views/asignacion/JPanelAsignacionV2.java`.
 - Validacion: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Columna Fecha Acuse en grilla padre de Cartas de Respuesta + renombre en grilla anidada de intentos (31/07/2026)
+
+- Pedido del usuario: en el panel de Respuesta (Asignacion), la grilla "Documentos de análisis" (padre de `CartaRespuestaTreeGridPanelV2`) debe mostrar una columna "Fecha Acuse" con la Fecha Recepción que se registra en la mini-grilla de intentos de notificación (Bandeja Notificacion). Ademas, dentro de esa mini-grilla de intentos la columna "Fecha Recepción" debe renombrarse a "Fecha Acuse".
+- Contexto ya documentado (ver entrada "Fecha Acuse hacia documentos analizados..."): "Fecha Recepción" de un intento de notificación y `EXPEDIENTE_DOCUMENTO_ANALIZADO.fecha_acuse` son conceptualmente el mismo dato; `DocumentoAnalisisDAO.confirmarRecepcionIntentoNotificacion` ya llama `marcarAcuseDocumentoAnalizado` para propagarlo cuando se confirma un intento como Ubicado. Este cambio solo agrega la columna de lectura que faltaba y unifica el rotulo visible; no se toco el modelo de datos ni las transiciones.
+- Fix:
+  - `JPanelNotificacionV2.filaSubEncabezadoIntentos()`: el rotulo de esa columna en la mini-grilla de intentos paso de "Fecha Recepción" a "Fecha Acuse" (y el comentario javadoc asociado); el campo interno sigue siendo `NotificacionIntentoDTO.getFechaRecepcion()`, solo cambio el texto visible.
+  - `CartaRespuestaTreeGridPanelV2`: nueva columna de solo lectura `PADRE_COL_FECHA_ACUSE` (ultima columna de la grilla padre) que muestra `DocumentoRow.fechaAcuse` (poblado en `fromPadre(dto)` desde `DocumentoAnalizadoDTO.getFechaAcuse()`); vacio si el documento aun no tiene acuse registrado.
+  - Bug preexistente corregido de paso: `DocumentoRow.toDocumento(idExpediente)` hardcodeaba `notificado=false`/`fechaAcuse=null` para toda fila. Esto era inofensivo mientras solo se usaba para guardar filas hijas (esos campos no se tocan en `guardarCartaRespuesta`), pero desde el fix anterior ("+Documento crea Pedido en grilla padre") las filas padre se guardan via `guardarDocumentoJerarquico`, que si escribe `notificado`/`fecha_acuse` en la BD -- guardar (icono Guardar) un documento padre ya notificado habria borrado su Fecha Acuse silenciosamente. Se agregaron los campos `notificado`/`fechaAcuse` a `DocumentoRow` (poblados en `fromPadre`) y `toDocumento()` ahora los reenvia tal cual en vez de hardcodearlos.
+- Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`, `src/main/java/com/sdrerc/ui/views/asignacion/CartaRespuestaTreeGridPanelV2.java`.
+- Validacion: `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
