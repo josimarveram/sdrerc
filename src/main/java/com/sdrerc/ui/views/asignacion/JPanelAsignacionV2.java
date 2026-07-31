@@ -9,6 +9,7 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaLaboralAbogadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
 import com.sdrerc.domain.dto.sdrercapp.ExpedienteRelacionadoDTO;
@@ -1194,12 +1195,37 @@ public class JPanelAsignacionV2 extends JPanel {
         // duplicaria la misma grilla padre "Documentos de análisis".
         cartasRespuestaTreePanel = new CartaRespuestaTreeGridPanelV2();
         cartasRespuestaTreePanel.setHandlers(
+                documento -> documentoAnalisisService.guardarDocumentoJerarquico(idExpedienteCartasRespuesta, documento),
                 carta -> documentoAnalisisService.guardarCartaRespuesta(idExpedienteCartasRespuesta, carta),
+                (idExp, idDoc) -> documentoAnalisisService.darBajaDocumentoAnalizado(idExp, idDoc),
                 () -> cargarCartasRespuestaPorDocumento(idExpedienteCartasRespuesta, null));
         section.addContent(cartasRespuestaTreePanel);
+        cargarCatalogosCartasRespuesta();
 
         section.addContent(crearDestinoOperativoCarta());
         return section;
+    }
+
+    private void cargarCatalogosCartasRespuesta() {
+        SwingWorker<List<CatalogoItemDTO>, Void> worker = new SwingWorker<List<CatalogoItemDTO>, Void>() {
+            @Override
+            protected List<CatalogoItemDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarEstadosDocumento();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<CatalogoItemDTO> estados = get();
+                    if (cartasRespuestaTreePanel != null) {
+                        cartasRespuestaTreePanel.setCatalogos(estados);
+                    }
+                } catch (Exception ex) {
+                    // Los estados no son indispensables para ver el panel; se omite silenciosamente.
+                }
+            }
+        };
+        worker.execute();
     }
 
     private AppV2SideSectionPanel crearDestinoOperativoCarta() {

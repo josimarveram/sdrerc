@@ -1,5 +1,6 @@
 package com.sdrerc.ui.views.asignacion;
 
+import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableScrollDiagnostics;
@@ -53,25 +54,33 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         void guardarFila(DocumentoAnalizadoDTO carta) throws Exception;
     }
 
+    public interface DeleteRowHandler {
+        void eliminarFila(Long idExpediente, Long idDocumentoAnalizado) throws Exception;
+    }
+
     private static final String TIPO_CARTA_RESPUESTA_CODIGO = "ANALISIS_DOC_20_CARTA_RESPUESTA";
     private static final String TIPO_CARTA_RESPUESTA_NOMBRE = "Carta de Respuesta";
     private static final String TIPO_PEDIDO_CODIGO = "ANALISIS_DOC_21_PEDIDO";
     private static final String TIPO_PEDIDO_NOMBRE = "Pedido";
+    private static final String ESTADO_EN_PROYECTO_CODIGO = "EN_PROYECTO";
+    private static final String ESTADO_EN_PROYECTO_NOMBRE = "En proyecto";
 
-    private static final int PADRE_COL_TIPO = 0;
-    private static final int PADRE_COL_NUMERO = 1;
-    private static final int PADRE_COL_ESTADO = 2;
-    private static final int PADRE_COL_FECHA = 3;
-    private static final int PADRE_COL_COMENTARIO = 4;
-    private static final int PADRE_COL_REQUIERE_RESPUESTA = 5;
+    private static final int PADRE_COL_GUARDAR = 0;
+    private static final int PADRE_COL_TIPO = 1;
+    private static final int PADRE_COL_NUMERO = 2;
+    private static final int PADRE_COL_ESTADO = 3;
+    private static final int PADRE_COL_FECHA = 4;
+    private static final int PADRE_COL_COMENTARIO = 5;
+    private static final int PADRE_COL_REQUIERE_RESPUESTA = 6;
 
-    private static final int HIJO_COL_TIPO = 0;
-    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 1;
-    private static final int HIJO_COL_FECHA_RESPUESTA = 2;
-    private static final int HIJO_COL_FECHA_PUBLICACION = 3;
-    private static final int HIJO_COL_EXISTE_OPOSICION = 4;
-    private static final int HIJO_COL_HOJA_ENVIO = 5;
-    private static final int HIJO_COL_GUARDAR = 6;
+    private static final int HIJO_COL_GUARDAR = 0;
+    private static final int HIJO_COL_ELIMINAR = 1;
+    private static final int HIJO_COL_TIPO = 2;
+    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 3;
+    private static final int HIJO_COL_FECHA_RESPUESTA = 4;
+    private static final int HIJO_COL_FECHA_PUBLICACION = 5;
+    private static final int HIJO_COL_EXISTE_OPOSICION = 6;
+    private static final int HIJO_COL_HOJA_ENVIO = 7;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -90,9 +99,12 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     private final JLabel lblEstado = new JLabel("Seleccione un documento de análisis para vincular una carta de respuesta.");
     private final AtomicLong tempIds = new AtomicLong(-1L);
 
+    private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
     private Long idExpediente;
     private DocumentoRow padreSeleccionado;
-    private SaveRowHandler saveRowHandler;
+    private SaveRowHandler savePadreRowHandler;
+    private SaveRowHandler saveHijoRowHandler;
+    private DeleteRowHandler deleteRowHandler;
     private Runnable refreshHandler;
 
     public CartaRespuestaTreeGridPanelV2() {
@@ -102,9 +114,21 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         add(crearGrillas(), BorderLayout.CENTER);
     }
 
-    public void setHandlers(SaveRowHandler saveRowHandler, Runnable refreshHandler) {
-        this.saveRowHandler = saveRowHandler;
+    public void setHandlers(
+            SaveRowHandler savePadreRowHandler,
+            SaveRowHandler saveHijoRowHandler,
+            DeleteRowHandler deleteRowHandler,
+            Runnable refreshHandler) {
+        this.savePadreRowHandler = savePadreRowHandler;
+        this.saveHijoRowHandler = saveHijoRowHandler;
+        this.deleteRowHandler = deleteRowHandler;
         this.refreshHandler = refreshHandler;
+    }
+
+    public void setCatalogos(List<CatalogoItemDTO> estados) {
+        this.estados = estados == null ? new ArrayList<CatalogoItemDTO>() : new ArrayList<CatalogoItemDTO>(estados);
+        padreModel.setEstados(this.estados);
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_ESTADO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.estados)));
     }
 
     public void setDocumentos(Long idExpediente, List<DocumentoAnalizadoDTO> documentosAnalisis, List<DocumentoAnalizadoDTO> cartasRespuesta) {
@@ -131,14 +155,48 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         actualizarEstado();
     }
 
+    private JComboBox<CatalogoItemDTO> comboCatalogo(List<CatalogoItemDTO> items) {
+        JComboBox<CatalogoItemDTO> combo = new JComboBox<CatalogoItemDTO>();
+        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        if (items != null) {
+            for (CatalogoItemDTO item : items) {
+                if (item != null && item.hasCodigo()) {
+                    combo.addItem(item);
+                }
+            }
+        }
+        combo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            JLabel label = new JLabel(value == null || value.getNombre() == null ? "" : value.getNombre());
+            label.setOpaque(true);
+            label.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            label.setBackground(isSelected ? new Color(220, 237, 255) : Color.WHITE);
+            label.setForeground(AppV2Theme.TEXT_PRIMARY);
+            return label;
+        });
+        return combo;
+    }
+
     private JPanel crearGrillas() {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.add(crearBloqueGrilla(lblBannerPadre, scrollPadre, null));
+        panel.add(crearBloqueGrilla(lblBannerPadre, scrollPadre, crearToolbarPadre()));
         panel.add(Box.createVerticalStrut(10));
         panel.add(crearBloqueGrilla(lblBannerHijo, scrollHijo, crearToolbarHijo()));
         return panel;
+    }
+
+    private JPanel crearToolbarPadre() {
+        JPanel wrapper = new JPanel(new BorderLayout(8, 4));
+        wrapper.setOpaque(false);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        actions.setOpaque(false);
+        estilizarSecundario(btnAgregarDocumento);
+        actions.add(btnAgregarDocumento);
+        wrapper.add(actions, BorderLayout.NORTH);
+        btnAgregarDocumento.addActionListener(e -> agregarDocumento());
+        return wrapper;
     }
 
     private JPanel crearToolbarHijo() {
@@ -147,15 +205,12 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         actions.setOpaque(false);
         estilizarPrimario(btnAgregarRelacionado);
-        estilizarSecundario(btnAgregarDocumento);
         actions.add(btnAgregarRelacionado);
-        actions.add(btnAgregarDocumento);
         lblEstado.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         lblEstado.setForeground(AppV2Theme.TEXT_SECONDARY);
         wrapper.add(actions, BorderLayout.NORTH);
         wrapper.add(lblEstado, BorderLayout.SOUTH);
         btnAgregarRelacionado.addActionListener(e -> agregarRelacionado());
-        btnAgregarDocumento.addActionListener(e -> agregarDocumento());
         return wrapper;
     }
 
@@ -194,6 +249,16 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         tablaPadre.setDefaultRenderer(Boolean.class, new RequiereRespuestaRenderer());
         tablaHijo.setDefaultRenderer(Object.class, textoRenderer);
 
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_NUMERO).setCellEditor(new DefaultCellEditor(new JTextField()));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_FECHA).setCellEditor(new FechaCellEditor());
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_COMENTARIO).setCellEditor(new DefaultCellEditor(new JTextField()));
+
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellRenderer(
+                new RowActionRenderer(new SaveDocumentIcon(), "Guardar documento"));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellEditor(
+                new RowActionEditor(new SaveDocumentIcon(), "Guardar documento",
+                        row -> guardarFila(padreModel.getRow(row))));
+
         tablaHijo.getColumnModel().getColumn(HIJO_COL_CONFIRMACION_RESPUESTA)
                 .setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
         tablaHijo.getColumnModel().getColumn(HIJO_COL_FECHA_RESPUESTA).setCellEditor(new FechaCellEditor());
@@ -206,10 +271,16 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         tablaHijo.getColumnModel().getColumn(HIJO_COL_GUARDAR).setCellEditor(
                 new RowActionEditor(new SaveDocumentIcon(), "Guardar carta de respuesta",
                         row -> guardarFila(hijoModel.getRow(row))));
+        tablaHijo.getColumnModel().getColumn(HIJO_COL_ELIMINAR).setCellRenderer(
+                new RowActionRenderer(new DeleteDocumentIcon(), "Eliminar carta de respuesta"));
+        tablaHijo.getColumnModel().getColumn(HIJO_COL_ELIMINAR).setCellEditor(
+                new RowActionEditor(new DeleteDocumentIcon(), "Eliminar carta de respuesta",
+                        row -> eliminarFila(hijoModel.getRow(row))));
 
-        ajustarAnchos(tablaPadre, new int[]{200, 130, 150, 110, 240, 140});
-        ajustarAnchos(tablaHijo, new int[]{170, 170, 130, 130, 130, 140});
-        configurarColumnasAccion(tablaHijo, new int[]{HIJO_COL_GUARDAR});
+        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140});
+        ajustarAnchos(tablaHijo, HIJO_COL_TIPO, new int[]{170, 170, 130, 130, 130, 140});
+        configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR});
+        configurarColumnasAccion(tablaHijo, new int[]{HIJO_COL_GUARDAR, HIJO_COL_ELIMINAR});
 
         scrollPadre.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         scrollPadre.setPreferredSize(new Dimension(820, 150));
@@ -251,9 +322,9 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         scroll.setWheelScrollingEnabled(true);
     }
 
-    private void ajustarAnchos(JTable table, int[] widths) {
+    private void ajustarAnchos(JTable table, int startColumn, int[] widths) {
         for (int i = 0; i < widths.length; i++) {
-            TableColumn column = table.getColumnModel().getColumn(i);
+            TableColumn column = table.getColumnModel().getColumn(startColumn + i);
             column.setPreferredWidth(widths[i]);
             column.setMinWidth(Math.min(widths[i], 95));
         }
@@ -282,10 +353,10 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     }
 
     private void agregarDocumento() {
-        DocumentoRow hijo = DocumentoRow.nuevoHijo(tempIds.getAndDecrement(), null, TIPO_PEDIDO_CODIGO, TIPO_PEDIDO_NOMBRE);
-        hijoRows.add(hijo);
-        rebuildHijo();
-        seleccionarFilaHijo(hijo);
+        DocumentoRow padre = DocumentoRow.nuevoPadre(tempIds.getAndDecrement(), TIPO_PEDIDO_CODIGO, TIPO_PEDIDO_NOMBRE);
+        padreRows.add(padre);
+        rebuildPadre();
+        seleccionarFilaPadre(padre);
         actualizarEstado();
     }
 
@@ -293,16 +364,19 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         if (row == null) {
             return;
         }
-        if (saveRowHandler == null) {
-            mostrarInfo("No se configuró el servicio de guardado de cartas de respuesta.");
+        SaveRowHandler handler = row.esPadre ? savePadreRowHandler : saveHijoRowHandler;
+        if (handler == null) {
+            mostrarInfo(row.esPadre
+                    ? "No se configuró el servicio de guardado de documentos."
+                    : "No se configuró el servicio de guardado de cartas de respuesta.");
             return;
         }
         DocumentoAnalizadoDTO documento = row.toDocumento(idExpediente);
-        lblEstado.setText("Guardando carta de respuesta...");
+        lblEstado.setText(row.esPadre ? "Guardando documento..." : "Guardando carta de respuesta...");
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                saveRowHandler.guardarFila(documento);
+                handler.guardarFila(documento);
                 return null;
             }
 
@@ -312,12 +386,63 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     get();
                     JOptionPane.showMessageDialog(
                             CartaRespuestaTreeGridPanelV2.this,
-                            "La carta de respuesta se guardó correctamente.",
+                            row.esPadre ? "El documento se guardó correctamente." : "La carta de respuesta se guardó correctamente.",
                             "Cartas de respuesta",
                             JOptionPane.INFORMATION_MESSAGE);
                     refrescar();
                 } catch (Exception ex) {
-                    mostrarError("No se pudo guardar la carta de respuesta.", ex);
+                    mostrarError(row.esPadre ? "No se pudo guardar el documento." : "No se pudo guardar la carta de respuesta.", ex);
+                } finally {
+                    actualizarEstado();
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void eliminarFila(DocumentoRow row) {
+        if (row == null) {
+            return;
+        }
+        int respuesta = JOptionPane.showConfirmDialog(
+                this,
+                "La carta de respuesta será dada de baja lógicamente. No se eliminará físicamente. ¿Desea continuar?",
+                "Eliminar carta de respuesta",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (respuesta != JOptionPane.YES_OPTION) {
+            return;
+        }
+        if (row.id == null || row.id.longValue() < 0L) {
+            hijoRows.remove(row);
+            rebuildHijo();
+            actualizarEstado();
+            return;
+        }
+        if (deleteRowHandler == null) {
+            mostrarInfo("No se configuró el servicio de baja de cartas de respuesta.");
+            return;
+        }
+        lblEstado.setText("Eliminando carta de respuesta...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                deleteRowHandler.eliminarFila(idExpediente, row.id);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(
+                            CartaRespuestaTreeGridPanelV2.this,
+                            "La carta de respuesta se eliminó correctamente.",
+                            "Cartas de respuesta",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    refrescar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo eliminar la carta de respuesta.", ex);
                 } finally {
                     actualizarEstado();
                 }
@@ -349,6 +474,14 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         if (index >= 0) {
             tablaHijo.getSelectionModel().setSelectionInterval(index, index);
             tablaHijo.scrollRectToVisible(tablaHijo.getCellRect(index, 0, true));
+        }
+    }
+
+    private void seleccionarFilaPadre(DocumentoRow row) {
+        int index = padreModel.indexOf(row);
+        if (index >= 0) {
+            tablaPadre.getSelectionModel().setSelectionInterval(index, index);
+            tablaPadre.scrollRectToVisible(tablaPadre.getCellRect(index, 0, true));
         }
     }
 
@@ -403,9 +536,10 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     private static class PadreTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
+            "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
             "Comentario", "¿Requiere respuesta?"
         };
+        private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
 
         void setRows(List<DocumentoRow> nuevas) {
             rows.clear();
@@ -413,8 +547,26 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
             fireTableDataChanged();
         }
 
+        void setEstados(List<CatalogoItemDTO> estados) {
+            this.estados = estados == null ? new ArrayList<CatalogoItemDTO>() : estados;
+            fireTableDataChanged();
+        }
+
+        private CatalogoItemDTO resolverEstado(String codigo, String nombre) {
+            for (CatalogoItemDTO item : estados) {
+                if (item != null && item.getCodigo() != null && item.getCodigo().equals(codigo)) {
+                    return item;
+                }
+            }
+            return codigo == null && nombre == null ? null : new CatalogoItemDTO(codigo, nombre);
+        }
+
         DocumentoRow getRow(int row) {
             return row < 0 || row >= rows.size() ? null : rows.get(row);
+        }
+
+        int indexOf(DocumentoRow target) {
+            return rows.indexOf(target);
         }
 
         @Override
@@ -439,7 +591,9 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
 
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
-            return false;
+            return getRow(rowIndex) != null
+                    && columnIndex != PADRE_COL_TIPO
+                    && columnIndex != PADRE_COL_REQUIERE_RESPUESTA;
         }
 
         @Override
@@ -454,7 +608,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                 case PADRE_COL_NUMERO:
                     return row.numeroDocumento;
                 case PADRE_COL_ESTADO:
-                    return row.estadoNombre;
+                    return resolverEstado(row.estadoCodigo, row.estadoNombre);
                 case PADRE_COL_FECHA:
                     return row.fechaDocumento != null ? DATE_FORMAT.format(row.fechaDocumento) : "";
                 case PADRE_COL_COMENTARIO:
@@ -465,13 +619,42 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     return "";
             }
         }
+
+        @Override
+        public void setValueAt(Object value, int rowIndex, int columnIndex) {
+            DocumentoRow row = getRow(rowIndex);
+            if (row == null) {
+                return;
+            }
+            switch (columnIndex) {
+                case PADRE_COL_NUMERO:
+                    row.numeroDocumento = text(value);
+                    break;
+                case PADRE_COL_ESTADO:
+                    if (value instanceof CatalogoItemDTO) {
+                        CatalogoItemDTO item = (CatalogoItemDTO) value;
+                        row.estadoCodigo = item.getCodigo();
+                        row.estadoNombre = item.getNombre();
+                    }
+                    break;
+                case PADRE_COL_FECHA:
+                    row.fechaDocumento = parseDate(value);
+                    break;
+                case PADRE_COL_COMENTARIO:
+                    row.descripcion = text(value);
+                    break;
+                default:
+                    break;
+            }
+            fireTableRowsUpdated(rowIndex, rowIndex);
+        }
     }
 
     private static class HijoTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Confirmación de respuesta", "Fecha Respuesta",
-            "Fecha Publicación", "Existe Oposición", "Hoja de Envío", ""
+            "", "Tipo documento", "Confirmación de respuesta", "Fecha Respuesta",
+            "Fecha Publicación", "Existe Oposición", "Hoja de Envío"
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -564,6 +747,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
     private static class DocumentoRow {
         private Long id;
         private Long parentId;
+        private boolean esPadre;
         private String tipoCodigo;
         private String tipoNombre;
         private String estadoCodigo;
@@ -581,6 +765,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         static DocumentoRow fromPadre(DocumentoAnalizadoDTO dto) {
             DocumentoRow row = new DocumentoRow();
             row.id = dto.getIdDocumentoAnalizado();
+            row.esPadre = true;
             row.tipoCodigo = dto.getTipoDocumentoCodigo();
             row.tipoNombre = dto.getTipoDocumentoNombre();
             row.estadoCodigo = dto.getEstadoDocumentoCodigo();
@@ -589,6 +774,20 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
             row.numeroDocumento = dto.getNumeroDocumento();
             row.descripcion = dto.getDescripcion();
             row.requiereRespuesta = dto.isRequiereRespuesta();
+            return row;
+        }
+
+        static DocumentoRow nuevoPadre(Long id, String tipoCodigo, String tipoNombre) {
+            DocumentoRow row = new DocumentoRow();
+            row.id = id;
+            row.esPadre = true;
+            row.tipoCodigo = tipoCodigo;
+            row.tipoNombre = tipoNombre;
+            row.estadoCodigo = ESTADO_EN_PROYECTO_CODIGO;
+            row.estadoNombre = ESTADO_EN_PROYECTO_NOMBRE;
+            row.numeroDocumento = "";
+            row.descripcion = "";
+            row.requiereRespuesta = true;
             return row;
         }
 
@@ -639,7 +838,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     fechaPublicacion,
                     "",
                     parentId,
-                    1,
+                    esPadre ? 0 : 1,
                     0,
                     "",
                     true,
@@ -660,7 +859,8 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                 boolean hasFocus,
                 int row,
                 int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            Object displayValue = value instanceof CatalogoItemDTO ? ((CatalogoItemDTO) value).getNombre() : value;
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, displayValue, isSelected, hasFocus, row, column);
             label.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
             label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
             label.setForeground(AppV2Theme.TEXT_PRIMARY);
@@ -811,6 +1011,39 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                 g2.fillRoundRect(x + 5, y + 10, 8, 5, 2, 2);
                 g2.setColor(Color.WHITE);
                 g2.drawLine(x + 7, y + 12, x + 11, y + 12);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private static class DeleteDocumentIcon implements Icon {
+        private static final int SIZE = 18;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = new Color(196, 53, 53);
+                Color fill = new Color(253, 237, 237);
+                g2.setColor(fill);
+                g2.fillRoundRect(x + 2, y + 2, 14, 14, 7, 7);
+                g2.setColor(stroke);
+                g2.drawRoundRect(x + 2, y + 2, 14, 14, 7, 7);
+                g2.setStroke(new java.awt.BasicStroke(2f));
+                g2.drawLine(x + 6, y + 6, x + 12, y + 12);
+                g2.drawLine(x + 12, y + 6, x + 6, y + 12);
             } finally {
                 g2.dispose();
             }

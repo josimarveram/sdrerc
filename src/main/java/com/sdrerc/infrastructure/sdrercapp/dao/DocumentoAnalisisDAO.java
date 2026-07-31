@@ -1360,6 +1360,15 @@ public class DocumentoAnalisisDAO {
     }
 
     public void darBajaDocumentoAnalizado(
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            Long idUsuarioModificador) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            darBajaDocumentoAnalizado(conn, idExpediente, idDocumentoAnalizado, idUsuarioModificador);
+        }
+    }
+
+    public void darBajaDocumentoAnalizado(
             Connection conn,
             Long idExpediente,
             Long idDocumentoAnalizado,

@@ -83,6 +83,10 @@ public class DocumentoAnalisisService {
         documentoAnalisisDAO.guardarCartaRespuesta(idExpediente, carta, resolverUsuarioActualSdrercApp());
     }
 
+    public void darBajaDocumentoAnalizado(Long idExpediente, Long idDocumentoAnalizado) throws SQLException {
+        documentoAnalisisDAO.darBajaDocumentoAnalizado(idExpediente, idDocumentoAnalizado, resolverUsuarioActualSdrercApp());
+    }
+
     public List<NotificacionAsignacionDocumentoDTO> listarDocumentosAsignacionNotificacion() throws SQLException {
         return documentoAnalisisDAO.listarDocumentosAsignacionNotificacion();
     }
