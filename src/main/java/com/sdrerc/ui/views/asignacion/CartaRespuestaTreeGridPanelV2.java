@@ -270,6 +270,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         tablaHijo.getColumnModel().getColumn(HIJO_COL_CONFIRMACION_RESPUESTA)
                 .setCellEditor(new DefaultCellEditor(comboConfirmacionRespuesta()));
         tablaHijo.getColumnModel().getColumn(HIJO_COL_FECHA_RESPUESTA).setCellEditor(new FechaCellEditor());
+        tablaHijo.getColumnModel().getColumn(HIJO_COL_FECHA_PUBLICACION).setCellEditor(new FechaCellEditor());
         tablaHijo.getColumnModel().getColumn(HIJO_COL_EXISTE_OPOSICION)
                 .setCellEditor(new DefaultCellEditor(comboSiNo()));
         tablaHijo.getColumnModel().getColumn(HIJO_COL_HOJA_ENVIO).setCellEditor(new DefaultCellEditor(new JTextField()));
@@ -677,7 +678,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
             "", "", "Tipo documento", "Confirmación de respuesta", "Fecha Respuesta",
-            "Fecha Publicación", "Existe Oposición", "Hoja de Envío"
+            "Fech.Publ.Edicto", "Existe Oposición", "Hoja de Envío"
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -712,8 +713,7 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return getRow(rowIndex) != null
-                    && columnIndex != HIJO_COL_TIPO
-                    && columnIndex != HIJO_COL_FECHA_PUBLICACION;
+                    && columnIndex != HIJO_COL_TIPO;
         }
 
         @Override
@@ -752,6 +752,9 @@ public class CartaRespuestaTreeGridPanelV2 extends JPanel {
                     break;
                 case HIJO_COL_FECHA_RESPUESTA:
                     row.fechaRespuesta = parseDate(value);
+                    break;
+                case HIJO_COL_FECHA_PUBLICACION:
+                    row.fechaPublicacion = parseDate(value);
                     break;
                 case HIJO_COL_EXISTE_OPOSICION:
                     row.existeOposicion = "Si".equalsIgnoreCase(text(value)) ? Boolean.TRUE

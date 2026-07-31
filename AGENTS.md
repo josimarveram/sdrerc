@@ -1381,6 +1381,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/infrastructure/sdrercapp/dao/DocumentoAnalisisDAO.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados (el `CHECK` afectado ya existía desde el script 29).
 
+### Columna "Fech.Publ.Edicto" editable con calendario en grilla hija de Cartas de Respuesta (31/07/2026)
+
+- Pedido del usuario: en el bloque "Documentos de cartas de respuesta" del panel de Respuesta (Asignación), renombrar la columna "Fecha Publicación" a "Fech.Publ.Edicto" y permitir editarla con selector de calendario, igual que "Fecha Respuesta". Aclaración explícita del usuario: esta fecha (publicación del edicto) no tiene relación con la fecha de publicación de la notificación de la carta intermedia del abogado (otro concepto, otro flujo).
+- Contexto: la columna ya existía como solo lectura (`HIJO_COL_FECHA_PUBLICACION`, poblada desde `DocumentoAnalizadoDTO.getFechaPublicacion()` en `fromHijo(dto)`), usada por la alerta de vencimiento en cascada de la Bandeja Cartas de Respuesta (ver "Alerta de vencimiento (respuesta -> publicación en cascada)..."). `DocumentoRow.toDocumento(...)` ya reenviaba `fechaPublicacion` tal cual al guardar, así que no hizo falta tocar el DAO/Service: solo faltaba que la grilla permitiera escribir el valor.
+- Fix: `HijoTableModel.isCellEditable` ya no excluye `HIJO_COL_FECHA_PUBLICACION`; `setValueAt` gana el caso `HIJO_COL_FECHA_PUBLICACION -> row.fechaPublicacion = parseDate(value)` (mismo patrón que `HIJO_COL_FECHA_RESPUESTA`); `configurarTablas()` asigna `FechaCellEditor` (mismo editor de calendario que Fecha Respuesta) a esa columna. Encabezado renombrado de "Fecha Publicación" a "Fech.Publ.Edicto".
+- Archivos: `src/main/java/com/sdrerc/ui/views/asignacion/CartaRespuestaTreeGridPanelV2.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
