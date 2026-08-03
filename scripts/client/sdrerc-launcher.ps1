@@ -152,7 +152,7 @@ function Invoke-HttpTextRequest {
         return [string]$response.Content
     }
     catch {
-        Write-Log "Invoke-WebRequest fallo para $Url: $($_.Exception.Message)" "WARN"
+        Write-Log "Invoke-WebRequest fallo para ${Url}: $($_.Exception.Message)" "WARN"
         $client = $null
         try {
             $client = New-Object System.Net.WebClient
@@ -176,7 +176,7 @@ function Download-HttpFile {
         return
     }
     catch {
-        Write-Log "Invoke-WebRequest fallo al descargar $Url: $($_.Exception.Message)" "WARN"
+        Write-Log "Invoke-WebRequest fallo al descargar ${Url}: $($_.Exception.Message)" "WARN"
         $client = $null
         try {
             $client = New-Object System.Net.WebClient
