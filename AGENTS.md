@@ -1450,6 +1450,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Lengüetas del panel lateral de Notificación más altas (comparado con Asignación) (03/08/2026)
+
+- Pedido del usuario (con 2 capturas de pantalla comparativas): las lengüetas del panel lateral en las 3 bandejas del módulo Notificación (Asignación, Validación, Notificación) se veían mucho más compactas/cortas que las del módulo Asignación, donde ocupan visiblemente más altura del riel lateral.
+- Diagnóstico: `calcularPosicionesLenguetas` (Asignación) y `calcularPosicionesLenguetasNotif` (Notificación) son funcionalmente idénticas — ambas apilan lengüetas con una altura FIJA por lengüeta (`tabHeight`) más un espacio (`gap`) entre ellas, sin estirarlas para llenar el alto disponible del contenedor. `AppV2StackedSideTab` tampoco cambia de tamaño según su estado (`setState` solo cambia colores, no dimensiones). La diferencia visual real entre ambos módulos no era que las lengüetas de Asignación fueran individualmente más altas por diseño (`ASIGNACION_TAB_HEIGHT=92` vs `PANEL_*_TAB_HEIGHT=94` en Notificación, prácticamente iguales) sino que Asignación tiene 5 lengüetas apiladas (Datos/Asignación/Asociar/Grupo Fam./Documentos) contra solo 2-3 en cada bandeja de Notificación (Datos+Asignación+Firma, Datos+Validar, Datos+Cierre) — con menos lengüetas y la misma altura fija, se ve mucho espacio vacío debajo del riel.
+- Fix: se aumentó la altura fija de lengüeta en los 3 grupos de Notificación de 94 a 140 (`PANEL_ASIG_NOTIF_TAB_HEIGHT`, `PANEL_VALIDACION_TAB_HEIGHT`, `PANEL_NOTIFICACION_TAB_HEIGHT`), para que ocupen más espacio visual del riel lateral y se vean menos "apachurradas" arriba con hueco vacío debajo, sin cambiar la mecánica de layout (sigue siendo altura fija apilada, igual que Asignación). El valor 140 es una estimación visual razonable (no una réplica matemática exacta de las proporciones de Asignación, que tiene más lengüetas); pendiente que el usuario confirme si el resultado visual final se ve bien o si conviene ajustar el número.
+- Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Es un cambio puramente visual que no se pudo verificar renderizado (sin acceso a ejecutar la UI); sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

@@ -107,7 +107,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private static final int PANEL_NOTIFICACION_ANCHO_NORMAL = 430;
     private static final int PANEL_NOTIFICACION_TAB_OVERHANG = 46;
     private static final int PANEL_NOTIFICACION_TAB_TOP = 18;
-    private static final int PANEL_NOTIFICACION_TAB_HEIGHT = 94;
+    private static final int PANEL_NOTIFICACION_TAB_HEIGHT = 140;
     private static final String TAB_NOTIF_PANEL_NOTIFICACION = "NOTIFICACION";
     private static final String TAB_NOTIF_PANEL_CIERRE = "CIERRE";
     private static final int TAB_BANDEJA_NOTIF_ASIGNACION = 0;
@@ -267,7 +267,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private static final int PANEL_ASIG_NOTIF_ANCHO_NORMAL = 430;
     private static final int PANEL_ASIG_NOTIF_TAB_OVERHANG = 46;
     private static final int PANEL_ASIG_NOTIF_TAB_TOP = 18;
-    private static final int PANEL_ASIG_NOTIF_TAB_HEIGHT = 94;
+    private static final int PANEL_ASIG_NOTIF_TAB_HEIGHT = 140;
     private static final String TAB_ASIG_NOTIF_DATOS = "DATOS";
     private static final String TAB_ASIG_NOTIF_ASIGNACION = "ASIGNACION";
     private static final String TAB_ASIG_NOTIF_FIRMA = "FIRMA";
@@ -403,7 +403,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private Long idExpedienteValidacionSeleccionado;
     private static final int PANEL_VALIDACION_TAB_OVERHANG = 46;
     private static final int PANEL_VALIDACION_TAB_TOP = 18;
-    private static final int PANEL_VALIDACION_TAB_HEIGHT = 94;
+    private static final int PANEL_VALIDACION_TAB_HEIGHT = 140;
     private static final int PANEL_VALIDACION_ANCHO_MINIMO = 380;
     private static final int PANEL_VALIDACION_ANCHO_NORMAL = 520;
     private static final String TAB_VALIDACION_DATOS = "DATOS";
