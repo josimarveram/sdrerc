@@ -208,17 +208,17 @@ public class JPanelNotificacionV2 extends JPanel {
     private final MetricCardV2 cardVencidos = new MetricCardV2("Por vencer", "0", "Vencidos o críticos", AppV2Theme.WARNING);
     private FiltroKpi kpiActivo = FiltroKpi.TODOS;
     private final List<NotificacionExpedienteDTO> expedientesVisibles = new ArrayList<NotificacionExpedienteDTO>();
-    private AppV2OperationalSplitPanel splitOperativo;
+    private AppV2OperationalSplitPanel splitBandejasNotif;
+    private JPanel panelLateralNotifHost;
+    private JPanel panelLateralAsigNotif;
+    private JPanel panelLateralValidacionNotif;
+    private JPanel panelLateralNotifBandeja;
     private AppV2SideActionPanel panelNotificacion;
     private AppV2SideActionPanel panelCierre;
     private AppV2SideActionPanel panelAsignacionOperativaNotif;
     private AppV2SideActionPanel panelFirmaNotif;
     private AppV2SideActionPanel panelValidarOperativo;
     private JTabbedPane tabsBandejasTop;
-    private JPanel bandejaAsignacionTab;
-    private JPanel bandejaValidacionTab;
-    private JPanel bandejaNotificacionTab;
-    private JPanel notifSharedContentHost;
 
     private static final int COL_ASIG_EXPANDIR = 0;
     private static final int COL_ASIG_SELECCION = 1;
@@ -280,7 +280,6 @@ public class JPanelNotificacionV2 extends JPanel {
     private CardLayout panelAsigNotifCardsLayout;
     private JPanel panelAsigNotifCards;
     private String tabAsigNotifActiva = TAB_ASIG_NOTIF_DATOS;
-    private AppV2OperationalSplitPanel splitAsigNotif;
     private boolean panelAsigNotifCerradoPorUsuario;
     private final DatosExpedienteNotifPanel datosAsigNotif = new DatosExpedienteNotifPanel();
     private final JCheckBox chkHabilitarReasignacionNotif = new JCheckBox("Habilitar reasignación");
@@ -415,7 +414,6 @@ public class JPanelNotificacionV2 extends JPanel {
     private CardLayout panelValidacionCardsLayout;
     private JPanel panelValidacionCards;
     private String tabValidacionActiva = TAB_VALIDACION_DATOS;
-    private AppV2OperationalSplitPanel splitValidacionNotif;
     private boolean panelValidacionCerradoPorUsuario;
     private final DatosExpedienteNotifPanel datosValidacionNotif = new DatosExpedienteNotifPanel();
     private final JComboBox<SimpleItem> cmbResultadoValidacion = new JComboBox<SimpleItem>();
@@ -546,6 +544,14 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private JPanel crearCentro() {
+        // Split UNICO a nivel de todo el modulo: el JTabbedPane con las 3 bandejas
+        // (Asignacion/Validacion/Notificacion) es el lado izquierdo, y un host compartido
+        // es el lado derecho, para que el panel lateral arranque a la misma altura que el
+        // encabezado de las pestanas superiores (igual patron que JPanelAsignacionV2), en vez
+        // de quedar anidado dentro del contenido de cada pestana (que lo empujaba mas abajo).
+        JPanel contenidoAsigNotif = crearBandejaAsignacionNotificacion();
+        JPanel contenidoValidacion = crearBandejaValidacion();
+
         JPanel contenidoPrincipal = new JPanel(new BorderLayout(4, 4));
         contenidoPrincipal.setOpaque(false);
         contenidoPrincipal.add(crearHeader(), BorderLayout.NORTH);
@@ -558,38 +564,16 @@ public class JPanelNotificacionV2 extends JPanel {
 
         panelNotificacion = crearPanelNotificacion();
         panelCierre = crearPanelCierre();
-        JPanel panelConTab = crearPanelNotificacionConTab(panelNotificacion, panelCierre);
-        splitOperativo = new AppV2OperationalSplitPanel(
-                contenidoPrincipal,
-                panelConTab,
-                0,
-                PANEL_NOTIFICACION_ANCHO_MINIMO + PANEL_NOTIFICACION_TAB_OVERHANG,
-                PANEL_NOTIFICACION_ANCHO_NORMAL + PANEL_NOTIFICACION_TAB_OVERHANG);
-        return crearContenedorBandejasTop(splitOperativo);
-    }
+        panelLateralNotifBandeja = crearPanelNotificacionConTab(panelNotificacion, panelCierre);
 
-    private JPanel crearContenedorBandejasTop(final JPanel contenido) {
         tabsBandejasTop = new JTabbedPane();
         tabsBandejasTop.setOpaque(false);
         tabsBandejasTop.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         tabsBandejasTop.setBackground(AppV2Theme.BACKGROUND);
         tabsBandejasTop.setBorder(BorderFactory.createEmptyBorder());
-
-        bandejaAsignacionTab = new JPanel(new BorderLayout());
-        bandejaAsignacionTab.setOpaque(false);
-        bandejaAsignacionTab.add(crearBandejaAsignacionNotificacion(), BorderLayout.CENTER);
-        bandejaValidacionTab = new JPanel(new BorderLayout());
-        bandejaValidacionTab.setOpaque(false);
-        bandejaValidacionTab.add(crearBandejaValidacion(), BorderLayout.CENTER);
-        bandejaNotificacionTab = new JPanel(new BorderLayout());
-        bandejaNotificacionTab.setOpaque(false);
-        notifSharedContentHost = new JPanel(new BorderLayout());
-        notifSharedContentHost.setOpaque(false);
-        bandejaNotificacionTab.add(notifSharedContentHost, BorderLayout.CENTER);
-
-        tabsBandejasTop.addTab("Bandeja Asignación", bandejaAsignacionTab);
-        tabsBandejasTop.addTab("Bandeja Validación", bandejaValidacionTab);
-        tabsBandejasTop.addTab("Bandeja Notificación", bandejaNotificacionTab);
+        tabsBandejasTop.addTab("Bandeja Asignación", contenidoAsigNotif);
+        tabsBandejasTop.addTab("Bandeja Validación", contenidoValidacion);
+        tabsBandejasTop.addTab("Bandeja Notificación", contenidoPrincipal);
         tabsBandejasTop.addChangeListener(e -> actualizarTabBandejaNotificacion());
         aplicarPermisoBandeja(
                 TAB_BANDEJA_NOTIF_ASIGNACION, PERMISO_BANDEJA_NOTIFICACION_ASIGNACION,
@@ -601,12 +585,33 @@ public class JPanelNotificacionV2 extends JPanel {
                 TAB_BANDEJA_NOTIF_NOTIFICACION, PERMISO_BANDEJA_NOTIFICACION_NOTIFICACION,
                 "No tiene permiso para ver Bandeja Notificación.");
 
-        moverContenidoATabSeleccionada(contenido);
+        panelLateralNotifHost = new JPanel(new BorderLayout());
+        panelLateralNotifHost.setOpaque(false);
+        splitBandejasNotif = new AppV2OperationalSplitPanel(
+                tabsBandejasTop,
+                panelLateralNotifHost,
+                0,
+                PANEL_NOTIFICACION_ANCHO_MINIMO + PANEL_NOTIFICACION_TAB_OVERHANG,
+                PANEL_VALIDACION_ANCHO_NORMAL + PANEL_NOTIFICACION_TAB_OVERHANG);
         actualizarTabBandejaNotificacion();
+
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
-        wrapper.add(tabsBandejasTop, BorderLayout.CENTER);
+        wrapper.add(splitBandejasNotif, BorderLayout.CENTER);
         return wrapper;
+    }
+
+    private void mostrarPanelLateralNotif(JPanel panelLateral) {
+        if (panelLateralNotifHost == null || panelLateral == null) {
+            return;
+        }
+        if (panelLateral.getParent() == panelLateralNotifHost) {
+            return;
+        }
+        panelLateralNotifHost.removeAll();
+        panelLateralNotifHost.add(panelLateral, BorderLayout.CENTER);
+        panelLateralNotifHost.revalidate();
+        panelLateralNotifHost.repaint();
     }
 
     private void aplicarPermisoBandeja(int indice, String codigoPermiso, String motivo) {
@@ -617,23 +622,6 @@ public class JPanelNotificacionV2 extends JPanel {
             tabsBandejasTop.setEnabledAt(indice, false);
             tabsBandejasTop.setToolTipTextAt(indice, motivo);
         }
-    }
-
-    private void moverContenidoATabSeleccionada(JPanel contenido) {
-        JPanel destino = panelParaModoBandejaNotificacion();
-        if (destino == null) {
-            return;
-        }
-        if (contenido.getParent() == destino) {
-            return;
-        }
-        if (contenido.getParent() != null) {
-            contenido.getParent().remove(contenido);
-        }
-        destino.removeAll();
-        destino.add(contenido, BorderLayout.CENTER);
-        destino.revalidate();
-        destino.repaint();
     }
 
     private JPanel crearBandejaAsignacionNotificacion() {
@@ -685,8 +673,9 @@ public class JPanelNotificacionV2 extends JPanel {
                 if (e.getClickCount() == 2) {
                     panelAsigNotifCerradoPorUsuario = false;
                     actualizarFocoAsignacionNotif();
-                    if (splitAsigNotif != null && documentoAsigNotifFoco != null) {
-                        splitAsigNotif.setSideVisible(true);
+                    if (documentoAsigNotifFoco != null) {
+                        mostrarPanelLateralNotif(panelLateralAsigNotif);
+                        splitBandejasNotif.setSideVisible(true);
                         seleccionarTabAsigNotif(TAB_ASIG_NOTIF_DATOS);
                     }
                 }
@@ -714,23 +703,16 @@ public class JPanelNotificacionV2 extends JPanel {
         section.setStatus(lblEstadoAsignacionNotif);
         izquierda.add(section, BorderLayout.CENTER);
 
-        splitAsigNotif = new AppV2OperationalSplitPanel(
-                izquierda,
-                crearPanelDetalleAsignacionNotif(),
-                0,
-                PANEL_ASIG_NOTIF_ANCHO_MINIMO + PANEL_ASIG_NOTIF_TAB_OVERHANG,
-                PANEL_ASIG_NOTIF_ANCHO_NORMAL + PANEL_ASIG_NOTIF_TAB_OVERHANG);
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
-        panel.add(splitAsigNotif, BorderLayout.CENTER);
-        return panel;
+        panelLateralAsigNotif = crearPanelDetalleAsignacionNotif();
+        return izquierda;
     }
 
     private void actualizarVisibilidadPanelAsigNotif() {
-        if (splitAsigNotif == null || !splitAsigNotif.isSideVisible()) {
+        if (modoBandejaNotificacion != ModoBandejaNotificacion.ASIGNACION
+                || splitBandejasNotif == null || !splitBandejasNotif.isSideVisible()) {
             return;
         }
-        splitAsigNotif.setSideVisible(documentoAsigNotifFoco != null && !panelAsigNotifCerradoPorUsuario);
+        splitBandejasNotif.setSideVisible(documentoAsigNotifFoco != null && !panelAsigNotifCerradoPorUsuario);
     }
 
     private JPanel crearHeaderAsigNotif() {
@@ -1027,8 +1009,8 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void cerrarPanelAsignacionNotif() {
         panelAsigNotifCerradoPorUsuario = true;
-        if (splitAsigNotif != null) {
-            splitAsigNotif.setSideVisible(false);
+        if (splitBandejasNotif != null) {
+            splitBandejasNotif.setSideVisible(false);
         }
     }
 
@@ -1421,8 +1403,8 @@ public class JPanelNotificacionV2 extends JPanel {
         boolean mismaTab = tab.equals(tabAsigNotifActiva);
         tabAsigNotifActiva = tab;
         panelAsigNotifCardsLayout.show(panelAsigNotifCards, tab);
-        if (splitAsigNotif != null && splitAsigNotif.isSideVisible() && mismaTab) {
-            splitAsigNotif.setSideExpanded(!splitAsigNotif.isSideExpanded());
+        if (splitBandejasNotif != null && splitBandejasNotif.isSideVisible() && mismaTab) {
+            splitBandejasNotif.setSideExpanded(!splitBandejasNotif.isSideExpanded());
         }
         panelAsigNotifCards.revalidate();
         panelAsigNotifCards.repaint();
@@ -1430,7 +1412,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void actualizarLenguetasAsigNotif() {
-        boolean expandido = splitAsigNotif != null && splitAsigNotif.isSideExpanded();
+        boolean expandido = splitBandejasNotif != null && splitBandejasNotif.isSideExpanded();
         tabAsigNotifDatos.setState(TAB_ASIG_NOTIF_DATOS.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_DATOS.equals(tabAsigNotifActiva) && expandido);
         tabAsigNotifAsignacion.setState(TAB_ASIG_NOTIF_ASIGNACION.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_ASIGNACION.equals(tabAsigNotifActiva) && expandido);
         tabAsigNotifFirma.setState(TAB_ASIG_NOTIF_FIRMA.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_FIRMA.equals(tabAsigNotifActiva) && expandido);
@@ -2364,10 +2346,9 @@ public class JPanelNotificacionV2 extends JPanel {
                     if (modelRow >= 0 && modelRow < documentosValidacion.size()) {
                         panelValidacionCerradoPorUsuario = false;
                         abrirPanelValidacion(documentosValidacion.get(modelRow));
-                        if (splitValidacionNotif != null) {
-                            splitValidacionNotif.setSideVisible(true);
-                            seleccionarTabValidacion(TAB_VALIDACION_DATOS);
-                        }
+                        mostrarPanelLateralNotif(panelLateralValidacionNotif);
+                        splitBandejasNotif.setSideVisible(true);
+                        seleccionarTabValidacion(TAB_VALIDACION_DATOS);
                     }
                 }
             }
@@ -2387,16 +2368,8 @@ public class JPanelNotificacionV2 extends JPanel {
         section.setStatus(lblEstadoValidacion);
         izquierda.add(section, BorderLayout.CENTER);
 
-        splitValidacionNotif = new AppV2OperationalSplitPanel(
-                izquierda,
-                crearPanelDetalleValidacion(),
-                0,
-                PANEL_VALIDACION_ANCHO_MINIMO + PANEL_VALIDACION_TAB_OVERHANG,
-                PANEL_VALIDACION_ANCHO_NORMAL + PANEL_VALIDACION_TAB_OVERHANG);
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
-        panel.add(splitValidacionNotif, BorderLayout.CENTER);
-        return panel;
+        panelLateralValidacionNotif = crearPanelDetalleValidacion();
+        return izquierda;
     }
 
     private JPanel crearHeaderValidacion() {
@@ -2568,8 +2541,8 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void cerrarPanelValidacionNotif() {
         panelValidacionCerradoPorUsuario = true;
-        if (splitValidacionNotif != null) {
-            splitValidacionNotif.setSideVisible(false);
+        if (splitBandejasNotif != null) {
+            splitBandejasNotif.setSideVisible(false);
         }
     }
 
@@ -2706,12 +2679,12 @@ public class JPanelNotificacionV2 extends JPanel {
         boolean mismaTab = tab.equals(tabValidacionActiva);
         tabValidacionActiva = tab;
         panelValidacionCardsLayout.show(panelValidacionCards, tab);
-        if (splitValidacionNotif != null && splitValidacionNotif.isSideVisible() && mismaTab) {
-            splitValidacionNotif.setSideExpanded(!splitValidacionNotif.isSideExpanded());
+        if (splitBandejasNotif != null && splitBandejasNotif.isSideVisible() && mismaTab) {
+            splitBandejasNotif.setSideExpanded(!splitBandejasNotif.isSideExpanded());
         }
         panelValidacionCards.revalidate();
         panelValidacionCards.repaint();
-        boolean expandido = splitValidacionNotif != null && splitValidacionNotif.isSideExpanded();
+        boolean expandido = splitBandejasNotif != null && splitBandejasNotif.isSideExpanded();
         tabValidacionDatos.setState(TAB_VALIDACION_DATOS.equals(tabValidacionActiva), TAB_VALIDACION_DATOS.equals(tabValidacionActiva) && expandido);
         tabValidacionValidar.setState(TAB_VALIDACION_VALIDAR.equals(tabValidacionActiva), TAB_VALIDACION_VALIDAR.equals(tabValidacionActiva) && expandido);
     }
@@ -2961,9 +2934,8 @@ public class JPanelNotificacionV2 extends JPanel {
                 seleccionarExpedienteDesdeDocumentoNotif(fila.idDocumento);
                 if (e.getClickCount() == 2 && fila.esPadre()) {
                     panelNotificacionCerradoPorUsuario = false;
-                    if (splitOperativo != null) {
-                        splitOperativo.setSideVisible(true);
-                    }
+                    mostrarPanelLateralNotif(panelLateralNotifBandeja);
+                    splitBandejasNotif.setSideVisible(true);
                 }
             }
         });
@@ -4073,30 +4045,25 @@ public class JPanelNotificacionV2 extends JPanel {
         }
     }
 
-    private JPanel panelParaModoBandejaNotificacion() {
-        if (tabsBandejasTop == null) {
-            return notifSharedContentHost;
-        }
-        int index = tabsBandejasTop.getSelectedIndex();
-        if (index == 0) {
-            modoBandejaNotificacion = ModoBandejaNotificacion.ASIGNACION;
-            return null;
-        }
-        if (index == 1) {
-            modoBandejaNotificacion = ModoBandejaNotificacion.VALIDACION;
-            return null;
-        }
-        modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
-        return notifSharedContentHost;
-    }
-
     private void actualizarTabBandejaNotificacion() {
+        if (tabsBandejasTop != null) {
+            int index = tabsBandejasTop.getSelectedIndex();
+            if (index == 0) {
+                modoBandejaNotificacion = ModoBandejaNotificacion.ASIGNACION;
+            } else if (index == 1) {
+                modoBandejaNotificacion = ModoBandejaNotificacion.VALIDACION;
+            } else {
+                modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
+            }
+        }
+        // El panel lateral es compartido por las 3 bandejas: al cambiar de bandeja se cierra,
+        // para no dejar visible el detalle de una bandeja distinta a la seleccionada.
+        if (splitBandejasNotif != null) {
+            splitBandejasNotif.setSideVisible(false);
+        }
         mostrarTabPanelNotificacion(modoBandejaNotificacion == ModoBandejaNotificacion.VALIDACION
                 ? TAB_NOTIF_PANEL_CIERRE
                 : TAB_NOTIF_PANEL_NOTIFICACION);
-        if (splitOperativo != null) {
-            moverContenidoATabSeleccionada(splitOperativo);
-        }
         if (construccionCompleta) {
             if (modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
                 cargarBandejaAsignacionNotificacion();
@@ -4211,8 +4178,8 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         boolean mismaTab = tab.equals(tabNotifPanelActiva);
         mostrarTabPanelNotificacion(tab);
-        if (splitOperativo != null && splitOperativo.isSideVisible() && mismaTab) {
-            splitOperativo.setSideExpanded(!splitOperativo.isSideExpanded());
+        if (splitBandejasNotif != null && splitBandejasNotif.isSideVisible() && mismaTab) {
+            splitBandejasNotif.setSideExpanded(!splitBandejasNotif.isSideExpanded());
             actualizarLenguetasPanelNotificacion();
         }
     }
@@ -4229,7 +4196,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void actualizarLenguetasPanelNotificacion() {
-        boolean expandido = splitOperativo != null && splitOperativo.isSideExpanded();
+        boolean expandido = splitBandejasNotif != null && splitBandejasNotif.isSideExpanded();
         tabNotifPanelNotificacion.setState(
                 TAB_NOTIF_PANEL_NOTIFICACION.equals(tabNotifPanelActiva),
                 TAB_NOTIF_PANEL_NOTIFICACION.equals(tabNotifPanelActiva) && expandido);
@@ -4503,9 +4470,8 @@ public class JPanelNotificacionV2 extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2 && table.rowAtPoint(e.getPoint()) >= 0) {
                     panelNotificacionCerradoPorUsuario = false;
-                    if (splitOperativo != null) {
-                        splitOperativo.setSideVisible(true);
-                    }
+                    mostrarPanelLateralNotif(panelLateralNotifBandeja);
+                    splitBandejasNotif.setSideVisible(true);
                     actualizarSeleccion();
                 }
             }
@@ -5249,19 +5215,17 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private void cerrarPanelNotificacion() {
         panelNotificacionCerradoPorUsuario = true;
-        if (splitOperativo != null) {
-            splitOperativo.setSideVisible(false);
+        if (splitBandejasNotif != null) {
+            splitBandejasNotif.setSideVisible(false);
         }
     }
 
     private void actualizarVisibilidadPanelNotificacion() {
-        if (splitOperativo == null) {
+        if (modoBandejaNotificacion != ModoBandejaNotificacion.NOTIFICACION
+                || splitBandejasNotif == null || !splitBandejasNotif.isSideVisible()) {
             return;
         }
-        if (!splitOperativo.isSideVisible()) {
-            return;
-        }
-        splitOperativo.setSideVisible(seleccionado() != null && !panelNotificacionCerradoPorUsuario);
+        splitBandejasNotif.setSideVisible(seleccionado() != null && !panelNotificacionCerradoPorUsuario);
         actualizarLenguetasPanelNotificacion();
     }
 
