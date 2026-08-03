@@ -508,13 +508,23 @@ try {
 
     $remoteAvailable = $false
     $remoteMetadata = $null
-    try {
-        $remoteMetadata = Get-RemoteReleaseMetadata -Config $config
-        $remoteAvailable = $true
-        Write-Log "Version remota detectada: $($remoteMetadata.Version.version)"
-    }
-    catch {
-        Write-Log "No se pudo acceder a la version remota: $($_.Exception.Message)" "WARN"
+    $maxIntentosRemoto = 3
+    for ($intentoRemoto = 1; $intentoRemoto -le $maxIntentosRemoto; $intentoRemoto++) {
+        try {
+            $remoteMetadata = Get-RemoteReleaseMetadata -Config $config
+            $remoteAvailable = $true
+            Write-Log "Version remota detectada: $($remoteMetadata.Version.version)"
+            break
+        }
+        catch {
+            if ($intentoRemoto -eq $maxIntentosRemoto) {
+                Write-Log "No se pudo acceder a la version remota tras $maxIntentosRemoto intentos: $($_.Exception.Message)" "WARN"
+            }
+            else {
+                Write-Log "No se pudo acceder a la version remota (intento $intentoRemoto de $maxIntentosRemoto): $($_.Exception.Message). Reintentando en 2s." "WARN"
+                Start-Sleep -Seconds 2
+            }
+        }
     }
 
     $localJar = Join-Path $appDir $mainJarName

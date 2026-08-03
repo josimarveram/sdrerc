@@ -1420,6 +1420,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/ejecucion/DocumentoEjecucionTreeGridPanelV2.java`, `src/main/java/com/sdrerc/ui/views/ejecucion/JPanelEjecucionV2.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
 
+### Reintentos al leer la versión remota en el launcher (falla intermitente vía Tailscale) (03/08/2026)
+
+- Reporte del usuario: el cliente remoto (conectado por Tailscale, ver "Acceso remoto de un cliente en otra LAN via Tailscale") no actualizaba a la versión recién publicada (1.0.101), quedándose en 1.0.100. El log mostraba repetidamente `[WARN] No se pudo acceder a version remota. Se intentara abrir la version local.` en varios intentos distintos a lo largo de la sesión, aunque el servidor tenía el release correcto publicado (`D:\SDRERC_RELEASES\latest\version.json` con `1.0.101`, verificado) y el mismo acceso SMB había funcionado bien en otros intentos.
+- Causa: `Get-RemoteReleaseMetadata` (que hace `Test-Path`/lee `version.json` vía UNC) se intentaba una sola vez; cualquier hiccup transitorio de la conexión Tailscale (negociación de ruta directa vs. relay DERP, latencia mayor que en una LAN física) hacía fallar esa única lectura y el launcher directamente se resignaba a abrir la versión local, sin reintentar. En una LAN físicanormal esto casi nunca pasa (por eso no se había necesitado hasta ahora), pero es esperable con Tailscale entre redes distintas.
+- Fix: el bloque que llama `Get-RemoteReleaseMetadata` en `sdrerc-launcher.ps1` ahora reintenta hasta 3 veces con 2 segundos de espera entre intentos antes de darse por vencido y abrir la versión local. Aplica a todos los clientes (LAN y remoto vía Tailscale), es inofensivo para los clientes LAN (en el peor caso solo tarda unos segundos más si la primera lectura falla).
+- Archivos: `scripts/client/sdrerc-launcher.ps1`.
+- Validación: `[System.Management.Automation.Language.Parser]::ParseFile(...)` sin errores nuevos en el bloque agregado (los 2 errores reportados por el parser son preexistentes, en `Invoke-HttpTextRequest`/`Download-HttpFile`, no relacionados con este cambio; el script funciona en producción pese a esa particularidad del analizador estático). No aplica `mvn compile` (script PowerShell, no Java). Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
