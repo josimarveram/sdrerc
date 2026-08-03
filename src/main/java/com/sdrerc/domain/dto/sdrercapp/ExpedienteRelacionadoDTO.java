@@ -22,6 +22,8 @@ public class ExpedienteRelacionadoDTO {
     private final Long idAbogadoResponsable;
     private final String etapaCodigo;
     private final String estadoCodigo;
+    private final String etapaNombre;
+    private final String estadoNombre;
     private final LocalDate fechaRecepcion;
     private final LocalDate fechaVencimiento;
     private final Long diasRestantes;
@@ -49,6 +51,8 @@ public class ExpedienteRelacionadoDTO {
             Long idAbogadoResponsable,
             String etapaCodigo,
             String estadoCodigo,
+            String etapaNombre,
+            String estadoNombre,
             LocalDate fechaRecepcion,
             LocalDate fechaVencimiento,
             Long diasRestantes,
@@ -74,6 +78,8 @@ public class ExpedienteRelacionadoDTO {
         this.idAbogadoResponsable = idAbogadoResponsable;
         this.etapaCodigo = safe(etapaCodigo);
         this.estadoCodigo = safe(estadoCodigo);
+        this.etapaNombre = safe(etapaNombre);
+        this.estadoNombre = safe(estadoNombre);
         this.fechaRecepcion = fechaRecepcion;
         this.fechaVencimiento = fechaVencimiento;
         this.diasRestantes = diasRestantes;
@@ -147,6 +153,27 @@ public class ExpedienteRelacionadoDTO {
 
     public String getEstadoCodigo() {
         return estadoCodigo;
+    }
+
+    public String getEtapaNombre() {
+        return etapaNombre;
+    }
+
+    public String getEstadoNombre() {
+        return estadoNombre;
+    }
+
+    public String getEtapaEstado() {
+        if (etapaNombre.isEmpty() && estadoNombre.isEmpty()) {
+            return "";
+        }
+        if (etapaNombre.isEmpty()) {
+            return estadoNombre;
+        }
+        if (estadoNombre.isEmpty()) {
+            return etapaNombre;
+        }
+        return etapaNombre + "/" + estadoNombre;
     }
 
     public LocalDate getFechaRecepcion() {

@@ -20,4 +20,8 @@ public class ExpedienteRelacionadoDeteccionService {
     public List<ExpedienteRelacionadoDTO> listarPosiblesRelacionados(Long idExpediente) throws SQLException {
         return expedienteRelacionadoDAO.listarPosiblesRelacionados(idExpediente);
     }
+
+    public List<ExpedienteRelacionadoDTO> listarSolicitudesDelGrupo(Long idExpediente) throws SQLException {
+        return expedienteRelacionadoDAO.listarSolicitudesDelGrupo(idExpediente);
+    }
 }

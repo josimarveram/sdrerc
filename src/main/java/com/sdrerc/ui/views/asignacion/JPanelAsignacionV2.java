@@ -222,7 +222,7 @@ public class JPanelAsignacionV2 extends JPanel {
             new com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService();
     private final JButton btnLimpiarCartasRespuesta = new JButton("Limpiar");
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
-    private final JButton btnGenerarNumeroExpediente = new JButton("Generar número");
+    private final JButton btnGenerarNumeroExpediente = new JButton("Generar número de expediente");
     private final JButton btnAsignarSeleccionado = new JButton("Generar asignación");
     private final JButton btnAsignarSeleccionados = new JButton("Cancelar");
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar expedientes.");
@@ -272,13 +272,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
     private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
     private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
-            new Object[]{"", "N° expediente", "N° expediente SGD", "Estado", "Fecha Asociación", ""}, 0) {
+            new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta", "Etapa/Estado", "Abogado"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            if (column == 0) {
-                return puedeAsociarDocumentoRelacionado(row);
-            }
-            return column == 5 && puedeEliminarDocumentoRelacionado(row);
+            return column == 0 && puedeAsociarDocumentoRelacionado(row);
         }
 
         @Override
@@ -1392,8 +1389,8 @@ public class JPanelAsignacionV2 extends JPanel {
         titulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         titulo.setForeground(AppV2Theme.TEXT_PRIMARY);
         titulo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel ayuda = new JLabel("<html>Marque el/los expedientes <b>sin número</b> (potenciales duplicados) "
-                + "para asociarlos al expediente principal, que es el que ya tiene número.</html>");
+        JLabel ayuda = new JLabel("<html>Se muestran todas las solicitudes con la misma acta y titular, incluida "
+                + "la principal. Marque las que aún <b>no tienen número</b> para asociarlas al expediente principal.</html>");
         ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
         ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -1726,17 +1723,16 @@ public class JPanelAsignacionV2 extends JPanel {
         documentosRelacionadosTable.getColumnModel().getColumn(0).setCellRenderer(new SeleccionDocumentoRelacionadoRenderer());
         documentosRelacionadosTable.getColumnModel().getColumn(1).setPreferredWidth(110);
         documentosRelacionadosTable.getColumnModel().getColumn(1).setMinWidth(100);
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setPreferredWidth(140);
-        documentosRelacionadosTable.getColumnModel().getColumn(2).setMinWidth(120);
-        documentosRelacionadosTable.getColumnModel().getColumn(3).setPreferredWidth(110);
-        documentosRelacionadosTable.getColumnModel().getColumn(3).setMinWidth(100);
+        documentosRelacionadosTable.getColumnModel().getColumn(2).setPreferredWidth(110);
+        documentosRelacionadosTable.getColumnModel().getColumn(2).setMinWidth(100);
+        documentosRelacionadosTable.getColumnModel().getColumn(3).setPreferredWidth(100);
+        documentosRelacionadosTable.getColumnModel().getColumn(3).setMinWidth(90);
         documentosRelacionadosTable.getColumnModel().getColumn(4).setPreferredWidth(110);
         documentosRelacionadosTable.getColumnModel().getColumn(4).setMinWidth(100);
-        documentosRelacionadosTable.getColumnModel().getColumn(5).setPreferredWidth(58);
-        documentosRelacionadosTable.getColumnModel().getColumn(5).setMinWidth(54);
-        documentosRelacionadosTable.getColumnModel().getColumn(5).setMaxWidth(64);
-        documentosRelacionadosTable.getColumnModel().getColumn(5).setCellRenderer(new EliminarDocumentoRenderer());
-        documentosRelacionadosTable.getColumnModel().getColumn(5).setCellEditor(new EliminarDocumentoEditor());
+        documentosRelacionadosTable.getColumnModel().getColumn(5).setPreferredWidth(140);
+        documentosRelacionadosTable.getColumnModel().getColumn(5).setMinWidth(120);
+        documentosRelacionadosTable.getColumnModel().getColumn(6).setPreferredWidth(160);
+        documentosRelacionadosTable.getColumnModel().getColumn(6).setMinWidth(140);
         documentosRelacionadosModel.addTableModelListener(evento -> {
             if (evento.getColumn() == 0) {
                 actualizarBotonAsociarPorSeleccionTabla();
@@ -3510,7 +3506,7 @@ public class JPanelAsignacionV2 extends JPanel {
         int totalConNumero = 0;
         for (Long idMarcado : idsMarcados) {
             for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
-                if (fila == null || fila.esAsociado() || fila.getExpediente() == null) {
+                if (fila == null || fila.esPrincipal() || fila.getExpediente() == null) {
                     continue;
                 }
                 if (idMarcado.equals(fila.getExpediente().getIdExpediente()) && tieneNumeroExpediente(fila.getExpediente())) {
@@ -4822,8 +4818,7 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void cargarDocumentosRelacionadosPanel(AsignacionExpedienteDTO item) {
-        if (item == null || item.getIdExpediente() == null
-                || (item.getPosiblesRelacionados() <= 0 && item.getAsociadosConfirmados() <= 0)) {
+        if (item == null || item.getIdExpediente() == null) {
             limpiarDocumentosRelacionadosPanel("Sin alerta de relacionados.");
             return;
         }
@@ -4836,24 +4831,12 @@ public class JPanelAsignacionV2 extends JPanel {
         idExpedienteDocumentosRelacionados = idExpediente;
         documentosRelacionadosPanel.clear();
         documentosRelacionadosModel.setRowCount(0);
-        lblRelacionados.setText("Buscando documentos relacionados...");
+        lblRelacionados.setText("Buscando posibles duplicados...");
 
-        SwingWorker<List<DocumentoRelacionadoFila>, Void> worker = new SwingWorker<List<DocumentoRelacionadoFila>, Void>() {
+        SwingWorker<List<ExpedienteRelacionadoDTO>, Void> worker = new SwingWorker<List<ExpedienteRelacionadoDTO>, Void>() {
             @Override
-            protected List<DocumentoRelacionadoFila> doInBackground() throws Exception {
-                List<DocumentoRelacionadoFila> filas = new ArrayList<DocumentoRelacionadoFila>();
-                Set<Long> vistos = new HashSet<Long>();
-                for (ExpedienteRelacionadoDTO relacionado : relacionadoDeteccionService.listarPosiblesRelacionados(idExpediente)) {
-                    if (relacionado != null && relacionado.getIdExpediente() != null && vistos.add(relacionado.getIdExpediente())) {
-                        filas.add(new DocumentoRelacionadoFila(relacionado, false));
-                    }
-                }
-                for (ExpedienteRelacionadoDTO relacionado : relacionadoService.listarAsociadosConfirmados(idExpediente)) {
-                    if (relacionado != null && relacionado.getIdExpediente() != null && vistos.add(relacionado.getIdExpediente())) {
-                        filas.add(new DocumentoRelacionadoFila(relacionado, true));
-                    }
-                }
-                return filas;
+            protected List<ExpedienteRelacionadoDTO> doInBackground() throws Exception {
+                return relacionadoDeteccionService.listarSolicitudesDelGrupo(idExpediente);
             }
 
             @Override
@@ -4862,42 +4845,33 @@ public class JPanelAsignacionV2 extends JPanel {
                     return;
                 }
                 try {
-                    List<DocumentoRelacionadoFila> relacionados = get();
+                    List<ExpedienteRelacionadoDTO> relacionados = get();
                     documentosRelacionadosPanel.clear();
                     documentosRelacionadosModel.setRowCount(0);
-                    int pendientes = 0;
-                    int asociados = 0;
-                    for (DocumentoRelacionadoFila fila : relacionados) {
+                    int totalCandidatos = 0;
+                    for (ExpedienteRelacionadoDTO relacionado : relacionados) {
+                        boolean esPrincipal = idExpediente.equals(relacionado.getIdExpediente());
+                        DocumentoRelacionadoFila fila = new DocumentoRelacionadoFila(relacionado, esPrincipal);
                         documentosRelacionadosPanel.add(fila);
-                        if (fila.esAsociado()) {
-                            asociados++;
-                        } else {
-                            pendientes++;
+                        if (!esPrincipal) {
+                            totalCandidatos++;
                         }
                         documentosRelacionadosModel.addRow(new Object[]{
-                            fila.esAsociado() ? null : Boolean.TRUE,
+                            esPrincipal ? Boolean.FALSE : Boolean.TRUE,
                             numeroExpedienteDocumentoRelacionado(fila),
                             textoDocumentoRelacionado(fila),
-                            estadoDocumentoRelacionado(fila),
-                            fechaAsociacionDocumentoRelacionado(fila),
-                            fila.esAsociado() ? "Eliminar" : ""
+                            relacionado.getFechaRecepcion() != null ? DATE_FORMAT.format(relacionado.getFechaRecepcion()) : "-",
+                            (relacionado.getTipoActa() + " " + relacionado.getNumeroActa()).trim(),
+                            relacionado.getEtapaEstado(),
+                            relacionado.getAbogadoAsignado().isEmpty() ? "-" : relacionado.getAbogadoAsignado()
                         });
                     }
                     ajustarTamanoDocumentosRelacionados();
                     mostrarSolicitudesAsociadas(!relacionados.isEmpty());
                     actualizarBotonAsociarPorSeleccionTabla();
-                    if (!relacionados.isEmpty()) {
-                        if (pendientes > 0 && asociados > 0) {
-                            lblRelacionados.setText(pendientes + " documento(s) pendiente(s) de asociar y "
-                                    + asociados + " documento(s) ya asociado(s).");
-                        } else if (pendientes > 0) {
-                            lblRelacionados.setText(pendientes + " documento(s) pendiente(s) de asociar.");
-                        } else {
-                            lblRelacionados.setText(asociados + " documento(s) asociado(s).");
-                        }
-                    } else {
-                        lblRelacionados.setText("Sin documentos relacionados pendientes.");
-                    }
+                    lblRelacionados.setText(totalCandidatos > 0
+                            ? totalCandidatos + " posible(s) duplicado(s) detectado(s)."
+                            : "Sin alerta de relacionados.");
                 } catch (Exception ex) {
                     limpiarDocumentosRelacionadosPanel("No se pudo consultar documentos relacionados.");
                 }
@@ -5301,20 +5275,6 @@ public class JPanelAsignacionV2 extends JPanel {
                 && !expediente.getNumeroExpediente().trim().isEmpty();
     }
 
-    private String fechaAsociacionDocumentoRelacionado(DocumentoRelacionadoFila fila) {
-        if (fila == null || fila.getExpediente() == null || fila.getExpediente().getFechaAsociacion() == null) {
-            return "-";
-        }
-        return DATE_FORMAT.format(fila.getExpediente().getFechaAsociacion());
-    }
-
-    private String estadoDocumentoRelacionado(DocumentoRelacionadoFila fila) {
-        if (fila == null) {
-            return "-";
-        }
-        return fila.esAsociado() ? "Asociado" : "Pendiente de asociar";
-    }
-
     private static boolean pareceIdentificadorTecnico(String value) {
         return value != null && value.trim().matches("\\d{1,4}");
     }
@@ -5488,60 +5448,6 @@ public class JPanelAsignacionV2 extends JPanel {
         } else {
             label.setForeground(AppV2Theme.TEXT_SECONDARY);
         }
-    }
-
-    private void eliminarDocumentoRelacionado(int modelRow) {
-        DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
-        if (fila == null || fila.getExpediente() == null || fila.getExpediente().getIdExpediente() == null || !fila.esAsociado()) {
-            mostrarInfo("Seleccione un documento asociado válido para eliminar la relación.");
-            return;
-        }
-        Long idPrincipal = idExpedienteDocumentosRelacionados;
-        if (idPrincipal == null) {
-            mostrarInfo("Seleccione un expediente principal válido.");
-            return;
-        }
-        ExpedienteRelacionadoDTO relacionado = fila.getExpediente();
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Se eliminará la asociación del documento " + textoDocumentoRelacionado(relacionado)
-                        + ".\nEl expediente volverá a mostrarse como independiente y sin número heredado.\n"
-                        + "¿Desea continuar?",
-                "Eliminar asociación",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        setTrabajando(true, "Eliminando asociación...");
-        SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
-            @Override
-            protected String doInBackground() throws Exception {
-                return relacionadoService.desasociarRelacionado(
-                        idPrincipal,
-                        relacionado.getIdExpediente(),
-                        "Asociación eliminada desde Asignación.");
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    String mensaje = get();
-                    JOptionPane.showMessageDialog(
-                            JPanelAsignacionV2.this,
-                            mensaje,
-                            "Asociación eliminada",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    buscar();
-                } catch (Exception ex) {
-                    mostrarError("No se pudo eliminar la asociación del expediente relacionado.", ex);
-                } finally {
-                    setTrabajando(false, null);
-                }
-            }
-        };
-        worker.execute();
     }
 
     private AsignacionExpedienteDTO buscarExpedientePrincipal(Long idPrincipal) {
@@ -6030,14 +5936,9 @@ public class JPanelAsignacionV2 extends JPanel {
         lblExpedientePrincipalAsociacion.setText(texto.toString());
     }
 
-    private boolean puedeEliminarDocumentoRelacionado(int modelRow) {
-        DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
-        return fila != null && fila.esAsociado();
-    }
-
     private boolean puedeAsociarDocumentoRelacionado(int modelRow) {
         DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
-        return fila != null && !fila.esAsociado();
+        return fila != null && !fila.esPrincipal();
     }
 
     private int contarDocumentosRelacionadosMarcados() {
@@ -6057,7 +5958,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 continue;
             }
             DocumentoRelacionadoFila fila = documentosRelacionadosPanel.get(i);
-            if (fila != null && !fila.esAsociado() && fila.getExpediente() != null && fila.getExpediente().getIdExpediente() != null) {
+            if (fila != null && !fila.esPrincipal() && fila.getExpediente() != null && fila.getExpediente().getIdExpediente() != null) {
                 ids.add(fila.getExpediente().getIdExpediente());
             }
         }
@@ -6717,79 +6618,6 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
-    private class EliminarDocumentoRenderer extends AppV2RemoveActionButton implements TableCellRenderer {
-
-        private EliminarDocumentoRenderer() {
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                boolean hasFocus,
-                int row,
-                int column) {
-            int modelRow = table.convertRowIndexToModel(row);
-            boolean permitido = puedeEliminarDocumentoRelacionado(modelRow);
-            if (!permitido) {
-                JLabel vacio = new JLabel("");
-                vacio.setOpaque(true);
-                vacio.setHorizontalAlignment(SwingConstants.CENTER);
-                vacio.setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE);
-                vacio.setForeground(AppV2Theme.TEXT_PRIMARY);
-                vacio.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-                vacio.setToolTipText(null);
-                return vacio;
-            }
-            configure(false, true);
-            setToolTipText("Eliminar la asociación del expediente asociado.");
-            return this;
-        }
-    }
-
-    private class EliminarDocumentoEditor extends AbstractCellEditor implements TableCellEditor {
-
-        private final AppV2RemoveActionButton button = new AppV2RemoveActionButton();
-        private int modelRow = -1;
-
-        private EliminarDocumentoEditor() {
-            button.addActionListener(e -> {
-                int row = modelRow;
-                fireEditingStopped();
-                eliminarDocumentoRelacionado(row);
-            });
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return "Eliminar";
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(
-                JTable table,
-                Object value,
-                boolean isSelected,
-                int row,
-                int column) {
-            modelRow = table.convertRowIndexToModel(row);
-            boolean permitido = puedeEliminarDocumentoRelacionado(modelRow);
-            if (!permitido) {
-                JLabel vacio = new JLabel("");
-                vacio.setOpaque(true);
-                vacio.setHorizontalAlignment(SwingConstants.CENTER);
-                vacio.setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE);
-                vacio.setForeground(AppV2Theme.TEXT_PRIMARY);
-                vacio.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-                return vacio;
-            }
-            button.configure(false, permitido);
-            button.setToolTipText("Eliminar la asociación del expediente asociado.");
-            return button;
-        }
-    }
-
     private class EliminarIntegranteGrupoFamiliarRenderer extends AppV2RemoveActionButton implements TableCellRenderer {
 
         private EliminarIntegranteGrupoFamiliarRenderer() {
@@ -6891,19 +6719,19 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final class DocumentoRelacionadoFila {
 
         private final ExpedienteRelacionadoDTO expediente;
-        private final boolean asociado;
+        private final boolean esPrincipal;
 
-        private DocumentoRelacionadoFila(ExpedienteRelacionadoDTO expediente, boolean asociado) {
+        private DocumentoRelacionadoFila(ExpedienteRelacionadoDTO expediente, boolean esPrincipal) {
             this.expediente = expediente;
-            this.asociado = asociado;
+            this.esPrincipal = esPrincipal;
         }
 
         private ExpedienteRelacionadoDTO getExpediente() {
             return expediente;
         }
 
-        private boolean esAsociado() {
-            return asociado;
+        private boolean esPrincipal() {
+            return esPrincipal;
         }
     }
 

@@ -29,6 +29,7 @@ public class ExpedienteRelacionadoDAO {
     private static final String CODIGO_ETAPA_ANALISIS = "ANALISIS";
     private static final String CODIGO_ESTADO_ASIGNADO = "ASIGNADO";
     private static final String MOTIVO_MISMA_ACTA_TITULAR = "Misma acta y titular";
+    private static final String MOTIVO_EXPEDIENTE_PRINCIPAL = "Expediente principal";
     private static final String MOTIVO_DOCUMENTO_DUPLICADO = "Documento duplicado asociado al expediente principal por misma acta y titular";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
@@ -84,7 +85,9 @@ public class ExpedienteRelacionadoDAO {
                 + "NVL(e.id_usuario_responsable_actual, (SELECT MAX(axa.id_usuario_asignado) "
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
-                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, e.fecha_vencimiento, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, "
+                + "et.nombre AS etapa_nombre, est.nombre AS estado_nombre, "
+                + "esol.fecha_recepcion, e.fecha_vencimiento, "
                 + "? AS motivo_coincidencia, "
                 + resumenAlertasSql("e") + " AS alerta_ingreso "
                 + "FROM base b "
@@ -126,6 +129,106 @@ public class ExpedienteRelacionadoDAO {
             }
         }
         return relacionados;
+    }
+
+    /**
+     * Lista unificada para el bloque "Solicitudes asociadas" de los paneles Asociar de
+     * Registro/Recepción y Asignación: incluye el expediente PRINCIPAL (el enfocado en la
+     * bandeja) más los candidatos pendientes de asociar (misma acta+titular, aún no
+     * confirmados) — a propósito NO incluye los ya asociados/confirmados, porque esos ya
+     * fueron resueltos y este bloque es para decidir qué falta asociar. Ordenado ascendente
+     * por fecha de solicitud (creado_en/fecha_recepcion), como pidió el usuario.
+     */
+    public List<ExpedienteRelacionadoDTO> listarSolicitudesDelGrupo(Long idExpediente) throws SQLException {
+        List<ExpedienteRelacionadoDTO> solicitudes = new ArrayList<>();
+        if (idExpediente == null) {
+            return solicitudes;
+        }
+        String columnas = columnasSolicitudGrupoSql();
+        String joins = joinsSolicitudGrupoSql();
+        String sql = "WITH base AS ( "
+                + "SELECT e.id_expediente, ea.id_tipo_acta, UPPER(TRIM(ea.numero_acta)) AS numero_acta_norm, "
+                + normalizarPersona("p") + " AS titular_norm "
+                + "FROM expediente e "
+                + "JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                + "WHERE e.id_expediente = ? AND e.activo = 1 "
+                + ") "
+                + "SELECT * FROM ( "
+                + "SELECT " + columnas + ", ? AS motivo_coincidencia, " + resumenAlertasSql("e") + " AS alerta_ingreso "
+                + "FROM base b "
+                + "JOIN expediente e ON e.id_expediente = b.id_expediente AND e.activo = 1 "
+                + "JOIN expediente_acta ea ON ea.id_expediente = e.id_expediente AND ea.activo = 1 "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                + joins
+                + "UNION ALL "
+                + "SELECT DISTINCT " + columnas + ", ? AS motivo_coincidencia, " + resumenAlertasSql("e") + " AS alerta_ingreso "
+                + "FROM base b "
+                + "JOIN expediente_acta ea ON UPPER(TRIM(ea.numero_acta)) = b.numero_acta_norm "
+                + " AND ea.activo = 1 "
+                + "JOIN expediente e ON e.id_expediente = ea.id_expediente AND e.activo = 1 AND e.id_expediente <> b.id_expediente "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                + joins
+                + "WHERE b.numero_acta_norm IS NOT NULL "
+                + "AND b.titular_norm IS NOT NULL "
+                + "AND " + normalizarPersona("p") + " = b.titular_norm "
+                + "AND NOT EXISTS ("
+                + "SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND r.id_expediente_relacionado = e.id_expediente"
+                + ") "
+                + "AND NOT EXISTS ("
+                + "SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND ("
+                + "(r.id_expediente_principal = b.id_expediente AND r.id_expediente_relacionado = e.id_expediente) "
+                + "OR (r.id_expediente_principal = e.id_expediente AND r.id_expediente_relacionado = b.id_expediente)"
+                + ")) "
+                + ") "
+                + "ORDER BY fecha_recepcion ASC NULLS LAST, numero_expediente";
+
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, MOTIVO_EXPEDIENTE_PRINCIPAL);
+            ps.setString(3, MOTIVO_MISMA_ACTA_TITULAR);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    solicitudes.add(mapPosible(rs));
+                }
+            }
+        }
+        return solicitudes;
+    }
+
+    private String columnasSolicitudGrupoSql() {
+        return "e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, "
+                + "esol.numero_expediente_sgd, "
+                + numeroDocumentoRelacionadoSql("e") + " AS numero_documento, "
+                + "ta.nombre AS tipo_acta, ea.numero_acta, "
+                + nombrePersona("p") + " AS titular, esol.asunto AS procedimiento, "
+                + nombrePersona("ps") + " AS solicitante, "
+                + "eqr.nombre AS equipo_asignado, e.id_equipo_responsable_actual AS id_equipo_responsable, "
+                + "NVL(ur.nombre_completo, (SELECT MAX(ua.nombre_completo) FROM expediente_asignacion axa "
+                + " JOIN usuario ua ON ua.id_usuario = axa.id_usuario_asignado "
+                + " WHERE axa.id_expediente = e.id_expediente AND axa.activa = 1 AND axa.activo = 1)) AS abogado_asignado, "
+                + "NVL(e.id_usuario_responsable_actual, (SELECT MAX(axa.id_usuario_asignado) "
+                + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
+                + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, "
+                + "et.nombre AS etapa_nombre, est.nombre AS estado_nombre, "
+                + "esol.fecha_recepcion, e.fecha_vencimiento";
+    }
+
+    private String joinsSolicitudGrupoSql() {
+        return "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente est ON est.id_estado = e.id_estado_actual "
+                + "LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = ea.id_tipo_acta "
+                + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                + "LEFT JOIN persona ps ON ps.id_persona = esol.id_persona_solicitante AND ps.activo = 1 "
+                + "LEFT JOIN equipo eqr ON eqr.id_equipo = e.id_equipo_responsable_actual "
+                + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual ";
     }
 
     public int contarPosiblesRelacionados(Connection conn, Long idExpediente) throws SQLException {
@@ -190,7 +293,9 @@ public class ExpedienteRelacionadoDAO {
                 + "NVL(e.id_usuario_responsable_actual, (SELECT MAX(axa.id_usuario_asignado) "
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
-                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, e.fecha_vencimiento, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, "
+                + "et.nombre AS etapa_nombre, est.nombre AS estado_nombre, "
+                + "esol.fecha_recepcion, e.fecha_vencimiento, "
                 + resumenAlertasSql("e") + " AS alerta_ingreso, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en AS fecha_asociacion, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
@@ -244,7 +349,9 @@ public class ExpedienteRelacionadoDAO {
                 + "NVL(e.id_usuario_responsable_actual, (SELECT MAX(axa.id_usuario_asignado) "
                 + " FROM expediente_asignacion axa WHERE axa.id_expediente = e.id_expediente "
                 + " AND axa.activa = 1 AND axa.activo = 1)) AS id_abogado_responsable, "
-                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, esol.fecha_recepcion, e.fecha_vencimiento, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, "
+                + "et.nombre AS etapa_nombre, est.nombre AS estado_nombre, "
+                + "esol.fecha_recepcion, e.fecha_vencimiento, "
                 + resumenAlertasSql("e") + " AS alerta_ingreso, "
                 + "r.tipo_relacion, r.descripcion, r.creado_en AS fecha_asociacion, u.nombre_completo AS usuario_relacion "
                 + "FROM expediente_relacion r "
@@ -1074,6 +1181,8 @@ public class ExpedienteRelacionadoDAO {
                 getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
+                rs.getString("etapa_nombre"),
+                rs.getString("estado_nombre"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 toLocalDate(rs.getDate("fecha_vencimiento")),
                 null,
@@ -1104,6 +1213,8 @@ public class ExpedienteRelacionadoDAO {
                 getLongOrNull(rs, "id_abogado_responsable"),
                 rs.getString("etapa_codigo"),
                 rs.getString("estado_codigo"),
+                rs.getString("etapa_nombre"),
+                rs.getString("estado_nombre"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 fechaVencimiento,
                 fechaVencimiento == null ? null : calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
