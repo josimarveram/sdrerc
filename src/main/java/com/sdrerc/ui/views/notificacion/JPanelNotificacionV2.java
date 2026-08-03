@@ -2553,6 +2553,7 @@ public class JPanelNotificacionV2 extends JPanel {
         panel.addSection(crearResultadoValidacion());
 
         panel.addSection(documentosValidacionTreePanel);
+        documentosValidacionTreePanel.configurarSoloComentarioEditable();
         documentosValidacionTreePanel.setHandlers(
                 documento -> {
                     documentoAnalisisService.guardarDocumentoJerarquico(idExpedienteValidacionSeleccionado, documento);

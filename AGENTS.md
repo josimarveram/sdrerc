@@ -1477,6 +1477,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Cambio visual que no se pudo renderizar/verificar desde aquí (sin acceso a ejecutar la UI). Sin SQL ejecutado ni datos de BD modificados.
 
+### Panel de Validación: grilla de documentos solo permite editar Comentario (03/08/2026)
+
+- Pedido del usuario: en el Panel de Validación (Notificación), quitar los íconos Word y Eliminar de la grilla "Documentos del expediente", quitar los botones "+ Documento" y "+ Relacionado", y dejar como única columna editable "Comentario" (el ícono Guardar se mantiene).
+- Contexto: esa grilla es `documentosValidacionTreePanel`, una instancia de `DocumentoEjecucionTreeGridPanelV2` — la MISMA clase que usa el módulo Ejecución para su propia grilla "Documentos del expediente" (con Guardar/Word/Eliminar, "+Documento"/"+Relacionado" y Tipo/Número/Estado/Fecha/Comentario editables, ver entrada "Ejecución: icono Eliminar y Tipo documento bloqueado..."). No se podía restringir a nivel de clase sin romper Ejecución.
+- Fix: nuevo método público `configurarSoloComentarioEditable()` en `DocumentoEjecucionTreeGridPanelV2`, pensado para activarse por instancia (no afecta a otras instancias de la misma clase, como la de Ejecución): oculta los botones "+ Documento"/"+ Relacionado" (`setVisible(false)`), oculta las columnas Word y Eliminar (ancho mínimo/máximo/preferido en 0, sin remover la columna del modelo para no desalinear los índices usados por el resto del código), y activa un flag `soloComentario` en `PadreTableModel` que hace que `isCellEditable` solo permita las columnas Comentario y Guardar (bloquea Tipo/Número/Estado/Fecha, incluso para las 3 cartas finales que normalmente sí podrían editar Tipo). Se invoca una sola vez, en `JPanelNotificacionV2.crearPanelValidarOperativo()`, justo después de agregar `documentosValidacionTreePanel` al panel.
+- Archivos: `src/main/java/com/sdrerc/ui/views/ejecucion/DocumentoEjecucionTreeGridPanelV2.java`, `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

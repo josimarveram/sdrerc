@@ -169,6 +169,28 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         actualizarEstado();
     }
 
+    /**
+     * Restringe esta instancia a solo lectura salvo la columna Comentario (usado por la Bandeja
+     * Validación de Notificación, que reusa esta misma clase que Ejecución pero sin permitir
+     * agregar/eliminar documentos ni descargar Word ni editar Tipo/Número/Estado/Fecha). No afecta
+     * a otras instancias de este panel (p.ej. la de Ejecución), ya que el flag vive en el modelo
+     * de esta instancia, no es estático.
+     */
+    public void configurarSoloComentarioEditable() {
+        padreModel.soloComentario = true;
+        btnAgregarPadre.setVisible(false);
+        btnAgregarHijo.setVisible(false);
+        ocultarColumna(tablaPadre, PADRE_COL_WORD);
+        ocultarColumna(tablaPadre, PADRE_COL_ELIMINAR);
+    }
+
+    private static void ocultarColumna(JTable table, int columnIndex) {
+        TableColumn column = table.getColumnModel().getColumn(columnIndex);
+        column.setMinWidth(0);
+        column.setMaxWidth(0);
+        column.setPreferredWidth(0);
+    }
+
     private JPanel crearToolbar() {
         JPanel wrapper = new JPanel(new BorderLayout(8, 6));
         wrapper.setOpaque(false);
@@ -576,6 +598,7 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             "", "", "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
             "Comentario", "¿Requiere respuesta?"
         };
+        private boolean soloComentario;
 
         void setRows(List<DocumentoRow> nuevas) {
             rows.clear();
@@ -616,6 +639,9 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             DocumentoRow row = getRow(rowIndex);
             if (row == null) {
                 return false;
+            }
+            if (soloComentario) {
+                return columnIndex == PADRE_COL_COMENTARIO || columnIndex == PADRE_COL_GUARDAR;
             }
             if (columnIndex == PADRE_COL_TIPO) {
                 return row.tipo != null && row.tipo.getCodigo() != null
