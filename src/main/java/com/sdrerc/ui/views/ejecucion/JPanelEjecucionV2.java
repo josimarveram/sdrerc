@@ -351,7 +351,7 @@ public class JPanelEjecucionV2 extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelDatosEjecucion() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Ejecución", new Runnable() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de datos", new Runnable() {
             @Override
             public void run() {
                 cerrarPanelEjecucion();
@@ -553,6 +553,7 @@ public class JPanelEjecucionV2 extends JPanel {
                             item.getEstadoCodigo(),
                             "El documento fue guardado correctamente.");
                 },
+                (idExp, idDoc) -> documentoAnalisisService.darBajaDocumentoAnalizado(idExp, idDoc),
                 this::descargarPlantillaDocumento,
                 () -> {
                     EjecucionExpedienteDTO item = seleccionado();
@@ -1751,18 +1752,13 @@ public class JPanelEjecucionV2 extends JPanel {
         ejecutarOperacion("Registrando ejecución...", new Callable<EjecucionResultadoDTO>() {
             @Override
             public EjecucionResultadoDTO call() throws Exception {
-                EjecucionResultadoDTO resultado = ejecucionService.registrarEjecucion(
-                        crearRegistro(EjecucionExpedienteService.ACCION_INICIO_EJECUCION));
                 if (!documentoAnalisisService.tieneDocumentoFinalEnDespacho(idExpediente)) {
-                    return new EjecucionResultadoDTO(
-                            resultado.getIdExpediente(),
-                            resultado.getNumeroExpediente(),
-                            resultado.getAccionCodigo(),
-                            resultado.getEtapaDestinoCodigo(),
-                            resultado.getEstadoDestinoCodigo(),
-                            resultado.getMensaje()
-                                    + " Falta registrar la carta de notificación en despacho para derivar a Notificación.");
+                    throw new IllegalArgumentException(
+                            "Registre y despache la carta de notificación antes de guardar la ejecución."
+                                    + " La ejecución no se guarda hasta que pueda derivarse a Notificación.");
                 }
+                ejecucionService.registrarEjecucion(
+                        crearRegistro(EjecucionExpedienteService.ACCION_INICIO_EJECUCION));
                 EjecucionResultadoDTO derivado = ejecucionService.derivarNotificacion(
                         crearRegistro(EjecucionExpedienteService.ACCION_DERIVACION_NOTIFICACION),
                         idEquipoDestino, idUsuarioDestino);
@@ -1772,7 +1768,7 @@ public class JPanelEjecucionV2 extends JPanel {
                         derivado.getAccionCodigo(),
                         derivado.getEtapaDestinoCodigo(),
                         derivado.getEstadoDestinoCodigo(),
-                        "Ejecución registrada. " + derivado.getMensaje());
+                        "Ejecución registrada y derivada a Notificación. " + derivado.getMensaje());
             }
         });
     }

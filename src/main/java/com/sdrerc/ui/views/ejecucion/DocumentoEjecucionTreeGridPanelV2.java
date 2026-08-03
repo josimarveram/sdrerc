@@ -60,18 +60,23 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         AnalisisResultadoDTO guardarFila(DocumentoAnalizadoDTO documento) throws Exception;
     }
 
+    public interface DeleteRowHandler {
+        void eliminarFila(Long idExpediente, Long idDocumentoAnalizado) throws Exception;
+    }
+
     public interface DownloadPlantillaHandler {
         void descargar(DocumentoAnalizadoDTO documento);
     }
 
-    private static final int PADRE_COL_TIPO = 0;
-    private static final int PADRE_COL_NUMERO = 1;
-    private static final int PADRE_COL_ESTADO_DOCUMENTO = 2;
-    private static final int PADRE_COL_FECHA = 3;
-    private static final int PADRE_COL_COMENTARIO = 4;
-    private static final int PADRE_COL_REQUIERE_RESPUESTA = 5;
-    private static final int PADRE_COL_WORD = 6;
-    private static final int PADRE_COL_GUARDAR = 7;
+    private static final int PADRE_COL_GUARDAR = 0;
+    private static final int PADRE_COL_WORD = 1;
+    private static final int PADRE_COL_ELIMINAR = 2;
+    private static final int PADRE_COL_TIPO = 3;
+    private static final int PADRE_COL_NUMERO = 4;
+    private static final int PADRE_COL_ESTADO_DOCUMENTO = 5;
+    private static final int PADRE_COL_FECHA = 6;
+    private static final int PADRE_COL_COMENTARIO = 7;
+    private static final int PADRE_COL_REQUIERE_RESPUESTA = 8;
 
     private static final int HIJO_COL_TIPO = 0;
     private static final int HIJO_COL_COMENTARIO = 1;
@@ -80,10 +85,11 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
     private static final int HIJO_COL_FECHA_PUBLICACION = 4;
     private static final int HIJO_COL_HOJA_ENVIO = 5;
 
-    private static final String ESTADO_VISIBLE_PADRE = "EMITIDO";
-
+    // Unicos 3 tipos de carta final que se pueden agregar/editar desde este panel (pedido
+    // explicito del usuario): Procedente, Procedente en parte e Improcedente. Cualquier otro
+    // documento (Resolucion, Informe, etc., llegados de Analisis/Verificacion) no debe permitir
+    // cambiar su Tipo documento desde aqui.
     private static final Set<String> TIPOS_CARTA_NOTIFICACION = new HashSet<String>(Arrays.asList(
-            "ANALISIS_DOC_01_CARTA_ABANDONO",
             "ANALISIS_DOC_17_CARTA_IMPROCEDENTE",
             "ANALISIS_DOC_18_CARTA_PROCEDENTE",
             "ANALISIS_DOC_19_CARTA_PROCEDENTE_EN_PARTE"));
@@ -109,6 +115,7 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
     private Long idExpediente;
     private DocumentoRow padreSeleccionado;
     private SaveRowHandler saveRowHandler;
+    private DeleteRowHandler deleteRowHandler;
     private DownloadPlantillaHandler downloadHandler;
     private Runnable refreshHandler;
 
@@ -122,9 +129,11 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
 
     public void setHandlers(
             SaveRowHandler saveRowHandler,
+            DeleteRowHandler deleteRowHandler,
             DownloadPlantillaHandler downloadHandler,
             Runnable refreshHandler) {
         this.saveRowHandler = saveRowHandler;
+        this.deleteRowHandler = deleteRowHandler;
         this.downloadHandler = downloadHandler;
         this.refreshHandler = refreshHandler;
     }
@@ -132,7 +141,13 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
     public void setCatalogos(List<CatalogoItemDTO> tipos, List<CatalogoItemDTO> estados) {
         this.tipos = tipos == null ? new ArrayList<CatalogoItemDTO>() : new ArrayList<CatalogoItemDTO>(tipos);
         this.estados = estados == null ? new ArrayList<CatalogoItemDTO>() : new ArrayList<CatalogoItemDTO>(estados);
-        tablaPadre.getColumnModel().getColumn(PADRE_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.tipos)));
+        List<CatalogoItemDTO> tiposCartaFinal = new ArrayList<CatalogoItemDTO>();
+        for (CatalogoItemDTO tipo : this.tipos) {
+            if (tipo != null && tipo.getCodigo() != null && TIPOS_CARTA_NOTIFICACION.contains(tipo.getCodigo().toUpperCase())) {
+                tiposCartaFinal.add(tipo);
+            }
+        }
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(tiposCartaFinal)));
         tablaPadre.getColumnModel().getColumn(PADRE_COL_ESTADO_DOCUMENTO)
                 .setCellEditor(new DefaultCellEditor(comboCatalogo(this.estados)));
         tablaHijo.getColumnModel().getColumn(HIJO_COL_TIPO).setCellEditor(new DefaultCellEditor(comboCatalogo(this.tipos)));
@@ -223,10 +238,15 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         tablaPadre.getColumnModel().getColumn(PADRE_COL_GUARDAR).setCellEditor(
                 new RowActionEditor(new SaveDocumentIcon(), "Guardar documento",
                         row -> guardarFila(padreModel.getRow(row))));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_ELIMINAR).setCellRenderer(
+                new RowActionRenderer(new DeleteDocumentIcon(), "Eliminar documento"));
+        tablaPadre.getColumnModel().getColumn(PADRE_COL_ELIMINAR).setCellEditor(
+                new RowActionEditor(new DeleteDocumentIcon(), "Eliminar documento",
+                        row -> eliminarFila(padreModel.getRow(row))));
 
-        ajustarAnchos(tablaPadre, new int[]{200, 130, 150, 110, 240, 140});
-        configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_WORD, PADRE_COL_GUARDAR});
-        ajustarAnchos(tablaHijo, new int[]{170, 220, 190, 130, 130, 120});
+        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140});
+        configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR, PADRE_COL_WORD, PADRE_COL_ELIMINAR});
+        ajustarAnchos(tablaHijo, 0, new int[]{170, 220, 190, 130, 130, 120});
 
         scrollPadre.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         scrollPadre.setPreferredSize(new Dimension(820, 150));
@@ -268,9 +288,9 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
         scroll.setWheelScrollingEnabled(true);
     }
 
-    private void ajustarAnchos(JTable table, int[] widths) {
+    private void ajustarAnchos(JTable table, int startColumn, int[] widths) {
         for (int i = 0; i < widths.length; i++) {
-            TableColumn column = table.getColumnModel().getColumn(i);
+            TableColumn column = table.getColumnModel().getColumn(startColumn + i);
             column.setPreferredWidth(widths[i]);
             column.setMinWidth(Math.min(widths[i], 95));
         }
@@ -340,6 +360,62 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                     refrescar();
                 } catch (Exception ex) {
                     mostrarError("No se pudo guardar el documento.", ex);
+                } finally {
+                    actualizarEstado();
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void eliminarFila(DocumentoRow row) {
+        if (row == null) {
+            return;
+        }
+        int respuesta = JOptionPane.showConfirmDialog(
+                this,
+                "El documento será dado de baja lógicamente. No se eliminará físicamente. ¿Desea continuar?",
+                "Eliminar documento",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (respuesta != JOptionPane.YES_OPTION) {
+            return;
+        }
+        if (row.id == null || row.id.longValue() < 0L) {
+            allRows.remove(row);
+            if (row.equals(padreSeleccionado)) {
+                padreSeleccionado = null;
+            }
+            rebuildPadre();
+            rebuildHijo(padreSeleccionado == null ? null : padreSeleccionado.id);
+            actualizarEstado();
+            return;
+        }
+        if (deleteRowHandler == null) {
+            mostrarInfo("No se configuró el servicio de baja de documentos.");
+            return;
+        }
+        final Long idDocumento = row.id;
+        lblEstado.setText("Eliminando documento...");
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                deleteRowHandler.eliminarFila(idExpediente, idDocumento);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(
+                            DocumentoEjecucionTreeGridPanelV2.this,
+                            "El documento se eliminó correctamente.",
+                            "Documentos del expediente",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    refrescar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo eliminar el documento.", ex);
                 } finally {
                     actualizarEstado();
                 }
@@ -420,7 +496,7 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
 
     private CatalogoItemDTO primerEstado() {
         for (CatalogoItemDTO estado : estados) {
-            if (estado != null && ESTADO_VISIBLE_PADRE.equalsIgnoreCase(estado.getCodigo())) {
+            if (estado != null && "EN_PROYECTO".equalsIgnoreCase(estado.getCodigo())) {
                 return estado;
             }
         }
@@ -497,8 +573,8 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
     private static class PadreTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
-            "Comentario", "¿Requiere respuesta?", "", ""
+            "", "", "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
+            "Comentario", "¿Requiere respuesta?"
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -537,14 +613,21 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
 
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
-            return getRow(rowIndex) != null
-                    && (columnIndex == PADRE_COL_TIPO
-                    || columnIndex == PADRE_COL_ESTADO_DOCUMENTO
+            DocumentoRow row = getRow(rowIndex);
+            if (row == null) {
+                return false;
+            }
+            if (columnIndex == PADRE_COL_TIPO) {
+                return row.tipo != null && row.tipo.getCodigo() != null
+                        && TIPOS_CARTA_NOTIFICACION.contains(row.tipo.getCodigo().toUpperCase());
+            }
+            return columnIndex == PADRE_COL_ESTADO_DOCUMENTO
                     || columnIndex == PADRE_COL_FECHA
                     || columnIndex == PADRE_COL_COMENTARIO
                     || columnIndex == PADRE_COL_NUMERO
                     || columnIndex == PADRE_COL_WORD
-                    || columnIndex == PADRE_COL_GUARDAR);
+                    || columnIndex == PADRE_COL_GUARDAR
+                    || columnIndex == PADRE_COL_ELIMINAR;
         }
 
         @Override
@@ -589,6 +672,13 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                 case PADRE_COL_ESTADO_DOCUMENTO:
                     if (value instanceof CatalogoItemDTO) {
                         row.estadoDocumento = (CatalogoItemDTO) value;
+                        if (DocumentoRow.esEstadoEmitido(row.estadoDocumento)) {
+                            if (row.fechaDocumento == null) {
+                                row.fechaDocumento = LocalDate.now();
+                            }
+                        } else {
+                            row.fechaDocumento = null;
+                        }
                     }
                     break;
                 case PADRE_COL_FECHA:
@@ -721,6 +811,10 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
             row.nivel = 1;
             row.parentId = parentId;
             return row;
+        }
+
+        static boolean esEstadoEmitido(CatalogoItemDTO estado) {
+            return estado != null && "EMITIDO".equalsIgnoreCase(estado.getCodigo());
         }
 
         static DocumentoRow from(DocumentoAnalizadoDTO dto) {
@@ -1049,6 +1143,39 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                 g2.fillRoundRect(x + 5, y + 10, 8, 5, 2, 2);
                 g2.setColor(Color.WHITE);
                 g2.drawLine(x + 7, y + 12, x + 11, y + 12);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private static class DeleteDocumentIcon implements Icon {
+        private static final int SIZE = 18;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color stroke = new Color(196, 53, 53);
+                Color fill = new Color(253, 237, 237);
+                g2.setColor(fill);
+                g2.fillRoundRect(x + 2, y + 2, 14, 14, 7, 7);
+                g2.setColor(stroke);
+                g2.drawRoundRect(x + 2, y + 2, 14, 14, 7, 7);
+                g2.setStroke(new java.awt.BasicStroke(2f));
+                g2.drawLine(x + 6, y + 6, x + 12, y + 12);
+                g2.drawLine(x + 12, y + 6, x + 6, y + 12);
             } finally {
                 g2.dispose();
             }
