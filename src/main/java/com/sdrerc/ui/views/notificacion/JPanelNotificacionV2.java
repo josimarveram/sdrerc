@@ -522,6 +522,7 @@ public class JPanelNotificacionV2 extends JPanel {
         configurarKpisInteractivos();
         cargarFiltrosBase();
         cargarCatalogos();
+        cargarCatalogosDocumentosValidacion();
         inicializarFechas();
         inicializarFechasFiltro();
         actualizarSeleccion();
@@ -2575,17 +2576,27 @@ public class JPanelNotificacionV2 extends JPanel {
     private AppV2SideActionPanel crearPanelValidarOperativo() {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Validación", this::cerrarPanelValidacionNotif);
         panel.setAccentColor(AppV2Theme.PRIMARY);
-        panel.addSection(documentosValidacionTreePanel);
 
         AppV2SideSectionPanel seccionResultado = new AppV2SideSectionPanel("Resultado de validación");
         cmbResultadoValidacion.setPreferredSize(new Dimension(200, 32));
         seccionResultado.addRow("Resultado", cmbResultadoValidacion);
-        txtComentarioValidacion.setLineWrap(true);
-        txtComentarioValidacion.setWrapStyleWord(true);
-        JScrollPane scrollComentario = new JScrollPane(txtComentarioValidacion);
-        scrollComentario.setPreferredSize(new Dimension(220, 70));
-        seccionResultado.addRow("Comentario", scrollComentario);
         panel.addSection(seccionResultado);
+
+        panel.addSection(documentosValidacionTreePanel);
+        documentosValidacionTreePanel.setHandlers(
+                documento -> {
+                    documentoAnalisisService.guardarDocumentoJerarquico(idExpedienteValidacionSeleccionado, documento);
+                    return new com.sdrerc.domain.dto.sdrercapp.AnalisisResultadoDTO(
+                            idExpedienteValidacionSeleccionado,
+                            "",
+                            "GUARDAR_DOCUMENTO_VALIDACION",
+                            "",
+                            "",
+                            "El documento fue guardado correctamente.");
+                },
+                null,
+                null,
+                () -> cargarDocumentosValidacion(idExpedienteValidacionSeleccionado));
 
         JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
         acciones.setOpaque(false);
@@ -2734,6 +2745,31 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
+    private void cargarDocumentosValidacion(Long idExpediente) {
+        if (idExpediente == null) {
+            return;
+        }
+        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
+            @Override
+            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (!idExpediente.equals(idExpedienteValidacionSeleccionado)) {
+                    return;
+                }
+                try {
+                    documentosValidacionTreePanel.setDocumentos(idExpediente, get());
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los documentos del expediente.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void abrirPanelValidacion(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
         idDocumentoValidacionSeleccionado = item.getIdDocumentoAnalizado();
         idExpedienteValidacionSeleccionado = item.getIdExpediente();
@@ -2749,22 +2785,7 @@ public class JPanelNotificacionV2 extends JPanel {
         actualizarComentarioValidacionHabilitado();
         datosValidacionNotif.limpiar();
         final Long idExpediente = item.getIdExpediente();
-        SwingWorker<List<DocumentoAnalizadoDTO>, Void> worker = new SwingWorker<List<DocumentoAnalizadoDTO>, Void>() {
-            @Override
-            protected List<DocumentoAnalizadoDTO> doInBackground() throws Exception {
-                return documentoAnalisisService.listarDocumentosAnalizados(idExpediente);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    documentosValidacionTreePanel.setDocumentos(idExpediente, get());
-                } catch (Exception ex) {
-                    mostrarError("No se pudieron cargar los documentos del expediente.", ex);
-                }
-            }
-        };
-        worker.execute();
+        cargarDocumentosValidacion(idExpediente);
         SwingWorker<com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO, Void> workerDatos =
                 new SwingWorker<com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO, Void>() {
             @Override
@@ -2813,13 +2834,7 @@ public class JPanelNotificacionV2 extends JPanel {
                     "Registrar Validación", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        boolean esObservado = "OBSERVADO".equalsIgnoreCase(resultadoItem.codigo);
         final String comentario = txtComentarioValidacion.getText();
-        if (esObservado && (comentario == null || comentario.trim().isEmpty())) {
-            JOptionPane.showMessageDialog(this, "Ingrese un comentario para registrar la observación.",
-                    "Registrar Validación", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
         int confirm = JOptionPane.showConfirmDialog(
                 this,
                 "Se registrará el resultado de validación del documento seleccionado. ¿Desea continuar?",
@@ -4535,6 +4550,32 @@ public class JPanelNotificacionV2 extends JPanel {
                     mostrarError("No se pudieron cargar catálogos de notificación. Se usaron opciones base.", ex);
                 } finally {
                     setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void cargarCatalogosDocumentosValidacion() {
+        SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
+            @Override
+            protected Object[] doInBackground() throws Exception {
+                return new Object[]{
+                        documentoAnalisisService.listarTiposDocumentoAnalizado(),
+                        documentoAnalisisService.listarEstadosDocumento()
+                };
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            protected void done() {
+                try {
+                    Object[] resultado = get();
+                    documentosValidacionTreePanel.setCatalogos(
+                            (List<CatalogoItemDTO>) resultado[0],
+                            (List<CatalogoItemDTO>) resultado[1]);
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los catálogos de documentos para validación.", ex);
                 }
             }
         };
