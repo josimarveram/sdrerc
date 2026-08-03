@@ -1469,6 +1469,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Es un cambio de layout que no se pudo verificar renderizado (sin acceso a ejecutar la UI); pendiente que el usuario confirme visualmente que el panel lateral ya arranca a la altura correcta y que abrir/cerrar/expandir el panel en las 3 bandejas sigue funcionando igual que antes. Sin SQL ejecutado ni datos de BD modificados.
 
+### Bloque "Resultado de validación" alineado y con el mismo tamaño de letra que "Resultado de verificación" (03/08/2026)
+
+- Pedido del usuario (con 2 capturas comparativas): en el Panel de Validación, el bloque "Resultado de validación" debía quedar alineado igual que "Resultado de verificación" en el Panel de Verificación, y el texto del título debía ser del mismo tamaño.
+- Causa: el bloque se construía con `AppV2SideSectionPanel` (componente genérico reutilizado en varios módulos, título con `AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL)`), mientras que Verificación arma su bloque "Resultado de verificación" con un helper local `section(title)` propio de `JPanelVerificacionV2` (título con `AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_MEDIUM)`, más grande) + `addRow(grid, ...)` con `GridBagLayout`. Esa diferencia de componente explica tanto el tamaño de letra distinto como el desalineamiento visual reportado.
+- Fix: `JPanelNotificacionV2` ya tenía sus propios helpers locales `section(String)`/`addRow(JPanel, int, String, Component)`/`label(String)` (idénticos a los de Verificación, ya usados para "Cierre terminal", "Resumen de cierre", "Antecedentes", etc., pero no para "Resultado de validación"). Se reemplazó `AppV2SideSectionPanel` por un nuevo método `crearResultadoValidacion()` que usa exactamente ese mismo patrón local (`section("Resultado de validación")` + `addRow(grid, 0, "Resultado", cmbResultadoValidacion)`), igual que `crearResultadoVerificacion()` en Verificación. No se tocó `AppV2SideSectionPanel` (componente compartido usado en otros módulos; cambiar su tamaño de fuente ahí habría afectado a todos sus usos).
+- Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Cambio visual que no se pudo renderizar/verificar desde aquí (sin acceso a ejecutar la UI). Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

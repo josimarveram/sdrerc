@@ -2550,10 +2550,7 @@ public class JPanelNotificacionV2 extends JPanel {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Validación", this::cerrarPanelValidacionNotif);
         panel.setAccentColor(AppV2Theme.PRIMARY);
 
-        AppV2SideSectionPanel seccionResultado = new AppV2SideSectionPanel("Resultado de validación");
-        cmbResultadoValidacion.setPreferredSize(new Dimension(200, 32));
-        seccionResultado.addRow("Resultado", cmbResultadoValidacion);
-        panel.addSection(seccionResultado);
+        panel.addSection(crearResultadoValidacion());
 
         panel.addSection(documentosValidacionTreePanel);
         documentosValidacionTreePanel.setHandlers(
@@ -2582,6 +2579,17 @@ public class JPanelNotificacionV2 extends JPanel {
         btnRegistrarValidacion.addActionListener(e -> registrarValidacion());
         btnCancelarValidacion.addActionListener(e -> limpiarPanelValidacion());
         limpiarPanelValidacion();
+        return panel;
+    }
+
+    private JPanel crearResultadoValidacion() {
+        JPanel panel = section("Resultado de validación");
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cmbResultadoValidacion.setPreferredSize(new Dimension(200, 32));
+        addRow(grid, 0, "Resultado", cmbResultadoValidacion);
+        panel.add(grid, BorderLayout.CENTER);
         return panel;
     }
 
