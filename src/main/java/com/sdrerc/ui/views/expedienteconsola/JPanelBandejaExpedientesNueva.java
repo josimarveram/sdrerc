@@ -1948,7 +1948,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             panelRegistrarGrupoFamiliar.actualizarEstado();
             panelRegistrarGrupoFamiliar.cargarPosiblesIntegrantes(obtenerExpedientePrincipalSeleccionado());
         }
-        if (PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId) && panelAsociarDuplicados != null) {
+        if (PANEL_RECEPCION_CARD_ASOCIAR.equals(panelId) && panelAsociarDuplicados != null && !mismoPanel) {
             panelAsociarDuplicados.cargarDuplicados(obtenerExpedientePrincipalSeleccionado());
         }
     }
