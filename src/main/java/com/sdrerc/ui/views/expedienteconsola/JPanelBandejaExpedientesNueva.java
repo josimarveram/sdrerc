@@ -3363,12 +3363,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
             boolean visible = requiereDecisionNumero(expedientePrincipalDuplicados) || candidatosSinNumero > 0 || principalAmbiguo;
             seccionDecisionNumero.setVisible(visible);
-            if (marcadosSinNumero > 0) {
-                btnGenerarNumeroExpediente.setEnabled(true);
-                btnGenerarNumeroExpediente.setText("Generar número de expediente (" + marcadosSinNumero + ")");
-            } else if (principalElegidoDistinto) {
+            if (principalElegidoDistinto) {
                 btnGenerarNumeroExpediente.setEnabled(false);
                 btnGenerarNumeroExpediente.setText("Se asociará al expediente principal elegido");
+            } else if (marcadosSinNumero > 0) {
+                btnGenerarNumeroExpediente.setEnabled(true);
+                btnGenerarNumeroExpediente.setText("Generar número de expediente (" + marcadosSinNumero + ")");
             } else {
                 btnGenerarNumeroExpediente.setEnabled(false);
                 btnGenerarNumeroExpediente.setText("Marque solicitudes sin número para generar");

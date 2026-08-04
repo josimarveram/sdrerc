@@ -4835,16 +4835,16 @@ public class JPanelAsignacionV2 extends JPanel {
         if (sectionDecisionNumero != null) {
             sectionDecisionNumero.setVisible(visible);
         }
-        if (marcadosSinNumero > 0) {
-            btnGenerarNumeroExpediente.setEnabled(true);
-            btnGenerarNumeroExpediente.setText("Generar número de expediente (" + marcadosSinNumero + ")");
-            btnGenerarNumeroExpediente.setToolTipText(
-                    "Genera un número de expediente nuevo e independiente para cada solicitud marcada, en vez de asociarla al principal.");
-        } else if (principalElegidoDistinto) {
+        if (principalElegidoDistinto) {
             btnGenerarNumeroExpediente.setEnabled(false);
             btnGenerarNumeroExpediente.setText("Se asociará al expediente principal elegido");
             btnGenerarNumeroExpediente.setToolTipText(
                     "Ya eligió un expediente principal con número entre las solicitudes asociadas; use \"Asociar al principal\" en vez de generar un número independiente.");
+        } else if (marcadosSinNumero > 0) {
+            btnGenerarNumeroExpediente.setEnabled(true);
+            btnGenerarNumeroExpediente.setText("Generar número de expediente (" + marcadosSinNumero + ")");
+            btnGenerarNumeroExpediente.setToolTipText(
+                    "Genera un número de expediente nuevo e independiente para cada solicitud marcada, en vez de asociarla al principal.");
         } else {
             btnGenerarNumeroExpediente.setEnabled(false);
             btnGenerarNumeroExpediente.setText("Generar número de expediente");
