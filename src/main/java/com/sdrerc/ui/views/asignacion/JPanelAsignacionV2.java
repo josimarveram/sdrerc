@@ -6737,14 +6737,13 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             int modelRow = table.convertRowIndexToModel(row);
             Color background = isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE;
-            if (!puedeAsociarDocumentoRelacionado(modelRow)) {
-                JLabel vacio = new JLabel("");
-                vacio.setOpaque(true);
-                vacio.setBackground(background);
-                return vacio;
-            }
+            boolean editable = puedeAsociarDocumentoRelacionado(modelRow);
             setBackground(background);
             setSelected(Boolean.TRUE.equals(value));
+            setEnabled(editable);
+            setToolTipText(editable
+                    ? "Marque para asociar esta solicitud al expediente principal."
+                    : "Expediente principal: siempre queda marcado y no se puede desmarcar.");
             return this;
         }
     }

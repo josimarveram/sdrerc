@@ -2957,6 +2957,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             tablaDuplicados.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
             AppV2TableColumnSizer.applyWidths(tablaDuplicados, 34, 120, 120, 100, 110, 140, 160);
             tablaDuplicados.getColumnModel().getColumn(0).setMaxWidth(38);
+            tablaDuplicados.getColumnModel().getColumn(0).setCellRenderer(new SeleccionDuplicadoRenderer());
             AppV2ColumnFilterSupport.install(
                     "Recepcion.AsociarDuplicados", tablaDuplicados, duplicadosScroll, null, null, 0);
 
@@ -3473,6 +3474,36 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 }
             };
             worker.execute();
+        }
+
+        private class SeleccionDuplicadoRenderer extends JCheckBox implements TableCellRenderer {
+
+            private SeleccionDuplicadoRenderer() {
+                setHorizontalAlignment(SwingConstants.CENTER);
+                setOpaque(true);
+                setBorderPainted(false);
+            }
+
+            @Override
+            public Component getTableCellRendererComponent(
+                    JTable table,
+                    Object value,
+                    boolean isSelected,
+                    boolean hasFocus,
+                    int row,
+                    int column) {
+                int modelRow = table.convertRowIndexToModel(row);
+                Color background = isSelected ? new Color(207, 229, 244) : AppV2Theme.SURFACE;
+                boolean editable = modelRow >= 0 && modelRow < duplicadosActuales.size()
+                        && !esPrincipal(duplicadosActuales.get(modelRow));
+                setBackground(background);
+                setSelected(Boolean.TRUE.equals(value));
+                setEnabled(editable);
+                setToolTipText(editable
+                        ? "Marque para asociar esta solicitud al expediente principal."
+                        : "Expediente principal: siempre queda marcado y no se puede desmarcar.");
+                return this;
+            }
         }
     }
 
