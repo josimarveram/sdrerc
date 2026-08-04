@@ -1572,7 +1572,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         if (alerta.contains("con observaciones")) {
             return "Con observaciones";
         }
-        return "Sin Alerta";
+        return "Duplicado confirmado";
     }
 
     private boolean coincideAlertaRegistro(ExpedienteBandejaDTO item) {

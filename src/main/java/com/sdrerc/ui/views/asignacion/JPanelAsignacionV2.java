@@ -2635,7 +2635,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (alerta.contains("con observaciones")) {
             return "Con observaciones";
         }
-        return "Sin Alerta";
+        return "Duplicado confirmado";
     }
 
     private boolean contienePosibleGrupoFamiliar(AsignacionExpedienteDTO item) {

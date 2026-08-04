@@ -212,10 +212,11 @@ Reglas KPI:
 
 Alertas:
 
-- En bandeja, columna `Alertas` solo muestra:
+- En bandeja, columna `Alertas` de una fila principal (no asociada) muestra:
   - `Sin Alerta`.
   - `Potencial duplicado`.
   - `Posible Grupo Familiar`.
+- Una fila asociada (hijo, expandida con `+` bajo su principal) muestra ademas `Duplicado confirmado` cuando ya fue resuelta como duplicado (asociada via `EXPEDIENTE_RELACION`) y no tiene otra alerta propia activa (potencial duplicado/posible grupo familiar/con observaciones) pendiente; esa fila nunca vuelve a `Sin Alerta` porque, por definicion, toda fila que aparece en esa lista ya fue confirmada como duplicado de su principal. `Generar numero de expediente` (decision de que NO era duplicado) si limpia el flag `EXPEDIENTE_SOLICITUD.POTENCIAL_DUPLICADO` de esa fila y la deja en `Sin Alerta` como fila principal independiente, sin pasar por `Duplicado confirmado` (esa etiqueta es exclusiva de filas asociadas).
 - Observaciones extensas y datos incompletos pertenecen a previsualizacion de carga diaria/exportacion.
 - Alertas/incidencias persistentes se guardan en `EXPEDIENTE_ALERTA`.
 - Grupo familiar Fase 1 (flag simple) se marca en `EXPEDIENTE_SOLICITUD`. Fase 2 (vigente) agrega un ID de grupo familiar real: tabla `GRUPO_FAMILIAR` + `PERSONA.id_grupo_familiar` (vinculo a nivel persona, no por expediente, para heredar el grupo en expedientes futuros del mismo titular). `GrupoFamiliarDAO`/`GrupoFamiliarService` detectan candidatos por apellidos del titular y asocian sin heredar numero/equipo/abogado (no reutiliza `EXPEDIENTE_RELACION`). Al asociar, se marca atendida la alerta `Posible Grupo Familiar` del expediente y los candidatos ya agrupados (propio o ajeno grupo) dejan de listarse como "posible integrante". La grilla de solo lectura "Grupo familiar actual" tiene ademas un icono "x" en la primera columna (`AppV2RemoveActionButton`) para retirar a una persona del grupo (`GrupoFamiliarDAO.eliminarDeGrupoFamiliar`, limpia `PERSONA.id_grupo_familiar` y revierte el flag de `EXPEDIENTE_SOLICITUD`).
