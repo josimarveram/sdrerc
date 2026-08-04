@@ -109,6 +109,13 @@ public class GrupoFamiliarDAO {
                         if (!claveAncla.equals(heuristicaService.claveApellidosTitular(titular))) {
                             continue;
                         }
+                        if (heuristicaService.coincideExactamente(titularAncla, titular)) {
+                            // Mismo nombre completo (no solo apellidos): es la misma persona
+                            // registrada en otro expediente (caso de "Potencial duplicado",
+                            // resuelto desde el Panel de Asociación), no un posible integrante
+                            // distinto de la misma familia.
+                            continue;
+                        }
                         candidatos.add(new GrupoFamiliarCandidatoDTO(
                                 getLongOrNull(rs, "id_expediente"),
                                 rs.getString("numero_expediente"),
