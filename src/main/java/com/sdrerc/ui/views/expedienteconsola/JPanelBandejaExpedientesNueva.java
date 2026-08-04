@@ -13,7 +13,6 @@ import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarCandidatoDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarEstadoAlertaDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarResultadoDTO;
-import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2FilterPanel;
@@ -2142,8 +2141,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         String numero = item.getNumeroExpediente();
         return "REGISTRO".equalsIgnoreCase(item.getEtapaCodigo())
                 && "REGISTRADO".equalsIgnoreCase(item.getEstadoCodigo())
-                && (numero == null || numero.trim().isEmpty())
-                && ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getProcedimiento());
+                && (numero == null || numero.trim().isEmpty());
     }
 
     private static boolean pareceIdentificadorTecnico(String value) {
@@ -3193,8 +3191,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
             return "REGISTRO".equalsIgnoreCase(item.getEtapaCodigo())
                     && "REGISTRADO".equalsIgnoreCase(item.getEstadoCodigo())
-                    && !tieneNumeroExpediente(item)
-                    && ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getProcedimiento());
+                    && !tieneNumeroExpediente(item);
         }
 
         private int contarCandidatosSinNumero() {

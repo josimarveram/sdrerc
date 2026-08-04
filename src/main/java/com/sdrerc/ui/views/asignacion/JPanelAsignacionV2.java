@@ -20,7 +20,6 @@ import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
-import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
@@ -1432,7 +1431,7 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Decisión de número");
         AppV2Theme.estilizarBotonPrimario(btnGenerarNumeroExpediente);
         btnGenerarNumeroExpediente.setEnabled(false);
-        btnGenerarNumeroExpediente.setToolTipText("Generar número de expediente para Reconsideración/Apelación sin número.");
+        btnGenerarNumeroExpediente.setToolTipText("Generar número de expediente para una solicitud registrada sin número.");
         section.addRow("Acción", btnGenerarNumeroExpediente);
         return section;
     }
@@ -1582,7 +1581,7 @@ public class JPanelAsignacionV2 extends JPanel {
         AppV2Theme.estilizarBotonSecundario(btnAsignarSeleccionados);
         AppV2Theme.estilizarBotonPrimario(btnGenerarNumeroExpediente);
         btnGenerarNumeroExpediente.setEnabled(false);
-        btnGenerarNumeroExpediente.setToolTipText("Disponible solo para Reconsideración/Apelación registrada sin número.");
+        btnGenerarNumeroExpediente.setToolTipText("Disponible solo para solicitudes registradas sin número.");
         btnEditarRegistro.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
         btnEditarRegistro.setToolTipText("Disponible solo para expedientes Registrados sin asignación a abogado.");
         btnEliminarRegistro.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_BASE));
@@ -3344,11 +3343,11 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         AsignacionExpedienteDTO item = obtenerExpedienteFoco();
         if (item == null || item.getIdExpediente() == null) {
-            mostrarInfo("Seleccione un expediente de Reconsideración o Apelación sin número.");
+            mostrarInfo("Seleccione un expediente registrado sin número.");
             return;
         }
         if (!item.requiereDecisionNumeroAsignacion()) {
-            mostrarInfo("La generación manual de número solo aplica para Reconsideración o Apelación registrada sin número.");
+            mostrarInfo("La generación manual de número solo aplica para solicitudes registradas sin número.");
             return;
         }
         int confirm = JOptionPane.showConfirmDialog(
@@ -3844,7 +3843,7 @@ public class JPanelAsignacionV2 extends JPanel {
             lblDestino.setText("Asignación / Asignado");
             if (item.requiereDecisionNumeroAsignacion()) {
                 lblIngreso.setText("Requiere decisión de número");
-                lblIngreso.setToolTipText("Reconsideración/Apelación sin número: puede asociarse a un expediente principal o generar número.");
+                lblIngreso.setToolTipText("Solicitud sin número: puede asociarse a un expediente principal o generar número.");
             } else {
                 lblIngreso.setText(item.getAlertaIngreso());
                 lblIngreso.setToolTipText(item.getObservacionSolicitud().isEmpty() ? item.getAlertaIngreso() : item.getObservacionSolicitud());
@@ -4837,11 +4836,11 @@ public class JPanelAsignacionV2 extends JPanel {
         } else if (requierePrincipal) {
             btnGenerarNumeroExpediente.setEnabled(true);
             btnGenerarNumeroExpediente.setText("Generar número de expediente");
-            btnGenerarNumeroExpediente.setToolTipText("Generar número de expediente para esta Reconsideración/Apelación.");
+            btnGenerarNumeroExpediente.setToolTipText("Generar número de expediente para esta solicitud.");
         } else {
             btnGenerarNumeroExpediente.setEnabled(false);
             btnGenerarNumeroExpediente.setText("Generar número de expediente");
-            btnGenerarNumeroExpediente.setToolTipText("Disponible solo para Reconsideración/Apelación registrada sin número, "
+            btnGenerarNumeroExpediente.setToolTipText("Disponible solo para solicitudes registradas sin número, "
                     + "o marcando solicitudes sin número en \"Solicitudes asociadas\".");
         }
     }
@@ -4914,8 +4913,7 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         return "REGISTRO".equalsIgnoreCase(candidato.getEtapaCodigo())
                 && "REGISTRADO".equalsIgnoreCase(candidato.getEstadoCodigo())
-                && !tieneNumeroExpediente(candidato)
-                && ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(candidato.getProcedimiento());
+                && !tieneNumeroExpediente(candidato);
     }
 
     private int contarCandidatosSinNumeroRelacionados() {

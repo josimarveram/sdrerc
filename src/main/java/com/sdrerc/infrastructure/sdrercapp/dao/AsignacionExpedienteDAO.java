@@ -3,7 +3,6 @@ package com.sdrerc.infrastructure.sdrercapp.dao;
 import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.application.sdrercapp.CorrelativoExpedienteService;
 import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
-import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionHistorialDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
@@ -735,9 +734,6 @@ public class AsignacionExpedienteDAO {
                 }
                 if (hasText(expediente.numeroExpediente)) {
                     throw new SQLException("El expediente ya tiene número asignado: " + expediente.numeroExpediente + ".");
-                }
-                if (!ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(expediente.procedimiento)) {
-                    throw new SQLException("La generación manual de número solo está habilitada para Reconsideración o Apelación sin número.");
                 }
                 if (esDocumentoDuplicadoAsociado(conn, idExpediente)) {
                     throw new SQLException("Este registro ya está asociado al expediente principal y no requiere número independiente.");

@@ -357,8 +357,7 @@ public class AsignacionExpedienteDTO {
 
     public boolean requiereDecisionNumeroAsignacion() {
         return !tieneNumeroExpediente()
-                && isAsignable()
-                && ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(procedimiento);
+                && isAsignable();
     }
 
     private static String safe(String value) {
