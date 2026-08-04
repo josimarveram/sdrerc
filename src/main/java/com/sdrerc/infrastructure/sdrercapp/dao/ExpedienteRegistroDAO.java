@@ -62,7 +62,7 @@ public class ExpedienteRegistroDAO {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             for (CargaDiariaPreviewDTO item : registros) {
                 List<String> motivos = new ArrayList<>();
-                String porActaTitular = buscarPorActaYTitular(conn, item.getNumeroActa(), item.getTitular());
+                String porActaTitular = buscarPorActaYTitular(conn, item.getNumeroActa(), item.getTitular(), null);
                 if (porActaTitular != null) {
                     motivos.add("Acta y titular ya existen en " + porActaTitular);
                 }
@@ -75,8 +75,16 @@ public class ExpedienteRegistroDAO {
     }
 
     public String detectarDuplicadoPorActaYTitular(String numeroActa, String titular) throws SQLException {
+        return detectarDuplicadoPorActaYTitular(numeroActa, titular, null);
+    }
+
+    /**
+     * idExpedienteExcluir permite que Edicion manual no se marque a si mismo como duplicado de su
+     * propia acta+titular actual (mismo patron que detectarDuplicadoPorNumeroExpedienteSgd).
+     */
+    public String detectarDuplicadoPorActaYTitular(String numeroActa, String titular, Long idExpedienteExcluir) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            return buscarPorActaYTitular(conn, numeroActa, titular);
+            return buscarPorActaYTitular(conn, numeroActa, titular, idExpedienteExcluir);
         }
     }
 
@@ -341,7 +349,8 @@ public class ExpedienteRegistroDAO {
                 DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(
                         conn,
                         registro.getActa().getNumeroActa(),
-                        registro.getTitular().getNombreCompleto());
+                        registro.getTitular().getNombreCompleto(),
+                        null);
                 if (duplicadoActaTitular != null) {
                     registro.setPosibleDuplicado(true);
                     registro.setMotivoDuplicado("Acta y titular ya existen en " + duplicadoActaTitular.descripcion());
@@ -429,8 +438,8 @@ public class ExpedienteRegistroDAO {
         }
     }
 
-    private String buscarPorActaYTitular(Connection conn, String acta, String titular) throws SQLException {
-        DuplicadoRegistro duplicado = buscarRegistroPorActaYTitular(conn, acta, titular);
+    private String buscarPorActaYTitular(Connection conn, String acta, String titular, Long idExpedienteExcluir) throws SQLException {
+        DuplicadoRegistro duplicado = buscarRegistroPorActaYTitular(conn, acta, titular, idExpedienteExcluir);
         return duplicado == null ? null : duplicado.descripcion();
     }
 
@@ -453,7 +462,8 @@ public class ExpedienteRegistroDAO {
         return 0;
     }
 
-    private DuplicadoRegistro buscarRegistroPorActaYTitular(Connection conn, String acta, String titular) throws SQLException {
+    private DuplicadoRegistro buscarRegistroPorActaYTitular(
+            Connection conn, String acta, String titular, Long idExpedienteExcluir) throws SQLException {
         if (!hasText(acta) || !hasText(titular)) {
             return null;
         }
@@ -467,10 +477,15 @@ public class ExpedienteRegistroDAO {
                 + "AND UPPER(TRIM(COALESCE(NULLIF(TRIM(p.razon_social), ''), "
                 + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
                 + "p.numero_documento))) = ? "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
                 + "AND ROWNUM = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, acta.trim().toUpperCase(Locale.ROOT));
-            ps.setString(2, titular.trim().toUpperCase(Locale.ROOT));
+            int idx = 1;
+            ps.setString(idx++, acta.trim().toUpperCase(Locale.ROOT));
+            ps.setString(idx++, titular.trim().toUpperCase(Locale.ROOT));
+            if (idExpedienteExcluir != null) {
+                ps.setLong(idx++, idExpedienteExcluir);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
                     return null;

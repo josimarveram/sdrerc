@@ -362,7 +362,7 @@ public class ExpedienteEdicionManualDAO {
                     + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                     + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
                     + "correo_electronico, potencial_duplicado" + columnasGrupo + ", activo"
-                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0" + valoresGrupo + ", 1)";
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?" + valoresGrupo + ", 1)";
             try (PreparedStatement ps = conn.prepareStatement(insert)) {
                 ps.setLong(1, dto.getIdExpediente());
                 setLongOrNull(ps, 2, idCanal);
@@ -372,10 +372,11 @@ public class ExpedienteEdicionManualDAO {
                 ps.setDate(6, toSqlDate(solicitud.getFechaRecepcion()));
                 ps.setString(7, solicitud.getTipoProcedimientoNombre());
                 ps.setString(8, limitar(observacionSolicitud(dto), 1000));
+                ps.setInt(9, dto.isPosibleDuplicado() ? 1 : 0);
                 if (soportaGrupoFamiliar) {
-                    ps.setInt(9, solicitud.isGrupoFamiliar() ? 1 : 0);
-                    ps.setString(10, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
-                    ps.setString(11, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+                    ps.setInt(10, solicitud.isGrupoFamiliar() ? 1 : 0);
+                    ps.setString(11, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
+                    ps.setString(12, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
                 }
                 ps.executeUpdate();
             }
@@ -386,7 +387,7 @@ public class ExpedienteEdicionManualDAO {
                 : "";
         String update = "UPDATE expediente_solicitud SET "
                 + "id_canal_recepcion = ?, id_persona_solicitante = ?, numero_tramite_documentario = ?, "
-                + "numero_expediente_sgd = ?, fecha_recepcion = ?, asunto = ?, observacion = ?, "
+                + "numero_expediente_sgd = ?, fecha_recepcion = ?, asunto = ?, observacion = ?, potencial_duplicado = ?, "
                 + columnasGrupoUpdate
                 + "modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente_solicitud = ?";
@@ -398,13 +399,14 @@ public class ExpedienteEdicionManualDAO {
             ps.setDate(5, toSqlDate(solicitud.getFechaRecepcion()));
             ps.setString(6, solicitud.getTipoProcedimientoNombre());
             ps.setString(7, limitar(observacionSolicitud(dto), 1000));
+            ps.setInt(8, dto.isPosibleDuplicado() ? 1 : 0);
             if (soportaGrupoFamiliar) {
-                ps.setInt(8, solicitud.isGrupoFamiliar() ? 1 : 0);
-                ps.setString(9, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
-                ps.setString(10, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
-                ps.setLong(11, idSolicitud);
+                ps.setInt(9, solicitud.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(10, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
+                ps.setString(11, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+                ps.setLong(12, idSolicitud);
             } else {
-                ps.setLong(8, idSolicitud);
+                ps.setLong(9, idSolicitud);
             }
             ps.executeUpdate();
         }

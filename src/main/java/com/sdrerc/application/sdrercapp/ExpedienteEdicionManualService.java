@@ -50,6 +50,8 @@ public class ExpedienteEdicionManualService {
             return errores;
         }
         errores.addAll(validacionService.validar(dto));
+        dto.setPosibleDuplicado(false);
+        dto.setMotivoDuplicado(null);
 
         String numeroExpedienteSgd = dto.getSolicitud().getNumeroExpedienteSgd();
         if (hasText(numeroExpedienteSgd)) {
@@ -57,6 +59,20 @@ public class ExpedienteEdicionManualService {
                     numeroExpedienteSgd, dto.getIdExpediente());
             if (hasText(duplicado)) {
                 errores.add("N° expediente SGD ya está registrado en " + duplicado + ". Ingrese un número distinto.");
+            }
+        }
+
+        // Igual que Registro manual/Carga diaria: mismo numero de acta + mismo titular marca la
+        // alerta "Potencial duplicado" (columna Alertas de la bandeja); en edicion se excluye al
+        // propio expediente para no marcarse a si mismo por no haber cambiado su acta/titular.
+        String numeroActa = dto.getActa().getNumeroActa();
+        String titular = dto.getTitular().getNombreCompleto();
+        if (hasText(numeroActa) && hasText(titular)) {
+            String duplicadoActaTitular = expedienteRegistroDAO.detectarDuplicadoPorActaYTitular(
+                    numeroActa, titular, dto.getIdExpediente());
+            if (hasText(duplicadoActaTitular)) {
+                dto.setPosibleDuplicado(true);
+                dto.setMotivoDuplicado("Acta y titular ya existen en " + duplicadoActaTitular);
             }
         }
         return errores;
