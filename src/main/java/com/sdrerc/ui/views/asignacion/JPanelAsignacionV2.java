@@ -273,7 +273,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblRelacionados = new JLabel("Sin alerta de relacionados.");
     private final JLabel lblExpedientePrincipalAsociacion = new JLabel("-");
     private final DefaultTableModel documentosRelacionadosModel = new DefaultTableModel(
-            new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta", "Etapa/Estado", "Abogado"}, 0) {
+            new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta",
+                "Procedimiento Registral", "Etapa/Estado", "Abogado"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return column == 0 && puedeAsociarDocumentoRelacionado(row);
@@ -1734,10 +1735,12 @@ public class JPanelAsignacionV2 extends JPanel {
         documentosRelacionadosTable.getColumnModel().getColumn(3).setMinWidth(90);
         documentosRelacionadosTable.getColumnModel().getColumn(4).setPreferredWidth(110);
         documentosRelacionadosTable.getColumnModel().getColumn(4).setMinWidth(100);
-        documentosRelacionadosTable.getColumnModel().getColumn(5).setPreferredWidth(140);
-        documentosRelacionadosTable.getColumnModel().getColumn(5).setMinWidth(120);
-        documentosRelacionadosTable.getColumnModel().getColumn(6).setPreferredWidth(160);
-        documentosRelacionadosTable.getColumnModel().getColumn(6).setMinWidth(140);
+        documentosRelacionadosTable.getColumnModel().getColumn(5).setPreferredWidth(160);
+        documentosRelacionadosTable.getColumnModel().getColumn(5).setMinWidth(140);
+        documentosRelacionadosTable.getColumnModel().getColumn(6).setPreferredWidth(140);
+        documentosRelacionadosTable.getColumnModel().getColumn(6).setMinWidth(120);
+        documentosRelacionadosTable.getColumnModel().getColumn(7).setPreferredWidth(160);
+        documentosRelacionadosTable.getColumnModel().getColumn(7).setMinWidth(140);
         documentosRelacionadosModel.addTableModelListener(evento -> {
             if (evento.getColumn() != 0) {
                 return;
@@ -3258,7 +3261,7 @@ public class JPanelAsignacionV2 extends JPanel {
             List<Long> marcados = obtenerIdsDocumentosRelacionadosMarcados();
             ResolucionAsociacionFoco resolucion = resolverPrincipalParaFoco(seleccion.expedienteFoco, marcados);
             if (resolucion.ambiguo) {
-                mostrarInfo("Se detectó más de un expediente con número entre las solicitudes marcadas como "
+                mostrarInfo("Se detectó al menos un expediente con número entre las solicitudes marcadas como "
                         + "coincidencias. Seleccione manualmente cuál es el expediente principal (haga clic en esa "
                         + "fila de la bandeja) y vuelva a intentar la asociación desde ahí.");
                 return;
@@ -3315,7 +3318,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             resultado.getMensaje(),
                             "Asociación de expedientes",
                             JOptionPane.INFORMATION_MESSAGE);
-                    buscar();
+                    buscar(idPrincipal);
                 } catch (Exception ex) {
                     mostrarError("No se pudo completar la asociación de expedientes.", ex);
                 } finally {
@@ -3363,10 +3366,11 @@ public class JPanelAsignacionV2 extends JPanel {
         }
 
         setTrabajando(true, "Generando número de expediente...");
+        final Long idExpedienteFoco = item.getIdExpediente();
         SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
             @Override
             protected String doInBackground() throws Exception {
-                return asignacionService.generarNumeroExpediente(item.getIdExpediente());
+                return asignacionService.generarNumeroExpediente(idExpedienteFoco);
             }
 
             @Override
@@ -3378,7 +3382,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             "Número de expediente generado: " + numero,
                             "Generación de número",
                             JOptionPane.INFORMATION_MESSAGE);
-                    buscar();
+                    buscar(idExpedienteFoco);
                 } catch (Exception ex) {
                     mostrarError("No se pudo generar el número de expediente.", ex);
                 } finally {
@@ -3402,6 +3406,7 @@ public class JPanelAsignacionV2 extends JPanel {
             return;
         }
         setTrabajando(true, "Generando números de expediente...");
+        final Long idPrincipalFoco = idExpedienteDocumentosRelacionados;
         SwingWorker<List<String>, Void> worker = new SwingWorker<List<String>, Void>() {
             @Override
             protected List<String> doInBackground() throws Exception {
@@ -3425,7 +3430,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             mensaje.toString(),
                             "Generación de número",
                             JOptionPane.INFORMATION_MESSAGE);
-                    buscar();
+                    buscar(idPrincipalFoco);
                 } catch (Exception ex) {
                     mostrarError("No se pudo generar el número de expediente.", ex);
                 } finally {
@@ -3592,9 +3597,9 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     /**
-     * El principal vigente (idPrincipalElegidoRelacionado) resuelve tanto el caso automatico (0 o 1
-     * expediente con numero, resuelto una sola vez al cargar el grupo) como el caso manual (2+ con
-     * numero: el usuario elige marcando la casilla del que corresponda, sin quedar bloqueada).
+     * El principal vigente (idPrincipalElegidoRelacionado) resuelve tanto el caso automatico (ningun
+     * expediente con numero, usa el enfocado como respaldo) como el caso manual (1 o mas con numero:
+     * el usuario elige marcando la casilla del que corresponda, ninguna queda bloqueada).
      */
     private ResolucionAsociacionFoco resolverPrincipalParaFoco(AsignacionExpedienteDTO foco, List<Long> idsMarcados) {
         Long elegido = idPrincipalElegidoRelacionado();
@@ -4846,12 +4851,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     /**
-     * El expediente PRINCIPAL real para efectos de bloqueo de casilla y asociacion no es
-     * necesariamente el expediente enfocado en la bandeja (el usuario puede haber hecho doble
-     * clic sobre una solicitud SIN numero, ej. una Reconsideracion). El principal real es el
-     * unico expediente del grupo que YA TIENE numero: si el enfocado ya tiene numero, es el; si
-     * no, se busca entre los demas del grupo. Si hay mas de uno con numero, es ambiguo y no se
-     * bloquea ninguna casilla hasta que el usuario resuelva los datos.
+     * El expediente PRINCIPAL real para efectos de asociacion no es necesariamente el expediente
+     * enfocado en la bandeja (el usuario puede haber hecho doble clic sobre una solicitud SIN
+     * numero, ej. una Reconsideracion). Si ningun expediente del grupo tiene numero, el enfocado
+     * actua como principal de respaldo. Si al menos uno del grupo YA TIENE numero, ninguna casilla
+     * queda bloqueada: el usuario debe marcar activamente cual de los "con numero" es el principal.
      */
     private void recalcularPrincipalRelacionadoReal(
             Long idExpedienteFoco, AsignacionExpedienteDTO foco, List<ExpedienteRelacionadoDTO> relacionados) {
@@ -4866,18 +4870,16 @@ public class JPanelAsignacionV2 extends JPanel {
             principalRelacionadoAmbiguo = false;
             return;
         }
-        if (idsConNumeroRelacionado.size() >= 2) {
+        if (!idsConNumeroRelacionado.isEmpty()) {
             idPrincipalRelacionadoReal = null;
             principalRelacionadoAmbiguo = true;
             return;
         }
         principalRelacionadoAmbiguo = false;
-        idPrincipalRelacionadoReal = idsConNumeroRelacionado.isEmpty()
-                ? idExpedienteFoco
-                : idsConNumeroRelacionado.iterator().next();
+        idPrincipalRelacionadoReal = idExpedienteFoco;
     }
 
-    /** Expediente que ya tiene número: candidato a elegirse como principal cuando hay 2+ (principalRelacionadoAmbiguo). */
+    /** Expediente que ya tiene número: candidato a elegirse como principal (ninguna casilla queda bloqueada). */
     private boolean esCandidatoConNumeroRelacionado(ExpedienteRelacionadoDTO item) {
         return item != null && item.getIdExpediente() != null && idsConNumeroRelacionado.contains(item.getIdExpediente());
     }
@@ -4919,7 +4921,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private int contarCandidatosSinNumeroRelacionados() {
         int total = 0;
         for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
-            if (fila != null && !fila.esPrincipal() && requiereDecisionNumeroCandidato(fila.getExpediente())) {
+            if (fila != null && requiereDecisionNumeroCandidato(fila.getExpediente())) {
                 total++;
             }
         }
@@ -5033,20 +5035,19 @@ public class JPanelAsignacionV2 extends JPanel {
                     documentosRelacionadosModel.setRowCount(0);
                     int totalCandidatos = 0;
                     for (ExpedienteRelacionadoDTO relacionado : relacionados) {
-                        boolean esPrincipal = !principalRelacionadoAmbiguo && idPrincipalRelacionadoReal != null
-                                && idPrincipalRelacionadoReal.equals(relacionado.getIdExpediente());
-                        boolean esCandidatoConNumero = principalRelacionadoAmbiguo && tieneNumeroExpediente(relacionado);
-                        DocumentoRelacionadoFila fila = new DocumentoRelacionadoFila(relacionado, esPrincipal, esCandidatoConNumero);
+                        boolean esCandidatoConNumero = tieneNumeroExpediente(relacionado);
+                        DocumentoRelacionadoFila fila = new DocumentoRelacionadoFila(relacionado, esCandidatoConNumero);
                         documentosRelacionadosPanel.add(fila);
-                        if (!tieneNumeroExpediente(relacionado)) {
+                        if (!esCandidatoConNumero) {
                             totalCandidatos++;
                         }
                         documentosRelacionadosModel.addRow(new Object[]{
-                            esPrincipal ? Boolean.TRUE : Boolean.FALSE,
+                            Boolean.FALSE,
                             numeroExpedienteDocumentoRelacionado(fila),
                             textoDocumentoRelacionado(fila),
                             relacionado.getFechaRecepcion() != null ? DATE_FORMAT.format(relacionado.getFechaRecepcion()) : "-",
                             (relacionado.getTipoActa() + " " + relacionado.getNumeroActa()).trim(),
+                            relacionado.getProcedimiento().isEmpty() ? "-" : relacionado.getProcedimiento(),
                             relacionado.getEtapaEstado(),
                             relacionado.getAbogadoAsignado().isEmpty() ? "-" : relacionado.getAbogadoAsignado()
                         });
@@ -6135,7 +6136,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private boolean puedeAsociarDocumentoRelacionado(int modelRow) {
         DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
-        return fila != null && !fila.esPrincipal();
+        return fila != null;
     }
 
     private int contarDocumentosRelacionadosMarcados() {
@@ -6147,7 +6148,7 @@ public class JPanelAsignacionV2 extends JPanel {
         Long elegido = idPrincipalElegidoRelacionado();
         for (int i = 0; i < documentosRelacionadosModel.getRowCount() && i < documentosRelacionadosPanel.size(); i++) {
             DocumentoRelacionadoFila fila = documentosRelacionadosPanel.get(i);
-            if (fila == null || fila.esPrincipal() || fila.getExpediente() == null || fila.getExpediente().getIdExpediente() == null) {
+            if (fila == null || fila.getExpediente() == null || fila.getExpediente().getIdExpediente() == null) {
                 continue;
             }
             if (elegido != null && elegido.equals(fila.getExpediente().getIdExpediente())) {
@@ -6171,7 +6172,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (principalRelacionadoAmbiguo && idPrincipalElegidoRelacionado() == null) {
             lblExpedientePrincipalAsociacion.setText("Seleccione el expediente principal");
             lblExpedientePrincipalAsociacion.setToolTipText(
-                    "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. "
+                    "Hay al menos un expediente con número entre las solicitudes detectadas por misma acta y titular. "
                             + "Marque la casilla de la solicitud que debe actuar como expediente principal.");
             btnAsociarRelacionados.setText("Seleccione el expediente principal");
             btnAsociarRelacionados.setEnabled(false);
@@ -6818,19 +6819,16 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             int modelRow = table.convertRowIndexToModel(row);
             DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
-            boolean editable = puedeAsociarDocumentoRelacionado(modelRow);
             boolean candidatoNumero = fila != null && fila.esCandidatoConNumero();
             Color background = isSelected
                     ? TABLE_SELECTION_BACKGROUND
                     : (candidatoNumero ? SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE);
             setBackground(background);
             setSelected(Boolean.TRUE.equals(value));
-            setEnabled(editable);
-            setToolTipText(!editable
-                    ? "Expediente principal: siempre queda marcado y no se puede desmarcar."
-                    : candidatoNumero
-                            ? "Este expediente ya tiene número: márquelo para elegirlo como expediente principal (solo se puede elegir uno)."
-                            : "Marque para asociar esta solicitud al expediente principal.");
+            setEnabled(true);
+            setToolTipText(candidatoNumero
+                    ? "Este expediente ya tiene número: márquelo para elegirlo como expediente principal (solo se puede elegir uno)."
+                    : "Marque para asociar esta solicitud al expediente principal.");
             return this;
         }
     }
@@ -6936,12 +6934,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final class DocumentoRelacionadoFila {
 
         private final ExpedienteRelacionadoDTO expediente;
-        private final boolean esPrincipal;
         private final boolean esCandidatoConNumero;
 
-        private DocumentoRelacionadoFila(ExpedienteRelacionadoDTO expediente, boolean esPrincipal, boolean esCandidatoConNumero) {
+        private DocumentoRelacionadoFila(ExpedienteRelacionadoDTO expediente, boolean esCandidatoConNumero) {
             this.expediente = expediente;
-            this.esPrincipal = esPrincipal;
             this.esCandidatoConNumero = esCandidatoConNumero;
         }
 
@@ -6949,11 +6945,7 @@ public class JPanelAsignacionV2 extends JPanel {
             return expediente;
         }
 
-        private boolean esPrincipal() {
-            return esPrincipal;
-        }
-
-        /** Expediente que ya tiene número: candidato a elegirse como principal cuando hay 2+ (ambiguo). */
+        /** Expediente que ya tiene número: candidato a elegirse como principal (ninguna casilla queda bloqueada). */
         private boolean esCandidatoConNumero() {
             return esCandidatoConNumero;
         }

@@ -2862,16 +2862,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private final Color TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG = new Color(255, 243, 219);
 
         private final DefaultTableModel modeloDuplicados = new DefaultTableModel(
-                new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta", "Etapa/Estado", "Abogado"}, 0) {
+                new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta",
+                    "Procedimiento Registral", "Etapa/Estado", "Abogado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                if (column != 0) {
-                    return false;
-                }
-                if (row >= 0 && row < duplicadosActuales.size() && esPrincipalBloqueada(duplicadosActuales.get(row))) {
-                    return false;
-                }
-                return true;
+                return column == 0;
             }
 
             @Override
@@ -2961,7 +2956,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             tablaDuplicados.setRowHeight(30);
             tablaDuplicados.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
             tablaDuplicados.setDefaultRenderer(Object.class, new SolicitudAsociadaCellRenderer());
-            AppV2TableColumnSizer.applyWidths(tablaDuplicados, 34, 120, 120, 100, 110, 140, 160);
+            AppV2TableColumnSizer.applyWidths(tablaDuplicados, 34, 120, 120, 100, 110, 160, 140, 160);
             tablaDuplicados.getColumnModel().getColumn(0).setMaxWidth(38);
             tablaDuplicados.getColumnModel().getColumn(0).setCellRenderer(new SeleccionDuplicadoRenderer());
             AppV2ColumnFilterSupport.install(
@@ -3055,13 +3050,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     recalcularPrincipalReal();
                     modeloDuplicados.setRowCount(0);
                     for (ExpedienteRelacionadoDTO relacionado : duplicadosActuales) {
-                        boolean bloqueada = esPrincipalBloqueada(relacionado);
                         modeloDuplicados.addRow(new Object[]{
-                                bloqueada ? Boolean.TRUE : Boolean.FALSE,
+                                Boolean.FALSE,
                                 tieneNumeroExpediente(relacionado) ? relacionado.getNumeroExpediente().trim() : "Sin número (potencial duplicado)",
                                 relacionado.getNumeroExpedienteSgd().isEmpty() ? "-" : relacionado.getNumeroExpedienteSgd(),
                                 relacionado.getFechaRecepcion() != null ? relacionado.getFechaRecepcion().format(DATE_FORMAT) : "-",
                                 (relacionado.getTipoActa() + " " + relacionado.getNumeroActa()).trim(),
+                                relacionado.getProcedimiento().isEmpty() ? "-" : relacionado.getProcedimiento(),
                                 relacionado.getEtapaEstado(),
                                 relacionado.getAbogadoAsignado().isEmpty() ? "-" : relacionado.getAbogadoAsignado()
                         });
@@ -3084,12 +3079,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
 
         /**
-         * El expediente PRINCIPAL real para efectos de bloqueo de casilla y asociacion no es
-         * necesariamente el expediente enfocado en la bandeja (el usuario puede haber hecho doble
-         * clic sobre una solicitud SIN numero, ej. una Reconsideracion). El principal real es el
-         * unico expediente del grupo que YA TIENE numero: si el enfocado ya tiene numero, es el;
-         * si no, se busca entre los demas del grupo. Si hay mas de uno con numero, es ambiguo y no
-         * se bloquea ninguna casilla hasta que el usuario resuelva los datos.
+         * El expediente PRINCIPAL para efectos de asociacion no es necesariamente el expediente
+         * enfocado en la bandeja (el usuario puede haber hecho doble clic sobre una solicitud SIN
+         * numero, ej. una Reconsideracion). Si NINGUN expediente del grupo tiene numero, el foco
+         * mismo actua como principal (unico caso sin eleccion manual, solo para "Generar numero").
+         * Si HAY AL MENOS UNO con numero (uno o varios), el usuario debe elegir manualmente cual es
+         * el principal marcando su casilla: ninguna casilla de esas solicitudes queda bloqueada, se
+         * muestran con un color distinto y la eleccion es de a una (ver aplicarSeleccionUnicaPrincipal).
          */
         private void recalcularPrincipalReal() {
             idsConNumeroGrupo = new java.util.HashSet<Long>();
@@ -3103,15 +3099,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 principalAmbiguo = false;
                 return;
             }
-            if (idsConNumeroGrupo.size() >= 2) {
+            if (!idsConNumeroGrupo.isEmpty()) {
                 idPrincipalReal = null;
                 principalAmbiguo = true;
                 return;
             }
             principalAmbiguo = false;
-            idPrincipalReal = idsConNumeroGrupo.isEmpty()
-                    ? idExpedientePrincipalDuplicados
-                    : idsConNumeroGrupo.iterator().next();
+            idPrincipalReal = idExpedientePrincipalDuplicados;
         }
 
         private String textoPrincipalReal() {
@@ -3138,15 +3132,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return "-";
         }
 
-        /** Casilla bloqueada (marcada y no editable): solo aplica cuando hay 0 o 1 expediente con número. */
-        private boolean esPrincipalBloqueada(ExpedienteRelacionadoDTO item) {
-            return item != null
-                    && !principalAmbiguo
-                    && idPrincipalReal != null
-                    && idPrincipalReal.equals(item.getIdExpediente());
-        }
-
-        /** Expediente que ya tiene número: candidato a elegirse como principal cuando hay 2+ (principalAmbiguo). */
+        /** Expediente que ya tiene número: candidato a elegirse como principal (ninguna casilla queda bloqueada). */
         private boolean esCandidatoConNumero(ExpedienteRelacionadoDTO item) {
             return item != null && item.getIdExpediente() != null && idsConNumeroGrupo.contains(item.getIdExpediente());
         }
@@ -3291,7 +3277,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             Long elegido = idPrincipalElegido();
             for (int i = 0; i < modeloDuplicados.getRowCount() && i < duplicadosActuales.size(); i++) {
                 ExpedienteRelacionadoDTO item = duplicadosActuales.get(i);
-                if (esPrincipalBloqueada(item) || (elegido != null && elegido.equals(item.getIdExpediente()))) {
+                if (elegido != null && elegido.equals(item.getIdExpediente())) {
                     continue;
                 }
                 Boolean marcado = (Boolean) modeloDuplicados.getValueAt(i, 0);
@@ -3327,7 +3313,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (resolucion.ambiguo) {
                 lblExpedientePrincipalAsociacion.setText("Seleccione el expediente principal");
                 lblExpedientePrincipalAsociacion.setToolTipText(
-                        "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. "
+                        "Hay al menos un expediente con número entre las solicitudes detectadas por misma acta y titular. "
                                 + "Marque la casilla de la solicitud que debe actuar como expediente principal.");
                 btnAsociarRapido.setEnabled(false);
                 return;
@@ -3423,7 +3409,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private void mostrarAmbiguedadPrincipal() {
             JOptionPane.showMessageDialog(
                     JPanelBandejaExpedientesNueva.this,
-                    "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. "
+                    "Hay al menos un expediente con número entre las solicitudes detectadas por misma acta y titular. "
                             + "Marque la casilla de la solicitud que debe actuar como expediente principal antes de asociar.",
                     "Asociar duplicados",
                     JOptionPane.INFORMATION_MESSAGE);
@@ -3431,7 +3417,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         private void ejecutarAsociacion(Long idPrincipalResuelto, List<Long> ids, String motivo) {
             final Long idPrincipal = idPrincipalResuelto;
-            final ExpedienteBandejaDTO principal = expedientePrincipalDuplicados;
             btnAsociarRapido.setEnabled(false);
             SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
                 @Override
@@ -3444,8 +3429,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 protected void done() {
                     try {
                         get();
-                        refrescar();
-                        cargarDuplicados(principal);
+                        refrescar(idPrincipal);
                         JOptionPane.showMessageDialog(
                                 JPanelBandejaExpedientesNueva.this,
                                 "Duplicados asociados correctamente.",
@@ -3504,7 +3488,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 protected void done() {
                     try {
                         String numero = get();
-                        refrescar();
+                        refrescar(idExpediente);
                         JOptionPane.showMessageDialog(
                                 JPanelBandejaExpedientesNueva.this,
                                 "Número de expediente generado: " + numero,
@@ -3536,7 +3520,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (confirmacion != JOptionPane.YES_OPTION) {
                 return;
             }
-            final ExpedienteBandejaDTO principal = expedientePrincipalDuplicados;
+            final Long idPrincipalFoco = idExpedientePrincipalDuplicados;
             btnGenerarNumeroExpediente.setEnabled(false);
             SwingWorker<List<String>, Void> worker = new SwingWorker<List<String>, Void>() {
                 @Override
@@ -3552,8 +3536,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 protected void done() {
                     try {
                         List<String> numeros = get();
-                        refrescar();
-                        cargarDuplicados(principal);
+                        refrescar(idPrincipalFoco);
                         StringBuilder mensaje = new StringBuilder("Números de expediente generados:");
                         for (String numero : numeros) {
                             mensaje.append("\n- ").append(numero);
@@ -3596,19 +3579,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int modelRow = table.convertRowIndexToModel(row);
                 ExpedienteRelacionadoDTO item = modelRow >= 0 && modelRow < duplicadosActuales.size()
                         ? duplicadosActuales.get(modelRow) : null;
-                boolean bloqueada = esPrincipalBloqueada(item);
-                boolean candidatoNumero = principalAmbiguo && esCandidatoConNumero(item);
+                boolean candidatoNumero = esCandidatoConNumero(item);
                 Color background = isSelected
                         ? TABLA_ASOCIADAS_SELECCION_BG
                         : (candidatoNumero ? TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE);
                 setBackground(background);
                 setSelected(Boolean.TRUE.equals(value));
-                setEnabled(!bloqueada);
-                setToolTipText(bloqueada
-                        ? "Expediente principal: siempre queda marcado y no se puede desmarcar."
-                        : candidatoNumero
-                                ? "Este expediente ya tiene número: márquelo para elegirlo como expediente principal (solo se puede elegir uno)."
-                                : "Marque para asociar esta solicitud al expediente principal.");
+                setEnabled(true);
+                setToolTipText(candidatoNumero
+                        ? "Este expediente ya tiene número: márquelo para elegirlo como expediente principal (solo se puede elegir uno)."
+                        : "Marque para asociar esta solicitud al expediente principal.");
                 return this;
             }
         }
@@ -3626,7 +3606,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
                 setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
                 int modelRow = table.convertRowIndexToModel(row);
-                boolean candidatoNumero = principalAmbiguo && modelRow >= 0 && modelRow < duplicadosActuales.size()
+                boolean candidatoNumero = modelRow >= 0 && modelRow < duplicadosActuales.size()
                         && esCandidatoConNumero(duplicadosActuales.get(modelRow));
                 c.setBackground(isSelected
                         ? TABLA_ASOCIADAS_SELECCION_BG
