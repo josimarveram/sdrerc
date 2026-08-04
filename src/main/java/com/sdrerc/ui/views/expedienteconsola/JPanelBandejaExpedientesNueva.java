@@ -3352,7 +3352,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private void actualizarDecisionNumero() {
             Long elegido = idPrincipalElegido();
             boolean principalElegidoDistinto = elegido != null && !elegido.equals(idExpedientePrincipalDuplicados);
-            boolean requierePrincipal = requiereDecisionNumero(expedientePrincipalDuplicados) && !principalElegidoDistinto;
             int candidatosSinNumero = contarCandidatosSinNumero();
             int marcadosSinNumero = 0;
             for (Long id : obtenerIdsMarcados()) {
@@ -3367,9 +3366,6 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (marcadosSinNumero > 0) {
                 btnGenerarNumeroExpediente.setEnabled(true);
                 btnGenerarNumeroExpediente.setText("Generar número de expediente (" + marcadosSinNumero + ")");
-            } else if (requierePrincipal) {
-                btnGenerarNumeroExpediente.setEnabled(true);
-                btnGenerarNumeroExpediente.setText("Generar número de expediente");
             } else if (principalElegidoDistinto) {
                 btnGenerarNumeroExpediente.setEnabled(false);
                 btnGenerarNumeroExpediente.setText("Se asociará al expediente principal elegido");

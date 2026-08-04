@@ -4821,7 +4821,6 @@ public class JPanelAsignacionV2 extends JPanel {
     private void actualizarDecisionNumero(AsignacionExpedienteDTO item) {
         Long elegido = idPrincipalElegidoRelacionado();
         boolean principalElegidoDistinto = item != null && elegido != null && !elegido.equals(item.getIdExpediente());
-        boolean requierePrincipal = item != null && item.requiereDecisionNumeroAsignacion() && !principalElegidoDistinto;
         int candidatosSinNumero = contarCandidatosSinNumeroRelacionados();
         int marcadosSinNumero = 0;
         for (Long id : obtenerIdsDocumentosRelacionadosMarcados()) {
@@ -4841,10 +4840,6 @@ public class JPanelAsignacionV2 extends JPanel {
             btnGenerarNumeroExpediente.setText("Generar número de expediente (" + marcadosSinNumero + ")");
             btnGenerarNumeroExpediente.setToolTipText(
                     "Genera un número de expediente nuevo e independiente para cada solicitud marcada, en vez de asociarla al principal.");
-        } else if (requierePrincipal) {
-            btnGenerarNumeroExpediente.setEnabled(true);
-            btnGenerarNumeroExpediente.setText("Generar número de expediente");
-            btnGenerarNumeroExpediente.setToolTipText("Generar número de expediente para esta solicitud.");
         } else if (principalElegidoDistinto) {
             btnGenerarNumeroExpediente.setEnabled(false);
             btnGenerarNumeroExpediente.setText("Se asociará al expediente principal elegido");
@@ -4853,8 +4848,8 @@ public class JPanelAsignacionV2 extends JPanel {
         } else {
             btnGenerarNumeroExpediente.setEnabled(false);
             btnGenerarNumeroExpediente.setText("Generar número de expediente");
-            btnGenerarNumeroExpediente.setToolTipText("Disponible solo para solicitudes registradas sin número, "
-                    + "o marcando solicitudes sin número en \"Solicitudes asociadas\".");
+            btnGenerarNumeroExpediente.setToolTipText(
+                    "Marque la casilla de la(s) solicitud(es) sin número que desea generar en \"Solicitudes asociadas\".");
         }
     }
 
