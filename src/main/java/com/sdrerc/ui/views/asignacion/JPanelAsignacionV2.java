@@ -4818,7 +4818,9 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void actualizarDecisionNumero(AsignacionExpedienteDTO item) {
-        boolean requierePrincipal = item != null && item.requiereDecisionNumeroAsignacion();
+        Long elegido = idPrincipalElegidoRelacionado();
+        boolean principalElegidoDistinto = item != null && elegido != null && !elegido.equals(item.getIdExpediente());
+        boolean requierePrincipal = item != null && item.requiereDecisionNumeroAsignacion() && !principalElegidoDistinto;
         int candidatosSinNumero = contarCandidatosSinNumeroRelacionados();
         int marcadosSinNumero = 0;
         for (Long id : obtenerIdsDocumentosRelacionadosMarcados()) {
@@ -4829,7 +4831,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 }
             }
         }
-        boolean visible = requierePrincipal || candidatosSinNumero > 0;
+        boolean visible = (item != null && item.requiereDecisionNumeroAsignacion()) || candidatosSinNumero > 0 || principalRelacionadoAmbiguo;
         if (sectionDecisionNumero != null) {
             sectionDecisionNumero.setVisible(visible);
         }
@@ -4842,6 +4844,11 @@ public class JPanelAsignacionV2 extends JPanel {
             btnGenerarNumeroExpediente.setEnabled(true);
             btnGenerarNumeroExpediente.setText("Generar número de expediente");
             btnGenerarNumeroExpediente.setToolTipText("Generar número de expediente para esta solicitud.");
+        } else if (principalElegidoDistinto) {
+            btnGenerarNumeroExpediente.setEnabled(false);
+            btnGenerarNumeroExpediente.setText("Se asociará al expediente principal elegido");
+            btnGenerarNumeroExpediente.setToolTipText(
+                    "Ya eligió un expediente principal con número entre las solicitudes asociadas; use \"Asociar al principal\" en vez de generar un número independiente.");
         } else {
             btnGenerarNumeroExpediente.setEnabled(false);
             btnGenerarNumeroExpediente.setText("Generar número de expediente");

@@ -3349,7 +3349,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
 
         private void actualizarDecisionNumero() {
-            boolean requierePrincipal = requiereDecisionNumero(expedientePrincipalDuplicados);
+            Long elegido = idPrincipalElegido();
+            boolean principalElegidoDistinto = elegido != null && !elegido.equals(idExpedientePrincipalDuplicados);
+            boolean requierePrincipal = requiereDecisionNumero(expedientePrincipalDuplicados) && !principalElegidoDistinto;
             int candidatosSinNumero = contarCandidatosSinNumero();
             int marcadosSinNumero = 0;
             for (Long id : obtenerIdsMarcados()) {
@@ -3359,7 +3361,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     }
                 }
             }
-            boolean visible = requierePrincipal || candidatosSinNumero > 0;
+            boolean visible = requiereDecisionNumero(expedientePrincipalDuplicados) || candidatosSinNumero > 0 || principalAmbiguo;
             seccionDecisionNumero.setVisible(visible);
             if (marcadosSinNumero > 0) {
                 btnGenerarNumeroExpediente.setEnabled(true);
@@ -3367,6 +3369,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             } else if (requierePrincipal) {
                 btnGenerarNumeroExpediente.setEnabled(true);
                 btnGenerarNumeroExpediente.setText("Generar número de expediente");
+            } else if (principalElegidoDistinto) {
+                btnGenerarNumeroExpediente.setEnabled(false);
+                btnGenerarNumeroExpediente.setText("Se asociará al expediente principal elegido");
             } else {
                 btnGenerarNumeroExpediente.setEnabled(false);
                 btnGenerarNumeroExpediente.setText("Marque solicitudes sin número para generar");
