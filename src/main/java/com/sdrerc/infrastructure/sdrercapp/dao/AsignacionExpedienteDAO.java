@@ -743,6 +743,7 @@ public class AsignacionExpedienteDAO {
                 int correlativo = obtenerUltimoCorrelativoExpediente(conn, anio) + 1;
                 String numero = correlativoExpedienteService.generar(anio, correlativo);
                 actualizarNumeroExpediente(conn, idExpediente, numero, idUsuario);
+                limpiarAlertaPotencialDuplicado(conn, idExpediente);
                 Long idMovimiento = requerirId(
                         catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_GENERACION_NUMERO),
                         "movimiento GENERACION_CODIGO_EXPEDIENTE");
@@ -1373,6 +1374,21 @@ public class AsignacionExpedienteDAO {
             if (updated != 1) {
                 throw new SQLException("No se pudo generar número; el expediente pudo haber sido actualizado por otro usuario.");
             }
+        }
+    }
+
+    /**
+     * Al generar número independiente para una solicitud, el usuario decidió que NO corresponde
+     * asociarla a otro expediente como duplicado; la alerta "Potencial duplicado" de la bandeja
+     * (columna Alertas, calculada directo de esol.potencial_duplicado) queda resuelta igual que
+     * cuando se asocia.
+     */
+    private void limpiarAlertaPotencialDuplicado(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "UPDATE expediente_solicitud SET potencial_duplicado = 0 "
+                + "WHERE id_expediente = ? AND activo = 1 AND potencial_duplicado = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.executeUpdate();
         }
     }
 
