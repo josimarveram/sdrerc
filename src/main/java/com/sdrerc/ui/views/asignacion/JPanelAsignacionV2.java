@@ -169,7 +169,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
     private static final Color SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_BG = new Color(255, 243, 219);
-    private static final Color SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG = new Color(232, 160, 64);
+    private static final Color SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG = new Color(255, 206, 122);
     private static final Color EXPANDED_PARENT_BACKGROUND = new Color(205, 236, 244);
     private static final Color EXPANDED_ASSOCIATED_BACKGROUND = new Color(238, 250, 252);
     private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;

@@ -2860,7 +2860,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         private final Color TABLA_ASOCIADAS_SELECCION_BG = new Color(219, 244, 249);
         private final Color TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG = new Color(255, 243, 219);
-        private final Color TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG = new Color(232, 160, 64);
+        private final Color TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG = new Color(255, 206, 122);
 
         private final DefaultTableModel modeloDuplicados = new DefaultTableModel(
                 new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta",
