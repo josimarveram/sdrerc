@@ -1318,8 +1318,12 @@ public class JPanelAsignacionV2 extends JPanel {
         // pasan TODOS los documentos de analisis del expediente (no solo los que requieren
         // respuesta) y todas las cartas de respuesta ya registradas -- ver
         // cargarDocumentosPorExpediente. Instancia separada (documentosTreePanel) porque un
-        // componente Swing no puede vivir en 2 lenguetas a la vez.
-        documentosTreePanel = new CartaRespuestaTreeGridPanelV2();
+        // componente Swing no puede vivir en 2 lenguetas a la vez. permitirPedidoEnHijo=true:
+        // en esta lengueta la grilla "Documentos de análisis" es de solo lectura/referencia;
+        // "+ Documentos" vive junto a "+ Relacionados" en la grilla inferior y registra el
+        // "Pedido" ahi (pedido del usuario 04/08/2026); la lengueta "Cartas de Rpta" conserva el
+        // comportamiento original (instancia sin argumentos en crearCartasRespuesta()).
+        documentosTreePanel = new CartaRespuestaTreeGridPanelV2(true);
         documentosTreePanel.setHandlers(
                 documento -> documentoAnalisisService.guardarDocumentoJerarquico(idExpedienteDocumentos, documento),
                 carta -> documentoAnalisisService.guardarCartaRespuesta(idExpedienteDocumentos, carta),
