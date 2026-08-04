@@ -2860,6 +2860,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
     private final class JPanelAsociarDuplicadosRecepcionV2 extends AppV2SideActionPanel {
 
+        private final Color TABLA_ASOCIADAS_SELECCION_BG = new Color(219, 244, 249);
+
         private final DefaultTableModel modeloDuplicados = new DefaultTableModel(
                 new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta", "Etapa/Estado", "Abogado"}, 0) {
             @Override
@@ -2955,8 +2957,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             addSection(seccionDecisionNumero);
             seccionDecisionNumero.setVisible(false);
 
-            tablaDuplicados.setRowHeight(28);
+            tablaDuplicados.setRowHeight(30);
             tablaDuplicados.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+            tablaDuplicados.setDefaultRenderer(Object.class, new SolicitudAsociadaCellRenderer());
             AppV2TableColumnSizer.applyWidths(tablaDuplicados, 34, 120, 120, 100, 110, 140, 160);
             tablaDuplicados.getColumnModel().getColumn(0).setMaxWidth(38);
             tablaDuplicados.getColumnModel().getColumn(0).setCellRenderer(new SeleccionDuplicadoRenderer());
@@ -3034,6 +3037,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         lblEstadoAsociar.setText(totalCandidatos + " posible(s) duplicado(s) detectado(s).");
                     }
                     mostrarCoincidenciasDuplicados(!duplicadosActuales.isEmpty());
+                    AppV2TableColumnSizer.sizeToContent(tablaDuplicados);
                     ajustarTamanoDuplicados();
                     actualizarEstadoBoton();
                     actualizarEtiquetaPrincipalPorSeleccion();
@@ -3522,7 +3526,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     int row,
                     int column) {
                 int modelRow = table.convertRowIndexToModel(row);
-                Color background = isSelected ? new Color(207, 229, 244) : AppV2Theme.SURFACE;
+                Color background = isSelected ? TABLA_ASOCIADAS_SELECCION_BG : AppV2Theme.SURFACE;
                 boolean editable = modelRow >= 0 && modelRow < duplicadosActuales.size()
                         && !esPrincipal(duplicadosActuales.get(modelRow));
                 setBackground(background);
@@ -3532,6 +3536,26 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         ? "Marque para asociar esta solicitud al expediente principal."
                         : "Expediente principal: siempre queda marcado y no se puede desmarcar.");
                 return this;
+            }
+        }
+
+        private class SolicitudAsociadaCellRenderer extends DefaultTableCellRenderer {
+            @Override
+            public Component getTableCellRendererComponent(
+                    JTable table,
+                    Object value,
+                    boolean isSelected,
+                    boolean hasFocus,
+                    int row,
+                    int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+                setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                c.setBackground(isSelected ? TABLA_ASOCIADAS_SELECCION_BG : AppV2Theme.SURFACE);
+                c.setForeground(AppV2Theme.TEXT_PRIMARY);
+                String text = value == null ? "" : value.toString();
+                setToolTipText(text);
+                return c;
             }
         }
     }

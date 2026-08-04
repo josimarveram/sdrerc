@@ -4953,10 +4953,6 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         mostrarSolicitudesAsociadas(true);
         Long idExpediente = item.getIdExpediente();
-        if (idExpediente.equals(idExpedienteDocumentosRelacionados)
-                && documentosRelacionadosModel.getRowCount() > 0) {
-            return;
-        }
         idExpedienteDocumentosRelacionados = idExpediente;
         documentosRelacionadosPanel.clear();
         documentosRelacionadosModel.setRowCount(0);
@@ -4997,6 +4993,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             relacionado.getAbogadoAsignado().isEmpty() ? "-" : relacionado.getAbogadoAsignado()
                         });
                     }
+                    AppV2TableColumnSizer.sizeToContent(documentosRelacionadosTable);
                     ajustarTamanoDocumentosRelacionados();
                     mostrarSolicitudesAsociadas(!relacionados.isEmpty());
                     actualizarBotonAsociarPorSeleccionTabla();
