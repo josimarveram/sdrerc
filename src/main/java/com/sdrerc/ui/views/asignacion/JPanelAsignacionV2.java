@@ -169,6 +169,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private static final int ASSOCIATED_EXPEDIENTE_INDENT = 8;
     private static final Color TABLE_SELECTION_BACKGROUND = new Color(219, 244, 249);
     private static final Color SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_BG = new Color(255, 243, 219);
+    private static final Color SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG = new Color(232, 160, 64);
     private static final Color EXPANDED_PARENT_BACKGROUND = new Color(205, 236, 244);
     private static final Color EXPANDED_ASSOCIATED_BACKGROUND = new Color(238, 250, 252);
     private static final Color TABLE_SELECTION_FOREGROUND = AppV2Theme.TEXT_PRIMARY;
@@ -6798,9 +6799,9 @@ public class JPanelAsignacionV2 extends JPanel {
             int modelRow = table.convertRowIndexToModel(row);
             DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
             boolean candidatoNumero = fila != null && fila.esCandidatoConNumero();
-            c.setBackground(isSelected
-                    ? TABLE_SELECTION_BACKGROUND
-                    : (candidatoNumero ? SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE));
+            c.setBackground(candidatoNumero
+                    ? (isSelected ? SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG : SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_BG)
+                    : (isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE));
             c.setForeground(AppV2Theme.TEXT_PRIMARY);
             String text = value == null ? "" : value.toString();
             setToolTipText(text);
@@ -6827,9 +6828,9 @@ public class JPanelAsignacionV2 extends JPanel {
             int modelRow = table.convertRowIndexToModel(row);
             DocumentoRelacionadoFila fila = documentoRelacionadoFila(modelRow);
             boolean candidatoNumero = fila != null && fila.esCandidatoConNumero();
-            Color background = isSelected
-                    ? TABLE_SELECTION_BACKGROUND
-                    : (candidatoNumero ? SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE);
+            Color background = candidatoNumero
+                    ? (isSelected ? SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG : SOLICITUDES_ASOCIADAS_CANDIDATO_PRINCIPAL_BG)
+                    : (isSelected ? TABLE_SELECTION_BACKGROUND : AppV2Theme.SURFACE);
             setBackground(background);
             setSelected(Boolean.TRUE.equals(value));
             setEnabled(true);

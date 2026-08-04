@@ -2860,6 +2860,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         private final Color TABLA_ASOCIADAS_SELECCION_BG = new Color(219, 244, 249);
         private final Color TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG = new Color(255, 243, 219);
+        private final Color TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG = new Color(232, 160, 64);
 
         private final DefaultTableModel modeloDuplicados = new DefaultTableModel(
                 new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta",
@@ -3585,9 +3586,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 ExpedienteRelacionadoDTO item = modelRow >= 0 && modelRow < duplicadosActuales.size()
                         ? duplicadosActuales.get(modelRow) : null;
                 boolean candidatoNumero = esCandidatoConNumero(item);
-                Color background = isSelected
-                        ? TABLA_ASOCIADAS_SELECCION_BG
-                        : (candidatoNumero ? TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE);
+                Color background = candidatoNumero
+                        ? (isSelected ? TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG : TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG)
+                        : (isSelected ? TABLA_ASOCIADAS_SELECCION_BG : AppV2Theme.SURFACE);
                 setBackground(background);
                 setSelected(Boolean.TRUE.equals(value));
                 setEnabled(true);
@@ -3613,9 +3614,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 int modelRow = table.convertRowIndexToModel(row);
                 boolean candidatoNumero = modelRow >= 0 && modelRow < duplicadosActuales.size()
                         && esCandidatoConNumero(duplicadosActuales.get(modelRow));
-                c.setBackground(isSelected
-                        ? TABLA_ASOCIADAS_SELECCION_BG
-                        : (candidatoNumero ? TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE));
+                c.setBackground(candidatoNumero
+                        ? (isSelected ? TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_SELECCIONADO_BG : TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG)
+                        : (isSelected ? TABLA_ASOCIADAS_SELECCION_BG : AppV2Theme.SURFACE));
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
                 String text = value == null ? "" : value.toString();
                 setToolTipText(text);
