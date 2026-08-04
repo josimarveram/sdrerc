@@ -2892,6 +2892,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private List<ExpedienteRelacionadoDTO> duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
         private ExpedienteBandejaDTO expedientePrincipalDuplicados;
         private Long idExpedientePrincipalDuplicados;
+        private Long idPrincipalReal;
+        private boolean principalAmbiguo;
         private long secuenciaCargaDuplicados;
 
         private JPanelAsociarDuplicadosRecepcionV2() {
@@ -2980,6 +2982,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             actualizarResumenSeleccion(expedientePrincipal);
             if (idExpediente == null) {
                 duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
+                idPrincipalReal = null;
+                principalAmbiguo = false;
                 modeloDuplicados.setRowCount(0);
                 mostrarCoincidenciasDuplicados(false);
                 lblEstadoAsociar.setText("Seleccione un expediente en la bandeja.");
@@ -3009,6 +3013,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                         duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
                         lblEstadoAsociar.setText(mensajeError(ex));
                     }
+                    recalcularPrincipalReal();
                     modeloDuplicados.setRowCount(0);
                     for (ExpedienteRelacionadoDTO relacionado : duplicadosActuales) {
                         boolean esPrincipal = esPrincipal(relacionado);
@@ -3038,10 +3043,69 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             worker.execute();
         }
 
+        /**
+         * El expediente PRINCIPAL real para efectos de bloqueo de casilla y asociacion no es
+         * necesariamente el expediente enfocado en la bandeja (el usuario puede haber hecho doble
+         * clic sobre una solicitud SIN numero, ej. una Reconsideracion). El principal real es el
+         * unico expediente del grupo que YA TIENE numero: si el enfocado ya tiene numero, es el;
+         * si no, se busca entre los demas del grupo. Si hay mas de uno con numero, es ambiguo y no
+         * se bloquea ninguna casilla hasta que el usuario resuelva los datos.
+         */
+        private void recalcularPrincipalReal() {
+            if (idExpedientePrincipalDuplicados == null) {
+                idPrincipalReal = null;
+                principalAmbiguo = false;
+                return;
+            }
+            if (tieneNumeroExpediente(expedientePrincipalDuplicados)) {
+                idPrincipalReal = idExpedientePrincipalDuplicados;
+                principalAmbiguo = false;
+                return;
+            }
+            ExpedienteRelacionadoDTO conNumero = null;
+            int total = 0;
+            for (ExpedienteRelacionadoDTO item : duplicadosActuales) {
+                if (item != null && !idExpedientePrincipalDuplicados.equals(item.getIdExpediente()) && tieneNumeroExpediente(item)) {
+                    conNumero = item;
+                    total++;
+                }
+            }
+            if (total == 0) {
+                idPrincipalReal = idExpedientePrincipalDuplicados;
+                principalAmbiguo = false;
+            } else if (total == 1) {
+                idPrincipalReal = conNumero.getIdExpediente();
+                principalAmbiguo = false;
+            } else {
+                idPrincipalReal = null;
+                principalAmbiguo = true;
+            }
+        }
+
+        private String textoPrincipalReal() {
+            if (idPrincipalReal == null) {
+                return "-";
+            }
+            if (idPrincipalReal.equals(idExpedientePrincipalDuplicados)) {
+                return textoExpedientePrincipal(expedientePrincipalDuplicados);
+            }
+            for (ExpedienteRelacionadoDTO item : duplicadosActuales) {
+                if (idPrincipalReal.equals(item.getIdExpediente())) {
+                    String texto = item.getNumeroExpediente().trim();
+                    String sgd = item.getNumeroExpedienteSgd();
+                    if (sgd != null && !sgd.trim().isEmpty()) {
+                        texto += " / SGD " + sgd.trim();
+                    }
+                    return texto;
+                }
+            }
+            return "-";
+        }
+
         private boolean esPrincipal(ExpedienteRelacionadoDTO item) {
             return item != null
-                    && idExpedientePrincipalDuplicados != null
-                    && idExpedientePrincipalDuplicados.equals(item.getIdExpediente());
+                    && idPrincipalReal != null
+                    && idPrincipalReal.equals(item.getIdExpediente());
         }
 
         private int contarCandidatosPendientes() {
@@ -3171,54 +3235,16 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
 
         /**
-         * Si el expediente seleccionado en la bandeja (potencial principal) no tiene numero, pero
-         * entre los marcados hay exactamente uno CON numero, ese es el principal real: se invierte
-         * la asociacion. Si hay mas de uno marcado con numero, es ambiguo y no se decide solo.
+         * El principal real ya se resuelve una sola vez al cargar el grupo (recalcularPrincipalReal,
+         * a partir de cual expediente del grupo tiene numero), no a partir de lo que el usuario marca:
+         * las casillas marcadas nunca pueden incluir al principal (su casilla esta bloqueada), asi que
+         * aqui solo se arma el resultado con ese principal ya resuelto.
          */
         private ResolucionPrincipalDuplicados resolverPrincipal(List<Long> idsSeleccionados) {
-            if (expedientePrincipalDuplicados == null || idExpedientePrincipalDuplicados == null) {
-                return new ResolucionPrincipalDuplicados(null, null, new ArrayList<Long>(), false);
+            if (principalAmbiguo || idPrincipalReal == null) {
+                return new ResolucionPrincipalDuplicados(null, null, new ArrayList<Long>(), principalAmbiguo);
             }
-            if (tieneNumeroExpediente(expedientePrincipalDuplicados)) {
-                return new ResolucionPrincipalDuplicados(
-                        idExpedientePrincipalDuplicados,
-                        textoExpedientePrincipal(expedientePrincipalDuplicados),
-                        idsSeleccionados,
-                        false);
-            }
-            ExpedienteRelacionadoDTO candidatoConNumero = null;
-            int totalConNumero = 0;
-            for (Long idSeleccionado : idsSeleccionados) {
-                for (ExpedienteRelacionadoDTO candidato : duplicadosActuales) {
-                    if (candidato != null && idSeleccionado.equals(candidato.getIdExpediente()) && tieneNumeroExpediente(candidato)) {
-                        candidatoConNumero = candidato;
-                        totalConNumero++;
-                    }
-                }
-            }
-            if (totalConNumero == 0) {
-                return new ResolucionPrincipalDuplicados(
-                        idExpedientePrincipalDuplicados,
-                        textoExpedientePrincipal(expedientePrincipalDuplicados),
-                        idsSeleccionados,
-                        false);
-            }
-            if (totalConNumero > 1) {
-                return new ResolucionPrincipalDuplicados(null, null, new ArrayList<Long>(), true);
-            }
-            List<Long> idsFinal = new ArrayList<Long>();
-            for (Long idSeleccionado : idsSeleccionados) {
-                if (!idSeleccionado.equals(candidatoConNumero.getIdExpediente())) {
-                    idsFinal.add(idSeleccionado);
-                }
-            }
-            idsFinal.add(idExpedientePrincipalDuplicados);
-            String texto = candidatoConNumero.getNumeroExpediente().trim();
-            String sgd = candidatoConNumero.getNumeroExpedienteSgd();
-            if (sgd != null && !sgd.trim().isEmpty()) {
-                texto += " / SGD " + sgd.trim();
-            }
-            return new ResolucionPrincipalDuplicados(candidatoConNumero.getIdExpediente(), texto, idsFinal, false);
+            return new ResolucionPrincipalDuplicados(idPrincipalReal, textoPrincipalReal(), idsSeleccionados, false);
         }
 
         private void actualizarEtiquetaPrincipalPorSeleccion() {
@@ -3229,8 +3255,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (resolucion.ambiguo) {
                 lblExpedientePrincipalAsociacion.setText("Ambiguo");
                 lblExpedientePrincipalAsociacion.setToolTipText(
-                        "Hay más de un expediente con número entre los marcados. Solo puede haber un principal: "
-                                + "marque únicamente los que no tienen número.");
+                        "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. "
+                                + "Solo puede haber un principal: revise los datos antes de asociar.");
                 btnAsociarRapido.setEnabled(false);
                 return;
             }
@@ -3321,9 +3347,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private void mostrarAmbiguedadPrincipal() {
             JOptionPane.showMessageDialog(
                     JPanelBandejaExpedientesNueva.this,
-                    "Hay más de un expediente con número entre los duplicados detectados/marcados. Solo puede haber un "
-                            + "expediente principal: desmarque los que no correspondan y deje marcado únicamente el "
-                            + "principal junto con los potenciales duplicados sin número.",
+                    "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. Solo "
+                            + "puede haber un expediente principal: revise los datos antes de asociar.",
                     "Asociar duplicados",
                     JOptionPane.INFORMATION_MESSAGE);
         }

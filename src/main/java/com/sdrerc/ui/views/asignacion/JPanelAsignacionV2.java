@@ -494,6 +494,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private boolean hayVisiblesAsignables;
     private boolean busquedaInicialEjecutada;
     private Long idExpedienteDocumentosRelacionados;
+    private Long idPrincipalRelacionadoReal;
+    private boolean principalRelacionadoAmbiguo;
     private Long idExpedienteHojaEnvioSimple;
     private Long idExpedienteReasignacionActual;
     private Long idExpedienteCartasRespuesta;
@@ -3553,52 +3555,33 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     /**
-     * Cuando el foco de la asociacion de un solo expediente (no seleccion multiple) no tiene
-     * numero de expediente propio, pero entre las solicitudes asociadas marcadas hay exactamente
-     * una CON numero, esa es el principal real: se invierte la asociacion (el foco pasa a ser uno
-     * de los relacionados). Si hay mas de una marcada con numero, es ambiguo y no se decide solo.
+     * El principal real ya se resuelve una sola vez al cargar el grupo relacionado
+     * (recalcularPrincipalRelacionadoReal, a partir de cual expediente del grupo tiene numero), no
+     * a partir de lo que el usuario marca: las casillas marcadas nunca pueden incluir al principal
+     * (su casilla esta bloqueada), asi que aqui solo se arma el resultado con ese principal ya
+     * resuelto.
      */
     private ResolucionAsociacionFoco resolverPrincipalParaFoco(AsignacionExpedienteDTO foco, List<Long> idsMarcados) {
-        if (foco == null) {
-            return new ResolucionAsociacionFoco(null, null, null, Collections.<Long>emptyList(), false);
+        if (foco == null || principalRelacionadoAmbiguo || idPrincipalRelacionadoReal == null) {
+            return new ResolucionAsociacionFoco(null, null, null, Collections.<Long>emptyList(),
+                    foco != null && principalRelacionadoAmbiguo);
         }
-        if (tieneNumeroExpediente(foco)) {
+        if (idPrincipalRelacionadoReal.equals(foco.getIdExpediente())) {
             return new ResolucionAsociacionFoco(
                     foco.getIdExpediente(), foco.getNumeroExpediente(), foco.getNumeroExpedienteSgd(), idsMarcados, false);
         }
-        ExpedienteRelacionadoDTO candidatoConNumero = null;
-        int totalConNumero = 0;
-        for (Long idMarcado : idsMarcados) {
-            for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
-                if (fila == null || fila.esPrincipal() || fila.getExpediente() == null) {
-                    continue;
-                }
-                if (idMarcado.equals(fila.getExpediente().getIdExpediente()) && tieneNumeroExpediente(fila.getExpediente())) {
-                    candidatoConNumero = fila.getExpediente();
-                    totalConNumero++;
-                }
+        for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
+            if (fila != null && fila.getExpediente() != null
+                    && idPrincipalRelacionadoReal.equals(fila.getExpediente().getIdExpediente())) {
+                return new ResolucionAsociacionFoco(
+                        idPrincipalRelacionadoReal,
+                        fila.getExpediente().getNumeroExpediente(),
+                        fila.getExpediente().getNumeroExpedienteSgd(),
+                        idsMarcados,
+                        false);
             }
         }
-        if (totalConNumero == 0) {
-            return new ResolucionAsociacionFoco(
-                    foco.getIdExpediente(), foco.getNumeroExpediente(), foco.getNumeroExpedienteSgd(), idsMarcados, false);
-        }
-        if (totalConNumero > 1) {
-            return new ResolucionAsociacionFoco(null, null, null, Collections.<Long>emptyList(), true);
-        }
-        List<Long> idsFinal = new ArrayList<>();
-        for (Long idMarcado : idsMarcados) {
-            if (!idMarcado.equals(candidatoConNumero.getIdExpediente())) {
-                idsFinal.add(idMarcado);
-            }
-        }
-        idsFinal.add(foco.getIdExpediente());
-        return new ResolucionAsociacionFoco(
-                candidatoConNumero.getIdExpediente(),
-                candidatoConNumero.getNumeroExpediente(),
-                candidatoConNumero.getNumeroExpedienteSgd(),
-                idsFinal,
-                false);
+        return new ResolucionAsociacionFoco(null, null, null, Collections.<Long>emptyList(), true);
     }
 
     private List<AsignacionExpedienteDTO> obtenerExpedientesMarcados() {
@@ -4826,6 +4809,46 @@ public class JPanelAsignacionV2 extends JPanel {
         }
     }
 
+    /**
+     * El expediente PRINCIPAL real para efectos de bloqueo de casilla y asociacion no es
+     * necesariamente el expediente enfocado en la bandeja (el usuario puede haber hecho doble
+     * clic sobre una solicitud SIN numero, ej. una Reconsideracion). El principal real es el
+     * unico expediente del grupo que YA TIENE numero: si el enfocado ya tiene numero, es el; si
+     * no, se busca entre los demas del grupo. Si hay mas de uno con numero, es ambiguo y no se
+     * bloquea ninguna casilla hasta que el usuario resuelva los datos.
+     */
+    private void recalcularPrincipalRelacionadoReal(
+            Long idExpedienteFoco, AsignacionExpedienteDTO foco, List<ExpedienteRelacionadoDTO> relacionados) {
+        if (idExpedienteFoco == null) {
+            idPrincipalRelacionadoReal = null;
+            principalRelacionadoAmbiguo = false;
+            return;
+        }
+        if (tieneNumeroExpediente(foco)) {
+            idPrincipalRelacionadoReal = idExpedienteFoco;
+            principalRelacionadoAmbiguo = false;
+            return;
+        }
+        ExpedienteRelacionadoDTO conNumero = null;
+        int total = 0;
+        for (ExpedienteRelacionadoDTO candidato : relacionados) {
+            if (candidato != null && !idExpedienteFoco.equals(candidato.getIdExpediente()) && tieneNumeroExpediente(candidato)) {
+                conNumero = candidato;
+                total++;
+            }
+        }
+        if (total == 0) {
+            idPrincipalRelacionadoReal = idExpedienteFoco;
+            principalRelacionadoAmbiguo = false;
+        } else if (total == 1) {
+            idPrincipalRelacionadoReal = conNumero.getIdExpediente();
+            principalRelacionadoAmbiguo = false;
+        } else {
+            idPrincipalRelacionadoReal = null;
+            principalRelacionadoAmbiguo = true;
+        }
+    }
+
     private boolean requiereDecisionNumeroCandidato(ExpedienteRelacionadoDTO candidato) {
         if (candidato == null) {
             return false;
@@ -4966,11 +4989,13 @@ public class JPanelAsignacionV2 extends JPanel {
                 }
                 try {
                     List<ExpedienteRelacionadoDTO> relacionados = get();
+                    recalcularPrincipalRelacionadoReal(idExpediente, item, relacionados);
                     documentosRelacionadosPanel.clear();
                     documentosRelacionadosModel.setRowCount(0);
                     int totalCandidatos = 0;
                     for (ExpedienteRelacionadoDTO relacionado : relacionados) {
-                        boolean esPrincipal = idExpediente.equals(relacionado.getIdExpediente());
+                        boolean esPrincipal = idPrincipalRelacionadoReal != null
+                                && idPrincipalRelacionadoReal.equals(relacionado.getIdExpediente());
                         DocumentoRelacionadoFila fila = new DocumentoRelacionadoFila(relacionado, esPrincipal);
                         documentosRelacionadosPanel.add(fila);
                         if (!esPrincipal) {
@@ -6106,7 +6131,15 @@ public class JPanelAsignacionV2 extends JPanel {
         }
         int marcados = contarDocumentosRelacionadosMarcados();
         if (marcados <= 0) {
-            actualizarExpedientePrincipalAsociacion(fila.principal);
+            ResolucionAsociacionFoco resolucionInicial = resolverPrincipalParaFoco(fila.principal, Collections.<Long>emptyList());
+            if (resolucionInicial.ambiguo) {
+                lblExpedientePrincipalAsociacion.setText("Ambiguo");
+                lblExpedientePrincipalAsociacion.setToolTipText(
+                        "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. "
+                                + "Solo puede haber un principal: revise los datos antes de asociar.");
+            } else {
+                actualizarExpedientePrincipalAsociacionResuelto(resolucionInicial.numeroPrincipal, resolucionInicial.sgdPrincipal);
+            }
             btnAsociarRelacionados.setText("Sin relacionados marcados");
             btnAsociarRelacionados.setEnabled(false);
             btnAsociarRelacionados.setToolTipText(
