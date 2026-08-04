@@ -3223,9 +3223,13 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private List<Long> obtenerIdsMarcados() {
             List<Long> ids = new ArrayList<Long>();
             for (int i = 0; i < modeloDuplicados.getRowCount() && i < duplicadosActuales.size(); i++) {
+                ExpedienteRelacionadoDTO item = duplicadosActuales.get(i);
+                if (esPrincipal(item)) {
+                    continue;
+                }
                 Boolean marcado = (Boolean) modeloDuplicados.getValueAt(i, 0);
                 if (Boolean.TRUE.equals(marcado)) {
-                    Long idRelacionado = duplicadosActuales.get(i).getIdExpediente();
+                    Long idRelacionado = item.getIdExpediente();
                     if (idRelacionado != null) {
                         ids.add(idRelacionado);
                     }

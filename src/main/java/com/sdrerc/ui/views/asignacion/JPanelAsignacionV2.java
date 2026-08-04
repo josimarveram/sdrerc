@@ -3292,7 +3292,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private void generarNumeroExpedienteSeleccionado() {
         finalizarEdicionTabla();
         List<Long> idsMarcadosSinNumero = new ArrayList<>();
-        for (Long id : obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar()) {
+        for (Long id : obtenerIdsDocumentosRelacionadosMarcados()) {
             for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
                 if (fila != null && fila.getExpediente() != null && id.equals(fila.getExpediente().getIdExpediente())
                         && requiereDecisionNumeroCandidato(fila.getExpediente())) {
@@ -4780,7 +4780,7 @@ public class JPanelAsignacionV2 extends JPanel {
         boolean requierePrincipal = item != null && item.requiereDecisionNumeroAsignacion();
         int candidatosSinNumero = contarCandidatosSinNumeroRelacionados();
         int marcadosSinNumero = 0;
-        for (Long id : obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar()) {
+        for (Long id : obtenerIdsDocumentosRelacionadosMarcados()) {
             for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
                 if (fila != null && fila.getExpediente() != null && id.equals(fila.getExpediente().getIdExpediente())
                         && requiereDecisionNumeroCandidato(fila.getExpediente())) {
@@ -4867,20 +4867,6 @@ public class JPanelAsignacionV2 extends JPanel {
             }
         }
         return total;
-    }
-
-    private List<Long> obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar() {
-        List<Long> ids = new ArrayList<>();
-        for (int i = 0; i < documentosRelacionadosModel.getRowCount() && i < documentosRelacionadosPanel.size(); i++) {
-            if (!Boolean.TRUE.equals(documentosRelacionadosModel.getValueAt(i, 0))) {
-                continue;
-            }
-            DocumentoRelacionadoFila fila = documentosRelacionadosPanel.get(i);
-            if (fila != null && fila.getExpediente() != null && fila.getExpediente().getIdExpediente() != null) {
-                ids.add(fila.getExpediente().getIdExpediente());
-            }
-        }
-        return ids;
     }
 
     private void actualizarModoPanelAsignacion(boolean multiple) {
@@ -6001,7 +5987,7 @@ public class JPanelAsignacionV2 extends JPanel {
         if (item != null && item.requiereDecisionNumeroAsignacion()) {
             return true;
         }
-        for (Long id : obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar()) {
+        for (Long id : obtenerIdsDocumentosRelacionadosMarcados()) {
             for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
                 if (fila != null && fila.getExpediente() != null && id.equals(fila.getExpediente().getIdExpediente())
                         && requiereDecisionNumeroCandidato(fila.getExpediente())) {
@@ -6099,8 +6085,9 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private int contarDocumentosRelacionadosMarcados() {
         int total = 0;
-        for (int i = 0; i < documentosRelacionadosModel.getRowCount(); i++) {
-            if (Boolean.TRUE.equals(documentosRelacionadosModel.getValueAt(i, 0))) {
+        for (int i = 0; i < documentosRelacionadosModel.getRowCount() && i < documentosRelacionadosPanel.size(); i++) {
+            DocumentoRelacionadoFila fila = documentosRelacionadosPanel.get(i);
+            if (fila != null && !fila.esPrincipal() && Boolean.TRUE.equals(documentosRelacionadosModel.getValueAt(i, 0))) {
                 total++;
             }
         }
