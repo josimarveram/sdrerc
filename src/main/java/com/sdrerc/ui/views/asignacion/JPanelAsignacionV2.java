@@ -20,6 +20,7 @@ import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.domain.dto.sdrercapp.GrupoFamiliarResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.domain.rules.AsignacionRegistroEditRules;
+import com.sdrerc.domain.rules.ProcedimientoRegistralRules;
 import com.sdrerc.ui.appv2.components.AppV2ActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2ColumnFilterSupport;
 import com.sdrerc.ui.appv2.components.AppV2ExpedientePanelFactory;
@@ -1405,7 +1406,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
         documentosRelacionadosWrapper = new JPanel(new BorderLayout(0, 0));
         documentosRelacionadosWrapper.setOpaque(false);
-        documentosRelacionadosWrapper.add(documentosRelacionadosScroll, BorderLayout.WEST);
+        documentosRelacionadosWrapper.add(documentosRelacionadosScroll, BorderLayout.CENTER);
 
         panel.add(documentosRelacionadosWrapper, BorderLayout.CENTER);
         ajustarTamanoDocumentosRelacionados();
@@ -1706,7 +1707,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private void configurarTablaDocumentosRelacionados() {
         documentosRelacionadosTable.setRowHeight(30);
         documentosRelacionadosTable.setAutoCreateRowSorter(false);
-        documentosRelacionadosTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        documentosRelacionadosTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         documentosRelacionadosTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         documentosRelacionadosTable.getTableHeader().setReorderingAllowed(false);
         documentosRelacionadosTable.getTableHeader().setResizingAllowed(false);
@@ -1736,8 +1737,11 @@ public class JPanelAsignacionV2 extends JPanel {
         documentosRelacionadosModel.addTableModelListener(evento -> {
             if (evento.getColumn() == 0) {
                 actualizarBotonAsociarPorSeleccionTabla();
+                actualizarDecisionNumero(obtenerExpedienteFoco());
             }
         });
+        AppV2ColumnFilterSupport.install(
+                "Asignacion.SolicitudesAsociadas", documentosRelacionadosTable, documentosRelacionadosScroll, null, null, 0);
         ajustarTamanoDocumentosRelacionados();
     }
 
@@ -3285,6 +3289,19 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void generarNumeroExpedienteSeleccionado() {
         finalizarEdicionTabla();
+        List<Long> idsMarcadosSinNumero = new ArrayList<>();
+        for (Long id : obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar()) {
+            for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
+                if (fila != null && fila.getExpediente() != null && id.equals(fila.getExpediente().getIdExpediente())
+                        && requiereDecisionNumeroCandidato(fila.getExpediente())) {
+                    idsMarcadosSinNumero.add(id);
+                }
+            }
+        }
+        if (!idsMarcadosSinNumero.isEmpty()) {
+            generarNumerosParaMarcados(idsMarcadosSinNumero);
+            return;
+        }
         AsignacionExpedienteDTO item = obtenerExpedienteFoco();
         if (item == null || item.getIdExpediente() == null) {
             mostrarInfo("Seleccione un expediente de Reconsideración o Apelación sin número.");
@@ -3320,6 +3337,53 @@ public class JPanelAsignacionV2 extends JPanel {
                     JOptionPane.showMessageDialog(
                             JPanelAsignacionV2.this,
                             "Número de expediente generado: " + numero,
+                            "Generación de número",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    buscar();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo generar el número de expediente.", ex);
+                } finally {
+                    setTrabajando(false, null);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void generarNumerosParaMarcados(List<Long> ids) {
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Se generará un número de expediente NUEVO e independiente para cada una de las " + ids.size()
+                        + " solicitud(es) marcada(s); no se asociarán al expediente principal.\n"
+                        + "¿Desea continuar?",
+                "Generar número de expediente",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        setTrabajando(true, "Generando números de expediente...");
+        SwingWorker<List<String>, Void> worker = new SwingWorker<List<String>, Void>() {
+            @Override
+            protected List<String> doInBackground() throws Exception {
+                List<String> numeros = new ArrayList<>();
+                for (Long id : ids) {
+                    numeros.add(asignacionService.generarNumeroExpediente(id));
+                }
+                return numeros;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<String> numeros = get();
+                    StringBuilder mensaje = new StringBuilder("Números de expediente generados:");
+                    for (String numero : numeros) {
+                        mensaje.append("\n- ").append(numero);
+                    }
+                    JOptionPane.showMessageDialog(
+                            JPanelAsignacionV2.this,
+                            mensaje.toString(),
                             "Generación de número",
                             JOptionPane.INFORMATION_MESSAGE);
                     buscar();
@@ -4730,14 +4794,70 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private void actualizarDecisionNumero(AsignacionExpedienteDTO item) {
-        boolean habilitado = item != null && item.requiereDecisionNumeroAsignacion();
-        if (sectionDecisionNumero != null) {
-            sectionDecisionNumero.setVisible(habilitado);
+        boolean requierePrincipal = item != null && item.requiereDecisionNumeroAsignacion();
+        int candidatosSinNumero = contarCandidatosSinNumeroRelacionados();
+        int marcadosSinNumero = 0;
+        for (Long id : obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar()) {
+            for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
+                if (fila != null && fila.getExpediente() != null && id.equals(fila.getExpediente().getIdExpediente())
+                        && requiereDecisionNumeroCandidato(fila.getExpediente())) {
+                    marcadosSinNumero++;
+                }
+            }
         }
-        btnGenerarNumeroExpediente.setEnabled(habilitado);
-        btnGenerarNumeroExpediente.setToolTipText(habilitado
-                ? "Generar número de expediente para esta Reconsideración/Apelación."
-                : "Disponible solo para Reconsideración/Apelación registrada sin número.");
+        boolean visible = requierePrincipal || candidatosSinNumero > 0;
+        if (sectionDecisionNumero != null) {
+            sectionDecisionNumero.setVisible(visible);
+        }
+        if (marcadosSinNumero > 0) {
+            btnGenerarNumeroExpediente.setEnabled(true);
+            btnGenerarNumeroExpediente.setText("Generar número de expediente (" + marcadosSinNumero + ")");
+            btnGenerarNumeroExpediente.setToolTipText(
+                    "Genera un número de expediente nuevo e independiente para cada solicitud marcada, en vez de asociarla al principal.");
+        } else if (requierePrincipal) {
+            btnGenerarNumeroExpediente.setEnabled(true);
+            btnGenerarNumeroExpediente.setText("Generar número de expediente");
+            btnGenerarNumeroExpediente.setToolTipText("Generar número de expediente para esta Reconsideración/Apelación.");
+        } else {
+            btnGenerarNumeroExpediente.setEnabled(false);
+            btnGenerarNumeroExpediente.setText("Generar número de expediente");
+            btnGenerarNumeroExpediente.setToolTipText("Disponible solo para Reconsideración/Apelación registrada sin número, "
+                    + "o marcando solicitudes sin número en \"Solicitudes asociadas\".");
+        }
+    }
+
+    private boolean requiereDecisionNumeroCandidato(ExpedienteRelacionadoDTO candidato) {
+        if (candidato == null) {
+            return false;
+        }
+        return "REGISTRO".equalsIgnoreCase(candidato.getEtapaCodigo())
+                && "REGISTRADO".equalsIgnoreCase(candidato.getEstadoCodigo())
+                && !tieneNumeroExpediente(candidato)
+                && ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(candidato.getProcedimiento());
+    }
+
+    private int contarCandidatosSinNumeroRelacionados() {
+        int total = 0;
+        for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
+            if (fila != null && !fila.esPrincipal() && requiereDecisionNumeroCandidato(fila.getExpediente())) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    private List<Long> obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar() {
+        List<Long> ids = new ArrayList<>();
+        for (int i = 0; i < documentosRelacionadosModel.getRowCount() && i < documentosRelacionadosPanel.size(); i++) {
+            if (!Boolean.TRUE.equals(documentosRelacionadosModel.getValueAt(i, 0))) {
+                continue;
+            }
+            DocumentoRelacionadoFila fila = documentosRelacionadosPanel.get(i);
+            if (fila != null && fila.getExpediente() != null && fila.getExpediente().getIdExpediente() != null) {
+                ids.add(fila.getExpediente().getIdExpediente());
+            }
+        }
+        return ids;
     }
 
     private void actualizarModoPanelAsignacion(boolean multiple) {
@@ -4857,7 +4977,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             totalCandidatos++;
                         }
                         documentosRelacionadosModel.addRow(new Object[]{
-                            esPrincipal ? Boolean.FALSE : Boolean.TRUE,
+                            esPrincipal ? Boolean.TRUE : Boolean.FALSE,
                             numeroExpedienteDocumentoRelacionado(fila),
                             textoDocumentoRelacionado(fila),
                             relacionado.getFechaRecepcion() != null ? DATE_FORMAT.format(relacionado.getFechaRecepcion()) : "-",
@@ -5443,7 +5563,7 @@ public class JPanelAsignacionV2 extends JPanel {
         label.setToolTipText(text);
         if ("Recibido por abogado".equalsIgnoreCase(text)) {
             label.setForeground(AppV2Theme.SUCCESS);
-        } else if ("Pendiente de recibir".equalsIgnoreCase(text)) {
+        } else if ("Pendiente de recibir".equalsIgnoreCase(text) || "Sin abogado asignado".equalsIgnoreCase(text)) {
             label.setForeground(AppV2Theme.WARNING);
         } else {
             label.setForeground(AppV2Theme.TEXT_SECONDARY);
@@ -5853,7 +5973,18 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private boolean puedeGenerarNumeroExpediente() {
         AsignacionExpedienteDTO item = obtenerExpedienteFoco();
-        return item != null && item.requiereDecisionNumeroAsignacion();
+        if (item != null && item.requiereDecisionNumeroAsignacion()) {
+            return true;
+        }
+        for (Long id : obtenerIdsDocumentosRelacionadosMarcadosSinFiltrar()) {
+            for (DocumentoRelacionadoFila fila : documentosRelacionadosPanel) {
+                if (fila != null && fila.getExpediente() != null && id.equals(fila.getExpediente().getIdExpediente())
+                        && requiereDecisionNumeroCandidato(fila.getExpediente())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean asignacionFocoConNumero() {
@@ -6008,9 +6139,9 @@ public class JPanelAsignacionV2 extends JPanel {
             ancho += documentosRelacionadosTable.getColumnModel().getColumn(i).getPreferredWidth();
         }
         ancho += documentosRelacionadosTable.getIntercellSpacing().width;
-        int altoEncabezado = documentosRelacionadosTable.getTableHeader() != null
+        int altoEncabezado = (documentosRelacionadosTable.getTableHeader() != null
                 ? documentosRelacionadosTable.getTableHeader().getPreferredSize().height
-                : 28;
+                : 28) + 30;
         int altoFilas = documentosRelacionadosTable.getRowCount() * documentosRelacionadosTable.getRowHeight();
         int altoHorizontalBarra = documentosRelacionadosScroll.getHorizontalScrollBar() != null
                 ? documentosRelacionadosScroll.getHorizontalScrollBar().getPreferredSize().height
