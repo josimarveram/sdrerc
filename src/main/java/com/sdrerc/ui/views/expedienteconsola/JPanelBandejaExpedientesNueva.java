@@ -2861,6 +2861,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
     private final class JPanelAsociarDuplicadosRecepcionV2 extends AppV2SideActionPanel {
 
         private final Color TABLA_ASOCIADAS_SELECCION_BG = new Color(219, 244, 249);
+        private final Color TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG = new Color(255, 243, 219);
 
         private final DefaultTableModel modeloDuplicados = new DefaultTableModel(
                 new Object[]{"", "N° Expediente", "N° Expediente SGD", "Fecha Solicitud", "Tipo/N° Acta", "Etapa/Estado", "Abogado"}, 0) {
@@ -2869,7 +2870,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 if (column != 0) {
                     return false;
                 }
-                if (row >= 0 && row < duplicadosActuales.size() && esPrincipal(duplicadosActuales.get(row))) {
+                if (row >= 0 && row < duplicadosActuales.size() && esPrincipalBloqueada(duplicadosActuales.get(row))) {
                     return false;
                 }
                 return true;
@@ -2896,6 +2897,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private Long idExpedientePrincipalDuplicados;
         private Long idPrincipalReal;
         private boolean principalAmbiguo;
+        private java.util.Set<Long> idsConNumeroGrupo = new java.util.HashSet<Long>();
+        private boolean ajustandoSeleccionPrincipal;
         private long secuenciaCargaDuplicados;
 
         private JPanelAsociarDuplicadosRecepcionV2() {
@@ -2969,12 +2972,46 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             btnAsociarRapido.addActionListener(e -> asociarSeleccionados());
             btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpediente());
             modeloDuplicados.addTableModelListener(evento -> {
-                if (evento.getColumn() == 0) {
-                    actualizarEtiquetaPrincipalPorSeleccion();
-                    actualizarDecisionNumero();
+                if (evento.getColumn() != 0) {
+                    return;
                 }
+                if (!ajustandoSeleccionPrincipal) {
+                    aplicarSeleccionUnicaPrincipal(evento.getFirstRow(), evento.getLastRow());
+                }
+                actualizarEtiquetaPrincipalPorSeleccion();
+                actualizarDecisionNumero();
             });
             actualizarEstadoBoton();
+        }
+
+        /**
+         * Cuando hay 2+ expedientes del grupo con numero (principalAmbiguo), el usuario elige cual
+         * es el principal marcando su casilla; como solo puede haber un principal, marcar una de
+         * esas casillas desmarca automaticamente cualquier otra ya marcada del mismo subgrupo
+         * (comportamiento tipo radio-button, sin bloquear ninguna casilla).
+         */
+        private void aplicarSeleccionUnicaPrincipal(int filaInicio, int filaFin) {
+            if (!principalAmbiguo || filaInicio < 0 || filaInicio != filaFin || filaInicio >= duplicadosActuales.size()) {
+                return;
+            }
+            ExpedienteRelacionadoDTO item = duplicadosActuales.get(filaInicio);
+            if (!esCandidatoConNumero(item) || !Boolean.TRUE.equals(modeloDuplicados.getValueAt(filaInicio, 0))) {
+                return;
+            }
+            ajustandoSeleccionPrincipal = true;
+            try {
+                for (int i = 0; i < modeloDuplicados.getRowCount() && i < duplicadosActuales.size(); i++) {
+                    if (i == filaInicio) {
+                        continue;
+                    }
+                    ExpedienteRelacionadoDTO otro = duplicadosActuales.get(i);
+                    if (esCandidatoConNumero(otro) && Boolean.TRUE.equals(modeloDuplicados.getValueAt(i, 0))) {
+                        modeloDuplicados.setValueAt(Boolean.FALSE, i, 0);
+                    }
+                }
+            } finally {
+                ajustandoSeleccionPrincipal = false;
+            }
         }
 
         private void cargarDuplicados(ExpedienteBandejaDTO expedientePrincipal) {
@@ -2987,6 +3024,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 duplicadosActuales = new ArrayList<ExpedienteRelacionadoDTO>();
                 idPrincipalReal = null;
                 principalAmbiguo = false;
+                idsConNumeroGrupo = new java.util.HashSet<Long>();
                 modeloDuplicados.setRowCount(0);
                 mostrarCoincidenciasDuplicados(false);
                 lblEstadoAsociar.setText("Seleccione un expediente en la bandeja.");
@@ -3019,9 +3057,9 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     recalcularPrincipalReal();
                     modeloDuplicados.setRowCount(0);
                     for (ExpedienteRelacionadoDTO relacionado : duplicadosActuales) {
-                        boolean esPrincipal = esPrincipal(relacionado);
+                        boolean bloqueada = esPrincipalBloqueada(relacionado);
                         modeloDuplicados.addRow(new Object[]{
-                                esPrincipal ? Boolean.TRUE : Boolean.FALSE,
+                                bloqueada ? Boolean.TRUE : Boolean.FALSE,
                                 tieneNumeroExpediente(relacionado) ? relacionado.getNumeroExpediente().trim() : "Sin número (potencial duplicado)",
                                 relacionado.getNumeroExpedienteSgd().isEmpty() ? "-" : relacionado.getNumeroExpedienteSgd(),
                                 relacionado.getFechaRecepcion() != null ? relacionado.getFechaRecepcion().format(DATE_FORMAT) : "-",
@@ -3056,45 +3094,41 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
          * se bloquea ninguna casilla hasta que el usuario resuelva los datos.
          */
         private void recalcularPrincipalReal() {
+            idsConNumeroGrupo = new java.util.HashSet<Long>();
+            for (ExpedienteRelacionadoDTO item : duplicadosActuales) {
+                if (item != null && item.getIdExpediente() != null && tieneNumeroExpediente(item)) {
+                    idsConNumeroGrupo.add(item.getIdExpediente());
+                }
+            }
             if (idExpedientePrincipalDuplicados == null) {
                 idPrincipalReal = null;
                 principalAmbiguo = false;
                 return;
             }
-            if (tieneNumeroExpediente(expedientePrincipalDuplicados)) {
-                idPrincipalReal = idExpedientePrincipalDuplicados;
-                principalAmbiguo = false;
-                return;
-            }
-            ExpedienteRelacionadoDTO conNumero = null;
-            int total = 0;
-            for (ExpedienteRelacionadoDTO item : duplicadosActuales) {
-                if (item != null && !idExpedientePrincipalDuplicados.equals(item.getIdExpediente()) && tieneNumeroExpediente(item)) {
-                    conNumero = item;
-                    total++;
-                }
-            }
-            if (total == 0) {
-                idPrincipalReal = idExpedientePrincipalDuplicados;
-                principalAmbiguo = false;
-            } else if (total == 1) {
-                idPrincipalReal = conNumero.getIdExpediente();
-                principalAmbiguo = false;
-            } else {
+            if (idsConNumeroGrupo.size() >= 2) {
                 idPrincipalReal = null;
                 principalAmbiguo = true;
+                return;
             }
+            principalAmbiguo = false;
+            idPrincipalReal = idsConNumeroGrupo.isEmpty()
+                    ? idExpedientePrincipalDuplicados
+                    : idsConNumeroGrupo.iterator().next();
         }
 
         private String textoPrincipalReal() {
-            if (idPrincipalReal == null) {
+            return textoPrincipalPara(idPrincipalReal);
+        }
+
+        private String textoPrincipalPara(Long id) {
+            if (id == null) {
                 return "-";
             }
-            if (idPrincipalReal.equals(idExpedientePrincipalDuplicados)) {
+            if (id.equals(idExpedientePrincipalDuplicados) && expedientePrincipalDuplicados != null) {
                 return textoExpedientePrincipal(expedientePrincipalDuplicados);
             }
             for (ExpedienteRelacionadoDTO item : duplicadosActuales) {
-                if (idPrincipalReal.equals(item.getIdExpediente())) {
+                if (id.equals(item.getIdExpediente())) {
                     String texto = item.getNumeroExpediente().trim();
                     String sgd = item.getNumeroExpedienteSgd();
                     if (sgd != null && !sgd.trim().isEmpty()) {
@@ -3106,16 +3140,47 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             return "-";
         }
 
-        private boolean esPrincipal(ExpedienteRelacionadoDTO item) {
+        /** Casilla bloqueada (marcada y no editable): solo aplica cuando hay 0 o 1 expediente con número. */
+        private boolean esPrincipalBloqueada(ExpedienteRelacionadoDTO item) {
             return item != null
+                    && !principalAmbiguo
                     && idPrincipalReal != null
                     && idPrincipalReal.equals(item.getIdExpediente());
+        }
+
+        /** Expediente que ya tiene número: candidato a elegirse como principal cuando hay 2+ (principalAmbiguo). */
+        private boolean esCandidatoConNumero(ExpedienteRelacionadoDTO item) {
+            return item != null && item.getIdExpediente() != null && idsConNumeroGrupo.contains(item.getIdExpediente());
+        }
+
+        /**
+         * Id del expediente principal vigente para efectos de asociacion: el resuelto automaticamente
+         * (0 o 1 con numero) o, si hay 2+ con numero (principalAmbiguo), el que el usuario haya
+         * marcado manualmente entre esos candidatos (null si aun no marco ninguno).
+         */
+        private Long idPrincipalElegido() {
+            if (!principalAmbiguo) {
+                return idPrincipalReal;
+            }
+            Long elegido = null;
+            int total = 0;
+            for (int i = 0; i < modeloDuplicados.getRowCount() && i < duplicadosActuales.size(); i++) {
+                ExpedienteRelacionadoDTO item = duplicadosActuales.get(i);
+                if (!esCandidatoConNumero(item)) {
+                    continue;
+                }
+                if (Boolean.TRUE.equals(modeloDuplicados.getValueAt(i, 0))) {
+                    elegido = item.getIdExpediente();
+                    total++;
+                }
+            }
+            return total == 1 ? elegido : null;
         }
 
         private int contarCandidatosPendientes() {
             int total = 0;
             for (ExpedienteRelacionadoDTO item : duplicadosActuales) {
-                if (!esPrincipal(item)) {
+                if (!tieneNumeroExpediente(item)) {
                     total++;
                 }
             }
@@ -3135,7 +3200,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private int contarCandidatosSinNumero() {
             int total = 0;
             for (ExpedienteRelacionadoDTO item : duplicadosActuales) {
-                if (!esPrincipal(item) && requiereDecisionNumeroCandidato(item)) {
+                if (requiereDecisionNumeroCandidato(item)) {
                     total++;
                 }
             }
@@ -3226,9 +3291,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
 
         private List<Long> obtenerIdsMarcados() {
             List<Long> ids = new ArrayList<Long>();
+            Long elegido = idPrincipalElegido();
             for (int i = 0; i < modeloDuplicados.getRowCount() && i < duplicadosActuales.size(); i++) {
                 ExpedienteRelacionadoDTO item = duplicadosActuales.get(i);
-                if (esPrincipal(item)) {
+                if (esPrincipalBloqueada(item) || (elegido != null && elegido.equals(item.getIdExpediente()))) {
                     continue;
                 }
                 Boolean marcado = (Boolean) modeloDuplicados.getValueAt(i, 0);
@@ -3243,16 +3309,17 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         }
 
         /**
-         * El principal real ya se resuelve una sola vez al cargar el grupo (recalcularPrincipalReal,
-         * a partir de cual expediente del grupo tiene numero), no a partir de lo que el usuario marca:
-         * las casillas marcadas nunca pueden incluir al principal (su casilla esta bloqueada), asi que
-         * aqui solo se arma el resultado con ese principal ya resuelto.
+         * El principal vigente (idPrincipalElegido) ya resuelve tanto el caso automatico (0 o 1
+         * expediente con numero, resuelto una sola vez al cargar el grupo) como el caso manual (2+
+         * con numero: el usuario elige marcando la casilla del que corresponda). Las casillas
+         * marcadas nunca pueden incluir al principal elegido, asi que aqui solo se arma el resultado.
          */
         private ResolucionPrincipalDuplicados resolverPrincipal(List<Long> idsSeleccionados) {
-            if (principalAmbiguo || idPrincipalReal == null) {
+            Long elegido = idPrincipalElegido();
+            if (elegido == null) {
                 return new ResolucionPrincipalDuplicados(null, null, new ArrayList<Long>(), principalAmbiguo);
             }
-            return new ResolucionPrincipalDuplicados(idPrincipalReal, textoPrincipalReal(), idsSeleccionados, false);
+            return new ResolucionPrincipalDuplicados(elegido, textoPrincipalPara(elegido), idsSeleccionados, false);
         }
 
         private void actualizarEtiquetaPrincipalPorSeleccion() {
@@ -3261,10 +3328,10 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             }
             ResolucionPrincipalDuplicados resolucion = resolverPrincipal(obtenerIdsMarcados());
             if (resolucion.ambiguo) {
-                lblExpedientePrincipalAsociacion.setText("Ambiguo");
+                lblExpedientePrincipalAsociacion.setText("Seleccione el expediente principal");
                 lblExpedientePrincipalAsociacion.setToolTipText(
                         "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. "
-                                + "Solo puede haber un principal: revise los datos antes de asociar.");
+                                + "Marque la casilla de la solicitud que debe actuar como expediente principal.");
                 btnAsociarRapido.setEnabled(false);
                 return;
             }
@@ -3273,8 +3340,7 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             lblExpedientePrincipalAsociacion.setToolTipText(
                     resolucion.idPrincipal != null && resolucion.idPrincipal.equals(idExpedientePrincipalDuplicados)
                             ? "Expediente principal destino de la asociación."
-                            : "El expediente seleccionado no tiene número: se detectó automáticamente como principal "
-                                    + "al que sí tiene número entre las coincidencias.");
+                            : "Expediente principal elegido entre las coincidencias con número.");
             actualizarEstadoBoton();
         }
 
@@ -3282,6 +3348,11 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
             if (idExpedientePrincipalDuplicados == null) {
                 btnAsociarRapido.setEnabled(false);
                 btnAsociarRapido.setText("Sin relacionados pendientes");
+                return;
+            }
+            if (principalAmbiguo && idPrincipalElegido() == null) {
+                btnAsociarRapido.setEnabled(false);
+                btnAsociarRapido.setText("Seleccione el expediente principal");
                 return;
             }
             int marcados = obtenerIdsMarcados().size();
@@ -3355,8 +3426,8 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
         private void mostrarAmbiguedadPrincipal() {
             JOptionPane.showMessageDialog(
                     JPanelBandejaExpedientesNueva.this,
-                    "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. Solo "
-                            + "puede haber un expediente principal: revise los datos antes de asociar.",
+                    "Hay más de un expediente con número entre las solicitudes detectadas por misma acta y titular. "
+                            + "Marque la casilla de la solicitud que debe actuar como expediente principal antes de asociar.",
                     "Asociar duplicados",
                     JOptionPane.INFORMATION_MESSAGE);
         }
@@ -3526,15 +3597,21 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                     int row,
                     int column) {
                 int modelRow = table.convertRowIndexToModel(row);
-                Color background = isSelected ? TABLA_ASOCIADAS_SELECCION_BG : AppV2Theme.SURFACE;
-                boolean editable = modelRow >= 0 && modelRow < duplicadosActuales.size()
-                        && !esPrincipal(duplicadosActuales.get(modelRow));
+                ExpedienteRelacionadoDTO item = modelRow >= 0 && modelRow < duplicadosActuales.size()
+                        ? duplicadosActuales.get(modelRow) : null;
+                boolean bloqueada = esPrincipalBloqueada(item);
+                boolean candidatoNumero = principalAmbiguo && esCandidatoConNumero(item);
+                Color background = isSelected
+                        ? TABLA_ASOCIADAS_SELECCION_BG
+                        : (candidatoNumero ? TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE);
                 setBackground(background);
                 setSelected(Boolean.TRUE.equals(value));
-                setEnabled(editable);
-                setToolTipText(editable
-                        ? "Marque para asociar esta solicitud al expediente principal."
-                        : "Expediente principal: siempre queda marcado y no se puede desmarcar.");
+                setEnabled(!bloqueada);
+                setToolTipText(bloqueada
+                        ? "Expediente principal: siempre queda marcado y no se puede desmarcar."
+                        : candidatoNumero
+                                ? "Este expediente ya tiene número: márquelo para elegirlo como expediente principal (solo se puede elegir uno)."
+                                : "Marque para asociar esta solicitud al expediente principal.");
                 return this;
             }
         }
@@ -3551,7 +3628,12 @@ public class JPanelBandejaExpedientesNueva extends JPanel {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
                 setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-                c.setBackground(isSelected ? TABLA_ASOCIADAS_SELECCION_BG : AppV2Theme.SURFACE);
+                int modelRow = table.convertRowIndexToModel(row);
+                boolean candidatoNumero = principalAmbiguo && modelRow >= 0 && modelRow < duplicadosActuales.size()
+                        && esCandidatoConNumero(duplicadosActuales.get(modelRow));
+                c.setBackground(isSelected
+                        ? TABLA_ASOCIADAS_SELECCION_BG
+                        : (candidatoNumero ? TABLA_ASOCIADAS_CANDIDATO_PRINCIPAL_BG : AppV2Theme.SURFACE));
                 c.setForeground(AppV2Theme.TEXT_PRIMARY);
                 String text = value == null ? "" : value.toString();
                 setToolTipText(text);
