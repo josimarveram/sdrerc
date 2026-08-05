@@ -38,8 +38,13 @@ public class EquipoMiembroDAO {
                 + "JOIN usuario u ON u.id_usuario = eu.id_usuario "
                 + "JOIN equipo e ON e.id_equipo = eu.id_equipo "
                 + "LEFT JOIN area a ON a.id_area = e.id_area "
-                + "WHERE eu.id_equipo = ? AND eu.activo = 1 "
-                + "ORDER BY eu.es_responsable DESC, u.nombre_completo ASC, u.username ASC";
+                + "WHERE eu.id_equipo = ? "
+                // Incluye relaciones inactivas (eu.activo = 0) ademas de las activas: la grilla
+                // "Personal del equipo" (JPanelEquipoJuridicoV2) necesita verlas para poder
+                // reactivarlas con la casilla "Activo", sin tener que volver a buscar al usuario
+                // en el combo de alta. Antes esta consulta solo devolvia activo = 1, asi que un
+                // miembro retirado desaparecia por completo de la grilla.
+                + "ORDER BY eu.activo DESC, eu.es_responsable DESC, u.nombre_completo ASC, u.username ASC";
         try (Connection conn = SdrercAppConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, ROL_ABOGADO);

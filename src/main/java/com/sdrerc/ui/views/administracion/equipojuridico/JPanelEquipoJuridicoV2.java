@@ -1,6 +1,7 @@
 package com.sdrerc.ui.views.administracion.equipojuridico;
 
 import com.sdrerc.application.sdrercapp.EquipoJuridicoService;
+import com.sdrerc.domain.dto.sdrercapp.AbogadoSupervisadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.AreaDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoJuridicoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoJuridicoFiltroDTO;
@@ -71,6 +72,15 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private final JButton btnQuitarMiembro = new JButton("Quitar miembro");
     private final JButton btnMarcarResponsable = new JButton("Marcar responsable");
 
+    private final JComboBox<UsuarioItem> cmbSupervisorAbogados = new JComboBox<UsuarioItem>();
+    private final JButton btnBuscarAbogadosSupervisor = new JButton("Buscar");
+    private final JLabel lblEstadoAbogadosSupervisor = new JLabel("Seleccione un supervisor y presione Buscar.");
+    private final AbogadosSupervisorTableModel abogadosSupervisorModel = new AbogadosSupervisorTableModel();
+    private final JTable tblAbogadosSupervisor = new AppV2Table(abogadosSupervisorModel);
+    private JScrollPane scrollAbogadosSupervisor;
+    private final List<AbogadoSupervisadoDTO> abogadosSupervisor = new ArrayList<>();
+    private final List<UsuarioAsignableEquipoDTO> supervisoresConAbogados = new ArrayList<>();
+
     private final JLabel lblEstado = new JLabel("Ingrese filtros y presione Buscar para consultar equipos.");
     private final JLabel lblEquipoSeleccionado = new JLabel("Sin equipo seleccionado");
     private final JTextField txtCodigo = new JTextField(20);
@@ -130,7 +140,49 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
 
     private Component crearCentro() {
         splitDetalle = new AppV2OperationalSplitPanel(crearPanelListado(), crearPanelDetalle(), 540, 380, 460);
-        return splitDetalle;
+        JTabbedPane tabsPrincipal = new JTabbedPane();
+        tabsPrincipal.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tabsPrincipal.addTab("Equipos", splitDetalle);
+        tabsPrincipal.addTab("Personal por supervisor", crearPanelAbogadosPorSupervisor());
+        return tabsPrincipal;
+    }
+
+    private JPanel crearPanelAbogadosPorSupervisor() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setOpaque(false);
+
+        JPanel filtros = new JPanel(new GridBagLayout());
+        filtros.setBackground(AppV2Theme.SURFACE);
+        filtros.setBorder(AppV2Theme.toolbarBorder());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 6, 4, 6);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        filtros.add(label("Supervisor"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        filtros.add(cmbSupervisorAbogados, gbc);
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+
+        gbc.gridx = 2;
+        filtros.add(btnBuscarAbogadosSupervisor, gbc);
+
+        lblEstadoAbogadosSupervisor.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblEstadoAbogadosSupervisor.setForeground(AppV2Theme.TEXT_SECONDARY);
+
+        JPanel barra = new JPanel(new BorderLayout(8, 8));
+        barra.setOpaque(false);
+        barra.add(filtros, BorderLayout.NORTH);
+        barra.add(lblEstadoAbogadosSupervisor, BorderLayout.SOUTH);
+
+        panel.add(barra, BorderLayout.NORTH);
+        scrollAbogadosSupervisor = new JScrollPane(tblAbogadosSupervisor);
+        panel.add(scrollAbogadosSupervisor, BorderLayout.CENTER);
+        return panel;
     }
 
     private JPanel crearPanelListado() {
@@ -318,7 +370,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         cmbEstado.addItem(new EstadoFiltroItem("Inactivos", Boolean.FALSE));
         chkActivo.setOpaque(false);
         chkActivo.setSelected(true);
-        txtCodigo.setToolTipText("Mayúsculas, números y guion bajo. Ejemplo: EQUIPO_ANALISIS");
+        txtCodigo.setToolTipText("Mayúsculas, números y guion bajo. Prefijo EQ_ (ejemplo: EQ_ANALISIS). No repetir un equipo ya sembrado (EQ_REGISTRO, EQ_ASIGNACION, EQ_ANALISIS, EQ_VERIFICACION, EQ_EJECUCION, EQ_NOTIFICACION, EQ_VALIDACION, EQ_PUBLICACION, EQ_EXPEDIENTE_DIGITAL).");
         estilizarBotonPrimario(btnBuscar);
         estilizarBotonSecundario(btnLimpiar);
         estilizarBotonPrimario(btnNuevo);
@@ -331,6 +383,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         estilizarBotonPrimario(btnAgregarMiembro);
         estilizarBotonSecundario(btnQuitarMiembro);
         estilizarBotonPrimario(btnMarcarResponsable);
+        estilizarBotonPrimario(btnBuscarAbogadosSupervisor);
         btnEditar.setEnabled(false);
         btnActivarInactivar.setEnabled(false);
         btnVerMiembros.setEnabled(false);
@@ -369,14 +422,29 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         scrollMiembros.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblMiembros.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblMiembros.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
-        tblMiembros.getColumnModel().getColumn(0).setPreferredWidth(110);
-        tblMiembros.getColumnModel().getColumn(1).setPreferredWidth(170);
-        tblMiembros.getColumnModel().getColumn(2).setPreferredWidth(130);
-        tblMiembros.getColumnModel().getColumn(3).setPreferredWidth(85);
-        tblMiembros.getColumnModel().getColumn(4).setPreferredWidth(92);
-        tblMiembros.getColumnModel().getColumn(5).setPreferredWidth(76);
+        tblMiembros.getColumnModel().getColumn(0).setPreferredWidth(60);
+        tblMiembros.getColumnModel().getColumn(1).setPreferredWidth(110);
+        tblMiembros.getColumnModel().getColumn(2).setPreferredWidth(170);
+        tblMiembros.getColumnModel().getColumn(3).setPreferredWidth(130);
+        tblMiembros.getColumnModel().getColumn(4).setPreferredWidth(85);
+        tblMiembros.getColumnModel().getColumn(5).setPreferredWidth(92);
+        tblMiembros.getColumnModel().getColumn(6).setPreferredWidth(76);
+        tblMiembros.getColumnModel().getColumn(0).setMaxWidth(60);
+        tblMiembros.setDefaultRenderer(String.class, new MiembroFilaRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(tblMiembros);
         AppV2ColumnFilterSupport.install("Administracion.EquipoJuridico.Miembros", tblMiembros, scrollMiembros, null, null);
+
+        tblAbogadosSupervisor.setModel(abogadosSupervisorModel);
+        tblAbogadosSupervisor.setRowHeight(28);
+        tblAbogadosSupervisor.setFillsViewportHeight(true);
+        tblAbogadosSupervisor.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblAbogadosSupervisor.setAutoCreateRowSorter(false);
+        tblAbogadosSupervisor.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        scrollAbogadosSupervisor.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        tblAbogadosSupervisor.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tblAbogadosSupervisor.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        AppV2TableColumnSizer.applyFriendlyDefaults(tblAbogadosSupervisor);
+        AppV2ColumnFilterSupport.install("Administracion.EquipoJuridico.AbogadosSupervisor", tblAbogadosSupervisor, scrollAbogadosSupervisor, null, null);
     }
 
     private void configurarEventos() {
@@ -395,6 +463,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         btnAgregarMiembro.addActionListener(e -> agregarMiembro());
         btnQuitarMiembro.addActionListener(e -> quitarMiembro());
         btnMarcarResponsable.addActionListener(e -> marcarResponsable());
+        btnBuscarAbogadosSupervisor.addActionListener(e -> buscarAbogadosPorSupervisor());
 
         tblEquipos.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             @Override
@@ -438,6 +507,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                 datos.areas = equipoService.listarAreasActivas();
                 datos.usuarios = equipoService.listarUsuariosAsignables();
                 datos.supervisores = equipoService.listarSupervisoresAsignables();
+                datos.supervisoresConAbogados = equipoService.listarSupervisoresConAbogados();
                 datos.equipos = equipoService.buscar(crearFiltro());
                 return datos;
             }
@@ -452,6 +522,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                     usuariosAsignables.addAll(datos.usuarios);
                     supervisoresAsignables.clear();
                     supervisoresAsignables.addAll(datos.supervisores);
+                    supervisoresConAbogados.clear();
+                    supervisoresConAbogados.addAll(datos.supervisoresConAbogados);
                     cargarCombosCatalogo();
                     actualizarEquipos(datos.equipos, null);
                     lblEstado.setText("Catálogos cargados. " + equipos.size() + " equipos encontrados.");
@@ -481,6 +553,39 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                     mostrarError("No se pudo consultar equipos.", ex);
                 } finally {
                     setBusy(false);
+                }
+            }
+        }.execute();
+    }
+
+    private void buscarAbogadosPorSupervisor() {
+        UsuarioItem supervisor = (UsuarioItem) cmbSupervisorAbogados.getSelectedItem();
+        final Long idSupervisor = supervisor == null ? null : supervisor.getIdUsuario();
+        if (idSupervisor == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione un supervisor.", "Equipo Jurídico", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        btnBuscarAbogadosSupervisor.setEnabled(false);
+        lblEstadoAbogadosSupervisor.setText("Procesando...");
+        new SwingWorker<List<AbogadoSupervisadoDTO>, Void>() {
+            @Override
+            protected List<AbogadoSupervisadoDTO> doInBackground() throws Exception {
+                return equipoService.listarAbogadosPorSupervisor(idSupervisor);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    abogadosSupervisor.clear();
+                    abogadosSupervisor.addAll(get());
+                    abogadosSupervisorModel.fireTableDataChanged();
+                    AppV2TableColumnSizer.sizeToContent(tblAbogadosSupervisor);
+                    lblEstadoAbogadosSupervisor.setText(abogadosSupervisor.size() + " personas encontradas.");
+                } catch (Exception ex) {
+                    lblEstadoAbogadosSupervisor.setText("No se pudo consultar el personal del supervisor.");
+                    mostrarError("No se pudo consultar el personal del supervisor.", ex);
+                } finally {
+                    btnBuscarAbogadosSupervisor.setEnabled(true);
                 }
             }
         }.execute();
@@ -523,6 +628,12 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         cmbUsuarioMiembro.addItem(UsuarioItem.seleccione());
         for (UsuarioAsignableEquipoDTO usuario : usuariosAsignables) {
             cmbUsuarioMiembro.addItem(new UsuarioItem(usuario));
+        }
+
+        cmbSupervisorAbogados.removeAllItems();
+        cmbSupervisorAbogados.addItem(UsuarioItem.seleccione());
+        for (UsuarioAsignableEquipoDTO supervisor : supervisoresConAbogados) {
+            cmbSupervisorAbogados.addItem(new UsuarioItem(supervisor));
         }
     }
 
@@ -862,6 +973,49 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         }.execute();
     }
 
+    /**
+     * Alterna la pertenencia activa de un miembro al equipo desde la casilla "Activo" de la
+     * grilla, sin dialogo de confirmacion (a diferencia de {@link #quitarMiembro()}): el cambio
+     * es logico y trivialmente reversible con la misma casilla, en cualquiera de los 2 sentidos,
+     * asi que no aporta pedir confirmacion. Reutiliza los mismos metodos ya probados
+     * (agregarMiembro/quitarMiembro), que ya hacen baja/alta logica sobre EQUIPO_USUARIO.ACTIVO.
+     */
+    private void toggleMiembroActivo(EquipoMiembroDTO miembro, boolean activo) {
+        EquipoJuridicoDTO equipo = obtenerEquipoActualParaMiembros();
+        if (equipo == null || miembro == null) {
+            miembrosModel.fireTableDataChanged();
+            return;
+        }
+        setBusy(true);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                if (activo) {
+                    equipoService.agregarMiembro(equipo.getIdEquipo(), miembro.getIdUsuario());
+                } else {
+                    equipoService.quitarMiembro(equipo.getIdEquipo(), miembro.getIdUsuario());
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    lblEstado.setText(activo
+                            ? "Miembro activado correctamente."
+                            : "Miembro desactivado correctamente.");
+                    buscarEquipos(equipo.getIdEquipo());
+                } catch (Exception ex) {
+                    mostrarError(activo ? "No se pudo activar el miembro." : "No se pudo desactivar el miembro.", ex);
+                    miembrosModel.fireTableDataChanged();
+                } finally {
+                    setBusy(false);
+                }
+            }
+        }.execute();
+    }
+
     private void marcarResponsable() {
         EquipoJuridicoDTO equipo = obtenerEquipoActualParaMiembros();
         EquipoMiembroDTO miembro = obtenerMiembroSeleccionado();
@@ -1030,6 +1184,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         private List<AreaDTO> areas;
         private List<UsuarioAsignableEquipoDTO> usuarios;
         private List<UsuarioAsignableEquipoDTO> supervisores;
+        private List<UsuarioAsignableEquipoDTO> supervisoresConAbogados;
         private List<EquipoJuridicoDTO> equipos;
     }
 
@@ -1170,7 +1325,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private class MiembrosTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "Usuario", "Nombres", "Rol", "Área", "Responsable", "Estado", "Desde"
+            "Activo", "Usuario", "Nombres", "Rol", "Área", "Responsable", "Estado", "Desde"
         };
 
         @Override
@@ -1189,23 +1344,86 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         }
 
         @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == 0 ? Boolean.class : String.class;
+        }
+
+        @Override
+        public boolean isCellEditable(int rowIndex, int columnIndex) {
+            return columnIndex == 0;
+        }
+
+        @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             EquipoMiembroDTO miembro = miembros.get(rowIndex);
             switch (columnIndex) {
                 case 0:
-                    return miembro.getUsername();
+                    return miembro.isRelacionActiva();
                 case 1:
-                    return miembro.getNombreCompleto();
+                    return miembro.getUsername();
                 case 2:
-                    return nullToEmpty(miembro.getRolesResumen());
+                    return miembro.getNombreCompleto();
                 case 3:
-                    return nullToEmpty(miembro.getAreaNombre());
+                    return nullToEmpty(miembro.getRolesResumen());
                 case 4:
-                    return miembro.isResponsable() ? "Sí" : "No";
+                    return nullToEmpty(miembro.getAreaNombre());
                 case 5:
-                    return miembro.isUsuarioActivo() ? "Activo" : "Inactivo";
+                    return miembro.isResponsable() ? "Sí" : "No";
                 case 6:
+                    return miembro.isUsuarioActivo() ? "Activo" : "Inactivo";
+                case 7:
                     return formatDate(miembro.getCreadoEn());
+                default:
+                    return "";
+            }
+        }
+
+        @Override
+        public void setValueAt(Object value, int rowIndex, int columnIndex) {
+            if (columnIndex != 0 || !(value instanceof Boolean) || rowIndex < 0 || rowIndex >= miembros.size()) {
+                return;
+            }
+            toggleMiembroActivo(miembros.get(rowIndex), (Boolean) value);
+        }
+    }
+
+    private class AbogadosSupervisorTableModel extends AbstractTableModel {
+
+        private final String[] columns = {
+            "Usuario", "Nombres", "Rol", "Equipo(s)", "Estado", "Asignado desde"
+        };
+
+        @Override
+        public int getRowCount() {
+            return abogadosSupervisor.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return columns.length;
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return columns[column];
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            AbogadoSupervisadoDTO abogado = abogadosSupervisor.get(rowIndex);
+            switch (columnIndex) {
+                case 0:
+                    return abogado.getUsername();
+                case 1:
+                    return abogado.getNombreCompleto();
+                case 2:
+                    return nullToEmpty(abogado.getRolesResumen());
+                case 3:
+                    return nullToEmpty(abogado.getEquiposResumen());
+                case 4:
+                    return abogado.isUsuarioActivo() ? "Activo" : "Inactivo";
+                case 5:
+                    return formatDate(abogado.getAsignadoEn());
                 default:
                     return "";
             }
@@ -1234,6 +1452,32 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                 }
             }
             setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            return component;
+        }
+    }
+
+    /**
+     * Atenua (texto/fondo gris) las columnas de texto de una fila de "Personal del equipo" cuyo
+     * miembro tiene la casilla "Activo" desmarcada (EQUIPO_USUARIO.ACTIVO = 0), para que un
+     * miembro retirado se distinga a simple vista de uno vigente sin dejar de listarse (la
+     * casilla de la propia fila sigue siendo la forma de reactivarlo).
+     */
+    private class MiembroFilaRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            int modelRow = table.convertRowIndexToModel(row);
+            boolean activo = modelRow >= 0 && modelRow < miembros.size() && miembros.get(modelRow).isRelacionActiva();
+            if (!isSelected) {
+                component.setForeground(activo ? AppV2Theme.TEXT_PRIMARY : AppV2Theme.MUTED);
+                component.setBackground(activo ? AppV2Theme.SURFACE : AppV2Theme.SOFT_GRAY);
+            }
             return component;
         }
     }
