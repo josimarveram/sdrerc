@@ -68,6 +68,24 @@ public class DocumentoAnalisisDAO {
         return filtrarEstadosDocumentoAnalizado(catalogoLookupDAO.listarEstadosDocumento());
     }
 
+    /**
+     * Catalogo acotado para la columna "Estado documento" del panel "Emision" de la Bandeja
+     * Asignacion de Notificacion: solo Validado/Emitido, los 2 unicos estados relevantes en ese
+     * punto del flujo (a diferencia de {@link #listarEstadosDocumento()}, usado por Analisis/
+     * Ejecucion, que no incluye Validado porque no aplica en esas etapas).
+     */
+    public List<CatalogoItemDTO> listarEstadosDocumentoFirmaNotificacion() throws SQLException {
+        List<CatalogoItemDTO> estados = catalogoLookupDAO.listarEstadosDocumento();
+        List<CatalogoItemDTO> filtrados = new ArrayList<CatalogoItemDTO>();
+        for (CatalogoItemDTO estado : estados) {
+            if (estado != null && ("VALIDADO".equalsIgnoreCase(estado.getCodigo())
+                    || "EMITIDO".equalsIgnoreCase(estado.getCodigo()))) {
+                filtrados.add(estado);
+            }
+        }
+        return filtrados;
+    }
+
     public List<CatalogoItemDTO> listarResultadosValidacion() throws SQLException {
         return catalogoLookupDAO.listarResultadosValidacion();
     }
@@ -858,21 +876,24 @@ public class DocumentoAnalisisDAO {
             Long idDocumentoAnalizado,
             String numeroDocumento,
             LocalDate fechaEmision,
+            String estadoDocumentoCodigo,
             Long idUsuario) throws SQLException {
         if (idDocumentoAnalizado == null) {
             throw new IllegalArgumentException("Seleccione un documento para registrar la firma.");
         }
+        String codigoResuelto = estadoDocumentoCodigo == null || estadoDocumentoCodigo.trim().isEmpty()
+                ? "EMITIDO" : estadoDocumentoCodigo.trim();
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            Long idEstadoEmitido = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, "EMITIDO");
-            if (idEstadoEmitido == null) {
-                throw new SQLException("No se encontró el estado de documento EMITIDO.");
+            Long idEstado = catalogoLookupDAO.obtenerEstadoDocumentoId(conn, codigoResuelto);
+            if (idEstado == null) {
+                throw new SQLException("No se encontró el estado de documento " + codigoResuelto + ".");
             }
             String sql = "UPDATE expediente_documento_analizado SET "
                     + "id_estado_documento = ?, numero_documento = ?, fecha_documento = ?, "
                     + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                     + "WHERE id_documento_analizado = ? AND activo = 1";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setLong(1, idEstadoEmitido);
+                ps.setLong(1, idEstado);
                 setStringOrNull(ps, 2, numeroDocumento);
                 setDateOrNull(ps, 3, fechaEmision);
                 if (idUsuario == null) {

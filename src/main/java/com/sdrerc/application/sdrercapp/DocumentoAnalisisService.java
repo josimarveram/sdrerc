@@ -41,6 +41,10 @@ public class DocumentoAnalisisService {
         return documentoAnalisisDAO.listarEstadosDocumento();
     }
 
+    public List<CatalogoItemDTO> listarEstadosDocumentoFirmaNotificacion() throws SQLException {
+        return documentoAnalisisDAO.listarEstadosDocumentoFirmaNotificacion();
+    }
+
     public List<CatalogoItemDTO> listarResultadosValidacion() throws SQLException {
         return documentoAnalisisDAO.listarResultadosValidacion();
     }
@@ -222,9 +226,10 @@ public class DocumentoAnalisisService {
     public void registrarFirmaDocumentoNotificacion(
             Long idDocumentoAnalizado,
             String numeroDocumento,
-            LocalDate fechaEmision) throws SQLException {
+            LocalDate fechaEmision,
+            String estadoDocumentoCodigo) throws SQLException {
         documentoAnalisisDAO.registrarFirmaDocumentoNotificacion(
-                idDocumentoAnalizado, numeroDocumento, fechaEmision, resolverUsuarioActualSdrercApp());
+                idDocumentoAnalizado, numeroDocumento, fechaEmision, estadoDocumentoCodigo, resolverUsuarioActualSdrercApp());
     }
 
     public void derivarDocumentoNotificacionAEjecucion(

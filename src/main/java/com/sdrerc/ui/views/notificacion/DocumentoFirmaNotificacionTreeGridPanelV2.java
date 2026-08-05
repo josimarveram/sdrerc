@@ -42,9 +42,9 @@ import javax.swing.table.TableColumn;
 /**
  * Grilla de documentos del panel "Firma" de la Bandeja Asignación de Notificación. Mismo diseño
  * que {@code DocumentoVerificacionTreeGridPanelV2} (banner + grilla con icono Guardar por fila),
- * simplificada: sin jerarquía padre/hijo (Firma no maneja cartas de respuesta) y sin combo de
- * Estado editable (Firma solo corrige N° Documento/Fecha Emisión, nunca el estado directamente;
- * el estado avanza a Emitido como efecto del guardado, igual que antes).
+ * simplificada: sin jerarquía padre/hijo (Firma no maneja cartas de respuesta). La columna Estado
+ * documento es editable con combo (Validado/Emitido), igual criterio que Verificación: el usuario
+ * puede pasar manualmente de Validado a Emitido antes de guardar.
  *
  * Una fila es editable solo si el documento está listo para firma: INTERMEDIO siempre, o FINAL
  * únicamente cuando su estado actual es VALIDADO (mismo criterio que ya usaba el panel de un
@@ -53,7 +53,9 @@ import javax.swing.table.TableColumn;
 public class DocumentoFirmaNotificacionTreeGridPanelV2 extends JPanel {
 
     public interface SaveRowHandler {
-        void guardarFila(Long idDocumentoAnalizado, String numeroDocumento, LocalDate fechaEmision) throws Exception;
+        void guardarFila(
+                Long idDocumentoAnalizado, String numeroDocumento, LocalDate fechaEmision, String estadoDocumentoCodigo)
+                throws Exception;
     }
 
     private static final int COL_GUARDAR = 0;
@@ -70,6 +72,7 @@ public class DocumentoFirmaNotificacionTreeGridPanelV2 extends JPanel {
     private final JScrollPane scroll = new JScrollPane(tabla);
     private final JLabel lblBanner = crearBanner("Documentos a firmar");
     private final JLabel lblEstado = new JLabel("Seleccione un documento en la grilla de asignación.");
+    private List<CatalogoItemDTO> estados = new ArrayList<CatalogoItemDTO>();
 
     private Long idExpediente;
     private SaveRowHandler saveRowHandler;
@@ -85,6 +88,33 @@ public class DocumentoFirmaNotificacionTreeGridPanelV2 extends JPanel {
     public void setHandlers(SaveRowHandler saveRowHandler, Runnable refreshHandler) {
         this.saveRowHandler = saveRowHandler;
         this.refreshHandler = refreshHandler;
+    }
+
+    public void setEstadosDocumento(List<CatalogoItemDTO> estados) {
+        this.estados = estados == null ? new ArrayList<CatalogoItemDTO>() : new ArrayList<CatalogoItemDTO>(estados);
+        tabla.getColumnModel().getColumn(COL_ESTADO).setCellEditor(new javax.swing.DefaultCellEditor(comboCatalogo(this.estados)));
+    }
+
+    private javax.swing.JComboBox<CatalogoItemDTO> comboCatalogo(List<CatalogoItemDTO> items) {
+        javax.swing.JComboBox<CatalogoItemDTO> combo = new javax.swing.JComboBox<CatalogoItemDTO>();
+        combo.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        if (items != null) {
+            for (CatalogoItemDTO item : items) {
+                if (item != null && item.hasCodigo()) {
+                    combo.addItem(item);
+                }
+            }
+        }
+        combo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            JLabel label = new JLabel(value == null || value.getNombre() == null ? "" : value.getNombre());
+            label.setOpaque(true);
+            label.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            label.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+            label.setBackground(isSelected ? new Color(220, 237, 255) : Color.WHITE);
+            label.setForeground(AppV2Theme.TEXT_PRIMARY);
+            return label;
+        });
+        return combo;
     }
 
     public void setDocumentos(Long idExpediente, List<NotificacionAsignacionDocumentoDTO> documentos) {
@@ -180,11 +210,12 @@ public class DocumentoFirmaNotificacionTreeGridPanelV2 extends JPanel {
         final Long idDocumento = row.id;
         final String numeroDocumento = row.numeroDocumento;
         final LocalDate fechaEmision = row.fechaDocumento;
+        final String estadoDocumentoCodigo = row.estadoDocumento == null ? "" : row.estadoDocumento.getCodigo();
         lblEstado.setText("Guardando firma...");
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                saveRowHandler.guardarFila(idDocumento, numeroDocumento, fechaEmision);
+                saveRowHandler.guardarFila(idDocumento, numeroDocumento, fechaEmision, estadoDocumentoCodigo);
                 return null;
             }
 
@@ -262,7 +293,8 @@ public class DocumentoFirmaNotificacionTreeGridPanelV2 extends JPanel {
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             DocumentoRow row = getRow(rowIndex);
             return row != null && row.editable
-                    && (columnIndex == COL_NUMERO || columnIndex == COL_FECHA || columnIndex == COL_GUARDAR);
+                    && (columnIndex == COL_NUMERO || columnIndex == COL_ESTADO
+                    || columnIndex == COL_FECHA || columnIndex == COL_GUARDAR);
         }
 
         @Override
@@ -294,6 +326,14 @@ public class DocumentoFirmaNotificacionTreeGridPanelV2 extends JPanel {
             switch (columnIndex) {
                 case COL_NUMERO:
                     row.numeroDocumento = text(value);
+                    break;
+                case COL_ESTADO:
+                    if (value instanceof CatalogoItemDTO) {
+                        row.estadoDocumento = (CatalogoItemDTO) value;
+                        if ("EMITIDO".equalsIgnoreCase(row.estadoDocumento.getCodigo()) && row.fechaDocumento == null) {
+                            row.fechaDocumento = LocalDate.now();
+                        }
+                    }
                     break;
                 case COL_FECHA:
                     row.fechaDocumento = parseDate(value);

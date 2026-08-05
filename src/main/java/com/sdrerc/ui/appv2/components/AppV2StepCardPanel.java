@@ -112,6 +112,13 @@ public class AppV2StepCardPanel extends JPanel {
         chipEstado.setBackground(background);
         chipEstado.setForeground(foreground);
         chipEstado.setVisible(true);
+        // PillBadgeV2 dibuja el pill redondeado con su propio ancho (texto + relleno) en
+        // paintComponent, sin pasar por el calculo estandar de JLabel.getPreferredSize(); si el
+        // layout (FlowLayout aqui) solo reserva el ancho "de texto" por defecto, el pill queda
+        // recortado a la derecha. Se fuerza un preferredSize generoso acorde al texto real.
+        java.awt.FontMetrics metrics = chipEstado.getFontMetrics(chipEstado.getFont());
+        int ancho = metrics.stringWidth(texto) + 30;
+        chipEstado.setPreferredSize(new Dimension(Math.max(64, ancho), 24));
     }
 
     public void setContent(Component content) {
