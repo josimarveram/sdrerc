@@ -458,8 +458,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardCartasPublicacion = new MetricCardV2("Publicación", "0", "Preparadas para publicar", AppV2Theme.INDIGO);
     private final MetricCardV2 cardCartasVencimiento = new MetricCardV2("Vencimiento", "0", "Plazo de respuesta o publicación activo", AppV2Theme.WARNING);
     private final MetricCardV2 cardCargaAbogados = new MetricCardV2("Abogados", "0", "Activos", AppV2Theme.INFO);
-    private final MetricCardV2 cardCargaConAsignacion = new MetricCardV2("Con carga", "0", "Con solicitudes asignadas", AppV2Theme.TEAL);
-    private final MetricCardV2 cardCargaSinAsignacion = new MetricCardV2("Sin carga", "0", "Disponibles", AppV2Theme.WARNING);
+    private final MetricCardV2 cardCargaConAsignacion = new MetricCardV2("Con carga", "0", "Con solicitudes en Análisis", AppV2Theme.TEAL);
+    private final MetricCardV2 cardCargaSinAsignacion = new MetricCardV2("Sin carga", "0", "Sin solicitudes en Análisis", AppV2Theme.WARNING);
     private final MetricCardV2 cardCargaSolicitudes = new MetricCardV2("Solicitudes", "0", "Carga total asignada", AppV2Theme.INDIGO);
     private final MetricCardV2 cardCargaPorVencer = new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
     private final MetricCardV2 cardCargaVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
@@ -483,7 +483,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final AppV2TablePanel documentosCargaTablePanel = new AppV2TablePanel(
             documentosCargaTable,
             "Sin documentos para mostrar",
-            "Este abogado no tiene expedientes en Análisis, Verificación o Ejecución.");
+            "Este abogado no tiene expedientes en Análisis.");
     private final JLabel lblEstadoDetalleCarga = new JLabel("Seleccione un abogado en la grilla para ver su detalle.");
     private AppV2SideActionPanel panelDetalleCarga;
     private AppV2OperationalSplitPanel splitCargaAbogados;
@@ -2551,9 +2551,9 @@ public class JPanelAsignacionV2 extends JPanel {
             return filtrados;
         }
         for (CargaLaboralAbogadoDTO item : items) {
-            if (kpiCargaActiva == FiltroKpiCarga.CON_CARGA && item.getCargaTotal() > 0) {
+            if (kpiCargaActiva == FiltroKpiCarga.CON_CARGA && item.getEnAnalisis() > 0) {
                 filtrados.add(item);
-            } else if (kpiCargaActiva == FiltroKpiCarga.SIN_CARGA && item.getCargaTotal() == 0) {
+            } else if (kpiCargaActiva == FiltroKpiCarga.SIN_CARGA && item.getEnAnalisis() == 0) {
                 filtrados.add(item);
             } else if (kpiCargaActiva == FiltroKpiCarga.POR_VENCER && item.getPorVencer() > 0) {
                 filtrados.add(item);
@@ -3929,7 +3929,7 @@ public class JPanelAsignacionV2 extends JPanel {
                     }
                     documentosCargaTablePanel.setEmpty(documentosCargaModel.getRowCount() == 0);
                     lblEstadoDetalleCarga.setText(documentos.isEmpty()
-                            ? "Este abogado no tiene expedientes en Análisis, Verificación o Ejecución."
+                            ? "Este abogado no tiene expedientes en Análisis."
                             : documentos.size() + " documento(s) encontrados.");
                 } catch (Exception ex) {
                     documentosCargaModel.setRowCount(0);
@@ -4872,7 +4872,7 @@ public class JPanelAsignacionV2 extends JPanel {
                 totalSolicitudes += carga.getCargaTotal();
                 totalPorVencer += carga.getPorVencer();
                 totalVencidos += carga.getVencidos();
-                if (carga.getCargaTotal() > 0) {
+                if (carga.getEnAnalisis() > 0) {
                     conCarga++;
                 } else {
                     sinCarga++;

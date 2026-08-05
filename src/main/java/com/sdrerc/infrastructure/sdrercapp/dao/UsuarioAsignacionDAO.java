@@ -290,10 +290,12 @@ public class UsuarioAsignacionDAO {
     }
 
     /**
-     * Listado fila-por-fila (no agregado) de los expedientes que forman la carga de un abogado
-     * (Analisis/Verificacion/Ejecucion), con estado y dias habiles restantes ya calculados, para
-     * el panel lateral "Detalle de carga" de la bandeja Carga Abogados (doble clic sobre una
-     * fila). Mismo criterio de "carga" que {@link #listarCargaLaboralAbogados(Long)}.
+     * Listado fila-por-fila (no agregado) de los expedientes que forman la carga de Analisis de
+     * un abogado (los mismos 4 buckets que las subcolumnas Por recibir/En analisis/Observado/
+     * Carta intermedia de {@link #listarCargaLaboralAbogados(Long)}), con estado y dias habiles
+     * restantes ya calculados, para el panel lateral "Detalle de carga" de la bandeja Carga
+     * Abogados (doble clic sobre una fila). Deliberadamente NO incluye Verificacion/Ejecucion:
+     * ese detalle solo debe reflejar lo que las 4 columnas visibles de la grilla ya muestran.
      */
     public List<CargaLaboralDocumentoDTO> listarDocumentosPorAbogado(Long idUsuario) throws SQLException {
         List<CargaLaboralDocumentoDTO> documentos = new ArrayList<>();
@@ -309,7 +311,7 @@ public class UsuarioAsignacionDAO {
                 + "WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
                 + "AND ea.id_usuario_asignado = ? "
                 + "AND ((et.codigo = 'ASIGNACION' AND es.codigo = 'ASIGNADO') "
-                + "     OR et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION')) "
+                + "     OR et.codigo = 'ANALISIS') "
                 + "ORDER BY e.fecha_vencimiento ASC NULLS LAST, e.numero_expediente ASC";
         try (Connection conn = SdrercAppConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -332,7 +334,8 @@ public class UsuarioAsignacionDAO {
 
     /**
      * IDs de abogado (EXPEDIENTE_ASIGNACION.id_usuario_asignado) con al menos un expediente de
-     * carga (Analisis/Verificacion/Ejecucion) cuya fecha de vencimiento cae en [desde, hasta].
+     * carga de Analisis (mismo alcance que {@link #listarDocumentosPorAbogado(Long)}: Por recibir
+     * o etapa Analisis, sin Verificacion/Ejecucion) cuya fecha de vencimiento cae en [desde, hasta].
      * Cualquiera de los dos limites puede ser nulo (rango abierto de ese lado). Usado por el
      * filtro de fechas del panel de busqueda de Carga Abogados; el filtrado real de la lista
      * ocurre en memoria (Java) sobre estos ids, sin tocar la consulta agregada principal.
@@ -350,7 +353,7 @@ public class UsuarioAsignacionDAO {
         sql.append("JOIN estado_expediente es ON es.id_estado = e.id_estado_actual ");
         sql.append("WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 ");
         sql.append("AND ((et.codigo = 'ASIGNACION' AND es.codigo = 'ASIGNADO') ");
-        sql.append("     OR et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION')) ");
+        sql.append("     OR et.codigo = 'ANALISIS') ");
         sql.append("AND e.fecha_vencimiento IS NOT NULL ");
         if (desde != null) {
             sql.append("AND TRUNC(e.fecha_vencimiento) >= ? ");
