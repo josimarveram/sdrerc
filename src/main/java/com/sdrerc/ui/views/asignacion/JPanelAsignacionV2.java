@@ -402,7 +402,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "Aún no existen documentos analizados con respuesta pendiente.");
     private AppV2ColumnFilterSupport.Controller cartasRespuestaColumnFilterSupport;
     private final DefaultTableModel cargaLaboralModel = new DefaultTableModel(
-            new Object[]{"Abogado", "Supervisor", "Equipo", "Asignadas", "Por vencer", "Vencidos", "En análisis"}, 0) {
+            new Object[]{"Abogado", "Supervisor", "Equipo", "Análisis", "Ejecución", "Documentos (Cartas/Pedidos)", "Por vencer", "Vencidos"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -440,6 +440,7 @@ public class JPanelAsignacionV2 extends JPanel {
     private final Set<Long> principalesCargando = new HashSet<>();
     private final List<DocumentoRelacionadoFila> documentosRelacionadosPanel = new ArrayList<>();
     private final List<CargaLaboralAbogadoDTO> cargasLaborales = new ArrayList<>();
+    private final List<CargaLaboralAbogadoDTO> cargaLaboralFilasActuales = new ArrayList<>();
     private final AtomicLong secuenciaBusqueda = new AtomicLong(0L);
     private volatile SwingWorker<?, ?> busquedaActiva;
     private final MetricCardV2 cardPendientes = new MetricCardV2("Pendientes", "0", "Para asignación", AppV2Theme.INFO);
@@ -1004,7 +1005,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cargaLaboralTable.setGridColor(AppV2Theme.BORDER);
         cargaLaboralTable.setShowVerticalLines(false);
         cargaLaboralTable.setIntercellSpacing(new Dimension(0, 1));
-        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 220, 180, 150, 92, 92, 92, 92);
+        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 220, 180, 150, 90, 90, 190, 92, 92);
         AppV2ColumnFilterSupport.install(
                 "Asignacion.CargaLaboral",
                 cargaLaboralTable,
@@ -2455,9 +2456,9 @@ public class JPanelAsignacionV2 extends JPanel {
             return filtrados;
         }
         for (CargaLaboralAbogadoDTO item : items) {
-            if (kpiCargaActiva == FiltroKpiCarga.CON_CARGA && item.getExpedientesActivos() > 0) {
+            if (kpiCargaActiva == FiltroKpiCarga.CON_CARGA && item.getCargaTotal() > 0) {
                 filtrados.add(item);
-            } else if (kpiCargaActiva == FiltroKpiCarga.SIN_CARGA && item.getExpedientesActivos() == 0) {
+            } else if (kpiCargaActiva == FiltroKpiCarga.SIN_CARGA && item.getCargaTotal() == 0) {
                 filtrados.add(item);
             }
         }
@@ -3745,16 +3746,19 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void cargarCargaLaboralModel(List<CargaLaboralAbogadoDTO> cargas) {
         cargaLaboralModel.setRowCount(0);
+        cargaLaboralFilasActuales.clear();
         if (cargas != null) {
             for (CargaLaboralAbogadoDTO carga : cargas) {
+                cargaLaboralFilasActuales.add(carga);
                 cargaLaboralModel.addRow(new Object[]{
                     valorUi(carga.getAbogado()),
                     valorUi(carga.getSupervisor()),
                     valorUi(carga.getEquipo()),
-                    carga.getExpedientesActivos(),
+                    carga.getEnAnalisis(),
+                    carga.getEnEjecucion(),
+                    carga.getDocumentosPendientes(),
                     carga.getPorVencer(),
-                    carga.getVencidos(),
-                    carga.getEnAnalisis()
+                    carga.getVencidos()
                 });
             }
         }
@@ -3768,6 +3772,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void limpiarCargaLaboral() {
         cargaLaboralModel.setRowCount(0);
+        cargaLaboralFilasActuales.clear();
         cargaLaboralTablePanel.setEmpty(true);
         lblCargaLaboralEquipo.setText("Carga laboral general de abogados activos.");
         lblCargaLaboralAyuda.setText("Indicadores informativos para apoyar la asignación; no bloquean la decisión.");
@@ -4561,8 +4566,8 @@ public class JPanelAsignacionV2 extends JPanel {
         if (cargas != null) {
             activos = cargas.size();
             for (CargaLaboralAbogadoDTO carga : cargas) {
-                totalSolicitudes += carga.getExpedientesActivos();
-                if (carga.getExpedientesActivos() > 0) {
+                totalSolicitudes += carga.getCargaTotal();
+                if (carga.getCargaTotal() > 0) {
                     conCarga++;
                 } else {
                     sinCarga++;
@@ -6373,15 +6378,45 @@ public class JPanelAsignacionV2 extends JPanel {
             setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
             setHorizontalAlignment(column >= 3 ? SwingConstants.CENTER : SwingConstants.LEFT);
             setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
-            if (!isSelected && column == 5 && value instanceof Number && ((Number) value).intValue() > 0) {
+            if (!isSelected && column == 7 && value instanceof Number && ((Number) value).intValue() > 0) {
                 setForeground(AppV2Theme.ERROR);
                 setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
             } else {
                 setForeground(AppV2Theme.TEXT_PRIMARY);
                 setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
             }
+            setToolTipText(tooltipCargaLaboral(table, row, column));
             return component;
         }
+    }
+
+    /**
+     * Columnas Análisis/Ejecución/Documentos muestran solo el total; el desglose por
+     * estado (Análisis/Ejecución) o por tipo de documento (Cartas de Respuesta/Pedidos) se
+     * consulta ya formateado desde el DAO y se expone como tooltip, sin agregar columnas.
+     */
+    private String tooltipCargaLaboral(JTable table, int row, int column) {
+        if (column != 3 && column != 4 && column != 5) {
+            return null;
+        }
+        int modelRow = table.convertRowIndexToModel(row);
+        if (modelRow < 0 || modelRow >= cargaLaboralFilasActuales.size()) {
+            return null;
+        }
+        CargaLaboralAbogadoDTO carga = cargaLaboralFilasActuales.get(modelRow);
+        String detalle;
+        String vacio;
+        if (column == 3) {
+            detalle = carga.getAnalisisDetalle();
+            vacio = "Sin solicitudes en Análisis.";
+        } else if (column == 4) {
+            detalle = carga.getEjecucionDetalle();
+            vacio = "Sin solicitudes en Ejecución.";
+        } else {
+            detalle = carga.getDocumentosDetalle();
+            vacio = "Sin cartas de respuesta ni pedidos pendientes.";
+        }
+        return detalle == null || detalle.trim().isEmpty() ? vacio : detalle;
     }
 
     private class FechaCartaCellEditor extends AbstractCellEditor implements TableCellEditor {

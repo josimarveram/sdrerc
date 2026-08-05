@@ -266,6 +266,15 @@ Reglas de bandeja:
 - Asociados no deben aparecer como principales independientes.
 - La columna se llama `Abogado actual` (no `Abogado asignado`) y muestra a quien tiene el expediente hoy segun su etapa/estado, no solo al abogado de Analisis. Se resuelve desde `EXPEDIENTE.id_usuario_responsable_actual` (con fallback a la asignacion activa en `EXPEDIENTE_ASIGNACION` si es nulo). `DocumentoAnalisisDAO.asignarNotificacionMultiple`/`reasignarNotificacion` actualizan ese campo al validador/notificador cuando Notificacion asigna o reasigna un documento; `registrarResultadoValidacion` lo limpia (vuelve a NULL) al marcar `Observado`, para que el fallback vuelva a mostrar al abogado de Analisis/Ejecucion. Esta bandeja no filtra por etapa, por lo que puede listar expedientes ya avanzados a Analisis/Verificacion/Ejecucion/Notificacion.
 
+Carga Abogados:
+
+- El conteo es siempre por abogado, nunca por equipo: un abogado que pertenece a 2+ equipos activos debe aparecer en una sola fila (no una fila duplicada por cada equipo). `UsuarioAsignacionDAO.listarCargaLaboralAbogados` resuelve equipo/supervisor como subconsultas escalares (LISTAGG/MAX), no como JOIN en la tabla conductora.
+- La carga se cuenta por etapa: columnas `Análisis` y `Ejecución` (numero de solicitudes/expedientes asignados al abogado en cada etapa vía `EXPEDIENTE_ASIGNACION`). El expediente sigue contando como carga del abogado durante todo el tramo Analisis -> Ejecucion (el mismo abogado atiende ambas etapas), no solo mientras esta en Analisis.
+- Las Cartas de Respuesta y los Pedidos (`EXPEDIENTE_DOCUMENTO_ANALIZADO`, tipos `ANALISIS_DOC_20_CARTA_RESPUESTA`/`ANALISIS_DOC_21_PEDIDO`) tambien cuentan como carga del abogado mientras no esten `Emitido`: columna `Documentos (Cartas/Pedidos)`.
+- El estado (estado_expediente/tipo de documento) detras de cada columna de etapa/documentos se muestra en un tooltip al pasar el mouse sobre la celda (ej. "En análisis: 3, Observado: 1"), no como columnas adicionales, para mantener la grilla compacta.
+- Columnas que se mantienen: `Abogado`, `Supervisor`, `Equipo` (referencia informativa, no se usa para agrupar ni contar), `Por vencer`, `Vencidos` (ambas etapa-agnosticas, sobre `EXPEDIENTE.fecha_vencimiento`).
+- Se elimino la columna `Asignadas` (conteo generico sin distinguir etapa), reemplazada por el desglose `Análisis`/`Ejecución`/`Documentos`.
+
 Asociacion:
 
 - Confirmar relacion solo por coincidencia normalizada `numero de acta + titular`, salvo reglas futuras explicitas.
