@@ -1123,10 +1123,7 @@ public class JPanelNotificacionV2 extends JPanel {
 
         panel.addSection(cardEmisionAsigNotif);
         panel.addSection(cardAsignacionAsigNotif);
-        AppV2SideSectionPanel historialSeccionNotif = crearHistorialAsignacionSeccionNotif();
-        historialSeccionNotif.setAlignmentX(Component.LEFT_ALIGNMENT);
-        historialSeccionNotif.setMaximumSize(new Dimension(Integer.MAX_VALUE, Short.MAX_VALUE));
-        panel.addSection(historialSeccionNotif);
+        panel.addSection(crearHistorialAsignacionSeccionNotif());
 
         JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
         acciones.setOpaque(false);
@@ -1211,21 +1208,39 @@ public class JPanelNotificacionV2 extends JPanel {
         return section;
     }
 
-    private AppV2SideSectionPanel crearHistorialAsignacionSeccionNotif() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Historial de asignación / reasignación");
+    /**
+     * A diferencia de las demas secciones de este panel, NO usa {@link AppV2SideSectionPanel}
+     * (titulo + "form" GridBagLayout via addContent): con un unico componente en
+     * gridwidth=2/weightx=1 y ningun otro componente que defina el peso de cada columna
+     * individualmente, GridBagLayout puede repartir mal el deficit de ancho entre las 2 columnas
+     * "virtuales" que crea el span (limitacion conocida de GridBagLayout, no un error de esta
+     * clase), dejando el contenido angosto y desplazado a la derecha (visto en captura del
+     * usuario: 05/08/2026, el ancho no llegaba al 100% pese a fijar preferredSize y alignmentX).
+     * Se arma la seccion a mano con BorderLayout puro (mismo patron ya usado y confirmado
+     * funcional en {@link AppV2StepCardPanel}: titulo arriba, contenido al centro, sin
+     * GridBagLayout de por medio), que siempre estira el contenido al 100% sin ambiguedad.
+     */
+    private JPanel crearHistorialAsignacionSeccionNotif() {
         tablaHistorialAsignacionNotif.setRowHeight(28);
         tablaHistorialAsignacionNotif.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        int[] anchosHistorial = new int[]{110, 140, 130, 110, 130, 140, 90};
-        AppV2TableColumnSizer.applyWidths(tablaHistorialAsignacionNotif, anchosHistorial);
-        int anchoTotalHistorial = 0;
-        for (int ancho : anchosHistorial) {
-            anchoTotalHistorial += ancho;
-        }
+        AppV2TableColumnSizer.applyWidths(tablaHistorialAsignacionNotif, 110, 140, 130, 110, 130, 140, 90);
+
+        JPanel section = new JPanel(new BorderLayout(0, 10));
+        section.setOpaque(false);
+        section.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, AppV2Theme.BORDER));
+        section.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lblTitulo = new JLabel("Historial de asignación / reasignación");
+        lblTitulo.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        lblTitulo.setForeground(AppV2Theme.TEXT_PRIMARY);
+
         JPanel content = new JPanel(new BorderLayout());
         content.setOpaque(false);
-        content.setPreferredSize(new Dimension(anchoTotalHistorial, 180));
+        content.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
         content.add(panelHistorialAsignacionNotif, BorderLayout.CENTER);
-        section.addContent(content);
+
+        section.add(lblTitulo, BorderLayout.NORTH);
+        section.add(content, BorderLayout.CENTER);
         return section;
     }
 
