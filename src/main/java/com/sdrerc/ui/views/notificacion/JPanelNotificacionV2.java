@@ -1123,7 +1123,10 @@ public class JPanelNotificacionV2 extends JPanel {
 
         panel.addSection(cardEmisionAsigNotif);
         panel.addSection(cardAsignacionAsigNotif);
-        panel.addSection(crearHistorialAsignacionSeccionNotif());
+        AppV2SideSectionPanel historialSeccionNotif = crearHistorialAsignacionSeccionNotif();
+        historialSeccionNotif.setAlignmentX(Component.LEFT_ALIGNMENT);
+        historialSeccionNotif.setMaximumSize(new Dimension(Integer.MAX_VALUE, Short.MAX_VALUE));
+        panel.addSection(historialSeccionNotif);
 
         JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
         acciones.setOpaque(false);
