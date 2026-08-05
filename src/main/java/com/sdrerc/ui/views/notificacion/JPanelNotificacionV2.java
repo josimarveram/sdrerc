@@ -1070,7 +1070,7 @@ public class JPanelNotificacionV2 extends JPanel {
 
         asignacionMultipleTableNotif.setRowHeight(28);
         asignacionMultipleTableNotif.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        AppV2TableColumnSizer.applyWidths(asignacionMultipleTableNotif, 130, 130, 130, 130, 130);
+        AppV2TableColumnSizer.applyWidths(asignacionMultipleTableNotif, 175, 150, 160, 160, 175);
 
         JPanel content = new JPanel(new BorderLayout(6, 6));
         content.setOpaque(false);
@@ -1126,6 +1126,13 @@ public class JPanelNotificacionV2 extends JPanel {
         Dimension size = new Dimension(Math.max(ancho, 240), Math.max(alto, 64));
         asignacionMultipleTableNotif.setPreferredScrollableViewportSize(size);
         asignacionMultipleScrollNotif.setPreferredSize(size);
+        asignacionMultipleScrollNotif.setMinimumSize(size);
+        if (asignacionMultipleTableNotif.getParent() != null) {
+            asignacionMultipleTableNotif.revalidate();
+            asignacionMultipleTableNotif.repaint();
+        }
+        asignacionMultipleScrollNotif.revalidate();
+        asignacionMultipleScrollNotif.repaint();
     }
 
     private void guardarHojasEnvioAsignacionMultipleNotif() {
