@@ -307,16 +307,11 @@ public class JPanelNotificacionV2 extends JPanel {
     private AppV2SideSectionPanel sectionAsignacionMultipleNotif;
     private AppV2StepCardPanel cardEmisionAsigNotif;
     private AppV2StepCardPanel cardAsignacionAsigNotif;
-    private static final String CARD_EMISION_APROBADO = "aprobado";
-    private static final String CARD_EMISION_OBSERVADO = "observado";
     private final JComboBox<String> cmbResultadoEmisionNotif =
             new JComboBox<String>(new String[]{"Aprobado", "Observado"});
     private final javax.swing.JTextArea txtComentarioEmisionNotif = new javax.swing.JTextArea(3, 20);
-    private final JComboBox<EquipoNotifItem> cmbEquipoObservadoNotif = new JComboBox<EquipoNotifItem>();
-    private final JComboBox<UsuarioNotifItem> cmbUsuarioObservadoNotif = new JComboBox<UsuarioNotifItem>();
     private final JButton btnRegistrarSupervisionEmisionNotif = new JButton("Registrar Supervisión");
-    private CardLayout panelEmisionCardsLayout;
-    private JPanel panelEmisionCards;
+    private JPanel panelComentarioEmisionNotif;
     private JPanel panelAccionesAsigNotif;
     private final DefaultTableModel historialAsignacionModelNotif = new DefaultTableModel(
             new Object[]{"Tipo", "Usuario", "Equipo", "Hoja de envío", "Fecha", "Asignado por", "Estado"}, 0) {
@@ -951,15 +946,11 @@ public class JPanelNotificacionV2 extends JPanel {
         if (cardEmisionAsigNotif == null || cardAsignacionAsigNotif == null) {
             return;
         }
-        com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc = documentoAsigNotifFoco;
-        boolean esFinal = doc != null && "FINAL".equalsIgnoreCase(doc.getClasificacion());
-        String estado = doc == null ? "" : doc.getEstadoDocumentoCodigo();
-        boolean segundoMomento = esFinal
-                && ("VALIDADO".equalsIgnoreCase(estado) || "EMITIDO".equalsIgnoreCase(estado));
-        boolean emisionCompletada = segundoMomento && "EMITIDO".equalsIgnoreCase(estado);
+        boolean segundoMomento = esSegundoMomentoAsigNotif(documentoAsigNotifFoco);
 
         cardEmisionAsigNotif.setVisible(segundoMomento);
         if (segundoMomento) {
+            boolean emisionCompletada = emisionCompletadaAsigNotif(documentoAsigNotifFoco);
             cardEmisionAsigNotif.setStepNumber(1);
             cardEmisionAsigNotif.setStatus(
                     emisionCompletada ? "Completado" : "Pendiente",
@@ -967,25 +958,58 @@ public class JPanelNotificacionV2 extends JPanel {
                     emisionCompletada ? AppV2Theme.SUCCESS : AppV2Theme.WARNING);
             cmbResultadoEmisionNotif.setSelectedItem("Aprobado");
             txtComentarioEmisionNotif.setText("");
-            actualizarModoResultadoEmisionNotif();
+            if (panelComentarioEmisionNotif != null) {
+                panelComentarioEmisionNotif.setVisible(false);
+            }
         }
         cardAsignacionAsigNotif.setStepNumber(segundoMomento ? 2 : null);
+        actualizarBloqueoAsignacionAsigNotif();
+        cardEmisionAsigNotif.revalidate();
+        cardEmisionAsigNotif.repaint();
+        actualizarBotonRegistrarSupervisionVisible(segundoMomento);
+    }
+
+    private static boolean esSegundoMomentoAsigNotif(
+            com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc) {
+        boolean esFinal = doc != null && "FINAL".equalsIgnoreCase(doc.getClasificacion());
+        String estado = doc == null ? "" : doc.getEstadoDocumentoCodigo();
+        return esFinal && ("VALIDADO".equalsIgnoreCase(estado) || "EMITIDO".equalsIgnoreCase(estado));
+    }
+
+    private static boolean emisionCompletadaAsigNotif(
+            com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc) {
+        return esSegundoMomentoAsigNotif(doc) && "EMITIDO".equalsIgnoreCase(doc.getEstadoDocumentoCodigo());
+    }
+
+    /**
+     * El mini-panel "② Asignación" queda bloqueado mientras el documento FINAL sigue Validado (no
+     * emitido todavia) — salvo que el supervisor haya elegido "Observado" en "① Emisión": en ese
+     * caso se desbloquea igual, porque {@link #registrarSupervisionEmisionNotif()} reutiliza el
+     * mismo combo "Equipo destino"/"Usuario destino" de este mini-panel (Eq. Análisis/Eq.
+     * Ejecución) en vez de duplicar un segundo combo solo para Observado (pedido explicito del
+     * usuario, 05/08/2026: "no debería tener el bloque de destino operativo ya que eso ya se está
+     * mostrando en el bloque inferior de asignación").
+     */
+    private void actualizarBloqueoAsignacionAsigNotif() {
+        if (cardAsignacionAsigNotif == null) {
+            return;
+        }
+        boolean segundoMomento = esSegundoMomentoAsigNotif(documentoAsigNotifFoco);
+        boolean emisionCompletada = emisionCompletadaAsigNotif(documentoAsigNotifFoco);
+        boolean observado = "Observado".equals(cmbResultadoEmisionNotif.getSelectedItem());
+        boolean desbloqueado = !segundoMomento || emisionCompletada || observado;
         cardAsignacionAsigNotif.setLocked(
-                segundoMomento && !emisionCompletada,
-                "Complete la emisión del documento para habilitar la asignación.");
+                !desbloqueado, "Complete la emisión del documento para habilitar la asignación.");
         if (segundoMomento) {
             cardAsignacionAsigNotif.setStatus(
-                    emisionCompletada ? "Pendiente" : "Bloqueado",
-                    emisionCompletada ? AppV2Theme.SOFT_ORANGE : AppV2Theme.SOFT_GRAY,
-                    emisionCompletada ? AppV2Theme.WARNING : AppV2Theme.MUTED);
+                    desbloqueado ? "Pendiente" : "Bloqueado",
+                    desbloqueado ? AppV2Theme.SOFT_ORANGE : AppV2Theme.SOFT_GRAY,
+                    desbloqueado ? AppV2Theme.WARNING : AppV2Theme.MUTED);
         } else {
             cardAsignacionAsigNotif.setStatus(null, null, null);
         }
-        cardEmisionAsigNotif.revalidate();
-        cardEmisionAsigNotif.repaint();
         cardAsignacionAsigNotif.revalidate();
         cardAsignacionAsigNotif.repaint();
-        actualizarBotonRegistrarSupervisionVisible(segundoMomento);
     }
 
     /**
@@ -1411,13 +1435,17 @@ public class JPanelNotificacionV2 extends JPanel {
 
     /**
      * Contenido del mini-panel "Emisión" (segundo momento), diseñado a semejanza del panel
-     * "Verificar" de Verificación: un bloque "Resultado de Supervisión" (Aprobado/Observado)
-     * arriba decide cual de los otros 2 bloques se muestra. Aprobado (por defecto) muestra la
-     * grilla "Documentos a firmar" (igual que hoy: N° Documento/Estado documento/Fecha Emisión
-     * editables por fila, con icono Guardar). Observado oculta la grilla y muestra su propio
-     * "Destino operativo" (Eq. Análisis/Eq. Ejecución) + comentario, reutilizando exactamente
-     * {@link #derivarAsigNotifADestinoOperativo} (misma logica ya usada cuando un documento
-     * vuelve Observado del validador).
+     * "Verificar" de Verificación: la grilla "Documentos a firmar" y el resto de bloques quedan
+     * SIEMPRE visibles, sin CardLayout que oculte nada segun el resultado elegido (igual que
+     * Verificación, que nunca oculta su grilla de documentos ni su bloque "Destino operativo"
+     * pase lo que pase en el combo Resultado) — pedido explicito del usuario (05/08/2026): un
+     * resultado Observado no debe ocultar la grilla, porque puede ser necesario ajustar ahi mismo
+     * el Estado documento antes de registrar la supervisión. El unico bloque condicional es
+     * "Comentario" (motivo de la observación), que se muestra solo cuando el resultado es
+     * Observado. Ya no existe un combo "Destino operativo" propio de este mini-panel: reutiliza
+     * el mismo {@link #cmbEquipoNotif}/{@link #cmbUsuarioNotif} del mini-panel "② Asignación"
+     * (ese combo ya soporta Eq. Análisis/Eq. Ejecución, ver {@link #generarAsignacionNotificacion()}),
+     * en vez de duplicar un segundo combo con las mismas opciones.
      */
     private JPanel crearDocumentosFirmaSeccionNotif() {
         documentosFirmaTreePanel.setHandlers(
@@ -1441,66 +1469,38 @@ public class JPanelNotificacionV2 extends JPanel {
         addRow(gridResultado, 0, "Resultado", cmbResultadoEmisionNotif);
         resultadoSeccion.add(gridResultado, BorderLayout.CENTER);
 
-        panelEmisionCardsLayout = new CardLayout();
-        panelEmisionCards = new JPanel(panelEmisionCardsLayout);
-        panelEmisionCards.setOpaque(false);
-        panelEmisionCards.add(documentosFirmaTreePanel, CARD_EMISION_APROBADO);
-        panelEmisionCards.add(crearBloqueObservadoEmisionNotif(), CARD_EMISION_OBSERVADO);
+        JPanel comentarioSeccion = section("Comentario");
+        txtComentarioEmisionNotif.setLineWrap(true);
+        txtComentarioEmisionNotif.setWrapStyleWord(true);
+        comentarioSeccion.add(scrollText(txtComentarioEmisionNotif, 70), BorderLayout.CENTER);
+        comentarioSeccion.setAlignmentX(Component.LEFT_ALIGNMENT);
+        comentarioSeccion.setVisible(false);
+        panelComentarioEmisionNotif = comentarioSeccion;
 
         JPanel contenedor = new JPanel();
         contenedor.setOpaque(false);
         contenedor.setLayout(new BoxLayout(contenedor, BoxLayout.Y_AXIS));
         resultadoSeccion.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panelEmisionCards.setAlignmentX(Component.LEFT_ALIGNMENT);
+        documentosFirmaTreePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         contenedor.add(resultadoSeccion);
         contenedor.add(Box.createVerticalStrut(4));
-        contenedor.add(panelEmisionCards);
+        contenedor.add(documentosFirmaTreePanel);
+        contenedor.add(Box.createVerticalStrut(4));
+        contenedor.add(comentarioSeccion);
 
         cmbResultadoEmisionNotif.addActionListener(e -> actualizarModoResultadoEmisionNotif());
         btnRegistrarSupervisionEmisionNotif.addActionListener(e -> registrarSupervisionEmisionNotif());
         return contenedor;
     }
 
-    private JPanel crearBloqueObservadoEmisionNotif() {
-        JPanel panel = new JPanel();
-        panel.setOpaque(false);
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-
-        JPanel comentarioSeccion = section("Comentario");
-        txtComentarioEmisionNotif.setLineWrap(true);
-        txtComentarioEmisionNotif.setWrapStyleWord(true);
-        comentarioSeccion.add(scrollText(txtComentarioEmisionNotif, 70), BorderLayout.CENTER);
-
-        JPanel destinoSeccion = section("Destino operativo");
-        JPanel gridDestino = new JPanel(new GridBagLayout());
-        gridDestino.setOpaque(false);
-        gridDestino.setAlignmentX(Component.LEFT_ALIGNMENT);
-        cmbEquipoObservadoNotif.setPreferredSize(new Dimension(235, 34));
-        cmbUsuarioObservadoNotif.setPreferredSize(new Dimension(235, 34));
-        int row = 0;
-        addRow(gridDestino, row++, "Equipo destino", cmbEquipoObservadoNotif);
-        addRow(gridDestino, row, "Usuario destino", cmbUsuarioObservadoNotif);
-        destinoSeccion.add(gridDestino, BorderLayout.CENTER);
-
-        comentarioSeccion.setAlignmentX(Component.LEFT_ALIGNMENT);
-        destinoSeccion.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(comentarioSeccion);
-        panel.add(destinoSeccion);
-
-        cmbEquipoObservadoNotif.addActionListener(e -> {
-            if (!cargandoCombosAsignacionNotif) {
-                cargarUsuariosObservadoEmisionNotif();
-            }
-        });
-        return panel;
-    }
-
     private void actualizarModoResultadoEmisionNotif() {
-        if (panelEmisionCardsLayout == null || panelEmisionCards == null) {
-            return;
-        }
         boolean observado = "Observado".equals(cmbResultadoEmisionNotif.getSelectedItem());
-        panelEmisionCardsLayout.show(panelEmisionCards, observado ? CARD_EMISION_OBSERVADO : CARD_EMISION_APROBADO);
+        if (panelComentarioEmisionNotif != null) {
+            panelComentarioEmisionNotif.setVisible(observado);
+            panelComentarioEmisionNotif.revalidate();
+            panelComentarioEmisionNotif.repaint();
+        }
+        actualizarBloqueoAsignacionAsigNotif();
     }
 
     private void cargarEstadosDocumentoFirmaAsigNotif() {
@@ -1522,46 +1522,16 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
-    private void cargarUsuariosObservadoEmisionNotif() {
-        EquipoNotifItem equipoItem = (EquipoNotifItem) cmbEquipoObservadoNotif.getSelectedItem();
-        cmbUsuarioObservadoNotif.removeAllItems();
-        cmbUsuarioObservadoNotif.addItem(UsuarioNotifItem.placeholder("Seleccione usuario"));
-        if (equipoItem == null || equipoItem.equipo == null) {
-            return;
-        }
-        final Long idEquipo = equipoItem.equipo.getIdEquipo();
-        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void> worker =
-                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void>() {
-            @Override
-            protected List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> doInBackground() throws Exception {
-                return usuarioAsignacionServiceNotif.listarUsuariosAsignablesPorEquipo(idEquipo);
-            }
-
-            @Override
-            protected void done() {
-                EquipoNotifItem equipoActual = (EquipoNotifItem) cmbEquipoObservadoNotif.getSelectedItem();
-                if (equipoActual == null || equipoActual.equipo == null || !idEquipo.equals(equipoActual.equipo.getIdEquipo())) {
-                    return;
-                }
-                try {
-                    for (com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuario : get()) {
-                        cmbUsuarioObservadoNotif.addItem(new UsuarioNotifItem(usuario));
-                    }
-                } catch (Exception ex) {
-                    mostrarError("No se pudieron cargar los usuarios del equipo destino.", ex);
-                }
-            }
-        };
-        worker.execute();
-    }
-
     /**
      * Unico boton "Registrar Supervisión" del mini-panel "Emisión" (equivalente a "Registrar
      * Verificación" de Verificación): lee {@link #cmbResultadoEmisionNotif} y actua segun el
      * resultado elegido. Observado registra el motivo y deriva el expediente (misma logica que
-     * ya usaba "Devolver expediente"). Aprobado no toca la BD (cada documento ya se guarda por su
-     * propio icono Guardar en la grilla); solo confirma que hay algo que revisar y guia al
-     * usuario, decision explicita del usuario (05/08/2026).
+     * ya usaba "Devolver expediente"), reutilizando el combo "Equipo destino"/"Usuario destino"
+     * del mini-panel "② Asignación" ({@link #cmbEquipoNotif}/{@link #cmbUsuarioNotif}, desbloqueado
+     * automaticamente por {@link #actualizarBloqueoAsignacionAsigNotif()} mientras el resultado es
+     * Observado) en vez de un combo propio duplicado. Aprobado no toca la BD (cada documento ya se
+     * guarda por su propio icono Guardar en la grilla); solo confirma que hay algo que revisar y
+     * guia al usuario, decision explicita del usuario (05/08/2026).
      */
     private void registrarSupervisionEmisionNotif() {
         if (documentoAsigNotifFoco == null) {
@@ -1576,9 +1546,12 @@ public class JPanelNotificacionV2 extends JPanel {
                     "Emisión", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        EquipoNotifItem equipoItem = (EquipoNotifItem) cmbEquipoObservadoNotif.getSelectedItem();
-        if (equipoItem == null || equipoItem.equipo == null) {
-            JOptionPane.showMessageDialog(this, "Seleccione el equipo destino.",
+        EquipoNotifItem equipoItem = (EquipoNotifItem) cmbEquipoNotif.getSelectedItem();
+        String codigoEquipoDestino = equipoItem == null || equipoItem.equipo == null || equipoItem.equipo.getCodigo() == null
+                ? "" : equipoItem.equipo.getCodigo().toUpperCase(java.util.Locale.ROOT);
+        if (!"EQ_ANALISIS".equals(codigoEquipoDestino) && !"EQ_EJECUCION".equals(codigoEquipoDestino)) {
+            JOptionPane.showMessageDialog(this,
+                    "Seleccione Eq. Análisis o Eq. Ejecución en \"Destino operativo\" (bloque Asignación) para registrar la observación.",
                     "Emisión", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -1588,9 +1561,7 @@ public class JPanelNotificacionV2 extends JPanel {
                     "Emisión", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        UsuarioNotifItem usuarioItem = (UsuarioNotifItem) cmbUsuarioObservadoNotif.getSelectedItem();
-        String codigoEquipoDestino = equipoItem.equipo.getCodigo() == null
-                ? "" : equipoItem.equipo.getCodigo().toUpperCase(java.util.Locale.ROOT);
+        UsuarioNotifItem usuarioItem = (UsuarioNotifItem) cmbUsuarioNotif.getSelectedItem();
         derivarAsigNotifADestinoOperativo(
                 codigoEquipoDestino,
                 java.util.Collections.singletonList(documentoAsigNotifFoco),
@@ -1676,8 +1647,19 @@ public class JPanelNotificacionV2 extends JPanel {
      *      en vez de dejar el panel lateral cerrado. Necesario para que el mini-panel "②
      *      Asignación" se vea desbloquearse en el mismo lugar tras guardar la firma o tras generar
      *      una asignación de un unico documento, sin que el usuario tenga que volver a buscarlo.
+     *      Ademas, si el panel lateral estaba abierto antes de recargar, se fuerza a que siga
+     *      abierto tras la reseleccion: {@link #tablaAsignacionNotif}.clearSelection() (parte de
+     *      {@code poblarGrillaAsignacionNotif}, invocado desde {@code aplicarFiltrosAsigNotif}) ya
+     *      deja {@link #documentoAsigNotifFoco} en null momentaneamente y, con el panel visible en
+     *      ese instante, {@link #actualizarVisibilidadPanelAsigNotif()} lo oculta; esa misma guarda
+     *      solo puede OCULTAR (nunca reabrir) mientras el split ya esta oculto, asi que sin este
+     *      forzado explicito la reseleccion de mas abajo dejaba el panel cerrado pese a encontrar
+     *      y reseleccionar la fila correctamente (bug reportado: guardar un documento de la grilla
+     *      "Documentos a firmar" sacaba al usuario del panel).
      */
     private void cargarBandejaAsignacionNotificacion(final Long idDocumentoAnalizadoAReseleccionar) {
+        final boolean panelAbiertoAntes = splitBandejasNotif != null
+                && splitBandejasNotif.isSideVisible() && !panelAsigNotifCerradoPorUsuario;
         lblEstadoAsignacionNotif.setText("Cargando documentos pendientes de asignación...");
         SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
                 new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
@@ -1694,7 +1676,7 @@ public class JPanelNotificacionV2 extends JPanel {
                     documentosAsignacionNotif.addAll(items);
                     actualizarMetricasAsigNotif();
                     aplicarFiltrosAsigNotif();
-                    reseleccionarDocumentoAsigNotif(idDocumentoAnalizadoAReseleccionar);
+                    reseleccionarDocumentoAsigNotif(idDocumentoAnalizadoAReseleccionar, panelAbiertoAntes);
                 } catch (Exception ex) {
                     documentosAsignacionNotif.clear();
                     actualizarMetricasAsigNotif();
@@ -1707,7 +1689,7 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
-    private void reseleccionarDocumentoAsigNotif(Long idDocumentoAnalizado) {
+    private void reseleccionarDocumentoAsigNotif(Long idDocumentoAnalizado, boolean reabrirPanelSiEstabaAbierto) {
         if (idDocumentoAnalizado == null) {
             return;
         }
@@ -1717,6 +1699,10 @@ public class JPanelNotificacionV2 extends JPanel {
                 int viewRow = tablaAsignacionNotif.convertRowIndexToView(modelRow);
                 if (viewRow >= 0) {
                     tablaAsignacionNotif.setRowSelectionInterval(viewRow, viewRow);
+                    if (reabrirPanelSiEstabaAbierto && splitBandejasNotif != null
+                            && modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
+                        splitBandejasNotif.setSideVisible(documentoAsigNotifFoco != null && !panelAsigNotifCerradoPorUsuario);
+                    }
                 }
                 return;
             }
@@ -1729,10 +1715,6 @@ public class JPanelNotificacionV2 extends JPanel {
         cmbEquipoNotif.addItem(EquipoNotifItem.placeholder("Seleccione equipo"));
         cmbUsuarioNotif.removeAllItems();
         cmbUsuarioNotif.addItem(UsuarioNotifItem.placeholder("Seleccione usuario"));
-        cmbEquipoObservadoNotif.removeAllItems();
-        cmbEquipoObservadoNotif.addItem(EquipoNotifItem.placeholder("Seleccione equipo"));
-        cmbUsuarioObservadoNotif.removeAllItems();
-        cmbUsuarioObservadoNotif.addItem(UsuarioNotifItem.placeholder("Seleccione usuario"));
         SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO>, Void> worker =
                 new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO>, Void>() {
             @Override
@@ -1748,9 +1730,6 @@ public class JPanelNotificacionV2 extends JPanel {
                         if ("EQ_NOTIFICACION".equals(codigo) || "EQ_VALIDACION".equals(codigo)
                                 || "EQ_ANALISIS".equals(codigo) || "EQ_EJECUCION".equals(codigo)) {
                             cmbEquipoNotif.addItem(new EquipoNotifItem(equipo));
-                        }
-                        if ("EQ_ANALISIS".equals(codigo) || "EQ_EJECUCION".equals(codigo)) {
-                            cmbEquipoObservadoNotif.addItem(new EquipoNotifItem(equipo));
                         }
                     }
                 } catch (Exception ex) {
