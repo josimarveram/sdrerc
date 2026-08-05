@@ -443,6 +443,8 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         scrollAbogadosSupervisor.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tblAbogadosSupervisor.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
         tblAbogadosSupervisor.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        tblAbogadosSupervisor.getColumnModel().getColumn(0).setMaxWidth(60);
+        tblAbogadosSupervisor.setDefaultRenderer(String.class, new AbogadoSupervisorFilaRenderer());
         AppV2TableColumnSizer.applyFriendlyDefaults(tblAbogadosSupervisor);
         AppV2ColumnFilterSupport.install("Administracion.EquipoJuridico.AbogadosSupervisor", tblAbogadosSupervisor, scrollAbogadosSupervisor, null, null);
     }
@@ -585,6 +587,47 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
                     lblEstadoAbogadosSupervisor.setText("No se pudo consultar el personal del supervisor.");
                     mostrarError("No se pudo consultar el personal del supervisor.", ex);
                 } finally {
+                    btnBuscarAbogadosSupervisor.setEnabled(true);
+                }
+            }
+        }.execute();
+    }
+
+    /**
+     * Alterna la relacion de supervision (USUARIO_SUPERVISION.ACTIVO) de un abogado con el
+     * supervisor actualmente elegido en el combo, desde la casilla "Activo" de la grilla "Personal
+     * por supervisor". Mismo principio que {@link #toggleMiembroActivo}: cambio logico,
+     * trivialmente reversible con la misma casilla, sin dialogo de confirmacion.
+     */
+    private void toggleAbogadoSupervisorActivo(AbogadoSupervisadoDTO abogado, boolean activo) {
+        UsuarioItem supervisor = (UsuarioItem) cmbSupervisorAbogados.getSelectedItem();
+        final Long idSupervisor = supervisor == null ? null : supervisor.getIdUsuario();
+        if (idSupervisor == null || abogado == null) {
+            abogadosSupervisorModel.fireTableDataChanged();
+            return;
+        }
+        btnBuscarAbogadosSupervisor.setEnabled(false);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                if (activo) {
+                    equipoService.agregarAbogadoASupervisor(idSupervisor, abogado.getIdUsuario());
+                } else {
+                    equipoService.quitarAbogadoDeSupervisor(idSupervisor, abogado.getIdUsuario());
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    lblEstadoAbogadosSupervisor.setText(
+                            activo ? "Abogado asignado nuevamente al supervisor." : "Abogado retirado del supervisor.");
+                    buscarAbogadosPorSupervisor();
+                } catch (Exception ex) {
+                    mostrarError(activo ? "No se pudo asignar el abogado al supervisor." : "No se pudo retirar el abogado del supervisor.", ex);
+                    abogadosSupervisorModel.fireTableDataChanged();
                     btnBuscarAbogadosSupervisor.setEnabled(true);
                 }
             }
@@ -1390,7 +1433,7 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
     private class AbogadosSupervisorTableModel extends AbstractTableModel {
 
         private final String[] columns = {
-            "Usuario", "Nombres", "Rol", "Equipo(s)", "Estado", "Asignado desde"
+            "Activo", "Usuario", "Nombres", "Rol", "Equipo(s)", "Estado", "Asignado desde"
         };
 
         @Override
@@ -1409,24 +1452,44 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
         }
 
         @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == 0 ? Boolean.class : String.class;
+        }
+
+        @Override
+        public boolean isCellEditable(int rowIndex, int columnIndex) {
+            return columnIndex == 0;
+        }
+
+        @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             AbogadoSupervisadoDTO abogado = abogadosSupervisor.get(rowIndex);
             switch (columnIndex) {
                 case 0:
-                    return abogado.getUsername();
+                    return abogado.isRelacionActiva();
                 case 1:
-                    return abogado.getNombreCompleto();
+                    return abogado.getUsername();
                 case 2:
-                    return nullToEmpty(abogado.getRolesResumen());
+                    return abogado.getNombreCompleto();
                 case 3:
-                    return nullToEmpty(abogado.getEquiposResumen());
+                    return nullToEmpty(abogado.getRolesResumen());
                 case 4:
-                    return abogado.isUsuarioActivo() ? "Activo" : "Inactivo";
+                    return nullToEmpty(abogado.getEquiposResumen());
                 case 5:
+                    return abogado.isUsuarioActivo() ? "Activo" : "Inactivo";
+                case 6:
                     return formatDate(abogado.getAsignadoEn());
                 default:
                     return "";
             }
+        }
+
+        @Override
+        public void setValueAt(Object value, int rowIndex, int columnIndex) {
+            if (columnIndex != 0 || !(value instanceof Boolean) || rowIndex < 0 || rowIndex >= abogadosSupervisor.size()) {
+                return;
+            }
+            toggleAbogadoSupervisorActivo(abogadosSupervisor.get(rowIndex), (Boolean) value);
         }
     }
 
@@ -1474,6 +1537,32 @@ public class JPanelEquipoJuridicoV2 extends JPanel {
             Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             int modelRow = table.convertRowIndexToModel(row);
             boolean activo = modelRow >= 0 && modelRow < miembros.size() && miembros.get(modelRow).isRelacionActiva();
+            if (!isSelected) {
+                component.setForeground(activo ? AppV2Theme.TEXT_PRIMARY : AppV2Theme.MUTED);
+                component.setBackground(activo ? AppV2Theme.SURFACE : AppV2Theme.SOFT_GRAY);
+            }
+            return component;
+        }
+    }
+
+    /**
+     * Atenua (texto/fondo gris) las filas de "Personal por supervisor" cuya relacion de
+     * supervision fue retirada (USUARIO_SUPERVISION.ACTIVO = 0), mismo principio que
+     * {@link MiembroFilaRenderer} para "Personal del equipo".
+     */
+    private class AbogadoSupervisorFilaRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            int modelRow = table.convertRowIndexToModel(row);
+            boolean activo = modelRow >= 0 && modelRow < abogadosSupervisor.size()
+                    && abogadosSupervisor.get(modelRow).isRelacionActiva();
             if (!isSelected) {
                 component.setForeground(activo ? AppV2Theme.TEXT_PRIMARY : AppV2Theme.MUTED);
                 component.setBackground(activo ? AppV2Theme.SURFACE : AppV2Theme.SOFT_GRAY);

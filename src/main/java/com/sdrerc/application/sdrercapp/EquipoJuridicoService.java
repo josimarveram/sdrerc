@@ -1,5 +1,6 @@
 package com.sdrerc.application.sdrercapp;
 
+import com.sdrerc.domain.dto.sdrercapp.AbogadoSupervisadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.AreaDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoJuridicoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoJuridicoFiltroDTO;
@@ -9,6 +10,7 @@ import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableEquipoDTO;
 import com.sdrerc.infrastructure.sdrercapp.dao.AreaDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.EquipoJuridicoDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.EquipoMiembroDAO;
+import com.sdrerc.infrastructure.sdrercapp.dao.UsuarioSupervisionDAO;
 import com.sdrerc.shared.session.SessionContext;
 import java.sql.SQLException;
 import java.util.List;
@@ -20,6 +22,7 @@ public class EquipoJuridicoService {
     private final AreaDAO areaDAO;
     private final UsuarioAsignacionService usuarioAsignacionService;
     private final EquipoJuridicoValidacionService validacionService;
+    private final UsuarioSupervisionDAO usuarioSupervisionDAO;
 
     public EquipoJuridicoService() {
         this(
@@ -27,7 +30,8 @@ public class EquipoJuridicoService {
                 new EquipoMiembroDAO(),
                 new AreaDAO(),
                 new UsuarioAsignacionService(),
-                new EquipoJuridicoValidacionService());
+                new EquipoJuridicoValidacionService(),
+                new UsuarioSupervisionDAO());
     }
 
     public EquipoJuridicoService(
@@ -35,12 +39,14 @@ public class EquipoJuridicoService {
             EquipoMiembroDAO equipoMiembroDAO,
             AreaDAO areaDAO,
             UsuarioAsignacionService usuarioAsignacionService,
-            EquipoJuridicoValidacionService validacionService) {
+            EquipoJuridicoValidacionService validacionService,
+            UsuarioSupervisionDAO usuarioSupervisionDAO) {
         this.equipoJuridicoDAO = equipoJuridicoDAO;
         this.equipoMiembroDAO = equipoMiembroDAO;
         this.areaDAO = areaDAO;
         this.usuarioAsignacionService = usuarioAsignacionService;
         this.validacionService = validacionService;
+        this.usuarioSupervisionDAO = usuarioSupervisionDAO;
     }
 
     public List<EquipoJuridicoDTO> buscar(EquipoJuridicoFiltroDTO filtro) throws SQLException {
@@ -65,6 +71,34 @@ public class EquipoJuridicoService {
 
     public List<EquipoMiembroDTO> listarMiembros(Long idEquipo) throws SQLException {
         return equipoMiembroDAO.listarMiembros(idEquipo);
+    }
+
+    public List<UsuarioAsignableEquipoDTO> listarSupervisoresConAbogados() throws SQLException {
+        return usuarioSupervisionDAO.listarSupervisoresConAbogados();
+    }
+
+    public List<AbogadoSupervisadoDTO> listarAbogadosPorSupervisor(Long idSupervisor) throws SQLException {
+        return usuarioSupervisionDAO.listarAbogadosPorSupervisor(idSupervisor);
+    }
+
+    public void quitarAbogadoDeSupervisor(Long idSupervisor, Long idAbogado) throws SQLException {
+        if (idSupervisor == null) {
+            throw new IllegalArgumentException("Seleccione un supervisor.");
+        }
+        if (idAbogado == null) {
+            throw new IllegalArgumentException("Seleccione un abogado supervisado.");
+        }
+        usuarioSupervisionDAO.quitarAbogado(idSupervisor, idAbogado, resolverUsuarioActualSdrercApp());
+    }
+
+    public void agregarAbogadoASupervisor(Long idSupervisor, Long idAbogado) throws SQLException {
+        if (idSupervisor == null) {
+            throw new IllegalArgumentException("Seleccione un supervisor.");
+        }
+        if (idAbogado == null) {
+            throw new IllegalArgumentException("Seleccione un abogado.");
+        }
+        usuarioSupervisionDAO.agregarAbogado(idSupervisor, idAbogado, resolverUsuarioActualSdrercApp());
     }
 
     public EquipoJuridicoResultadoDTO guardar(EquipoJuridicoDTO equipo, Long idResponsable) throws SQLException {
