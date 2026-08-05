@@ -5,12 +5,12 @@ public class CargaLaboralAbogadoDTO {
     private final Long idUsuario;
     private final String abogado;
     private final String supervisor;
-    private final int enAnalisis;
-    private final String analisisDetalle;
+    private final int analisisPorRecibir;
+    private final int analisisEnProceso;
+    private final int analisisObservado;
+    private final int analisisCartaIntermedia;
     private final int enVerificacion;
-    private final String verificacionDetalle;
     private final int enEjecucion;
-    private final String ejecucionDetalle;
     private final int porVencer;
     private final int vencidos;
 
@@ -18,23 +18,23 @@ public class CargaLaboralAbogadoDTO {
             Long idUsuario,
             String abogado,
             String supervisor,
-            int enAnalisis,
-            String analisisDetalle,
+            int analisisPorRecibir,
+            int analisisEnProceso,
+            int analisisObservado,
+            int analisisCartaIntermedia,
             int enVerificacion,
-            String verificacionDetalle,
             int enEjecucion,
-            String ejecucionDetalle,
             int porVencer,
             int vencidos) {
         this.idUsuario = idUsuario;
         this.abogado = safe(abogado);
         this.supervisor = safe(supervisor);
-        this.enAnalisis = enAnalisis;
-        this.analisisDetalle = safe(analisisDetalle);
+        this.analisisPorRecibir = analisisPorRecibir;
+        this.analisisEnProceso = analisisEnProceso;
+        this.analisisObservado = analisisObservado;
+        this.analisisCartaIntermedia = analisisCartaIntermedia;
         this.enVerificacion = enVerificacion;
-        this.verificacionDetalle = safe(verificacionDetalle);
         this.enEjecucion = enEjecucion;
-        this.ejecucionDetalle = safe(ejecucionDetalle);
         this.porVencer = porVencer;
         this.vencidos = vencidos;
     }
@@ -51,28 +51,33 @@ public class CargaLaboralAbogadoDTO {
         return supervisor;
     }
 
-    public int getEnAnalisis() {
-        return enAnalisis;
+    public int getAnalisisPorRecibir() {
+        return analisisPorRecibir;
     }
 
-    public String getAnalisisDetalle() {
-        return analisisDetalle;
+    public int getAnalisisEnProceso() {
+        return analisisEnProceso;
+    }
+
+    public int getAnalisisObservado() {
+        return analisisObservado;
+    }
+
+    public int getAnalisisCartaIntermedia() {
+        return analisisCartaIntermedia;
+    }
+
+    /** Total de la carga de Analisis (suma de las 4 subcolumnas), incluye lo asignado aun no recibido. */
+    public int getEnAnalisis() {
+        return analisisPorRecibir + analisisEnProceso + analisisObservado + analisisCartaIntermedia;
     }
 
     public int getEnVerificacion() {
         return enVerificacion;
     }
 
-    public String getVerificacionDetalle() {
-        return verificacionDetalle;
-    }
-
     public int getEnEjecucion() {
         return enEjecucion;
-    }
-
-    public String getEjecucionDetalle() {
-        return ejecucionDetalle;
     }
 
     public int getPorVencer() {
@@ -84,7 +89,7 @@ public class CargaLaboralAbogadoDTO {
     }
 
     public int getCargaTotal() {
-        return enAnalisis + enVerificacion + enEjecucion;
+        return getEnAnalisis() + enVerificacion + enEjecucion;
     }
 
     private static String safe(String value) {

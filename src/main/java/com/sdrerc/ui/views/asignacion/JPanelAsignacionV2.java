@@ -405,7 +405,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "Aún no existen documentos analizados con respuesta pendiente.");
     private AppV2ColumnFilterSupport.Controller cartasRespuestaColumnFilterSupport;
     private final DefaultTableModel cargaLaboralModel = new DefaultTableModel(
-            new Object[]{"Abogado", "Análisis", "Verificación", "Ejecución"}, 0) {
+            new Object[]{"Abogado", "Por recibir", "En análisis", "Observado", "Carta intermedia"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -1087,7 +1087,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cargaLaboralTable.setGridColor(AppV2Theme.BORDER);
         cargaLaboralTable.setShowVerticalLines(false);
         cargaLaboralTable.setIntercellSpacing(new Dimension(0, 1));
-        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 260, 150, 150, 150);
+        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 240, 110, 120, 110, 140);
         AppV2ColumnFilterSupport.install(
                 "Asignacion.CargaLaboral",
                 cargaLaboralTable,
@@ -3851,9 +3851,10 @@ public class JPanelAsignacionV2 extends JPanel {
                 cargaLaboralFilasActuales.add(carga);
                 cargaLaboralModel.addRow(new Object[]{
                     valorUi(carga.getAbogado()),
-                    carga.getEnAnalisis(),
-                    carga.getEnVerificacion(),
-                    carga.getEnEjecucion()
+                    carga.getAnalisisPorRecibir(),
+                    carga.getAnalisisEnProceso(),
+                    carga.getAnalisisObservado(),
+                    carga.getAnalisisCartaIntermedia()
                 });
             }
         }
@@ -6686,37 +6687,8 @@ public class JPanelAsignacionV2 extends JPanel {
             setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
             setForeground(AppV2Theme.TEXT_PRIMARY);
             setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-            setToolTipText(tooltipCargaLaboral(table, row, column));
             return component;
         }
-    }
-
-    /**
-     * Columnas Análisis/Verificación/Ejecución muestran solo el total; el desglose por estado se
-     * consulta ya formateado desde el DAO y se expone como tooltip, sin agregar columnas.
-     */
-    private String tooltipCargaLaboral(JTable table, int row, int column) {
-        if (column != 1 && column != 2 && column != 3) {
-            return null;
-        }
-        int modelRow = table.convertRowIndexToModel(row);
-        if (modelRow < 0 || modelRow >= cargaLaboralFilasActuales.size()) {
-            return null;
-        }
-        CargaLaboralAbogadoDTO carga = cargaLaboralFilasActuales.get(modelRow);
-        String detalle;
-        String vacio;
-        if (column == 1) {
-            detalle = carga.getAnalisisDetalle();
-            vacio = "Sin solicitudes en Análisis.";
-        } else if (column == 2) {
-            detalle = carga.getVerificacionDetalle();
-            vacio = "Sin solicitudes en Verificación.";
-        } else {
-            detalle = carga.getEjecucionDetalle();
-            vacio = "Sin solicitudes en Ejecución.";
-        }
-        return detalle == null || detalle.trim().isEmpty() ? vacio : detalle;
     }
 
     private class DocumentoCargaRenderer extends DefaultTableCellRenderer {

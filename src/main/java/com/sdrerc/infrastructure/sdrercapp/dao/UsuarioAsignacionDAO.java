@@ -158,12 +158,12 @@ public class UsuarioAsignacionDAO {
         sql.append("(SELECT MAX(sup2.nombre_completo) FROM usuario_supervision us2 ");
         sql.append("   JOIN usuario sup2 ON sup2.id_usuario = us2.id_supervisor AND sup2.activo = 1 ");
         sql.append("  WHERE us2.id_abogado = u.id_usuario AND us2.activo = 1) AS supervisor, ");
-        sql.append(subconsultaConteoPorEtapa("ANALISIS", "en_analisis"));
-        sql.append(subconsultaDetallePorEtapa("ANALISIS", "analisis_detalle"));
+        sql.append(subconsultaAnalisisPorRecibir());
+        sql.append(subconsultaAnalisisEnProceso());
+        sql.append(subconsultaAnalisisObservado());
+        sql.append(subconsultaAnalisisCartaIntermedia());
         sql.append(subconsultaConteoPorEtapa("VERIFICACION", "en_verificacion"));
-        sql.append(subconsultaDetallePorEtapa("VERIFICACION", "verificacion_detalle"));
         sql.append(subconsultaConteoPorEtapa("EJECUCION", "en_ejecucion"));
-        sql.append(subconsultaDetallePorEtapa("EJECUCION", "ejecucion_detalle"));
         sql.append("(SELECT COUNT(*) FROM expediente e ");
         sql.append(" JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 ");
         sql.append(" WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 ");
@@ -186,7 +186,8 @@ public class UsuarioAsignacionDAO {
             sql.append("  WHERE eu3.id_usuario = u.id_usuario AND eu3.activo = 1 AND eu3.id_equipo = ?) ");
             params.add(idEquipo);
         }
-        sql.append("ORDER BY (en_analisis + en_verificacion + en_ejecucion) ASC, vencidos ASC, u.nombre_completo ASC");
+        sql.append("ORDER BY (analisis_por_recibir + analisis_en_proceso + analisis_observado + analisis_carta_intermedia ");
+        sql.append("+ en_verificacion + en_ejecucion) ASC, vencidos ASC, u.nombre_completo ASC");
 
         try (Connection conn = SdrercAppConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -200,12 +201,12 @@ public class UsuarioAsignacionDAO {
                             getLongOrNull(rs, "id_usuario"),
                             rs.getString("abogado"),
                             rs.getString("supervisor"),
-                            rs.getInt("en_analisis"),
-                            rs.getString("analisis_detalle"),
+                            rs.getInt("analisis_por_recibir"),
+                            rs.getInt("analisis_en_proceso"),
+                            rs.getInt("analisis_observado"),
+                            rs.getInt("analisis_carta_intermedia"),
                             rs.getInt("en_verificacion"),
-                            rs.getString("verificacion_detalle"),
                             rs.getInt("en_ejecucion"),
-                            rs.getString("ejecucion_detalle"),
                             rs.getInt("por_vencer"),
                             rs.getInt("vencidos")));
                 }
@@ -222,15 +223,70 @@ public class UsuarioAsignacionDAO {
                 + "AND ea.id_usuario_asignado = u.id_usuario AND et.codigo = '" + codigoEtapa + "') AS " + alias + ", ";
     }
 
-    private static String subconsultaDetallePorEtapa(String codigoEtapa, String alias) {
-        return "(SELECT LISTAGG(es.nombre || ': ' || g.cnt, ', ') WITHIN GROUP (ORDER BY es.nombre) "
-                + "FROM (SELECT e.id_estado_actual, COUNT(*) AS cnt FROM expediente e "
-                + "  JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 "
-                + "  JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
-                + "  WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
-                + "  AND ea.id_usuario_asignado = u.id_usuario AND et.codigo = '" + codigoEtapa + "' "
-                + "  GROUP BY e.id_estado_actual) g "
-                + "JOIN estado_expediente es ON es.id_estado = g.id_estado_actual) AS " + alias + ", ";
+    /**
+     * Condicion (para EXISTS/NOT EXISTS) de "tiene una carta intermedia ya respondida y derivada de
+     * vuelta al equipo de Analisis": documento activo de clasificacion INTERMEDIO, que exigia
+     * respuesta, ya fue notificado, y ya tiene confirmacion de respuesta registrada (mismo criterio
+     * de "ya derivado a Analisis" que usa {@code DocumentoAnalisisDAO.listarCartasRespuestaPendientes},
+     * salvo que aqui exige ademas que la respuesta ya este confirmada).
+     */
+    private static final String CONDICION_CARTA_INTERMEDIA_RESPONDIDA =
+            "EXISTS (SELECT 1 FROM expediente_documento_analizado da "
+                    + "JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                    + "WHERE da.id_expediente = e.id_expediente AND da.activo = 1 "
+                    + "AND UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' "
+                    + "AND NVL(da.requiere_respuesta, 0) = 1 AND NVL(da.notificado, 0) = 1 "
+                    + "AND da.confirmacion_respuesta IS NOT NULL)";
+
+    /**
+     * "Por recibir": asignado desde Asignacion (EXPEDIENTE_ASIGNACION activa) pero el abogado
+     * todavia no hizo clic en "Recibir expediente" (sigue en etapa ASIGNACION/estado ASIGNADO,
+     * no ha pasado a etapa ANALISIS). Antes de esta subcolumna, estos expedientes no se contaban
+     * como carga de Analisis en absoluto (solo se contaba et.codigo = 'ANALISIS').
+     */
+    private static String subconsultaAnalisisPorRecibir() {
+        return "(SELECT COUNT(*) FROM expediente e "
+                + "JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente es ON es.id_estado = e.id_estado_actual "
+                + "WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
+                + "AND ea.id_usuario_asignado = u.id_usuario "
+                + "AND et.codigo = 'ASIGNACION' AND es.codigo = 'ASIGNADO') AS analisis_por_recibir, ";
+    }
+
+    /** "Observado": el expediente esta en Analisis con estado OBSERVADO (regreso de Verificacion/Notificacion). */
+    private static String subconsultaAnalisisObservado() {
+        return "(SELECT COUNT(*) FROM expediente e "
+                + "JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente es ON es.id_estado = e.id_estado_actual "
+                + "WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
+                + "AND ea.id_usuario_asignado = u.id_usuario "
+                + "AND et.codigo = 'ANALISIS' AND es.codigo = 'OBSERVADO') AS analisis_observado, ";
+    }
+
+    /** "Carta intermedia": ya recibido en Analisis, no OBSERVADO, con una carta intermedia ya respondida. */
+    private static String subconsultaAnalisisCartaIntermedia() {
+        return "(SELECT COUNT(*) FROM expediente e "
+                + "JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente es ON es.id_estado = e.id_estado_actual "
+                + "WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
+                + "AND ea.id_usuario_asignado = u.id_usuario "
+                + "AND et.codigo = 'ANALISIS' AND es.codigo <> 'OBSERVADO' "
+                + "AND " + CONDICION_CARTA_INTERMEDIA_RESPONDIDA + ") AS analisis_carta_intermedia, ";
+    }
+
+    /** "En analisis": recibido, no OBSERVADO y sin una carta intermedia pendiente de atender (resto). */
+    private static String subconsultaAnalisisEnProceso() {
+        return "(SELECT COUNT(*) FROM expediente e "
+                + "JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente es ON es.id_estado = e.id_estado_actual "
+                + "WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
+                + "AND ea.id_usuario_asignado = u.id_usuario "
+                + "AND et.codigo = 'ANALISIS' AND es.codigo <> 'OBSERVADO' "
+                + "AND NOT " + CONDICION_CARTA_INTERMEDIA_RESPONDIDA + ") AS analisis_en_proceso, ";
     }
 
     /**
@@ -252,7 +308,8 @@ public class UsuarioAsignacionDAO {
                 + "JOIN estado_expediente es ON es.id_estado = e.id_estado_actual "
                 + "WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
                 + "AND ea.id_usuario_asignado = ? "
-                + "AND et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION') "
+                + "AND ((et.codigo = 'ASIGNACION' AND es.codigo = 'ASIGNADO') "
+                + "     OR et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION')) "
                 + "ORDER BY e.fecha_vencimiento ASC NULLS LAST, e.numero_expediente ASC";
         try (Connection conn = SdrercAppConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -290,8 +347,10 @@ public class UsuarioAsignacionDAO {
         sql.append("SELECT DISTINCT ea.id_usuario_asignado AS id_usuario FROM expediente e ");
         sql.append("JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 ");
         sql.append("JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual ");
+        sql.append("JOIN estado_expediente es ON es.id_estado = e.id_estado_actual ");
         sql.append("WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 ");
-        sql.append("AND et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION') ");
+        sql.append("AND ((et.codigo = 'ASIGNACION' AND es.codigo = 'ASIGNADO') ");
+        sql.append("     OR et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION')) ");
         sql.append("AND e.fecha_vencimiento IS NOT NULL ");
         if (desde != null) {
             sql.append("AND TRUNC(e.fecha_vencimiento) >= ? ");
