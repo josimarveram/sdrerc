@@ -402,7 +402,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "Aún no existen documentos analizados con respuesta pendiente.");
     private AppV2ColumnFilterSupport.Controller cartasRespuestaColumnFilterSupport;
     private final DefaultTableModel cargaLaboralModel = new DefaultTableModel(
-            new Object[]{"Abogado", "Supervisor", "Equipo", "Análisis", "Ejecución", "Documentos (Cartas/Pedidos)", "Por vencer", "Vencidos"}, 0) {
+            new Object[]{"Abogado", "Supervisor", "Análisis", "Verificación", "Ejecución", "Por vencer", "Vencidos"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -1005,7 +1005,7 @@ public class JPanelAsignacionV2 extends JPanel {
         cargaLaboralTable.setGridColor(AppV2Theme.BORDER);
         cargaLaboralTable.setShowVerticalLines(false);
         cargaLaboralTable.setIntercellSpacing(new Dimension(0, 1));
-        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 220, 180, 150, 90, 90, 190, 92, 92);
+        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 220, 180, 100, 110, 100, 92, 92);
         AppV2ColumnFilterSupport.install(
                 "Asignacion.CargaLaboral",
                 cargaLaboralTable,
@@ -3753,10 +3753,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 cargaLaboralModel.addRow(new Object[]{
                     valorUi(carga.getAbogado()),
                     valorUi(carga.getSupervisor()),
-                    valorUi(carga.getEquipo()),
                     carga.getEnAnalisis(),
+                    carga.getEnVerificacion(),
                     carga.getEnEjecucion(),
-                    carga.getDocumentosPendientes(),
                     carga.getPorVencer(),
                     carga.getVencidos()
                 });
@@ -6376,9 +6375,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
-            setHorizontalAlignment(column >= 3 ? SwingConstants.CENTER : SwingConstants.LEFT);
+            setHorizontalAlignment(column >= 2 ? SwingConstants.CENTER : SwingConstants.LEFT);
             setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
-            if (!isSelected && column == 7 && value instanceof Number && ((Number) value).intValue() > 0) {
+            if (!isSelected && column == 6 && value instanceof Number && ((Number) value).intValue() > 0) {
                 setForeground(AppV2Theme.ERROR);
                 setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
             } else {
@@ -6391,12 +6390,11 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     /**
-     * Columnas Análisis/Ejecución/Documentos muestran solo el total; el desglose por
-     * estado (Análisis/Ejecución) o por tipo de documento (Cartas de Respuesta/Pedidos) se
+     * Columnas Análisis/Verificación/Ejecución muestran solo el total; el desglose por estado se
      * consulta ya formateado desde el DAO y se expone como tooltip, sin agregar columnas.
      */
     private String tooltipCargaLaboral(JTable table, int row, int column) {
-        if (column != 3 && column != 4 && column != 5) {
+        if (column != 2 && column != 3 && column != 4) {
             return null;
         }
         int modelRow = table.convertRowIndexToModel(row);
@@ -6406,15 +6404,15 @@ public class JPanelAsignacionV2 extends JPanel {
         CargaLaboralAbogadoDTO carga = cargaLaboralFilasActuales.get(modelRow);
         String detalle;
         String vacio;
-        if (column == 3) {
+        if (column == 2) {
             detalle = carga.getAnalisisDetalle();
             vacio = "Sin solicitudes en Análisis.";
-        } else if (column == 4) {
+        } else if (column == 3) {
+            detalle = carga.getVerificacionDetalle();
+            vacio = "Sin solicitudes en Verificación.";
+        } else {
             detalle = carga.getEjecucionDetalle();
             vacio = "Sin solicitudes en Ejecución.";
-        } else {
-            detalle = carga.getDocumentosDetalle();
-            vacio = "Sin cartas de respuesta ni pedidos pendientes.";
         }
         return detalle == null || detalle.trim().isEmpty() ? vacio : detalle;
     }

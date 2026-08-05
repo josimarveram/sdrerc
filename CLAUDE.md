@@ -268,12 +268,11 @@ Reglas de bandeja:
 
 Carga Abogados:
 
-- El conteo es siempre por abogado, nunca por equipo: un abogado que pertenece a 2+ equipos activos debe aparecer en una sola fila (no una fila duplicada por cada equipo). `UsuarioAsignacionDAO.listarCargaLaboralAbogados` resuelve equipo/supervisor como subconsultas escalares (LISTAGG/MAX), no como JOIN en la tabla conductora.
-- La carga se cuenta por etapa: columnas `Análisis` y `Ejecución` (numero de solicitudes/expedientes asignados al abogado en cada etapa vía `EXPEDIENTE_ASIGNACION`). El expediente sigue contando como carga del abogado durante todo el tramo Analisis -> Ejecucion (el mismo abogado atiende ambas etapas), no solo mientras esta en Analisis.
-- Las Cartas de Respuesta y los Pedidos (`EXPEDIENTE_DOCUMENTO_ANALIZADO`, tipos `ANALISIS_DOC_20_CARTA_RESPUESTA`/`ANALISIS_DOC_21_PEDIDO`) tambien cuentan como carga del abogado mientras no esten `Emitido`: columna `Documentos (Cartas/Pedidos)`.
-- El estado (estado_expediente/tipo de documento) detras de cada columna de etapa/documentos se muestra en un tooltip al pasar el mouse sobre la celda (ej. "En análisis: 3, Observado: 1"), no como columnas adicionales, para mantener la grilla compacta.
-- Columnas que se mantienen: `Abogado`, `Supervisor`, `Equipo` (referencia informativa, no se usa para agrupar ni contar), `Por vencer`, `Vencidos` (ambas etapa-agnosticas, sobre `EXPEDIENTE.fecha_vencimiento`).
-- Se elimino la columna `Asignadas` (conteo generico sin distinguir etapa), reemplazada por el desglose `Análisis`/`Ejecución`/`Documentos`.
+- El conteo es siempre por abogado, nunca por equipo: un abogado que pertenece a 2+ equipos activos debe aparecer en una sola fila (no una fila duplicada por cada equipo). `UsuarioAsignacionDAO.listarCargaLaboralAbogados` resuelve el supervisor como subconsulta escalar (MAX), no como JOIN en la tabla conductora.
+- La carga se cuenta por etapa: columnas `Análisis`, `Verificación` y `Ejecución` (numero de solicitudes/expedientes asignados al abogado en cada etapa vía `EXPEDIENTE_ASIGNACION`). El expediente sigue contando como carga del abogado durante todo el tramo Analisis -> Verificacion -> Ejecucion (el expediente sigue ligado al mismo abogado vía la asignacion activa aunque en Verificacion quien actua sea el supervisor), no solo mientras esta en Analisis.
+- El estado (`estado_expediente`) detras de cada columna de etapa se muestra en un tooltip al pasar el mouse sobre la celda (ej. "En análisis: 3, Observado: 1"), no como columnas adicionales, para mantener la grilla compacta.
+- Columnas que se mantienen: `Abogado`, `Supervisor`, `Por vencer`, `Vencidos` (ambas etapa-agnosticas, sobre `EXPEDIENTE.fecha_vencimiento`).
+- Columnas eliminadas: `Equipo` (un abogado puede estar en varios equipos; no aporta al conteo por abogado) y `Asignadas`/`Documentos (Cartas/Pedidos)` (conteos genericos o de documentos, reemplazados por el desglose de expedientes por etapa `Análisis`/`Verificación`/`Ejecución`, que es lo que pidio el usuario).
 
 Asociacion:
 
