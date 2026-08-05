@@ -641,7 +641,8 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                 return false;
             }
             if (soloComentario) {
-                return columnIndex == PADRE_COL_COMENTARIO || columnIndex == PADRE_COL_GUARDAR;
+                return columnIndex == PADRE_COL_COMENTARIO || columnIndex == PADRE_COL_GUARDAR
+                        || columnIndex == PADRE_COL_ESTADO_DOCUMENTO;
             }
             if (columnIndex == PADRE_COL_TIPO) {
                 return row.tipo != null && row.tipo.getCodigo() != null

@@ -314,7 +314,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final javax.swing.JTextArea txtComentarioEmisionNotif = new javax.swing.JTextArea(3, 20);
     private final JComboBox<EquipoNotifItem> cmbEquipoObservadoNotif = new JComboBox<EquipoNotifItem>();
     private final JComboBox<UsuarioNotifItem> cmbUsuarioObservadoNotif = new JComboBox<UsuarioNotifItem>();
-    private final JButton btnDevolverEmisionNotif = new JButton("Devolver expediente");
+    private final JButton btnRegistrarSupervisionEmisionNotif = new JButton("Registrar Supervisión");
     private CardLayout panelEmisionCardsLayout;
     private JPanel panelEmisionCards;
     private final DefaultTableModel historialAsignacionModelNotif = new DefaultTableModel(
@@ -1363,6 +1363,12 @@ public class JPanelNotificacionV2 extends JPanel {
         panelEmisionCards.add(documentosFirmaTreePanel, CARD_EMISION_APROBADO);
         panelEmisionCards.add(crearBloqueObservadoEmisionNotif(), CARD_EMISION_OBSERVADO);
 
+        JPanel accionSupervision = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 8));
+        accionSupervision.setOpaque(false);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarSupervisionEmisionNotif);
+        accionSupervision.add(btnRegistrarSupervisionEmisionNotif);
+        accionSupervision.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         JPanel contenedor = new JPanel();
         contenedor.setOpaque(false);
         contenedor.setLayout(new BoxLayout(contenedor, BoxLayout.Y_AXIS));
@@ -1371,8 +1377,10 @@ public class JPanelNotificacionV2 extends JPanel {
         contenedor.add(resultadoSeccion);
         contenedor.add(Box.createVerticalStrut(4));
         contenedor.add(panelEmisionCards);
+        contenedor.add(accionSupervision);
 
         cmbResultadoEmisionNotif.addActionListener(e -> actualizarModoResultadoEmisionNotif());
+        btnRegistrarSupervisionEmisionNotif.addActionListener(e -> registrarSupervisionEmisionNotif());
         return contenedor;
     }
 
@@ -1397,24 +1405,16 @@ public class JPanelNotificacionV2 extends JPanel {
         addRow(gridDestino, row, "Usuario destino", cmbUsuarioObservadoNotif);
         destinoSeccion.add(gridDestino, BorderLayout.CENTER);
 
-        JPanel accion = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 8));
-        accion.setOpaque(false);
-        AppV2Theme.estilizarBotonPrimario(btnDevolverEmisionNotif);
-        accion.add(btnDevolverEmisionNotif);
-
         comentarioSeccion.setAlignmentX(Component.LEFT_ALIGNMENT);
         destinoSeccion.setAlignmentX(Component.LEFT_ALIGNMENT);
-        accion.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(comentarioSeccion);
         panel.add(destinoSeccion);
-        panel.add(accion);
 
         cmbEquipoObservadoNotif.addActionListener(e -> {
             if (!cargandoCombosAsignacionNotif) {
                 cargarUsuariosObservadoEmisionNotif();
             }
         });
-        btnDevolverEmisionNotif.addActionListener(e -> devolverExpedienteEmisionNotif());
         return panel;
     }
 
@@ -1430,7 +1430,7 @@ public class JPanelNotificacionV2 extends JPanel {
         SwingWorker<List<CatalogoItemDTO>, Void> worker = new SwingWorker<List<CatalogoItemDTO>, Void>() {
             @Override
             protected List<CatalogoItemDTO> doInBackground() throws Exception {
-                return documentoAnalisisService.listarEstadosDocumentoFirmaNotificacion();
+                return documentoAnalisisService.listarEstadosDocumentoNotificacion();
             }
 
             @Override
@@ -1478,9 +1478,24 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
-    private void devolverExpedienteEmisionNotif() {
+    /**
+     * Unico boton "Registrar Supervisión" del mini-panel "Emisión" (equivalente a "Registrar
+     * Verificación" de Verificación): lee {@link #cmbResultadoEmisionNotif} y actua segun el
+     * resultado elegido. Observado registra el motivo y deriva el expediente (misma logica que
+     * ya usaba "Devolver expediente"). Aprobado no toca la BD (cada documento ya se guarda por su
+     * propio icono Guardar en la grilla); solo confirma que hay algo que revisar y guia al
+     * usuario, decision explicita del usuario (05/08/2026).
+     */
+    private void registrarSupervisionEmisionNotif() {
         if (documentoAsigNotifFoco == null) {
-            JOptionPane.showMessageDialog(this, "Seleccione un documento para devolver el expediente.",
+            JOptionPane.showMessageDialog(this, "Seleccione un documento para registrar la supervisión.",
+                    "Emisión", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        boolean observado = "Observado".equals(cmbResultadoEmisionNotif.getSelectedItem());
+        if (!observado) {
+            JOptionPane.showMessageDialog(this,
+                    "Documento aprobado. Complete Número/Fecha/Estado y guarde cada documento con su icono de disco.",
                     "Emisión", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -4827,7 +4842,7 @@ public class JPanelNotificacionV2 extends JPanel {
             protected Object[] doInBackground() throws Exception {
                 return new Object[]{
                         documentoAnalisisService.listarTiposDocumentoAnalizado(),
-                        documentoAnalisisService.listarEstadosDocumento()
+                        documentoAnalisisService.listarEstadosDocumentoNotificacion()
                 };
             }
 

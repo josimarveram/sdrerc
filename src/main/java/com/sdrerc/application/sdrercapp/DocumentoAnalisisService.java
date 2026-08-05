@@ -41,8 +41,8 @@ public class DocumentoAnalisisService {
         return documentoAnalisisDAO.listarEstadosDocumento();
     }
 
-    public List<CatalogoItemDTO> listarEstadosDocumentoFirmaNotificacion() throws SQLException {
-        return documentoAnalisisDAO.listarEstadosDocumentoFirmaNotificacion();
+    public List<CatalogoItemDTO> listarEstadosDocumentoNotificacion() throws SQLException {
+        return documentoAnalisisDAO.listarEstadosDocumentoNotificacion();
     }
 
     public List<CatalogoItemDTO> listarResultadosValidacion() throws SQLException {

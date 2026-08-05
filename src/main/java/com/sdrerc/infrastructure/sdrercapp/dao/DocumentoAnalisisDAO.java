@@ -69,17 +69,19 @@ public class DocumentoAnalisisDAO {
     }
 
     /**
-     * Catalogo acotado para la columna "Estado documento" del panel "Emision" de la Bandeja
-     * Asignacion de Notificacion: solo Validado/Emitido, los 2 unicos estados relevantes en ese
-     * punto del flujo (a diferencia de {@link #listarEstadosDocumento()}, usado por Analisis/
-     * Ejecucion, que no incluye Validado porque no aplica en esas etapas).
+     * Catalogo para las columnas "Estado documento" de Notificacion (mini-panel "Emision" de la
+     * Bandeja Asignacion y grilla de la Bandeja Validacion): Emitido/En despacho/Observado/
+     * Validado, a diferencia de {@link #listarEstadosDocumento()} (usado por Analisis/Ejecucion),
+     * que incluye "En proyecto" en vez de "Validado" porque ese estado no aplica en esas etapas.
      */
-    public List<CatalogoItemDTO> listarEstadosDocumentoFirmaNotificacion() throws SQLException {
+    public List<CatalogoItemDTO> listarEstadosDocumentoNotificacion() throws SQLException {
         List<CatalogoItemDTO> estados = catalogoLookupDAO.listarEstadosDocumento();
         List<CatalogoItemDTO> filtrados = new ArrayList<CatalogoItemDTO>();
         for (CatalogoItemDTO estado : estados) {
-            if (estado != null && ("VALIDADO".equalsIgnoreCase(estado.getCodigo())
-                    || "EMITIDO".equalsIgnoreCase(estado.getCodigo()))) {
+            if (estado != null && ("EMITIDO".equalsIgnoreCase(estado.getCodigo())
+                    || "EN_DESPACHO".equalsIgnoreCase(estado.getCodigo())
+                    || "OBSERVADO".equalsIgnoreCase(estado.getCodigo())
+                    || "VALIDADO".equalsIgnoreCase(estado.getCodigo()))) {
                 filtrados.add(estado);
             }
         }
