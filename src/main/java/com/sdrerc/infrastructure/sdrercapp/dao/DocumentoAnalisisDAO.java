@@ -258,7 +258,11 @@ public class DocumentoAnalisisDAO {
     private static final String CONDICION_ASIGNACION_NOTIFICACION =
             "((UPPER(NVL(eest.codigo, '')) = 'POR_ASIGNAR' "
             + "AND ((UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO') "
-            + "OR (UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) IN ('EN_DESPACHO', 'VALIDADO')))) "
+            // FINAL + EMITIDO: documento ya firmado tras volver Validado del validador (panel
+            // "Emision" del segundo momento en JPanelNotificacionV2), a la espera de la segunda
+            // Asignacion (esta vez a Eq. Notificacion). Sin esta rama el documento desaparecia de
+            // las 3 bandejas de Notificacion en cuanto se guardaba la firma, sin forma de continuar.
+            + "OR (UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) IN ('EN_DESPACHO', 'VALIDADO', 'EMITIDO')))) "
             // Documento FINAL que el validador marco Observado: registrarResultadoValidacion no
             // mueve el estado del expediente (se queda en POR_VALIDAR), asi que sin esta rama el
             // documento queda invisible en las 3 bandejas de Notificacion. Reaparece aqui para que

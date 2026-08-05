@@ -22,6 +22,7 @@ import com.sdrerc.ui.appv2.components.AppV2SearchField;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
+import com.sdrerc.ui.appv2.components.AppV2StepCardPanel;
 import com.sdrerc.ui.appv2.components.AppV2Table;
 import com.sdrerc.ui.appv2.components.AppV2TableColumnSizer;
 import com.sdrerc.ui.appv2.components.AppV2TablePanel;
@@ -65,6 +66,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -303,6 +305,8 @@ public class JPanelNotificacionV2 extends JPanel {
             new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
     private final java.util.Map<Long, String> hojasEnvioAsignacionMultipleNotif = new java.util.HashMap<Long, String>();
     private AppV2SideSectionPanel sectionAsignacionMultipleNotif;
+    private AppV2StepCardPanel cardEmisionAsigNotif;
+    private AppV2StepCardPanel cardAsignacionAsigNotif;
     private final DefaultTableModel historialAsignacionModelNotif = new DefaultTableModel(
             new Object[]{"Tipo", "Usuario", "Equipo", "Hoja de envío", "Fecha", "Asignado por", "Estado"}, 0) {
         @Override
@@ -904,6 +908,7 @@ public class JPanelNotificacionV2 extends JPanel {
         actualizarPanelFirmaAsigNotif();
         actualizarVisibilidadPanelAsigNotif();
         actualizarPanelAsignacionSeleccionNotif();
+        actualizarModoPanelAsigNotif();
     }
 
     private void actualizarFocoAsignacionNotif() {
@@ -919,6 +924,52 @@ public class JPanelNotificacionV2 extends JPanel {
         actualizarPanelDatosAsigNotif();
         actualizarPanelFirmaAsigNotif();
         actualizarPanelAsignacionSeleccionNotif();
+        actualizarModoPanelAsigNotif();
+    }
+
+    /**
+     * Calcula el "momento" operativo del documento enfocado y ajusta los mini-paneles tipo
+     * stepper del panel "Asignación": un documento FINAL recien llegado (EN_DESPACHO) o vuelto
+     * Observado, y cualquier documento INTERMEDIO, solo necesitan el mini-panel "Asignación" (sin
+     * numeración, comportamiento igual al historico). Un documento FINAL que ya paso por
+     * Validación (VALIDADO o EMITIDO) exige primero "① Emisión" y solo despues "② Asignación"
+     * (bloqueada hasta que el documento pase de VALIDADO a EMITIDO).
+     */
+    private void actualizarModoPanelAsigNotif() {
+        if (cardEmisionAsigNotif == null || cardAsignacionAsigNotif == null) {
+            return;
+        }
+        com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc = documentoAsigNotifFoco;
+        boolean esFinal = doc != null && "FINAL".equalsIgnoreCase(doc.getClasificacion());
+        String estado = doc == null ? "" : doc.getEstadoDocumentoCodigo();
+        boolean segundoMomento = esFinal
+                && ("VALIDADO".equalsIgnoreCase(estado) || "EMITIDO".equalsIgnoreCase(estado));
+        boolean emisionCompletada = segundoMomento && "EMITIDO".equalsIgnoreCase(estado);
+
+        cardEmisionAsigNotif.setVisible(segundoMomento);
+        if (segundoMomento) {
+            cardEmisionAsigNotif.setStepNumber(1);
+            cardEmisionAsigNotif.setStatus(
+                    emisionCompletada ? "Completado" : "Pendiente",
+                    emisionCompletada ? AppV2Theme.SOFT_GREEN : AppV2Theme.SOFT_ORANGE,
+                    emisionCompletada ? AppV2Theme.SUCCESS : AppV2Theme.WARNING);
+        }
+        cardAsignacionAsigNotif.setStepNumber(segundoMomento ? 2 : null);
+        cardAsignacionAsigNotif.setLocked(
+                segundoMomento && !emisionCompletada,
+                "Complete la emisión del documento para habilitar la asignación.");
+        if (segundoMomento) {
+            cardAsignacionAsigNotif.setStatus(
+                    emisionCompletada ? "Pendiente" : "Bloqueado",
+                    emisionCompletada ? AppV2Theme.SOFT_ORANGE : AppV2Theme.SOFT_GRAY,
+                    emisionCompletada ? AppV2Theme.WARNING : AppV2Theme.MUTED);
+        } else {
+            cardAsignacionAsigNotif.setStatus(null, null, null);
+        }
+        cardEmisionAsigNotif.revalidate();
+        cardEmisionAsigNotif.repaint();
+        cardAsignacionAsigNotif.revalidate();
+        cardAsignacionAsigNotif.repaint();
     }
 
     private void actualizarSubtituloPanelesAsigNotif() {
@@ -1011,9 +1062,23 @@ public class JPanelNotificacionV2 extends JPanel {
         panel.setAccentColor(new Color(10, 118, 145));
 
         sectionAsignacionMultipleNotif = crearAsignacionMultipleSeccionNotif();
-        panel.addSection(sectionAsignacionMultipleNotif);
-        panel.addSection(crearDestinoAsignacionSeccionNotif());
-        panel.addSection(crearDocumentosFirmaSeccionNotif());
+        JPanel contenidoAsignacion = new JPanel();
+        contenidoAsignacion.setOpaque(false);
+        contenidoAsignacion.setLayout(new BoxLayout(contenidoAsignacion, BoxLayout.Y_AXIS));
+        sectionAsignacionMultipleNotif.setAlignmentX(Component.LEFT_ALIGNMENT);
+        AppV2SideSectionPanel destinoSeccion = crearDestinoAsignacionSeccionNotif();
+        destinoSeccion.setAlignmentX(Component.LEFT_ALIGNMENT);
+        contenidoAsignacion.add(sectionAsignacionMultipleNotif);
+        contenidoAsignacion.add(Box.createVerticalStrut(12));
+        contenidoAsignacion.add(destinoSeccion);
+
+        cardEmisionAsigNotif = new AppV2StepCardPanel("Emisión");
+        cardEmisionAsigNotif.setContent(crearDocumentosFirmaSeccionNotif());
+        cardAsignacionAsigNotif = new AppV2StepCardPanel("Asignación");
+        cardAsignacionAsigNotif.setContent(contenidoAsignacion);
+
+        panel.addSection(cardEmisionAsigNotif);
+        panel.addSection(cardAsignacionAsigNotif);
         panel.addSection(crearHistorialAsignacionSeccionNotif());
 
         JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
@@ -1252,10 +1317,12 @@ public class JPanelNotificacionV2 extends JPanel {
                 (idDocumento, numeroDocumento, fechaEmision) ->
                         documentoAnalisisService.registrarFirmaDocumentoNotificacion(idDocumento, numeroDocumento, fechaEmision),
                 () -> {
-                    if (documentoAsigNotifFoco != null && documentoAsigNotifFoco.getIdExpediente() != null) {
-                        cargarDocumentosFirmaAsigNotif(documentoAsigNotifFoco.getIdExpediente());
+                    Long idExpedienteFoco = documentoAsigNotifFoco == null ? null : documentoAsigNotifFoco.getIdExpediente();
+                    Long idDocumentoFoco = documentoAsigNotifFoco == null ? null : documentoAsigNotifFoco.getIdDocumentoAnalizado();
+                    if (idExpedienteFoco != null) {
+                        cargarDocumentosFirmaAsigNotif(idExpedienteFoco);
                     }
-                    cargarBandejaAsignacionNotificacion();
+                    cargarBandejaAsignacionNotificacion(idDocumentoFoco);
                 });
         seccion.add(documentosFirmaTreePanel, BorderLayout.CENTER);
         return seccion;
@@ -1331,6 +1398,17 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void cargarBandejaAsignacionNotificacion() {
+        cargarBandejaAsignacionNotificacion(null);
+    }
+
+    /**
+     * @param idDocumentoAnalizadoAReseleccionar si no es null, tras recargar busca esa fila y la
+     *      reselecciona (dispara el listener de seleccion, que repuebla documentoAsigNotifFoco),
+     *      en vez de dejar el panel lateral cerrado. Necesario para que el mini-panel "②
+     *      Asignación" se vea desbloquearse en el mismo lugar tras guardar la firma o tras generar
+     *      una asignación de un unico documento, sin que el usuario tenga que volver a buscarlo.
+     */
+    private void cargarBandejaAsignacionNotificacion(final Long idDocumentoAnalizadoAReseleccionar) {
         lblEstadoAsignacionNotif.setText("Cargando documentos pendientes de asignación...");
         SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
                 new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
@@ -1347,6 +1425,7 @@ public class JPanelNotificacionV2 extends JPanel {
                     documentosAsignacionNotif.addAll(items);
                     actualizarMetricasAsigNotif();
                     aplicarFiltrosAsigNotif();
+                    reseleccionarDocumentoAsigNotif(idDocumentoAnalizadoAReseleccionar);
                 } catch (Exception ex) {
                     documentosAsignacionNotif.clear();
                     actualizarMetricasAsigNotif();
@@ -1357,6 +1436,22 @@ public class JPanelNotificacionV2 extends JPanel {
             }
         };
         worker.execute();
+    }
+
+    private void reseleccionarDocumentoAsigNotif(Long idDocumentoAnalizado) {
+        if (idDocumentoAnalizado == null) {
+            return;
+        }
+        for (int modelRow = 0; modelRow < filasAsignacionNotif.size(); modelRow++) {
+            AsignacionNotifTableRow fila = filasAsignacionNotif.get(modelRow);
+            if (fila.esPrincipal() && idDocumentoAnalizado.equals(fila.principal.getIdDocumentoAnalizado())) {
+                int viewRow = tablaAsignacionNotif.convertRowIndexToView(modelRow);
+                if (viewRow >= 0) {
+                    tablaAsignacionNotif.setRowSelectionInterval(viewRow, viewRow);
+                }
+                return;
+            }
+        }
     }
 
     private void cargarEquiposAsignacionNotif() {
@@ -1452,26 +1547,26 @@ public class JPanelNotificacionV2 extends JPanel {
                     "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        java.util.Set<String> clasificaciones = new java.util.HashSet<String>();
+        java.util.Set<String> equiposEsperados = new java.util.HashSet<String>();
         for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc : documentos) {
-            clasificaciones.add(doc.getClasificacion().toUpperCase(java.util.Locale.ROOT));
+            equiposEsperados.add(equipoEsperadoParaClasificacionAsigNotif(doc.getClasificacion(), doc.getEstadoDocumentoCodigo()));
         }
-        if (clasificaciones.size() > 1) {
+        if (equiposEsperados.size() > 1) {
             JOptionPane.showMessageDialog(this,
-                    "No puede generar en una misma acción documentos Intermedios y Finales: selecciónelos por separado "
-                            + "(Intermedios se asignan a Notificación, Finales se asignan a Validación).",
+                    "No puede generar en una misma acción documentos que requieren equipos destino distintos: "
+                            + "selecciónelos por separado (Intermedios y Finales ya Emitidos van a Notificación; "
+                            + "Finales pendientes de validar van a Validación).",
                     "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        String clasificacionSeleccion = clasificaciones.iterator().next();
-        String equipoEsperado = equipoEsperadoParaClasificacionAsigNotif(clasificacionSeleccion);
+        String equipoEsperado = equiposEsperados.iterator().next();
         String codigoEquipoSeleccionado = equipoItem.equipo.getCodigo() == null
                 ? "" : equipoItem.equipo.getCodigo().toUpperCase(java.util.Locale.ROOT);
         if (equipoEsperado != null && !equipoEsperado.equals(codigoEquipoSeleccionado)) {
             JOptionPane.showMessageDialog(this,
-                    "INTERMEDIO".equals(clasificacionSeleccion)
-                            ? "Los documentos Intermedios deben asignarse al equipo de Notificación."
-                            : "Los documentos Finales deben asignarse al equipo de Validación.",
+                    "EQ_NOTIFICACION".equals(equipoEsperado)
+                            ? "Estos documentos deben asignarse al equipo de Notificación."
+                            : "Estos documentos deben asignarse al equipo de Validación.",
                     "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -1537,7 +1632,8 @@ public class JPanelNotificacionV2 extends JPanel {
                     hojasEnvioAsignacionMultipleNotif.clear();
                     chkHabilitarReasignacionNotif.setSelected(false);
                     modoReasignacionAsigNotif = false;
-                    cargarBandejaAsignacionNotificacion();
+                    cargarBandejaAsignacionNotificacion(
+                            documentos.size() == 1 ? documentos.get(0).getIdDocumentoAnalizado() : null);
                 } catch (Exception ex) {
                     mostrarError("No se pudo generar la asignación.", ex);
                 }
@@ -1689,6 +1785,19 @@ public class JPanelNotificacionV2 extends JPanel {
             return "EQ_VALIDACION";
         }
         return null;
+    }
+
+    /**
+     * Variante consciente del estado del documento, usada al validar el equipo elegido en
+     * "Generar asignación": un documento FINAL ya Emitido (segundo momento, mini-panel "②
+     * Asignación" ya desbloqueado tras la firma) debe ir a Eq. Notificación, no a Eq. Validación
+     * como un FINAL recién llegado (EN_DESPACHO) o vuelto Observado.
+     */
+    private static String equipoEsperadoParaClasificacionAsigNotif(String clasificacion, String estadoDocumentoCodigo) {
+        if ("FINAL".equalsIgnoreCase(clasificacion) && "EMITIDO".equalsIgnoreCase(estadoDocumentoCodigo)) {
+            return "EQ_NOTIFICACION";
+        }
+        return equipoEsperadoParaClasificacionAsigNotif(clasificacion);
     }
 
     private void agregarFilaPrincipalAsigNotif(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
