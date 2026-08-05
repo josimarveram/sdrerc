@@ -321,6 +321,74 @@ public class DocumentoAnalisisDAO {
                 java.util.Arrays.asList("FINALIZADO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
     }
 
+    /**
+     * Todos los documentos analizados principales (nivel 0, activos) de un expediente, sin filtrar
+     * por clasificacion ni estado -- a diferencia de listarDocumentosNotificacionPorEstados (que
+     * filtra la cola global de una bandeja). Usado por el panel "Firma" de la Bandeja Asignacion de
+     * Notificacion para listar todos los documentos del expediente enfocado (FINAL e INTERMEDIO),
+     * dejando que la UI decida cuales son editables segun clasificacion/estado por fila.
+     */
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosPorExpediente(
+            Long idExpediente) throws SQLException {
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
+                new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+        if (idExpediente == null) {
+            return items;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            if (!soportaClasificacionTipoDocumento(conn)) {
+                return items;
+            }
+            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
+                    + "esol.numero_expediente_sgd, tda.clasificacion, tda.nombre AS tipo_documento_nombre, "
+                    + "da.numero_documento, da.fecha_documento, "
+                    + nombrePersona("p") + " AS titular, "
+                    + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
+                    + "e.fecha_vencimiento "
+                    + "FROM expediente_documento_analizado da "
+                    + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
+                    + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
+                    + "LEFT JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                    + " AND ep.activo = 1 AND UPPER(ep.tipo_relacion_persona) = 'TITULAR' "
+                    + "LEFT JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                    + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                    + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
+                    + "WHERE da.activo = 1 AND da.nivel = 0 AND da.id_expediente = ? "
+                    + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        items.add(new com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO(
+                                getLongOrNull(rs, "id_documento_analizado"),
+                                getLongOrNull(rs, "id_expediente"),
+                                rs.getString("numero_expediente"),
+                                rs.getString("numero_expediente_sgd"),
+                                rs.getString("clasificacion"),
+                                rs.getString("tipo_documento_nombre"),
+                                rs.getString("numero_documento"),
+                                toLocalDate(rs.getDate("fecha_documento")),
+                                rs.getString("titular"),
+                                rs.getString("estado_documento_codigo"),
+                                rs.getString("estado_documento_nombre"),
+                                0,
+                                false,
+                                "",
+                                "",
+                                "",
+                                "",
+                                toLocalDate(rs.getDate("fecha_vencimiento")),
+                                null,
+                                0,
+                                "",
+                                ""));
+                    }
+                }
+            }
+        }
+        return items;
+    }
+
     public boolean tieneDocumentoFinalEnDespacho(Long idExpediente) throws SQLException {
         if (idExpediente == null) {
             return false;

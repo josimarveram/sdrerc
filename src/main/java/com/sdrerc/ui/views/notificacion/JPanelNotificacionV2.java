@@ -260,6 +260,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private Long idExpedienteExpansionActivaAsigNotif;
     private boolean modoReasignacionAsigNotif = false;
     private com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documentoAsigNotifFoco;
+    private Long idExpedienteFirmaAsigNotifCargado;
     private final AsignacionNotifTableModel asignacionNotifModel = new AsignacionNotifTableModel();
     private final JTable tablaAsignacionNotif = new AppV2Table(asignacionNotifModel);
 
@@ -283,11 +284,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private boolean panelAsigNotifCerradoPorUsuario;
     private final DatosExpedienteNotifPanel datosAsigNotif = new DatosExpedienteNotifPanel();
     private final JCheckBox chkHabilitarReasignacionNotif = new JCheckBox("Habilitar reasignación");
-    private final JTextField txtNumeroDocumentoFirmaNotif = new JTextField();
-    private final PremiumDateFieldV2 fechaEmisionFirmaNotif = new PremiumDateFieldV2();
-    private final JButton btnRegistrarFirmaNotif = new JButton("Registrar Firma");
-    private final JButton btnCancelarFirmaNotif = new JButton("Cancelar");
-    private final JLabel lblAyudaFirmaNotif = new JLabel(" ");
+    private final DocumentoFirmaNotificacionTreeGridPanelV2 documentosFirmaTreePanel = new DocumentoFirmaNotificacionTreeGridPanelV2();
     private final AppV2TablePanel tablaAsignacionNotifPanel = new AppV2TablePanel(
             tablaAsignacionNotif, "Sin documentos para asignar", "No hay documentos pendientes de asignación.");
     private final JLabel lblEstadoAsignacionNotif = new JLabel("Seleccione documentos y presione Generar asignación.");
@@ -968,33 +965,37 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void actualizarPanelFirmaAsigNotif() {
-        boolean esIntermedio = documentoAsigNotifFoco != null
-                && "INTERMEDIO".equalsIgnoreCase(documentoAsigNotifFoco.getClasificacion());
-        boolean esFinalValidado = documentoAsigNotifFoco != null
-                && "FINAL".equalsIgnoreCase(documentoAsigNotifFoco.getClasificacion())
-                && "VALIDADO".equalsIgnoreCase(documentoAsigNotifFoco.getEstadoDocumentoCodigo());
-        boolean habilitado = documentoAsigNotifFoco != null && (esIntermedio || esFinalValidado);
-        txtNumeroDocumentoFirmaNotif.setEnabled(habilitado);
-        fechaEmisionFirmaNotif.setEnabled(habilitado);
-        btnRegistrarFirmaNotif.setEnabled(habilitado);
-        if (documentoAsigNotifFoco == null) {
-            txtNumeroDocumentoFirmaNotif.setText("");
-            fechaEmisionFirmaNotif.setDate(null);
-            lblAyudaFirmaNotif.setText("Seleccione un documento en la grilla.");
+        if (documentoAsigNotifFoco == null || documentoAsigNotifFoco.getIdExpediente() == null) {
+            idExpedienteFirmaAsigNotifCargado = null;
+            documentosFirmaTreePanel.setDocumentos(null, new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>());
             return;
         }
-        txtNumeroDocumentoFirmaNotif.setText(documentoAsigNotifFoco.getNumeroDocumento());
-        if (documentoAsigNotifFoco.getFechaDocumento() != null) {
-            fechaEmisionFirmaNotif.setDate(java.util.Date.from(
-                    documentoAsigNotifFoco.getFechaDocumento().atStartOfDay(ZoneId.systemDefault()).toInstant()));
-        } else {
-            fechaEmisionFirmaNotif.setDate(new java.util.Date());
-        }
-        if (!habilitado) {
-            lblAyudaFirmaNotif.setText("El documento FINAL debe estar Validado para registrar la firma.");
-        } else {
-            lblAyudaFirmaNotif.setText(" ");
-        }
+        cargarDocumentosFirmaAsigNotif(documentoAsigNotifFoco.getIdExpediente());
+    }
+
+    private void cargarDocumentosFirmaAsigNotif(final Long idExpediente) {
+        idExpedienteFirmaAsigNotifCargado = idExpediente;
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosPorExpediente(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (idExpedienteFirmaAsigNotifCargado == null || !idExpedienteFirmaAsigNotifCargado.equals(idExpediente)) {
+                    return;
+                }
+                try {
+                    documentosFirmaTreePanel.setDocumentos(idExpediente, get());
+                } catch (Exception ex) {
+                    documentosFirmaTreePanel.setDocumentos(idExpediente, new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>());
+                    mostrarError("No se pudieron cargar los documentos del expediente.", ex);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private JPanel crearPanelDetalleAsignacionNotif() {
@@ -1250,91 +1251,19 @@ public class JPanelNotificacionV2 extends JPanel {
         AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Firma", this::cerrarPanelAsignacionNotif);
         panel.setAccentColor(new Color(110, 78, 164));
 
-        AppV2SideSectionPanel seccion = new AppV2SideSectionPanel("Firma del documento");
-        JPanel grid = new JPanel(new GridBagLayout());
-        grid.setOpaque(false);
-        GridBagConstraints gbcLabel = new GridBagConstraints();
-        gbcLabel.gridx = 0;
-        gbcLabel.anchor = GridBagConstraints.NORTHWEST;
-        gbcLabel.insets = new Insets(6, 0, 6, 8);
-        GridBagConstraints gbcValue = new GridBagConstraints();
-        gbcValue.gridx = 1;
-        gbcValue.weightx = 1;
-        gbcValue.fill = GridBagConstraints.HORIZONTAL;
-        gbcValue.insets = new Insets(6, 0, 6, 0);
-
-        txtNumeroDocumentoFirmaNotif.setPreferredSize(new Dimension(180, 32));
-        fechaEmisionFirmaNotif.setPreferredSize(new Dimension(180, 32));
-
-        int row = 0;
-        gbcLabel.gridy = row;
-        gbcValue.gridy = row++;
-        grid.add(new JLabel("N° Documento"), gbcLabel);
-        grid.add(txtNumeroDocumentoFirmaNotif, gbcValue);
-        gbcLabel.gridy = row;
-        gbcValue.gridy = row++;
-        grid.add(new JLabel("Fecha Emisión"), gbcLabel);
-        grid.add(fechaEmisionFirmaNotif, gbcValue);
-        seccion.addContent(grid);
-        lblAyudaFirmaNotif.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-        lblAyudaFirmaNotif.setForeground(AppV2Theme.TEXT_SECONDARY);
-        seccion.addContent(lblAyudaFirmaNotif);
-        panel.addSection(seccion);
-
-        JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
-        acciones.setOpaque(false);
-        AppV2Theme.estilizarBotonPrimario(btnRegistrarFirmaNotif);
-        acciones.add(btnRegistrarFirmaNotif);
-        acciones.add(btnCancelarFirmaNotif);
-        panel.setFooter(acciones);
-
-        btnRegistrarFirmaNotif.addActionListener(e -> registrarFirmaAsigNotif());
-        btnCancelarFirmaNotif.addActionListener(e -> actualizarPanelFirmaAsigNotif());
-        return panel;
-    }
-
-    private void registrarFirmaAsigNotif() {
-        if (documentoAsigNotifFoco == null || documentoAsigNotifFoco.getIdDocumentoAnalizado() == null) {
-            JOptionPane.showMessageDialog(this, "Seleccione un documento para registrar la firma.",
-                    "Registrar Firma", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        final Long idDocumento = documentoAsigNotifFoco.getIdDocumentoAnalizado();
-        final String numeroDocumento = txtNumeroDocumentoFirmaNotif.getText();
-        final LocalDate fechaEmision = toLocalDate(fechaEmisionFirmaNotif);
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Se registrará la firma del documento seleccionado. ¿Desea continuar?",
-                "Registrar Firma",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                documentoAnalisisService.registrarFirmaDocumentoNotificacion(idDocumento, numeroDocumento, fechaEmision);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    get();
-                    JOptionPane.showMessageDialog(
-                            JPanelNotificacionV2.this,
-                            "La firma se registró correctamente.",
-                            "Registrar Firma",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    documentoAsigNotifFoco = null;
+        JPanel seccion = section("Documentos a firmar");
+        documentosFirmaTreePanel.setHandlers(
+                (idDocumento, numeroDocumento, fechaEmision) ->
+                        documentoAnalisisService.registrarFirmaDocumentoNotificacion(idDocumento, numeroDocumento, fechaEmision),
+                () -> {
+                    if (documentoAsigNotifFoco != null && documentoAsigNotifFoco.getIdExpediente() != null) {
+                        cargarDocumentosFirmaAsigNotif(documentoAsigNotifFoco.getIdExpediente());
+                    }
                     cargarBandejaAsignacionNotificacion();
-                } catch (Exception ex) {
-                    mostrarError("No se pudo registrar la firma del documento.", ex);
-                }
-            }
-        };
-        worker.execute();
+                });
+        seccion.add(documentosFirmaTreePanel, BorderLayout.CENTER);
+        panel.addSection(seccion);
+        return panel;
     }
 
     private JPanel crearPanelAsignacionConTabNotif(

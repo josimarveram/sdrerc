@@ -95,6 +95,10 @@ public class DocumentoAnalisisService {
         return documentoAnalisisDAO.listarDocumentosAsignacionNotificacion();
     }
 
+    public List<NotificacionAsignacionDocumentoDTO> listarDocumentosPorExpediente(Long idExpediente) throws SQLException {
+        return documentoAnalisisDAO.listarDocumentosPorExpediente(idExpediente);
+    }
+
     public List<NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion() throws SQLException {
         Long idUsuarioActual = resolverUsuarioActualSdrercApp();
         boolean esAdmin = SessionContext.hasRole("ADMIN_SISTEMA");
