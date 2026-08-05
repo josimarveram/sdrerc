@@ -27,6 +27,8 @@ public class DocumentoAnalisisDAO {
 
     private static final String CODIGO_MOVIMIENTO_ASIGNACION_NOTIFICACION = "ASIGNACION_NOTIFICACION";
     private static final String CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION = "REASIGNACION_NOTIFICACION";
+    private static final String CODIGO_MOVIMIENTO_DEVOLUCION_EJECUCION = "DEVOLUCION_A_EJECUCION";
+    private static final String CODIGO_FLUJO = "SDRERC_TO_BE";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService = new CalendarioLaboralService();
@@ -254,9 +256,15 @@ public class DocumentoAnalisisDAO {
     }
 
     private static final String CONDICION_ASIGNACION_NOTIFICACION =
-            "(UPPER(NVL(eest.codigo, '')) = 'POR_ASIGNAR' "
+            "((UPPER(NVL(eest.codigo, '')) = 'POR_ASIGNAR' "
             + "AND ((UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' AND UPPER(NVL(ed.codigo, '')) = 'EMITIDO') "
-            + "OR (UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) IN ('EN_DESPACHO', 'VALIDADO'))))";
+            + "OR (UPPER(NVL(tda.clasificacion, '')) = 'FINAL' AND UPPER(NVL(ed.codigo, '')) IN ('EN_DESPACHO', 'VALIDADO')))) "
+            // Documento FINAL que el validador marco Observado: registrarResultadoValidacion no
+            // mueve el estado del expediente (se queda en POR_VALIDAR), asi que sin esta rama el
+            // documento queda invisible en las 3 bandejas de Notificacion. Reaparece aqui para que
+            // el supervisor pueda derivarlo con el "Destino operativo" (Eq. Analisis/Eq. Ejecucion).
+            + "OR (UPPER(NVL(eest.codigo, '')) = 'POR_VALIDAR' AND UPPER(NVL(ed.codigo, '')) = 'OBSERVADO' "
+            + "AND UPPER(NVL(tda.clasificacion, '')) = 'FINAL'))";
 
     private static final String CONDICION_VALIDACION_NOTIFICACION =
             "(UPPER(NVL(eest.codigo, '')) = 'POR_VALIDAR' "
@@ -873,6 +881,170 @@ public class DocumentoAnalisisDAO {
                 if (updated != 1) {
                     throw new SQLException("No se pudo registrar la firma del documento.");
                 }
+            }
+        }
+    }
+
+    /**
+     * Deriva el expediente de un documento (etapa NOTIFICACION, en cualquiera de sus estados
+     * reales: Por asignar/Por validar/Por notificar/Notificado) de vuelta a
+     * EJECUCION/EN_EJECUCION. Caso de negocio: el validador observa el documento y el
+     * supervisor de notificacion, desde el panel de Asignacion, decide que el expediente debe
+     * volver a Ejecucion en vez de a Analisis o de reasignarse dentro de Notificacion. No
+     * reasigna responsable (misma regla que
+     * VerificacionExpedienteDAO.aprobarConDestinoAEjecucion): Ejecucion exige que la atienda el
+     * mismo abogado ya ligado via EXPEDIENTE_ASIGNACION, no el usuario elegido en el combo de
+     * destino operativo (que aqui solo se registra en el historial). El destino a Analisis (Eq.
+     * Analisis) NO tiene un metodo propio: reutiliza
+     * AsignacionExpedienteService.reasignarDesdeCartaRespuesta, que ya resuelve la misma
+     * transicion DEVOLUCION_A_ANALISIS de forma dinamica y ademas actualiza EXPEDIENTE_ASIGNACION
+     * (necesario porque Analisis SI reasigna responsable a un abogado elegido).
+     */
+    public void derivarDocumentoNotificacionAEjecucion(
+            Long idDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            String comentario,
+            Long idUsuario) throws SQLException {
+        if (idDocumentoAnalizado == null) {
+            throw new IllegalArgumentException("Seleccione un documento para derivar a Ejecución.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                Long idExpediente = obtenerIdExpedientePorDocumento(conn, idDocumentoAnalizado);
+                if (idExpediente == null) {
+                    throw new SQLException("El documento seleccionado no existe o no está activo.");
+                }
+                String sqlExpediente = "SELECT e.id_etapa_actual, e.id_estado_actual, "
+                        + "et.codigo AS etapa_codigo, es.codigo AS estado_codigo "
+                        + "FROM expediente e "
+                        + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                        + "JOIN estado_expediente es ON es.id_estado = e.id_estado_actual "
+                        + "WHERE e.id_expediente = ? AND e.activo = 1 FOR UPDATE";
+                Long idEtapaOrigen;
+                Long idEstadoOrigen;
+                String etapaCodigo;
+                String estadoCodigo;
+                try (PreparedStatement ps = conn.prepareStatement(sqlExpediente)) {
+                    ps.setLong(1, idExpediente);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            throw new SQLException("El expediente del documento seleccionado no existe o no está activo.");
+                        }
+                        idEtapaOrigen = getLongOrNull(rs, "id_etapa_actual");
+                        idEstadoOrigen = getLongOrNull(rs, "id_estado_actual");
+                        etapaCodigo = rs.getString("etapa_codigo");
+                        estadoCodigo = rs.getString("estado_codigo");
+                    }
+                }
+                long[] destino = resolverTransicionPorCodigo(
+                        conn, CODIGO_MOVIMIENTO_DEVOLUCION_EJECUCION, etapaCodigo, estadoCodigo, "EJECUCION", "EN_EJECUCION");
+                Long idEtapaDestino = destino[0];
+                Long idEstadoDestino = destino[1];
+
+                String sqlUpdate = "UPDATE expediente SET id_etapa_actual = ?, id_estado_actual = ?, "
+                        + "fecha_ultimo_movimiento = SYSTIMESTAMP, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                        + "WHERE id_expediente = ? AND activo = 1";
+                try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
+                    ps.setLong(1, idEtapaDestino);
+                    ps.setLong(2, idEstadoDestino);
+                    setLongOrNull(ps, 3, idUsuario);
+                    ps.setLong(4, idExpediente);
+                    int updated = ps.executeUpdate();
+                    if (updated != 1) {
+                        throw new SQLException("No se pudo actualizar el expediente seleccionado.");
+                    }
+                }
+                ExpedienteEstadoPropagacionDAO.propagarEstadoAAsociados(conn, idExpediente, idEtapaDestino, idEstadoDestino, idUsuario);
+
+                Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_DEVOLUCION_EJECUCION);
+                if (idMovimiento != null) {
+                    Long idAutorHistorial = resolverAutorHistorial(conn, idUsuario, idUsuarioDestino);
+                    String sqlHistorial = "INSERT INTO expediente_historial ("
+                            + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
+                            + "id_etapa_origen, id_estado_origen, id_etapa_destino, id_estado_destino, "
+                            + "id_usuario_origen, id_usuario_destino, id_equipo_destino, "
+                            + "comentario, activo, creado_por, creado_en"
+                            + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+                    try (PreparedStatement ps = conn.prepareStatement(sqlHistorial)) {
+                        ps.setLong(1, idExpediente);
+                        ps.setLong(2, idMovimiento);
+                        setLongOrNull(ps, 3, idEtapaOrigen);
+                        setLongOrNull(ps, 4, idEstadoOrigen);
+                        ps.setLong(5, idEtapaDestino);
+                        ps.setLong(6, idEstadoDestino);
+                        setLongOrNull(ps, 7, idAutorHistorial);
+                        setLongOrNull(ps, 8, idUsuarioDestino);
+                        setLongOrNull(ps, 9, idEquipoDestino);
+                        setStringOrNull(ps, 10, comentario);
+                        setLongOrNull(ps, 11, idAutorHistorial);
+                        ps.executeUpdate();
+                    }
+                }
+                conn.commit();
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            } finally {
+                conn.setAutoCommit(previousAutoCommit);
+            }
+        }
+    }
+
+    private Long obtenerIdExpedientePorDocumento(Connection conn, Long idDocumentoAnalizado) throws SQLException {
+        String sql = "SELECT id_expediente FROM expediente_documento_analizado WHERE id_documento_analizado = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idDocumentoAnalizado);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? getLongOrNull(rs, "id_expediente") : null;
+            }
+        }
+    }
+
+    /**
+     * Resuelve dinamicamente la transicion activa (etapa/estado destino) para una accion y un
+     * origen real, sin asumir un origen fijo (el expediente puede llegar a este punto desde
+     * distintos estados de la etapa NOTIFICACION). Mismo patron que
+     * AsignacionExpedienteDAO.resolverTransicionPorCodigo / VerificacionExpedienteDAO.requerirTransicion.
+     */
+    private long[] resolverTransicionPorCodigo(
+            Connection conn,
+            String accionCodigo,
+            String etapaOrigenCodigo,
+            String estadoOrigenCodigo,
+            String etapaDestinoCodigo,
+            String estadoDestinoCodigo) throws SQLException {
+        String sql = "SELECT ft.id_etapa_destino, ft.id_estado_destino "
+                + "FROM flujo f "
+                + "JOIN flujo_transicion ft ON ft.id_flujo = f.id_flujo "
+                + "JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen "
+                + "JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen "
+                + "JOIN etapa_expediente ed ON ed.id_etapa = ft.id_etapa_destino "
+                + "JOIN estado_expediente sd ON sd.id_estado = ft.id_estado_destino "
+                + "WHERE f.codigo = ? AND f.activo = 1 AND ft.activo = 1 "
+                + "AND ft.codigo_accion = ? "
+                + "AND eo.codigo = ? AND so.codigo = ? "
+                + "AND ed.codigo = ? AND sd.codigo = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, CODIGO_FLUJO);
+            ps.setString(2, accionCodigo);
+            ps.setString(3, etapaOrigenCodigo);
+            ps.setString(4, estadoOrigenCodigo);
+            ps.setString(5, etapaDestinoCodigo);
+            ps.setString(6, estadoDestinoCodigo);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("No existe transición activa "
+                            + etapaOrigenCodigo + "/" + estadoOrigenCodigo + " -> "
+                            + etapaDestinoCodigo + "/" + estadoDestinoCodigo
+                            + " para " + accionCodigo + " en " + CODIGO_FLUJO + ".");
+                }
+                return new long[]{rs.getLong("id_etapa_destino"), rs.getLong("id_estado_destino")};
             }
         }
     }

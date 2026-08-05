@@ -216,7 +216,6 @@ public class JPanelNotificacionV2 extends JPanel {
     private AppV2SideActionPanel panelNotificacion;
     private AppV2SideActionPanel panelCierre;
     private AppV2SideActionPanel panelAsignacionOperativaNotif;
-    private AppV2SideActionPanel panelFirmaNotif;
     private AppV2SideActionPanel panelValidarOperativo;
     private JTabbedPane tabsBandejasTop;
 
@@ -271,13 +270,10 @@ public class JPanelNotificacionV2 extends JPanel {
     private static final int PANEL_ASIG_NOTIF_TAB_HEIGHT = 140;
     private static final String TAB_ASIG_NOTIF_DATOS = "DATOS";
     private static final String TAB_ASIG_NOTIF_ASIGNACION = "ASIGNACION";
-    private static final String TAB_ASIG_NOTIF_FIRMA = "FIRMA";
     private final AppV2StackedSideTab tabAsigNotifDatos =
             crearTabAsigNotif("Datos", new Color(230, 241, 245), new Color(57, 125, 199));
     private final AppV2StackedSideTab tabAsigNotifAsignacion =
             crearTabAsigNotif("Asignación", new Color(219, 240, 237), new Color(10, 118, 145));
-    private final AppV2StackedSideTab tabAsigNotifFirma =
-            crearTabAsigNotif("Firma", new Color(238, 231, 246), new Color(110, 78, 164));
     private CardLayout panelAsigNotifCardsLayout;
     private JPanel panelAsigNotifCards;
     private String tabAsigNotifActiva = TAB_ASIG_NOTIF_DATOS;
@@ -931,9 +927,6 @@ public class JPanelNotificacionV2 extends JPanel {
         if (panelAsignacionOperativaNotif != null) {
             panelAsignacionOperativaNotif.setSubtitle(titular);
         }
-        if (panelFirmaNotif != null) {
-            panelFirmaNotif.setSubtitle(titular);
-        }
     }
 
     private void actualizarPanelDatosAsigNotif() {
@@ -1002,10 +995,8 @@ public class JPanelNotificacionV2 extends JPanel {
         AppV2SideActionPanel panelDatos = datosAsigNotif.crearPanel(
                 "Panel de datos", new Color(57, 125, 199), this::cerrarPanelAsignacionNotif);
         AppV2SideActionPanel panelAsignacion = crearPanelAsignacionOperativaNotif();
-        AppV2SideActionPanel panelFirma = crearPanelFirmaNotif();
         panelAsignacionOperativaNotif = panelAsignacion;
-        panelFirmaNotif = panelFirma;
-        return crearPanelAsignacionConTabNotif(panelDatos, panelAsignacion, panelFirma);
+        return crearPanelAsignacionConTabNotif(panelDatos, panelAsignacion);
     }
 
     private void cerrarPanelAsignacionNotif() {
@@ -1016,12 +1007,13 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelAsignacionOperativaNotif() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Asignación", this::cerrarPanelAsignacionNotif);
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Asignación y Firma", this::cerrarPanelAsignacionNotif);
         panel.setAccentColor(new Color(10, 118, 145));
 
         sectionAsignacionMultipleNotif = crearAsignacionMultipleSeccionNotif();
         panel.addSection(sectionAsignacionMultipleNotif);
         panel.addSection(crearDestinoAsignacionSeccionNotif());
+        panel.addSection(crearDocumentosFirmaSeccionNotif());
         panel.addSection(crearHistorialAsignacionSeccionNotif());
 
         JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
@@ -1058,7 +1050,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private AppV2SideSectionPanel crearAsignacionMultipleSeccionNotif() {
-        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Asignación a validador");
+        AppV2SideSectionPanel section = new AppV2SideSectionPanel("Documentos seleccionados");
         JLabel ayuda = new JLabel("Revise los documentos antes de generar la asignación.");
         ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
@@ -1247,10 +1239,7 @@ public class JPanelNotificacionV2 extends JPanel {
         }
     }
 
-    private AppV2SideActionPanel crearPanelFirmaNotif() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Firma", this::cerrarPanelAsignacionNotif);
-        panel.setAccentColor(new Color(110, 78, 164));
-
+    private JPanel crearDocumentosFirmaSeccionNotif() {
         JPanel seccion = section("Documentos a firmar");
         documentosFirmaTreePanel.setHandlers(
                 (idDocumento, numeroDocumento, fechaEmision) ->
@@ -1262,14 +1251,12 @@ public class JPanelNotificacionV2 extends JPanel {
                     cargarBandejaAsignacionNotificacion();
                 });
         seccion.add(documentosFirmaTreePanel, BorderLayout.CENTER);
-        panel.addSection(seccion);
-        return panel;
+        return seccion;
     }
 
     private JPanel crearPanelAsignacionConTabNotif(
             final AppV2SideActionPanel panelDatos,
-            final AppV2SideActionPanel panelAsignacion,
-            final AppV2SideActionPanel panelFirma) {
+            final AppV2SideActionPanel panelAsignacion) {
         JPanel wrapper = new JPanel(null) {
             @Override
             public void doLayout() {
@@ -1278,10 +1265,9 @@ public class JPanelNotificacionV2 extends JPanel {
                 int panelX = PANEL_ASIG_NOTIF_TAB_OVERHANG;
                 int panelWidth = Math.max(0, width - panelX);
                 int[] positions = calcularPosicionesLenguetasNotif(
-                        3, PANEL_ASIG_NOTIF_TAB_HEIGHT, 8, height, PANEL_ASIG_NOTIF_TAB_TOP);
+                        2, PANEL_ASIG_NOTIF_TAB_HEIGHT, 8, height, PANEL_ASIG_NOTIF_TAB_TOP);
                 tabAsigNotifDatos.setBounds(0, positions[0], PANEL_ASIG_NOTIF_TAB_OVERHANG - 6, PANEL_ASIG_NOTIF_TAB_HEIGHT);
                 tabAsigNotifAsignacion.setBounds(0, positions[1], PANEL_ASIG_NOTIF_TAB_OVERHANG - 6, PANEL_ASIG_NOTIF_TAB_HEIGHT);
-                tabAsigNotifFirma.setBounds(0, positions[2], PANEL_ASIG_NOTIF_TAB_OVERHANG - 6, PANEL_ASIG_NOTIF_TAB_HEIGHT);
                 panelAsigNotifCards.setBounds(panelX, 0, panelWidth, height);
             }
         };
@@ -1291,10 +1277,8 @@ public class JPanelNotificacionV2 extends JPanel {
         panelAsigNotifCards.setOpaque(false);
         panelAsigNotifCards.add(panelDatos, TAB_ASIG_NOTIF_DATOS);
         panelAsigNotifCards.add(panelAsignacion, TAB_ASIG_NOTIF_ASIGNACION);
-        panelAsigNotifCards.add(panelFirma, TAB_ASIG_NOTIF_FIRMA);
         tabAsigNotifDatos.setToolTipText("Ver datos del expediente");
-        tabAsigNotifAsignacion.setToolTipText("Asignar el documento a un validador");
-        tabAsigNotifFirma.setToolTipText("Registrar la firma del documento");
+        tabAsigNotifAsignacion.setToolTipText("Asignar, firmar o derivar el documento");
         tabAsigNotifDatos.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -1307,15 +1291,8 @@ public class JPanelNotificacionV2 extends JPanel {
                 seleccionarTabAsigNotif(TAB_ASIG_NOTIF_ASIGNACION);
             }
         });
-        tabAsigNotifFirma.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                seleccionarTabAsigNotif(TAB_ASIG_NOTIF_FIRMA);
-            }
-        });
         wrapper.add(tabAsigNotifDatos);
         wrapper.add(tabAsigNotifAsignacion);
-        wrapper.add(tabAsigNotifFirma);
         wrapper.add(panelAsigNotifCards);
         wrapper.setMinimumSize(new Dimension(
                 PANEL_ASIG_NOTIF_ANCHO_MINIMO + PANEL_ASIG_NOTIF_TAB_OVERHANG, 0));
@@ -1344,7 +1321,6 @@ public class JPanelNotificacionV2 extends JPanel {
         boolean expandido = splitBandejasNotif != null && splitBandejasNotif.isSideExpanded();
         tabAsigNotifDatos.setState(TAB_ASIG_NOTIF_DATOS.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_DATOS.equals(tabAsigNotifActiva) && expandido);
         tabAsigNotifAsignacion.setState(TAB_ASIG_NOTIF_ASIGNACION.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_ASIGNACION.equals(tabAsigNotifActiva) && expandido);
-        tabAsigNotifFirma.setState(TAB_ASIG_NOTIF_FIRMA.equals(tabAsigNotifActiva), TAB_ASIG_NOTIF_FIRMA.equals(tabAsigNotifActiva) && expandido);
     }
 
     private void cargarBandejaAsignacionNotificacion() {
@@ -1453,7 +1429,18 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         EquipoNotifItem equipoItem = (EquipoNotifItem) cmbEquipoNotif.getSelectedItem();
         UsuarioNotifItem usuarioItem = (UsuarioNotifItem) cmbUsuarioNotif.getSelectedItem();
-        if (equipoItem == null || equipoItem.equipo == null || usuarioItem == null || usuarioItem.usuario == null) {
+        if (equipoItem == null || equipoItem.equipo == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione equipo destino para generar la asignación.",
+                    "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        String codigoEquipoDestino = equipoItem.equipo.getCodigo() == null
+                ? "" : equipoItem.equipo.getCodigo().toUpperCase(java.util.Locale.ROOT);
+        if ("EQ_ANALISIS".equals(codigoEquipoDestino) || "EQ_EJECUCION".equals(codigoEquipoDestino)) {
+            derivarAsigNotifADestinoOperativo(codigoEquipoDestino, documentos, equipoItem, usuarioItem);
+            return;
+        }
+        if (usuarioItem == null || usuarioItem.usuario == null) {
             JOptionPane.showMessageDialog(this, "Seleccione equipo y usuario destino para generar la asignación.",
                     "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
             return;
@@ -1546,6 +1533,79 @@ public class JPanelNotificacionV2 extends JPanel {
                     cargarBandejaAsignacionNotificacion();
                 } catch (Exception ex) {
                     mostrarError("No se pudo generar la asignación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    /**
+     * Deriva el expediente de un unico documento a Analisis o a Ejecucion desde el mismo
+     * "Destino operativo" del panel fusionado Asignacion+Firma (ver AGENTS.md, entrada de
+     * fusion de estas 2 lenguetas). Caso real: el validador observa un documento FINAL, el
+     * expediente se queda en NOTIFICACION/POR_VALIDAR (registrarResultadoValidacion no mueve
+     * su estado), y el supervisor decide desde aqui a donde debe volver. A diferencia de
+     * asignarNotificacionMultiple (que solo mueve documentos dentro de Notificacion sin cambiar
+     * la etapa del expediente), esto SI mueve la etapa real, por lo que exige exactamente un
+     * documento (no tiene sentido de "hoja de envio"/lote como la asignacion a validador).
+     */
+    private void derivarAsigNotifADestinoOperativo(
+            String codigoEquipoDestino,
+            List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> documentos,
+            EquipoNotifItem equipoItem,
+            UsuarioNotifItem usuarioItem) {
+        if (documentos.size() != 1) {
+            JOptionPane.showMessageDialog(this,
+                    "Para derivar a Análisis o Ejecución, seleccione un único documento.",
+                    "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        boolean esAnalisis = "EQ_ANALISIS".equals(codigoEquipoDestino);
+        if (esAnalisis && (usuarioItem == null || usuarioItem.usuario == null)) {
+            JOptionPane.showMessageDialog(this, "Seleccione el abogado destino en Análisis.",
+                    "Asignar Notif.", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documento = documentos.get(0);
+        String mensajeConfirmacion = esAnalisis
+                ? "Se derivará el expediente " + documento.getNumeroExpediente() + " a la Bandeja Análisis. ¿Desea continuar?"
+                : "Se derivará el expediente " + documento.getNumeroExpediente() + " a la Bandeja Ejecución. ¿Desea continuar?";
+        int confirm = JOptionPane.showConfirmDialog(
+                this, mensajeConfirmacion, "Derivar expediente", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        final Long idExpediente = documento.getIdExpediente();
+        final Long idDocumento = documento.getIdDocumentoAnalizado();
+        final Long idEquipoDestino = equipoItem.equipo.getIdEquipo();
+        final Long idUsuarioDestino = usuarioItem == null || usuarioItem.usuario == null
+                ? null : usuarioItem.usuario.getIdUsuario();
+        final com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipoDto = equipoItem.equipo;
+        final com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO usuarioDto = usuarioItem == null ? null : usuarioItem.usuario;
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                if (esAnalisis) {
+                    asignacionExpedienteServiceNotif.reasignarDesdeCartaRespuesta(idExpediente, equipoDto, usuarioDto, null);
+                } else {
+                    documentoAnalisisService.derivarDocumentoNotificacionAEjecucion(idDocumento, idEquipoDestino, idUsuarioDestino, null);
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(
+                            JPanelNotificacionV2.this,
+                            esAnalisis ? "El expediente fue derivado a Análisis." : "El expediente fue derivado a Ejecución.",
+                            "Derivar expediente",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    documentoAsigNotifFoco = null;
+                    cargarBandejaAsignacionNotificacion();
+                } catch (Exception ex) {
+                    mostrarError("No se pudo derivar el expediente.", ex);
                 }
             }
         };

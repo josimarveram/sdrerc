@@ -227,6 +227,15 @@ public class DocumentoAnalisisService {
                 idDocumentoAnalizado, numeroDocumento, fechaEmision, resolverUsuarioActualSdrercApp());
     }
 
+    public void derivarDocumentoNotificacionAEjecucion(
+            Long idDocumentoAnalizado,
+            Long idEquipoDestino,
+            Long idUsuarioDestino,
+            String comentario) throws SQLException {
+        documentoAnalisisDAO.derivarDocumentoNotificacionAEjecucion(
+                idDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, comentario, resolverUsuarioActualSdrercApp());
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();
