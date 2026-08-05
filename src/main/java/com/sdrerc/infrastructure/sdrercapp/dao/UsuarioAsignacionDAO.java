@@ -1,16 +1,32 @@
 package com.sdrerc.infrastructure.sdrercapp.dao;
 
+import com.sdrerc.application.sdrercapp.CalendarioLaboralService;
 import com.sdrerc.domain.dto.sdrercapp.CargaLaboralAbogadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CargaLaboralDocumentoDTO;
 import com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO;
 import com.sdrerc.infrastructure.database.SdrercAppConnection;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class UsuarioAsignacionDAO {
+
+    private final CalendarioLaboralService calendarioLaboralService;
+
+    public UsuarioAsignacionDAO() {
+        this(new CalendarioLaboralService());
+    }
+
+    public UsuarioAsignacionDAO(CalendarioLaboralService calendarioLaboralService) {
+        this.calendarioLaboralService = calendarioLaboralService;
+    }
 
     public List<UsuarioAsignableDTO> listarAbogadosAsignables(Long idEquipo) throws SQLException {
         List<Object> params = new ArrayList<>();
@@ -215,6 +231,91 @@ public class UsuarioAsignacionDAO {
                 + "  AND ea.id_usuario_asignado = u.id_usuario AND et.codigo = '" + codigoEtapa + "' "
                 + "  GROUP BY e.id_estado_actual) g "
                 + "JOIN estado_expediente es ON es.id_estado = g.id_estado_actual) AS " + alias + ", ";
+    }
+
+    /**
+     * Listado fila-por-fila (no agregado) de los expedientes que forman la carga de un abogado
+     * (Analisis/Verificacion/Ejecucion), con estado y dias habiles restantes ya calculados, para
+     * el panel lateral "Detalle de carga" de la bandeja Carga Abogados (doble clic sobre una
+     * fila). Mismo criterio de "carga" que {@link #listarCargaLaboralAbogados(Long)}.
+     */
+    public List<CargaLaboralDocumentoDTO> listarDocumentosPorAbogado(Long idUsuario) throws SQLException {
+        List<CargaLaboralDocumentoDTO> documentos = new ArrayList<>();
+        if (idUsuario == null) {
+            return documentos;
+        }
+        String sql = "SELECT e.id_expediente, e.numero_expediente, et.nombre AS etapa, "
+                + "es.nombre AS estado, e.fecha_vencimiento "
+                + "FROM expediente e "
+                + "JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente es ON es.id_estado = e.id_estado_actual "
+                + "WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 "
+                + "AND ea.id_usuario_asignado = ? "
+                + "AND et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION') "
+                + "ORDER BY e.fecha_vencimiento ASC NULLS LAST, e.numero_expediente ASC";
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Date fechaVencimiento = rs.getDate("fecha_vencimiento");
+                    documentos.add(new CargaLaboralDocumentoDTO(
+                            getLongOrNull(rs, "id_expediente"),
+                            rs.getString("numero_expediente"),
+                            rs.getString("etapa"),
+                            rs.getString("estado"),
+                            fechaVencimiento == null ? null : fechaVencimiento.toLocalDate(),
+                            calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)));
+                }
+            }
+        }
+        return documentos;
+    }
+
+    /**
+     * IDs de abogado (EXPEDIENTE_ASIGNACION.id_usuario_asignado) con al menos un expediente de
+     * carga (Analisis/Verificacion/Ejecucion) cuya fecha de vencimiento cae en [desde, hasta].
+     * Cualquiera de los dos limites puede ser nulo (rango abierto de ese lado). Usado por el
+     * filtro de fechas del panel de busqueda de Carga Abogados; el filtrado real de la lista
+     * ocurre en memoria (Java) sobre estos ids, sin tocar la consulta agregada principal.
+     */
+    public Set<Long> listarIdsUsuarioConVencimientoEnRango(LocalDate desde, LocalDate hasta) throws SQLException {
+        Set<Long> ids = new HashSet<>();
+        if (desde == null && hasta == null) {
+            return ids;
+        }
+        StringBuilder sql = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+        sql.append("SELECT DISTINCT ea.id_usuario_asignado AS id_usuario FROM expediente e ");
+        sql.append("JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 ");
+        sql.append("JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual ");
+        sql.append("WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 ");
+        sql.append("AND et.codigo IN ('ANALISIS', 'VERIFICACION', 'EJECUCION') ");
+        sql.append("AND e.fecha_vencimiento IS NOT NULL ");
+        if (desde != null) {
+            sql.append("AND TRUNC(e.fecha_vencimiento) >= ? ");
+            params.add(Date.valueOf(desde));
+        }
+        if (hasta != null) {
+            sql.append("AND TRUNC(e.fecha_vencimiento) <= ? ");
+            params.add(Date.valueOf(hasta));
+        }
+        try (Connection conn = SdrercAppConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Long idUsuario = getLongOrNull(rs, "id_usuario");
+                    if (idUsuario != null) {
+                        ids.add(idUsuario);
+                    }
+                }
+            }
+        }
+        return ids;
     }
 
     public List<Long> listarIdsEquipoDeUsuario(Long idUsuario) throws SQLException {

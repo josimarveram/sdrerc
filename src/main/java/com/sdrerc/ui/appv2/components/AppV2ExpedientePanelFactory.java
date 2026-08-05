@@ -63,6 +63,27 @@ public final class AppV2ExpedientePanelFactory {
             JCheckBox grupoFamiliar,
             JSpinner limite,
             CampoFiltro... filtrosAdicionales) {
+        return crearPanelBusquedaEstiloRegistro(
+                etiquetaBusqueda, campoBusqueda, acciones, fechaDesde, fechaHasta, "Estado", estado,
+                grupoFamiliar, limite, filtrosAdicionales);
+    }
+
+    /**
+     * Igual que la sobrecarga de 8/9 parametros, pero permite personalizar la etiqueta del
+     * control principal de la fila de filtros (por defecto "Estado") para bandejas donde ese
+     * control no es un combo de estado (ej. Carga Abogados: combo de Abogado).
+     */
+    public static JPanel crearPanelBusquedaEstiloRegistro(
+            String etiquetaBusqueda,
+            Component campoBusqueda,
+            Component acciones,
+            JComponent fechaDesde,
+            JComponent fechaHasta,
+            String etiquetaPrincipal,
+            Component controlPrincipal,
+            JCheckBox grupoFamiliar,
+            JSpinner limite,
+            CampoFiltro... filtrosAdicionales) {
         AppV2FilterPanel filtros = new AppV2FilterPanel();
 
         JPanel contenido = new JPanel();
@@ -100,7 +121,7 @@ public final class AppV2ExpedientePanelFactory {
         JPanel filaEstado = new JPanel(new GridBagLayout());
         filaEstado.setOpaque(false);
         GridBagConstraints gbcEstado = constraintsRow();
-        filaEstado.add(crearCampoInline("Estado", estado, 240), gbcEstado);
+        filaEstado.add(crearCampoInline(etiquetaPrincipal, controlPrincipal, 240), gbcEstado);
 
         int columnaEstado = 1;
         if (filtrosAdicionales != null) {

@@ -9,6 +9,7 @@ import com.sdrerc.domain.dto.sdrercapp.AsignacionCartaRespuestaDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.AsignacionResultadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CargaLaboralAbogadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.CargaLaboralDocumentoDTO;
 import com.sdrerc.domain.dto.sdrercapp.CatalogoItemDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
 import com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO;
@@ -134,7 +135,9 @@ public class JPanelAsignacionV2 extends JPanel {
     private enum FiltroKpiCarga {
         TODOS,
         CON_CARGA,
-        SIN_CARGA
+        SIN_CARGA,
+        POR_VENCER,
+        VENCIDOS
     }
 
     private static final int COL_EXPANDIR = 0;
@@ -402,7 +405,7 @@ public class JPanelAsignacionV2 extends JPanel {
             "Aún no existen documentos analizados con respuesta pendiente.");
     private AppV2ColumnFilterSupport.Controller cartasRespuestaColumnFilterSupport;
     private final DefaultTableModel cargaLaboralModel = new DefaultTableModel(
-            new Object[]{"Abogado", "Supervisor", "Análisis", "Verificación", "Ejecución", "Por vencer", "Vencidos"}, 0) {
+            new Object[]{"Abogado", "Análisis", "Verificación", "Ejecución"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -458,6 +461,32 @@ public class JPanelAsignacionV2 extends JPanel {
     private final MetricCardV2 cardCargaConAsignacion = new MetricCardV2("Con carga", "0", "Con solicitudes asignadas", AppV2Theme.TEAL);
     private final MetricCardV2 cardCargaSinAsignacion = new MetricCardV2("Sin carga", "0", "Disponibles", AppV2Theme.WARNING);
     private final MetricCardV2 cardCargaSolicitudes = new MetricCardV2("Solicitudes", "0", "Carga total asignada", AppV2Theme.INDIGO);
+    private final MetricCardV2 cardCargaPorVencer = new MetricCardV2("Por vencer", "0", "0 a 5 días hábiles", AppV2Theme.WARNING);
+    private final MetricCardV2 cardCargaVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
+    private final AppV2SearchField txtBusquedaCarga = new AppV2SearchField("Buscar abogado", 22);
+    private final PremiumDateFieldV2 fechaVencimientoDesdeCarga = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaVencimientoHastaCarga = new PremiumDateFieldV2();
+    private final JComboBox<String> cmbAbogadoCarga = new JComboBox<String>();
+    private final JComboBox<String> cmbSupervisorCarga = new JComboBox<String>();
+    private final JSpinner spnLimiteCarga = new JSpinner(new SpinnerNumberModel(100, 1, 300, 50));
+    private final JButton btnBuscarCarga = new JButton("Buscar");
+    private final JButton btnLimpiarCarga = new JButton("Limpiar");
+    private final List<CargaLaboralAbogadoDTO> cargasLaboralesFiltradas = new ArrayList<>();
+    private final DefaultTableModel documentosCargaModel = new DefaultTableModel(
+            new Object[]{"N° Expediente", "Etapa", "Estado", "Días"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable documentosCargaTable = new AppV2Table(documentosCargaModel);
+    private final AppV2TablePanel documentosCargaTablePanel = new AppV2TablePanel(
+            documentosCargaTable,
+            "Sin documentos para mostrar",
+            "Este abogado no tiene expedientes en Análisis, Verificación o Ejecución.");
+    private final JLabel lblEstadoDetalleCarga = new JLabel("Seleccione un abogado en la grilla para ver su detalle.");
+    private AppV2SideActionPanel panelDetalleCarga;
+    private AppV2OperationalSplitPanel splitCargaAbogados;
     private AppV2SideActionPanel panelAsignacion;
     private AppV2SideActionPanel panelDatosExpediente;
     private AppV2SideActionPanel panelAsociar;
@@ -536,6 +565,7 @@ public class JPanelAsignacionV2 extends JPanel {
         configurarTablaAsignacionMultiple();
         configurarTablaBandejaCartasRespuesta();
         configurarTablaCargaLaboral();
+        configurarTablaDocumentosCarga();
         configurarEventos();
         configurarKpisInteractivos();
         restaurarFechasBusqueda();
@@ -567,11 +597,13 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearHeaderCargaAbogados() {
-        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 0);
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 6, 12, 0);
         metricas.add(cardCargaAbogados);
         metricas.add(cardCargaConAsignacion);
         metricas.add(cardCargaSinAsignacion);
         metricas.add(cardCargaSolicitudes);
+        metricas.add(cardCargaPorVencer);
+        metricas.add(cardCargaVencidos);
         return metricas;
     }
 
@@ -664,9 +696,59 @@ public class JPanelAsignacionV2 extends JPanel {
     private JPanel crearContenidoBandejaCargaAbogados() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setOpaque(false);
-        panel.add(crearHeaderCargaAbogados(), BorderLayout.NORTH);
-        panel.add(crearBandejaCargaAbogados(), BorderLayout.CENTER);
+        JPanel topeCarga = new JPanel(new BorderLayout(0, 8));
+        topeCarga.setOpaque(false);
+        topeCarga.add(crearHeaderCargaAbogados(), BorderLayout.NORTH);
+        topeCarga.add(crearBuscadorCarga(), BorderLayout.CENTER);
+        panel.add(topeCarga, BorderLayout.NORTH);
+
+        panelDetalleCarga = crearPanelDetalleCarga();
+        splitCargaAbogados = new AppV2OperationalSplitPanel(
+                crearBandejaCargaAbogados(),
+                panelDetalleCarga,
+                0,
+                PANEL_ASIGNACION_ANCHO_MINIMO,
+                PANEL_ASIGNACION_ANCHO_NORMAL);
+        panel.add(splitCargaAbogados, BorderLayout.CENTER);
         return panel;
+    }
+
+    private JPanel crearBuscadorCarga() {
+        configurarControlesCarga();
+        JPanel acciones = AppV2ActionPanel.right();
+        acciones.add(btnBuscarCarga);
+        acciones.add(btnLimpiarCarga);
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusquedaCarga,
+                acciones,
+                fechaVencimientoDesdeCarga,
+                fechaVencimientoHastaCarga,
+                "Abogado",
+                cmbAbogadoCarga,
+                null,
+                spnLimiteCarga,
+                new AppV2ExpedientePanelFactory.CampoFiltro("Supervisor", cmbSupervisorCarga));
+    }
+
+    private AppV2SideActionPanel crearPanelDetalleCarga() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Detalle de carga", new Runnable() {
+            @Override
+            public void run() {
+                cerrarPanelDetalleCarga();
+            }
+        });
+        panel.setAccentColor(AppV2Theme.INDIGO);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(documentosCargaTablePanel);
+        section.setStatus(lblEstadoDetalleCarga);
+        panel.addSection(section);
+        return panel;
+    }
+
+    private void cerrarPanelDetalleCarga() {
+        if (splitCargaAbogados != null) {
+            splitCargaAbogados.setSideVisible(false);
+        }
     }
 
     private JPanel crearBuscador() {
@@ -1005,13 +1087,22 @@ public class JPanelAsignacionV2 extends JPanel {
         cargaLaboralTable.setGridColor(AppV2Theme.BORDER);
         cargaLaboralTable.setShowVerticalLines(false);
         cargaLaboralTable.setIntercellSpacing(new Dimension(0, 1));
-        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 220, 180, 100, 110, 100, 92, 92);
+        AppV2TableColumnSizer.applyWidths(cargaLaboralTable, 260, 150, 150, 150);
         AppV2ColumnFilterSupport.install(
                 "Asignacion.CargaLaboral",
                 cargaLaboralTable,
                 cargaLaboralTablePanel.getScrollPane(),
                 cargaLaboralTablePanel.getScrollPane(),
                 null);
+        cargaLaboralTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int viewRow = cargaLaboralTable.rowAtPoint(e.getPoint());
+                if (e.getClickCount() == 2 && viewRow >= 0) {
+                    abrirDetalleCarga(cargaLaboralTable.convertRowIndexToModel(viewRow));
+                }
+            }
+        });
     }
 
     private static int[] calcularPosicionesLenguetas(int count, int tabHeight, int gap, int containerHeight, int topMargin) {
@@ -2304,6 +2395,8 @@ public class JPanelAsignacionV2 extends JPanel {
         cardCargaConAsignacion.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.CON_CARGA));
         cardCargaSinAsignacion.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.SIN_CARGA));
         cardCargaSolicitudes.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.TODOS));
+        cardCargaPorVencer.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.POR_VENCER));
+        cardCargaVencidos.setOnClick(() -> activarKpiCarga(FiltroKpiCarga.VENCIDOS));
 
         marcarKpisBandeja();
         marcarKpisCartas();
@@ -2334,7 +2427,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void activarKpiCarga(FiltroKpiCarga filtro) {
         kpiCargaActiva = filtro;
-        List<CargaLaboralAbogadoDTO> visibles = filtrarCargaLaboralKpi(cargasLaborales);
+        List<CargaLaboralAbogadoDTO> visibles = filtrarCargaLaboralKpi(cargasLaboralesFiltradas);
         cargarCargaLaboralModel(visibles);
         marcarKpisCarga();
     }
@@ -2361,6 +2454,8 @@ public class JPanelAsignacionV2 extends JPanel {
         cardCargaConAsignacion.setSelected(kpiCargaActiva == FiltroKpiCarga.CON_CARGA);
         cardCargaSinAsignacion.setSelected(kpiCargaActiva == FiltroKpiCarga.SIN_CARGA);
         cardCargaSolicitudes.setSelected(kpiCargaActiva == FiltroKpiCarga.TODOS);
+        cardCargaPorVencer.setSelected(kpiCargaActiva == FiltroKpiCarga.POR_VENCER);
+        cardCargaVencidos.setSelected(kpiCargaActiva == FiltroKpiCarga.VENCIDOS);
     }
 
     private List<AsignacionCartaRespuestaDTO> filtrarCartasKpi(List<AsignacionCartaRespuestaDTO> items) {
@@ -2459,6 +2554,10 @@ public class JPanelAsignacionV2 extends JPanel {
             if (kpiCargaActiva == FiltroKpiCarga.CON_CARGA && item.getCargaTotal() > 0) {
                 filtrados.add(item);
             } else if (kpiCargaActiva == FiltroKpiCarga.SIN_CARGA && item.getCargaTotal() == 0) {
+                filtrados.add(item);
+            } else if (kpiCargaActiva == FiltroKpiCarga.POR_VENCER && item.getPorVencer() > 0) {
+                filtrados.add(item);
+            } else if (kpiCargaActiva == FiltroKpiCarga.VENCIDOS && item.getVencidos() > 0) {
                 filtrados.add(item);
             }
         }
@@ -3752,12 +3851,9 @@ public class JPanelAsignacionV2 extends JPanel {
                 cargaLaboralFilasActuales.add(carga);
                 cargaLaboralModel.addRow(new Object[]{
                     valorUi(carga.getAbogado()),
-                    valorUi(carga.getSupervisor()),
                     carga.getEnAnalisis(),
                     carga.getEnVerificacion(),
-                    carga.getEnEjecucion(),
-                    carga.getPorVencer(),
-                    carga.getVencidos()
+                    carga.getEnEjecucion()
                 });
             }
         }
@@ -3775,6 +3871,73 @@ public class JPanelAsignacionV2 extends JPanel {
         cargaLaboralTablePanel.setEmpty(true);
         lblCargaLaboralEquipo.setText("Carga laboral general de abogados activos.");
         lblCargaLaboralAyuda.setText("Indicadores informativos para apoyar la asignación; no bloquean la decisión.");
+    }
+
+    private void configurarTablaDocumentosCarga() {
+        documentosCargaTable.setRowHeight(30);
+        documentosCargaTable.setAutoCreateRowSorter(false);
+        documentosCargaTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        documentosCargaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        documentosCargaTable.getTableHeader().setReorderingAllowed(false);
+        documentosCargaTable.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        documentosCargaTable.setDefaultRenderer(Object.class, new DocumentoCargaRenderer());
+        documentosCargaTable.setGridColor(AppV2Theme.BORDER);
+        documentosCargaTable.setShowVerticalLines(false);
+        documentosCargaTable.setIntercellSpacing(new Dimension(0, 1));
+        AppV2TableColumnSizer.applyWidths(documentosCargaTable, 170, 120, 140, 90);
+    }
+
+    private void abrirDetalleCarga(int modelRow) {
+        if (modelRow < 0 || modelRow >= cargaLaboralFilasActuales.size() || panelDetalleCarga == null) {
+            return;
+        }
+        CargaLaboralAbogadoDTO carga = cargaLaboralFilasActuales.get(modelRow);
+        panelDetalleCarga.setSubtitle(carga.getAbogado());
+        cargarDocumentosCarga(carga.getIdUsuario());
+        if (splitCargaAbogados != null) {
+            splitCargaAbogados.setSideVisible(true);
+        }
+    }
+
+    private void cargarDocumentosCarga(final Long idUsuario) {
+        documentosCargaModel.setRowCount(0);
+        documentosCargaTablePanel.setEmpty(true);
+        lblEstadoDetalleCarga.setText("Cargando documentos...");
+        if (idUsuario == null) {
+            lblEstadoDetalleCarga.setText("No se pudo identificar al abogado seleccionado.");
+            return;
+        }
+        SwingWorker<List<CargaLaboralDocumentoDTO>, Void> worker = new SwingWorker<List<CargaLaboralDocumentoDTO>, Void>() {
+            @Override
+            protected List<CargaLaboralDocumentoDTO> doInBackground() throws Exception {
+                return usuarioService.listarDocumentosPorAbogado(idUsuario);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<CargaLaboralDocumentoDTO> documentos = get();
+                    documentosCargaModel.setRowCount(0);
+                    for (CargaLaboralDocumentoDTO doc : documentos) {
+                        documentosCargaModel.addRow(new Object[]{
+                            valorUi(doc.getNumeroExpediente()),
+                            valorUi(doc.getEtapa()),
+                            valorUi(doc.getEstado()),
+                            doc.getDiasRestantes()
+                        });
+                    }
+                    documentosCargaTablePanel.setEmpty(documentosCargaModel.getRowCount() == 0);
+                    lblEstadoDetalleCarga.setText(documentos.isEmpty()
+                            ? "Este abogado no tiene expedientes en Análisis, Verificación o Ejecución."
+                            : documentos.size() + " documento(s) encontrados.");
+                } catch (Exception ex) {
+                    documentosCargaModel.setRowCount(0);
+                    documentosCargaTablePanel.setEmpty(true);
+                    lblEstadoDetalleCarga.setText("No se pudo cargar el detalle de carga.");
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void actualizarPanelSeleccion() {
@@ -4545,8 +4708,10 @@ public class JPanelAsignacionV2 extends JPanel {
                     List<CargaLaboralAbogadoDTO> cargas = get();
                     cargasLaborales.clear();
                     cargasLaborales.addAll(cargas);
-                    cargarCargaLaboralModel(filtrarCargaLaboralKpi(cargas));
-                    actualizarMetricasCargaLaboral(cargas);
+                    poblarCombosCarga(cargas);
+                    cargasLaboralesFiltradas.clear();
+                    cargasLaboralesFiltradas.addAll(cargas);
+                    renderizarCargaLaboral();
                 } catch (Exception ex) {
                     cargaLaboralModel.setRowCount(0);
                     cargaLaboralTablePanel.setEmpty(true);
@@ -4557,15 +4722,155 @@ public class JPanelAsignacionV2 extends JPanel {
         worker.execute();
     }
 
+    private void poblarCombosCarga(List<CargaLaboralAbogadoDTO> cargas) {
+        java.util.Set<String> abogados = new java.util.TreeSet<String>();
+        java.util.Set<String> supervisores = new java.util.TreeSet<String>();
+        if (cargas != null) {
+            for (CargaLaboralAbogadoDTO item : cargas) {
+                if (hasTextUi(item.getAbogado())) {
+                    abogados.add(item.getAbogado());
+                }
+                if (hasTextUi(item.getSupervisor())) {
+                    supervisores.add(item.getSupervisor());
+                }
+            }
+        }
+        Object abogadoPrevio = cmbAbogadoCarga.getSelectedItem();
+        Object supervisorPrevio = cmbSupervisorCarga.getSelectedItem();
+        cmbAbogadoCarga.removeAllItems();
+        cmbAbogadoCarga.addItem("Todos");
+        for (String abogado : abogados) {
+            cmbAbogadoCarga.addItem(abogado);
+        }
+        cmbSupervisorCarga.removeAllItems();
+        cmbSupervisorCarga.addItem("Todos");
+        for (String supervisor : supervisores) {
+            cmbSupervisorCarga.addItem(supervisor);
+        }
+        if (abogadoPrevio != null) {
+            cmbAbogadoCarga.setSelectedItem(abogadoPrevio);
+        }
+        if (supervisorPrevio != null) {
+            cmbSupervisorCarga.setSelectedItem(supervisorPrevio);
+        }
+    }
+
+    private void renderizarCargaLaboral() {
+        cargarCargaLaboralModel(filtrarCargaLaboralKpi(cargasLaboralesFiltradas));
+        actualizarMetricasCargaLaboral(cargasLaboralesFiltradas);
+    }
+
+    private void aplicarFiltrosCarga() {
+        final String texto = normalizarTexto(txtBusquedaCarga.getText());
+        Object abogadoSel = cmbAbogadoCarga.getSelectedItem();
+        Object supervisorSel = cmbSupervisorCarga.getSelectedItem();
+        final String abogado = (abogadoSel == null || "Todos".equals(abogadoSel)) ? null : abogadoSel.toString();
+        final String supervisor = (supervisorSel == null || "Todos".equals(supervisorSel)) ? null : supervisorSel.toString();
+        final int limite = (Integer) spnLimiteCarga.getValue();
+        final LocalDate desde = fechaSeleccionada(fechaVencimientoDesdeCarga);
+        final LocalDate hasta = fechaSeleccionada(fechaVencimientoHastaCarga);
+
+        if (desde == null && hasta == null) {
+            aplicarFiltrosCargaConIds(texto, abogado, supervisor, limite, null);
+            return;
+        }
+        lblEstadoCarga.setText("Aplicando filtros...");
+        SwingWorker<Set<Long>, Void> worker = new SwingWorker<Set<Long>, Void>() {
+            @Override
+            protected Set<Long> doInBackground() throws Exception {
+                return usuarioService.listarIdsUsuarioConVencimientoEnRango(desde, hasta);
+            }
+
+            @Override
+            protected void done() {
+                Set<Long> ids;
+                try {
+                    ids = get();
+                } catch (Exception ex) {
+                    ids = new HashSet<Long>();
+                }
+                aplicarFiltrosCargaConIds(texto, abogado, supervisor, limite, ids);
+            }
+        };
+        worker.execute();
+    }
+
+    private void aplicarFiltrosCargaConIds(String texto, String abogado, String supervisor, int limite, Set<Long> idsRangoFecha) {
+        List<CargaLaboralAbogadoDTO> filtrados = new ArrayList<CargaLaboralAbogadoDTO>();
+        for (CargaLaboralAbogadoDTO item : cargasLaborales) {
+            if (!texto.isEmpty() && !normalizarTexto(item.getAbogado()).contains(texto)) {
+                continue;
+            }
+            if (abogado != null && !abogado.equals(item.getAbogado())) {
+                continue;
+            }
+            if (supervisor != null && !supervisor.equals(item.getSupervisor())) {
+                continue;
+            }
+            if (idsRangoFecha != null && !idsRangoFecha.contains(item.getIdUsuario())) {
+                continue;
+            }
+            filtrados.add(item);
+        }
+        if (filtrados.size() > limite) {
+            filtrados = new ArrayList<CargaLaboralAbogadoDTO>(filtrados.subList(0, limite));
+        }
+        cargasLaboralesFiltradas.clear();
+        cargasLaboralesFiltradas.addAll(filtrados);
+        renderizarCargaLaboral();
+        lblEstadoCarga.setText(cargasLaboralesFiltradas.size() + " abogado(s) encontrados.");
+    }
+
+    private void limpiarFiltrosCarga() {
+        txtBusquedaCarga.setText("");
+        fechaVencimientoDesdeCarga.setDate(null);
+        fechaVencimientoHastaCarga.setDate(null);
+        cmbAbogadoCarga.setSelectedIndex(0);
+        cmbSupervisorCarga.setSelectedIndex(0);
+        spnLimiteCarga.setValue(100);
+        kpiCargaActiva = FiltroKpiCarga.TODOS;
+        cargasLaboralesFiltradas.clear();
+        cargasLaboralesFiltradas.addAll(cargasLaborales);
+        renderizarCargaLaboral();
+        marcarKpisCarga();
+        lblEstadoCarga.setText("Filtros limpiados.");
+    }
+
+    private void configurarControlesCarga() {
+        txtBusquedaCarga.setPreferredSize(new Dimension(420, 36));
+        txtBusquedaCarga.setMinimumSize(new Dimension(260, 36));
+        txtBusquedaCarga.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        Dimension fechaSize = new Dimension(250, 42);
+        fechaVencimientoDesdeCarga.setPreferredSize(fechaSize);
+        fechaVencimientoDesdeCarga.setMinimumSize(new Dimension(210, 42));
+        fechaVencimientoHastaCarga.setPreferredSize(fechaSize);
+        fechaVencimientoHastaCarga.setMinimumSize(new Dimension(210, 42));
+        cmbAbogadoCarga.setPreferredSize(new Dimension(190, 34));
+        cmbAbogadoCarga.setMinimumSize(new Dimension(160, 34));
+        cmbAbogadoCarga.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        cmbSupervisorCarga.setPreferredSize(new Dimension(190, 34));
+        cmbSupervisorCarga.setMinimumSize(new Dimension(160, 34));
+        cmbSupervisorCarga.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        spnLimiteCarga.setPreferredSize(new Dimension(88, 34));
+        AppV2Theme.estilizarBotonPrimario(btnBuscarCarga);
+        AppV2Theme.estilizarBotonSecundario(btnLimpiarCarga);
+        btnBuscarCarga.addActionListener(e -> aplicarFiltrosCarga());
+        btnLimpiarCarga.addActionListener(e -> limpiarFiltrosCarga());
+    }
+
     private void actualizarMetricasCargaLaboral(List<CargaLaboralAbogadoDTO> cargas) {
         int activos = 0;
         int conCarga = 0;
         int sinCarga = 0;
         int totalSolicitudes = 0;
+        int totalPorVencer = 0;
+        int totalVencidos = 0;
         if (cargas != null) {
             activos = cargas.size();
             for (CargaLaboralAbogadoDTO carga : cargas) {
                 totalSolicitudes += carga.getCargaTotal();
+                totalPorVencer += carga.getPorVencer();
+                totalVencidos += carga.getVencidos();
                 if (carga.getCargaTotal() > 0) {
                     conCarga++;
                 } else {
@@ -4577,6 +4882,8 @@ public class JPanelAsignacionV2 extends JPanel {
         cardCargaConAsignacion.setValue(String.valueOf(conCarga));
         cardCargaSinAsignacion.setValue(String.valueOf(sinCarga));
         cardCargaSolicitudes.setValue(String.valueOf(totalSolicitudes));
+        cardCargaPorVencer.setValue(String.valueOf(totalPorVencer));
+        cardCargaVencidos.setValue(String.valueOf(totalVencidos));
         marcarKpisCarga();
     }
 
@@ -6375,15 +6682,10 @@ public class JPanelAsignacionV2 extends JPanel {
                 int column) {
             Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
-            setHorizontalAlignment(column >= 2 ? SwingConstants.CENTER : SwingConstants.LEFT);
+            setHorizontalAlignment(column >= 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
             setBackground(isSelected ? TABLE_SELECTION_BACKGROUND : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
-            if (!isSelected && column == 6 && value instanceof Number && ((Number) value).intValue() > 0) {
-                setForeground(AppV2Theme.ERROR);
-                setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-            } else {
-                setForeground(AppV2Theme.TEXT_PRIMARY);
-                setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
-            }
+            setForeground(AppV2Theme.TEXT_PRIMARY);
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
             setToolTipText(tooltipCargaLaboral(table, row, column));
             return component;
         }
@@ -6394,7 +6696,7 @@ public class JPanelAsignacionV2 extends JPanel {
      * consulta ya formateado desde el DAO y se expone como tooltip, sin agregar columnas.
      */
     private String tooltipCargaLaboral(JTable table, int row, int column) {
-        if (column != 2 && column != 3 && column != 4) {
+        if (column != 1 && column != 2 && column != 3) {
             return null;
         }
         int modelRow = table.convertRowIndexToModel(row);
@@ -6404,10 +6706,10 @@ public class JPanelAsignacionV2 extends JPanel {
         CargaLaboralAbogadoDTO carga = cargaLaboralFilasActuales.get(modelRow);
         String detalle;
         String vacio;
-        if (column == 2) {
+        if (column == 1) {
             detalle = carga.getAnalisisDetalle();
             vacio = "Sin solicitudes en Análisis.";
-        } else if (column == 3) {
+        } else if (column == 2) {
             detalle = carga.getVerificacionDetalle();
             vacio = "Sin solicitudes en Verificación.";
         } else {
@@ -6415,6 +6717,35 @@ public class JPanelAsignacionV2 extends JPanel {
             vacio = "Sin solicitudes en Ejecución.";
         }
         return detalle == null || detalle.trim().isEmpty() ? vacio : detalle;
+    }
+
+    private class DocumentoCargaRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+            int modelColumn = table.convertColumnIndexToModel(column);
+            Color cellBackground = isSelected
+                    ? TABLE_SELECTION_BACKGROUND
+                    : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            if (modelColumn == 3) {
+                return StatusBadgeV2.forDias(value, cellBackground);
+            }
+            if (!isSelected && modelColumn == 2) {
+                return StatusBadgeV2.forEstado(value == null ? "" : value.toString());
+            }
+            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
+            setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            setBackground(cellBackground);
+            setForeground(AppV2Theme.TEXT_PRIMARY);
+            return component;
+        }
     }
 
     private class FechaCartaCellEditor extends AbstractCellEditor implements TableCellEditor {
