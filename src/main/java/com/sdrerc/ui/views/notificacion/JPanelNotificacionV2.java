@@ -1241,6 +1241,25 @@ public class JPanelNotificacionV2 extends JPanel {
 
         section.add(lblTitulo, BorderLayout.NORTH);
         section.add(content, BorderLayout.CENTER);
+
+        // DIAGNOSTICO TEMPORAL (05/08/2026): tras 3 intentos fallidos de fix sin poder correr la
+        // app, se agrega esta instrumentacion visible para medir en vivo el ancho real que recibe
+        // cada contenedor de la cadena. Quitar en cuanto se identifique la causa real.
+        section.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                java.awt.Container padreSections = section.getParent();
+                java.awt.Container abueloScroll = padreSections == null ? null : padreSections.getParent();
+                StringBuilder diag = new StringBuilder("Historial de asignación / reasignación  [DIAG ");
+                diag.append("section=").append(section.getWidth()).append("x").append(section.getHeight());
+                diag.append(" content=").append(content.getWidth()).append("x").append(content.getHeight());
+                diag.append(" sections=").append(padreSections == null ? "?" : padreSections.getWidth() + "x" + padreSections.getHeight());
+                diag.append(" scrollViewport=").append(abueloScroll == null ? "?" : abueloScroll.getWidth() + "x" + abueloScroll.getHeight());
+                diag.append(" cardAsig=").append(cardAsignacionAsigNotif == null ? "?" : cardAsignacionAsigNotif.getWidth() + "x" + cardAsignacionAsigNotif.getHeight());
+                diag.append("]");
+                lblTitulo.setText(diag.toString());
+            }
+        });
         return section;
     }
 
