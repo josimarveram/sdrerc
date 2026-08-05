@@ -1220,6 +1220,17 @@ public class JPanelNotificacionV2 extends JPanel {
      * funcional en {@link AppV2StepCardPanel}: titulo arriba, contenido al centro, sin
      * GridBagLayout de por medio), que siempre estira el contenido al 100% sin ambiguedad.
      */
+    /**
+     * Causa real confirmada con diagnostico en vivo (05/08/2026, ver historial de commits): el
+     * "sections" de {@link AppV2SideActionPanel} usa BoxLayout, que en el eje transversal NO
+     * estira cada hijo al ancho del contenedor (a diferencia de GridBagLayout con weightx o
+     * BorderLayout.CENTER) — cada hijo se renderiza a su propio ancho preferido. Los mini-paneles
+     * "Emision"/"Asignacion" solo "parecen" ocupar el 100% porque su contenido interno (tabla
+     * "Documentos seleccionados" a ~820px + relleno) ya es naturalmente asi de ancho. El bloque de
+     * Historial, con solo texto simple, nunca llega a ese ancho por si solo (medido: 901px de
+     * seccion propia vs 1314px del contenedor real). Fix: un listener de redimension del padre
+     * mantiene el ancho preferido de "content" sincronizado con el ancho real disponible.
+     */
     private JPanel crearHistorialAsignacionSeccionNotif() {
         tablaHistorialAsignacionNotif.setRowHeight(28);
         tablaHistorialAsignacionNotif.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
@@ -1238,26 +1249,24 @@ public class JPanelNotificacionV2 extends JPanel {
         content.setOpaque(false);
         content.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
         content.add(panelHistorialAsignacionNotif, BorderLayout.CENTER);
+        content.setPreferredSize(new Dimension(1200, 180));
 
         section.add(lblTitulo, BorderLayout.NORTH);
         section.add(content, BorderLayout.CENTER);
 
-        // DIAGNOSTICO TEMPORAL (05/08/2026): tras 3 intentos fallidos de fix sin poder correr la
-        // app, se agrega esta instrumentacion visible para medir en vivo el ancho real que recibe
-        // cada contenedor de la cadena. Quitar en cuanto se identifique la causa real.
-        section.addComponentListener(new java.awt.event.ComponentAdapter() {
+        section.addHierarchyBoundsListener(new java.awt.event.HierarchyBoundsAdapter() {
             @Override
-            public void componentResized(java.awt.event.ComponentEvent e) {
-                java.awt.Container padreSections = section.getParent();
-                java.awt.Container abueloScroll = padreSections == null ? null : padreSections.getParent();
-                StringBuilder diag = new StringBuilder("Historial de asignación / reasignación  [DIAG ");
-                diag.append("section=").append(section.getWidth()).append("x").append(section.getHeight());
-                diag.append(" content=").append(content.getWidth()).append("x").append(content.getHeight());
-                diag.append(" sections=").append(padreSections == null ? "?" : padreSections.getWidth() + "x" + padreSections.getHeight());
-                diag.append(" scrollViewport=").append(abueloScroll == null ? "?" : abueloScroll.getWidth() + "x" + abueloScroll.getHeight());
-                diag.append(" cardAsig=").append(cardAsignacionAsigNotif == null ? "?" : cardAsignacionAsigNotif.getWidth() + "x" + cardAsignacionAsigNotif.getHeight());
-                diag.append("]");
-                lblTitulo.setText(diag.toString());
+            public void ancestorResized(java.awt.event.HierarchyEvent e) {
+                java.awt.Container padre = section.getParent();
+                if (padre == null || padre.getWidth() <= 0) {
+                    return;
+                }
+                Dimension actual = content.getPreferredSize();
+                if (actual.width == padre.getWidth()) {
+                    return;
+                }
+                content.setPreferredSize(new Dimension(padre.getWidth(), actual.height));
+                section.revalidate();
             }
         });
         return section;
