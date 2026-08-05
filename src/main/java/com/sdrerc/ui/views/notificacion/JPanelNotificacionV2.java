@@ -1212,10 +1212,15 @@ public class JPanelNotificacionV2 extends JPanel {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Historial de asignación / reasignación");
         tablaHistorialAsignacionNotif.setRowHeight(28);
         tablaHistorialAsignacionNotif.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        AppV2TableColumnSizer.applyWidths(tablaHistorialAsignacionNotif, 110, 140, 130, 110, 130, 140, 90);
+        int[] anchosHistorial = new int[]{110, 140, 130, 110, 130, 140, 90};
+        AppV2TableColumnSizer.applyWidths(tablaHistorialAsignacionNotif, anchosHistorial);
+        int anchoTotalHistorial = 0;
+        for (int ancho : anchosHistorial) {
+            anchoTotalHistorial += ancho;
+        }
         JPanel content = new JPanel(new BorderLayout());
         content.setOpaque(false);
-        content.setPreferredSize(new Dimension(320, 180));
+        content.setPreferredSize(new Dimension(anchoTotalHistorial, 180));
         content.add(panelHistorialAsignacionNotif, BorderLayout.CENTER);
         section.addContent(content);
         return section;

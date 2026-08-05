@@ -1890,6 +1890,14 @@ Pedido del usuario con 3 requerimientos relacionados, guiados por el Excel `docs
 - Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`, `CLAUDE.md`.
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme visualmente que el botón queda fijo en el footer y que "Cancelar" cierra el panel. Sin SQL ejecutado ni datos de BD modificados.
 
+### Bloque "Historial de asignación/reasignación" a 100% de ancho en Panel de Asignación de Notificación (05/08/2026)
+
+- Pedido del usuario: el bloque "Historial de asignación / reasignación" del panel "Panel de Asignación y Firma" (Bandeja Asignación de Notificación) se veía a la mitad del ancho del panel, a diferencia de los demás bloques (mini-paneles Emisión/Asignación).
+- Causa: `crearHistorialAsignacionSeccionNotif()` envolvía la grilla en un `content` con `setPreferredSize(new Dimension(320, 180))` fijo, mismo valor heredado del patrón original de Asignación pero desactualizado desde que las columnas de "Documentos seleccionados" se ampliaron a 820px (ver entrada "responsive width" de esta misma sesión); al quedar el resto de bloques mucho más anchos que ese `320`, el bloque Historial se veía visiblemente más angosto en comparación.
+- Fix: el ancho de `content.setPreferredSize(...)` ahora se calcula sumando los anchos reales de las 7 columnas de `tablaHistorialAsignacionNotif` (110+140+130+110+130+140+90 = 850px) en vez de un valor fijo desactualizado, mismo criterio ya usado para "Documentos seleccionados" (`ajustarTamanoAsignacionMultipleNotif`).
+- Archivos: `src/main/java/com/sdrerc/ui/views/notificacion/JPanelNotificacionV2.java`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme visualmente que el bloque Historial ahora ocupa el ancho completo del panel. Sin SQL ejecutado ni datos de BD modificados.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
