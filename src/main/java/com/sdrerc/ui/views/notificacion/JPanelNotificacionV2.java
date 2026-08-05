@@ -317,6 +317,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JButton btnRegistrarSupervisionEmisionNotif = new JButton("Registrar Supervisión");
     private CardLayout panelEmisionCardsLayout;
     private JPanel panelEmisionCards;
+    private JPanel panelAccionesAsigNotif;
     private final DefaultTableModel historialAsignacionModelNotif = new DefaultTableModel(
             new Object[]{"Tipo", "Usuario", "Equipo", "Hoja de envío", "Fecha", "Asignado por", "Estado"}, 0) {
         @Override
@@ -984,6 +985,35 @@ public class JPanelNotificacionV2 extends JPanel {
         cardEmisionAsigNotif.repaint();
         cardAsignacionAsigNotif.revalidate();
         cardAsignacionAsigNotif.repaint();
+        actualizarBotonRegistrarSupervisionVisible(segundoMomento);
+    }
+
+    /**
+     * "Registrar Supervisión" vive en el footer fijo del panel (junto a "Generar asignación"/
+     * "Cancelar", encima de "Generar asignación"), no dentro del contenido scrolleable de
+     * "Emisión", para que quede siempre visible sin desplazarse (pedido explicito del usuario).
+     * Como el footer usa GridLayout (asigna espacio fijo por fila sin importar visibilidad), se
+     * agrega/quita el boton dinamicamente en vez de solo alternar setVisible, para no dejar un
+     * hueco en blanco en el primer momento (donde "Emisión" ni siquiera aplica).
+     */
+    private void actualizarBotonRegistrarSupervisionVisible(boolean visible) {
+        if (panelAccionesAsigNotif == null) {
+            return;
+        }
+        boolean presente = false;
+        for (Component componente : panelAccionesAsigNotif.getComponents()) {
+            if (componente == btnRegistrarSupervisionEmisionNotif) {
+                presente = true;
+                break;
+            }
+        }
+        if (visible && !presente) {
+            panelAccionesAsigNotif.add(btnRegistrarSupervisionEmisionNotif, 0);
+        } else if (!visible && presente) {
+            panelAccionesAsigNotif.remove(btnRegistrarSupervisionEmisionNotif);
+        }
+        panelAccionesAsigNotif.revalidate();
+        panelAccionesAsigNotif.repaint();
     }
 
     private void actualizarSubtituloPanelesAsigNotif() {
@@ -1097,10 +1127,12 @@ public class JPanelNotificacionV2 extends JPanel {
 
         JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 8));
         acciones.setOpaque(false);
+        AppV2Theme.estilizarBotonPrimario(btnRegistrarSupervisionEmisionNotif);
         AppV2Theme.estilizarBotonPrimario(btnGenerarAsignacionNotif);
         acciones.add(btnGenerarAsignacionNotif);
         acciones.add(btnCancelarAsignacionNotif);
         panel.setFooter(acciones);
+        panelAccionesAsigNotif = acciones;
 
         cmbEquipoNotif.addActionListener(e -> {
             if (!cargandoCombosAsignacionNotif) {
@@ -1124,6 +1156,7 @@ public class JPanelNotificacionV2 extends JPanel {
             modoReasignacionAsigNotif = false;
             tablaAsignacionNotif.repaint();
             actualizarPanelAsignacionSeleccionNotif();
+            cerrarPanelAsignacionNotif();
         });
         return panel;
     }
@@ -1363,12 +1396,6 @@ public class JPanelNotificacionV2 extends JPanel {
         panelEmisionCards.add(documentosFirmaTreePanel, CARD_EMISION_APROBADO);
         panelEmisionCards.add(crearBloqueObservadoEmisionNotif(), CARD_EMISION_OBSERVADO);
 
-        JPanel accionSupervision = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 8));
-        accionSupervision.setOpaque(false);
-        AppV2Theme.estilizarBotonPrimario(btnRegistrarSupervisionEmisionNotif);
-        accionSupervision.add(btnRegistrarSupervisionEmisionNotif);
-        accionSupervision.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         JPanel contenedor = new JPanel();
         contenedor.setOpaque(false);
         contenedor.setLayout(new BoxLayout(contenedor, BoxLayout.Y_AXIS));
@@ -1377,7 +1404,6 @@ public class JPanelNotificacionV2 extends JPanel {
         contenedor.add(resultadoSeccion);
         contenedor.add(Box.createVerticalStrut(4));
         contenedor.add(panelEmisionCards);
-        contenedor.add(accionSupervision);
 
         cmbResultadoEmisionNotif.addActionListener(e -> actualizarModoResultadoEmisionNotif());
         btnRegistrarSupervisionEmisionNotif.addActionListener(e -> registrarSupervisionEmisionNotif());
