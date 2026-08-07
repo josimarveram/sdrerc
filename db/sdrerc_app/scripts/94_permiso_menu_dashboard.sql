@@ -8,6 +8,13 @@
    59_catalogo_permisos_menu.sql), el permiso MENU_DASHBOARD no existia
    todavia porque el modulo se creo despues de ese script.
 
+   Ubicacion en el menu: bloque propio "Dashboard y Reportes" (no dentro de
+   "Inicio" ni de "Administracion"), para que quede como vista analitica de
+   alto nivel, separada de la configuracion/catalogos que vive en
+   Administracion. El campo `modulo` del permiso refleja ese mismo nombre de
+   bloque, para que se agrupe igual en Administracion > Roles > "Permisos
+   del rol".
+
    Este script:
    1) Siembra el permiso MENU_DASHBOARD en el catalogo `permiso`.
    2) Lo otorga UNICAMENTE al rol ADMIN_SISTEMA (a diferencia de
@@ -25,7 +32,7 @@
 
 MERGE INTO permiso dst
 USING (
-  SELECT 'MENU_DASHBOARD' AS codigo, 'Ver Dashboard' AS nombre, 'Inicio' AS modulo FROM dual
+  SELECT 'MENU_DASHBOARD' AS codigo, 'Ver Dashboard' AS nombre, 'Dashboard y Reportes' AS modulo FROM dual
 ) src
 ON (UPPER(dst.codigo) = src.codigo)
 WHEN MATCHED THEN UPDATE

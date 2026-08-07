@@ -158,6 +158,9 @@ public class MenuPrincipalV2 extends JFrame {
         btnInicio = crearBotonMenu("Inicio", AppV2IconProvider.HOME);
         btnInicio.addActionListener(e -> mostrarInicio());
         opciones.add(btnInicio);
+        opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
+
+        opciones.add(crearSeccionMenu("Dashboard y Reportes"));
         btnDashboard = crearBotonMenu("Dashboard", AppV2IconProvider.DASHBOARD);
         btnDashboard.addActionListener(e -> mostrarDashboard(btnDashboard));
         aplicarPermiso(btnDashboard, PERMISO_MENU_DASHBOARD);
