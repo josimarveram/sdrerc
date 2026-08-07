@@ -1984,6 +1984,19 @@ Cambios:
 - Archivos: `pom.xml`, `DashboardResumenDTO.java`, `DashboardConteoDTO.java`, `DashboardTendenciaMensualDTO.java`, `DashboardDAO.java`, `DashboardService.java`, `JPanelDashboardV2.java`, `MenuPrincipalV2.java`, `AppV2IconProvider.java`, `icons/appv2/bar-chart-2.svg`, `94_permiso_menu_dashboard.sql`, `CLAUDE.md`.
 - Validacion: `mvn -q clean package -DskipTests` (sin `-o` la primera vez, para que Maven resolviera jfreechart) sin errores; el jar final (35 MB) incluye la dependencia nueva. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario abra el modulo como ADMIN_SISTEMA (tras ejecutar el script de permiso) y confirme visualmente los 5 graficos y los KPIs. **SQL no ejecutado**: el script de permiso queda creado, a la espera de autorizacion explicita para correrlo. Legacy y `OracleConnection.java` intactos.
 
+### Fix: NoClassDefFoundError de JFreeChart al correr `run-v2.ps1` (05/08/2026)
+
+Sintoma reportado por el usuario: al abrir el modulo Dashboard corriendo `.\run-v2.ps1`, `java.lang.NoClassDefFoundError: org/jfree/data/category/CategoryDataset`.
+
+Causa: `run-v2.ps1` es un launcher de desarrollo que arma el classpath a mano (`$jars`, lista fija de rutas a jars del repositorio Maven local `~/.m2/repository/...`), NO via `mvn dependency:build-classpath` ni el jar shaded (`target/SDRERC-V2.jar`, que si incluye todas las dependencias via `maven-shade-plugin` y si tenia jfreechart correctamente empaquetado, verificado con `unzip -l` listando `org/jfree/data/category/CategoryDataset.class`). Al agregar JFreeChart al `pom.xml` en la tarea anterior, esa lista manual de `run-v2.ps1` quedo desactualizada (el jar de jfreechart nunca se agrego a `$jars`), asi que el classpath de este launcher especifico seguia sin la libreria aunque `mvn package` ya la incluyera correctamente en el jar final.
+
+Fix: se agrego una entrada nueva a `$jars` en `run-v2.ps1` apuntando a `~/.m2/repository/org/jfree/jfreechart/1.5.4/jfreechart-1.5.4.jar`. Se confirmo que JFreeChart 1.5.4 no tiene dependencias transitivas necesarias en runtime (su unica dependencia no-test es `servlet-api` con `scope=provided`, revisado en su `.pom` dentro del repositorio local), asi que un unico jar nuevo basta, sin necesidad de agregar mas lineas.
+
+Leccion para futuras dependencias nuevas: agregar una libreria al `pom.xml` no alcanza si tambien se usa `run-v2.ps1` para desarrollo local; hay que sumar el jar correspondiente (y sus transitivas si las tuviera) a la lista `$jars` de ese script tambien. El jar shaded (`mvn package` + `java -jar target/SDRERC-V2.jar`) y el despliegue cliente-servidor LAN no tienen este problema porque ya incluyen dependencias automaticamente.
+
+- Archivos: `run-v2.ps1`.
+- Validacion: se confirmo con `Test-Path` que el jar de jfreechart existe en la ruta agregada y que `target\classes\...\JPanelDashboardV2.class` ya estaba compilado. No se pudo relanzar `run-v2.ps1` desde este entorno (sin GUI); pendiente que el usuario confirme que el Dashboard abre sin el error.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

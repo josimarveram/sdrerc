@@ -58,7 +58,10 @@ $jars = @(
 
     # Jakarta Mail: envio de codigo OTP por correo (2FA, login)
     (Join-Path $env:USERPROFILE ".m2\repository\com\sun\mail\jakarta.mail\2.0.1\jakarta.mail-2.0.1.jar"),
-    (Join-Path $env:USERPROFILE ".m2\repository\com\sun\activation\jakarta.activation\2.0.1\jakarta.activation-2.0.1.jar")
+    (Join-Path $env:USERPROFILE ".m2\repository\com\sun\activation\jakarta.activation\2.0.1\jakarta.activation-2.0.1.jar"),
+
+    # JFreeChart: graficos del modulo Dashboard (sin dependencias transitivas en runtime)
+    (Join-Path $env:USERPROFILE ".m2\repository\org\jfree\jfreechart\1.5.4\jfreechart-1.5.4.jar")
 )
 
 $missing = $jars | Where-Object { -not (Test-Path $_) }
