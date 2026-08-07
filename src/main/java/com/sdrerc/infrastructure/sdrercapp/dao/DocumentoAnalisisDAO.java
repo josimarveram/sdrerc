@@ -1492,19 +1492,64 @@ public class DocumentoAnalisisDAO {
             throw new IllegalArgumentException("Seleccione el tipo de documento de la carta de respuesta.");
         }
         try (Connection conn = SdrercAppConnection.getConnection()) {
-            Long idTipoDocumento = catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, carta.getTipoDocumentoCodigo());
-            if (idTipoDocumento == null) {
-                throw new SQLException("No se encontró el tipo de documento: " + carta.getTipoDocumentoCodigo() + ".");
-            }
-            boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
-            boolean soportaOposicion = soportaExisteOposicion(conn);
-            Long idDocumento = carta.getIdDocumentoAnalizado();
-            if (idDocumento == null || idDocumento.longValue() < 0L) {
-                insertarCartaRespuesta(conn, idExpediente, carta, idTipoDocumento, soportaAnalisisMultiple, soportaOposicion, idUsuario);
-            } else {
-                actualizarCartaRespuesta(conn, idExpediente, carta, soportaOposicion, idUsuario);
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                Long idTipoDocumento = catalogoLookupDAO.obtenerTipoDocumentoAdjuntoId(conn, carta.getTipoDocumentoCodigo());
+                if (idTipoDocumento == null) {
+                    throw new SQLException("No se encontró el tipo de documento: " + carta.getTipoDocumentoCodigo() + ".");
+                }
+                boolean soportaAnalisisMultiple = soportaAnalisisMultiple(conn);
+                boolean soportaOposicion = soportaExisteOposicion(conn);
+                Long idDocumento = carta.getIdDocumentoAnalizado();
+                if (idDocumento == null || idDocumento.longValue() < 0L) {
+                    insertarCartaRespuesta(conn, idExpediente, carta, idTipoDocumento, soportaAnalisisMultiple, soportaOposicion, idUsuario);
+                } else {
+                    actualizarCartaRespuesta(conn, idExpediente, carta, soportaOposicion, idUsuario);
+                }
+                actualizarFechaPublicacionCarta(conn, idExpediente, carta.getFechaPublicacion(), idUsuario);
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
             }
         }
+    }
+
+    /**
+     * Persiste la "Fech.Publ.Edicto" editada desde la grilla "Documentos de cartas de respuesta"
+     * (CartaRespuestaTreeGridPanelV2, pestañas "Cartas de Rpta" y "Documentos" de Asignación).
+     * Reutiliza EXPEDIENTE_PUBLICACION (misma tabla que lee el panel de solo lectura "Publicación
+     * prevista" de Análisis) via los helpers ya existentes {@link #insertarPublicacionPreparada}/
+     * {@link #actualizarPublicacionPreparada(Connection, Long, LocalDate, Long)} — ya estaban
+     * escritos (con el comentario "...desde Asignación - Cartas de respuesta" en el INSERT) pero
+     * nunca se llamaban desde ningún lado: ni desde aquí (bug reportado, la fecha se mostraba en
+     * la grilla via un JOIN de lectura pero el icono Guardar nunca la escribía), ni desde
+     * {@link #actualizarPublicacionPreparada(Connection, Long, DocumentoAnalizadoDTO, Long)} (esa
+     * variante tampoco tenía ningún llamador activo: {@code actualizarRespuestaDocumentoAnalizado}
+     * y {@code DocumentoAnalisisService.guardarRespuestaDocumentoAnalizado} existen pero ningún
+     * panel los invoca actualmente). Esta variante nueva NO toca EXPEDIENTE.requiere_publicacion
+     * a propósito: ese flag lo gestiona el panel de Análisis (checkbox "Requiere publicación"),
+     * que esta grilla no expone, y esta pantalla no debe pisarlo con un valor asumido.
+     */
+    private void actualizarFechaPublicacionCarta(
+            Connection conn, Long idExpediente, LocalDate fechaPublicacion, Long idUsuario) throws SQLException {
+        if (!soportaPublicacionPreparada(conn)) {
+            return;
+        }
+        Long idPublicacion = obtenerPublicacionActiva(conn, idExpediente);
+        if (idPublicacion == null) {
+            if (fechaPublicacion != null) {
+                insertarPublicacionPreparada(conn, idExpediente, fechaPublicacion, idUsuario);
+            }
+            return;
+        }
+        actualizarPublicacionPreparada(conn, idPublicacion, fechaPublicacion, idUsuario);
     }
 
     private void insertarCartaRespuesta(

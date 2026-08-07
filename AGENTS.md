@@ -1997,6 +1997,20 @@ Leccion para futuras dependencias nuevas: agregar una libreria al `pom.xml` no a
 - Archivos: `run-v2.ps1`.
 - Validacion: se confirmo con `Test-Path` que el jar de jfreechart existe en la ruta agregada y que `target\classes\...\JPanelDashboardV2.class` ya estaba compilado. No se pudo relanzar `run-v2.ps1` desde este entorno (sin GUI); pendiente que el usuario confirme que el Dashboard abre sin el error.
 
+### Fix: "Fech.Publ.Edicto" no se guardaba en la grilla de Cartas de Respuesta de Asignación (05/08/2026)
+
+Reporte del usuario: en el panel de Cartas de Respuesta de Asignación (`CartaRespuestaTreeGridPanelV2`, pestañas "Cartas de Rpta" y "Documentos"), al editar la columna "Fech.Publ.Edicto" de la grilla hija y presionar el icono Guardar, el valor no quedaba guardado. El usuario pregunto explicitamente si hacia falta algun cambio de base de datos.
+
+Diagnostico: **no era un problema de base de datos** (la tabla `EXPEDIENTE_PUBLICACION` y la columna `EXPEDIENTE.requiere_publicacion` ya existen y ya se usan correctamente en otros lugares para leer esta misma fecha), sino un cableado de codigo incompleto. La columna se lee correctamente en `DocumentoAnalisisDAO.listarPorExpediente(...)` via un JOIN de solo lectura contra `EXPEDIENTE_PUBLICACION`, pero el metodo que efectivamente guarda desde esta grilla, `guardarCartaRespuesta(...)` -> `insertarCartaRespuesta(...)`/`actualizarCartaRespuesta(...)`, solo tocaba columnas de `EXPEDIENTE_DOCUMENTO_ANALIZADO` (confirmacion de respuesta, fecha de respuesta, hoja de envio) y nunca escribia en `EXPEDIENTE_PUBLICACION`. Curiosamente los helpers privados `insertarPublicacionPreparada`/`actualizarPublicacionPreparada(conn, idPublicacion, fecha, usuario)` ya existian, con un comentario literal `'Publicación preparada desde Asignación - Cartas de respuesta.'` hardcodeado en el INSERT — el codigo para esto ya estaba escrito hace tiempo, pero nunca se llamo desde ningun lado: ni desde `guardarCartaRespuesta` (bug reportado), ni desde el otro overload `actualizarPublicacionPreparada(conn, idExpediente, DocumentoAnalizadoDTO, usuario)` (ese solo lo invoca `actualizarRespuestaDocumentoAnalizado`/`DocumentoAnalisisService.guardarRespuestaDocumentoAnalizado`, que a su vez no tienen NINGUN llamador activo desde ningun panel de la UI — codigo huerfano tambien).
+
+Fix en `DocumentoAnalisisDAO.guardarCartaRespuesta(...)`:
+
+- Ahora envuelve el insert/update de la carta en una transaccion explicita (`setAutoCommit(false)` + commit/rollback, mismo patron que `actualizarRespuestaDocumentoAnalizado`) y, tras guardar la carta, llama a un metodo nuevo `actualizarFechaPublicacionCarta(conn, idExpediente, carta.getFechaPublicacion(), idUsuario)`.
+- `actualizarFechaPublicacionCarta` reutiliza `obtenerPublicacionActiva`/`insertarPublicacionPreparada`/`actualizarPublicacionPreparada(conn, idPublicacion, ...)` (los helpers ya existentes) para insertar o actualizar la fila de `EXPEDIENTE_PUBLICACION` del expediente. A diferencia, del overload usado por Analisis, **no toca `EXPEDIENTE.requiere_publicacion`** deliberadamente: ese flag lo gestiona el checkbox "Requiere publicación" del panel de Análisis, que esta grilla no expone, y esta pantalla no debe pisarlo con un valor asumido/hardcodeado.
+- Tambien maneja limpiar la fecha (si el usuario borra el valor y guarda, y ya existia una fila de `EXPEDIENTE_PUBLICACION` activa, se actualiza a NULL en vez de dejarla intacta).
+- Archivos: `DocumentoAnalisisDAO.java`.
+- Validacion: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme que la fecha ahora persiste al recargar el expediente. Sin SQL ejecutado ni cambios de esquema (no hicieron falta: la tabla/columna ya existian).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
