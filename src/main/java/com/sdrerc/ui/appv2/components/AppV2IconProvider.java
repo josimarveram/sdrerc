@@ -15,6 +15,7 @@ import javax.swing.Icon;
 public final class AppV2IconProvider {
 
     public static final String HOME = "HOME";
+    public static final String DASHBOARD = "DASHBOARD";
     public static final String BANDEJA = "BANDEJA";
     public static final String REGISTRO = "REGISTRO";
     public static final String ASIGNACION = "ASIGNACION";
@@ -44,6 +45,7 @@ public final class AppV2IconProvider {
 
     static {
         ICONS.put(HOME, "home.svg");
+        ICONS.put(DASHBOARD, "bar-chart-2.svg");
         ICONS.put(BANDEJA, "inbox.svg");
         ICONS.put(REGISTRO, "file-plus.svg");
         ICONS.put(ASIGNACION, "user-check.svg");

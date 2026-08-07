@@ -89,6 +89,13 @@
             <version>1.4</version>
         </dependency>
 
+        <!-- JFreeChart: graficos del modulo Dashboard (reportes gerenciales, solo ADMIN_SISTEMA) -->
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.5.4</version>
+        </dependency>
+
         <!-- HikariCP: pool de conexiones JDBC (ultima version compatible con Java 8) -->
         <dependency>
             <groupId>com.zaxxer</groupId>

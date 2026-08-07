@@ -68,6 +68,7 @@ Dependencias relevantes:
 - ZXing (`core` + `javase`): generacion de codigo QR para enrolamiento TOTP del login V2.
 - HikariCP: pool de conexiones JDBC hacia SDRERC_APP. `SdrercAppConnection.getConnection()` ya no usa `DriverManager` directo (una conexion fisica nueva por cada consulta no escala con varios usuarios conectados a la vez); ningun DAO cambio, la firma publica es identica.
 - Jakarta Mail: envio del codigo OTP del 2FA por correo (login V2).
+- JFreeChart: graficos del modulo Dashboard (reportes gerenciales, exclusivo ADMIN_SISTEMA).
 
 ## Documentacion funcional clave
 
@@ -92,6 +93,7 @@ Interpretacion de actas:
 Modulos en uso o incorporados:
 
 - Inicio.
+- Dashboard (reportes gerenciales, exclusivo ADMIN_SISTEMA, ver seccion propia mas abajo).
 - Bandeja de Expedientes.
 - Registro / Recepcion.
 - Asignacion.
@@ -136,6 +138,18 @@ Reglas vigentes:
 - Mensajes de error de login deliberadamente genericos; nunca revelar si un username existe o no.
 - Esquema: columnas nuevas en `USUARIO` (`debe_cambiar_password`, `totp_secret`, `totp_habilitado`, `totp_confirmado_en`, `intentos_fallidos`, `bloqueado_hasta`, `password_actualizado_en`, `ultimo_login_en`) y tabla `USUARIO_TOTP_BACKUP_CODE`, agregadas por `61_login_2fa_usuario.sql` (ya ejecutado).
 - Bootstrap del primer superadministrador via `62_reset_datos_prueba_y_superadmin.sql` (ya ejecutado); utilidad `com.sdrerc.tools.PasswordHashCli` genera el hash BCrypt localmente para no escribir contrasenas en texto plano en scripts versionados.
+
+## Dashboard (reportes gerenciales, implementado 05/08/2026)
+
+Estado: implementado, exclusivo `ADMIN_SISTEMA` (nivel gerencial, jefe de unidad).
+
+- Boton "Dashboard" en `MenuPrincipalV2`, seccion "Inicio" (debajo de "Inicio"), gateado por el permiso `MENU_DASHBOARD` (`94_permiso_menu_dashboard.sql`, otorgado unicamente a `ADMIN_SISTEMA`, no ejecutado). `JPanelDashboardV2.tieneAcceso()`/`DashboardService.tieneAcceso()` (via `SessionContext.hasRole("ADMIN_SISTEMA")`) es una segunda capa de defensa: si alguien igual instancia el panel sin el permiso de menu, muestra un mensaje de acceso restringido en vez de lanzar una excepcion o mostrar datos.
+- Solo lectura: ningun boton de accion, unicamente KPIs y graficos agregados sobre un rango de fechas (por defecto mes actual, mismos defaults que el resto de bandejas via `DateRangePickerSupport`). No aplica `VisibilidadBandejaSql`: al ser exclusivo de `ADMIN_SISTEMA` siempre agrega sobre el universo completo de expedientes, nunca acotado por asignacion individual.
+- KPIs (`MetricCardV2`): Expedientes activos, Vencidos, Por vencer (0-5 dias, mismo criterio de dias calendario ya usado en Carga Abogados), Ingresados en el periodo, Cerrados en el periodo.
+- 5 graficos con JFreeChart (nueva dependencia `org.jfree:jfreechart:1.5.4` en `pom.xml`, sin librerias transitivas problemáticas para Java 8): "Expedientes por etapa" (barras, foto actual via `ETAPA_EXPEDIENTE`), "Resultado de analisis" (dona, cuenta eventos de `EXPEDIENTE_EVALUACION` dentro del periodo, no expedientes distintos: mide "produccion" mes a mes), "Carga por abogado" (barras horizontales, top 10, reutiliza `UsuarioAsignacionService.listarCargaLaboralAbogados(null)` sin SQL nuevo), "Ingresados vs. cerrados por mes" (linea, `EXPEDIENTE.fecha_registro` vs `EXPEDIENTE_HISTORIAL` con `tipo_movimiento.codigo='CIERRE'`), "Estado final de notificacion" (dona, misma logica de 4 estados que `DocumentoAnalisisDAO.ESTADO_FINAL_NOTIFICACION_SQL` mencionada en la seccion Notificacion, aqui reescrita como agregado `GROUP BY` en vez de subconsulta por documento). Estilo flat sin sombras/3D, colores tomados de `AppV2Theme` (no colores default de JFreeChart), para verse integrado al resto de la app.
+- `DashboardDAO` (nuevo) no crea tablas ni columnas: agrega sobre `EXPEDIENTE`, `ETAPA_EXPEDIENTE`, `EXPEDIENTE_EVALUACION`+`TIPO_RESULTADO_EVALUACION`, `EXPEDIENTE_HISTORIAL`+`TIPO_MOVIMIENTO`, `EXPEDIENTE_DOCUMENTO_ANALIZADO`+`EXPEDIENTE_NOTIFICACION`. `DashboardService` no tiene DAO propio para carga por abogado: delega directo a `UsuarioAsignacionService` ya existente.
+- Icono de menu nuevo `AppV2IconProvider.DASHBOARD` (`bar-chart-2.svg`, estilo Feather Icons igual que el resto del set en `icons/appv2/`, no existia un icono de graficos en el proyecto).
+- Pendiente: ejecutar `94_permiso_menu_dashboard.sql` (no autorizado en la tarea que lo creo) para que el boton deje de aparecer deshabilitado.
 
 ## Flujo funcional principal
 

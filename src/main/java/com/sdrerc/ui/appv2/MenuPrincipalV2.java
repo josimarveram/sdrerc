@@ -8,12 +8,14 @@ import com.sdrerc.ui.appv2.theme.AppV2Theme;
 import com.sdrerc.ui.appv2.util.AppV2DisplayScale;
 import com.sdrerc.ui.views.administracion.equipojuridico.JPanelEquipoJuridicoV2;
 import com.sdrerc.ui.views.administracion.feriados.JPanelFeriadosV2;
+import com.sdrerc.ui.views.administracion.plantillas.JPanelPlantillasDocumentoV2;
 import com.sdrerc.ui.views.administracion.plazos.JPanelPlazosV2;
 import com.sdrerc.ui.views.administracion.usuarios.JPanelUsuariosV2;
 import com.sdrerc.ui.views.analisis.JPanelAnalisisV2;
 import com.sdrerc.ui.views.asignacion.JPanelAsignacionV2;
 import com.sdrerc.ui.views.administracion.roles.JPanelRolesV2;
 import com.sdrerc.ui.views.cierrearchivo.JPanelCierreArchivoV2;
+import com.sdrerc.ui.views.dashboard.JPanelDashboardV2;
 import com.sdrerc.ui.views.ejecucion.JPanelEjecucionV2;
 import com.sdrerc.ui.views.expedientedigital.JPanelExpedienteDigitalV2;
 import com.sdrerc.ui.views.expedienteconsola.JPanelBandejaExpedientesNueva;
@@ -55,6 +57,7 @@ public class MenuPrincipalV2 extends JFrame {
     private AppV2SidebarCollapseButton btnToggleSidebar;
     private boolean sidebarCollapsed;
     private JButton btnInicio;
+    private JButton btnDashboard;
     private JButton btnBandeja;
     private JButton btnRegistroRecepcion;
     private JButton btnAsignacion;
@@ -68,9 +71,11 @@ public class MenuPrincipalV2 extends JFrame {
     private JButton btnRoles;
     private JButton btnFeriados;
     private JButton btnPlazos;
+    private JButton btnPlantillas;
     private JButton botonActivo;
     private int sidebarExpandedWidth;
 
+    private static final String PERMISO_MENU_DASHBOARD = "MENU_DASHBOARD";
     private static final String PERMISO_MENU_BANDEJA = "MENU_BANDEJA";
     private static final String PERMISO_MENU_REGISTRO = "MENU_REGISTRO";
     private static final String PERMISO_MENU_ASIGNACION = "MENU_ASIGNACION";
@@ -84,6 +89,7 @@ public class MenuPrincipalV2 extends JFrame {
     private static final String PERMISO_MENU_ADMIN_ROLES = "MENU_ADMIN_ROLES";
     private static final String PERMISO_MENU_ADMIN_FERIADOS = "MENU_ADMIN_FERIADOS";
     private static final String PERMISO_MENU_ADMIN_PLAZOS = "MENU_ADMIN_PLAZOS";
+    private static final String PERMISO_MENU_ADMIN_PLANTILLAS = "MENU_ADMIN_PLANTILLAS";
 
     public MenuPrincipalV2() {
         configurarVentana();
@@ -152,6 +158,10 @@ public class MenuPrincipalV2 extends JFrame {
         btnInicio = crearBotonMenu("Inicio", AppV2IconProvider.HOME);
         btnInicio.addActionListener(e -> mostrarInicio());
         opciones.add(btnInicio);
+        btnDashboard = crearBotonMenu("Dashboard", AppV2IconProvider.DASHBOARD);
+        btnDashboard.addActionListener(e -> mostrarDashboard(btnDashboard));
+        aplicarPermiso(btnDashboard, PERMISO_MENU_DASHBOARD);
+        opciones.add(btnDashboard);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Operación registral"));
@@ -213,6 +223,10 @@ public class MenuPrincipalV2 extends JFrame {
         btnPlazos.addActionListener(e -> mostrarPlazos(btnPlazos));
         aplicarPermiso(btnPlazos, PERMISO_MENU_ADMIN_PLAZOS);
         opciones.add(btnPlazos);
+        btnPlantillas = crearBotonMenu("Plantillas de documento", AppV2IconProvider.FIRMA_EMISION);
+        btnPlantillas.addActionListener(e -> mostrarPlantillas(btnPlantillas));
+        aplicarPermiso(btnPlantillas, PERMISO_MENU_ADMIN_PLANTILLAS);
+        opciones.add(btnPlantillas);
         opciones.add(Box.createVerticalStrut(AppV2Theme.SPACE));
 
         opciones.add(crearSeccionMenu("Sistema"));
@@ -430,6 +444,13 @@ public class MenuPrincipalV2 extends JFrame {
         }
     }
 
+    private void mostrarDashboard(JButton boton) {
+        lblTitulo.setText("Dashboard");
+        lblSubtitulo.setText("Reportes gerenciales: indicadores y gráficos consolidados de todo el flujo de expedientes");
+        cambiarContenido(new JPanelDashboardV2());
+        aplicarEstadoActivo(boton);
+    }
+
     private void mostrarBandeja(JButton boton) {
         lblTitulo.setText("Bandeja de Expedientes");
         lblSubtitulo.setText("Consulta, seguimiento y priorización de expedientes por etapa, estado, responsable y plazos de atención");
@@ -518,6 +539,13 @@ public class MenuPrincipalV2 extends JFrame {
         lblTitulo.setText("Plazos");
         lblSubtitulo.setText("Configuración de plazos de atención y unidad de cálculo");
         cambiarContenido(new JPanelPlazosV2());
+        aplicarEstadoActivo(boton);
+    }
+
+    private void mostrarPlantillas(JButton boton) {
+        lblTitulo.setText("Plantillas de documento");
+        lblSubtitulo.setText("Administración de plantillas Word usadas en Análisis y Ejecución");
+        cambiarContenido(new JPanelPlantillasDocumentoV2());
         aplicarEstadoActivo(boton);
     }
 
