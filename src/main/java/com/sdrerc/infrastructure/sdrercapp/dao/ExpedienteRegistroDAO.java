@@ -462,35 +462,50 @@ public class ExpedienteRegistroDAO {
         return 0;
     }
 
+    /**
+     * Detección de "Potencial duplicado" por acta+titular para Registro manual y Edición manual
+     * (via {@link #detectarDuplicadoPorActaYTitular}, usado por
+     * {@code ExpedienteEdicionManualService}). La comparación de titular se hace en Java con
+     * {@link GrupoFamiliarHeuristicaService#coincideExactamente} (misma normalización NFD que
+     * quita tildes/diacríticos ya usada por Carga Diaria — {@code CargaDiariaReglasService.clave})
+     * en vez de un simple {@code UPPER(TRIM(...))} en SQL, que no distingue "María" de "Maria".
+     * Antes de este fix, esa diferencia de acentos hacía que Registro/Edición manual NO detectara
+     * el duplicado exacto (a diferencia de Carga Diaria, que sí lo detectaba correctamente) y en
+     * su lugar cayera en la detección de "Posible Grupo Familiar" (que sí normaliza tildes desde
+     * antes), generando un número de expediente que no debía generarse por tratarse en realidad
+     * de un duplicado. El filtro por acta sigue en SQL (los números de acta no llevan tildes);
+     * solo el titular se compara en Java sobre las filas que ya coinciden en acta.
+     */
     private DuplicadoRegistro buscarRegistroPorActaYTitular(
             Connection conn, String acta, String titular, Long idExpedienteExcluir) throws SQLException {
         if (!hasText(acta) || !hasText(titular)) {
             return null;
         }
-        String sql = "SELECT e.id_expediente, e.numero_expediente FROM expediente e "
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + "COALESCE(NULLIF(TRIM(p.razon_social), ''), "
+                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
+                + "p.numero_documento) AS titular "
+                + "FROM expediente e "
                 + "JOIN expediente_acta a ON a.id_expediente = e.id_expediente "
                 + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
                 + "JOIN persona p ON p.id_persona = ep.id_persona "
                 + "WHERE e.activo = 1 AND a.activo = 1 AND ep.activo = 1 "
                 + "AND ep.tipo_relacion_persona = 'TITULAR' "
                 + "AND UPPER(TRIM(a.numero_acta)) = ? "
-                + "AND UPPER(TRIM(COALESCE(NULLIF(TRIM(p.razon_social), ''), "
-                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
-                + "p.numero_documento))) = ? "
-                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
-                + "AND ROWNUM = 1";
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ");
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setString(idx++, acta.trim().toUpperCase(Locale.ROOT));
-            ps.setString(idx++, titular.trim().toUpperCase(Locale.ROOT));
             if (idExpedienteExcluir != null) {
                 ps.setLong(idx++, idExpedienteExcluir);
             }
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    return null;
+                while (rs.next()) {
+                    if (grupoFamiliarHeuristicaService.coincideExactamente(titular, rs.getString("titular"))) {
+                        return new DuplicadoRegistro(rs.getLong("id_expediente"), rs.getString("numero_expediente"));
+                    }
                 }
-                return new DuplicadoRegistro(rs.getLong("id_expediente"), rs.getString("numero_expediente"));
+                return null;
             }
         }
     }

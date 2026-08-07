@@ -2026,6 +2026,20 @@ Fix:
 - Archivos: `DocumentoAnalisisDAO.java`, `DocumentoAnalisisService.java`, `JPanelNotificacionV2.java`.
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme que un único clic en Guardar ya persiste Fecha/Estado/Referencia completos. Sin SQL ejecutado ni cambios de esquema.
 
+### Fix: Registro manual/Edición manual no detectaban duplicado por acta+titular cuando el titular difería solo por tildes (07/08/2026)
+
+Reporte del usuario: al registrar en Registro manual una solicitud con el mismo número de acta y el mismo titular (mismos apellidos y nombres) que una ya existente, pero con algún dato con tilde distinto (ej. "María" vs "Maria"), el sistema no lo detectaba como "Potencial duplicado" — a diferencia de Carga Diaria, que sí normaliza tildes y detecta correctamente ese mismo caso. En su lugar, Registro manual lo clasificaba como "Posible Grupo Familiar" y generaba número de expediente, cuando debía quedar sin número por ser un duplicado. El usuario pidió que la regla también aplique a Edición manual.
+
+Diagnóstico: `ExpedienteRegistroDAO.buscarRegistroPorActaYTitular(...)` (método privado que resuelve la detección de duplicado exacto por acta+titular) comparaba el titular con un `UPPER(TRIM(...))` puro en SQL, sin quitar diacríticos — a diferencia de `CargaDiariaReglasService.clave(...)` (que sí usa `Normalizer.Form.NFD` + `\p{M}`) y de `GrupoFamiliarHeuristicaService.coincideExactamente(...)` (que la propia clase `ExpedienteRegistroDAO` ya usa extensamente para la heurística de Grupo Familiar, vía el campo `grupoFamiliarHeuristicaService` ya existente). Al no coincidir el duplicado exacto por esa diferencia de tildes, el flujo caía en la heurística de Grupo Familiar (que sí normaliza) y terminaba generando número de expediente en vez de bloquear por duplicado.
+
+Este método privado es compartido por Registro manual (llamado directamente en el flujo batch de esa clase) y por Edición manual (`ExpedienteEdicionManualService` → `ExpedienteRegistroDAO.detectarDuplicadoPorActaYTitular(...)` → `buscarPorActaYTitular` → este mismo método), por lo que un único fix corrige ambos flujos.
+
+Fix: `buscarRegistroPorActaYTitular` sigue filtrando por número de acta en SQL (los números de acta no llevan tildes), pero ya no filtra el titular en el `WHERE`; en su lugar trae el titular de cada fila candidata y compara en Java con `grupoFamiliarHeuristicaService.coincideExactamente(titular, candidato)` (mismo helper accent-insensitive ya usado en el resto de la clase), devolviendo la primera coincidencia normalizada. Se quitó el `ROWNUM = 1` (ya no aplica al filtrar en Java sobre múltiples candidatos por acta). La lógica downstream que bloquea la generación de número cuando hay duplicado (`motivoSinNumero`) no cambió: ya funcionaba correctamente una vez que la detección en sí es correcta.
+
+- Archivo: `ExpedienteRegistroDAO.java` (único archivo modificado).
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme en Registro manual y en Edición manual que una solicitud con mismo acta+titular (con diferencia solo de tildes) ya se detecta como "Potencial duplicado" y no genera número de expediente.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL; el fix reutiliza `GrupoFamiliarHeuristicaService`, una clase Java ya existente en el proyecto.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
