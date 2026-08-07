@@ -498,10 +498,10 @@ Reglas:
 - Validador marca `Validado` u `Observado`, con comentario si observa.
 - Observado vuelve a Analisis o Ejecucion segun origen del problema, conservando historial.
 - Validado pasa a firma/siguiente paso de notificacion segun flujo.
-- Registrar intentos:
+- Registrar intentos (07/08/2026, pedido explicito del usuario: maximo 2, ya no 3):
   - intento 1 virtual;
-  - intento 2 presencial/fisico;
-  - intento 3 presencial/fisico.
+  - intento 2 presencial/fisico.
+  - Un eventual "3er intento" es exclusivo de la Bandeja Publicacion (registro de Publicacion del edicto/notificacion cuando ambos intentos directos fallaron), nunca un 3er intento directo al ciudadano desde la Bandeja Notificacion.
 - Registrar acuse/cargo si aplica.
 - No enviar correos, SMS, WhatsApp ni integraciones externas.
 - Notificacion registra metadata y trazabilidad.
@@ -548,6 +548,8 @@ Bandeja Notificacion, intentos al ciudadano (implementado):
 - `+ Agregar intento` no abre dialogo: inserta una fila hija "borrador" editable (Modalidad por combo, Codigo/Usuario Notificacion por texto) para cada documento marcado (o el ultimo con clic simple si no hay ninguno marcado). Se persiste con el icono Guardar de esa misma fila; hay un icono Cancelar para descartarla sin guardar.
 - Fila hija (intento) editable inline: Modalidad, Estado (`Pendiente`/`Enviado`, bloqueado si ya es `Atendido`) y Estado Notificacion (en blanco/`No ubicado`/`Ubicado`); elegir `Ubicado` y guardar confirma la recepcion (Fecha Recepcion = Fecha Acuse, la misma que ve Cartas de Respuesta) y marca el intento `Atendido`.
 - "Codigo Notificacion" (modalidad virtual) y "Usuario Notificacion" (modalidad presencial) son el mismo campo de texto libre reutilizado segun la modalidad de esa fila; se guardan en `expediente_notificacion.codigo_notificacion` y, al confirmar recepcion, tambien en `expediente_cargo_acuse.recibido_por`. No existe columna separada "usuario_notificacion".
+- Maximo 2 intentos por documento en esta bandeja (07/08/2026, pedido explicito del usuario, antes 3): `crearBorradoresIntento` corta en `siguienteIntento > 2` (antes `> 3`); un eventual "3er intento" queda exclusivamente para la Bandeja Publicacion (bullet anterior), no para un 3er intento directo aqui.
+- Botones `Buscar`/`Limpiar` (07/08/2026, fix de bug reportado por el usuario: "se queda pegado el documento desplegado"): estos botones pertenecian a un panel de busqueda mas antiguo (`expedientes`/`table`, tipo `NotificacionExpedienteDTO`) que no tiene relacion con la grilla arbol realmente visible (`tablaNotifBandeja`/`notifBandejaModel`); por eso `buscar()`/`limpiar()` nunca tocaban `documentosNotifExpandidos` (el set de filas desplegadas) ni recargaban `tablaNotifBandeja`, dejando cualquier documento expandido "pegado" sin importar cuantas veces se presionara Limpiar. Fix: ambos metodos ahora tambien limpian `documentosNotifExpandidos` y llaman `cargarBandejaNotifV2()` (recarga y colapsa la grilla real); `limpiar()` ademas limpia los filtros de columna de `tablaNotifBandeja` (`columnFilterSupportNotifBandeja`, nuevo campo que captura el `Controller` que devuelve `AppV2ColumnFilterSupport.install(...)`, antes con el valor de retorno descartado). No se conecto el texto/fecha/combos de este buscador a un filtrado real de `tablaNotifBandeja` (fuera de alcance de lo pedido: el reporte era especificamente sobre el desplegado que no se limpiaba, no sobre que el texto de busqueda no filtrara).
 
 Bandeja Publicacion (4ta pestana, implementada 05/08/2026):
 

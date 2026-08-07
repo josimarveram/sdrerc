@@ -189,6 +189,7 @@ public class JPanelNotificacionV2 extends JPanel {
             "Sin expedientes para mostrar",
             "Seleccione filtros y presione Buscar.");
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
+    private AppV2ColumnFilterSupport.Controller columnFilterSupportNotifBandeja;
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -3595,7 +3596,7 @@ public class JPanelNotificacionV2 extends JPanel {
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setCellRenderer(new NotifAccionRenderer());
         tablaNotifBandeja.getColumnModel().getColumn(COL_NOTIF_ACCION).setCellEditor(new NotifAccionEditor());
         tablaNotifBandeja.setDefaultRenderer(Object.class, new NotifBandejaRenderer());
-        AppV2ColumnFilterSupport.install(
+        columnFilterSupportNotifBandeja = AppV2ColumnFilterSupport.install(
                 "bandejaNotificacion",
                 tablaNotifBandeja,
                 tablaNotifBandejaPanel.getScrollPane(),
@@ -4045,7 +4046,10 @@ public class JPanelNotificacionV2 extends JPanel {
             List<IntentoBorrador> borradores = borradoresNotifPorDocumento.get(idDocumento);
             int totalActual = (intentosActuales != null ? intentosActuales.size() : 0) + (borradores != null ? borradores.size() : 0);
             int siguienteIntento = totalActual + 1;
-            if (siguienteIntento > 3) {
+            // Maximo 2 intentos de notificacion directa al ciudadano en esta bandeja (07/08/2026,
+            // pedido explicito del usuario, antes era 3): un eventual "3er intento" es exclusivo de
+            // la Bandeja Publicacion (registro de Publicacion del edicto/notificacion), no de esta.
+            if (siguienteIntento > 2) {
                 continue;
             }
             String modalidadPorDefecto = siguienteIntento == 1 ? "VIRTUAL" : "PRESENCIAL";
@@ -4061,7 +4065,7 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         if (agregados == 0) {
             JOptionPane.showMessageDialog(this,
-                    "Los documentos seleccionados ya alcanzaron el máximo de 3 intentos de notificación.",
+                    "Los documentos seleccionados ya alcanzaron el máximo de 2 intentos de notificación.",
                     "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -6479,6 +6483,12 @@ public class JPanelNotificacionV2 extends JPanel {
                         actualizarSeleccion();
                     }
                     marcarKpis();
+                    // "Buscar" tambien debe limpiar y contraer la grilla de documentos/intentos
+                    // (tablaNotifBandeja), no solo el listado de expedientes de arriba: antes solo
+                    // tocaba `expedientes`/`table` y dejaba cualquier documento desplegado "pegado"
+                    // en la grilla real (pedido explicito del usuario, 07/08/2026).
+                    documentosNotifExpandidos.clear();
+                    cargarBandejaNotifV2();
                 } catch (Exception ex) {
                     mostrarError("No se pudo consultar la bandeja de Notificación.", ex);
                 } finally {
@@ -6496,6 +6506,15 @@ public class JPanelNotificacionV2 extends JPanel {
         if (columnFilterSupport != null) {
             columnFilterSupport.clearFilters();
         }
+        // "Limpiar" tambien debe resetear la grilla real de documentos/intentos (tablaNotifBandeja):
+        // sus propios filtros de columna, cualquier fila desplegada, y recargar los datos desde
+        // cero, ademas de los filtros del listado de expedientes de arriba (pedido explicito del
+        // usuario, 07/08/2026: antes quedaba "pegado" el documento desplegado sin limpiarse).
+        if (columnFilterSupportNotifBandeja != null) {
+            columnFilterSupportNotifBandeja.clearFilters();
+        }
+        documentosNotifExpandidos.clear();
+        cargarBandejaNotifV2();
         txtBusqueda.setText("");
         seleccionarPrimero(cmbEstadoFiltro);
         seleccionarPrimero(cmbTipoNotificacionFiltro);
@@ -7072,10 +7091,10 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private String intentosTexto(NotificacionExpedienteDTO expediente) {
         int registrados = expediente.getNumeroIntento() == null ? 0 : expediente.getNumeroIntento();
-        if (registrados >= 3) {
-            return "3 de 3 intentos registrados";
+        if (registrados >= 2) {
+            return "2 de 2 intentos registrados";
         }
-        return registrados + " de 3 registrados · siguiente intento " + expediente.getSiguienteIntento();
+        return registrados + " de 2 registrados · siguiente intento " + expediente.getSiguienteIntento();
     }
 
     private String supervisorTexto(NotificacionExpedienteDTO expediente) {
