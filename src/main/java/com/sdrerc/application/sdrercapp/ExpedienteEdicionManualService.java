@@ -63,8 +63,9 @@ public class ExpedienteEdicionManualService {
         }
 
         // Igual que Registro manual/Carga diaria: mismo numero de acta + mismo titular marca la
-        // alerta "Potencial duplicado" (columna Alertas de la bandeja); en edicion se excluye al
-        // propio expediente para no marcarse a si mismo por no haber cambiado su acta/titular.
+        // alerta "Potencial duplicado" (columna Alertas de la bandeja); si el titular no coincide
+        // exactamente pero el numero de acta sí, tambien se marca como potencial duplicado (fallback
+        // por acta); en edicion se excluye al propio expediente para no marcarse a si mismo.
         String numeroActa = dto.getActa().getNumeroActa();
         String titular = dto.getTitular().getNombreCompleto();
         if (hasText(numeroActa) && hasText(titular)) {
@@ -72,7 +73,7 @@ public class ExpedienteEdicionManualService {
                     numeroActa, titular, dto.getIdExpediente());
             if (hasText(duplicadoActaTitular)) {
                 dto.setPosibleDuplicado(true);
-                dto.setMotivoDuplicado("Acta y titular ya existen en " + duplicadoActaTitular);
+                dto.setMotivoDuplicado(duplicadoActaTitular);
             }
         }
         return errores;

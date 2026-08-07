@@ -2040,6 +2040,25 @@ Fix: `buscarRegistroPorActaYTitular` sigue filtrando por número de acta en SQL 
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme en Registro manual y en Edición manual que una solicitud con mismo acta+titular (con diferencia solo de tildes) ya se detecta como "Potencial duplicado" y no genera número de expediente.
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL; el fix reutiliza `GrupoFamiliarHeuristicaService`, una clase Java ya existente en el proyecto.
 
+### Mejora: 2da condicional de respaldo para "Potencial duplicado" por solo coincidencia de acta (07/08/2026)
+
+Pedido del usuario: tras el fix anterior (titular exacto insensible a tildes), pidió reforzar la lógica en 2 condicionales explícitas, evaluadas en orden:
+
+1. **1ra condicional (ya existente):** mismo número de acta + titular exacto (normalizado, sin tildes) → Potencial duplicado.
+2. **2da condicional (nueva, fallback):** si la 1ra no encuentra coincidencia, pero existe alguna solicitud activa con el **mismo número de acta** aunque el titular sea distinto (le cambiaron una letra, agregaron una tilde de más, invirtieron nombres/apellidos, etc.) → también se marca Potencial duplicado, solo por compartir el número de acta.
+
+Si ninguna de las 2 condicionales aplica (ni acta+titular exacto, ni acta compartida) → no es duplicado, tal como pidió el usuario explícitamente ("nombres totalmente diferentes o actas diferentes").
+
+Implementación: `ExpedienteRegistroDAO.buscarRegistroPorActaYTitular` recorre en Java todas las filas activas que ya coinciden en número de acta (filtrado en SQL); si alguna tiene titular exacto, retorna esa de inmediato (1ra condicional); si ninguna coincide exactamente, retorna la primera fila encontrada con esa acta como coincidencia aproximada (2da condicional), en vez de `null`. Antes, sin coincidencia de titular exacto no había ningún resultado, cayendo en la heurística de Grupo Familiar.
+
+Mensajería diferenciada: `DuplicadoRegistro` (clase interna del DAO) ahora guarda si la coincidencia fue exacta y el titular existente en BD, con un nuevo método `mensajeDuplicado()` que arma el texto final ya diferenciado ("Acta y titular ya existen en X" para la 1ra condicional; "El número de acta ya está registrado en X con un titular distinto (\"Y\"); se marca como potencial duplicado por coincidencia de número de acta" para la 2da). Los 4 puntos de llamada que antes armaban el prefijo "Acta y titular ya existen en " manualmente (`detectarDuplicadosContraBase`, `buscarPorActaYTitular`, `registrarManual`, y los Services `RegistroManualExpedienteService`/`ExpedienteEdicionManualService`) ahora usan el mensaje ya completo devuelto por el DAO, sin volver a componerlo.
+
+Efecto colateral esperado (no pedido explícitamente, pero correcto): `buscarRegistroPorActaYTitular` es el mismo método que usa `detectarDuplicadosContraBase`, el cruce de Carga Diaria contra la base de datos ya registrada (distinto de la comparación dentro del propio archivo Excel cargado, que sigue exigiendo acta+titular exacto sin cambios). Carga Diaria hereda entonces la misma 2da condicional al cruzar contra BD.
+
+- Archivos: `ExpedienteRegistroDAO.java`, `RegistroManualExpedienteService.java`, `ExpedienteEdicionManualService.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme que una solicitud con mismo acta pero titular distinto (más allá de solo tildes) ya se marca "Potencial duplicado" sin generar número, tanto en Registro manual como en Edición manual.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

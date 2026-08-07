@@ -65,11 +65,10 @@ public class RegistroManualExpedienteService {
         if (hasText(numeroActa)) {
             String duplicado = expedienteRegistroDAO.detectarDuplicadoPorActaYTitular(numeroActa, titular);
             if (hasText(duplicado)) {
-                String motivo = "Acta y titular ya existen en " + duplicado;
                 registro.setPosibleDuplicado(true);
-                registro.setMotivoDuplicado(motivo);
-                mensajes.add("Documento duplicado: " + motivo
-                        + ". Se guardará sin número de expediente y quedará marcado para Asignación.");
+                registro.setMotivoDuplicado(duplicado);
+                mensajes.add("Documento duplicado: " + duplicado
+                        + " Se guardará sin número de expediente y quedará marcado para Asignación.");
             }
         }
         if (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(

@@ -64,7 +64,7 @@ public class ExpedienteRegistroDAO {
                 List<String> motivos = new ArrayList<>();
                 String porActaTitular = buscarPorActaYTitular(conn, item.getNumeroActa(), item.getTitular(), null);
                 if (porActaTitular != null) {
-                    motivos.add("Acta y titular ya existen en " + porActaTitular);
+                    motivos.add(porActaTitular);
                 }
                 if (!motivos.isEmpty()) {
                     duplicados.put(item.getFila(), String.join("; ", motivos));
@@ -353,7 +353,7 @@ public class ExpedienteRegistroDAO {
                         null);
                 if (duplicadoActaTitular != null) {
                     registro.setPosibleDuplicado(true);
-                    registro.setMotivoDuplicado("Acta y titular ya existen en " + duplicadoActaTitular.descripcion());
+                    registro.setMotivoDuplicado(duplicadoActaTitular.mensajeDuplicado());
                 }
 
                 Long idTitular = insertarPersonaManual(conn, registro.getTitular());
@@ -383,7 +383,7 @@ public class ExpedienteRegistroDAO {
                             idExpediente,
                             "Sin número por duplicado",
                             "Registro manual guardado sin número de expediente por duplicidad de acta y titular. "
-                                    + "Registro previo: " + duplicadoActaTitular.descripcion() + ".");
+                                    + duplicadoActaTitular.mensajeDuplicado());
                 }
                 if (ProcedimientoRegistralRules.etiquetaSinNumero().equals(motivoSinNumero)) {
                     return new RegistroManualResultadoDTO(
@@ -440,7 +440,7 @@ public class ExpedienteRegistroDAO {
 
     private String buscarPorActaYTitular(Connection conn, String acta, String titular, Long idExpedienteExcluir) throws SQLException {
         DuplicadoRegistro duplicado = buscarRegistroPorActaYTitular(conn, acta, titular, idExpedienteExcluir);
-        return duplicado == null ? null : duplicado.descripcion();
+        return duplicado == null ? null : duplicado.mensajeDuplicado();
     }
 
     private int obtenerUltimoCorrelativoExpediente(Connection conn, int anio) throws SQLException {
@@ -463,18 +463,24 @@ public class ExpedienteRegistroDAO {
     }
 
     /**
-     * Detección de "Potencial duplicado" por acta+titular para Registro manual y Edición manual
-     * (via {@link #detectarDuplicadoPorActaYTitular}, usado por
-     * {@code ExpedienteEdicionManualService}). La comparación de titular se hace en Java con
-     * {@link GrupoFamiliarHeuristicaService#coincideExactamente} (misma normalización NFD que
-     * quita tildes/diacríticos ya usada por Carga Diaria — {@code CargaDiariaReglasService.clave})
-     * en vez de un simple {@code UPPER(TRIM(...))} en SQL, que no distingue "María" de "Maria".
-     * Antes de este fix, esa diferencia de acentos hacía que Registro/Edición manual NO detectara
-     * el duplicado exacto (a diferencia de Carga Diaria, que sí lo detectaba correctamente) y en
-     * su lugar cayera en la detección de "Posible Grupo Familiar" (que sí normaliza tildes desde
-     * antes), generando un número de expediente que no debía generarse por tratarse en realidad
-     * de un duplicado. El filtro por acta sigue en SQL (los números de acta no llevan tildes);
-     * solo el titular se compara en Java sobre las filas que ya coinciden en acta.
+     * Detección de "Potencial duplicado" por acta+titular para Registro manual, Edición manual y
+     * el cruce contra base de Carga Diaria (via {@link #detectarDuplicadoPorActaYTitular} y
+     * {@link #detectarDuplicadosContraBase}). Dos condicionales, evaluadas en orden sobre las filas
+     * activas que ya comparten el mismo número de acta (el acta siempre se compara en SQL; los
+     * números de acta no llevan tildes):
+     * <ol>
+     *   <li><b>1ra (coincidencia exacta):</b> mismo acta + titular exacto, comparado en Java con
+     *       {@link GrupoFamiliarHeuristicaService#coincideExactamente} (misma normalización NFD que
+     *       quita tildes/diacríticos ya usada por Carga Diaria — {@code CargaDiariaReglasService.clave}),
+     *       para que "María" y "Maria" sigan considerándose el mismo titular.</li>
+     *   <li><b>2da (fallback por acta):</b> si ninguna fila con ese acta tuvo titular exacto (por
+     *       ejemplo, se cambió una letra, se agregó una tilde de más, o se invirtió el orden de
+     *       nombres/apellidos al volver a registrar la misma acta), igual se considera potencial
+     *       duplicado solo por compartir el número de acta — se devuelve la primera fila encontrada
+     *       con ese acta, marcada como coincidencia aproximada.</li>
+     * </ol>
+     * Si no existe ninguna fila activa con ese número de acta, no hay duplicado (ni exacto ni
+     * aproximado): nombres totalmente distintos con actas distintas no deben marcarse.
      */
     private DuplicadoRegistro buscarRegistroPorActaYTitular(
             Connection conn, String acta, String titular, Long idExpedienteExcluir) throws SQLException {
@@ -493,6 +499,7 @@ public class ExpedienteRegistroDAO {
                 + "AND ep.tipo_relacion_persona = 'TITULAR' "
                 + "AND UPPER(TRIM(a.numero_acta)) = ? "
                 + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ");
+        DuplicadoRegistro coincidenciaAproximada = null;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setString(idx++, acta.trim().toUpperCase(Locale.ROOT));
@@ -501,13 +508,19 @@ public class ExpedienteRegistroDAO {
             }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    if (grupoFamiliarHeuristicaService.coincideExactamente(titular, rs.getString("titular"))) {
-                        return new DuplicadoRegistro(rs.getLong("id_expediente"), rs.getString("numero_expediente"));
+                    String titularExistente = rs.getString("titular");
+                    long idExpediente = rs.getLong("id_expediente");
+                    String numeroExpediente = rs.getString("numero_expediente");
+                    if (grupoFamiliarHeuristicaService.coincideExactamente(titular, titularExistente)) {
+                        return new DuplicadoRegistro(idExpediente, numeroExpediente, true, titularExistente);
+                    }
+                    if (coincidenciaAproximada == null) {
+                        coincidenciaAproximada = new DuplicadoRegistro(idExpediente, numeroExpediente, false, titularExistente);
                     }
                 }
-                return null;
             }
         }
+        return coincidenciaAproximada;
     }
 
     private DuplicadoRegistro buscarRegistroPorNumeroExpedienteSgd(
@@ -1318,10 +1331,19 @@ public class ExpedienteRegistroDAO {
 
         private final long idExpediente;
         private final String numeroExpediente;
+        private final boolean coincidenciaExactaTitular;
+        private final String titularExistente;
 
         private DuplicadoRegistro(long idExpediente, String numeroExpediente) {
+            this(idExpediente, numeroExpediente, true, null);
+        }
+
+        private DuplicadoRegistro(
+                long idExpediente, String numeroExpediente, boolean coincidenciaExactaTitular, String titularExistente) {
             this.idExpediente = idExpediente;
             this.numeroExpediente = numeroExpediente;
+            this.coincidenciaExactaTitular = coincidenciaExactaTitular;
+            this.titularExistente = titularExistente;
         }
 
         private String descripcion() {
@@ -1329,6 +1351,22 @@ public class ExpedienteRegistroDAO {
                 return numeroExpediente;
             }
             return "expediente ID " + idExpediente + " sin número";
+        }
+
+        /**
+         * Mensaje completo de "Potencial duplicado" ya diferenciado segun cual de las 2
+         * condicionales de {@code buscarRegistroPorActaYTitular} disparo la coincidencia:
+         * 1ra (mismo acta + titular exacto normalizado) o 2da/fallback (mismo acta, titular
+         * distinto). Los llamadores usan este mensaje tal cual, sin volver a anteponer
+         * "Acta y titular ya existen en" por su cuenta.
+         */
+        private String mensajeDuplicado() {
+            if (coincidenciaExactaTitular) {
+                return "Acta y titular ya existen en " + descripcion() + ".";
+            }
+            String titularTexto = hasText(titularExistente) ? titularExistente : "sin datos de titular";
+            return "El número de acta ya está registrado en " + descripcion() + " con un titular distinto (\""
+                    + titularTexto + "\"); se marca como potencial duplicado por coincidencia de número de acta.";
         }
     }
 }
