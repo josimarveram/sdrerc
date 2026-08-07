@@ -1005,6 +1005,32 @@ public class DocumentoAnalisisDAO {
     }
 
     /**
+     * true si ya existe un registro de "Registrar Supervisión" (Aprobado) para este documento
+     * ({@link #registrarSupervisionEmisionAprobada}). Usado por el panel para bloquear/desbloquear
+     * el mini-panel "② Asignación" y los botones "Generar asignación"/"Registrar Supervisión" según
+     * corresponda (pedido explícito del usuario, 07/08/2026): ya no basta con que el documento esté
+     * Emitido, debe existir el registro de supervisión en base de datos.
+     */
+    public boolean existeSupervisionEmisionAprobada(Long idDocumentoAnalizado) throws SQLException {
+        if (idDocumentoAnalizado == null) {
+            return false;
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            String sql = "SELECT 1 FROM expediente_historial eh "
+                    + "JOIN tipo_movimiento tm ON tm.id_tipo_movimiento = eh.id_tipo_movimiento "
+                    + "WHERE eh.activo = 1 AND eh.tabla_relacionada = 'EXPEDIENTE_DOCUMENTO_ANALIZADO' "
+                    + "AND eh.id_registro_relacionado = ? "
+                    + "AND UPPER(tm.codigo) = 'SUPERVISION_EMISION_NOTIFICACION' AND ROWNUM = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idDocumentoAnalizado);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next();
+                }
+            }
+        }
+    }
+
+    /**
      * Deriva el expediente de un documento (etapa NOTIFICACION, en cualquiera de sus estados
      * reales: Por asignar/Por validar/Por notificar/Notificado) de vuelta a
      * EJECUCION/EN_EJECUCION. Caso de negocio: el validador observa el documento y el

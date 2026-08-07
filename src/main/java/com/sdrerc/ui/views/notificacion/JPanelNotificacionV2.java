@@ -326,6 +326,10 @@ public class JPanelNotificacionV2 extends JPanel {
             tablaHistorialAsignacionNotif, "Sin historial", "No hay asignaciones registradas para este documento.");
     private long secuenciaHistorialAsigNotif;
     private Long idDocumentoHistorialAsigNotifActual;
+    private boolean supervisionRegistradaAsigNotif;
+    private Long idDocumentoSupervisionCargadaAsigNotif;
+    private long secuenciaSupervisionAsigNotif;
+    private boolean hayDocumentosParaGenerarAsigNotif;
 
     private enum FiltroKpiAsigNotif {
         TODOS,
@@ -1147,6 +1151,10 @@ public class JPanelNotificacionV2 extends JPanel {
             if (panelComentarioEmisionNotif != null) {
                 panelComentarioEmisionNotif.setVisible(false);
             }
+            cargarEstadoSupervisionAsigNotif(documentoAsigNotifFoco.getIdDocumentoAnalizado());
+        } else {
+            supervisionRegistradaAsigNotif = false;
+            idDocumentoSupervisionCargadaAsigNotif = null;
         }
         cardAsignacionAsigNotif.setStepNumber(segundoMomento ? 2 : null);
         actualizarBloqueoAsignacionAsigNotif();
@@ -1168,34 +1176,100 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     /**
-     * El mini-panel "② Asignación" queda bloqueado mientras el documento FINAL sigue Validado (no
-     * emitido todavia) — salvo que el supervisor haya elegido "Observado" en "① Emisión": en ese
-     * caso se desbloquea igual, porque {@link #registrarSupervisionEmisionNotif()} reutiliza el
-     * mismo combo "Equipo destino"/"Usuario destino" de este mini-panel (Eq. Análisis/Eq.
-     * Ejecución) en vez de duplicar un segundo combo solo para Observado (pedido explicito del
-     * usuario, 05/08/2026: "no debería tener el bloque de destino operativo ya que eso ya se está
-     * mostrando en el bloque inferior de asignación").
+     * Consulta (async, una vez por documento enfocado) si ya existe un registro de
+     * "Registrar Supervisión" (Aprobado) en {@code EXPEDIENTE_HISTORIAL} para este documento
+     * ({@code DocumentoAnalisisDAO.registrarSupervisionEmisionAprobada}). Gobierna el desbloqueo
+     * real de "② Asignación" (pedido explícito del usuario, 07/08/2026: ya no basta con que el
+     * documento esté Emitido, hay que haber registrado la supervisión). No repite la consulta si
+     * ya se cargó para el mismo documento.
+     */
+    private void cargarEstadoSupervisionAsigNotif(Long idDocumentoAnalizado) {
+        if (idDocumentoAnalizado == null) {
+            supervisionRegistradaAsigNotif = false;
+            idDocumentoSupervisionCargadaAsigNotif = null;
+            actualizarBloqueoAsignacionAsigNotif();
+            return;
+        }
+        if (idDocumentoAnalizado.equals(idDocumentoSupervisionCargadaAsigNotif)) {
+            return;
+        }
+        final long solicitud = ++secuenciaSupervisionAsigNotif;
+        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                return documentoAnalisisService.existeSupervisionEmisionAprobada(idDocumentoAnalizado);
+            }
+
+            @Override
+            protected void done() {
+                if (solicitud != secuenciaSupervisionAsigNotif) {
+                    return;
+                }
+                try {
+                    supervisionRegistradaAsigNotif = get();
+                } catch (Exception ex) {
+                    supervisionRegistradaAsigNotif = false;
+                }
+                idDocumentoSupervisionCargadaAsigNotif = idDocumentoAnalizado;
+                actualizarBloqueoAsignacionAsigNotif();
+            }
+        };
+        worker.execute();
+    }
+
+    /**
+     * true = "② Asignación" debe permanecer bloqueada. Mientras el documento no esté Emitido, sigue
+     * bloqueada (nada que asignar todavía). Si el resultado elegido es Observado, se desbloquea
+     * igual: {@link #registrarSupervisionEmisionNotif()} reutiliza el mismo combo "Equipo
+     * destino"/"Usuario destino" de este mini-panel (Eq. Análisis/Eq. Ejecución) en vez de duplicar
+     * un segundo combo solo para Observado (pedido explícito del usuario, 05/08/2026). Si el
+     * resultado es Aprobado, ya no basta con que el documento esté Emitido: debe existir el
+     * registro de "Registrar Supervisión" en base de datos (pedido explícito del usuario,
+     * 07/08/2026) — de lo contrario "Generar asignación" quedaría habilitado sin que el supervisor
+     * hubiera confirmado la emisión.
+     */
+    private boolean bloqueoAsignacionAsigNotif() {
+        if (!esSegundoMomentoAsigNotif(documentoAsigNotifFoco)) {
+            return false;
+        }
+        boolean observado = "Observado".equals(cmbResultadoEmisionNotif.getSelectedItem());
+        return !observado && !supervisionRegistradaAsigNotif;
+    }
+
+    private String mensajeBloqueoAsignacionAsigNotif() {
+        if (!emisionCompletadaAsigNotif(documentoAsigNotifFoco)) {
+            return "Complete la emisión del documento para habilitar la asignación.";
+        }
+        return "Registre la supervisión del documento (\"Registrar Supervisión\") para habilitar la asignación.";
+    }
+
+    /**
+     * Además de bloquear/desbloquear el mini-panel "② Asignación", habilita/deshabilita los 2
+     * botones del footer segun corresponda: "Generar asignación" solo si hay documentos
+     * seleccionables ({@link #hayDocumentosParaGenerarAsigNotif}) y "② Asignación" no está
+     * bloqueada; "Registrar Supervisión" se deshabilita una vez que ya quedó registrada la
+     * supervisión Aprobada de este documento, para no volver a insertar el mismo registro de
+     * auditoría dos veces (pedido explícito del usuario, 07/08/2026).
      */
     private void actualizarBloqueoAsignacionAsigNotif() {
         if (cardAsignacionAsigNotif == null) {
             return;
         }
         boolean segundoMomento = esSegundoMomentoAsigNotif(documentoAsigNotifFoco);
-        boolean emisionCompletada = emisionCompletadaAsigNotif(documentoAsigNotifFoco);
-        boolean observado = "Observado".equals(cmbResultadoEmisionNotif.getSelectedItem());
-        boolean desbloqueado = !segundoMomento || emisionCompletada || observado;
-        cardAsignacionAsigNotif.setLocked(
-                !desbloqueado, "Complete la emisión del documento para habilitar la asignación.");
+        boolean bloqueado = bloqueoAsignacionAsigNotif();
+        cardAsignacionAsigNotif.setLocked(bloqueado, mensajeBloqueoAsignacionAsigNotif());
         if (segundoMomento) {
             cardAsignacionAsigNotif.setStatus(
-                    desbloqueado ? "Pendiente" : "Bloqueado",
-                    desbloqueado ? AppV2Theme.SOFT_ORANGE : AppV2Theme.SOFT_GRAY,
-                    desbloqueado ? AppV2Theme.WARNING : AppV2Theme.MUTED);
+                    bloqueado ? "Bloqueado" : "Pendiente",
+                    bloqueado ? AppV2Theme.SOFT_GRAY : AppV2Theme.SOFT_ORANGE,
+                    bloqueado ? AppV2Theme.MUTED : AppV2Theme.WARNING);
         } else {
             cardAsignacionAsigNotif.setStatus(null, null, null);
         }
         cardAsignacionAsigNotif.revalidate();
         cardAsignacionAsigNotif.repaint();
+        btnGenerarAsignacionNotif.setEnabled(hayDocumentosParaGenerarAsigNotif && !bloqueado);
+        btnRegistrarSupervisionEmisionNotif.setEnabled(!segundoMomento || !supervisionRegistradaAsigNotif);
     }
 
     /**
@@ -1611,12 +1685,16 @@ public class JPanelNotificacionV2 extends JPanel {
             paraGrid = new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
         }
         cargarPanelAsignacionMultipleNotif(paraGrid);
-        btnGenerarAsignacionNotif.setEnabled(!paraGrid.isEmpty());
+        hayDocumentosParaGenerarAsigNotif = !paraGrid.isEmpty();
         if (paraGrid.size() == 1) {
             cargarHistorialAsignacionNotif(paraGrid.get(0).getIdDocumentoAnalizado());
         } else {
             cargarHistorialAsignacionNotif(null);
         }
+        // La habilitacion final de "Generar asignacion" (y de "Registrar Supervision") se decide en
+        // actualizarBloqueoAsignacionAsigNotif(), que ademas del universo de documentos aqui
+        // calculado (hayDocumentosParaGenerarAsigNotif) exige que "② Asignacion" no este bloqueada.
+        actualizarBloqueoAsignacionAsigNotif();
     }
 
     /**
@@ -1759,8 +1837,11 @@ public class JPanelNotificacionV2 extends JPanel {
      * Resultado Aprobado de "Registrar Supervisión": exige que el documento enfocado ya esté
      * Emitido (guardado con su icono de disco en "Documentos a firmar") antes de dejar el rastro de
      * auditoría en {@code EXPEDIENTE_HISTORIAL}; no mueve etapa/estado del expediente, eso ocurre
-     * recién al generar la asignación en el mini-panel "② Asignación" (ya desbloqueado en cuanto el
-     * documento pasa a Emitido, independientemente de este botón).
+     * recién al generar la asignación en el mini-panel "② Asignación". Tras el éxito, marca
+     * {@link #supervisionRegistradaAsigNotif} en caliente (sin esperar una recarga completa) y
+     * refresca el bloqueo: "② Asignación" se desbloquea, "Generar asignación" se habilita y este
+     * mismo botón se deshabilita, para no volver a registrar la misma supervisión dos veces
+     * (pedido explícito del usuario, 07/08/2026).
      */
     private void registrarSupervisionEmisionAprobadaNotif() {
         if (!emisionCompletadaAsigNotif(documentoAsigNotifFoco)) {
@@ -1782,6 +1863,11 @@ public class JPanelNotificacionV2 extends JPanel {
             protected void done() {
                 try {
                     get();
+                    if (documentoAsigNotifFoco != null && idDocumento.equals(documentoAsigNotifFoco.getIdDocumentoAnalizado())) {
+                        supervisionRegistradaAsigNotif = true;
+                        idDocumentoSupervisionCargadaAsigNotif = idDocumento;
+                        actualizarBloqueoAsignacionAsigNotif();
+                    }
                     JOptionPane.showMessageDialog(JPanelNotificacionV2.this,
                             "Supervisión registrada. Continúe con el bloque \"② Asignación\" para enviar el documento a Notificación.",
                             "Emisión", JOptionPane.INFORMATION_MESSAGE);
@@ -1914,46 +2000,59 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
+    /**
+     * Repuebla {@link #documentoAsigNotifFoco} directamente desde {@link #documentosAsignacionNotif}
+     * (la lista completa recien recargada) en vez de pasar por
+     * {@code tablaAsignacionNotif.setRowSelectionInterval(...)}. Se probaron 2 veces variantes que
+     * SI reseleccionaban la fila via la tabla (05/08 y 07/08/2026) pero igual dejaban el panel
+     * cerrado: el {@code ListSelectionListener} generico de la tabla
+     * ({@link #actualizarVisibilidadPanelAsigNotif()}) solo puede REABRIR el panel si ya estaba
+     * visible en el instante exacto en que se dispara, y el {@code clearSelection()} de
+     * {@code poblarGrillaAsignacionNotif} (ejecutado un instante antes, dentro del mismo refresco)
+     * ya lo habia cerrado, dejando una condicion de carrera dificil de ganarle desde afuera. Fix
+     * definitivo: no depender de ese listener en absoluto para este flujo — asignar
+     * {@code documentoAsigNotifFoco} y refrescar los sub-paneles a mano (mismas llamadas que hace
+     * {@code actualizarFocoAsignacionNotif()}), y forzar la visibilidad del panel como ultimo paso,
+     * garantizado a ejecutarse despues de cualquier efecto colateral de seleccionar la fila en la
+     * tabla (que aqui es solo cosmetico, para que la fila se vea resaltada).
+     */
     private void reseleccionarDocumentoAsigNotif(Long idDocumentoAnalizado, boolean reabrirPanelSiEstabaAbierto) {
         if (idDocumentoAnalizado == null) {
             return;
         }
+        com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documentoActualizado = null;
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc : documentosAsignacionNotif) {
+            if (idDocumentoAnalizado.equals(doc.getIdDocumentoAnalizado())) {
+                documentoActualizado = doc;
+                break;
+            }
+        }
+        if (documentoActualizado == null) {
+            // Ya no existe en la bandeja (p.ej. se derivo a otro modulo): no hay nada que
+            // reseleccionar; se deja el comportamiento por defecto (panel oculto tras el refresco).
+            return;
+        }
+        documentoAsigNotifFoco = documentoActualizado;
+        // Marca la fila como seleccionada en la tabla si sigue visible en la vista filtrada actual
+        // (solo resaltado visual; no se depende de este paso para reabrir el panel).
         for (int modelRow = 0; modelRow < filasAsignacionNotif.size(); modelRow++) {
             AsignacionNotifTableRow fila = filasAsignacionNotif.get(modelRow);
             if (fila.esPrincipal() && idDocumentoAnalizado.equals(fila.principal.getIdDocumentoAnalizado())) {
                 int viewRow = tablaAsignacionNotif.convertRowIndexToView(modelRow);
                 if (viewRow >= 0) {
-                    tablaAsignacionNotif.setRowSelectionInterval(viewRow, viewRow);
-                    if (reabrirPanelSiEstabaAbierto && splitBandejasNotif != null
-                            && modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
-                        splitBandejasNotif.setSideVisible(documentoAsigNotifFoco != null && !panelAsigNotifCerradoPorUsuario);
-                    }
-                    return;
+                    tablaAsignacionNotif.getSelectionModel().setSelectionInterval(viewRow, viewRow);
                 }
                 break;
             }
         }
-        // El documento ya no aparece en la vista filtrada actual (p.ej. cambió de Estado documento
-        // tras guardar la firma y el filtro "Estado" de la búsqueda ya no lo incluye), pero sigue
-        // existiendo en la bandeja completa: mantener el panel abierto sobre ese mismo documento en
-        // vez de cerrarlo, para no sacar al usuario a mitad del flujo Emisión -> Registrar
-        // Supervisión -> Asignación.
-        if (!reabrirPanelSiEstabaAbierto) {
-            return;
-        }
-        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc : documentosAsignacionNotif) {
-            if (idDocumentoAnalizado.equals(doc.getIdDocumentoAnalizado())) {
-                documentoAsigNotifFoco = doc;
-                actualizarSubtituloPanelesAsigNotif();
-                actualizarPanelDatosAsigNotif();
-                actualizarPanelFirmaAsigNotif();
-                actualizarPanelAsignacionSeleccionNotif();
-                actualizarModoPanelAsigNotif();
-                if (splitBandejasNotif != null && modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
-                    splitBandejasNotif.setSideVisible(!panelAsigNotifCerradoPorUsuario);
-                }
-                return;
-            }
+        actualizarSubtituloPanelesAsigNotif();
+        actualizarPanelDatosAsigNotif();
+        actualizarPanelFirmaAsigNotif();
+        actualizarPanelAsignacionSeleccionNotif();
+        actualizarModoPanelAsigNotif();
+        if (reabrirPanelSiEstabaAbierto && splitBandejasNotif != null
+                && modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
+            splitBandejasNotif.setSideVisible(!panelAsigNotifCerradoPorUsuario);
         }
     }
 

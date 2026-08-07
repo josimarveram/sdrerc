@@ -271,6 +271,10 @@ public class DocumentoAnalisisService {
                 idExpediente, idDocumentoAnalizado, resolverUsuarioActualSdrercApp());
     }
 
+    public boolean existeSupervisionEmisionAprobada(Long idDocumentoAnalizado) throws SQLException {
+        return documentoAnalisisDAO.existeSupervisionEmisionAprobada(idDocumentoAnalizado);
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();
