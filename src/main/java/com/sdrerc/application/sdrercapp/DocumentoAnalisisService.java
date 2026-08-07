@@ -163,6 +163,24 @@ public class DocumentoAnalisisService {
                 resolverUsuarioActualSdrercApp());
     }
 
+    /** Variante con estado inicial explícito (Bandeja Publicación: ver DocumentoAnalisisDAO). */
+    public void registrarIntentoNotificacion(
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            String tipoNotificacionCodigo,
+            String codigoNotificacion,
+            LocalDate fechaEnvio,
+            String estadoNotificacionCodigo) throws SQLException {
+        documentoAnalisisDAO.registrarIntentoNotificacion(
+                idExpediente,
+                idDocumentoAnalizado,
+                tipoNotificacionCodigo,
+                codigoNotificacion,
+                fechaEnvio,
+                estadoNotificacionCodigo,
+                resolverUsuarioActualSdrercApp());
+    }
+
     public void actualizarIntentoNotificacion(
             Long idExpedienteNotificacion,
             String tipoNotificacionCodigo,

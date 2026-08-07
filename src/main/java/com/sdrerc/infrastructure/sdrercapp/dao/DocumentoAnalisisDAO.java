@@ -1270,10 +1270,32 @@ public class DocumentoAnalisisDAO {
             String codigoNotificacion,
             LocalDate fechaEnvio,
             Long idUsuario) throws SQLException {
+        registrarIntentoNotificacion(idExpediente, idDocumentoAnalizado, tipoNotificacionCodigo, codigoNotificacion, fechaEnvio, null, idUsuario);
+    }
+
+    /**
+     * @param estadoNotificacionCodigo si es null/vacío, se inserta como `PENDIENTE` (comportamiento
+     *      historico, usado por los intentos 1/2 de Notificación: un intento siempre nace pendiente
+     *      hasta que se confirme la recepción). La Bandeja Publicación sí pasa un valor explícito
+     *      aquí: a diferencia de un intento de notificación al ciudadano, el usuario puede marcar
+     *      "Publicado" desde el primer guardado del borrador, y antes de este parámetro ese valor
+     *      se ignoraba silenciosamente (quedaba `PENDIENTE` pese a lo elegido en el combo), obligando
+     *      a un segundo clic en Guardar (ahora sí por la ruta de actualización, que sí respeta el
+     *      estado) para que el cambio surtiera efecto — bug reportado por el usuario 05/08/2026.
+     */
+    public void registrarIntentoNotificacion(
+            Long idExpediente,
+            Long idDocumentoAnalizado,
+            String tipoNotificacionCodigo,
+            String codigoNotificacion,
+            LocalDate fechaEnvio,
+            String estadoNotificacionCodigo,
+            Long idUsuario) throws SQLException {
         if (idExpediente == null || idDocumentoAnalizado == null) {
             throw new IllegalArgumentException("Seleccione expediente y documento para registrar el intento.");
         }
         String tipoCodigo = hasText(tipoNotificacionCodigo) ? tipoNotificacionCodigo.trim().toUpperCase() : "VIRTUAL";
+        String estadoCodigo = hasText(estadoNotificacionCodigo) ? estadoNotificacionCodigo.trim().toUpperCase() : "PENDIENTE";
         try (Connection conn = SdrercAppConnection.getConnection()) {
             if (!soportaIntentosNotificacionDocumento(conn)) {
                 throw new SQLException("La base de datos no soporta intentos de notificación por documento. Ejecute el script 45_intentos_notificacion_documento.sql.");
@@ -1282,9 +1304,9 @@ public class DocumentoAnalisisDAO {
             if (idTipoNotificacion == null) {
                 throw new SQLException("No se encontró el tipo de notificación " + tipoCodigo + ". Verifique el catálogo o ejecute el script correspondiente.");
             }
-            Long idEstadoPendiente = catalogoLookupDAO.obtenerEstadoNotificacionId(conn, "PENDIENTE");
-            if (idEstadoPendiente == null) {
-                throw new SQLException("No se encontró el estado de notificación PENDIENTE.");
+            Long idEstadoInicial = catalogoLookupDAO.obtenerEstadoNotificacionId(conn, estadoCodigo);
+            if (idEstadoInicial == null) {
+                throw new SQLException("No se encontró el estado de notificación " + estadoCodigo + ".");
             }
             int numeroIntento = obtenerSiguienteIntentoNotificacion(conn, idDocumentoAnalizado);
             if (numeroIntento > 3) {
@@ -1294,25 +1316,26 @@ public class DocumentoAnalisisDAO {
                     + "id_expediente, id_documento_analizado, id_tipo_notificacion, id_estado_notificacion, "
                     + "numero_intento, fecha_envio, resultado, requiere_publicacion, codigo_notificacion, "
                     + "observacion, activo, creado_por, creado_en"
-                    + ") VALUES (?, ?, ?, ?, ?, ?, 'PENDIENTE', ?, ?, ?, 1, ?, SYSTIMESTAMP)";
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, SYSTIMESTAMP)";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, idExpediente);
                 ps.setLong(2, idDocumentoAnalizado);
                 ps.setLong(3, idTipoNotificacion);
-                ps.setLong(4, idEstadoPendiente);
+                ps.setLong(4, idEstadoInicial);
                 ps.setInt(5, numeroIntento);
                 if (fechaEnvio == null) {
                     ps.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
                 } else {
                     ps.setTimestamp(6, Timestamp.valueOf(fechaEnvio.atStartOfDay()));
                 }
-                ps.setInt(7, "PUBLICACION".equalsIgnoreCase(tipoCodigo) ? 1 : 0);
-                setStringOrNull(ps, 8, limitar(codigoNotificacion, 60));
-                setStringOrNull(ps, 9, "Intento registrado desde bandeja de documentos.");
+                ps.setString(7, estadoCodigo);
+                ps.setInt(8, "PUBLICACION".equalsIgnoreCase(tipoCodigo) ? 1 : 0);
+                setStringOrNull(ps, 9, limitar(codigoNotificacion, 60));
+                setStringOrNull(ps, 10, "Intento registrado desde bandeja de documentos.");
                 if (idUsuario == null) {
-                    ps.setNull(10, Types.NUMERIC);
+                    ps.setNull(11, Types.NUMERIC);
                 } else {
-                    ps.setLong(10, idUsuario);
+                    ps.setLong(11, idUsuario);
                 }
                 ps.executeUpdate();
             }

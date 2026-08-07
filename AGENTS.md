@@ -2011,6 +2011,21 @@ Fix en `DocumentoAnalisisDAO.guardarCartaRespuesta(...)`:
 - Archivos: `DocumentoAnalisisDAO.java`.
 - Validacion: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme que la fecha ahora persiste al recargar el expediente. Sin SQL ejecutado ni cambios de esquema (no hicieron falta: la tabla/columna ya existian).
 
+### Fix: guardar la fila de Publicación necesitaba 2 clics para persistir el Estado (05/08/2026)
+
+Reporte del usuario: en la Bandeja Publicación (Notificación), al editar Fecha/Estado/Referencia de la fila "Publicación (nueva)" y presionar el icono Guardar, no se guardaban todos los datos en el primer clic — solo al presionar Guardar una segunda vez quedaba todo correcto.
+
+Diagnostico: no era una condicion de carrera de edicion de celdas de Swing (el patron de lectura via `getValueAt` tras `fireEditingStopped()` en la columna de accion es el mismo ya probado en Notificación). La causa real estaba en `DocumentoAnalisisDAO.registrarIntentoNotificacion(...)` (el INSERT que crea el 3er intento/"Publicación" la primera vez que se guarda un borrador): el `id_estado_notificacion` y la columna `resultado` se insertaban **hardcodeados a `PENDIENTE`**, sin importar lo que el usuario hubiera elegido en el combo Estado (ej. "Publicado") antes del primer guardado. Ese valor elegido se descartaba en silencio. Recien en un segundo clic, la fila ya no es un borrador sino una fila persistida, y ahi si se usa `actualizarIntentoNotificacion(...)` (la ruta de UPDATE), que sí respeta el Estado elegido — de ahi el "en la 2da vez si guarda".
+
+Fix:
+
+- `DocumentoAnalisisDAO.registrarIntentoNotificacion(...)` gana un nuevo overload con un parámetro `estadoNotificacionCodigo` (nullable); si es null/vacío, sigue insertando `PENDIENTE` exactamente como antes (comportamiento intacto para los intentos 1/2 de Notificación, donde un intento siempre nace pendiente hasta confirmar recepción); si se pasa un valor, se usa ese como `id_estado_notificacion` y `resultado` desde el INSERT. El overload de 6 argumentos existente delega al nuevo pasando `null`.
+- `DocumentoAnalisisService` gana el overload equivalente.
+- `JPanelNotificacionV2.guardarFilaPublicacion(...)` (rama borrador) ahora pasa el `estadoCodigo` ya leído de la celda Estado en la misma llamada, en vez de omitirlo.
+- Los intentos 1/2 (`agregarIntentosInline`/`guardarFilaIntento` de Notificación) no cambian: siguen usando el overload de 5 argumentos, sin estado explícito, mismo comportamiento de siempre.
+- Archivos: `DocumentoAnalisisDAO.java`, `DocumentoAnalisisService.java`, `JPanelNotificacionV2.java`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme que un único clic en Guardar ya persiste Fecha/Estado/Referencia completos. Sin SQL ejecutado ni cambios de esquema.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

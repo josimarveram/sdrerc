@@ -5127,7 +5127,7 @@ public class JPanelNotificacionV2 extends JPanel {
                 @Override
                 protected Void doInBackground() throws Exception {
                     documentoAnalisisService.registrarIntentoNotificacion(
-                            borrador.idExpediente, idDocumento, "PUBLICACION", referencia, fecha);
+                            borrador.idExpediente, idDocumento, "PUBLICACION", referencia, fecha, estadoCodigo);
                     return null;
                 }
 
