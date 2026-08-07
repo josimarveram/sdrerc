@@ -348,6 +348,18 @@ public class DocumentoAnalisisDAO {
         return listarDocumentosNotificacionPareado(CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual);
     }
 
+    /**
+     * Bandeja Publicacion (4ta pestana de Notificacion): mismo universo de documentos que la
+     * Bandeja Notificacion (CONDICION_BANDEJA_NOTIFICACION), acotado a los que ya agotaron el
+     * intento 1 y 2 (ambos FALLIDA/no ubicado), es decir estado_final_notificacion_codigo =
+     * 'POR_PUBLICAR'. Misma visibilidad por asignacion que la Bandeja Notificacion.
+     */
+    public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosBandejaPublicacion(
+            boolean esAdmin, Long idUsuarioActual, List<Long> idsEquipoActual) throws SQLException {
+        return listarDocumentosNotificacionPareado(
+                CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual, "POR_PUBLICAR");
+    }
+
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosPublicacion() throws SQLException {
         return listarDocumentosNotificacionPorEstados(
                 java.util.Arrays.asList("FINALIZADO"), java.util.Arrays.asList("INTERMEDIO", "FINAL"));
@@ -536,6 +548,23 @@ public class DocumentoAnalisisDAO {
             boolean esAdmin,
             Long idUsuarioActual,
             List<Long> idsEquipoActual) throws SQLException {
+        return listarDocumentosNotificacionPareado(condicionPareada, soloAsignados, esAdmin, idUsuarioActual, idsEquipoActual, null);
+    }
+
+    /**
+     * @param filtroEstadoFinalPostQuery si no es null, envuelve la consulta pareada en un
+     *      SELECT * FROM (...) externo filtrado por ese codigo de estado_final_notificacion_codigo
+     *      (ej. 'POR_PUBLICAR' para la Bandeja Publicacion). No se puede filtrar directamente en el
+     *      WHERE interno porque esa columna es una subconsulta correlacionada del SELECT, no una
+     *      columna real de las tablas del FROM.
+     */
+    private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacionPareado(
+            String condicionPareada,
+            boolean soloAsignados,
+            boolean esAdmin,
+            Long idUsuarioActual,
+            List<Long> idsEquipoActual,
+            String filtroEstadoFinalPostQuery) throws SQLException {
         List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
                 new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
         try (Connection conn = SdrercAppConnection.getConnection()) {
@@ -547,7 +576,7 @@ public class DocumentoAnalisisDAO {
             String condicionVisibilidad = VisibilidadBandejaSql.construirCondicion(
                     paramsVisibilidad, esAdmin, idUsuarioActual, idsEquipoActual,
                     "da.id_usuario_notificacion", "da.id_equipo_notificacion");
-            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, "
+            String sqlInterno = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, esol.numero_expediente_sgd, "
                     + "tda.clasificacion, tda.nombre AS tipo_documento_nombre, "
                     + "da.numero_documento, da.fecha_documento, "
                     + nombrePersona("p") + " AS titular, "
@@ -576,11 +605,19 @@ public class DocumentoAnalisisDAO {
                     + "WHERE da.activo = 1 "
                     + "AND " + condicionPareada + " "
                     + (soloAsignados ? "AND da.id_usuario_notificacion IS NOT NULL " : "")
-                    + condicionVisibilidad
-                    + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+                    + condicionVisibilidad;
+            String sql = filtroEstadoFinalPostQuery == null
+                    ? sqlInterno + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC"
+                    : "SELECT * FROM (" + sqlInterno + ") pub "
+                    + "WHERE pub.estado_final_notificacion_codigo = ? "
+                    + "ORDER BY pub.fecha_documento DESC NULLS LAST, pub.id_documento_analizado DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                int index = 1;
                 for (int i = 0; i < paramsVisibilidad.size(); i++) {
-                    ps.setObject(i + 1, paramsVisibilidad.get(i));
+                    ps.setObject(index++, paramsVisibilidad.get(i));
+                }
+                if (filtroEstadoFinalPostQuery != null) {
+                    ps.setString(index++, filtroEstadoFinalPostQuery);
                 }
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {

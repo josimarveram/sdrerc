@@ -215,6 +215,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private JPanel panelLateralAsigNotif;
     private JPanel panelLateralValidacionNotif;
     private JPanel panelLateralNotifBandeja;
+    private JPanel panelLateralPublicacionNotif;
     private AppV2SideActionPanel panelNotificacion;
     private AppV2SideActionPanel panelCierre;
     private AppV2SideActionPanel panelAsignacionOperativaNotif;
@@ -479,6 +480,181 @@ public class JPanelNotificacionV2 extends JPanel {
     private final JButton btnAgregarIntento = new JButton("+ Agregar intento");
     private Long idDocumentoNotifSeleccionado;
 
+    // ===================== Bandeja Publicación (4ta pestaña de Notificación) =====================
+    // Mismo diseño que la Bandeja Notificación (KPIs + buscador compacto + grilla arbol padre/hijo
+    // con icono "+ Agregar X"), pero acotada a documentos POR_PUBLICAR (intento 1 y 2 ya FALLIDA/no
+    // ubicado). Los intentos 1 y 2 se muestran de solo lectura; unicamente la fila de "Publicación"
+    // (el 3er intento, tipo_notificacion=PUBLICACION, ya sembrado por el script 46) es editable.
+    private static final int COL_PUB_SEL = 0;
+    private static final int COL_PUB_EXPAND = 1;
+    private static final int COL_PUB_FECHA = 4;
+    private static final int COL_PUB_ESTADO = 5;
+    private static final int COL_PUB_REFERENCIA = 6;
+    private static final int COL_PUB_ACCION = 10;
+    private final MetricCardV2 cardPubTotal = new MetricCardV2("Documentos", "0", "Con intentos agotados", AppV2Theme.INFO);
+    private final MetricCardV2 cardPubPendientes =
+            new MetricCardV2("Sin publicación registrar", "0", "Aún no tienen 3er intento", AppV2Theme.WARNING);
+    private final MetricCardV2 cardPubRegistradas =
+            new MetricCardV2("Publicación registrada", "0", "Con 3er intento en curso", AppV2Theme.SUCCESS);
+    private final MetricCardV2 cardPubVencidos = new MetricCardV2("Vencidos", "0", "Plazo excedido", AppV2Theme.ERROR);
+
+    private enum FiltroKpiPublicacion {
+        TODOS,
+        SIN_PUBLICACION,
+        CON_PUBLICACION,
+        VENCIDOS
+    }
+
+    private FiltroKpiPublicacion kpiActivoPublicacion = FiltroKpiPublicacion.TODOS;
+    private final AppV2SearchField txtBusquedaPublicacion =
+            new AppV2SearchField("Buscar expediente, trámite/SGD, titular o documento", 28);
+    private final PremiumDateFieldV2 fechaEmisionDesdePublicacion = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaEmisionHastaPublicacion = new PremiumDateFieldV2();
+    private final JComboBox<SimpleItem> cmbEstadoPublicacion = new JComboBox<SimpleItem>();
+    private final JSpinner spnLimitePublicacion = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
+    private final JButton btnBuscarPublicacion = new JButton("Buscar");
+    private final JButton btnLimpiarPublicacion = new JButton("Limpiar");
+    private final JButton btnRefrescarPublicacion = new JButton("Refrescar");
+
+    private final List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> documentosPublicacionBandeja =
+            new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+    private final List<PublicacionFilaTabla> filasPublicacionBandeja = new ArrayList<PublicacionFilaTabla>();
+    private final java.util.Map<Long, List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>> intentosPublicacionCache =
+            new java.util.HashMap<Long, List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>>();
+    private final java.util.Set<Long> documentosPublicacionExpandidos = new java.util.HashSet<Long>();
+    private final java.util.Set<Long> documentosPublicacionSeleccionados = new java.util.HashSet<Long>();
+    private final java.util.Map<Long, PublicacionBorrador> borradoresPublicacionPorDocumento =
+            new java.util.HashMap<Long, PublicacionBorrador>();
+    private final AtomicLong secuenciaBorradorPublicacion = new AtomicLong(-1L);
+    private final DefaultTableModel publicacionBandejaModel = new DefaultTableModel(
+            new Object[]{"", "", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento",
+                "Fecha Emisión", "Titular", "Estado Final", "Estado doc.", ""},
+            0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            if (row < 0 || row >= filasPublicacionBandeja.size()) {
+                return false;
+            }
+            PublicacionFilaTabla fila = filasPublicacionBandeja.get(row);
+            if (fila.esPadre()) {
+                return column == COL_PUB_SEL;
+            }
+            if (fila.esSubEncabezado() || fila.esIntentoSoloLectura()) {
+                return false;
+            }
+            return column == COL_PUB_ACCION || column == COL_PUB_FECHA
+                    || column == COL_PUB_ESTADO || column == COL_PUB_REFERENCIA;
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == COL_PUB_SEL ? Boolean.class : Object.class;
+        }
+    };
+    private final JTable tablaPublicacionBandeja = new AppV2Table(publicacionBandejaModel);
+    private final AppV2TablePanel tablaPublicacionBandejaPanel = new AppV2TablePanel(
+            tablaPublicacionBandeja, "Sin documentos para publicar", "No hay documentos pendientes de publicación.");
+    private final JLabel lblEstadoPublicacionBandeja = new JLabel(
+            "Marque uno o varios documentos y presione \"Agregar publicación\" para registrar la publicación.");
+    private final JButton btnAgregarPublicacion = new JButton("+ Agregar publicación");
+    private Long idDocumentoPublicacionSeleccionado;
+    private com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documentoPublicacionFoco;
+
+    private static final int PANEL_PUBLICACION_TAB_OVERHANG = 46;
+    private static final int PANEL_PUBLICACION_TAB_TOP = 18;
+    private static final int PANEL_PUBLICACION_TAB_HEIGHT = 140;
+    private static final int PANEL_PUBLICACION_ANCHO_MINIMO = 380;
+    private static final int PANEL_PUBLICACION_ANCHO_NORMAL = 430;
+    private static final String TAB_PUBLICACION_DATOS = "DATOS";
+    private static final String TAB_PUBLICACION_PUBLICACION = "PUBLICACION";
+    private final AppV2StackedSideTab tabPublicacionDatos = new AppV2StackedSideTab(
+            "Datos", PANEL_PUBLICACION_TAB_OVERHANG - 6, PANEL_PUBLICACION_TAB_HEIGHT,
+            new Color(230, 241, 245), new Color(57, 125, 199), new Color(57, 125, 199).darker());
+    private final AppV2StackedSideTab tabPublicacionPublicacion = new AppV2StackedSideTab(
+            "Publicación", PANEL_PUBLICACION_TAB_OVERHANG - 6, PANEL_PUBLICACION_TAB_HEIGHT,
+            new Color(224, 243, 240), new Color(10, 118, 145), new Color(10, 118, 145).darker());
+    private CardLayout panelPublicacionCardsLayout;
+    private JPanel panelPublicacionCards;
+    private String tabPublicacionActiva = TAB_PUBLICACION_DATOS;
+    private boolean panelPublicacionCerradoPorUsuario;
+    private final DatosExpedienteNotifPanel datosPublicacionNotif = new DatosExpedienteNotifPanel();
+    private final JLabel lblPubInfoTipoDocumento = new JLabel("-");
+    private final JLabel lblPubInfoNumeroDocumento = new JLabel("-");
+    private final JLabel lblPubInfoFechaEmision = new JLabel("-");
+    private final JLabel lblPubInfoEstadoFinal = new JLabel("-");
+    private final JLabel lblPubInfoIntento1 = new JLabel("-");
+    private final JLabel lblPubInfoIntento2 = new JLabel("-");
+    private final JLabel lblPubInfoPublicacion = new JLabel("-");
+
+    private static final class PublicacionBorrador {
+        private final long tempId;
+        private final Long idExpediente;
+        private final Long idDocumento;
+        private final int numeroIntento;
+
+        private PublicacionBorrador(long tempId, Long idExpediente, Long idDocumento, int numeroIntento) {
+            this.tempId = tempId;
+            this.idExpediente = idExpediente;
+            this.idDocumento = idDocumento;
+            this.numeroIntento = numeroIntento;
+        }
+    }
+
+    private static class PublicacionFilaTabla {
+        private final boolean padre;
+        private final boolean subEncabezado;
+        private final Long idDocumento;
+        private final com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento;
+        private final PublicacionBorrador borrador;
+
+        private PublicacionFilaTabla(
+                boolean padre,
+                boolean subEncabezado,
+                Long idDocumento,
+                com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento,
+                PublicacionBorrador borrador) {
+            this.padre = padre;
+            this.subEncabezado = subEncabezado;
+            this.idDocumento = idDocumento;
+            this.intento = intento;
+            this.borrador = borrador;
+        }
+
+        private static PublicacionFilaTabla padre(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
+            return new PublicacionFilaTabla(true, false, item.getIdDocumentoAnalizado(), null, null);
+        }
+
+        private static PublicacionFilaTabla subEncabezado(Long idDocumento) {
+            return new PublicacionFilaTabla(false, true, idDocumento, null, null);
+        }
+
+        private static PublicacionFilaTabla hijo(Long idDocumento, com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
+            return new PublicacionFilaTabla(false, false, idDocumento, intento, null);
+        }
+
+        private static PublicacionFilaTabla hijoBorrador(Long idDocumento, PublicacionBorrador borrador) {
+            return new PublicacionFilaTabla(false, false, idDocumento, null, borrador);
+        }
+
+        private boolean esPadre() {
+            return padre;
+        }
+
+        private boolean esSubEncabezado() {
+            return subEncabezado;
+        }
+
+        private boolean esBorrador() {
+            return borrador != null;
+        }
+
+        /** Intento 1/2 ya persistido (no es la fila de Publicación ni un borrador): solo lectura. */
+        private boolean esIntentoSoloLectura() {
+            return intento != null && !"PUBLICACION".equalsIgnoreCase(intento.getTipoNotificacionCodigo());
+        }
+    }
+    // =================== fin de campos propios de Bandeja Publicación ===================
+
     private static final class IntentoBorrador {
         private final long tempId;
         private final Long idExpediente;
@@ -498,7 +674,8 @@ public class JPanelNotificacionV2 extends JPanel {
     private enum ModoBandejaNotificacion {
         ASIGNACION,
         VALIDACION,
-        NOTIFICACION
+        NOTIFICACION,
+        PUBLICACION
     }
     private ModoBandejaNotificacion modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
     private boolean construccionCompleta;
@@ -533,6 +710,7 @@ public class JPanelNotificacionV2 extends JPanel {
         cargarResultadosValidacion();
         cargarBandejaValidacion();
         cargarBandejaNotifV2();
+        cargarBandejaPublicacionNotif();
         construccionCompleta = true;
     }
 
@@ -555,6 +733,7 @@ public class JPanelNotificacionV2 extends JPanel {
         // de quedar anidado dentro del contenido de cada pestana (que lo empujaba mas abajo).
         JPanel contenidoAsigNotif = crearBandejaAsignacionNotificacion();
         JPanel contenidoValidacion = crearBandejaValidacion();
+        JPanel contenidoPublicacion = crearBandejaPublicacionNotif();
 
         JPanel contenidoPrincipal = new JPanel(new BorderLayout(4, 4));
         contenidoPrincipal.setOpaque(false);
@@ -578,6 +757,13 @@ public class JPanelNotificacionV2 extends JPanel {
         tabsBandejasTop.addTab("Bandeja Asignación", contenidoAsigNotif);
         tabsBandejasTop.addTab("Bandeja Validación", contenidoValidacion);
         tabsBandejasTop.addTab("Bandeja Notificación", contenidoPrincipal);
+        // "Publicación" (4ta pestaña, sin permiso propio todavia): a diferencia de las otras 3
+        // bandejas, no hay un codigo de permiso sembrado en BD para esta pestaña nueva
+        // (60_catalogo_permisos_bandejas.sql no la contempla); gatearla con un codigo nuevo sin
+        // sembrar dejaria la pestaña inaccesible incluso para ADMIN_SISTEMA hasta ejecutar un
+        // script nuevo (fuera de alcance sin autorizacion explicita), asi que queda habilitada
+        // para todos por ahora. Ver AGENTS.md para el detalle y el script pendiente sugerido.
+        tabsBandejasTop.addTab("Publicación", contenidoPublicacion);
         tabsBandejasTop.addChangeListener(e -> actualizarTabBandejaNotificacion());
         aplicarPermisoBandeja(
                 TAB_BANDEJA_NOTIF_ASIGNACION, PERMISO_BANDEJA_NOTIFICACION_ASIGNACION,
@@ -4415,6 +4601,1126 @@ public class JPanelNotificacionV2 extends JPanel {
         }
     }
 
+    // ===================== Bandeja Publicación: construcción y logica =====================
+
+    private JPanel crearBandejaPublicacionNotif() {
+        configurarTablaPublicacionNotif();
+        configurarFiltrosPublicacionNotif();
+
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        toolbar.setOpaque(false);
+        AppV2Theme.estilizarBotonPrimario(btnAgregarPublicacion);
+        btnAgregarPublicacion.setToolTipText(
+                "Marque una o varias filas de documentos (o selecciónelas con clic simple) para registrar la publicación.");
+        btnAgregarPublicacion.setEnabled(false);
+        toolbar.add(btnAgregarPublicacion);
+        btnAgregarPublicacion.addActionListener(e -> agregarPublicacionesInline());
+
+        JPanel superior = new JPanel(new BorderLayout(4, 4));
+        superior.setOpaque(false);
+        superior.add(crearHeaderPublicacionNotif(), BorderLayout.NORTH);
+        superior.add(crearBuscadorPublicacionNotif(), BorderLayout.CENTER);
+
+        JPanel contenidoTabla = new JPanel(new BorderLayout(6, 6));
+        contenidoTabla.setOpaque(false);
+        contenidoTabla.add(toolbar, BorderLayout.NORTH);
+        AppV2TableSectionPanel section = new AppV2TableSectionPanel(tablaPublicacionBandejaPanel);
+        section.setStatus(lblEstadoPublicacionBandeja);
+        contenidoTabla.add(section, BorderLayout.CENTER);
+
+        JPanel izquierda = new JPanel(new BorderLayout(6, 6));
+        izquierda.setOpaque(false);
+        izquierda.add(superior, BorderLayout.NORTH);
+        izquierda.add(contenidoTabla, BorderLayout.CENTER);
+
+        panelLateralPublicacionNotif = crearPanelDetallePublicacionNotif();
+        return izquierda;
+    }
+
+    private JPanel crearHeaderPublicacionNotif() {
+        JPanel metricas = new AppV2ResponsiveGridPanel(190, 4, 12, 10);
+        metricas.add(cardPubTotal);
+        metricas.add(cardPubPendientes);
+        metricas.add(cardPubRegistradas);
+        metricas.add(cardPubVencidos);
+        return metricas;
+    }
+
+    private JPanel crearBuscadorPublicacionNotif() {
+        JPanel acciones = AppV2ActionPanel.right();
+        acciones.add(btnBuscarPublicacion);
+        acciones.add(btnLimpiarPublicacion);
+        acciones.add(btnRefrescarPublicacion);
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusquedaPublicacion,
+                acciones,
+                fechaEmisionDesdePublicacion,
+                fechaEmisionHastaPublicacion,
+                cmbEstadoPublicacion,
+                null,
+                spnLimitePublicacion);
+    }
+
+    private void configurarFiltrosPublicacionNotif() {
+        cmbEstadoPublicacion.removeAllItems();
+        cmbEstadoPublicacion.addItem(new SimpleItem("", "Todos los estados"));
+        cmbEstadoPublicacion.addItem(new SimpleItem("EMITIDO", "Emitido"));
+        AppV2Theme.estilizarBotonPrimario(btnBuscarPublicacion);
+        cardPubPendientes.setOnClick(() -> activarKpiPublicacion(FiltroKpiPublicacion.SIN_PUBLICACION));
+        cardPubRegistradas.setOnClick(() -> activarKpiPublicacion(FiltroKpiPublicacion.CON_PUBLICACION));
+        cardPubVencidos.setOnClick(() -> activarKpiPublicacion(FiltroKpiPublicacion.VENCIDOS));
+        btnBuscarPublicacion.addActionListener(e -> aplicarFiltrosPublicacionNotif());
+        txtBusquedaPublicacion.addActionListener(e -> aplicarFiltrosPublicacionNotif());
+        btnLimpiarPublicacion.addActionListener(e -> limpiarFiltrosPublicacionNotif());
+        btnRefrescarPublicacion.addActionListener(e -> cargarBandejaPublicacionNotif());
+        restaurarFechasPublicacionNotif();
+    }
+
+    private void restaurarFechasPublicacionNotif() {
+        fechaEmisionDesdePublicacion.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
+        fechaEmisionHastaPublicacion.setDate(DateRangePickerSupport.defaultSearchToDate());
+    }
+
+    private void limpiarFiltrosPublicacionNotif() {
+        txtBusquedaPublicacion.setText("");
+        restaurarFechasPublicacionNotif();
+        cmbEstadoPublicacion.setSelectedIndex(0);
+        spnLimitePublicacion.setValue(200);
+        kpiActivoPublicacion = FiltroKpiPublicacion.TODOS;
+        marcarKpisPublicacion();
+        aplicarFiltrosPublicacionNotif();
+    }
+
+    private void activarKpiPublicacion(FiltroKpiPublicacion filtro) {
+        kpiActivoPublicacion = kpiActivoPublicacion == filtro ? FiltroKpiPublicacion.TODOS : filtro;
+        marcarKpisPublicacion();
+        aplicarFiltrosPublicacionNotif();
+    }
+
+    private void marcarKpisPublicacion() {
+        cardPubPendientes.setSelected(kpiActivoPublicacion == FiltroKpiPublicacion.SIN_PUBLICACION);
+        cardPubRegistradas.setSelected(kpiActivoPublicacion == FiltroKpiPublicacion.CON_PUBLICACION);
+        cardPubVencidos.setSelected(kpiActivoPublicacion == FiltroKpiPublicacion.VENCIDOS);
+    }
+
+    private void actualizarMetricasPublicacionNotif() {
+        int total = documentosPublicacionBandeja.size();
+        int pendientes = 0;
+        int registradas = 0;
+        int vencidos = 0;
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosPublicacionBandeja) {
+            if (item.getTotalIntentos() >= 3) {
+                registradas++;
+            } else {
+                pendientes++;
+            }
+            Long dias = item.getDiasRestantes();
+            if (dias != null && dias.longValue() < 0) {
+                vencidos++;
+            }
+        }
+        cardPubTotal.setValue(String.valueOf(total));
+        cardPubPendientes.setValue(String.valueOf(pendientes));
+        cardPubRegistradas.setValue(String.valueOf(registradas));
+        cardPubVencidos.setValue(String.valueOf(vencidos));
+    }
+
+    private boolean coincideKpiPublicacion(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
+        switch (kpiActivoPublicacion) {
+            case SIN_PUBLICACION:
+                return item.getTotalIntentos() < 3;
+            case CON_PUBLICACION:
+                return item.getTotalIntentos() >= 3;
+            case VENCIDOS:
+                return item.getDiasRestantes() != null && item.getDiasRestantes().longValue() < 0;
+            case TODOS:
+            default:
+                return true;
+        }
+    }
+
+    private boolean coincideTextoPublicacion(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item, String texto) {
+        return contieneTextoAsigNotif(item.getNumeroExpediente(), texto)
+                || contieneTextoAsigNotif(item.getNumeroExpedienteSgd(), texto)
+                || contieneTextoAsigNotif(item.getTitular(), texto)
+                || contieneTextoAsigNotif(item.getNumeroDocumento(), texto);
+    }
+
+    private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> filtrarDocumentosPublicacionNotif() {
+        String texto = txtBusquedaPublicacion.getText() == null ? "" : txtBusquedaPublicacion.getText().trim().toLowerCase();
+        LocalDate desde = fechaSeleccionadaAsigNotif(fechaEmisionDesdePublicacion);
+        LocalDate hasta = fechaSeleccionadaAsigNotif(fechaEmisionHastaPublicacion);
+        SimpleItem estadoItem = (SimpleItem) cmbEstadoPublicacion.getSelectedItem();
+        String estadoCodigo = estadoItem == null ? "" : estadoItem.getCodigo();
+        int limite = (Integer) spnLimitePublicacion.getValue();
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> resultado =
+                new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosPublicacionBandeja) {
+            if (!coincideKpiPublicacion(item)) {
+                continue;
+            }
+            if (!texto.isEmpty() && !coincideTextoPublicacion(item, texto)) {
+                continue;
+            }
+            if (item.getFechaDocumento() != null) {
+                if (desde != null && item.getFechaDocumento().isBefore(desde)) {
+                    continue;
+                }
+                if (hasta != null && item.getFechaDocumento().isAfter(hasta)) {
+                    continue;
+                }
+            }
+            if (!estadoCodigo.isEmpty() && !estadoCodigo.equalsIgnoreCase(item.getEstadoDocumentoCodigo())) {
+                continue;
+            }
+            resultado.add(item);
+            if (resultado.size() >= limite) {
+                break;
+            }
+        }
+        return resultado;
+    }
+
+    private void aplicarFiltrosPublicacionNotif() {
+        documentoPublicacionFoco = null;
+        idDocumentoPublicacionSeleccionado = null;
+        documentosPublicacionSeleccionados.clear();
+        reconstruirFilasPublicacionBandeja();
+    }
+
+    private void cargarBandejaPublicacionNotif() {
+        lblEstadoPublicacionBandeja.setText("Cargando documentos pendientes de publicación...");
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarDocumentosBandejaPublicacion();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items = get();
+                    documentosPublicacionBandeja.clear();
+                    documentosPublicacionBandeja.addAll(items);
+                    documentosPublicacionExpandidos.clear();
+                    intentosPublicacionCache.clear();
+                    borradoresPublicacionPorDocumento.clear();
+                    actualizarMetricasPublicacionNotif();
+                    reconstruirFilasPublicacionBandeja();
+                } catch (Exception ex) {
+                    documentosPublicacionBandeja.clear();
+                    actualizarMetricasPublicacionNotif();
+                    reconstruirFilasPublicacionBandeja();
+                    lblEstadoPublicacionBandeja.setText("No se pudieron cargar los documentos pendientes de publicación.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void reconstruirFilasPublicacionBandeja() {
+        filasPublicacionBandeja.clear();
+        publicacionBandejaModel.setRowCount(0);
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> visibles = filtrarDocumentosPublicacionNotif();
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : visibles) {
+            Long idDocumento = item.getIdDocumentoAnalizado();
+            PublicacionBorrador borrador = borradoresPublicacionPorDocumento.get(idDocumento);
+            List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos = intentosPublicacionCache.get(idDocumento);
+            int totalMostrar = (intentos != null ? intentos.size() : item.getTotalIntentos()) + (borrador != null ? 1 : 0);
+            boolean expandido = documentosPublicacionExpandidos.contains(idDocumento);
+            filasPublicacionBandeja.add(PublicacionFilaTabla.padre(item));
+            String iconoIntentos = totalMostrar <= 0
+                    ? ""
+                    : (expandido ? "collapse" : "expand") + ":" + totalMostrar;
+            publicacionBandejaModel.addRow(new Object[]{
+                Boolean.valueOf(documentosPublicacionSeleccionados.contains(idDocumento)),
+                iconoIntentos,
+                item.getNumeroExpediente(),
+                item.getClasificacion().isEmpty() ? "-" : item.getClasificacion(),
+                item.getTipoDocumento().isEmpty() ? "-" : item.getTipoDocumento(),
+                item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
+                item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
+                item.getTitular().isEmpty() ? "-" : item.getTitular(),
+                item.getEstadoFinalNotificacion().isEmpty() ? "Por publicar" : item.getEstadoFinalNotificacion(),
+                item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento(),
+                ""
+            });
+            if (!expandido) {
+                continue;
+            }
+            if (totalMostrar > 0) {
+                filasPublicacionBandeja.add(PublicacionFilaTabla.subEncabezado(idDocumento));
+                publicacionBandejaModel.addRow(filaSubEncabezadoPublicacion());
+            }
+            if (intentos != null) {
+                for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
+                    filasPublicacionBandeja.add(PublicacionFilaTabla.hijo(idDocumento, intento));
+                    publicacionBandejaModel.addRow(filaHijoPublicacionDesdeIntento(intento));
+                }
+            }
+            if (borrador != null) {
+                filasPublicacionBandeja.add(PublicacionFilaTabla.hijoBorrador(idDocumento, borrador));
+                publicacionBandejaModel.addRow(filaHijoPublicacionDesdeBorrador());
+            }
+        }
+        tablaPublicacionBandejaPanel.setEmpty(visibles.isEmpty());
+        lblEstadoPublicacionBandeja.setText(visibles.isEmpty()
+                ? "No hay documentos pendientes de publicación con los filtros aplicados."
+                : visibles.size() + " documento(s) de " + documentosPublicacionBandeja.size() + " en total.");
+        actualizarEstadoBotonAgregarPublicacion();
+    }
+
+    private Object[] filaSubEncabezadoPublicacion() {
+        return new Object[]{null, "", "Registro", "Modalidad", "Fecha", "Estado", "Referencia / Medio", "", "", "", ""};
+    }
+
+    private Object[] filaHijoPublicacionDesdeIntento(com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
+        boolean esPublicacion = "PUBLICACION".equalsIgnoreCase(intento.getTipoNotificacionCodigo());
+        String etiqueta = esPublicacion ? "Publicación" : "Intento " + intento.getNumeroIntento();
+        String modalidad = esPublicacion
+                ? "Publicación"
+                : (intento.getTipoNotificacion() == null || intento.getTipoNotificacion().isEmpty() ? "-" : intento.getTipoNotificacion());
+        String fecha = intento.getFechaEnvio() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio());
+        String estado = esPublicacion
+                ? codigoEstadoPublicacionParaColumna(intento.getEstadoNotificacionCodigo())
+                : (intento.getEstadoNotificacion() == null || intento.getEstadoNotificacion().isEmpty() ? "-" : intento.getEstadoNotificacion());
+        String referencia = intento.getCodigoNotificacion() == null || intento.getCodigoNotificacion().isEmpty()
+                ? "-" : intento.getCodigoNotificacion();
+        return new Object[]{
+            null, "", etiqueta, modalidad, fecha, estado, referencia, "-", "-", "-",
+            esPublicacion ? "guardar" : ""
+        };
+    }
+
+    private Object[] filaHijoPublicacionDesdeBorrador() {
+        return new Object[]{null, "", "Publicación (nueva)", "Publicación", "-", "PENDIENTE", "", "-", "-", "-", "guardar-borrador"};
+    }
+
+    private static String codigoEstadoPublicacionParaColumna(String estadoNotificacionCodigo) {
+        String c = estadoNotificacionCodigo == null ? "" : estadoNotificacionCodigo.trim().toUpperCase();
+        return "EXITOSA".equals(c) ? "EXITOSA" : "PENDIENTE";
+    }
+
+    private static String textoEstadoPublicacion(String codigoColumnaEstado) {
+        return "EXITOSA".equals(codigoColumnaEstado) ? "Publicado" : "Pendiente";
+    }
+
+    private void alternarExpansionPublicacion(Long idDocumento) {
+        if (idDocumento == null) {
+            return;
+        }
+        if (documentosPublicacionExpandidos.contains(idDocumento)) {
+            documentosPublicacionExpandidos.remove(idDocumento);
+            reconstruirFilasPublicacionBandeja();
+            return;
+        }
+        if (intentosPublicacionCache.containsKey(idDocumento)) {
+            documentosPublicacionExpandidos.add(idDocumento);
+            reconstruirFilasPublicacionBandeja();
+            return;
+        }
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarIntentosNotificacion(idDocumento);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    intentosPublicacionCache.put(idDocumento, get());
+                    documentosPublicacionExpandidos.add(idDocumento);
+                    reconstruirFilasPublicacionBandeja();
+                } catch (Exception ex) {
+                    mostrarError("No se pudieron cargar los intentos de notificación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO buscarDocumentoPublicacion(Long idDocumento) {
+        if (idDocumento == null) {
+            return null;
+        }
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosPublicacionBandeja) {
+            if (idDocumento.equals(item.getIdDocumentoAnalizado())) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private void actualizarEstadoBotonAgregarPublicacion() {
+        boolean habilitado = !documentosPublicacionSeleccionados.isEmpty();
+        if (!habilitado && idDocumentoPublicacionSeleccionado != null) {
+            habilitado = buscarDocumentoPublicacion(idDocumentoPublicacionSeleccionado) != null;
+        }
+        btnAgregarPublicacion.setEnabled(habilitado);
+    }
+
+    /**
+     * "+ Agregar publicación": mismo patron que "+ Agregar intento" de la Bandeja Notificación
+     * (inserta una fila hija "borrador" editable en la grilla, en vez de abrir un dialogo), pero
+     * sin combo de modalidad (siempre tipo_notificacion=PUBLICACION, ya sembrado por el script
+     * 46_tipo_notificacion_publicacion.sql) y solo aplica una vez por documento (esta bandeja ya
+     * garantiza que el documento agoto intento 1 y 2; un 3er intento ya registrado o en borrador
+     * no permite agregar otro).
+     */
+    private void agregarPublicacionesInline() {
+        final java.util.LinkedHashSet<Long> objetivos = new java.util.LinkedHashSet<Long>(documentosPublicacionSeleccionados);
+        if (objetivos.isEmpty() && idDocumentoPublicacionSeleccionado != null) {
+            objetivos.add(idDocumentoPublicacionSeleccionado);
+        }
+        if (objetivos.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione uno o varios documentos de la bandeja de publicación.",
+                    "Agregar publicación", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final List<Long> pendientesDeCarga = new ArrayList<Long>();
+        for (Long idDocumento : objetivos) {
+            com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documento = buscarDocumentoPublicacion(idDocumento);
+            if (documento != null && documento.getTotalIntentos() > 0 && !intentosPublicacionCache.containsKey(idDocumento)) {
+                pendientesDeCarga.add(idDocumento);
+            }
+        }
+        if (pendientesDeCarga.isEmpty()) {
+            crearBorradoresPublicacion(objetivos);
+            return;
+        }
+        final java.util.concurrent.atomic.AtomicInteger restantes =
+                new java.util.concurrent.atomic.AtomicInteger(pendientesDeCarga.size());
+        for (final Long idDocumento : pendientesDeCarga) {
+            SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void> worker =
+                    new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void>() {
+                @Override
+                protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> doInBackground() throws Exception {
+                    return documentoAnalisisService.listarIntentosNotificacion(idDocumento);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        intentosPublicacionCache.put(idDocumento, get());
+                    } catch (Exception ex) {
+                        intentosPublicacionCache.put(idDocumento, new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>());
+                    }
+                    if (restantes.decrementAndGet() == 0) {
+                        crearBorradoresPublicacion(objetivos);
+                    }
+                }
+            };
+            worker.execute();
+        }
+    }
+
+    private void crearBorradoresPublicacion(java.util.Collection<Long> idsDocumento) {
+        int agregados = 0;
+        for (Long idDocumento : idsDocumento) {
+            com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO documento = buscarDocumentoPublicacion(idDocumento);
+            if (documento == null || borradoresPublicacionPorDocumento.containsKey(idDocumento)) {
+                continue;
+            }
+            List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentosActuales = intentosPublicacionCache.get(idDocumento);
+            int totalActual = intentosActuales != null ? intentosActuales.size() : documento.getTotalIntentos();
+            boolean yaTienePublicacion = false;
+            if (intentosActuales != null) {
+                for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentosActuales) {
+                    if ("PUBLICACION".equalsIgnoreCase(intento.getTipoNotificacionCodigo())) {
+                        yaTienePublicacion = true;
+                        break;
+                    }
+                }
+            }
+            if (yaTienePublicacion || totalActual >= 3) {
+                continue;
+            }
+            borradoresPublicacionPorDocumento.put(idDocumento, new PublicacionBorrador(
+                    secuenciaBorradorPublicacion.getAndDecrement(), documento.getIdExpediente(), idDocumento, totalActual + 1));
+            documentosPublicacionExpandidos.add(idDocumento);
+            agregados++;
+        }
+        if (agregados == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Los documentos seleccionados ya tienen una publicación registrada.",
+                    "Agregar publicación", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        reconstruirFilasPublicacionBandeja();
+    }
+
+    private void cancelarBorradorPublicacion(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasPublicacionBandeja.size()) {
+            return;
+        }
+        PublicacionFilaTabla fila = filasPublicacionBandeja.get(modelRow);
+        if (!fila.esBorrador()) {
+            return;
+        }
+        borradoresPublicacionPorDocumento.remove(fila.idDocumento);
+        reconstruirFilasPublicacionBandeja();
+    }
+
+    /** Baja logica de una publicación ya guardada (no un borrador), con confirmación previa. */
+    private void eliminarFilaPublicacion(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasPublicacionBandeja.size()) {
+            return;
+        }
+        PublicacionFilaTabla fila = filasPublicacionBandeja.get(modelRow);
+        if (fila.esPadre() || fila.esBorrador() || fila.intento == null) {
+            return;
+        }
+        int confirmar = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea eliminar el registro de publicación de este documento?",
+                "Eliminar publicación",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirmar != JOptionPane.YES_OPTION) {
+            return;
+        }
+        final Long idExpedienteNotificacion = fila.intento.getIdExpedienteNotificacion();
+        final Long idDocumento = fila.idDocumento;
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.darBajaIntentoNotificacion(idExpedienteNotificacion);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    recargarBandejaPublicacionYExpandir(idDocumento);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo eliminar el registro de publicación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    /** Guarda la edicion inline de la fila de Publicación (borrador nuevo o ya persistida). */
+    private void guardarFilaPublicacion(int modelRow) {
+        if (modelRow < 0 || modelRow >= filasPublicacionBandeja.size()) {
+            return;
+        }
+        PublicacionFilaTabla fila = filasPublicacionBandeja.get(modelRow);
+        if (fila.esPadre() || fila.esSubEncabezado() || fila.esIntentoSoloLectura()) {
+            return;
+        }
+        Object fechaValor = publicacionBandejaModel.getValueAt(modelRow, COL_PUB_FECHA);
+        Object estadoValor = publicacionBandejaModel.getValueAt(modelRow, COL_PUB_ESTADO);
+        Object referenciaValor = publicacionBandejaModel.getValueAt(modelRow, COL_PUB_REFERENCIA);
+        final LocalDate fecha = parseFechaCeldaNotif(fechaValor);
+        final String estadoCodigo = estadoValor == null || estadoValor.toString().trim().isEmpty() ? "PENDIENTE" : estadoValor.toString();
+        final String referencia = referenciaValor == null ? "" : referenciaValor.toString();
+
+        if (fila.esBorrador()) {
+            final PublicacionBorrador borrador = fila.borrador;
+            final Long idDocumento = fila.idDocumento;
+            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    documentoAnalisisService.registrarIntentoNotificacion(
+                            borrador.idExpediente, idDocumento, "PUBLICACION", referencia, fecha);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        borradoresPublicacionPorDocumento.remove(idDocumento);
+                        recargarBandejaPublicacionYExpandir(idDocumento);
+                    } catch (Exception ex) {
+                        mostrarError("No se pudo registrar la publicación.", ex);
+                    }
+                }
+            };
+            worker.execute();
+            return;
+        }
+
+        final com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento = fila.intento;
+        final Long idDocumento = fila.idDocumento;
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.actualizarIntentoNotificacion(
+                        intento.getIdExpedienteNotificacion(), "PUBLICACION", estadoCodigo, referencia, fecha, null);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    recargarBandejaPublicacionYExpandir(idDocumento);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo actualizar la publicación.", ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    /** Recarga la bandeja completa (Estado Final depende del servidor) y re-expande el documento editado. */
+    private void recargarBandejaPublicacionYExpandir(final Long idDocumento) {
+        lblEstadoPublicacionBandeja.setText("Actualizando bandeja de publicación...");
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>, Void>() {
+            private List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentosDocumento;
+
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> doInBackground() throws Exception {
+                List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
+                        documentoAnalisisService.listarDocumentosBandejaPublicacion();
+                if (idDocumento != null) {
+                    intentosDocumento = documentoAnalisisService.listarIntentosNotificacion(idDocumento);
+                }
+                return items;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items = get();
+                    documentosPublicacionBandeja.clear();
+                    documentosPublicacionBandeja.addAll(items);
+                    intentosPublicacionCache.clear();
+                    if (idDocumento != null) {
+                        intentosPublicacionCache.put(idDocumento, intentosDocumento == null
+                                ? new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>()
+                                : intentosDocumento);
+                        documentosPublicacionExpandidos.add(idDocumento);
+                    }
+                    actualizarMetricasPublicacionNotif();
+                    reconstruirFilasPublicacionBandeja();
+                } catch (Exception ex) {
+                    lblEstadoPublicacionBandeja.setText("No se pudieron actualizar los documentos pendientes de publicación.");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void configurarTablaPublicacionNotif() {
+        tablaPublicacionBandeja.setRowHeight(32);
+        tablaPublicacionBandeja.setAutoCreateRowSorter(false);
+        tablaPublicacionBandeja.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tablaPublicacionBandeja.getTableHeader().setReorderingAllowed(false);
+        tablaPublicacionBandeja.getTableHeader().setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
+        tablaPublicacionBandeja.getTableHeader().setBackground(AppV2Theme.SURFACE_ALT);
+        tablaPublicacionBandeja.getTableHeader().setForeground(AppV2Theme.TEXT_SECONDARY);
+        tablaPublicacionBandeja.setGridColor(AppV2Theme.BORDER);
+        tablaPublicacionBandeja.setShowVerticalLines(false);
+        AppV2TableColumnSizer.applyFriendlyDefaults(tablaPublicacionBandeja);
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_SEL).setMaxWidth(34);
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_SEL).setMinWidth(30);
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_SEL).setCellRenderer(new PublicacionSeleccionRenderer());
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_SEL).setCellEditor(new PublicacionSeleccionEditor());
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_EXPAND).setMaxWidth(46);
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_EXPAND).setMinWidth(40);
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_EXPAND).setCellRenderer(new PublicacionExpandirRenderer());
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_FECHA).setCellEditor(new NotifFechaCellEditor());
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ESTADO).setCellEditor(
+                new NotifComboCellEditor(crearComboEstadoPublicacion()));
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setMaxWidth(76);
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setMinWidth(64);
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setCellRenderer(new PublicacionAccionRenderer());
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setCellEditor(new PublicacionAccionEditor());
+        tablaPublicacionBandeja.setDefaultRenderer(Object.class, new PublicacionBandejaRenderer());
+        AppV2ColumnFilterSupport.install(
+                "bandejaPublicacion",
+                tablaPublicacionBandeja,
+                tablaPublicacionBandejaPanel.getScrollPane(),
+                tablaPublicacionBandejaPanel,
+                () -> {
+                    documentosPublicacionExpandidos.clear();
+                    reconstruirFilasPublicacionBandeja();
+                },
+                COL_PUB_SEL, COL_PUB_EXPAND, COL_PUB_ACCION);
+        publicacionBandejaModel.addTableModelListener(evento -> {
+            if (evento.getColumn() != COL_PUB_SEL || evento.getType() != javax.swing.event.TableModelEvent.UPDATE) {
+                return;
+            }
+            int fila = evento.getFirstRow();
+            if (fila < 0 || fila >= filasPublicacionBandeja.size()) {
+                return;
+            }
+            PublicacionFilaTabla filaTabla = filasPublicacionBandeja.get(fila);
+            if (!filaTabla.esPadre()) {
+                return;
+            }
+            boolean marcado = Boolean.TRUE.equals(publicacionBandejaModel.getValueAt(fila, COL_PUB_SEL));
+            if (marcado) {
+                documentosPublicacionSeleccionados.add(filaTabla.idDocumento);
+            } else {
+                documentosPublicacionSeleccionados.remove(filaTabla.idDocumento);
+            }
+            actualizarEstadoBotonAgregarPublicacion();
+        });
+        tablaPublicacionBandeja.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int viewRow = tablaPublicacionBandeja.rowAtPoint(e.getPoint());
+                int viewCol = tablaPublicacionBandeja.columnAtPoint(e.getPoint());
+                if (viewRow < 0) {
+                    return;
+                }
+                int modelRow = tablaPublicacionBandeja.convertRowIndexToModel(viewRow);
+                if (modelRow < 0 || modelRow >= filasPublicacionBandeja.size()) {
+                    return;
+                }
+                int modelCol = tablaPublicacionBandeja.convertColumnIndexToModel(viewCol);
+                PublicacionFilaTabla fila = filasPublicacionBandeja.get(modelRow);
+                if (modelCol == COL_PUB_SEL) {
+                    return;
+                }
+                if (modelCol == COL_PUB_EXPAND && fila.esPadre()) {
+                    alternarExpansionPublicacion(fila.idDocumento);
+                    return;
+                }
+                idDocumentoPublicacionSeleccionado = fila.idDocumento;
+                actualizarEstadoBotonAgregarPublicacion();
+                if (e.getClickCount() == 2 && fila.esPadre()) {
+                    panelPublicacionCerradoPorUsuario = false;
+                    actualizarFocoPublicacionNotif(fila.idDocumento);
+                    if (documentoPublicacionFoco != null) {
+                        mostrarPanelLateralNotif(panelLateralPublicacionNotif);
+                        splitBandejasNotif.setSideVisible(true);
+                        seleccionarTabPublicacion(TAB_PUBLICACION_DATOS);
+                    }
+                }
+            }
+        });
+    }
+
+    private JComboBox<SimpleItem> crearComboEstadoPublicacion() {
+        JComboBox<SimpleItem> combo = new JComboBox<SimpleItem>();
+        combo.addItem(new SimpleItem("PENDIENTE", "Pendiente"));
+        combo.addItem(new SimpleItem("EXITOSA", "Publicado"));
+        return combo;
+    }
+
+    private void actualizarFocoPublicacionNotif(Long idDocumento) {
+        documentoPublicacionFoco = buscarDocumentoPublicacion(idDocumento);
+        actualizarPanelDatosPublicacionNotif();
+        actualizarPanelInfoPublicacionNotif();
+    }
+
+    private void actualizarPanelDatosPublicacionNotif() {
+        if (documentoPublicacionFoco == null || documentoPublicacionFoco.getIdExpediente() == null) {
+            datosPublicacionNotif.limpiar();
+            return;
+        }
+        final Long idExpediente = documentoPublicacionFoco.getIdExpediente();
+        SwingWorker<com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO, Void> worker =
+                new SwingWorker<com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO, Void>() {
+            @Override
+            protected com.sdrerc.domain.dto.sdrercapp.AsignacionExpedienteDTO doInBackground() throws Exception {
+                return asignacionExpedienteServiceNotif.obtenerExpedientePorId(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (documentoPublicacionFoco == null || !idExpediente.equals(documentoPublicacionFoco.getIdExpediente())) {
+                    return;
+                }
+                try {
+                    datosPublicacionNotif.poblar(get());
+                } catch (Exception ex) {
+                    datosPublicacionNotif.limpiar();
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    /** Panel "Publicación" del panel lateral: puramente informativo, sin campos editables. */
+    private void actualizarPanelInfoPublicacionNotif() {
+        if (documentoPublicacionFoco == null) {
+            limpiarPanelInfoPublicacionNotif();
+            return;
+        }
+        lblPubInfoTipoDocumento.setText(valorNotif(documentoPublicacionFoco.getTipoDocumento()));
+        lblPubInfoNumeroDocumento.setText(valorNotif(documentoPublicacionFoco.getNumeroDocumento()));
+        lblPubInfoFechaEmision.setText(documentoPublicacionFoco.getFechaDocumento() == null
+                ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(documentoPublicacionFoco.getFechaDocumento()));
+        lblPubInfoEstadoFinal.setText(valorNotif(documentoPublicacionFoco.getEstadoFinalNotificacion()));
+        lblPubInfoIntento1.setText("Cargando...");
+        lblPubInfoIntento2.setText("Cargando...");
+        lblPubInfoPublicacion.setText("Cargando...");
+        final Long idDocumento = documentoPublicacionFoco.getIdDocumentoAnalizado();
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> cache = intentosPublicacionCache.get(idDocumento);
+        if (cache != null) {
+            poblarPanelInfoIntentosPublicacion(cache);
+            return;
+        }
+        SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void> worker =
+                new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>, Void>() {
+            @Override
+            protected List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> doInBackground() throws Exception {
+                return documentoAnalisisService.listarIntentosNotificacion(idDocumento);
+            }
+
+            @Override
+            protected void done() {
+                if (documentoPublicacionFoco == null || !idDocumento.equals(documentoPublicacionFoco.getIdDocumentoAnalizado())) {
+                    return;
+                }
+                try {
+                    List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> items = get();
+                    intentosPublicacionCache.put(idDocumento, items);
+                    poblarPanelInfoIntentosPublicacion(items);
+                } catch (Exception ex) {
+                    lblPubInfoIntento1.setText("-");
+                    lblPubInfoIntento2.setText("-");
+                    lblPubInfoPublicacion.setText("-");
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void poblarPanelInfoIntentosPublicacion(List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos) {
+        String intento1 = "-";
+        String intento2 = "-";
+        String publicacion = "Sin registrar";
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
+            if ("PUBLICACION".equalsIgnoreCase(intento.getTipoNotificacionCodigo())) {
+                String estado = textoEstadoPublicacion(codigoEstadoPublicacionParaColumna(intento.getEstadoNotificacionCodigo()));
+                String fecha = intento.getFechaEnvio() == null
+                        ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio());
+                publicacion = estado + " · " + fecha;
+            } else if (intento.getNumeroIntento() == 1) {
+                intento1 = valorNotif(intento.getEstadoNotificacion());
+            } else if (intento.getNumeroIntento() == 2) {
+                intento2 = valorNotif(intento.getEstadoNotificacion());
+            }
+        }
+        lblPubInfoIntento1.setText(intento1);
+        lblPubInfoIntento2.setText(intento2);
+        lblPubInfoPublicacion.setText(publicacion);
+    }
+
+    private void limpiarPanelInfoPublicacionNotif() {
+        lblPubInfoTipoDocumento.setText("-");
+        lblPubInfoNumeroDocumento.setText("-");
+        lblPubInfoFechaEmision.setText("-");
+        lblPubInfoEstadoFinal.setText("-");
+        lblPubInfoIntento1.setText("-");
+        lblPubInfoIntento2.setText("-");
+        lblPubInfoPublicacion.setText("-");
+    }
+
+    private void cerrarPanelPublicacionNotif() {
+        panelPublicacionCerradoPorUsuario = true;
+        if (splitBandejasNotif != null) {
+            splitBandejasNotif.setSideVisible(false);
+        }
+    }
+
+    private JPanel crearPanelDetallePublicacionNotif() {
+        AppV2SideActionPanel panelDatos = datosPublicacionNotif.crearPanel(
+                "Panel de datos", new Color(57, 125, 199), this::cerrarPanelPublicacionNotif);
+        AppV2SideActionPanel panelPublicacionInfo = crearPanelPublicacionInfoNotif();
+        return crearPanelPublicacionConTabNotif(panelDatos, panelPublicacionInfo);
+    }
+
+    /**
+     * Lengüeta "Publicación" del panel lateral: solo informativa (sin botones ni campos
+     * editables). Registrar o editar la publicación se hace unicamente desde la fila
+     * correspondiente de la grilla (icono Guardar/Eliminar), pedido explicito del usuario.
+     */
+    private AppV2SideActionPanel crearPanelPublicacionInfoNotif() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Publicación", this::cerrarPanelPublicacionNotif);
+        panel.setAccentColor(new Color(10, 118, 145));
+        AppV2SideSectionPanel seccionDocumento = new AppV2SideSectionPanel("Documento");
+        seccionDocumento.addRow("Tipo documento", lblPubInfoTipoDocumento);
+        seccionDocumento.addRow("N° Documento", lblPubInfoNumeroDocumento);
+        seccionDocumento.addRow("Fecha Emisión", lblPubInfoFechaEmision);
+        seccionDocumento.addRow("Estado Final", lblPubInfoEstadoFinal);
+        panel.addSection(seccionDocumento);
+        AppV2SideSectionPanel seccionIntentos = new AppV2SideSectionPanel("Intentos de notificación");
+        seccionIntentos.addRow("Intento 1", lblPubInfoIntento1);
+        seccionIntentos.addRow("Intento 2", lblPubInfoIntento2);
+        panel.addSection(seccionIntentos);
+        AppV2SideSectionPanel seccionPublicacion = new AppV2SideSectionPanel("Publicación registrada");
+        seccionPublicacion.addRow("Publicación", lblPubInfoPublicacion);
+        panel.addSection(seccionPublicacion);
+        JLabel ayuda = new JLabel(
+                "<html>Panel informativo. Para registrar, editar o eliminar la publicación use los "
+                        + "iconos de la fila correspondiente en la grilla de la bandeja.</html>");
+        ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
+        ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);
+        ayuda.setBorder(BorderFactory.createEmptyBorder(4, 4, 8, 4));
+        panel.addSection(ayuda);
+        return panel;
+    }
+
+    private JPanel crearPanelPublicacionConTabNotif(
+            final AppV2SideActionPanel panelDatos,
+            final AppV2SideActionPanel panelPublicacionInfo) {
+        JPanel wrapper = new JPanel(null) {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                int panelX = PANEL_PUBLICACION_TAB_OVERHANG;
+                int panelWidth = Math.max(0, width - panelX);
+                int[] positions = calcularPosicionesLenguetasNotif(
+                        2, PANEL_PUBLICACION_TAB_HEIGHT, 8, height, PANEL_PUBLICACION_TAB_TOP);
+                tabPublicacionDatos.setBounds(0, positions[0], PANEL_PUBLICACION_TAB_OVERHANG - 6, PANEL_PUBLICACION_TAB_HEIGHT);
+                tabPublicacionPublicacion.setBounds(0, positions[1], PANEL_PUBLICACION_TAB_OVERHANG - 6, PANEL_PUBLICACION_TAB_HEIGHT);
+                panelPublicacionCards.setBounds(panelX, 0, panelWidth, height);
+            }
+        };
+        wrapper.setOpaque(false);
+        panelPublicacionCardsLayout = new CardLayout();
+        panelPublicacionCards = new JPanel(panelPublicacionCardsLayout);
+        panelPublicacionCards.setOpaque(false);
+        panelPublicacionCards.add(panelDatos, TAB_PUBLICACION_DATOS);
+        panelPublicacionCards.add(panelPublicacionInfo, TAB_PUBLICACION_PUBLICACION);
+        tabPublicacionDatos.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabPublicacion(TAB_PUBLICACION_DATOS);
+            }
+        });
+        tabPublicacionPublicacion.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                seleccionarTabPublicacion(TAB_PUBLICACION_PUBLICACION);
+            }
+        });
+        wrapper.add(tabPublicacionDatos);
+        wrapper.add(tabPublicacionPublicacion);
+        wrapper.add(panelPublicacionCards);
+        wrapper.setMinimumSize(new Dimension(PANEL_PUBLICACION_ANCHO_MINIMO + PANEL_PUBLICACION_TAB_OVERHANG, 0));
+        wrapper.setPreferredSize(new Dimension(PANEL_PUBLICACION_ANCHO_NORMAL + PANEL_PUBLICACION_TAB_OVERHANG, 0));
+        seleccionarTabPublicacion(TAB_PUBLICACION_DATOS);
+        return wrapper;
+    }
+
+    private void seleccionarTabPublicacion(String tab) {
+        if (tab == null || panelPublicacionCardsLayout == null || panelPublicacionCards == null) {
+            return;
+        }
+        boolean mismaTab = tab.equals(tabPublicacionActiva);
+        tabPublicacionActiva = tab;
+        panelPublicacionCardsLayout.show(panelPublicacionCards, tab);
+        if (splitBandejasNotif != null && splitBandejasNotif.isSideVisible() && mismaTab) {
+            splitBandejasNotif.setSideExpanded(!splitBandejasNotif.isSideExpanded());
+        }
+        panelPublicacionCards.revalidate();
+        panelPublicacionCards.repaint();
+        actualizarLenguetasPublicacion();
+    }
+
+    private void actualizarLenguetasPublicacion() {
+        boolean expandido = splitBandejasNotif != null && splitBandejasNotif.isSideExpanded();
+        tabPublicacionDatos.setState(
+                TAB_PUBLICACION_DATOS.equals(tabPublicacionActiva), TAB_PUBLICACION_DATOS.equals(tabPublicacionActiva) && expandido);
+        tabPublicacionPublicacion.setState(
+                TAB_PUBLICACION_PUBLICACION.equals(tabPublicacionActiva),
+                TAB_PUBLICACION_PUBLICACION.equals(tabPublicacionActiva) && expandido);
+    }
+
+    private class PublicacionExpandirRenderer extends JPanel implements TableCellRenderer {
+        private final NotifIntentoGlyph glyph = new NotifIntentoGlyph();
+
+        private PublicacionExpandirRenderer() {
+            setOpaque(true);
+            setLayout(new BorderLayout());
+            add(glyph, BorderLayout.CENTER);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Color background = isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            setBackground(background);
+            String texto = value == null ? "" : value.toString();
+            int total = 0;
+            int separador = texto.indexOf(':');
+            String estado = separador >= 0 ? texto.substring(0, separador) : texto;
+            if (separador >= 0) {
+                try {
+                    total = Integer.parseInt(texto.substring(separador + 1));
+                } catch (NumberFormatException ignored) {
+                    total = 0;
+                }
+            }
+            if ("expand".equals(estado)) {
+                glyph.configure(NotifIntentoGlyph.EXPAND, total, AppV2Theme.TEAL, background);
+            } else if ("collapse".equals(estado)) {
+                glyph.configure(NotifIntentoGlyph.COLLAPSE, total, AppV2Theme.TEAL, background);
+            } else {
+                glyph.configure(NotifIntentoGlyph.NONE, 0, AppV2Theme.TEAL, background);
+            }
+            return this;
+        }
+    }
+
+    private class PublicacionBandejaRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            int modelRow = table.convertRowIndexToModel(row);
+            int modelCol = table.convertColumnIndexToModel(column);
+            PublicacionFilaTabla fila = modelRow >= 0 && modelRow < filasPublicacionBandeja.size()
+                    ? filasPublicacionBandeja.get(modelRow) : null;
+            boolean esSubEncabezado = fila != null && fila.esSubEncabezado();
+            boolean esHijo = fila != null && !fila.esPadre() && !esSubEncabezado;
+            Object valorMostrado = value;
+            if (esHijo && modelCol == COL_PUB_ESTADO && !fila.esIntentoSoloLectura()) {
+                valorMostrado = textoEstadoPublicacion(value == null ? "" : value.toString());
+            }
+            Component c = super.getTableCellRendererComponent(table, valorMostrado, isSelected, hasFocus, row, column);
+            setFont(esSubEncabezado
+                    ? AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL - 1)
+                    : (esHijo ? AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL) : AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE)));
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+            if (!isSelected) {
+                if (esSubEncabezado) {
+                    setBackground(new Color(224, 238, 241));
+                    setForeground(AppV2Theme.TEAL.darker());
+                } else {
+                    setBackground(esHijo ? new Color(238, 250, 252) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+                    setForeground(esHijo ? AppV2Theme.TEXT_SECONDARY : AppV2Theme.TEXT_PRIMARY);
+                }
+            }
+            return c;
+        }
+    }
+
+    private class PublicacionSeleccionRenderer extends JPanel implements TableCellRenderer {
+        private final JCheckBox checkBox = new JCheckBox();
+
+        private PublicacionSeleccionRenderer() {
+            setOpaque(true);
+            setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            checkBox.setOpaque(false);
+            add(checkBox);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Color background = isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT);
+            setBackground(background);
+            int modelRow = table.convertRowIndexToModel(row);
+            boolean esPadre = modelRow >= 0 && modelRow < filasPublicacionBandeja.size() && filasPublicacionBandeja.get(modelRow).esPadre();
+            checkBox.setVisible(esPadre);
+            checkBox.setSelected(Boolean.TRUE.equals(value));
+            return this;
+        }
+    }
+
+    private class PublicacionSeleccionEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JCheckBox checkBox = new JCheckBox();
+
+        private PublicacionSeleccionEditor() {
+            checkBox.addActionListener(e -> fireEditingStopped());
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return Boolean.valueOf(checkBox.isSelected());
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            checkBox.setSelected(Boolean.TRUE.equals(value));
+            JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            panel.setOpaque(true);
+            panel.setBackground(table.getSelectionBackground());
+            panel.add(checkBox);
+            return panel;
+        }
+    }
+
+    private class PublicacionAccionRenderer extends JPanel implements TableCellRenderer {
+        private final JButton btnGuardar = crearBotonAccionNotif(new NotifSaveIcon(), "Guardar publicación");
+        private final JButton btnCancelar = crearBotonAccionNotif(new NotifCancelIcon(), "Descartar publicación sin guardar");
+        private final JButton btnEliminar = crearBotonAccionNotif(new NotifDeleteIcon(), "Eliminar publicación");
+
+        private PublicacionAccionRenderer() {
+            setOpaque(true);
+            setLayout(new FlowLayout(FlowLayout.CENTER, 2, 0));
+            add(btnGuardar);
+            add(btnCancelar);
+            add(btnEliminar);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            setBackground(isSelected ? new Color(219, 244, 249) : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
+            boolean esBorrador = "guardar-borrador".equals(value);
+            boolean esPersistido = "guardar".equals(value);
+            btnGuardar.setVisible(esBorrador || esPersistido);
+            btnCancelar.setVisible(esBorrador);
+            btnEliminar.setVisible(esPersistido);
+            return this;
+        }
+    }
+
+    private class PublicacionAccionEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
+        private final JButton btnGuardar = crearBotonAccionNotif(new NotifSaveIcon(), "Guardar publicación");
+        private final JButton btnCancelar = crearBotonAccionNotif(new NotifCancelIcon(), "Descartar publicación sin guardar");
+        private final JButton btnEliminar = crearBotonAccionNotif(new NotifDeleteIcon(), "Eliminar publicación");
+        private int editingRow = -1;
+
+        private PublicacionAccionEditor() {
+            panel.setOpaque(true);
+            panel.add(btnGuardar);
+            panel.add(btnCancelar);
+            panel.add(btnEliminar);
+            btnGuardar.addActionListener(e -> {
+                int fila = editingRow;
+                fireEditingStopped();
+                guardarFilaPublicacion(fila);
+            });
+            btnCancelar.addActionListener(e -> {
+                int fila = editingRow;
+                fireEditingStopped();
+                cancelarBorradorPublicacion(fila);
+            });
+            btnEliminar.addActionListener(e -> {
+                int fila = editingRow;
+                fireEditingStopped();
+                eliminarFilaPublicacion(fila);
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            editingRow = table.convertRowIndexToModel(row);
+            boolean esBorrador = "guardar-borrador".equals(value);
+            boolean esPersistido = "guardar".equals(value);
+            btnGuardar.setVisible(esBorrador || esPersistido);
+            btnCancelar.setVisible(esBorrador);
+            btnEliminar.setVisible(esPersistido);
+            panel.setBackground(table.getSelectionBackground());
+            return panel;
+        }
+    }
+
+    // =================== fin de Bandeja Publicación ===================
+
     private void actualizarTabBandejaNotificacion() {
         if (tabsBandejasTop != null) {
             int index = tabsBandejasTop.getSelectedIndex();
@@ -4422,11 +5728,13 @@ public class JPanelNotificacionV2 extends JPanel {
                 modoBandejaNotificacion = ModoBandejaNotificacion.ASIGNACION;
             } else if (index == 1) {
                 modoBandejaNotificacion = ModoBandejaNotificacion.VALIDACION;
-            } else {
+            } else if (index == 2) {
                 modoBandejaNotificacion = ModoBandejaNotificacion.NOTIFICACION;
+            } else {
+                modoBandejaNotificacion = ModoBandejaNotificacion.PUBLICACION;
             }
         }
-        // El panel lateral es compartido por las 3 bandejas: al cambiar de bandeja se cierra,
+        // El panel lateral es compartido por las 4 bandejas: al cambiar de bandeja se cierra,
         // para no dejar visible el detalle de una bandeja distinta a la seleccionada.
         if (splitBandejasNotif != null) {
             splitBandejasNotif.setSideVisible(false);
@@ -4439,6 +5747,8 @@ public class JPanelNotificacionV2 extends JPanel {
                 cargarBandejaAsignacionNotificacion();
             } else if (modoBandejaNotificacion == ModoBandejaNotificacion.VALIDACION) {
                 cargarBandejaValidacion();
+            } else if (modoBandejaNotificacion == ModoBandejaNotificacion.PUBLICACION) {
+                cargarBandejaPublicacionNotif();
             } else {
                 buscar();
                 cargarBandejaNotifV2();

@@ -129,6 +129,13 @@ public class DocumentoAnalisisService {
         return documentoAnalisisDAO.listarDocumentosPublicacion();
     }
 
+    public List<NotificacionAsignacionDocumentoDTO> listarDocumentosBandejaPublicacion() throws SQLException {
+        Long idUsuarioActual = resolverUsuarioActualSdrercApp();
+        boolean esAdmin = SessionContext.hasRole("ADMIN_SISTEMA");
+        return documentoAnalisisDAO.listarDocumentosBandejaPublicacion(
+                esAdmin, idUsuarioActual, esAdmin ? null : usuarioAsignacionService.listarIdsEquipoDeUsuario(idUsuarioActual));
+    }
+
     public List<NotificacionIntentoDTO> listarIntentosNotificacion(Long idDocumentoAnalizado) throws SQLException {
         return documentoAnalisisDAO.listarIntentosNotificacion(idDocumentoAnalizado);
     }
