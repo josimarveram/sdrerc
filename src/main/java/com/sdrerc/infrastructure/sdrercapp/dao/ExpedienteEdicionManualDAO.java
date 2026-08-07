@@ -32,6 +32,7 @@ public class ExpedienteEdicionManualDAO {
     private final CalendarioLaboralService calendarioLaboralService;
     private final ExpedienteAlertaDAO expedienteAlertaDAO = new ExpedienteAlertaDAO();
     private final GrupoFamiliarDAO grupoFamiliarDAO = new GrupoFamiliarDAO();
+    private final ExpedienteRegistroDAO expedienteRegistroDAO = new ExpedienteRegistroDAO();
 
     public ExpedienteEdicionManualDAO() {
         this(new CatalogoLookupDAO(), new CalendarioLaboralService());
@@ -206,7 +207,18 @@ public class ExpedienteEdicionManualDAO {
                     }
                 }
 
+                // Pedido explícito del usuario (07/08/2026): al eliminar un registro con alertas de
+                // "Potencial duplicado"/"Posible Grupo Familiar" activas, si solo quedaban 2
+                // solicitudes relacionadas (la eliminada + 1), la sobreviviente deja de mostrar la
+                // alerta (ya no tiene con quién ser duplicado/familiar); si eran 3 o más, las demás
+                // se dejan intactas y solo se limpia la alerta de la solicitud eliminada.
+                expedienteRegistroDAO.limpiarAlertaPotencialDuplicadoTrasEliminacion(conn, idExpediente, idUsuario);
+                grupoFamiliarDAO.limpiarAlertaPosibleGrupoFamiliarTrasEliminacion(conn, idExpediente, idUsuario);
+                // Grupo familiar YA CONFIRMADO: limpiar alertas remanentes de los demás integrantes
+                // primero (necesita leer el grupo todavía asignado a esta persona) y recién después
+                // retirar al propio integrante eliminado del grupo.
                 grupoFamiliarDAO.limpiarAlertasGrupoFamiliarDeMiembrosRestantes(conn, idExpediente, idUsuario);
+                grupoFamiliarDAO.retirarDeGrupoFamiliarSiCorresponde(conn, idExpediente, idUsuario);
 
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);

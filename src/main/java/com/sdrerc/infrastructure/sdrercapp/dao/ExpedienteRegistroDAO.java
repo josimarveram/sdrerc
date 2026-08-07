@@ -523,6 +523,82 @@ public class ExpedienteRegistroDAO {
         return coincidenciaAproximada;
     }
 
+    /**
+     * Ids de expedientes activos (excluyendo el propio) que comparten el mismo número de acta que
+     * idExpediente: el mismo criterio de "relacionados" que usa {@link #buscarRegistroPorActaYTitular}
+     * para "Potencial duplicado" (ambas condicionales comparten acta, solo difieren en si el titular
+     * coincide o no). Usado al eliminar (baja lógica) un registro desde Recepción/Asignación para
+     * decidir si la alerta de los demás relacionados también debe limpiarse (solo quedaban 2
+     * solicitudes relacionadas: la eliminada + 1) o si debe mantenerse (eran 3 o más).
+     */
+    public List<Long> listarExpedientesActivosPorActa(Connection conn, Long idExpediente) throws SQLException {
+        List<Long> ids = new ArrayList<>();
+        if (conn == null || idExpediente == null) {
+            return ids;
+        }
+        String acta = obtenerNumeroActaActivo(conn, idExpediente);
+        if (!hasText(acta)) {
+            return ids;
+        }
+        String sql = "SELECT e.id_expediente FROM expediente e "
+                + "JOIN expediente_acta a ON a.id_expediente = e.id_expediente "
+                + "WHERE e.activo = 1 AND a.activo = 1 "
+                + "AND UPPER(TRIM(a.numero_acta)) = ? "
+                + "AND e.id_expediente <> ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, acta.trim().toUpperCase(Locale.ROOT));
+            ps.setLong(2, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getLong("id_expediente"));
+                }
+            }
+        }
+        return ids;
+    }
+
+    private String obtenerNumeroActaActivo(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT numero_acta FROM (SELECT a.numero_acta FROM expediente_acta a "
+                + "WHERE a.id_expediente = ? AND a.activo = 1 "
+                + "ORDER BY a.creado_en DESC, a.id_expediente_acta DESC) WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("numero_acta") : null;
+            }
+        }
+    }
+
+    /**
+     * Limpia la alerta "Potencial duplicado" (flag {@code EXPEDIENTE_SOLICITUD.potencial_duplicado}
+     * + fila en {@code EXPEDIENTE_ALERTA}) del propio idExpediente y, si tras eliminarlo solo queda 1
+     * solicitud activa relacionada por número de acta, también la de esa única sobreviviente (ya no
+     * hay con quién ser "potencial duplicado"). Si quedan 2 o más relacionadas, esas se dejan
+     * intactas — pedido explícito del usuario (07/08/2026). Debe llamarse dentro de la misma
+     * transacción de la baja lógica del expediente eliminado.
+     */
+    public void limpiarAlertaPotencialDuplicadoTrasEliminacion(
+            Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        if (conn == null || idExpediente == null) {
+            return;
+        }
+        List<Long> relacionados = listarExpedientesActivosPorActa(conn, idExpediente);
+        limpiarAlertaPotencialDuplicado(conn, idExpediente, idUsuario);
+        if (relacionados.size() == 1) {
+            limpiarAlertaPotencialDuplicado(conn, relacionados.get(0), idUsuario);
+        }
+    }
+
+    private void limpiarAlertaPotencialDuplicado(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_solicitud SET potencial_duplicado = 0 "
+                + "WHERE id_expediente = ? AND activo = 1 AND potencial_duplicado = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.executeUpdate();
+        }
+        expedienteAlertaDAO.marcarAtendidas(conn, idExpediente, Collections.singletonList("Potencial duplicado"), idUsuario);
+    }
+
     private DuplicadoRegistro buscarRegistroPorNumeroExpedienteSgd(
             Connection conn,
             String numeroExpedienteSgd,
