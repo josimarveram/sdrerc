@@ -641,8 +641,16 @@ public class DocumentoEjecucionTreeGridPanelV2 extends JPanel {
                 return false;
             }
             if (soloComentario) {
-                return columnIndex == PADRE_COL_COMENTARIO || columnIndex == PADRE_COL_GUARDAR
-                        || columnIndex == PADRE_COL_ESTADO_DOCUMENTO;
+                if (columnIndex == PADRE_COL_COMENTARIO || columnIndex == PADRE_COL_GUARDAR) {
+                    return true;
+                }
+                // Un documento que ya tiene Fecha Emisión (ya fue emitido/validado) no debe permitir
+                // editar ningún otro campo, solo el Comentario; Estado documento solo es editable
+                // mientras todavía no tiene fecha de emisión registrada.
+                if (columnIndex == PADRE_COL_ESTADO_DOCUMENTO) {
+                    return row.fechaDocumento == null;
+                }
+                return false;
             }
             if (columnIndex == PADRE_COL_TIPO) {
                 return row.tipo != null && row.tipo.getCodigo() != null

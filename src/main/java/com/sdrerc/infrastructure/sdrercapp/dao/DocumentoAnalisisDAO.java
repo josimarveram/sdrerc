@@ -28,6 +28,7 @@ public class DocumentoAnalisisDAO {
     private static final String CODIGO_MOVIMIENTO_ASIGNACION_NOTIFICACION = "ASIGNACION_NOTIFICACION";
     private static final String CODIGO_MOVIMIENTO_REASIGNACION_NOTIFICACION = "REASIGNACION_NOTIFICACION";
     private static final String CODIGO_MOVIMIENTO_DEVOLUCION_EJECUCION = "DEVOLUCION_A_EJECUCION";
+    private static final String CODIGO_MOVIMIENTO_SUPERVISION_EMISION_NOTIFICACION = "SUPERVISION_EMISION_NOTIFICACION";
     private static final String CODIGO_FLUJO = "SDRERC_TO_BE";
 
     private final CatalogoLookupDAO catalogoLookupDAO;
@@ -945,6 +946,42 @@ public class DocumentoAnalisisDAO {
                 if (updated != 1) {
                     throw new SQLException("No se pudo registrar la firma del documento.");
                 }
+            }
+        }
+    }
+
+    /**
+     * Registra en EXPEDIENTE_HISTORIAL que el supervisor aprobó la emisión de un documento desde
+     * el mini-panel "Emisión" de la Bandeja Asignación de Notificación (botón "Registrar
+     * Supervisión", resultado Aprobado). No mueve etapa/estado del expediente (esa transición real
+     * ocurre después, al generar la segunda asignación hacia Eq. Notificación en el mini-panel
+     * "② Asignación"); es solo el registro de auditoría de que la supervisión se realizó — antes de
+     * este método, un resultado Aprobado no dejaba ningún rastro en base de datos, a diferencia de
+     * Análisis (EXPEDIENTE_EVALUACION), Verificación y Ejecución (transición de etapa/estado +
+     * EXPEDIENTE_HISTORIAL.motivo), que sí registran su resultado.
+     */
+    public void registrarSupervisionEmisionAprobada(
+            Long idExpediente, Long idDocumentoAnalizado, Long idUsuario) throws SQLException {
+        if (idExpediente == null || idDocumentoAnalizado == null) {
+            throw new IllegalArgumentException("Seleccione un documento para registrar la supervisión.");
+        }
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_SUPERVISION_EMISION_NOTIFICACION);
+            if (idMovimiento == null) {
+                throw new SQLException("No se encontró el movimiento " + CODIGO_MOVIMIENTO_SUPERVISION_EMISION_NOTIFICACION
+                        + ". Ejecute el script de catálogo correspondiente.");
+            }
+            String sql = "INSERT INTO expediente_historial ("
+                    + "id_expediente, id_tipo_movimiento, fecha_movimiento, "
+                    + "tabla_relacionada, id_registro_relacionado, comentario, activo, creado_por, creado_en"
+                    + ") VALUES (?, ?, SYSTIMESTAMP, 'EXPEDIENTE_DOCUMENTO_ANALIZADO', ?, ?, 1, ?, SYSTIMESTAMP)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                ps.setLong(2, idMovimiento);
+                ps.setLong(3, idDocumentoAnalizado);
+                ps.setString(4, "Emisión aprobada por supervisión.");
+                setLongOrNull(ps, 5, idUsuario);
+                ps.executeUpdate();
             }
         }
     }

@@ -266,6 +266,11 @@ public class DocumentoAnalisisService {
                 idDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, comentario, resolverUsuarioActualSdrercApp());
     }
 
+    public void registrarSupervisionEmisionAprobada(Long idExpediente, Long idDocumentoAnalizado) throws SQLException {
+        documentoAnalisisDAO.registrarSupervisionEmisionAprobada(
+                idExpediente, idDocumentoAnalizado, resolverUsuarioActualSdrercApp());
+    }
+
     private Long resolverUsuarioActualSdrercApp() {
         try {
             String username = SessionContext.getUsername();

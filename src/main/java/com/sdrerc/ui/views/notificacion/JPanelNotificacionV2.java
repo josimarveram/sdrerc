@@ -1715,9 +1715,12 @@ public class JPanelNotificacionV2 extends JPanel {
      * ya usaba "Devolver expediente"), reutilizando el combo "Equipo destino"/"Usuario destino"
      * del mini-panel "② Asignación" ({@link #cmbEquipoNotif}/{@link #cmbUsuarioNotif}, desbloqueado
      * automaticamente por {@link #actualizarBloqueoAsignacionAsigNotif()} mientras el resultado es
-     * Observado) en vez de un combo propio duplicado. Aprobado no toca la BD (cada documento ya se
-     * guarda por su propio icono Guardar en la grilla); solo confirma que hay algo que revisar y
-     * guia al usuario, decision explicita del usuario (05/08/2026).
+     * Observado) en vez de un combo propio duplicado. Aprobado ya no se queda sin registrar nada en
+     * BD (07/08/2026, pedido explicito del usuario): {@link #registrarSupervisionEmisionAprobadaNotif()}
+     * deja un rastro en {@code EXPEDIENTE_HISTORIAL} (via
+     * {@code DocumentoAnalisisDAO.registrarSupervisionEmisionAprobada}), igual que el resto de
+     * modulos dejan registrado su resultado (Analisis en EXPEDIENTE_EVALUACION; Verificacion y
+     * Ejecucion en la transicion de etapa/estado + EXPEDIENTE_HISTORIAL.motivo).
      */
     private void registrarSupervisionEmisionNotif() {
         if (documentoAsigNotifFoco == null) {
@@ -1727,9 +1730,7 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         boolean observado = "Observado".equals(cmbResultadoEmisionNotif.getSelectedItem());
         if (!observado) {
-            JOptionPane.showMessageDialog(this,
-                    "Documento aprobado. Complete Número/Fecha/Estado y guarde cada documento con su icono de disco.",
-                    "Emisión", JOptionPane.INFORMATION_MESSAGE);
+            registrarSupervisionEmisionAprobadaNotif();
             return;
         }
         EquipoNotifItem equipoItem = (EquipoNotifItem) cmbEquipoNotif.getSelectedItem();
@@ -1752,6 +1753,44 @@ public class JPanelNotificacionV2 extends JPanel {
                 codigoEquipoDestino,
                 java.util.Collections.singletonList(documentoAsigNotifFoco),
                 equipoItem, usuarioItem, comentario);
+    }
+
+    /**
+     * Resultado Aprobado de "Registrar Supervisión": exige que el documento enfocado ya esté
+     * Emitido (guardado con su icono de disco en "Documentos a firmar") antes de dejar el rastro de
+     * auditoría en {@code EXPEDIENTE_HISTORIAL}; no mueve etapa/estado del expediente, eso ocurre
+     * recién al generar la asignación en el mini-panel "② Asignación" (ya desbloqueado en cuanto el
+     * documento pasa a Emitido, independientemente de este botón).
+     */
+    private void registrarSupervisionEmisionAprobadaNotif() {
+        if (!emisionCompletadaAsigNotif(documentoAsigNotifFoco)) {
+            JOptionPane.showMessageDialog(this,
+                    "Complete Número/Fecha/Estado y guarde el documento con su icono de disco antes de registrar la supervisión.",
+                    "Emisión", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final Long idExpediente = documentoAsigNotifFoco.getIdExpediente();
+        final Long idDocumento = documentoAsigNotifFoco.getIdDocumentoAnalizado();
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                documentoAnalisisService.registrarSupervisionEmisionAprobada(idExpediente, idDocumento);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(JPanelNotificacionV2.this,
+                            "Supervisión registrada. Continúe con el bloque \"② Asignación\" para enviar el documento a Notificación.",
+                            "Emisión", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    mostrarError("No se pudo registrar la supervisión.", ex);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private JPanel crearPanelAsignacionConTabNotif(
@@ -1889,6 +1928,29 @@ public class JPanelNotificacionV2 extends JPanel {
                             && modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
                         splitBandejasNotif.setSideVisible(documentoAsigNotifFoco != null && !panelAsigNotifCerradoPorUsuario);
                     }
+                    return;
+                }
+                break;
+            }
+        }
+        // El documento ya no aparece en la vista filtrada actual (p.ej. cambió de Estado documento
+        // tras guardar la firma y el filtro "Estado" de la búsqueda ya no lo incluye), pero sigue
+        // existiendo en la bandeja completa: mantener el panel abierto sobre ese mismo documento en
+        // vez de cerrarlo, para no sacar al usuario a mitad del flujo Emisión -> Registrar
+        // Supervisión -> Asignación.
+        if (!reabrirPanelSiEstabaAbierto) {
+            return;
+        }
+        for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO doc : documentosAsignacionNotif) {
+            if (idDocumentoAnalizado.equals(doc.getIdDocumentoAnalizado())) {
+                documentoAsigNotifFoco = doc;
+                actualizarSubtituloPanelesAsigNotif();
+                actualizarPanelDatosAsigNotif();
+                actualizarPanelFirmaAsigNotif();
+                actualizarPanelAsignacionSeleccionNotif();
+                actualizarModoPanelAsigNotif();
+                if (splitBandejasNotif != null && modoBandejaNotificacion == ModoBandejaNotificacion.ASIGNACION) {
+                    splitBandejasNotif.setSideVisible(!panelAsigNotifCerradoPorUsuario);
                 }
                 return;
             }

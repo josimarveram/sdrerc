@@ -372,7 +372,11 @@ public class DocumentoFirmaNotificacionTreeGridPanelV2 extends JPanel {
                 return true;
             }
             if ("FINAL".equals(clasificacionUpper)) {
-                return estadoDocumento != null && "VALIDADO".equalsIgnoreCase(estadoDocumento.getCodigo());
+                // Sigue editable tras guardar la firma (VALIDADO -> EMITIDO): el supervisor puede
+                // seguir ajustando N° Documento/Fecha/Estado antes de "Registrar Supervisión", no
+                // debe quedar bloqueado apenas se guarda por primera vez.
+                String codigo = estadoDocumento == null ? "" : estadoDocumento.getCodigo();
+                return "VALIDADO".equalsIgnoreCase(codigo) || "EMITIDO".equalsIgnoreCase(codigo);
             }
             return false;
         }
