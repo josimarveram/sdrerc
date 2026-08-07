@@ -2096,6 +2096,28 @@ Diagnóstico y fix por punto:
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme los 4 puntos, y en particular que **ejecute (si no lo hizo) los scripts 58 y 95** para que el historial de asignación/reasignación y el nuevo registro de "Registrar Supervisión" (Aprobado) funcionen.
 - SQL: se creó `95_tipo_movimiento_supervision_emision_notificacion.sql` (idempotente, MERGE) pero **no se ejecutó** contra la base de datos, según la regla del proyecto de no ejecutar SQL sin autorización explícita separada.
 
+### Bandeja Cartas de Respuesta: filtro por Atendido, columnas de fecha de publicación separadas, y nueva columna Estado (07/08/2026)
+
+Pedido del usuario, 4 puntos sobre la Bandeja Cartas de Respuesta (pestaña "Cartas de Rpta" de Asignación):
+
+1. Renombrar la columna "Fecha Publicación" a "Fecha Publ. Edicto", porque ese es el dato que realmente trae (fecha de publicación del edicto legal, de `EXPEDIENTE_PUBLICACION`, el módulo standalone "Publicación").
+2. Agregar una nueva columna "Fecha Publ. Notif.": la fecha de publicación de la notificación (de la Bandeja Publicación de Notificación, `EXPEDIENTE_NOTIFICACION` con `tipo_notificacion='PUBLICACION'`), vacía si el documento aún no fue publicado ahí.
+3. Quitar la columna "Estado" actual (que mostraba el estado de la notificación: `ATENDIDO`/`POR PUBLICAR`/estado del documento) y reemplazarla por un "Estado" que muestre "Pendiente de Respuesta" por defecto.
+4. La bandeja solo debe mostrar documentos cuyo estado final de notificación sea Atendido; el resto no debe aparecer.
+
+Diagnóstico: la columna "Fecha Publicación" ya traía exactamente el dato de "Fecha Publ. Edicto" (confirmado leyendo `resolverVencimientoCarta`, cuyo propio comentario decía "hoy solo posible en Carta Edicto"), solo el rótulo estaba desalineado. La columna "Estado" (`estadoCartaRespuesta(item)`) calculaba una versión simplificada y desactualizada del mismo concepto de "estado final de notificación" que ya existe centralizado en `DocumentoAnalisisDAO.ESTADO_FINAL_NOTIFICACION_SQL` (4 estados: `POR_NOTIFICAR`/`PENDIENTE`/`ATENDIDO`/`POR_PUBLICAR`, usado por Bandeja Notificación y Bandeja Publicación) — su comentario decía explícitamente "la Bandeja de Publicación... es un módulo futuro dentro de Notificación, aún no implementado", desactualizado desde que esa bandeja se implementó (05/08/2026).
+
+Implementación:
+
+- `AsignacionCartaRespuestaDTO`: campo/getter `fechaPublicacion` renombrado a `fechaPublicacionEdicto`; nuevo campo/getter `fechaPublicacionNotificacion`.
+- `DocumentoAnalisisDAO.listarCartasRespuestaPendientes`: la consulta interna ahora también trae `fecha_publicacion_notif` (subconsulta a `EXPEDIENTE_NOTIFICACION` + `TIPO_NOTIFICACION` + `ESTADO_NOTIFICACION`, filtrada a `tipo_notificacion.codigo='PUBLICACION'` y `estado_notificacion.codigo='EXITOSA'`) y `estado_final_notificacion_codigo` (reutilizando la constante `ESTADO_FINAL_NOTIFICACION_SQL` ya existente, sin duplicar lógica); la consulta completa se envuelve en `SELECT * FROM (...) WHERE estado_final_notificacion_codigo = 'ATENDIDO'` para el filtro del punto 4.
+- `JPanelAsignacionV2`: columnas de la bandeja pasan de 10 a 11 (`"Fecha Publ. Edicto"`, nueva `"Fecha Publ. Notif."`, `"Estado"`); anchos de columna y alineación centrada del renderer (`CartaRespuestaPendienteRenderer`, antes hardcodeaba columnas 1/7/8) ajustados para la columna nueva. `estadoCartaRespuesta(item)` reescrito: ya no repite el estado final de notificación (redundante, la bandeja completa ya es `ATENDIDO`); ahora refleja si ya se registró la confirmación de respuesta del ciudadano (mismo criterio que el KPI "Pendientes" ya existente: `confirmacion_respuesta` distinto de `Si`/`No` cuenta como pendiente) — `"Pendiente de Respuesta"` por defecto, `"Respondido (Sí)"`/`"Respondido (No)"` una vez respondida.
+- KPI "Publicación" (`cardCartasPublicacion`, basado en `isRequierePublicacion()`) no se tocó: sigue siendo sobre el requisito de edicto (dimensión distinta de la notificación), no afectado por el nuevo filtro de `ATENDIDO`.
+
+- Archivos: `AsignacionCartaRespuestaDTO.java`, `DocumentoAnalisisDAO.java`, `JPanelAsignacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme que la bandeja ya solo lista cartas Atendidas, con las 2 fechas de publicación separadas y el nuevo "Estado" mostrando "Pendiente de Respuesta"/"Respondido".
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL; todo reutiliza tablas/columnas ya existentes (`EXPEDIENTE_PUBLICACION`, `EXPEDIENTE_NOTIFICACION`, `TIPO_NOTIFICACION`, `ESTADO_NOTIFICACION`) y lógica SQL ya existente (`ESTADO_FINAL_NOTIFICACION_SQL`).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

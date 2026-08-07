@@ -115,7 +115,7 @@ public class DocumentoAnalisisDAO {
             boolean soportaPublicacion = soportaPublicacionPreparada(conn);
             boolean soportaNumeroDocumento = soportaNumeroDocumentoAnalizado(conn);
             boolean soportaClasificacion = soportaClasificacionTipoDocumento(conn);
-            String sql = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
+            String sqlInterno = "SELECT da.id_documento_analizado, da.id_expediente, e.numero_expediente, "
                     + "esol.numero_expediente_sgd, "
                     + nombrePersona("p") + " AS titular, "
                     + "tda.codigo AS tipo_documento_codigo, tda.nombre AS tipo_documento_nombre, "
@@ -134,8 +134,19 @@ public class DocumentoAnalisisDAO {
                             + " SELECT p2.fecha_publicacion FROM expediente_publicacion p2 "
                             + " WHERE p2.id_expediente = da.id_expediente AND p2.activo = 1 "
                             + " ORDER BY p2.creado_en DESC, p2.id_expediente_publicacion DESC"
-                            + ") WHERE ROWNUM = 1) AS fecha_publicacion "
-                            : ", 0 AS requiere_publicacion, CAST(NULL AS DATE) AS fecha_publicacion ")
+                            + ") WHERE ROWNUM = 1) AS fecha_publicacion_edicto "
+                            : ", 0 AS requiere_publicacion, CAST(NULL AS DATE) AS fecha_publicacion_edicto ")
+                    // Fecha Publ. Notif.: fecha del 3er "intento" (tipo_notificacion=PUBLICACION) de
+                    // EXPEDIENTE_NOTIFICACION, solo si ya quedo EXITOSA (Publicado) en la Bandeja
+                    // Publicacion de Notificacion; distinta de fecha_publicacion_edicto (arriba, de
+                    // EXPEDIENTE_PUBLICACION, el modulo Publicacion standalone).
+                    + ", (SELECT n2.fecha_envio FROM expediente_notificacion n2 "
+                    + " JOIN tipo_notificacion tn2 ON tn2.id_tipo_notificacion = n2.id_tipo_notificacion "
+                    + " JOIN estado_notificacion en2 ON en2.id_estado_notificacion = n2.id_estado_notificacion "
+                    + " WHERE n2.id_documento_analizado = da.id_documento_analizado AND n2.activo = 1 "
+                    + " AND UPPER(tn2.codigo) = 'PUBLICACION' AND UPPER(en2.codigo) = 'EXITOSA' AND ROWNUM = 1"
+                    + ") AS fecha_publicacion_notif, "
+                    + ESTADO_FINAL_NOTIFICACION_SQL + " "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
@@ -149,8 +160,13 @@ public class DocumentoAnalisisDAO {
                     + "AND NVL(da.requiere_respuesta, 0) = 1 "
                     + "AND NVL(da.notificado, 0) = 1 "
                     + (soportaClasificacion ? "AND UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' " : "")
-                    + (idExpedienteFiltro != null ? "AND da.id_expediente = ? " : "")
-                    + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
+                    + (idExpedienteFiltro != null ? "AND da.id_expediente = ? " : "");
+            // Solo se muestra en la Bandeja Cartas de Respuesta cuando el estado final de la
+            // notificacion ya es Atendido (ubicado en algun intento, o publicado en la Bandeja
+            // Publicacion de Notificacion); pedido explicito del usuario (07/08/2026).
+            String sql = "SELECT * FROM (" + sqlInterno + ") "
+                    + "WHERE estado_final_notificacion_codigo = 'ATENDIDO' "
+                    + "ORDER BY fecha_documento DESC NULLS LAST, id_documento_analizado DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 if (idExpedienteFiltro != null) {
                     ps.setLong(1, idExpedienteFiltro);
@@ -161,13 +177,14 @@ public class DocumentoAnalisisDAO {
                         String tipoDocumentoCodigo = rs.getString("tipo_documento_codigo");
                         String etapaCodigo = rs.getString("etapa_codigo");
                         LocalDate fechaAcuse = toLocalDate(rs.getDate("fecha_acuse"));
-                        LocalDate fechaPublicacion = toLocalDate(rs.getDate("fecha_publicacion"));
+                        LocalDate fechaPublicacionEdicto = toLocalDate(rs.getDate("fecha_publicacion_edicto"));
+                        LocalDate fechaPublicacionNotif = toLocalDate(rs.getDate("fecha_publicacion_notif"));
                         boolean yaDerivadoAAnalisis = "ANALISIS".equalsIgnoreCase(etapaCodigo);
 
                         VencimientoCarta vencimiento = yaDerivadoAAnalisis
                                 ? null
                                 : resolverVencimientoCarta(
-                                        conn, tipoDocumentoCodigo, fechaAcuse, fechaPublicacion, diasPlazoCache);
+                                        conn, tipoDocumentoCodigo, fechaAcuse, fechaPublicacionEdicto, diasPlazoCache);
 
                         items.add(new AsignacionCartaRespuestaDTO(
                                 getLongOrNull(rs, "id_documento_analizado"),
@@ -187,7 +204,8 @@ public class DocumentoAnalisisDAO {
                                 toLocalDate(rs.getDate("fecha_respuesta")),
                                 rs.getString("numero_hoja_envio_respuesta"),
                                 rs.getInt("requiere_publicacion") == 1,
-                                fechaPublicacion,
+                                fechaPublicacionEdicto,
+                                fechaPublicacionNotif,
                                 tipoDocumentoCodigo,
                                 etapaCodigo,
                                 vencimiento == null ? null : vencimiento.dias,

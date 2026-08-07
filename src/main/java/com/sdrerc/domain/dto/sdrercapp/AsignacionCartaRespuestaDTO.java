@@ -21,7 +21,8 @@ public class AsignacionCartaRespuestaDTO {
     private final LocalDate fechaRespuesta;
     private final String numeroHojaEnvioRespuesta;
     private final boolean requierePublicacion;
-    private final LocalDate fechaPublicacion;
+    private final LocalDate fechaPublicacionEdicto;
+    private final LocalDate fechaPublicacionNotificacion;
     private final String tipoDocumentoCodigo;
     private final String etapaCodigo;
     private final Long diasVencimiento;
@@ -47,7 +48,8 @@ public class AsignacionCartaRespuestaDTO {
             LocalDate fechaRespuesta,
             String numeroHojaEnvioRespuesta,
             boolean requierePublicacion,
-            LocalDate fechaPublicacion,
+            LocalDate fechaPublicacionEdicto,
+            LocalDate fechaPublicacionNotificacion,
             String tipoDocumentoCodigo,
             String etapaCodigo,
             Long diasVencimiento,
@@ -71,7 +73,8 @@ public class AsignacionCartaRespuestaDTO {
         this.fechaRespuesta = fechaRespuesta;
         this.numeroHojaEnvioRespuesta = safe(numeroHojaEnvioRespuesta);
         this.requierePublicacion = requierePublicacion;
-        this.fechaPublicacion = fechaPublicacion;
+        this.fechaPublicacionEdicto = fechaPublicacionEdicto;
+        this.fechaPublicacionNotificacion = fechaPublicacionNotificacion;
         this.tipoDocumentoCodigo = safe(tipoDocumentoCodigo);
         this.etapaCodigo = safe(etapaCodigo);
         this.diasVencimiento = diasVencimiento;
@@ -148,8 +151,12 @@ public class AsignacionCartaRespuestaDTO {
         return requierePublicacion;
     }
 
-    public LocalDate getFechaPublicacion() {
-        return fechaPublicacion;
+    public LocalDate getFechaPublicacionEdicto() {
+        return fechaPublicacionEdicto;
+    }
+
+    public LocalDate getFechaPublicacionNotificacion() {
+        return fechaPublicacionNotificacion;
     }
 
     public String getTipoDocumentoCodigo() {

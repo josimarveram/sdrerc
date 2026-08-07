@@ -325,6 +325,9 @@ Cartas de respuesta:
 - Lista documentos analizados que requieren respuesta.
 - Debe incluir numero de expediente en primera columna.
 - No crear etapa `Asignacion de respuesta`.
+- La bandeja solo muestra documentos cuyo `estado_final_notificacion_codigo` (mismo calculo de 4 estados que Bandeja Notificacion/Bandeja Publicacion: `POR_NOTIFICAR`/`PENDIENTE`/`ATENDIDO`/`POR_PUBLICAR`) sea `ATENDIDO` (07/08/2026, pedido explicito del usuario): el ciudadano ya fue ubicado en algun intento de notificacion, o el documento ya quedo `Publicado` en la Bandeja Publicacion de Notificacion. Filtro aplicado directamente en SQL (`DocumentoAnalisisDAO.listarCartasRespuestaPendientes`), no en memoria.
+- Columnas de fecha de publicacion, ambas de solo lectura en esta bandeja: `Fecha Publ. Edicto` (de `EXPEDIENTE_PUBLICACION`, el modulo standalone "Publicacion" — legal/edicto de la carta, no confundir con notificacion) y `Fecha Publ. Notif.` (de `EXPEDIENTE_NOTIFICACION` con `tipo_notificacion='PUBLICACION'` y `estado_notificacion='EXITOSA'`, el mismo 3er intento de la Bandeja Publicacion de Notificacion; vacia si el documento aun no fue publicado ahi).
+- La columna `Estado` ya no repite el estado final de la notificacion (redundante ahora que toda la bandeja es `ATENDIDO`): muestra `Pendiente de Respuesta` mientras `confirmacion_respuesta` no sea `Si`/`No` (mismo criterio que el KPI "Pendientes"), o `Respondido (Sí)`/`Respondido (No)` una vez registrada la confirmacion.
 
 ## Analisis
 

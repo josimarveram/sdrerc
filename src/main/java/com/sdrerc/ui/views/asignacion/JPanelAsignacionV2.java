@@ -390,7 +390,8 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Tipo documento",
                 "N° Documento",
                 "Fecha Acuse",
-                "Fecha Publicación",
+                "Fecha Publ. Edicto",
+                "Fecha Publ. Notif.",
                 "Estado"
             }, 0) {
         @Override
@@ -1927,7 +1928,7 @@ public class JPanelAsignacionV2 extends JPanel {
         bandejaCartasRespuestaTable.getColumnModel().getColumn(0).setCellRenderer(new CartaVencimientoRenderer());
         AppV2TableColumnSizer.applyWidths(
                 bandejaCartasRespuestaTable,
-                90, 130, 165, 150, 220, 170, 140, 96, 130, 150);
+                90, 130, 165, 150, 220, 170, 140, 96, 130, 130, 190);
         cartasRespuestaColumnFilterSupport = AppV2ColumnFilterSupport.install(
                     "Asignacion.BandejaCartasRespuesta",
                     bandejaCartasRespuestaTable,
@@ -4200,20 +4201,24 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     /**
-     * Estado Final visible en la Bandeja Cartas de Respuesta: ATENDIDO cuando el ciudadano ya
-     * fue ubicado en los intentos de notificacion (fecha_acuse ya viene de
-     * DocumentoAnalisisDAO.confirmarRecepcionIntentoNotificacion); POR PUBLICAR cuando no fue
-     * ubicado y el documento quedo marcado para publicacion (la Bandeja de Publicacion en si,
-     * que marcaria "PUBLICADO", es un modulo futuro dentro de Notificacion, aun no implementado).
+     * Columna "Estado" visible en la Bandeja Cartas de Respuesta: ya no repite el estado final de
+     * la notificacion (ahora la bandeja solo lista documentos con estado_final_notificacion_codigo
+     * = ATENDIDO, ver DocumentoAnalisisDAO.listarCartasRespuestaPendientes, asi que mostrar
+     * "Atendido" en cada fila seria redundante); en su lugar refleja si ya se registro la
+     * confirmacion de respuesta del ciudadano (mismo criterio que el KPI "Pendientes":
+     * confirmacion_respuesta distinto de Si/No cuenta como pendiente) — pedido explicito del
+     * usuario (07/08/2026).
      */
     private static String estadoCartaRespuesta(AsignacionCartaRespuestaDTO item) {
-        if (item.getFechaAcuse() != null) {
-            return "ATENDIDO";
+        String confirmacion = item.getConfirmacionRespuesta() == null
+                ? "" : item.getConfirmacionRespuesta().trim().toUpperCase(Locale.ROOT);
+        if ("SI".equals(confirmacion)) {
+            return "Respondido (Sí)";
         }
-        if (item.isRequierePublicacion()) {
-            return "POR PUBLICAR";
+        if ("NO".equals(confirmacion)) {
+            return "Respondido (No)";
         }
-        return valorUi(item.getEstadoDocumentoNombre());
+        return "Pendiente de Respuesta";
     }
 
     private void cargarBandejaCartasRespuestaModel(List<AsignacionCartaRespuestaDTO> items) {
@@ -4231,7 +4236,8 @@ public class JPanelAsignacionV2 extends JPanel {
                     valorUi(item.getTipoDocumentoNombre()),
                     valorUi(item.getNumeroDocumento()),
                     formatDate(item.getFechaAcuse()),
-                    formatDate(item.getFechaPublicacion()),
+                    formatDate(item.getFechaPublicacionEdicto()),
+                    formatDate(item.getFechaPublicacionNotificacion()),
                     estadoCartaRespuesta(item)
                 });
             }
@@ -6657,7 +6663,7 @@ public class JPanelAsignacionV2 extends JPanel {
             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setText(value == null || value.toString().trim().isEmpty() ? "-" : value.toString());
             setToolTipText(getText());
-            setHorizontalAlignment(column == 1 || column == 7 || column == 8 ? SwingConstants.CENTER : SwingConstants.LEFT);
+            setHorizontalAlignment(column == 1 || column == 7 || column == 8 || column == 9 ? SwingConstants.CENTER : SwingConstants.LEFT);
             setBackground(isSelected
                     ? TABLE_SELECTION_BACKGROUND
                     : (row % 2 == 0 ? AppV2Theme.SURFACE : AppV2Theme.SURFACE_ALT));
