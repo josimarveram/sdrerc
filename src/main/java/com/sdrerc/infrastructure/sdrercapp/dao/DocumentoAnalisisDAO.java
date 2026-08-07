@@ -184,7 +184,8 @@ public class DocumentoAnalisisDAO {
                         VencimientoCarta vencimiento = yaDerivadoAAnalisis
                                 ? null
                                 : resolverVencimientoCarta(
-                                        conn, tipoDocumentoCodigo, fechaAcuse, fechaPublicacionEdicto, diasPlazoCache);
+                                        conn, tipoDocumentoCodigo, fechaAcuse, fechaPublicacionNotif,
+                                        fechaPublicacionEdicto, diasPlazoCache);
 
                         items.add(new AsignacionCartaRespuestaDTO(
                                 getLongOrNull(rs, "id_documento_analizado"),
@@ -236,34 +237,40 @@ public class DocumentoAnalisisDAO {
     /**
      * Alerta de vencimiento en cascada de una carta intermedia (ver AGENTS.md, "Alertas de
      * vencimiento de respuesta/publicación en Cartas de Respuesta"): mientras el documento no
-     * tenga Fecha Publicación registrada, la alerta activa es el vencimiento de RESPUESTA (desde
-     * Fecha Acuse, plazo = código de tipo_documento_adjunto). En cuanto se registra Fecha
-     * Publicación (hoy solo posible en Carta Edicto), la alerta cambia automáticamente a
-     * PUBLICACION (desde Fecha Publicación, plazo = código + "_PUBLICACION"), sin esperar a que
-     * se derive el expediente a Análisis. Si no hay plazo configurado para el tipo/etapa que
+     * tenga Fecha Publ. Edicto registrada, la alerta activa es el vencimiento de RESPUESTA, que
+     * corre desde Fecha Acuse o, si no hay acuse directo (el ciudadano se ubicó vía la Bandeja
+     * Publicación de Notificación en vez de un intento directo), desde Fecha Publ. Notif. — plazo
+     * = código de tipo_documento_adjunto (30 días para Edicto/Precisar Pretensión/Falta Sustento,
+     * 10 días para Indagatorio, ver `92_plazos_vencimiento_cartas_respuesta.sql`). En cuanto se
+     * registra Fecha Publ. Edicto (hoy solo posible en Carta Edicto), la alerta cambia
+     * automáticamente a PUBLICACION (desde Fecha Publ. Edicto, plazo = código +
+     * "_PUBLICACION", 15 días para Edicto), sin esperar a que se derive el expediente a Análisis —
+     * pedido explícito del usuario (07/08/2026). Si no hay plazo configurado para el tipo/etapa que
      * corresponda, no hay alerta (null) en vez de inventar un valor.
      */
     private VencimientoCarta resolverVencimientoCarta(
             Connection conn,
             String tipoDocumentoCodigo,
             LocalDate fechaAcuse,
-            LocalDate fechaPublicacion,
+            LocalDate fechaPublicacionNotif,
+            LocalDate fechaPublicacionEdicto,
             Map<String, Integer> diasPlazoCache) throws SQLException {
-        if (fechaPublicacion != null) {
+        if (fechaPublicacionEdicto != null) {
             Integer diasPlazoPublicacion = resolverDiasPlazoCarta(
                     conn, tipoDocumentoCodigo + "_PUBLICACION", diasPlazoCache);
             if (diasPlazoPublicacion != null) {
                 LocalDate fechaVencimiento = calendarioLaboralService.calcularFechaVencimientoHabil(
-                        conn, fechaPublicacion, diasPlazoPublicacion.intValue());
+                        conn, fechaPublicacionEdicto, diasPlazoPublicacion.intValue());
                 long dias = calendarioLaboralService.calcularDiasHabilesRestantes(conn, LocalDate.now(), fechaVencimiento);
                 return new VencimientoCarta(Long.valueOf(dias), diasPlazoPublicacion, fechaVencimiento, "PUBLICACION");
             }
         }
-        if (fechaAcuse != null) {
+        LocalDate fechaInicioRespuesta = fechaAcuse != null ? fechaAcuse : fechaPublicacionNotif;
+        if (fechaInicioRespuesta != null) {
             Integer diasPlazoRespuesta = resolverDiasPlazoCarta(conn, tipoDocumentoCodigo, diasPlazoCache);
             if (diasPlazoRespuesta != null) {
                 LocalDate fechaVencimiento = calendarioLaboralService.calcularFechaVencimientoHabil(
-                        conn, fechaAcuse, diasPlazoRespuesta.intValue());
+                        conn, fechaInicioRespuesta, diasPlazoRespuesta.intValue());
                 long dias = calendarioLaboralService.calcularDiasHabilesRestantes(conn, LocalDate.now(), fechaVencimiento);
                 return new VencimientoCarta(Long.valueOf(dias), diasPlazoRespuesta, fechaVencimiento, "RESPUESTA");
             }

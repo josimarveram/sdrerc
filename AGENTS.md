@@ -2137,6 +2137,27 @@ Nueva regla — bloqueo de "② Asignación" atado al registro real de supervisi
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme: (a) el panel ya no se cierra al guardar un documento en "Documentos a firmar"; (b) "② Asignación"/"Generar asignación" permanecen bloqueados hasta hacer clic en "Registrar Supervisión"; (c) tras registrar la supervisión, "② Asignación" y "Generar asignación" se habilitan y "Registrar Supervisión" se deshabilita, todo sin recargar manualmente.
 - Sin cambios de base de datos: no se creó ningún script nuevo (reutiliza `95_tipo_movimiento_supervision_emision_notificacion.sql`, creado en la tarea anterior y aún no ejecutado); recordatorio: sin ejecutar ese script, `existeSupervisionEmisionAprobada` siempre devuelve `false` (nunca encontrará el `tipo_movimiento`), dejando "② Asignación" bloqueada indefinidamente para el caso Aprobado — otro motivo más para ejecutar el script 95 cuanto antes.
 
+### Bandeja Cartas de Respuesta: nuevo orden de columnas y logica de Estado/plazo por Fecha Acuse/Publ. Notif./Publ. Edicto (07/08/2026)
+
+Pedido del usuario, 2 puntos:
+
+1. Cambiar el orden de las 3 columnas de fecha a: `Fecha Acuse`, `Fecha Publ. Notif.`, `Fecha Publ. Edicto`.
+2. Redefinir "Estado" y el calculo del plazo de vencimiento segun sea Carta Edicto o no:
+   - **Carta Edicto**: con `Fecha Acuse` o `Fecha Publ. Notif.` registrada y SIN `Fecha Publ. Edicto` → Estado "Pendiente de respuesta", plazo cuenta 30 dias habiles (código `ANALISIS_DOC_02_CARTA_EDICTO`) desde la fecha que corresponda. Al registrar `Fecha Publ. Edicto` en el panel de Cartas de Respuesta → Estado "Edicto Publicado", plazo cambia a 15 dias habiles (código `ANALISIS_DOC_02_CARTA_EDICTO_PUBLICACION`) desde esa fecha.
+   - **No Edicto** (Carta Sustento/Precisar Pretension/Indagatorio): con `Fecha Acuse` o `Fecha Publ. Notif.` → Estado "Pendiente de respuesta", plazo cuenta desde esa fecha segun el código de cada tipo (30/30/10 dias habiles respectivamente).
+
+Diagnóstico: los códigos y días de plazo exactos que describió el usuario (30/15/30/10) ya estaban sembrados en `92_plazos_vencimiento_cartas_respuesta.sql` (ya ejecutado, confirmado leyendo el script), y `DocumentoAnalisisDAO.resolverVencimientoCarta` ya implementaba casi toda la cascada pedida (edicto-publicación primero, si no hay entonces respuesta), solo le faltaba considerar `Fecha Publ. Notif.` como fecha de inicio alternativa a `Fecha Acuse` para el plazo de "respuesta" (antes solo miraba `Fecha Acuse`). La columna "Estado" (que en la tarea anterior mostraba `Pendiente de Respuesta`/`Respondido (Sí)`/`Respondido (No)` según `confirmacion_respuesta`) se reemplaza por completo por la nueva definición de este pedido.
+
+Implementación:
+
+- `DocumentoAnalisisDAO.resolverVencimientoCarta`: nuevo parámetro `fechaPublicacionNotif`; la fecha de inicio del plazo de "respuesta" ahora es `fechaAcuse != null ? fechaAcuse : fechaPublicacionNotif` (antes solo `fechaAcuse`). La rama de "publicación" (edicto) no cambió — sigue usando `tipoDocumentoCodigo + "_PUBLICACION"`, que solo existe en `PLAZO_CONFIGURACION` para Carta Edicto, así que para el resto de tipos esa rama ya no aplicaba y seguirá sin aplicar.
+- `JPanelAsignacionV2.estadoCartaRespuesta(item)`: reescrito para devolver `"Edicto Publicado"` si `item.getFechaPublicacionEdicto() != null`, o `"Pendiente de Respuesta"` en cualquier otro caso.
+- Orden de columnas de la bandeja (header + `addRow` en `cargarBandejaCartasRespuestaModel`): `Fecha Acuse`, `Fecha Publ. Notif.`, `Fecha Publ. Edicto`, `Estado`. Los anchos (130/130) y la alineación centrada del renderer (columnas 1/7/8/9, sin cambios: ambas columnas de fecha intercambiadas siguen siendo columnas de fecha) no necesitaron ajuste, solo el contenido de cada posición.
+
+- Archivos: `DocumentoAnalisisDAO.java`, `JPanelAsignacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme el nuevo orden de columnas y que el Estado/plazo se calculan correctamente para Carta Edicto y para las otras 3 cartas intermedias.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo; se reutilizan los plazos ya sembrados por `92_plazos_vencimiento_cartas_respuesta.sql` (ya ejecutado).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

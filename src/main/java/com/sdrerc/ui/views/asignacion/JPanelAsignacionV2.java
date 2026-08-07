@@ -390,8 +390,8 @@ public class JPanelAsignacionV2 extends JPanel {
                 "Tipo documento",
                 "N° Documento",
                 "Fecha Acuse",
-                "Fecha Publ. Edicto",
                 "Fecha Publ. Notif.",
+                "Fecha Publ. Edicto",
                 "Estado"
             }, 0) {
         @Override
@@ -4201,22 +4201,19 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     /**
-     * Columna "Estado" visible en la Bandeja Cartas de Respuesta: ya no repite el estado final de
-     * la notificacion (ahora la bandeja solo lista documentos con estado_final_notificacion_codigo
-     * = ATENDIDO, ver DocumentoAnalisisDAO.listarCartasRespuestaPendientes, asi que mostrar
-     * "Atendido" en cada fila seria redundante); en su lugar refleja si ya se registro la
-     * confirmacion de respuesta del ciudadano (mismo criterio que el KPI "Pendientes":
-     * confirmacion_respuesta distinto de Si/No cuenta como pendiente) — pedido explicito del
-     * usuario (07/08/2026).
+     * Columna "Estado" visible en la Bandeja Cartas de Respuesta (07/08/2026, pedido explicito del
+     * usuario, reemplaza la version anterior basada en confirmacion_respuesta): "Edicto Publicado"
+     * una vez que se registra Fecha Publ. Edicto en el panel de Cartas de Respuesta (hoy solo
+     * posible en Carta Edicto); "Pendiente de Respuesta" en cualquier otro caso, incluyendo tanto
+     * Carta Edicto antes de publicar el edicto como el resto de cartas intermedias (Sustento,
+     * Precisar Pretension, Indagatorio, que nunca tienen Fecha Publ. Edicto). El disparador que
+     * trae al documento a esta bandeja (Fecha Acuse o Fecha Publ. Notif., ver
+     * DocumentoAnalisisDAO.listarCartasRespuestaPendientes = solo ATENDIDO) ya garantiza que toda
+     * fila visible aqui tiene al menos una de las dos.
      */
     private static String estadoCartaRespuesta(AsignacionCartaRespuestaDTO item) {
-        String confirmacion = item.getConfirmacionRespuesta() == null
-                ? "" : item.getConfirmacionRespuesta().trim().toUpperCase(Locale.ROOT);
-        if ("SI".equals(confirmacion)) {
-            return "Respondido (Sí)";
-        }
-        if ("NO".equals(confirmacion)) {
-            return "Respondido (No)";
+        if (item.getFechaPublicacionEdicto() != null) {
+            return "Edicto Publicado";
         }
         return "Pendiente de Respuesta";
     }
@@ -4236,8 +4233,8 @@ public class JPanelAsignacionV2 extends JPanel {
                     valorUi(item.getTipoDocumentoNombre()),
                     valorUi(item.getNumeroDocumento()),
                     formatDate(item.getFechaAcuse()),
-                    formatDate(item.getFechaPublicacionEdicto()),
                     formatDate(item.getFechaPublicacionNotificacion()),
+                    formatDate(item.getFechaPublicacionEdicto()),
                     estadoCartaRespuesta(item)
                 });
             }
