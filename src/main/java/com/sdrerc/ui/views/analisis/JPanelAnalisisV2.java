@@ -273,7 +273,7 @@ public class JPanelAnalisisV2 extends JPanel {
     private FiltroKpi kpiActivo = FiltroKpi.TODOS;
     private final MetricCardV2 cardPorRecibir = new MetricCardV2("Por recibir", "0", "Asignación / Asignado", AppV2Theme.INFO);
     private final MetricCardV2 cardEnAnalisis = new MetricCardV2("En análisis", "0", "Recibidos y observados", AppV2Theme.TEAL);
-    private final MetricCardV2 cardCartaIntermedia = new MetricCardV2("Con carta intermedia", "0", "Documentos guardados", AppV2Theme.INDIGO);
+    private final MetricCardV2 cardCartaIntermedia = new MetricCardV2("Derivado", "0", "Desde Cartas de respuesta", AppV2Theme.INDIGO);
     private final MetricCardV2 cardObservados = new MetricCardV2("Observados", "0", "Requieren subsanación", AppV2Theme.WARNING);
     private final MetricCardV2 cardVencimiento = new MetricCardV2("Por vencer / vencidos", "0", "Días hábiles críticos", AppV2Theme.ERROR);
     private final MetricCardV2 cardGrupoFamiliarConfirmado = new MetricCardV2("Grupo Familiar Confirmado", "0", "Registrado", AppV2Theme.TEAL);
@@ -1165,7 +1165,7 @@ public class JPanelAnalisisV2 extends JPanel {
             if (item.isRegistrable() || item.isEnviableVerificacion()) {
                 enAnalisis++;
             }
-            if (item.getTotalDocumentosAnalizados() > 0 && !item.isEnviableVerificacion()) {
+            if (item.isDerivado()) {
                 cartasIntermedias++;
             }
             if ("OBSERVADO".equalsIgnoreCase(item.getEstadoCodigo())) {
@@ -1225,7 +1225,7 @@ public class JPanelAnalisisV2 extends JPanel {
             case EN_ANALISIS:
                 return item.isRegistrable() || item.isEnviableVerificacion();
             case CARTA_INTERMEDIA:
-                return item.getTotalDocumentosAnalizados() > 0 && !item.isEnviableVerificacion();
+                return item.isDerivado();
             case OBSERVADOS:
                 return "OBSERVADO".equalsIgnoreCase(item.getEstadoCodigo());
             case VENCIMIENTO_CRITICO:

@@ -132,6 +132,20 @@ public class AsignacionExpedienteService {
             EquipoAsignacionDTO equipo,
             UsuarioAsignableDTO abogado,
             String comentario) throws SQLException {
+        return reasignarDesdeCartaRespuesta(idExpediente, equipo, abogado, comentario, null);
+    }
+
+    /**
+     * Igual que {@link #reasignarDesdeCartaRespuesta(Long, EquipoAsignacionDTO, UsuarioAsignableDTO, String)},
+     * pero permite indicar el estado destino en ANALISIS (OBSERVADO/DERIVADO). Si
+     * {@code codigoEstadoDestino} es nulo/vacio, conserva el comportamiento historico (OBSERVADO).
+     */
+    public AsignacionResultadoDTO reasignarDesdeCartaRespuesta(
+            Long idExpediente,
+            EquipoAsignacionDTO equipo,
+            UsuarioAsignableDTO abogado,
+            String comentario,
+            String codigoEstadoDestino) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para reasignar.");
         }
@@ -146,7 +160,8 @@ public class AsignacionExpedienteService {
                 equipo.getIdEquipo(),
                 abogado.getIdUsuario(),
                 comentario,
-                resolverUsuarioActualSdrercApp());
+                resolverUsuarioActualSdrercApp(),
+                codigoEstadoDestino);
     }
 
     public List<AsignacionHistorialDTO> listarHistorialAsignaciones(Long idExpediente) throws SQLException {

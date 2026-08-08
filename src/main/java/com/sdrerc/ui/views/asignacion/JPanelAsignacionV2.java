@@ -4202,7 +4202,10 @@ public class JPanelAsignacionV2 extends JPanel {
 
     /**
      * Columna "Estado" visible en la Bandeja Cartas de Respuesta (07/08/2026, pedido explicito del
-     * usuario, reemplaza la version anterior basada en confirmacion_respuesta): "Edicto Publicado"
+     * usuario, reemplaza la version anterior basada en confirmacion_respuesta): "Derivado" cuando el
+     * expediente ya tiene hoja de envio de respuesta registrada Y ya fue devuelto a la Bandeja
+     * Analisis desde este mismo panel (etapaCodigo=ANALISIS, ver
+     * AsignacionExpedienteDAO.reasignarDesdeCartaRespuesta con destino DERIVADO); "Edicto Publicado"
      * una vez que se registra Fecha Publ. Edicto en el panel de Cartas de Respuesta (hoy solo
      * posible en Carta Edicto); "Pendiente de Respuesta" en cualquier otro caso, incluyendo tanto
      * Carta Edicto antes de publicar el edicto como el resto de cartas intermedias (Sustento,
@@ -4212,6 +4215,10 @@ public class JPanelAsignacionV2 extends JPanel {
      * fila visible aqui tiene al menos una de las dos.
      */
     private static String estadoCartaRespuesta(AsignacionCartaRespuestaDTO item) {
+        if (!esHojaEnvioVacia(item.getNumeroHojaEnvioRespuesta())
+                && "ANALISIS".equalsIgnoreCase(item.getEtapaCodigo())) {
+            return "Derivado";
+        }
         if (item.getFechaPublicacionEdicto() != null) {
             return "Edicto Publicado";
         }
@@ -4503,7 +4510,8 @@ public class JPanelAsignacionV2 extends JPanel {
             @Override
             protected AsignacionResultadoDTO doInBackground() throws Exception {
                 return asignacionService.reasignarDesdeCartaRespuesta(
-                        idExpediente, equipo, abogado, "Derivado a Análisis desde Cartas de respuesta.");
+                        idExpediente, equipo, abogado, "Derivado a Análisis desde Cartas de respuesta.",
+                        "DERIVADO");
             }
 
             @Override
@@ -4675,7 +4683,8 @@ public class JPanelAsignacionV2 extends JPanel {
             @Override
             protected AsignacionResultadoDTO doInBackground() throws Exception {
                 return asignacionService.reasignarDesdeCartaRespuesta(
-                        idExpediente, equipo, abogado, "Derivado a Análisis desde Panel de documentos.");
+                        idExpediente, equipo, abogado, "Derivado a Análisis desde Panel de documentos.",
+                        "DERIVADO");
             }
 
             @Override

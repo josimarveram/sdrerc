@@ -36,6 +36,7 @@ public class AnalisisExpedienteDAO {
     private static final String ESTADO_RECIBIDO = "RECIBIDO_POR_ABOGADO";
     private static final String ESTADO_ATENDIDO = "ATENDIDO";
     private static final String ESTADO_OBSERVADO = "OBSERVADO";
+    private static final String ESTADO_DERIVADO = "DERIVADO";
     private static final String ESTADO_SUBSANADO = "SUBSANADO";
     private static final String ESTADO_NO_CORRESPONDE = "NO_CORRESPONDE";
     private static final String ESTADO_EN_ABANDONO = "EN_ABANDONO";
@@ -415,8 +416,9 @@ public class AnalisisExpedienteDAO {
                 if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
                         || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_DERIVADO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo))) {
-                    throw new SQLException("El expediente debe estar recibido, observado o subsanado en la etapa Análisis.");
+                    throw new SQLException("El expediente debe estar recibido, observado, derivado o subsanado en la etapa Análisis.");
                 }
 
                 ResultadoDestino destino = resolverDestinoResultado(registro);
@@ -500,6 +502,7 @@ public class AnalisisExpedienteDAO {
                 if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
                         || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_DERIVADO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo))) {
                     throw new SQLException("El expediente debe estar en Análisis para guardar documentos de análisis.");
@@ -543,6 +546,7 @@ public class AnalisisExpedienteDAO {
                 if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
                         || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_DERIVADO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo))) {
                     throw new SQLException("El expediente debe estar en Análisis para guardar documentos de análisis.");
@@ -580,6 +584,7 @@ public class AnalisisExpedienteDAO {
                 if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
                         || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                        || ESTADO_DERIVADO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo)
                         || ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo))) {
                     throw new SQLException("El expediente debe estar en Análisis para dar de baja documentos de análisis.");
@@ -616,9 +621,10 @@ public class AnalisisExpedienteDAO {
             if (!ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)
                     || !(ESTADO_RECIBIDO.equalsIgnoreCase(expediente.estadoCodigo)
                     || ESTADO_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)
+                    || ESTADO_DERIVADO.equalsIgnoreCase(expediente.estadoCodigo)
                     || ESTADO_ATENDIDO.equalsIgnoreCase(expediente.estadoCodigo)
                     || ESTADO_SUBSANADO.equalsIgnoreCase(expediente.estadoCodigo))) {
-                throw new SQLException("El expediente debe estar Recibido, Observado, Atendido o Subsanado para enviarlo a verificación.");
+                throw new SQLException("El expediente debe estar Recibido, Observado, Derivado, Atendido o Subsanado para enviarlo a verificación.");
             }
             if (documentoAnalisisDAO.contarPorExpediente(conn, idExpediente) <= 0) {
                 throw new SQLException("Registre al menos un documento analizado antes de enviar a verificación.");

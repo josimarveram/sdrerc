@@ -40,6 +40,7 @@ public class AsignacionExpedienteDAO {
     private static final String CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS = "DEVOLUCION_A_ANALISIS";
     private static final String CODIGO_ETAPA_ANALISIS_DESTINO = "ANALISIS";
     private static final String CODIGO_ESTADO_ANALISIS_OBSERVADO = "OBSERVADO";
+    private static final String CODIGO_ESTADO_ANALISIS_DERIVADO = "DERIVADO";
     private static final String CODIGO_MOVIMIENTO_GENERACION_NUMERO = "GENERACION_CODIGO_EXPEDIENTE";
     private static final String CODIGO_MOVIMIENTO_EDICION_DATOS = "RECEPCION_DOCUMENTO";
     private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
@@ -484,6 +485,10 @@ public class AsignacionExpedienteDAO {
      * es una etapa fija: llega desde distintos puntos del flujo, siempre que el documento este
      * marcado requiere_respuesta=1 y notificado=1). Este panel no captura hoja de envio, por eso
      * se usa insertarAsignacionSinHojaEnvio en vez de insertarAsignacion.
+     *
+     * @deprecated usar {@link #reasignarDesdeCartaRespuesta(Long, Long, Long, String, Long, String)}
+     * indicando explicitamente el estado destino (DERIVADO/OBSERVADO). Este overload conserva el
+     * comportamiento historico (destino OBSERVADO) para el caller de Notificacion-Supervision.
      */
     public AsignacionResultadoDTO reasignarDesdeCartaRespuesta(
             Long idExpediente,
@@ -491,6 +496,25 @@ public class AsignacionExpedienteDAO {
             Long idAbogadoNuevo,
             String comentario,
             Long idUsuarioAsignador) throws SQLException {
+        return reasignarDesdeCartaRespuesta(
+                idExpediente, idEquipoNuevo, idAbogadoNuevo, comentario, idUsuarioAsignador,
+                CODIGO_ESTADO_ANALISIS_OBSERVADO);
+    }
+
+    /**
+     * Igual que {@link #reasignarDesdeCartaRespuesta(Long, Long, Long, String, Long)}, pero permite
+     * indicar el estado destino en ANALISIS: OBSERVADO (observacion real, exige correccion) o
+     * DERIVADO (carta intermedia ya respondida por el ciudadano, el abogado solo continua
+     * trabajando el expediente, no es una observacion/rechazo). Pedido explicito del usuario
+     * (07/08/2026) para distinguir ambos caminos en la Bandeja Analisis.
+     */
+    public AsignacionResultadoDTO reasignarDesdeCartaRespuesta(
+            Long idExpediente,
+            Long idEquipoNuevo,
+            Long idAbogadoNuevo,
+            String comentario,
+            Long idUsuarioAsignador,
+            String codigoEstadoDestino) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para reasignar.");
         }
@@ -500,6 +524,8 @@ public class AsignacionExpedienteDAO {
         if (idAbogadoNuevo == null) {
             throw new IllegalArgumentException("Seleccione el abogado responsable.");
         }
+        String estadoDestinoCodigo = hasText(codigoEstadoDestino)
+                ? codigoEstadoDestino : CODIGO_ESTADO_ANALISIS_OBSERVADO;
         try (Connection conn = SdrercAppConnection.getConnection()) {
             boolean previousAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
@@ -511,7 +537,7 @@ public class AsignacionExpedienteDAO {
                 Long idEtapaDestino;
                 Long idEstadoDestino;
                 if (CODIGO_ETAPA_ANALISIS_DESTINO.equalsIgnoreCase(expediente.etapaCodigo)
-                        && CODIGO_ESTADO_ANALISIS_OBSERVADO.equalsIgnoreCase(expediente.estadoCodigo)) {
+                        && estadoDestinoCodigo.equalsIgnoreCase(expediente.estadoCodigo)) {
                     idEtapaDestino = expediente.idEtapa;
                     idEstadoDestino = expediente.idEstado;
                 } else {
@@ -521,7 +547,7 @@ public class AsignacionExpedienteDAO {
                             expediente.etapaCodigo,
                             expediente.estadoCodigo,
                             CODIGO_ETAPA_ANALISIS_DESTINO,
-                            CODIGO_ESTADO_ANALISIS_OBSERVADO);
+                            estadoDestinoCodigo);
                     idEtapaDestino = destino[0];
                     idEstadoDestino = destino[1];
                 }

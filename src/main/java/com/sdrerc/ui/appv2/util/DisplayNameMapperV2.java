@@ -46,6 +46,8 @@ public final class DisplayNameMapperV2 {
                 return "Atendido";
             case "OBSERVADO":
                 return "Observado";
+            case "DERIVADO":
+                return "Derivado";
             case "SUBSANADO":
                 return "Subsanado";
             case "EN_ABANDONO":

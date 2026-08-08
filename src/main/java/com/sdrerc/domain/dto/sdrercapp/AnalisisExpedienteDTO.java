@@ -322,6 +322,7 @@ public class AnalisisExpedienteDTO {
         return "ANALISIS".equalsIgnoreCase(etapaCodigo)
                 && ("RECIBIDO_POR_ABOGADO".equalsIgnoreCase(estadoCodigo)
                 || "OBSERVADO".equalsIgnoreCase(estadoCodigo)
+                || "DERIVADO".equalsIgnoreCase(estadoCodigo)
                 || "SUBSANADO".equalsIgnoreCase(estadoCodigo));
     }
 
@@ -329,8 +330,13 @@ public class AnalisisExpedienteDTO {
         return "ANALISIS".equalsIgnoreCase(etapaCodigo)
                 && ("RECIBIDO_POR_ABOGADO".equalsIgnoreCase(estadoCodigo)
                 || "OBSERVADO".equalsIgnoreCase(estadoCodigo)
+                || "DERIVADO".equalsIgnoreCase(estadoCodigo)
                 || "SUBSANADO".equalsIgnoreCase(estadoCodigo)
                 || "ATENDIDO".equalsIgnoreCase(estadoCodigo));
+    }
+
+    public boolean isDerivado() {
+        return "ANALISIS".equalsIgnoreCase(etapaCodigo) && "DERIVADO".equalsIgnoreCase(estadoCodigo);
     }
 
     public boolean isDerivableNotificacionEspecial() {
