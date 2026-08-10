@@ -144,6 +144,22 @@ public class CalendarioLaboralService {
         }
     }
 
+    /**
+     * true si el conteo de "Dias" de este expediente esta actualmente congelado (ver
+     * {@link #resolverFechaEmisionCartaIntermediaPendiente}); usado por la UI para mostrar el
+     * icono de pausa junto al pill "Días" en el "Panel de datos" (09/08/2026, pedido explicito del
+     * usuario).
+     */
+    public boolean tienePlazoCongelado(Connection conn, Long idExpediente) throws SQLException {
+        return idExpediente != null && resolverFechaEmisionCartaIntermediaPendiente(conn, idExpediente) != null;
+    }
+
+    public boolean tienePlazoCongelado(Long idExpediente) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return tienePlazoCongelado(conn, idExpediente);
+        }
+    }
+
     private LocalDate resolverFechaReferenciaPlazo(Connection conn, Long idExpediente) throws SQLException {
         if (idExpediente == null) {
             return LocalDate.now();
@@ -154,8 +170,19 @@ public class CalendarioLaboralService {
 
     /**
      * Ultima fecha de emision (MAX fecha_documento) entre las cartas intermedias activas del
-     * expediente que ya fueron emitidas pero cuya respuesta del ciudadano todavia no se confirma
-     * (confirmacion_respuesta IS NULL); null si no hay ninguna carta en ese estado (conteo normal).
+     * expediente que ya fueron emitidas pero cuya respuesta del ciudadano todavia no se confirma;
+     * null si no hay ninguna carta en ese estado (conteo normal).
+     *
+     * OJO (09/08/2026, diagnosticado con SELECT de solo lectura autorizado por el usuario sobre
+     * SDRERC-EXP-2026-000005): `confirmacion_respuesta` NUNCA queda en NULL real una vez que el
+     * documento se guarda con `requiere_respuesta=1` -- `DocumentoAnalisisDAO.normalizarConfirmacionRespuesta`
+     * normaliza cualquier valor vacio/no reconocido al literal `'PENDIENTE'` desde el primer guardado
+     * en Analisis, mucho antes de que el ciudadano responda. El primer intento de esta bandera
+     * comparaba contra `IS NULL`, que en la practica nunca se cumplia (se verifico con el
+     * expediente de ejemplo: `confirmacion_respuesta='PENDIENTE'`), asi que el congelamiento nunca
+     * se activaba. Fix: tratar tanto `NULL` como el literal `'PENDIENTE'` como "todavia sin
+     * confirmar" (sigue congelado); solo `'SI'`/`'NO'` (los otros 2 valores validos de
+     * `normalizarConfirmacionRespuesta`) cuentan como respuesta ya confirmada y reactivan el conteo.
      */
     private LocalDate resolverFechaEmisionCartaIntermediaPendiente(Connection conn, Long idExpediente) throws SQLException {
         String sql = "SELECT MAX(da.fecha_documento) AS fecha_congelada "
@@ -165,7 +192,7 @@ public class CalendarioLaboralService {
                 + "AND UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' "
                 + "AND NVL(da.requiere_respuesta, 0) = 1 "
                 + "AND da.fecha_documento IS NOT NULL "
-                + "AND da.confirmacion_respuesta IS NULL";
+                + "AND UPPER(NVL(da.confirmacion_respuesta, 'PENDIENTE')) = 'PENDIENTE'";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, idExpediente);
             try (ResultSet rs = ps.executeQuery()) {

@@ -265,6 +265,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private final JLabel lblDocumentoTitularSeleccionado = new JLabel("-");
     private final JLabel lblFechaSolicitudSeleccionada = new JLabel("-");
     private final BadgeV2 lblDiasSeleccionados = new BadgeV2("-", AppV2Theme.SOFT_GRAY, AppV2Theme.MUTED);
+    // Icono de pausa junto al pill "Días" cuando el plazo esta congelado por una carta intermedia
+    // pendiente de respuesta (09/08/2026, pedido explicito del usuario); ver
+    // CalendarioLaboralService.tienePlazoCongelado.
+    private final JLabel lblPlazoCongeladoIcono = new JLabel(new PlazoCongeladoIcon());
     private final JLabel lblFechaVencimientoSeleccionada = new JLabel("-");
     private final JLabel lblEstadoSeleccionado = new JLabel("-");
     private final JLabel lblHojaEnvioSeleccionada = new JLabel("-");
@@ -875,9 +879,45 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private AppV2SideSectionPanel crearDatosPlazoAsignacion() {
         AppV2SideSectionPanel section = new AppV2SideSectionPanel("Datos del plazo");
-        section.addRow("Días", lblDiasSeleccionados);
+        lblPlazoCongeladoIcono.setVisible(false);
+        lblPlazoCongeladoIcono.setToolTipText(
+                "Plazo congelado: esperando la respuesta del ciudadano a una carta intermedia ya emitida.");
+        JPanel diasConIcono = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        diasConIcono.setOpaque(false);
+        diasConIcono.add(lblDiasSeleccionados);
+        diasConIcono.add(lblPlazoCongeladoIcono);
+        section.addRow("Días", diasConIcono);
         section.addRow("Fecha Vencimiento", lblFechaVencimientoSeleccionada);
         return section;
+    }
+
+    /** Icono de pausa (circulo amarillo con 2 barras) para el pill "Días" cuando el plazo esta congelado. */
+    private static class PlazoCongeladoIcon implements javax.swing.Icon {
+        @Override
+        public int getIconWidth() {
+            return 16;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 16;
+        }
+
+        @Override
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(AppV2Theme.WARNING);
+                g2.fillOval(x, y, 16, 16);
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(x + 6, y + 5, x + 6, y + 11);
+                g2.drawLine(x + 10, y + 5, x + 10, y + 11);
+            } finally {
+                g2.dispose();
+            }
+        }
     }
 
     private static void actualizarBadgeDias(BadgeV2 badge, Long dias) {
@@ -5838,6 +5878,41 @@ public class JPanelAsignacionV2 extends JPanel {
         lblNumeroDocumentoSeleccionado.setToolTipText(tooltip);
     }
 
+    private Long idExpedientePlazoCongeladoConsultado;
+
+    /**
+     * Consulta async si el plazo del expediente esta congelado (carta intermedia emitida sin
+     * confirmar respuesta) y muestra/oculta el icono de pausa junto al pill "Días". Guardado en
+     * {@link #idExpedientePlazoCongeladoConsultado} para descartar respuestas tardias si el usuario
+     * ya selecciono otro expediente antes de que termine la consulta.
+     */
+    private void actualizarIconoPlazoCongelado(final Long idExpediente) {
+        idExpedientePlazoCongeladoConsultado = idExpediente;
+        lblPlazoCongeladoIcono.setVisible(false);
+        if (idExpediente == null) {
+            return;
+        }
+        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                return asignacionService.tienePlazoCongelado(idExpediente);
+            }
+
+            @Override
+            protected void done() {
+                if (!idExpediente.equals(idExpedientePlazoCongeladoConsultado)) {
+                    return;
+                }
+                try {
+                    lblPlazoCongeladoIcono.setVisible(Boolean.TRUE.equals(get()));
+                } catch (Exception ex) {
+                    lblPlazoCongeladoIcono.setVisible(false);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void actualizarDatosExpedientePanel(AsignacionExpedienteDTO item) {
         if (item == null) {
             lblResultadoInicialSeleccionado.setText("-");
@@ -5866,6 +5941,8 @@ public class JPanelAsignacionV2 extends JPanel {
             lblDocumentoTitularSeleccionado.setText("-");
             lblFechaSolicitudSeleccionada.setText("-");
             actualizarBadgeDias(lblDiasSeleccionados, null);
+            idExpedientePlazoCongeladoConsultado = null;
+            lblPlazoCongeladoIcono.setVisible(false);
             lblFechaVencimientoSeleccionada.setText("-");
             lblEstadoSeleccionado.setText("-");
             lblHojaEnvioSeleccionada.setText("-");
@@ -5900,6 +5977,7 @@ public class JPanelAsignacionV2 extends JPanel {
         lblFechaSolicitudSeleccionada.setText(formatDate(item.getFechaRecepcion()));
         actualizarBadgeDias(lblDiasSeleccionados, item.getDiasRestantes());
         lblFechaVencimientoSeleccionada.setText(formatDate(item.getFechaVencimiento()));
+        actualizarIconoPlazoCongelado(item.getIdExpediente());
         lblEstadoSeleccionado.setText(DisplayNameMapperV2.estado(item.getEstadoCodigo()));
         lblHojaEnvioSeleccionada.setText(valorUi(item.getNumeroHojaEnvioAsignacion()));
         lblObservacionSeleccionada.setText(valorUi(item.getObservacionSolicitud()));

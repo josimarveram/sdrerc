@@ -76,6 +76,10 @@ public class AsignacionExpedienteService {
         return asignacionExpedienteDAO.obtenerExpedientePorId(idExpediente);
     }
 
+    public boolean tienePlazoCongelado(Long idExpediente) throws SQLException {
+        return asignacionExpedienteDAO.tienePlazoCongelado(idExpediente);
+    }
+
     public AsignacionResultadoDTO asignar(
             List<Long> idsExpediente,
             EquipoAsignacionDTO equipo,

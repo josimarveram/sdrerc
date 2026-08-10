@@ -255,6 +255,13 @@ public class AsignacionExpedienteDAO {
         }
     }
 
+    /** Para el icono de pausa junto al pill "Días" del Panel de datos; ver CalendarioLaboralService. */
+    public boolean tienePlazoCongelado(Long idExpediente) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return calendarioLaboralService.tienePlazoCongelado(conn, idExpediente);
+        }
+    }
+
     public AsignacionResultadoDTO asignarExpedientes(
             List<Long> idsExpediente,
             Long idEquipoDestino,
