@@ -343,6 +343,25 @@ public class DocumentoAnalisisDAO {
             + "WHERE n3.id_documento_analizado = da.id_documento_analizado AND n3.activo = 1) "
             + "AS estado_final_notificacion_codigo";
 
+    // Bandera 0/1 independiente de estado_final_notificacion_codigo: "ambos intentos directos (1 y
+    // 2) ya fallaron", sin importar si despues se registro o no un 3er intento de PUBLICACION ni el
+    // resultado de este. A diferencia de estado_final_notificacion_codigo (que una vez que la
+    // publicacion se marca EXITOSA pasa a ATENDIDO), esta bandera permanece en 1 para siempre una
+    // vez que el documento entra al circuito de publicacion: se usa para que la Bandeja Notificacion
+    // (3ra pestana) excluya el documento de forma definitiva y la Bandeja Publicacion (4ta pestana)
+    // lo siga mostrando incluso despues de publicado (con su propio Estado Publicacion=Publicado),
+    // en vez de que "rebote" de una bandeja a la otra segun si ya se publico o no; pedido explicito
+    // del usuario (08/08/2026).
+    private static final String AGOTO_INTENTOS_DIRECTOS_SQL =
+            "(SELECT CASE WHEN "
+            + "MAX(CASE WHEN n4.numero_intento = 1 AND en4.codigo = 'FALLIDA' THEN 1 ELSE 0 END) = 1 "
+            + "AND MAX(CASE WHEN n4.numero_intento = 2 AND en4.codigo = 'FALLIDA' THEN 1 ELSE 0 END) = 1 "
+            + "THEN 1 ELSE 0 END "
+            + "FROM expediente_notificacion n4 "
+            + "JOIN estado_notificacion en4 ON en4.id_estado_notificacion = n4.id_estado_notificacion "
+            + "WHERE n4.id_documento_analizado = da.id_documento_analizado AND n4.activo = 1) "
+            + "AS agoto_intentos_directos";
+
     private static String nombreEstadoFinalNotificacion(String codigo) {
         if (codigo == null) {
             return "Por notificar";
@@ -372,28 +391,31 @@ public class DocumentoAnalisisDAO {
     }
 
     /**
-     * Bandeja Notificacion (3ra pestana): excluye documentos cuyo estado_final_notificacion_codigo
-     * ya sea POR_PUBLICAR (los 2 intentos directos ya fallaron) — esos pasan a mostrarse
+     * Bandeja Notificacion (3ra pestana): excluye de forma definitiva los documentos que ya
+     * agotaron sus 2 intentos directos (ver AGOTO_INTENTOS_DIRECTOS_SQL) — esos pasan a mostrarse
      * exclusivamente en la Bandeja Publicacion (4ta pestana, ver listarDocumentosBandejaPublicacion),
-     * pedido explicito del usuario (08/08/2026): "cuando el estado sea por publicar ya no deberia
-     * mostrarse en bandeja [de Notificacion]".
+     * incluso despues de que la publicacion ya se registro/marco Publicado (no "rebotan" de vuelta
+     * a esta bandeja solo porque estado_final_notificacion_codigo haya pasado a ATENDIDO); pedido
+     * explicito del usuario (08/08/2026).
      */
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion(
             boolean esAdmin, Long idUsuarioActual, List<Long> idsEquipoActual) throws SQLException {
         return listarDocumentosNotificacionPareado(
-                CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual, "POR_PUBLICAR", true);
+                CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual, Boolean.FALSE);
     }
 
     /**
      * Bandeja Publicacion (4ta pestana de Notificacion): mismo universo de documentos que la
      * Bandeja Notificacion (CONDICION_BANDEJA_NOTIFICACION), acotado a los que ya agotaron el
-     * intento 1 y 2 (ambos FALLIDA/no ubicado), es decir estado_final_notificacion_codigo =
-     * 'POR_PUBLICAR'. Misma visibilidad por asignacion que la Bandeja Notificacion.
+     * intento 1 y 2 (AGOTO_INTENTOS_DIRECTOS_SQL = 1), sea que la publicacion ya se haya registrado
+     * o no y sin importar su resultado (el documento permanece aqui aunque ya este Publicado, con
+     * su propio Estado Publicacion mostrando ese resultado). Misma visibilidad por asignacion que
+     * la Bandeja Notificacion.
      */
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosBandejaPublicacion(
             boolean esAdmin, Long idUsuarioActual, List<Long> idsEquipoActual) throws SQLException {
         return listarDocumentosNotificacionPareado(
-                CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual, "POR_PUBLICAR");
+                CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual, Boolean.TRUE);
     }
 
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosPublicacion() throws SQLException {
@@ -588,9 +610,10 @@ public class DocumentoAnalisisDAO {
     }
 
     /**
-     * @param filtroEstadoFinalPostQuery si no es null, envuelve la consulta pareada en un
-     *      SELECT * FROM (...) externo filtrado por ese codigo de estado_final_notificacion_codigo
-     *      (ej. 'POR_PUBLICAR' para la Bandeja Publicacion). No se puede filtrar directamente en el
+     * @param filtroAgotoIntentosDirectos si no es null, envuelve la consulta pareada en un
+     *      SELECT * FROM (...) externo filtrado por AGOTO_INTENTOS_DIRECTOS_SQL: TRUE muestra solo
+     *      documentos que ya agotaron sus 2 intentos directos (Bandeja Publicacion), FALSE excluye
+     *      esos mismos documentos (Bandeja Notificacion). No se puede filtrar directamente en el
      *      WHERE interno porque esa columna es una subconsulta correlacionada del SELECT, no una
      *      columna real de las tablas del FROM.
      */
@@ -600,29 +623,7 @@ public class DocumentoAnalisisDAO {
             boolean esAdmin,
             Long idUsuarioActual,
             List<Long> idsEquipoActual,
-            String filtroEstadoFinalPostQuery) throws SQLException {
-        return listarDocumentosNotificacionPareado(
-                condicionPareada, soloAsignados, esAdmin, idUsuarioActual, idsEquipoActual,
-                filtroEstadoFinalPostQuery, false);
-    }
-
-    /**
-     * @param filtroEstadoFinalPostQuery si no es null, envuelve la consulta pareada en un
-     *      SELECT * FROM (...) externo filtrado por ese codigo de estado_final_notificacion_codigo
-     *      (ej. 'POR_PUBLICAR' para la Bandeja Publicacion). No se puede filtrar directamente en el
-     *      WHERE interno porque esa columna es una subconsulta correlacionada del SELECT, no una
-     *      columna real de las tablas del FROM.
-     * @param negarFiltroEstadoFinal si es true, invierte el filtro anterior a "distinto de" en vez
-     *      de "igual a" (ej. Bandeja Notificacion excluyendo POR_PUBLICAR).
-     */
-    private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacionPareado(
-            String condicionPareada,
-            boolean soloAsignados,
-            boolean esAdmin,
-            Long idUsuarioActual,
-            List<Long> idsEquipoActual,
-            String filtroEstadoFinalPostQuery,
-            boolean negarFiltroEstadoFinal) throws SQLException {
+            Boolean filtroAgotoIntentosDirectos) throws SQLException {
         List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
                 new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
         try (Connection conn = SdrercAppConnection.getConnection()) {
@@ -648,8 +649,9 @@ public class DocumentoAnalisisDAO {
                     + (soportaIntentos
                             ? "(SELECT COUNT(*) FROM expediente_notificacion en2 "
                             + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos, "
-                            + ESTADO_FINAL_NOTIFICACION_SQL + " "
-                            : "0 AS total_intentos, 'POR_NOTIFICAR' AS estado_final_notificacion_codigo ")
+                            + ESTADO_FINAL_NOTIFICACION_SQL + ", " + AGOTO_INTENTOS_DIRECTOS_SQL + " "
+                            : "0 AS total_intentos, 'POR_NOTIFICAR' AS estado_final_notificacion_codigo, "
+                            + "0 AS agoto_intentos_directos ")
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -664,18 +666,18 @@ public class DocumentoAnalisisDAO {
                     + "AND " + condicionPareada + " "
                     + (soloAsignados ? "AND da.id_usuario_notificacion IS NOT NULL " : "")
                     + condicionVisibilidad;
-            String sql = filtroEstadoFinalPostQuery == null
+            String sql = filtroAgotoIntentosDirectos == null
                     ? sqlInterno + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC"
                     : "SELECT * FROM (" + sqlInterno + ") pub "
-                    + "WHERE pub.estado_final_notificacion_codigo " + (negarFiltroEstadoFinal ? "<> ? " : "= ? ")
+                    + "WHERE pub.agoto_intentos_directos = ? "
                     + "ORDER BY pub.fecha_documento DESC NULLS LAST, pub.id_documento_analizado DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 int index = 1;
                 for (int i = 0; i < paramsVisibilidad.size(); i++) {
                     ps.setObject(index++, paramsVisibilidad.get(i));
                 }
-                if (filtroEstadoFinalPostQuery != null) {
-                    ps.setString(index++, filtroEstadoFinalPostQuery);
+                if (filtroAgotoIntentosDirectos != null) {
+                    ps.setInt(index++, filtroAgotoIntentosDirectos.booleanValue() ? 1 : 0);
                 }
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
