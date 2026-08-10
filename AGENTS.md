@@ -2298,6 +2298,28 @@ Fix definitivo (reemplaza el mecanismo de la ronda anterior, no lo apila): nueva
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme con SDRERC-EXP-2026-000046 (u otro caso fresco) que: (a) nunca aparece en Bandeja Notificación una vez que agota sus 2 intentos, publicado o no; (b) permanece visible en Bandeja Publicación después de marcarse Publicado, mostrando el intento 3 con Fecha Publicación y Estado Publicación=Publicado; (c) con un caso nuevo (no el 000046 ya contaminado), "Fecha Acuse" de Cartas de Respuesta se mantiene en blanco y solo se llena "Fecha Publ. Notif.".
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo.
 
+### Diagnóstico con consulta de solo lectura autorizada por el usuario: intento 2 estaba dado de baja (08/08/2026)
+
+El usuario reportó "el expediente 000046 tenía 2 intentos fallidos porque solo veo 1 en la bandeja de notificación". Como no hay forma de inspeccionar la base de datos desde el código, se pidió autorización explícita (vía `AskUserQuestion`) para ejecutar un `SELECT` de solo lectura contra `EXPEDIENTE_NOTIFICACION` (incluyendo filas inactivas) para ese documento; el usuario autorizó. Conexión vía `sqlplus` usando la variable de entorno `SDRERC_APP_DB_PASSWORD` ya presente en el entorno (nunca se imprimió ni se documentó el valor de la contraseña).
+
+Resultado: 10 filas para ese documento, con un historial de mucha prueba/error manual (varias versiones duplicadas de intento 2 y 3 con distintos resultados). Solo 2 filas quedaban `ACTIVO=1`: intento 1 (`VIRTUAL`/`FALLIDA`/22-07) y intento 3 (`PUBLICACION`/`EXITOSA`/07-08, el ya validado como correcto). El intento 2 real (`PRESENCIAL_1`/`FALLIDA`/04-08, coincide exactamente con lo que el usuario describió) existía pero estaba `ACTIVO=0` — dado de baja en algún punto de la troubleshooting anterior, probablemente sin querer. Con solo 1 intento directo activo, la bandera `AGOTO_INTENTOS_DIRECTOS_SQL` (fix de la ronda anterior) correctamente NO excluye el documento de la Bandeja Notificación — el código funcionaba como se diseñó; la causa era el dato, no el filtro. Se le explicó esto al usuario con la tabla completa de resultados y se ofreció reactivar solo esa fila.
+
+### Script 98: reset completo de intentos/historial de notificación de SDRERC-EXP-2026-000046 (08/08/2026)
+
+En vez de reactivar puntualmente el intento 2, el usuario pidió algo más simple: "hazme un script que elimine todos los intentos y historial, y empezar a registrar nuevamente desde cero los intentos". Con la misma consulta de solo lectura ya autorizada se confirmó además que `EXPEDIENTE_CARGO_ACUSE` tenía 14 filas **activas** para este documento (varias duplicadas por cada intento, incluyendo cargos activos apuntando a intentos ya dados de baja — otra inconsistencia huérfana del mismo período de pruebas).
+
+Creado `98_reset_intentos_notificacion_sdrerc_exp_2026_000046.sql` (**NO ejecutado**, requiere autorización explícita separada para ejecutar, distinta de la autorización ya dada para el `SELECT` de diagnóstico). Alcance, todo por baja lógica (`ACTIVO=0`, sin `DELETE` físico, siguiendo el mismo patrón que ya usa toda la app y que el propio usuario usa desde la UI — su "eliminar" anterior en esta misma conversación fue justamente un baja lógica vía `darBajaIntentoNotificacion`):
+
+1. `EXPEDIENTE_CARGO_ACUSE`: da de baja todo cargo/acuse ligado a los intentos de este documento (las 14 filas, incluidas las huérfanas).
+2. `EXPEDIENTE_NOTIFICACION`: da de baja los intentos que seguían activos (1 y 3; los demás ya estaban inactivos).
+3. `EXPEDIENTE_DOCUMENTO_ANALIZADO`: `FECHA_ACUSE = NULL` y `NOTIFICADO = 0` — sin ningún intento activo, el documento vuelve a estar genuinamente "no notificado". No toca `CONFIRMACION_RESPUESTA`/`FECHA_RESPUESTA`/`NUMERO_HOJA_ENVIO_RESPUESTA` (flujo de Cartas de Respuesta, no pedido) ni `ID_USUARIO_NOTIFICACION`/`ID_EQUIPO_NOTIFICACION` (asignación del documento, no pedida). Tampoco toca `EXPEDIENTE.ID_ETAPA_ACTUAL`/`ID_ESTADO_ACTUAL`: el expediente queda donde está hoy, listo para registrar intentos desde cero en la misma bandeja sin rehacer la asignación.
+
+Reemplaza en la práctica al script 97 (que solo limpiaba `fecha_acuse` bajo una condición más estrecha): con el reset completo del 98 ya no queda ningún intento activo, así que la condición de 97 ("sin intento directo EXITOSA") deja de aplicar — ambos scripts pueden coexistir en el repo pero solo el 98 es necesario para este pedido.
+
+- Archivos: `db/sdrerc_app/scripts/98_reset_intentos_notificacion_sdrerc_exp_2026_000046.sql` (nuevo).
+- Validación: solo Markdown/SQL, no se compiló. Script idempotente (bloque PL/SQL con `SQL%ROWCOUNT` por cada UPDATE, no hace nada si ya no hay filas activas) con `SELECT` de verificación al final.
+- **SQL NO ejecutado**: pendiente autorización explícita para correrlo contra la base de datos.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
