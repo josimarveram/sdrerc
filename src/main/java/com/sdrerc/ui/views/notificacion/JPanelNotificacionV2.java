@@ -3966,7 +3966,7 @@ public class JPanelNotificacionV2 extends JPanel {
             @Override
             protected void done() {
                 try {
-                    intentosNotifCache.put(idDocumento, get());
+                    intentosNotifCache.put(idDocumento, filtrarIntentosDirectos(get()));
                     documentosNotifExpandidos.add(idDocumento);
                     reconstruirFilasNotifBandeja();
                 } catch (Exception ex) {
@@ -4022,7 +4022,7 @@ public class JPanelNotificacionV2 extends JPanel {
                 @Override
                 protected void done() {
                     try {
-                        intentosNotifCache.put(idDocumento, get());
+                        intentosNotifCache.put(idDocumento, filtrarIntentosDirectos(get()));
                     } catch (Exception ex) {
                         intentosNotifCache.put(idDocumento, new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>());
                     }
@@ -4033,6 +4033,28 @@ public class JPanelNotificacionV2 extends JPanel {
             };
             worker.execute();
         }
+    }
+
+    /**
+     * La Bandeja Notificacion (3ra pestana) solo gestiona los intentos directos 1/2 al ciudadano;
+     * el "3er intento" (tipo_notificacion=PUBLICACION) es exclusivo de la Bandeja Publicacion (4ta
+     * pestana). Se filtra en todo punto que puebla intentosNotifCache para esta bandeja, para que
+     * nunca se renderice ni permita guardar esa fila como si fuera un intento directo (evitaba que
+     * guardarFilaIntento la tratara como tal y sobreescribiera fecha_acuse via
+     * confirmarRecepcionIntentoNotificacion; pedido explicito del usuario 08/08/2026).
+     */
+    private static List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> filtrarIntentosDirectos(
+            List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentos) {
+        List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> directos =
+                new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>();
+        if (intentos != null) {
+            for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentos) {
+                if (!"PUBLICACION".equalsIgnoreCase(intento.getTipoNotificacionCodigo())) {
+                    directos.add(intento);
+                }
+            }
+        }
+        return directos;
     }
 
     private void crearBorradoresIntento(java.util.Collection<Long> idsDocumento) {
@@ -4263,9 +4285,7 @@ public class JPanelNotificacionV2 extends JPanel {
                     documentosNotifBandeja.addAll(items);
                     intentosNotifCache.clear();
                     if (idDocumento != null) {
-                        intentosNotifCache.put(idDocumento, intentosDocumento == null
-                                ? new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO>()
-                                : intentosDocumento);
+                        intentosNotifCache.put(idDocumento, filtrarIntentosDirectos(intentosDocumento));
                         documentosNotifExpandidos.add(idDocumento);
                     }
                     reconstruirFilasNotifBandeja();

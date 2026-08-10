@@ -371,9 +371,17 @@ public class DocumentoAnalisisDAO {
         return listarDocumentosNotificacionPareado(CONDICION_VALIDACION_NOTIFICACION, true, esAdmin, idUsuarioActual, idsEquipoActual);
     }
 
+    /**
+     * Bandeja Notificacion (3ra pestana): excluye documentos cuyo estado_final_notificacion_codigo
+     * ya sea POR_PUBLICAR (los 2 intentos directos ya fallaron) — esos pasan a mostrarse
+     * exclusivamente en la Bandeja Publicacion (4ta pestana, ver listarDocumentosBandejaPublicacion),
+     * pedido explicito del usuario (08/08/2026): "cuando el estado sea por publicar ya no deberia
+     * mostrarse en bandeja [de Notificacion]".
+     */
     public List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacion(
             boolean esAdmin, Long idUsuarioActual, List<Long> idsEquipoActual) throws SQLException {
-        return listarDocumentosNotificacionPareado(CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual);
+        return listarDocumentosNotificacionPareado(
+                CONDICION_BANDEJA_NOTIFICACION, false, esAdmin, idUsuarioActual, idsEquipoActual, "POR_PUBLICAR", true);
     }
 
     /**
@@ -593,6 +601,28 @@ public class DocumentoAnalisisDAO {
             Long idUsuarioActual,
             List<Long> idsEquipoActual,
             String filtroEstadoFinalPostQuery) throws SQLException {
+        return listarDocumentosNotificacionPareado(
+                condicionPareada, soloAsignados, esAdmin, idUsuarioActual, idsEquipoActual,
+                filtroEstadoFinalPostQuery, false);
+    }
+
+    /**
+     * @param filtroEstadoFinalPostQuery si no es null, envuelve la consulta pareada en un
+     *      SELECT * FROM (...) externo filtrado por ese codigo de estado_final_notificacion_codigo
+     *      (ej. 'POR_PUBLICAR' para la Bandeja Publicacion). No se puede filtrar directamente en el
+     *      WHERE interno porque esa columna es una subconsulta correlacionada del SELECT, no una
+     *      columna real de las tablas del FROM.
+     * @param negarFiltroEstadoFinal si es true, invierte el filtro anterior a "distinto de" en vez
+     *      de "igual a" (ej. Bandeja Notificacion excluyendo POR_PUBLICAR).
+     */
+    private List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> listarDocumentosNotificacionPareado(
+            String condicionPareada,
+            boolean soloAsignados,
+            boolean esAdmin,
+            Long idUsuarioActual,
+            List<Long> idsEquipoActual,
+            String filtroEstadoFinalPostQuery,
+            boolean negarFiltroEstadoFinal) throws SQLException {
         List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> items =
                 new ArrayList<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO>();
         try (Connection conn = SdrercAppConnection.getConnection()) {
@@ -637,7 +667,7 @@ public class DocumentoAnalisisDAO {
             String sql = filtroEstadoFinalPostQuery == null
                     ? sqlInterno + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC"
                     : "SELECT * FROM (" + sqlInterno + ") pub "
-                    + "WHERE pub.estado_final_notificacion_codigo = ? "
+                    + "WHERE pub.estado_final_notificacion_codigo " + (negarFiltroEstadoFinal ? "<> ? " : "= ? ")
                     + "ORDER BY pub.fecha_documento DESC NULLS LAST, pub.id_documento_analizado DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 int index = 1;
