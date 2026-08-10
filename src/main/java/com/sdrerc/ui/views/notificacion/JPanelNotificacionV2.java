@@ -5111,8 +5111,14 @@ public class JPanelNotificacionV2 extends JPanel {
         boolean esPublicacion = "PUBLICACION".equalsIgnoreCase(intento.getTipoNotificacionCodigo());
         String etiqueta = "Intento " + intento.getNumeroIntento();
         if (esPublicacion) {
-            String fechaPublicacion = intento.getFechaPublicacion() == null
-                    ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaPublicacion());
+            // OJO: la fecha que guarda/actualiza esta fila (registrarIntentoNotificacion/
+            // actualizarIntentoNotificacion) es expediente_notificacion.fecha_envio
+            // (intento.getFechaEnvio()), NO intento.getFechaPublicacion() (esa viene de
+            // EXPEDIENTE_PUBLICACION, la tabla del modulo standalone "Publicacion", una tabla
+            // distinta que esta fila nunca escribe); usar el campo equivocado hacia que la fecha
+            // pareciera no guardarse nunca (pedido explicito del usuario, 08/08/2026).
+            String fechaPublicacion = intento.getFechaEnvio() == null
+                    ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio());
             return new Object[]{
                 null, "", etiqueta, "PUBLICACION", "-", "ENVIADA", "-", "-", "-", "",
                 fechaPublicacion, codigoEstadoPublicacionParaColumna(intento.getEstadoNotificacionCodigo()),

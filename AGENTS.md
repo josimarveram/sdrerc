@@ -2352,6 +2352,20 @@ Implementación (mismo archivo que ya tenía ambas bandejas, `JPanelNotificacion
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme visualmente que los intentos 1/2 se ven igual que en Bandeja Notificación, que la fila de Publicación queda debajo con las 2 columnas propias, y que "Estado" ya no muestra "Fallida"/otros valores crudos del catálogo.
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (cambio puramente de UI, mismas tablas/columnas ya usadas).
 
+### Bandeja Publicación: "Fecha Publicación" no se veía guardada — leía campo equivocado del DTO (08/08/2026)
+
+Pedido del usuario: "en la bandeja de publicación no me está guardando la Fecha Publicación, pero sí el Estado Publicación, corregir para que sí permita grabar. en la bandeja de publicación y cartas de respuesta debe mostrarse este valor en Fecha Publicación y Fecha Publ. Notif. respectivamente".
+
+Diagnóstico: no era un bug de guardado. `guardarFilaPublicacion` ya pasaba correctamente la fecha editada a `registrarIntentoNotificacion`/`actualizarIntentoNotificacion`, que la persisten en `expediente_notificacion.fecha_envio`. El bug era puramente de relectura/visualización: `filaHijoPublicacionDesdeIntento(...)`, en la rama de la fila de Publicación (`esPublicacion`), leía `intento.getFechaPublicacion()` — campo de `NotificacionIntentoDTO` que en realidad viene de `EXPEDIENTE_PUBLICACION`, la tabla del módulo standalone "Publicación" (menú lateral aparte, para el flujo de edicto legal), que esta fila nunca escribe — en vez de `intento.getFechaEnvio()`, el campo real que sí se persiste. Como `EXPEDIENTE_PUBLICACION` nunca tiene fila para este documento, el campo leído siempre volvía `null` y la columna se veía vacía tras guardar, aunque el dato sí quedara correctamente guardado en `expediente_notificacion.fecha_envio`.
+
+Se verificó además que "Fecha Publ. Notif." de Cartas de Respuesta (Asignación) ya estaba correctamente conectada a ese mismo campo real (`DocumentoAnalisisDAO.listarCartasRespuestaPendientes`, subconsulta ya existente sobre `n2.fecha_envio` con `tipo_notificacion='PUBLICACION' AND estado='EXITOSA'`), así que no hizo falta ningún cambio de DAO/SQL para que ambas columnas queden consistentes sobre el mismo dato: bastó con corregir la lectura del lado de Bandeja Publicación.
+
+Fix: `filaHijoPublicacionDesdeIntento(...)` ahora usa `intento.getFechaEnvio()` para la columna `Fecha Publicación` de la fila de Publicación, con un comentario en el código explicando por qué no debe usarse `getFechaPublicacion()` ahí.
+
+- Archivos: `JPanelNotificacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme que tras editar y guardar `Fecha Publicación` en Bandeja Publicación, el valor se ve reflejado ahí y coincide con "Fecha Publ. Notif." de Cartas de Respuesta.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (el fix es enteramente de lectura de un campo del DTO ya existente).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
