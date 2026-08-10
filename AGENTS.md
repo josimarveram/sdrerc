@@ -2366,6 +2366,28 @@ Fix: `filaHijoPublicacionDesdeIntento(...)` ahora usa `intento.getFechaEnvio()` 
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme que tras editar y guardar `Fecha Publicación` en Bandeja Publicación, el valor se ve reflejado ahí y coincide con "Fecha Publ. Notif." de Cartas de Respuesta.
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (el fix es enteramente de lectura de un campo del DTO ya existente).
 
+### Bandeja Publicación: fusionar "Estado Publicación" dentro de "Estado Notificación" (09/08/2026)
+
+Pedido del usuario: "en la bandeja publicación eliminar la columna Estado Publicación, y en la fila hija agregada de la publicación registrada eliminar la columna Estado Publicación y ese estado de la publicación debe ser actualizado en la columna 'Estado Notificación'. Cambiar el nombre de columna 'Estado Notificación' por 'Estado Notif./Public.' así se evitan columnas innecesarias. se entiende que el valor de estado notif./public. o bien puede ser ubicado, no ubicado o publicado y eso debe actualizarse en la columna Estado Final de la misma bandeja de publicación".
+
+Diagnóstico previo: `estado_final_notificacion_codigo` (`ESTADO_FINAL_NOTIFICACION_SQL`, `DocumentoAnalisisDAO`) ya trata cualquier intento con `estado_notificacion='EXITOSA'` como `ATENDIDO`, sin filtrar por `tipo_notificacion` — incluye tanto los intentos directos (1/2) como el de Publicación. Por eso, cuando se marca la Publicación como `Publicado` (`EXITOSA`), la columna `Estado Final` de la fila padre ya pasa a `Atendido` automáticamente, sin ningún cambio de SQL/DAO. La última parte del pedido ("eso debe actualizarse en la columna Estado Final") ya estaba satisfecha por diseño previo; se verificó y no requirió cambio.
+
+Implementación (solo `JPanelNotificacionV2.java`, sin cambios de DAO/SQL):
+
+- Constantes: se eliminó `COL_PUB_ESTADO_PUBLICACION`; `COL_PUB_ACCION` pasa de 12 a 11. `COL_PUB_ESTADO_NOTIF` (índice 8, ya existía para intento 1/2) pasa a ser también la columna editable para la fila de Publicación.
+- `publicacionBandejaModel`: header baja de 13 a 12 columnas (se quitó `"Estado Publicación"`).
+- `isCellEditable`: la condición de la fila editable (borrador/persistida de Publicación) cambia de `COL_PUB_ESTADO_PUBLICACION` a `COL_PUB_ESTADO_NOTIF`.
+- `filaSubEncabezadoPublicacion()`: se quitó el rótulo `"Estado Publicación"` y se renombró `"Estado Notificación"` a `"Estado Notif./Public."`.
+- `filaHijoPublicacionDesdeIntento(...)`: para intento 1/2, la columna `COL_PUB_ESTADO_NOTIF` sigue con el mismo código (`codigoEstadoNotifParaColumna`, sin cambios); para la fila de Publicación, esa misma columna ahora lleva `codigoEstadoPublicacionParaColumna(...)` (antes iba en la columna separada que se eliminó). `filaHijoPublicacionDesdeBorrador()` sigue el mismo patrón (`"PENDIENTE"` por defecto en `COL_PUB_ESTADO_NOTIF`).
+- `PublicacionBandejaRenderer`: un único bloque para `modelCol == COL_PUB_ESTADO_NOTIF` decide `textoEstadoNotifHija(texto)` (Ubicado/No ubicado) si `fila.esIntentoSoloLectura()`, o `textoEstadoPublicacion(texto)` (Pendiente/Publicado) en caso contrario — reemplaza los 2 bloques separados que existían antes para cada columna.
+- `guardarFilaPublicacion(...)`: lee el valor de estado desde `COL_PUB_ESTADO_NOTIF` en vez de la columna eliminada.
+- `configurarTablaPublicacionNotif()`: el editor combo (`crearComboEstadoPublicacion()`, sin cambios: `Pendiente`/`Publicado`) se reasigna a `COL_PUB_ESTADO_NOTIF`; como solo la fila de Publicación es editable en esa columna (`isCellEditable`), el editor nunca se dispara para intento 1/2.
+- Fila padre (`reconstruirFilasPublicacionBandeja`) y comentarios de cabecera de la sección actualizados para reflejar que ahora hay 1 columna propia al final (`Fecha Publicación`) en vez de 2.
+
+- Archivos: `JPanelNotificacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme visualmente que la columna `Estado Publicación` ya no aparece, que `Estado Notif./Public.` muestra Ubicado/No ubicado/Publicado según la fila, y que `Estado Final` de la fila padre pasa a `Atendido` al marcar la Publicación como Publicado.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (cambio puramente de UI; la fórmula de `Estado Final` en el DAO ya cubría el caso sin modificaciones).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

@@ -490,10 +490,13 @@ public class JPanelNotificacionV2 extends JPanel {
     // con icono "+ Agregar X"), pero acotada a documentos que ya agotaron intento 1 y 2 (ambos
     // FALLIDA/no ubicado). Los intentos 1 y 2 se muestran de solo lectura, con las MISMAS 7 columnas
     // que la Bandeja Notificación (Nro. Intento/Modalidad/Fecha Envío/Estado/Código.../Fecha
-    // Acuse/Estado Notificación) y los mismos valores (08/08/2026, pedido explicito del usuario:
+    // Acuse/Estado Notif./Public.) y los mismos valores (08/08/2026, pedido explicito del usuario:
     // "uniformizar"); unicamente la fila de "Publicación" (el 3er intento, tipo_notificacion=
-    // PUBLICACION, ya sembrado por el script 46) es editable, con 2 columnas propias adicionales
-    // (Fecha Publicación/Estado Publicación) al final.
+    // PUBLICACION, ya sembrado por el script 46) es editable, con 1 columna propia adicional (Fecha
+    // Publicación) al final. La columna "Estado Notificación" se fusionó con la antigua columna
+    // "Estado Publicación" (09/08/2026, pedido explicito del usuario, ver detalle en
+    // filaSubEncabezadoPublicacion): ahora se llama "Estado Notif./Public." y acepta 3 valores segun
+    // el tipo de fila (Ubicado/No ubicado para intento 1/2, Publicado/Pendiente para la Publicación).
     private static final int COL_PUB_SEL = 0;
     private static final int COL_PUB_EXPAND = 1;
     private static final int COL_PUB_MODALIDAD = 3;
@@ -501,10 +504,13 @@ public class JPanelNotificacionV2 extends JPanel {
     private static final int COL_PUB_ESTADO = 5;
     private static final int COL_PUB_CODIGO = 6;
     private static final int COL_PUB_FECHA_ACUSE = 7;
+    // Columna fusionada (09/08/2026, pedido explicito del usuario): antes existian 2 columnas
+    // separadas "Estado Notificación" (Ubicado/No ubicado, solo intento 1/2) y "Estado Publicación"
+    // (Pendiente/Publicado, solo la fila de Publicación); se fusionaron en una sola columna
+    // "Estado Notif./Public." que muestra el valor que corresponda segun el tipo de fila.
     private static final int COL_PUB_ESTADO_NOTIF = 8;
     private static final int COL_PUB_FECHA_PUBLICACION = 10;
-    private static final int COL_PUB_ESTADO_PUBLICACION = 11;
-    private static final int COL_PUB_ACCION = 12;
+    private static final int COL_PUB_ACCION = 11;
     private final MetricCardV2 cardPubTotal = new MetricCardV2("Documentos", "0", "Con intentos agotados", AppV2Theme.INFO);
     private final MetricCardV2 cardPubPendientes =
             new MetricCardV2("Sin publicación registrar", "0", "Aún no tienen 3er intento", AppV2Theme.WARNING);
@@ -542,7 +548,7 @@ public class JPanelNotificacionV2 extends JPanel {
     private final AtomicLong secuenciaBorradorPublicacion = new AtomicLong(-1L);
     private final DefaultTableModel publicacionBandejaModel = new DefaultTableModel(
             new Object[]{"", "", "N° expediente", "Clas. Documentos", "Tipo documento", "N° Documento",
-                "Fecha Emisión", "Titular", "Estado Final", "Estado doc.", "Fecha Publicación", "Estado Publicación", ""},
+                "Fecha Emisión", "Titular", "Estado Final", "Estado doc.", "Fecha Publicación", ""},
             0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -557,7 +563,7 @@ public class JPanelNotificacionV2 extends JPanel {
                 return false;
             }
             return column == COL_PUB_ACCION || column == COL_PUB_FECHA_PUBLICACION
-                    || column == COL_PUB_ESTADO_PUBLICACION;
+                    || column == COL_PUB_ESTADO_NOTIF;
         }
 
         @Override
@@ -5057,7 +5063,6 @@ public class JPanelNotificacionV2 extends JPanel {
                 item.getEstadoFinalNotificacion().isEmpty() ? "Por publicar" : item.getEstadoFinalNotificacion(),
                 item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento(),
                 "-",
-                "-",
                 ""
             });
             if (!expandido) {
@@ -5086,26 +5091,27 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     /**
-     * Mismas 7 columnas que {@link #filaSubEncabezadoIntentos()} de la Bandeja Notificación (08/08/2026,
-     * pedido explicito del usuario: "uniformizar"), mas 2 columnas propias al final (Fecha
-     * Publicación/Estado Publicación) solo relevantes para la fila de Publicación.
+     * Mismas 7 columnas que {@link #filaSubEncabezadoIntentos()} de la Bandeja Notificación, mas 1
+     * columna propia al final (Fecha Publicación, solo relevante para la fila de Publicación). La
+     * columna "Estado Notificación" se fusionó con la antigua "Estado Publicación" (09/08/2026,
+     * pedido explicito del usuario: "así se evitan columnas innecesarias") y se renombró a "Estado
+     * Notif./Public." para reflejar que ahora acepta 3 valores segun el tipo de fila: Ubicado/No
+     * ubicado (intento 1/2) o Publicado/Pendiente (fila de Publicación).
      */
     private Object[] filaSubEncabezadoPublicacion() {
         return new Object[]{
             null, "", "Nro. Intento", "Modalidad", "Fecha Envío", "Estado", "Código/Usuario Notif.",
-            "Fecha Acuse", "Estado Notificación", "", "Fecha Publicación", "Estado Publicación", ""
+            "Fecha Acuse", "Estado Notif./Public.", "", "Fecha Publicación", ""
         };
     }
 
     /**
      * Intento 1/2 (solo lectura): mismos valores que {@link #filaHijoDesdeIntento(com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO)}
      * de la Bandeja Notificación, columna por columna. Fila de Publicación (editable): "Estado" queda
-     * fijo en "Enviado" y "Código/Usuario Notif."/"Fecha Acuse"/"Estado Notificación" en "-" (no
-     * aplican a un registro de publicación), y los datos reales van en las 2 columnas propias del
-     * final (Fecha Publicación/Estado Publicación); pedido explicito del usuario (08/08/2026): "estado
-     * fallido no existe" — antes se mostraba el nombre crudo del catálogo (p.ej. "Fallida") en la
-     * columna "Estado", que no es uno de los 3 valores válidos de esa columna (Enviado/Pendiente/
-     * Atendido).
+     * fijo en "Enviado" y "Código/Usuario Notif."/"Fecha Acuse" en "-" (no aplican a un registro de
+     * publicación); el resultado Pendiente/Publicado va en la misma columna fusionada "Estado
+     * Notif./Public." (antes una columna "Estado Publicación" aparte, eliminada 09/08/2026, pedido
+     * explicito del usuario), y la fecha real en la columna propia Fecha Publicación.
      */
     private Object[] filaHijoPublicacionDesdeIntento(com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento) {
         boolean esPublicacion = "PUBLICACION".equalsIgnoreCase(intento.getTipoNotificacionCodigo());
@@ -5120,8 +5126,9 @@ public class JPanelNotificacionV2 extends JPanel {
             String fechaPublicacion = intento.getFechaEnvio() == null
                     ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaEnvio());
             return new Object[]{
-                null, "", etiqueta, "PUBLICACION", "-", "ENVIADA", "-", "-", "-", "",
-                fechaPublicacion, codigoEstadoPublicacionParaColumna(intento.getEstadoNotificacionCodigo()),
+                null, "", etiqueta, "PUBLICACION", "-", "ENVIADA", "-", "-",
+                codigoEstadoPublicacionParaColumna(intento.getEstadoNotificacionCodigo()), "",
+                fechaPublicacion,
                 "guardar"
             };
         }
@@ -5134,15 +5141,16 @@ public class JPanelNotificacionV2 extends JPanel {
             intento.getFechaRecepcion() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(intento.getFechaRecepcion()),
             codigoEstadoNotifParaColumna(intento.getEstadoNotificacionCodigo()),
             "",
-            "-", "-",
+            "-",
             ""
         };
     }
 
     private Object[] filaHijoPublicacionDesdeBorrador() {
         return new Object[]{
-            null, "", "Intento 3 (nuevo)", "PUBLICACION", "-", "ENVIADA", "-", "-", "-", "",
-            "-", "PENDIENTE",
+            null, "", "Intento 3 (nuevo)", "PUBLICACION", "-", "ENVIADA", "-", "-",
+            "PENDIENTE", "",
+            "-",
             "guardar-borrador"
         };
     }
@@ -5363,7 +5371,7 @@ public class JPanelNotificacionV2 extends JPanel {
             return;
         }
         Object fechaValor = publicacionBandejaModel.getValueAt(modelRow, COL_PUB_FECHA_PUBLICACION);
-        Object estadoValor = publicacionBandejaModel.getValueAt(modelRow, COL_PUB_ESTADO_PUBLICACION);
+        Object estadoValor = publicacionBandejaModel.getValueAt(modelRow, COL_PUB_ESTADO_NOTIF);
         final LocalDate fecha = parseFechaCeldaNotif(fechaValor);
         final String estadoCodigo = estadoValor == null || estadoValor.toString().trim().isEmpty() ? "PENDIENTE" : estadoValor.toString();
         // "Código/Usuario Notif." ya no se captura para la fila de Publicación (columna fija en "-",
@@ -5478,7 +5486,7 @@ public class JPanelNotificacionV2 extends JPanel {
         tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_EXPAND).setMinWidth(40);
         tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_EXPAND).setCellRenderer(new PublicacionExpandirRenderer());
         tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_FECHA_PUBLICACION).setCellEditor(new NotifFechaCellEditor());
-        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ESTADO_PUBLICACION).setCellEditor(
+        tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ESTADO_NOTIF).setCellEditor(
                 new NotifComboCellEditor(crearComboEstadoPublicacion()));
         tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setMaxWidth(76);
         tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setMinWidth(64);
@@ -5837,10 +5845,11 @@ public class JPanelNotificacionV2 extends JPanel {
                     valorMostrado = textoEstadoHija(texto);
                 } else if (modelCol == COL_PUB_CODIGO && texto.isEmpty()) {
                     valorMostrado = "-";
-                } else if (modelCol == COL_PUB_ESTADO_NOTIF && fila.esIntentoSoloLectura()) {
-                    valorMostrado = textoEstadoNotifHija(texto);
-                } else if (modelCol == COL_PUB_ESTADO_PUBLICACION && !fila.esIntentoSoloLectura()) {
-                    valorMostrado = textoEstadoPublicacion(texto);
+                } else if (modelCol == COL_PUB_ESTADO_NOTIF) {
+                    // Columna fusionada (09/08/2026): Ubicado/No ubicado para intento 1/2,
+                    // Publicado/Pendiente para la fila de Publicación (borrador o ya persistida).
+                    valorMostrado = fila.esIntentoSoloLectura()
+                            ? textoEstadoNotifHija(texto) : textoEstadoPublicacion(texto);
                 }
             }
             Component c = super.getTableCellRendererComponent(table, valorMostrado, isSelected, hasFocus, row, column);
