@@ -163,9 +163,14 @@ public class DocumentoAnalisisDAO {
                     + (idExpedienteFiltro != null ? "AND da.id_expediente = ? " : "");
             // Solo se muestra en la Bandeja Cartas de Respuesta cuando el estado final de la
             // notificacion ya es Atendido (ubicado en algun intento, o publicado en la Bandeja
-            // Publicacion de Notificacion); pedido explicito del usuario (07/08/2026).
+            // Publicacion de Notificacion); pedido explicito del usuario (07/08/2026). Ademas, en
+            // cuanto el expediente ya volvio a etapa ANALISIS (ya fue derivado via "Registrar
+            // Asignacion") deja de mostrarse aqui: el seguimiento pasa a ser responsabilidad de
+            // Analisis (ver KPI "Derivado" de esa bandeja), no queda "atendido" en Cartas de
+            // Respuesta indefinidamente; pedido explicito del usuario (08/08/2026).
             String sql = "SELECT * FROM (" + sqlInterno + ") "
                     + "WHERE estado_final_notificacion_codigo = 'ATENDIDO' "
+                    + "AND UPPER(etapa_codigo) <> 'ANALISIS' "
                     + "ORDER BY fecha_documento DESC NULLS LAST, id_documento_analizado DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 if (idExpedienteFiltro != null) {
@@ -179,13 +184,10 @@ public class DocumentoAnalisisDAO {
                         LocalDate fechaAcuse = toLocalDate(rs.getDate("fecha_acuse"));
                         LocalDate fechaPublicacionEdicto = toLocalDate(rs.getDate("fecha_publicacion_edicto"));
                         LocalDate fechaPublicacionNotif = toLocalDate(rs.getDate("fecha_publicacion_notif"));
-                        boolean yaDerivadoAAnalisis = "ANALISIS".equalsIgnoreCase(etapaCodigo);
 
-                        VencimientoCarta vencimiento = yaDerivadoAAnalisis
-                                ? null
-                                : resolverVencimientoCarta(
-                                        conn, tipoDocumentoCodigo, fechaAcuse, fechaPublicacionNotif,
-                                        fechaPublicacionEdicto, diasPlazoCache);
+                        VencimientoCarta vencimiento = resolverVencimientoCarta(
+                                conn, tipoDocumentoCodigo, fechaAcuse, fechaPublicacionNotif,
+                                fechaPublicacionEdicto, diasPlazoCache);
 
                         items.add(new AsignacionCartaRespuestaDTO(
                                 getLongOrNull(rs, "id_documento_analizado"),

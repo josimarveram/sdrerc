@@ -2220,6 +2220,22 @@ Fix: el fast-path ahora se activa con solo `expediente.etapaCodigo == ANALISIS` 
 - Sobre los días/vencimiento en blanco que el usuario reportó junto con el error: comportamiento esperado y ya documentado (`yaDerivadoAAnalisis` en `DocumentoAnalisisDAO.listarCartasRespuestaPendientes`) — una vez que el expediente vuelve a etapa `ANALISIS` (con o sin `Fecha Publ. Edicto`), el plazo/alerta de la Bandeja Cartas de Respuesta se desactiva a propósito porque el seguimiento pasa a ser responsabilidad de Análisis; no se cambió esta lógica.
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo.
 
+### Cartas de Respuesta: expediente ya derivado a Analisis deja de listarse (en vez de reetiquetarse "Derivado") (08/08/2026)
+
+Seguimiento del mismo expediente SDRERC-EXP-2026-000043: el usuario aclaró que, para toda carta ya derivada a un abogado (incluida Carta Edicto con `Fecha Publ. Edicto` ya registrada), la Bandeja Cartas de Respuesta **no debe seguir mostrando** la fila en absoluto — no basta con corregir la etiqueta de "Edicto Publicado" a "Derivado"; el documento ya no pertenece a esta bandeja porque el seguimiento pasó a ser responsabilidad de Análisis.
+
+Causa de que 000043 siguiera viéndose como "Edicto Publicado": la rama "Derivado" agregada en la tarea anterior exigía `Hoja de Envío` (`EXPEDIENTE_DOCUMENTO_ANALIZADO.numero_hoja_envio_respuesta`) no vacía, pero ese campo lo llena el abogado manualmente desde su propia grilla de Análisis — no se completa automáticamente al derivar el expediente. Un expediente recién derivado (o derivado hace tiempo pero sin que el abogado haya tocado ese campo) nunca cumplía esa condición, así que caía a la rama "Edicto Publicado"/"Pendiente de Respuesta" según tuviera o no `Fecha Publ. Edicto`.
+
+Fix (más simple y más correcto que relabeling): `DocumentoAnalisisDAO.listarCartasRespuestaPendientes` ahora excluye directamente en SQL cualquier fila cuyo `etapa_codigo` ya sea `ANALISIS` (`AND UPPER(etapa_codigo) <> 'ANALISIS'`, además del filtro `estado_final_notificacion_codigo = 'ATENDIDO'` ya existente). Como consecuencia:
+
+- La rama "Derivado" de `JPanelAsignacionV2.estadoCartaRespuesta` se eliminó (quedaba inalcanzable: ninguna fila con etapa `ANALISIS` llega ya a la UI). La columna "Estado" vuelve a tener solo 2 valores: "Edicto Publicado"/"Pendiente de Respuesta".
+- El cálculo de vencimiento (`yaDerivadoAAnalisis`/vencimiento `null` cuando etapa=ANALISIS) también se simplificó: esa rama era la misma condición que ahora filtra el SQL, así que `resolverVencimientoCarta` se llama siempre sin condicional, sin cambiar su resultado para las filas que sí llegan a mostrarse.
+- El comentario de `CartaVencimientoRenderer` se actualizó para reflejar que ya no puede recibir una fila derivada (antes decía "en blanco si...", ahora aclara que esa fila simplemente no llega a esta bandeja).
+
+- Archivos: `DocumentoAnalisisDAO.java`, `JPanelAsignacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme que SDRERC-EXP-2026-000043 (y cualquier otro expediente ya derivado a Análisis) desaparece de la Bandeja Cartas de Respuesta.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (cambio solo en el `WHERE` de una consulta ya existente).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

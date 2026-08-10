@@ -4202,23 +4202,19 @@ public class JPanelAsignacionV2 extends JPanel {
 
     /**
      * Columna "Estado" visible en la Bandeja Cartas de Respuesta (07/08/2026, pedido explicito del
-     * usuario, reemplaza la version anterior basada en confirmacion_respuesta): "Derivado" cuando el
-     * expediente ya tiene hoja de envio de respuesta registrada Y ya fue devuelto a la Bandeja
-     * Analisis desde este mismo panel (etapaCodigo=ANALISIS, ver
-     * AsignacionExpedienteDAO.reasignarDesdeCartaRespuesta con destino DERIVADO); "Edicto Publicado"
+     * usuario, reemplaza la version anterior basada en confirmacion_respuesta): "Edicto Publicado"
      * una vez que se registra Fecha Publ. Edicto en el panel de Cartas de Respuesta (hoy solo
      * posible en Carta Edicto); "Pendiente de Respuesta" en cualquier otro caso, incluyendo tanto
      * Carta Edicto antes de publicar el edicto como el resto de cartas intermedias (Sustento,
      * Precisar Pretension, Indagatorio, que nunca tienen Fecha Publ. Edicto). El disparador que
      * trae al documento a esta bandeja (Fecha Acuse o Fecha Publ. Notif., ver
      * DocumentoAnalisisDAO.listarCartasRespuestaPendientes = solo ATENDIDO) ya garantiza que toda
-     * fila visible aqui tiene al menos una de las dos.
+     * fila visible aqui tiene al menos una de las dos. No hay rama "Derivado": en cuanto el
+     * expediente vuelve a etapa ANALISIS, la fila deja de listarse aqui por completo (filtro en
+     * DocumentoAnalisisDAO.listarCartasRespuestaPendientes), en vez de reetiquetarse; pedido
+     * explicito del usuario (08/08/2026).
      */
     private static String estadoCartaRespuesta(AsignacionCartaRespuestaDTO item) {
-        if (!esHojaEnvioVacia(item.getNumeroHojaEnvioRespuesta())
-                && "ANALISIS".equalsIgnoreCase(item.getEtapaCodigo())) {
-            return "Derivado";
-        }
         if (item.getFechaPublicacionEdicto() != null) {
             return "Edicto Publicado";
         }
@@ -6628,8 +6624,10 @@ public class JPanelAsignacionV2 extends JPanel {
 
     /** Pill de días hábiles restantes de vencimiento (respuesta o publicación) de una carta
      * intermedia, coloreado según el plazo propio de esa carta (no el plazo general de 30 días
-     * de solicitud). En blanco si el expediente ya fue derivado a Análisis desde este mismo panel
-     * (ver AsignacionExpedienteDAO.reasignarDesdeCartaRespuesta): la alerta se desactiva ahí. */
+     * de solicitud). Una vez que el expediente ya fue derivado a Análisis desde este mismo panel
+     * (ver AsignacionExpedienteDAO.reasignarDesdeCartaRespuesta) la fila ya no llega a mostrarse
+     * en esta bandeja (filtrada en DocumentoAnalisisDAO.listarCartasRespuestaPendientes), por lo
+     * que este renderer solo se ejecuta sobre filas todavía pendientes de derivar. */
     private class CartaVencimientoRenderer implements TableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
