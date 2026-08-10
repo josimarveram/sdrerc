@@ -199,7 +199,8 @@ public class ExpedienteBandejaDAO {
                 rs.getString("titular"),
                 rs.getInt("relaciones_confirmadas_principal"),
                 getBooleanFromNumber(rs, "es_relacionado_hijo"),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento),
+                calendarioLaboralService.calcularDiasHabilesRestantes(
+                        conn, getLongOrNull(rs, "id_expediente"), fechaVencimiento),
                 grupoFamiliarConfirmado
         );
     }

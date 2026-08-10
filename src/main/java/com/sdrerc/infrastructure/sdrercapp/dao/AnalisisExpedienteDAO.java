@@ -913,7 +913,8 @@ public class AnalisisExpedienteDAO {
                 rs.getString("criterio_grupo_familiar"),
                 rs.getString("observacion_grupo_familiar"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                calendarioLaboralService.calcularDiasHabilesRestantes(
+                        conn, getLongOrNull(rs, "id_expediente"), rs.getDate("fecha_vencimiento")),
                 toLocalDate(rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_registro")),
                 toLocalDateTime(rs.getTimestamp("fecha_asignacion")),

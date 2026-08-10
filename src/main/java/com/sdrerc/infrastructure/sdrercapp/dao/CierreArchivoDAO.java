@@ -460,7 +460,8 @@ public class CierreArchivoDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                calendarioLaboralService.calcularDiasHabilesRestantes(
+                        conn, getLongOrNull(rs, "id_expediente"), rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_cierre")),
                 toLocalDateTime(rs.getTimestamp("fecha_archivo")),

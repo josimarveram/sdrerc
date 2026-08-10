@@ -1217,7 +1217,8 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("estado_nombre"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 fechaVencimiento,
-                fechaVencimiento == null ? null : calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                fechaVencimiento == null ? null : calendarioLaboralService.calcularDiasHabilesRestantes(
+                        conn, getLongOrNull(rs, "id_expediente"), rs.getDate("fecha_vencimiento")),
                 "",
                 rs.getString("alerta_ingreso"),
                 rs.getString("tipo_relacion"),

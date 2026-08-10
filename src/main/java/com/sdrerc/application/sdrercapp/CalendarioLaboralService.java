@@ -7,6 +7,8 @@ import com.sdrerc.infrastructure.sdrercapp.dao.FeriadoNacionalDAO;
 import com.sdrerc.infrastructure.sdrercapp.dao.PlazoConfiguracionDAO;
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -94,22 +96,86 @@ public class CalendarioLaboralService {
         return fechaBase.plusDays(diasCalendario);
     }
 
+    /**
+     * Sin idExpediente: comportamiento historico, cuenta siempre desde "hoy" (sin congelamiento).
+     * Se mantiene solo para el caso en que no se disponga del id del expediente en la consulta;
+     * los llamadores que ya lo tienen deben preferir el overload con idExpediente.
+     */
     public Long calcularDiasHabilesRestantes(Connection conn, Date fechaVencimiento) throws SQLException {
-        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn);
-        if (plazo != null && PlazoConfiguracionDTO.UNIDAD_CALENDARIO.equals(plazo.getUnidadPlazo())) {
-            return fechaVencimiento == null
-                    ? null
-                    : Long.valueOf(ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento.toLocalDate()));
-        }
-        return fechaVencimiento == null
-                ? null
-                : Long.valueOf(calcularDiasHabilesRestantes(conn, LocalDate.now(), fechaVencimiento.toLocalDate()));
+        return calcularDiasHabilesRestantes(conn, null, fechaVencimiento);
     }
 
     public Long calcularDiasHabilesRestantes(Date fechaVencimiento) throws SQLException {
         try (Connection conn = SdrercAppConnection.getConnection()) {
             return calcularDiasHabilesRestantes(conn, fechaVencimiento);
         }
+    }
+
+    /**
+     * Congelamiento del conteo de "Dias" mientras el expediente tiene una carta intermedia ya
+     * emitida y esperando la respuesta del ciudadano (09/08/2026, pedido explicito del usuario:
+     * "cuando se tiene una carta intermedia y ya esta emitido deberia detener los dias desde la
+     * fecha emision de la carta intermedia y se deberia reactivar el conteo desde la fecha de
+     * asignacion al abogado de analisis (derivacion)"). En vez de "hoy", la referencia para contar
+     * dias habiles restantes se congela en la fecha de emision de la carta intermedia mientras esta
+     * pendiente; en cuanto se registra la confirmacion de respuesta (mismo campo
+     * EXPEDIENTE_DOCUMENTO_ANALIZADO.CONFIRMACION_RESPUESTA que ya usa
+     * UsuarioAsignacionDAO.CONDICION_CARTA_INTERMEDIA_RESPONDIDA para saber que la carta "ya fue
+     * derivada de vuelta a Analisis"), el conteo vuelve a correr desde "hoy" normalmente. No se
+     * modifica EXPEDIENTE.FECHA_VENCIMIENTO en ningun momento: es un ajuste de la fecha de
+     * referencia usada solo para calcular/mostrar "Dias", no del plazo legal en si.
+     */
+    public Long calcularDiasHabilesRestantes(Connection conn, Long idExpediente, Date fechaVencimiento) throws SQLException {
+        LocalDate desde = resolverFechaReferenciaPlazo(conn, idExpediente);
+        PlazoConfiguracionDTO plazo = resolverPlazoSolicitud(conn);
+        if (plazo != null && PlazoConfiguracionDTO.UNIDAD_CALENDARIO.equals(plazo.getUnidadPlazo())) {
+            return fechaVencimiento == null
+                    ? null
+                    : Long.valueOf(ChronoUnit.DAYS.between(desde, fechaVencimiento.toLocalDate()));
+        }
+        return fechaVencimiento == null
+                ? null
+                : Long.valueOf(calcularDiasHabilesRestantes(conn, desde, fechaVencimiento.toLocalDate()));
+    }
+
+    public Long calcularDiasHabilesRestantes(Long idExpediente, Date fechaVencimiento) throws SQLException {
+        try (Connection conn = SdrercAppConnection.getConnection()) {
+            return calcularDiasHabilesRestantes(conn, idExpediente, fechaVencimiento);
+        }
+    }
+
+    private LocalDate resolverFechaReferenciaPlazo(Connection conn, Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return LocalDate.now();
+        }
+        LocalDate fechaCongelada = resolverFechaEmisionCartaIntermediaPendiente(conn, idExpediente);
+        return fechaCongelada != null ? fechaCongelada : LocalDate.now();
+    }
+
+    /**
+     * Ultima fecha de emision (MAX fecha_documento) entre las cartas intermedias activas del
+     * expediente que ya fueron emitidas pero cuya respuesta del ciudadano todavia no se confirma
+     * (confirmacion_respuesta IS NULL); null si no hay ninguna carta en ese estado (conteo normal).
+     */
+    private LocalDate resolverFechaEmisionCartaIntermediaPendiente(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT MAX(da.fecha_documento) AS fecha_congelada "
+                + "FROM expediente_documento_analizado da "
+                + "JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
+                + "WHERE da.id_expediente = ? AND da.activo = 1 "
+                + "AND UPPER(NVL(tda.clasificacion, '')) = 'INTERMEDIO' "
+                + "AND NVL(da.requiere_respuesta, 0) = 1 "
+                + "AND da.fecha_documento IS NOT NULL "
+                + "AND da.confirmacion_respuesta IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Date fecha = rs.getDate("fecha_congelada");
+                    return fecha == null ? null : fecha.toLocalDate();
+                }
+            }
+        }
+        return null;
     }
 
     public int calcularDiasHabilesRestantes(Connection conn, LocalDate desde, LocalDate fechaVencimiento) throws SQLException {

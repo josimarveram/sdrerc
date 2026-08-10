@@ -554,7 +554,8 @@ public class PublicacionExpedienteDAO {
                 rs.getString("numero_acta"),
                 rs.getString("titular"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                calendarioLaboralService.calcularDiasHabilesRestantes(
+                        conn, getLongOrNull(rs, "id_expediente"), rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_ingreso_publicacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 rs.getString("responsable"),

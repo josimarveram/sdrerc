@@ -603,7 +603,8 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("estado_expediente_codigo"),
                                 rs.getString("estado_expediente_nombre"),
                                 toLocalDate(rs.getDate("fecha_vencimiento")),
-                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                                calendarioLaboralService.calcularDiasHabilesRestantes(
+                                        conn, getLongOrNull(rs, "id_expediente"), rs.getDate("fecha_vencimiento")),
                                 rs.getInt("total_intentos"),
                                 rs.getString("estado_final_notificacion_codigo"),
                                 nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo")),
@@ -716,7 +717,8 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("estado_expediente_codigo"),
                                 rs.getString("estado_expediente_nombre"),
                                 toLocalDate(rs.getDate("fecha_vencimiento")),
-                                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                                calendarioLaboralService.calcularDiasHabilesRestantes(
+                                        conn, getLongOrNull(rs, "id_expediente"), rs.getDate("fecha_vencimiento")),
                                 rs.getInt("total_intentos"),
                                 rs.getString("estado_final_notificacion_codigo"),
                                 nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo")),

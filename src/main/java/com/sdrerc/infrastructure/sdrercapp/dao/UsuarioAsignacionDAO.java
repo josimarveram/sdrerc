@@ -319,13 +319,14 @@ public class UsuarioAsignacionDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Date fechaVencimiento = rs.getDate("fecha_vencimiento");
+                    Long idExpedienteFila = getLongOrNull(rs, "id_expediente");
                     documentos.add(new CargaLaboralDocumentoDTO(
-                            getLongOrNull(rs, "id_expediente"),
+                            idExpedienteFila,
                             rs.getString("numero_expediente"),
                             rs.getString("etapa"),
                             rs.getString("estado"),
                             fechaVencimiento == null ? null : fechaVencimiento.toLocalDate(),
-                            calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento)));
+                            calendarioLaboralService.calcularDiasHabilesRestantes(conn, idExpedienteFila, fechaVencimiento)));
                 }
             }
         }

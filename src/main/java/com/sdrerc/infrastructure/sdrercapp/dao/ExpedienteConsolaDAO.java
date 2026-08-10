@@ -138,7 +138,8 @@ public class ExpedienteConsolaDAO {
                 getBooleanFromNumber(rs, "grupo_familiar"),
                 rs.getString("criterio_grupo_familiar"),
                 rs.getString("observacion_grupo_familiar"),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, fechaVencimiento),
+                calendarioLaboralService.calcularDiasHabilesRestantes(
+                        conn, getLongOrNull(rs, "id_expediente"), fechaVencimiento),
                 toLocalDate(rs.getDate("fecha_publicacion"))
         );
     }

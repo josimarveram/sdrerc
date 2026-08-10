@@ -821,7 +821,8 @@ public class VerificacionExpedienteDAO {
                 rs.getString("observacion_grupo_familiar"),
                 toLocalDate(rs.getDate("fecha_recepcion")),
                 toLocalDate(rs.getDate("fecha_vencimiento")),
-                calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
+                calendarioLaboralService.calcularDiasHabilesRestantes(
+                        conn, getLongOrNull(rs, "id_expediente"), rs.getDate("fecha_vencimiento")),
                 toLocalDateTime(rs.getTimestamp("fecha_envio_verificacion")),
                 toLocalDateTime(rs.getTimestamp("fecha_ultimo_movimiento")),
                 rs.getString("responsable"),
