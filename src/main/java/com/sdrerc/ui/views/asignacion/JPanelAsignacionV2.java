@@ -30,7 +30,6 @@ import com.sdrerc.ui.appv2.components.AppV2SearchActionButton;
 import com.sdrerc.ui.appv2.components.AppV2TrashActionButton;
 import com.sdrerc.ui.appv2.components.AppV2SearchAutocompleteSupport;
 import com.sdrerc.ui.appv2.components.AppV2SearchField;
-import com.sdrerc.ui.appv2.components.AppV2SearchToolbar;
 import com.sdrerc.ui.appv2.components.AppV2SideActionPanel;
 import com.sdrerc.ui.appv2.components.AppV2SideSectionPanel;
 import com.sdrerc.ui.appv2.components.AppV2StackedSideTab;
@@ -104,7 +103,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.TableModelEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -226,6 +224,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private final com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService edicionManualService =
             new com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService();
     private final JButton btnLimpiarCartasRespuesta = new JButton("Limpiar");
+    private final JButton btnBuscarCartasRespuesta = new JButton("Buscar");
+    private final PremiumDateFieldV2 fechaVencimientoDesdeCartas = new PremiumDateFieldV2();
+    private final PremiumDateFieldV2 fechaVencimientoHastaCartas = new PremiumDateFieldV2();
+    private final JComboBox<String> cmbEstadoCartasRespuesta = new JComboBox<String>();
+    private final JSpinner spnLimiteCartasRespuesta = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 50));
     private final JButton btnAsociarRelacionados = new JButton("Asociar relacionados");
     private final JButton btnGenerarNumeroExpediente = new JButton("Generar número de expediente");
     private final JButton btnAsignarSeleccionado = new JButton("Generar asignación");
@@ -685,13 +688,45 @@ public class JPanelAsignacionV2 extends JPanel {
     }
 
     private JPanel crearBuscadorCartasRespuesta() {
-        AppV2SearchToolbar toolbar = new AppV2SearchToolbar();
+        configurarControlesCartasRespuesta();
         JPanel acciones = AppV2ActionPanel.right();
-        btnLimpiarCartasRespuesta.setFont(AppV2Theme.fontBold(AppV2Theme.FONT_SIZE_SMALL));
-        btnLimpiarCartasRespuesta.addActionListener(e -> limpiarBusquedaCartasRespuesta());
+        acciones.add(btnBuscarCartasRespuesta);
         acciones.add(btnLimpiarCartasRespuesta);
-        toolbar.addSearchRow("Búsqueda", txtBusquedaCartasRespuesta, acciones);
-        return toolbar;
+        return AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro(
+                "Búsqueda",
+                txtBusquedaCartasRespuesta,
+                acciones,
+                fechaVencimientoDesdeCartas,
+                fechaVencimientoHastaCartas,
+                "Estado",
+                cmbEstadoCartasRespuesta,
+                null,
+                spnLimiteCartasRespuesta);
+    }
+
+    private void configurarControlesCartasRespuesta() {
+        txtBusquedaCartasRespuesta.setPreferredSize(new Dimension(720, 36));
+        txtBusquedaCartasRespuesta.setMinimumSize(new Dimension(360, 36));
+        txtBusquedaCartasRespuesta.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        Dimension fechaSize = new Dimension(250, 42);
+        fechaVencimientoDesdeCartas.setPreferredSize(fechaSize);
+        fechaVencimientoDesdeCartas.setMinimumSize(new Dimension(210, 42));
+        fechaVencimientoHastaCartas.setPreferredSize(fechaSize);
+        fechaVencimientoHastaCartas.setMinimumSize(new Dimension(210, 42));
+        if (cmbEstadoCartasRespuesta.getItemCount() == 0) {
+            cmbEstadoCartasRespuesta.addItem(ESTADO_CARTAS_TODOS);
+            cmbEstadoCartasRespuesta.addItem(ESTADO_CARTAS_PENDIENTE);
+            cmbEstadoCartasRespuesta.addItem(ESTADO_CARTAS_EDICTO_PUBLICADO);
+        }
+        cmbEstadoCartasRespuesta.setPreferredSize(new Dimension(190, 34));
+        cmbEstadoCartasRespuesta.setMinimumSize(new Dimension(180, 34));
+        cmbEstadoCartasRespuesta.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_BASE));
+        spnLimiteCartasRespuesta.setPreferredSize(new Dimension(88, 34));
+        AppV2Theme.estilizarBotonPrimario(btnBuscarCartasRespuesta);
+        AppV2Theme.estilizarBotonSecundario(btnLimpiarCartasRespuesta);
+        btnBuscarCartasRespuesta.addActionListener(e -> aplicarBusquedaCartasRespuesta());
+        txtBusquedaCartasRespuesta.addActionListener(e -> aplicarBusquedaCartasRespuesta());
+        btnLimpiarCartasRespuesta.addActionListener(e -> limpiarBusquedaCartasRespuesta());
     }
 
     private JPanel crearContenidoBandejaCargaAbogados() {
@@ -1961,8 +1996,6 @@ public class JPanelAsignacionV2 extends JPanel {
         btnLimpiar.addActionListener(e -> limpiar());
         btnEditarRegistro.addActionListener(e -> editarRegistroSeleccionado());
         btnEliminarRegistro.addActionListener(e -> eliminarRegistroSeleccionado());
-        txtBusquedaCartasRespuesta.getDocument().addDocumentListener(simpleDocumentListener(this::aplicarBusquedaCartasRespuesta));
-        btnLimpiarCartasRespuesta.addActionListener(e -> limpiarBusquedaCartasRespuesta());
         btnAsociarRelacionados.addActionListener(e -> asociarRelacionadosRapido());
         btnGenerarNumeroExpediente.addActionListener(e -> generarNumeroExpedienteSeleccionado());
         btnAsignarSeleccionado.addActionListener(e -> generarAsignacionDesdePanel());
@@ -2481,14 +2514,28 @@ public class JPanelAsignacionV2 extends JPanel {
             return filtrados;
         }
         String texto = normalizarFiltroTexto(txtBusquedaCartasRespuesta.getText());
-        if (texto.isEmpty()) {
-            filtrados.addAll(items);
-            return filtrados;
-        }
+        LocalDate desde = fechaSeleccionada(fechaVencimientoDesdeCartas);
+        LocalDate hasta = fechaSeleccionada(fechaVencimientoHastaCartas);
+        Object estadoSel = cmbEstadoCartasRespuesta.getSelectedItem();
+        String estado = (estadoSel == null || ESTADO_CARTAS_TODOS.equals(estadoSel)) ? null : estadoSel.toString();
         for (AsignacionCartaRespuestaDTO item : items) {
-            if (coincideBusquedaCartas(item, texto)) {
-                filtrados.add(item);
+            if (!texto.isEmpty() && !coincideBusquedaCartas(item, texto)) {
+                continue;
             }
+            if (desde != null && (item.getFechaVencimiento() == null || item.getFechaVencimiento().isBefore(desde))) {
+                continue;
+            }
+            if (hasta != null && (item.getFechaVencimiento() == null || item.getFechaVencimiento().isAfter(hasta))) {
+                continue;
+            }
+            if (estado != null && !estado.equals(estadoCartaRespuesta(item))) {
+                continue;
+            }
+            filtrados.add(item);
+        }
+        int limite = (Integer) spnLimiteCartasRespuesta.getValue();
+        if (filtrados.size() > limite) {
+            filtrados = new ArrayList<AsignacionCartaRespuestaDTO>(filtrados.subList(0, limite));
         }
         return filtrados;
     }
@@ -2518,6 +2565,10 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void limpiarBusquedaCartasRespuesta() {
         txtBusquedaCartasRespuesta.setText("");
+        fechaVencimientoDesdeCartas.setDate(null);
+        fechaVencimientoHastaCartas.setDate(null);
+        cmbEstadoCartasRespuesta.setSelectedIndex(0);
+        spnLimiteCartasRespuesta.setValue(200);
         refrescarCartasRespuesta();
     }
 
@@ -4214,11 +4265,15 @@ public class JPanelAsignacionV2 extends JPanel {
      * DocumentoAnalisisDAO.listarCartasRespuestaPendientes), en vez de reetiquetarse; pedido
      * explicito del usuario (08/08/2026).
      */
+    private static final String ESTADO_CARTAS_TODOS = "Todos los estados";
+    private static final String ESTADO_CARTAS_PENDIENTE = "Pendiente de Respuesta";
+    private static final String ESTADO_CARTAS_EDICTO_PUBLICADO = "Edicto Publicado";
+
     private static String estadoCartaRespuesta(AsignacionCartaRespuestaDTO item) {
         if (item.getFechaPublicacionEdicto() != null) {
-            return "Edicto Publicado";
+            return ESTADO_CARTAS_EDICTO_PUBLICADO;
         }
-        return "Pendiente de Respuesta";
+        return ESTADO_CARTAS_PENDIENTE;
     }
 
     private void cargarBandejaCartasRespuestaModel(List<AsignacionCartaRespuestaDTO> items) {
@@ -5095,25 +5150,6 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private static String stringValue(Object value) {
         return value == null ? "" : value.toString().trim();
-    }
-
-    private DocumentListener simpleDocumentListener(Runnable action) {
-        return new DocumentListener() {
-            @Override
-            public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                action.run();
-            }
-
-            @Override
-            public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                action.run();
-            }
-
-            @Override
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                action.run();
-            }
-        };
     }
 
     private void prepararHojaEnvioSimple(AsignacionExpedienteDTO item) {

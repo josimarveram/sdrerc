@@ -2236,6 +2236,23 @@ Fix (más simple y más correcto que relabeling): `DocumentoAnalisisDAO.listarCa
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme que SDRERC-EXP-2026-000043 (y cualquier otro expediente ya derivado a Análisis) desaparece de la Bandeja Cartas de Respuesta.
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (cambio solo en el `WHERE` de una consulta ya existente).
 
+### Bandeja Cartas de Respuesta: panel de búsqueda con el mismo diseño de 3 filas que Bandeja Asignación (08/08/2026)
+
+Pedido del usuario: "cambia el filtro de búsqueda de la bandeja de cartas de respuesta, debería tener el mismo diseño que la bandeja de asignación con filtros y su input y el btn Buscar y los input fecha tal cual, cambiaría las opciones del combo de acuerdo a los estados de la bandeja de cartas de respuesta".
+
+Antes: `crearBuscadorCartasRespuesta()` usaba `AppV2SearchToolbar` (una sola fila: texto + botón Limpiar), sin botón Buscar, sin filtro de fechas, sin combo de estado; el texto filtraba en vivo con cada tecla (`DocumentListener`) sobre `cartasRespuestaPendientes` ya cargado.
+
+Implementación (mismo patrón de 3 filas que `crearBuscador()`/`crearBuscadorCarga()`, vía `AppV2ExpedientePanelFactory.crearPanelBusquedaEstiloRegistro`):
+
+- Nuevos campos: `btnBuscarCartasRespuesta`, `fechaVencimientoDesdeCartas`/`fechaVencimientoHastaCartas` (`PremiumDateFieldV2`, sobre `AsignacionCartaRespuestaDTO.getFechaVencimiento()`, ya disponible en memoria sin consulta adicional), `cmbEstadoCartasRespuesta` (`JComboBox<String>`, 3 opciones estáticas: `Todos los estados`/`Pendiente de Respuesta`/`Edicto Publicado` — las mismas 2 que puede devolver `estadoCartaRespuesta`, ahora extraídas a constantes `ESTADO_CARTAS_*`), `spnLimiteCartasRespuesta` (`JSpinner`, default 200 como la Bandeja Asignación principal, no 100 como Carga Abogados).
+- `crearBuscadorCartasRespuesta()` reescrito para usar `crearPanelBusquedaEstiloRegistro` en vez de `AppV2SearchToolbar`; nuevo `configurarControlesCartasRespuesta()` (mismo patrón que `configurarControlesCarga()`) estiliza los campos y conecta `btnBuscarCartasRespuesta`/`txtBusquedaCartasRespuesta` (Enter) a `aplicarBusquedaCartasRespuesta()` y `btnLimpiarCartasRespuesta` a `limpiarBusquedaCartasRespuesta()` — se quitó el `DocumentListener` de filtrado en vivo (`configurarEventos()`) para igualar el patrón "clic en Buscar" del resto de bandejas, no seguir filtrando en cada tecla.
+- `filtrarCartasBusqueda(items)` (el único punto de filtrado en memoria, ya encadenado después de `filtrarCartasKpi` en `refrescarCartasRespuesta()`) ahora aplica texto + rango de `Fecha Vencimiento` + combo Estado + límite en una sola pasada, en vez de solo texto. `limpiarBusquedaCartasRespuesta()` resetea los 5 controles (texto, 2 fechas, combo, límite) antes de recargar.
+- Limpieza asociada: `AppV2SearchToolbar` (import) y el helper `simpleDocumentListener` quedaron sin uso tras el cambio y se eliminaron (junto con el import de `DocumentListener`), no había otro caller.
+
+- Archivos: `JPanelAsignacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme visualmente que el panel de Cartas de Respuesta ya se ve igual al de Bandeja Asignación/Carga Abogados, y que Buscar/Limpiar/fechas/combo Estado filtran correctamente.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (cambio puramente de UI/filtrado en memoria).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
