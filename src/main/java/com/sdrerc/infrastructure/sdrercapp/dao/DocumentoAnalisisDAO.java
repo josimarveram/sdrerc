@@ -362,6 +362,19 @@ public class DocumentoAnalisisDAO {
             + "WHERE n4.id_documento_analizado = da.id_documento_analizado AND n4.activo = 1) "
             + "AS agoto_intentos_directos";
 
+    // Fecha del intento de Publicación (tipo_notificacion=PUBLICACION) ya EXITOSA, expuesta a nivel
+    // de documento (fila padre) para que la Bandeja Publicación pueda mostrarla sin necesitar
+    // expandir el arbol; mismo patron/subconsulta ya usado por "Fecha Publ. Notif." de la Bandeja
+    // Cartas de Respuesta (listarCartasRespuestaPendientes), aqui reutilizado como constante
+    // compartida (09/08/2026, pedido explicito del usuario: "Fecha Publicación no muestra nada").
+    private static final String FECHA_PUBLICACION_NOTIF_SQL =
+            "(SELECT n5.fecha_envio FROM expediente_notificacion n5 "
+            + "JOIN tipo_notificacion tn5 ON tn5.id_tipo_notificacion = n5.id_tipo_notificacion "
+            + "JOIN estado_notificacion en5 ON en5.id_estado_notificacion = n5.id_estado_notificacion "
+            + "WHERE n5.id_documento_analizado = da.id_documento_analizado AND n5.activo = 1 "
+            + "AND UPPER(tn5.codigo) = 'PUBLICACION' AND UPPER(en5.codigo) = 'EXITOSA' AND ROWNUM = 1) "
+            + "AS fecha_publicacion_notif";
+
     private static String nombreEstadoFinalNotificacion(String codigo) {
         if (codigo == null) {
             return "Por notificar";
@@ -483,7 +496,8 @@ public class DocumentoAnalisisDAO {
                                 null,
                                 0,
                                 "",
-                                ""));
+                                "",
+                                null));
                     }
                 }
             }
@@ -592,7 +606,8 @@ public class DocumentoAnalisisDAO {
                                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                                 rs.getInt("total_intentos"),
                                 rs.getString("estado_final_notificacion_codigo"),
-                                nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo"))));
+                                nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo")),
+                                null));
                     }
                 }
             }
@@ -649,9 +664,10 @@ public class DocumentoAnalisisDAO {
                     + (soportaIntentos
                             ? "(SELECT COUNT(*) FROM expediente_notificacion en2 "
                             + " WHERE en2.id_documento_analizado = da.id_documento_analizado AND en2.activo = 1) AS total_intentos, "
-                            + ESTADO_FINAL_NOTIFICACION_SQL + ", " + AGOTO_INTENTOS_DIRECTOS_SQL + " "
+                            + ESTADO_FINAL_NOTIFICACION_SQL + ", " + AGOTO_INTENTOS_DIRECTOS_SQL + ", "
+                            + FECHA_PUBLICACION_NOTIF_SQL + " "
                             : "0 AS total_intentos, 'POR_NOTIFICAR' AS estado_final_notificacion_codigo, "
-                            + "0 AS agoto_intentos_directos ")
+                            + "0 AS agoto_intentos_directos, CAST(NULL AS DATE) AS fecha_publicacion_notif ")
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -703,7 +719,8 @@ public class DocumentoAnalisisDAO {
                                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, rs.getDate("fecha_vencimiento")),
                                 rs.getInt("total_intentos"),
                                 rs.getString("estado_final_notificacion_codigo"),
-                                nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo"))));
+                                nombreEstadoFinalNotificacion(rs.getString("estado_final_notificacion_codigo")),
+                                toLocalDate(rs.getDate("fecha_publicacion_notif"))));
                     }
                 }
             }

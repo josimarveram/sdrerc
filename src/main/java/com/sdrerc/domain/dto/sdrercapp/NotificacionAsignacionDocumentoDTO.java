@@ -26,6 +26,7 @@ public class NotificacionAsignacionDocumentoDTO {
     private final int totalIntentos;
     private final String estadoFinalNotificacionCodigo;
     private final String estadoFinalNotificacion;
+    private final LocalDate fechaPublicacionNotif;
 
     public NotificacionAsignacionDocumentoDTO(
             Long idDocumentoAnalizado,
@@ -49,7 +50,8 @@ public class NotificacionAsignacionDocumentoDTO {
             Long diasRestantes,
             int totalIntentos,
             String estadoFinalNotificacionCodigo,
-            String estadoFinalNotificacion) {
+            String estadoFinalNotificacion,
+            LocalDate fechaPublicacionNotif) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
@@ -72,6 +74,7 @@ public class NotificacionAsignacionDocumentoDTO {
         this.totalIntentos = totalIntentos;
         this.estadoFinalNotificacionCodigo = safe(estadoFinalNotificacionCodigo);
         this.estadoFinalNotificacion = safe(estadoFinalNotificacion);
+        this.fechaPublicacionNotif = fechaPublicacionNotif;
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -160,6 +163,11 @@ public class NotificacionAsignacionDocumentoDTO {
 
     public String getEstadoFinalNotificacion() {
         return estadoFinalNotificacion;
+    }
+
+    /** Fecha del intento de Publicación (tipo_notificacion=PUBLICACION) ya EXITOSA, o null si no aplica/no se calculó. */
+    public LocalDate getFechaPublicacionNotif() {
+        return fechaPublicacionNotif;
     }
 
     private static String safe(String value) {

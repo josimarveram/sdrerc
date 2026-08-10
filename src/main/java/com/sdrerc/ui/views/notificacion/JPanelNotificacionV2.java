@@ -190,6 +190,7 @@ public class JPanelNotificacionV2 extends JPanel {
             "Seleccione filtros y presione Buscar.");
     private AppV2ColumnFilterSupport.Controller columnFilterSupport;
     private AppV2ColumnFilterSupport.Controller columnFilterSupportNotifBandeja;
+    private AppV2ColumnFilterSupport.Controller columnFilterSupportPublicacionBandeja;
     private final DefaultTableModel documentosModel = new DefaultTableModel(
             new Object[]{"Tipo", "Estado", "Número", "Documento", "Fecha"},
             0) {
@@ -3790,7 +3791,31 @@ public class JPanelNotificacionV2 extends JPanel {
         worker.execute();
     }
 
+    /**
+     * Evita que un ordenamiento activo (clic en cabecera) desperdigue filas hija fuera de su padre
+     * cuando el arbol se reconstruye con documentos expandidos (09/08/2026, pedido explicito del
+     * usuario: "la fila hija no se debería mover fuera de su padre"). `AppV2ColumnFilterSupport`
+     * usa un `TableRowSorter` generico por celda, compartido entre filas padre e hija que reutilizan
+     * los mismos indices de columna con significados distintos (patron de columnas superpuestas de
+     * este arbol); con `setSortsOnUpdates(true)`, cualquier reconstruccion del modelo (expandir,
+     * guardar un intento, recargar) mientras hay un orden activo re-ordena TODAS las filas por valor
+     * de celda, incluida la mini-grilla de intentos, desperdigandola. El unico punto donde esto no
+     * puede pasar es sin orden activo (el modelo entonces conserva el orden de insercion, que ya
+     * agrupa correctamente cada padre con sus hijos por construccion): por eso, si al reconstruir hay
+     * al menos un documento expandido, se limpia el orden activo antes de repoblar filas.
+     */
+    private static void limpiarOrdenSiHayExpandidos(
+            AppV2ColumnFilterSupport.Controller controller, boolean hayDocumentosExpandidos) {
+        if (controller == null || !hayDocumentosExpandidos) {
+            return;
+        }
+        if (!controller.getSorter().getSortKeys().isEmpty()) {
+            controller.getSorter().setSortKeys(java.util.Collections.<javax.swing.RowSorter.SortKey>emptyList());
+        }
+    }
+
     private void reconstruirFilasNotifBandeja() {
+        limpiarOrdenSiHayExpandidos(columnFilterSupportNotifBandeja, !documentosNotifExpandidos.isEmpty());
         filasNotifBandeja.clear();
         notifBandejaModel.setRowCount(0);
         for (com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item : documentosNotifBandeja) {
@@ -5038,6 +5063,7 @@ public class JPanelNotificacionV2 extends JPanel {
     }
 
     private void reconstruirFilasPublicacionBandeja() {
+        limpiarOrdenSiHayExpandidos(columnFilterSupportPublicacionBandeja, !documentosPublicacionExpandidos.isEmpty());
         filasPublicacionBandeja.clear();
         publicacionBandejaModel.setRowCount(0);
         List<com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO> visibles = filtrarDocumentosPublicacionNotif();
@@ -5060,9 +5086,10 @@ public class JPanelNotificacionV2 extends JPanel {
                 item.getNumeroDocumento().isEmpty() ? "-" : item.getNumeroDocumento(),
                 item.getFechaDocumento() == null ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaDocumento()),
                 item.getTitular().isEmpty() ? "-" : item.getTitular(),
-                item.getEstadoFinalNotificacion().isEmpty() ? "Por publicar" : item.getEstadoFinalNotificacion(),
+                textoEstadoFinalPublicacion(item),
                 item.getEstadoDocumento().isEmpty() ? "-" : item.getEstadoDocumento(),
-                "-",
+                item.getFechaPublicacionNotif() == null
+                        ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(item.getFechaPublicacionNotif()),
                 ""
             });
             if (!expandido) {
@@ -5162,6 +5189,24 @@ public class JPanelNotificacionV2 extends JPanel {
 
     private static String textoEstadoPublicacion(String codigoColumnaEstado) {
         return "EXITOSA".equals(codigoColumnaEstado) ? "Publicado" : "Pendiente";
+    }
+
+    /**
+     * "Estado Final" de la fila padre en esta bandeja (09/08/2026, pedido explicito del usuario: "el
+     * estado final ya no sería Atendido sino Publicado"). Esta bandeja solo muestra documentos que ya
+     * agotaron sus 2 intentos directos (`AGOTO_INTENTOS_DIRECTOS_SQL = 1`), asi que si el codigo
+     * crudo es `ATENDIDO` aqui solo puede deberse al intento de Publicación (nunca a un intento 1/2
+     * exitoso, imposible en este universo de documentos); se muestra "Publicado" en vez del texto
+     * generico "Atendido" que devuelve `DocumentoAnalisisDAO.nombreEstadoFinalNotificacion` (sin
+     * tocar ese mapeo compartido, que sigue siendo correcto para las otras 3 pestañas de
+     * Notificación, donde `ATENDIDO` sí significa ubicado directamente).
+     */
+    private static String textoEstadoFinalPublicacion(com.sdrerc.domain.dto.sdrercapp.NotificacionAsignacionDocumentoDTO item) {
+        if ("ATENDIDO".equalsIgnoreCase(item.getEstadoFinalNotificacionCodigo())) {
+            return "Publicado";
+        }
+        String texto = item.getEstadoFinalNotificacion();
+        return texto == null || texto.isEmpty() ? "Por publicar" : texto;
     }
 
     private void alternarExpansionPublicacion(Long idDocumento) {
@@ -5493,7 +5538,7 @@ public class JPanelNotificacionV2 extends JPanel {
         tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setCellRenderer(new PublicacionAccionRenderer());
         tablaPublicacionBandeja.getColumnModel().getColumn(COL_PUB_ACCION).setCellEditor(new PublicacionAccionEditor());
         tablaPublicacionBandeja.setDefaultRenderer(Object.class, new PublicacionBandejaRenderer());
-        AppV2ColumnFilterSupport.install(
+        columnFilterSupportPublicacionBandeja = AppV2ColumnFilterSupport.install(
                 "bandejaPublicacion",
                 tablaPublicacionBandeja,
                 tablaPublicacionBandejaPanel.getScrollPane(),
@@ -5610,7 +5655,7 @@ public class JPanelNotificacionV2 extends JPanel {
         lblPubInfoNumeroDocumento.setText(valorNotif(documentoPublicacionFoco.getNumeroDocumento()));
         lblPubInfoFechaEmision.setText(documentoPublicacionFoco.getFechaDocumento() == null
                 ? "-" : DateTimeFormatter.ofPattern("dd/MM/yyyy").format(documentoPublicacionFoco.getFechaDocumento()));
-        lblPubInfoEstadoFinal.setText(valorNotif(documentoPublicacionFoco.getEstadoFinalNotificacion()));
+        lblPubInfoEstadoFinal.setText(textoEstadoFinalPublicacion(documentoPublicacionFoco));
         lblPubInfoIntento1.setText("Cargando...");
         lblPubInfoIntento2.setText("Cargando...");
         lblPubInfoPublicacion.setText("Cargando...");
