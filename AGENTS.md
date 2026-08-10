@@ -2320,6 +2320,18 @@ Reemplaza en la práctica al script 97 (que solo limpiaba `fecha_acuse` bajo una
 - Validación: solo Markdown/SQL, no se compiló. Script idempotente (bloque PL/SQL con `SQL%ROWCOUNT` por cada UPDATE, no hace nada si ya no hay filas activas) con `SELECT` de verificación al final.
 - **SQL NO ejecutado**: pendiente autorización explícita para correrlo contra la base de datos.
 
+### Bandeja Notificación: bloquear 2do intento si el 1ro ya quedó Atendido/Ubicado (08/08/2026)
+
+Pedido del usuario: "cuando agrego un primer intento en la bandeja de notificación como atendido/ubicado entonces el sistema ya no debería permitir agregar un segundo intento, lo cual aún me permite agregar un segundo intento".
+
+Causa: `crearBorradoresIntento` (3ra pestaña, `+ Agregar intento`) solo cortaba por cantidad (`siguienteIntento > 2`), sin mirar el resultado del intento existente — si el intento 1 ya estaba `Ubicado` (EXITOSA), igual dejaba insertar la fila borrador del intento 2.
+
+Fix: dentro del mismo bucle de `crearBorradoresIntento`, antes del corte por cantidad, se agregó un chequeo por documento sobre `intentosNotifCache.get(idDocumento)`: si algún intento ya tiene `isUbicado()==true` (`NotificacionIntentoDTO`, ya calculado en el DAO como `estado_notificacion='EXITOSA' OR fecha_recepcion != null`), se salta ese documento (`continue`) sin agregar el borrador. Igual que el corte por cantidad, esto se evalúa por documento dentro de una selección múltiple: los documentos ya ubicados se saltan sin bloquear al resto de la selección. Se amplió el mensaje informativo que se muestra cuando ningún documento califica, para cubrir ambos motivos ("ya fueron ubicados... o ya alcanzaron el máximo de 2 intentos").
+
+- Archivos: `JPanelNotificacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme que tras marcar el intento 1 como Ubicado/Atendido, "+ Agregar intento" ya no agrega una fila borrador para el intento 2 de ese documento.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

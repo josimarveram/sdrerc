@@ -4065,6 +4065,20 @@ public class JPanelNotificacionV2 extends JPanel {
                 continue;
             }
             List<com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO> intentosActuales = intentosNotifCache.get(idDocumento);
+            // Si ya hay un intento Atendido/Ubicado (EXITOSA), el documento ya quedo notificado: no
+            // tiene sentido agregar un 2do intento (pedido explicito del usuario, 08/08/2026).
+            if (intentosActuales != null) {
+                boolean yaUbicado = false;
+                for (com.sdrerc.domain.dto.sdrercapp.NotificacionIntentoDTO intento : intentosActuales) {
+                    if (intento.isUbicado()) {
+                        yaUbicado = true;
+                        break;
+                    }
+                }
+                if (yaUbicado) {
+                    continue;
+                }
+            }
             List<IntentoBorrador> borradores = borradoresNotifPorDocumento.get(idDocumento);
             int totalActual = (intentosActuales != null ? intentosActuales.size() : 0) + (borradores != null ? borradores.size() : 0);
             int siguienteIntento = totalActual + 1;
@@ -4087,7 +4101,7 @@ public class JPanelNotificacionV2 extends JPanel {
         }
         if (agregados == 0) {
             JOptionPane.showMessageDialog(this,
-                    "Los documentos seleccionados ya alcanzaron el máximo de 2 intentos de notificación.",
+                    "Los documentos seleccionados ya fueron ubicados (Atendido) o ya alcanzaron el máximo de 2 intentos de notificación.",
                     "Agregar intento", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
