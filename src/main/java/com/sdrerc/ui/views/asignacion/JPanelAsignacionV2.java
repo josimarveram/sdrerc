@@ -2565,8 +2565,8 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void limpiarBusquedaCartasRespuesta() {
         txtBusquedaCartasRespuesta.setText("");
-        fechaVencimientoDesdeCartas.setDate(null);
-        fechaVencimientoHastaCartas.setDate(null);
+        fechaVencimientoDesdeCartas.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
+        fechaVencimientoHastaCartas.setDate(DateRangePickerSupport.defaultSearchToDate());
         cmbEstadoCartasRespuesta.setSelectedIndex(0);
         spnLimiteCartasRespuesta.setValue(200);
         refrescarCartasRespuesta();
@@ -2826,6 +2826,8 @@ public class JPanelAsignacionV2 extends JPanel {
     private void restaurarFechasBusqueda() {
         fechaSolicitudDesde.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
         fechaSolicitudHasta.setDate(DateRangePickerSupport.defaultSearchToDate());
+        fechaVencimientoDesdeCartas.setDate(DateRangePickerSupport.defaultSearchFromDateCurrentMonth());
+        fechaVencimientoHastaCartas.setDate(DateRangePickerSupport.defaultSearchToDate());
     }
 
     private void limpiar() {

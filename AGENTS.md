@@ -2253,6 +2253,16 @@ Implementación (mismo patrón de 3 filas que `crearBuscador()`/`crearBuscadorCa
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme visualmente que el panel de Cartas de Respuesta ya se ve igual al de Bandeja Asignación/Carga Abogados, y que Buscar/Limpiar/fechas/combo Estado filtran correctamente.
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (cambio puramente de UI/filtrado en memoria).
 
+### Bandeja Cartas de Respuesta: valores por defecto de Fecha desde/hasta (08/08/2026)
+
+Pedido del usuario, aclarado explícitamente como exclusivo de esta bandeja ("solo en la bandeja de cartas de respuesta", tras el rediseño del panel de búsqueda de la tarea anterior): `Fecha desde` debe traer por defecto el día 01 del mes actual, y `Fecha hasta` la fecha de hoy.
+
+Implementación: `restaurarFechasBusqueda()` (ya usado para los mismos defaults de la Bandeja Asignación principal, invocado una vez al iniciar el panel) ahora también setea `fechaVencimientoDesdeCartas`/`fechaVencimientoHastaCartas` con `DateRangePickerSupport.defaultSearchFromDateCurrentMonth()`/`defaultSearchToDate()` — el mismo helper ya usado por `fechaSolicitudDesde`/`fechaSolicitudHasta`, sin tocar esos 2 campos de la Bandeja Asignación (se agregaron 2 líneas nuevas, no se modificó nada existente). `limpiarBusquedaCartasRespuesta()` también se actualizó para resetear a estos mismos valores por defecto en vez de a `null` (consistente con "Limpiar" recién agregado en la tarea anterior).
+
+- Archivos: `JPanelAsignacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente; pendiente que el usuario confirme que al abrir la Bandeja Cartas de Respuesta (y al presionar Limpiar) `Fecha desde`/`Fecha hasta` ya muestran el 01 del mes actual y la fecha de hoy respectivamente, y que la Bandeja Asignación principal no cambió su comportamiento.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
