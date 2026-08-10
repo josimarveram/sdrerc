@@ -2205,6 +2205,21 @@ Implementación:
 - Validación: `mvn -o -q clean compile` sin errores. No se pudo probar interactivamente (sin forma de correr la app Swing en este entorno); pendiente que el usuario confirme: (a) la Bandeja Cartas de Respuesta muestra "Derivado" para expedientes con Hoja de Envío + etapa Análisis; (b) el KPI "Derivado" de la Bandeja Análisis cuenta y filtra correctamente; (c) un expediente derivado sigue pudiendo guardar documentos, registrar resultado final y enviarse a Verificación sin errores de transición; (d) el camino de Notificación-Supervisión sigue mostrando "Observado", sin cambios.
 - **SQL NO ejecutado**: `96_estado_derivado_analisis.sql` fue creado pero no se ejecutó contra la base de datos (requiere autorización explícita separada, según regla del proyecto). Hasta que se ejecute, cualquier intento de derivar un expediente con destino `DERIVADO` fallará (el estado y las transiciones nuevas no existen en la BD todavía).
 
+### Fix: "Registrar Asignación" de Cartas de Respuesta fallaba con "No existe transición activa ANALISIS/OBSERVADO -> ANALISIS/DERIVADO" (08/08/2026)
+
+Reportado por el usuario con el expediente SDRERC-EXP-2026-000043: al reutilizar "Registrar Asignación" (Cartas de Respuesta) sobre un documento cuyo expediente **ya estaba en etapa Análisis** (ahí sentado en `ANALISIS/OBSERVADO`, de antes de que existiera el estado `DERIVADO`), la acción fallaba con `java.sql.SQLException: No existe transición activa ANALISIS/OBSERVADO -> ANALISIS/DERIVADO para DEVOLUCION_A_ANALISIS en SDRERC_TO_BE`.
+
+Causa raíz: el fast-path de `AsignacionExpedienteDAO.reasignarDesdeCartaRespuesta` (agregado en la tarea anterior) solo evitaba la búsqueda de transición cuando el expediente ya estaba EXACTAMENTE en `ANALISIS/<estadoDestinoCodigo solicitado>` (p.ej. ya en `DERIVADO` si se pide `DERIVADO`). Si el expediente ya estaba en Análisis pero bajo OTRO estado de trabajo (`OBSERVADO`, `RECIBIDO_POR_ABOGADO`, `SUBSANADO`, `ATENDIDO`), cae al `else` y exige una fila real de `FLUJO_TRANSICION` para `ANALISIS/<estado actual> -> ANALISIS/<estadoDestinoCodigo>` — fila que nunca existió ni tenía por qué existir, porque el script 96 solo sembró transiciones con origen en `NOTIFICACION` (el caso real de "llega desde Notificación"), no transiciones ANALISIS→ANALISIS entre sub-estados.
+
+El propio javadoc del método ya aclaraba que esta acción "reasigna el equipo/abogado responsable" — es decir, cuando el expediente ya está en Análisis, la acción es una simple reasignación de responsable, no una transición de estado real; forzar el estado destino ahí no correspondía.
+
+Fix: el fast-path ahora se activa con solo `expediente.etapaCodigo == ANALISIS` (sin comparar el estado exacto contra `estadoDestinoCodigo`) — si el expediente ya está en Análisis, bajo cualquier estado de trabajo, se conserva su etapa/estado actual tal cual (sin forzar `DERIVADO` ni exigir una transición) y solo se reasigna el responsable. La búsqueda de transición vía `FLUJO_TRANSICION` queda reservada exclusivamente para el caso real: expediente todavía en `NOTIFICACION`, recién llegando a Análisis por primera vez.
+
+- Archivos: `AsignacionExpedienteDAO.java`.
+- Validación: `mvn -o -q clean compile` sin errores. No se pudo reproducir el escenario exacto del usuario en este entorno (sin BD); pendiente que confirme que "Registrar Asignación" ya no falla sobre SDRERC-EXP-2026-000043 ni sobre expedientes similares ya asignados previamente a Análisis.
+- Sobre los días/vencimiento en blanco que el usuario reportó junto con el error: comportamiento esperado y ya documentado (`yaDerivadoAAnalisis` en `DocumentoAnalisisDAO.listarCartasRespuestaPendientes`) — una vez que el expediente vuelve a etapa `ANALISIS` (con o sin `Fecha Publ. Edicto`), el plazo/alerta de la Bandeja Cartas de Respuesta se desactiva a propósito porque el seguimiento pasa a ser responsabilidad de Análisis; no se cambió esta lógica.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo.
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.

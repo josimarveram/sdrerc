@@ -536,8 +536,14 @@ public class AsignacionExpedienteDAO {
 
                 Long idEtapaDestino;
                 Long idEstadoDestino;
-                if (CODIGO_ETAPA_ANALISIS_DESTINO.equalsIgnoreCase(expediente.etapaCodigo)
-                        && estadoDestinoCodigo.equalsIgnoreCase(expediente.estadoCodigo)) {
+                if (CODIGO_ETAPA_ANALISIS_DESTINO.equalsIgnoreCase(expediente.etapaCodigo)) {
+                    // El expediente ya esta en Analisis (OBSERVADO, DERIVADO u otro estado de
+                    // trabajo, sin importar cual): esta accion solo reasigna el responsable, no
+                    // exige una transicion real de DEVOLUCION_A_ANALISIS ni fuerza el estado
+                    // destino solicitado. Evita el error "No existe transicion activa
+                    // ANALISIS/X -> ANALISIS/<estadoDestinoCodigo>" cuando se vuelve a usar
+                    // "Registrar Asignacion" sobre un expediente que ya fue derivado/observado
+                    // antes (p.ej. reasignar a otro abogado).
                     idEtapaDestino = expediente.idEtapa;
                     idEstadoDestino = expediente.idEstado;
                 } else {
