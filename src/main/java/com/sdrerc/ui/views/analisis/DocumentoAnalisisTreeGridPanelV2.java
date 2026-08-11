@@ -64,24 +64,24 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         void descargar(DocumentoAnalizadoDTO documento);
     }
 
-    private static final int PADRE_COL_TIPO = 0;
-    private static final int PADRE_COL_NUMERO = 1;
-    private static final int PADRE_COL_ESTADO_DOCUMENTO = 2;
-    private static final int PADRE_COL_FECHA = 3;
-    private static final int PADRE_COL_DESCRIPCION = 4;
-    private static final int PADRE_COL_REQUIERE_RESPUESTA = 5;
-    private static final int PADRE_COL_WORD = 6;
-    private static final int PADRE_COL_GUARDAR = 7;
-    private static final int PADRE_COL_ELIMINAR = 8;
+    private static final int PADRE_COL_GUARDAR = 0;
+    private static final int PADRE_COL_WORD = 1;
+    private static final int PADRE_COL_ELIMINAR = 2;
+    private static final int PADRE_COL_TIPO = 3;
+    private static final int PADRE_COL_NUMERO = 4;
+    private static final int PADRE_COL_ESTADO_DOCUMENTO = 5;
+    private static final int PADRE_COL_FECHA = 6;
+    private static final int PADRE_COL_DESCRIPCION = 7;
+    private static final int PADRE_COL_REQUIERE_RESPUESTA = 8;
 
-    private static final int HIJO_COL_TIPO = 0;
-    private static final int HIJO_COL_COMENTARIO = 1;
-    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 2;
-    private static final int HIJO_COL_FECHA_RESPUESTA = 3;
-    private static final int HIJO_COL_FECHA_PUBLICACION = 4;
-    private static final int HIJO_COL_HOJA_ENVIO = 5;
-    private static final int HIJO_COL_GUARDAR = 6;
-    private static final int HIJO_COL_ELIMINAR = 7;
+    private static final int HIJO_COL_GUARDAR = 0;
+    private static final int HIJO_COL_ELIMINAR = 1;
+    private static final int HIJO_COL_TIPO = 2;
+    private static final int HIJO_COL_COMENTARIO = 3;
+    private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 4;
+    private static final int HIJO_COL_FECHA_RESPUESTA = 5;
+    private static final int HIJO_COL_FECHA_PUBLICACION = 6;
+    private static final int HIJO_COL_HOJA_ENVIO = 7;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -256,9 +256,9 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                 new RowActionEditor(new DeleteDocumentIcon(), "Eliminar documento",
                         row -> eliminarFila(hijoModel.getRow(row))));
 
-        ajustarAnchos(tablaPadre, new int[]{200, 130, 150, 110, 240, 140});
-        configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_WORD, PADRE_COL_GUARDAR, PADRE_COL_ELIMINAR});
-        ajustarAnchos(tablaHijo, new int[]{170, 210, 150, 110, 120, 120});
+        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140});
+        configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR, PADRE_COL_WORD, PADRE_COL_ELIMINAR});
+        ajustarAnchos(tablaHijo, HIJO_COL_TIPO, new int[]{170, 210, 150, 110, 120, 120});
         configurarColumnasAccion(tablaHijo, new int[]{HIJO_COL_GUARDAR, HIJO_COL_ELIMINAR});
 
         scrollPadre.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
@@ -301,9 +301,9 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
         scroll.setWheelScrollingEnabled(true);
     }
 
-    private void ajustarAnchos(JTable table, int[] widths) {
+    private void ajustarAnchos(JTable table, int startColumn, int[] widths) {
         for (int i = 0; i < widths.length; i++) {
-            TableColumn column = table.getColumnModel().getColumn(i);
+            TableColumn column = table.getColumnModel().getColumn(startColumn + i);
             column.setPreferredWidth(widths[i]);
             column.setMinWidth(Math.min(widths[i], 95));
         }
@@ -606,8 +606,8 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
     private static class PadreTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
-            "Comentario", "¿Requiere respuesta?", "", "", ""
+            "", "", "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
+            "Comentario", "¿Requiere respuesta?"
         };
         private java.util.Set<String> tiposIntermedios = new java.util.HashSet<String>();
 
@@ -700,6 +700,13 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
                 case PADRE_COL_ESTADO_DOCUMENTO:
                     if (value instanceof CatalogoItemDTO) {
                         row.estadoDocumento = (CatalogoItemDTO) value;
+                        if (DocumentoRow.esEstadoEmitido(row.estadoDocumento)) {
+                            if (row.fechaDocumento == null) {
+                                row.fechaDocumento = LocalDate.now();
+                            }
+                        } else {
+                            row.fechaDocumento = null;
+                        }
                     }
                     break;
                 case PADRE_COL_FECHA:
@@ -722,8 +729,8 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
     private static class HijoTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Comentario", "Confirmación de respuesta", "Fecha Respuesta",
-            "Fecha Publicación", "Hoja de Envío", "", ""
+            "", "", "Tipo documento", "Comentario", "Confirmación de respuesta", "Fecha Respuesta",
+            "Fecha Publicación", "Hoja de Envío"
         };
 
         void setRows(List<DocumentoRow> nuevas) {
@@ -921,7 +928,7 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
             row.orden = orden;
             row.tipo = tipo;
             row.estadoDocumento = estado;
-            row.fechaDocumento = LocalDate.now();
+            row.fechaDocumento = esEstadoEmitido(estado) ? LocalDate.now() : null;
             row.numeroDocumento = "";
             row.descripcion = "";
             row.estadoRespuesta = "";
@@ -930,6 +937,10 @@ public class DocumentoAnalisisTreeGridPanelV2 extends JPanel {
             row.hojaEnvio = "";
             row.usuarioRegistro = "";
             return row;
+        }
+
+        static boolean esEstadoEmitido(CatalogoItemDTO estado) {
+            return estado != null && "EMITIDO".equalsIgnoreCase(estado.getCodigo());
         }
     }
 

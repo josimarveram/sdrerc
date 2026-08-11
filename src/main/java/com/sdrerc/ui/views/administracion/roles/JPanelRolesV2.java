@@ -226,6 +226,9 @@ public class JPanelRolesV2 extends JPanel {
         agregarFila(form, row++, "Descripción", scrollDescripcion());
         agregarFila(form, row, "Estado", chkActivo);
 
+        txtCodigo.setToolTipText("No repetir un rol ya existente (ADMIN_SISTEMA, RECEPCION, ASIGNACION, ABOGADO,"
+                + " SUPERVISION, SUPERVISOR_NOTIFICACION, NOTIFICACION, VALIDACION, CONSULTA, REGISTRADOR_CIVIL)."
+                + " Verifique primero en la lista si ya existe un rol para lo que necesita.");
         JLabel ayuda = new JLabel("<html>El código se normaliza en mayúsculas y usa guion bajo cuando haya espacios.</html>");
         ayuda.setFont(AppV2Theme.fontPlain(AppV2Theme.FONT_SIZE_SMALL));
         ayuda.setForeground(AppV2Theme.TEXT_SECONDARY);

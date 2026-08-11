@@ -2,9 +2,16 @@ package com.sdrerc.application.sdrercapp;
 
 import com.sdrerc.domain.dto.sdrercapp.AnalisisExpedienteDTO;
 import com.sdrerc.domain.dto.sdrercapp.DocumentoAnalizadoDTO;
+import com.sdrerc.domain.dto.sdrercapp.PlantillaBloqueDTO;
+import com.sdrerc.infrastructure.sdrercapp.dao.PlantillaBloqueDAO;
+import com.sdrerc.infrastructure.sdrercapp.dao.PlantillaDocumentoDAO;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.sql.SQLException;
+import org.apache.xmlbeans.XmlCursor;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,23 +43,71 @@ public class AnalisisPlantillaDocumentoService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final String DOCX_EXTENSION = ".docx";
     private static final Pattern PATRON_SI = Pattern.compile(
-            "\\[\\[SI_(ACTA|PROCEDIMIENTO):([^\\]]*)\\]\\]", Pattern.CASE_INSENSITIVE);
+            "\\[\\[SI_([A-Za-z0-9_]+):([^\\]]*)\\]\\]", Pattern.CASE_INSENSITIVE);
     private static final String MARCADOR_FIN_SI = "[[FIN_SI]]";
+    private static final Pattern PATRON_MARCADOR_CONTENIDO = Pattern.compile(
+            "\\[\\[CONTENIDO(?::([A-Za-z0-9_]+))?\\]\\]", Pattern.CASE_INSENSITIVE);
+
+    private final PlantillaDocumentoDAO plantillaDocumentoDAO;
+    private final PlantillaBloqueDAO plantillaBloqueDAO;
+
+    public AnalisisPlantillaDocumentoService() {
+        this(new PlantillaDocumentoDAO(), new PlantillaBloqueDAO());
+    }
+
+    public AnalisisPlantillaDocumentoService(PlantillaDocumentoDAO plantillaDocumentoDAO, PlantillaBloqueDAO plantillaBloqueDAO) {
+        this.plantillaDocumentoDAO = plantillaDocumentoDAO;
+        this.plantillaBloqueDAO = plantillaBloqueDAO;
+    }
 
     public Path generarDocumento(
             AnalisisExpedienteDTO expediente,
             DocumentoAnalizadoDTO documento,
             List<DocumentoAnalizadoDTO> documentosExpediente,
             Path destino) throws IOException {
-        Path plantilla = resolverPlantilla(documento);
         Files.createDirectories(destino.toAbsolutePath().getParent());
+        Map<String, String> valores = valores(expediente, documento, informeMasReciente(documentosExpediente));
+        List<PlantillaBloqueDTO> bloques = obtenerBloques(documento);
+        PlantillaDocumentoDAO.ContenidoPlantilla plantillaDb = obtenerPlantillaDb(documento);
+        if (plantillaDb != null) {
+            generarDocxDesdeBytes(plantillaDb.getContenido(), destino, valores, bloques);
+            return destino;
+        }
+        Path plantilla = resolverPlantilla(documento);
         if (plantilla.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(DOCX_EXTENSION)) {
-            DocumentoAnalizadoDTO informeReferencia = informeMasReciente(documentosExpediente);
-            generarDocx(plantilla, destino, expediente, valores(expediente, documento, informeReferencia));
+            generarDocxDesdeArchivo(plantilla, destino, valores, bloques);
         } else {
             Files.copy(plantilla, destino, StandardCopyOption.REPLACE_EXISTING);
         }
         return destino;
+    }
+
+    /**
+     * Bloques de contenido configurados por el administrador (Administracion > Plantillas
+     * de documento > bloques) para el tipo de documento. Si la consulta falla por cualquier
+     * motivo (p.ej. tabla no aplicada todavia), se degrada a "sin bloques" sin romper la
+     * generacion del documento.
+     */
+    private List<PlantillaBloqueDTO> obtenerBloques(DocumentoAnalizadoDTO documento) {
+        try {
+            return plantillaBloqueDAO.listarPorCodigoTipo(documento.getTipoDocumentoCodigo());
+        } catch (SQLException ex) {
+            return new ArrayList<PlantillaBloqueDTO>();
+        }
+    }
+
+    /**
+     * Prioridad de resolucion: si el tipo de documento tiene una version activa cargada
+     * desde Administracion > Plantillas de documento (PLANTILLA_DOCUMENTO), esa BLOB gana
+     * sobre el archivo en docs/plantillas. Si no hay fila activa (adopcion gradual) o la
+     * consulta falla por cualquier motivo, se degrada al mecanismo de archivo existente.
+     */
+    private PlantillaDocumentoDAO.ContenidoPlantilla obtenerPlantillaDb(DocumentoAnalizadoDTO documento) {
+        try {
+            return plantillaDocumentoDAO.obtenerActivaPorCodigoTipo(documento.getTipoDocumentoCodigo());
+        } catch (SQLException ex) {
+            return null;
+        }
     }
 
     public Path resolverPlantilla(DocumentoAnalizadoDTO documento) throws IOException {
@@ -96,23 +151,49 @@ public class AnalisisPlantillaDocumentoService {
         String numero = normalizarArchivo(expediente.getNumeroExpediente());
         String extension = ".docx";
         try {
-            extension = resolverPlantilla(documento).getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".doc")
-                    ? ".doc"
-                    : ".docx";
+            if (obtenerPlantillaDb(documento) == null) {
+                extension = resolverPlantilla(documento).getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".doc")
+                        ? ".doc"
+                        : ".docx";
+            }
         } catch (IOException ignored) {
             // Si no se puede resolver todavía, se sugiere docx y se mostrará el error al generar.
         }
         return tipo + "_" + numero + "_" + LocalDate.now().toString() + extension;
     }
 
-    private void generarDocx(
-            Path plantilla,
-            Path destino,
-            AnalisisExpedienteDTO expediente,
-            Map<String, String> valores) throws IOException {
-        try (InputStream in = Files.newInputStream(plantilla);
-                XWPFDocument document = new XWPFDocument(in)) {
-            aplicarCondicionales(document, expediente);
+    private void generarDocxDesdeArchivo(
+            Path plantilla, Path destino, Map<String, String> valores, List<PlantillaBloqueDTO> bloques) throws IOException {
+        try (InputStream in = Files.newInputStream(plantilla)) {
+            generarDocxDesdeStream(in, destino, valores, bloques);
+        }
+    }
+
+    private void generarDocxDesdeBytes(
+            byte[] contenido, Path destino, Map<String, String> valores, List<PlantillaBloqueDTO> bloques) throws IOException {
+        try (InputStream in = new ByteArrayInputStream(contenido)) {
+            generarDocxDesdeStream(in, destino, valores, bloques);
+        }
+    }
+
+    private void generarDocxDesdeStream(
+            InputStream in, Path destino, Map<String, String> valores, List<PlantillaBloqueDTO> bloques) throws IOException {
+        byte[] intermedio;
+        try (XWPFDocument document = new XWPFDocument(in)) {
+            aplicarCondicionales(document, valores);
+            insertarBloques(document, bloques, valores);
+            ByteArrayOutputStream bufferIntermedio = new ByteArrayOutputStream();
+            document.write(bufferIntermedio);
+            intermedio = bufferIntermedio.toByteArray();
+        }
+        // insertarBloques reubica parrafos con XmlCursor.moveXml (operacion cruda de XMLBeans);
+        // la lista de parrafos que cachea POI en memoria (document.getParagraphs()) no queda
+        // sincronizada con ese movimiento y produce XmlValueDisconnectedException si se sigue
+        // usando el mismo objeto XWPFDocument. Se serializa y se vuelve a abrir para que POI
+        // reconstruya su modelo en memoria a partir del XML ya reordenado, antes de continuar.
+        try (InputStream inIntermedio = new ByteArrayInputStream(intermedio);
+                XWPFDocument document = new XWPFDocument(inIntermedio)) {
+            eliminarMarcadorContenido(document);
             reemplazarParrafos(document.getParagraphs(), valores);
             for (XWPFTable table : document.getTables()) {
                 reemplazarTabla(table, valores);
@@ -136,17 +217,18 @@ public class AnalisisPlantillaDocumentoService {
     }
 
     /**
-     * Permite condicionar parrafos dentro de una misma plantilla segun el tipo de
-     * acta o el procedimiento registral del expediente, usando marcadores de texto:
-     * [[SI_ACTA:Valor1|Valor2]] ... [[FIN_SI]]
-     * [[SI_PROCEDIMIENTO:Valor1|Valor2]] ... [[FIN_SI]]
-     * Los parrafos marcador siempre se eliminan; el contenido entre ellos se
-     * conserva solo si el expediente coincide con alguno de los valores listados.
+     * Permite condicionar parrafos dentro de una misma plantilla segun el valor de
+     * CUALQUIER variable ya disponible en el mapa de sustitucion (el mismo que resuelve
+     * los #variable#), usando marcadores de texto dentro del propio Word:
+     * [[SI_canalRecepcion:MPV]] ... [[FIN_SI]]
+     * [[SI_resAnalisis:PROCEDENTE|PROCEDENTE_EN_PARTE]] ... [[FIN_SI]]
+     * El nombre de variable se compara sin distinguir mayusculas/minusculas ni guiones
+     * bajos (tipoActa y TIPO_ACTA son el mismo criterio). Los parrafos marcador siempre
+     * se eliminan; el contenido entre ellos se conserva solo si el valor actual de la
+     * variable coincide con alguno de los valores listados (separados por "|").
      */
-    private void aplicarCondicionales(XWPFDocument document, AnalisisExpedienteDTO expediente) {
+    private void aplicarCondicionales(XWPFDocument document, Map<String, String> valores) {
         List<XWPFParagraph> paragraphs = document.getParagraphs();
-        String tipoActaActual = normalizarClave(expediente.getTipoActa());
-        String procedimientoActual = normalizarClave(expediente.getProcedimiento());
         List<Integer> aEliminar = new ArrayList<Integer>();
         int i = 0;
         while (i < paragraphs.size()) {
@@ -158,11 +240,7 @@ public class AnalisisPlantillaDocumentoService {
                     i++;
                     continue;
                 }
-                boolean coincide = coincideCriterio(
-                        matcher.group(1).toUpperCase(Locale.ROOT),
-                        matcher.group(2),
-                        tipoActaActual,
-                        procedimientoActual);
+                boolean coincide = coincideCriterio(matcher.group(1), matcher.group(2), valores);
                 aEliminar.add(i);
                 if (!coincide) {
                     for (int j = i + 1; j < fin; j++) {
@@ -193,18 +271,147 @@ public class AnalisisPlantillaDocumentoService {
         return -1;
     }
 
-    private boolean coincideCriterio(
-            String criterio, String valoresCriterio, String tipoActaActual, String procedimientoActual) {
-        String objetivo = "ACTA".equals(criterio) ? tipoActaActual : procedimientoActual;
-        if (objetivo.isEmpty()) {
+    /**
+     * Inserta, en orden, los bloques de contenido configurados desde Administracion >
+     * Plantillas de documento > bloques cuya condicion se cumple, en el punto de la
+     * plantilla base marcado con el parrafo literal [[CONTENIDO]] o, si el bloque tiene
+     * seccion asignada, en el marcador nombrado [[CONTENIDO:seccion]] correspondiente.
+     * Una misma plantilla puede tener varios marcadores (uno por seccion); cada uno recibe
+     * solo los bloques de su propia seccion. Si la plantilla no tiene el marcador de una
+     * seccion, esos bloques simplemente no se insertan (no rompe la generacion).
+     * El titulo se inserta en negrita como parrafo aparte; ambos (titulo y contenido)
+     * conservan sus #variable# intactas, que se resuelven despues en reemplazarParrafos
+     * junto con el resto del documento.
+     */
+    private void insertarBloques(XWPFDocument document, List<PlantillaBloqueDTO> bloques, Map<String, String> valores) {
+        if (bloques == null || bloques.isEmpty()) {
+            return;
+        }
+        Map<String, List<PlantillaBloqueDTO>> bloquesPorSeccion = new LinkedHashMap<String, List<PlantillaBloqueDTO>>();
+        for (PlantillaBloqueDTO bloque : bloques) {
+            String clave = bloque.tieneSeccion() ? normalizarNombreVariable(bloque.getSeccion()) : "";
+            List<PlantillaBloqueDTO> lista = bloquesPorSeccion.get(clave);
+            if (lista == null) {
+                lista = new ArrayList<PlantillaBloqueDTO>();
+                bloquesPorSeccion.put(clave, lista);
+            }
+            lista.add(bloque);
+        }
+        // XWPFDocument.insertNewParagraph(cursor) tiene un ClassCastException conocido de
+        // Apache POI 5.2.5 (XmlAnyTypeImpl -> CTP) al insertar en documentos reales de Word.
+        // Se evita por completo: los parrafos nuevos se crean al final del documento
+        // (createParagraph, via probado y sin problemas) y luego se reubican uno a uno justo
+        // antes del marcador correspondiente con XmlCursor.moveXml (operacion generica de
+        // XMLBeans sobre XML crudo, sin el casting problematico). Mover en orden de creacion,
+        // siempre "justo antes del marcador", preserva el orden final correcto.
+        for (XWPFParagraph marcador : buscarParrafosMarcador(document)) {
+            String seccion = extraerSeccionMarcador(marcador.getText());
+            List<PlantillaBloqueDTO> bloquesSeccion = bloquesPorSeccion.get(seccion);
+            if (bloquesSeccion == null || bloquesSeccion.isEmpty()) {
+                continue;
+            }
+            List<XWPFParagraph> nuevosParrafos = new ArrayList<XWPFParagraph>();
+            for (PlantillaBloqueDTO bloque : bloquesSeccion) {
+                if (!coincideCondicionBloque(bloque, valores)) {
+                    continue;
+                }
+                if (hasText(bloque.getTitulo())) {
+                    XWPFParagraph pTitulo = document.createParagraph();
+                    XWPFRun runTitulo = pTitulo.createRun();
+                    runTitulo.setBold(true);
+                    runTitulo.setText(bloque.getTitulo());
+                    nuevosParrafos.add(pTitulo);
+                }
+                if (hasText(bloque.getContenido())) {
+                    XWPFParagraph pContenido = document.createParagraph();
+                    pContenido.createRun().setText(bloque.getContenido());
+                    nuevosParrafos.add(pContenido);
+                }
+            }
+            for (XWPFParagraph nuevo : nuevosParrafos) {
+                XmlCursor cursorNuevo = nuevo.getCTP().newCursor();
+                XmlCursor cursorMarcador = marcador.getCTP().newCursor();
+                cursorNuevo.moveXml(cursorMarcador);
+                cursorNuevo.dispose();
+                cursorMarcador.dispose();
+            }
+        }
+        // Los parrafos marcador [[CONTENIDO...]] NO se eliminan aqui: tras moveXml, la lista
+        // de parrafos que cachea POI en memoria queda desincronizada del XML real y
+        // document.getPosOfParagraph/removeBodyElement ya no ubican los nodos correctos. La
+        // eliminacion se hace en generarDocxDesdeStream, sobre el documento recien reabierto
+        // tras el round-trip de serializacion.
+    }
+
+    private void eliminarMarcadorContenido(XWPFDocument document) {
+        List<XWPFParagraph> marcadores = buscarParrafosMarcador(document);
+        for (int i = marcadores.size() - 1; i >= 0; i--) {
+            int pos = document.getPosOfParagraph(marcadores.get(i));
+            if (pos >= 0) {
+                document.removeBodyElement(pos);
+            }
+        }
+    }
+
+    private List<XWPFParagraph> buscarParrafosMarcador(XWPFDocument document) {
+        List<XWPFParagraph> marcadores = new ArrayList<XWPFParagraph>();
+        for (XWPFParagraph paragraph : document.getParagraphs()) {
+            if (extraerSeccionMarcador(paragraph.getText()) != null) {
+                marcadores.add(paragraph);
+            }
+        }
+        return marcadores;
+    }
+
+    /**
+     * Si el texto es exactamente [[CONTENIDO]] o [[CONTENIDO:seccion]], retorna la seccion
+     * (cadena vacia para el marcador sin nombre). Si no coincide con el patron, retorna null.
+     */
+    private static String extraerSeccionMarcador(String texto) {
+        if (texto == null) {
+            return null;
+        }
+        Matcher matcher = PATRON_MARCADOR_CONTENIDO.matcher(texto.trim());
+        if (!matcher.matches()) {
+            return null;
+        }
+        String seccion = matcher.group(1);
+        return seccion == null ? "" : normalizarNombreVariable(seccion);
+    }
+
+    private boolean coincideCondicionBloque(PlantillaBloqueDTO bloque, Map<String, String> valores) {
+        if (!bloque.tieneCondicion()) {
+            return true;
+        }
+        boolean coincide = coincideCriterio(bloque.getVariableCondicion(), bloque.getValoresCondicion(), valores);
+        return PlantillaBloqueDTO.OPERADOR_NO_COINCIDE.equals(bloque.getOperadorCondicion()) ? !coincide : coincide;
+    }
+
+    private boolean coincideCriterio(String variable, String valoresCriterio, Map<String, String> valores) {
+        String valorActual = normalizarClave(buscarValorPorVariable(valores, variable));
+        if (valorActual.isEmpty()) {
             return false;
         }
         for (String valorEsperado : valoresCriterio.split("\\|")) {
-            if (normalizarClave(valorEsperado).equals(objetivo)) {
+            if (normalizarClave(valorEsperado).equals(valorActual)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static String buscarValorPorVariable(Map<String, String> valores, String variable) {
+        String objetivo = normalizarNombreVariable(variable);
+        for (Map.Entry<String, String> entry : valores.entrySet()) {
+            if (normalizarNombreVariable(entry.getKey()).equals(objetivo)) {
+                return entry.getValue();
+            }
+        }
+        return "";
+    }
+
+    private static String normalizarNombreVariable(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
     private void reemplazarTabla(XWPFTable table, Map<String, String> valores) {
@@ -297,6 +504,7 @@ public class AnalisisPlantillaDocumentoService {
         values.put("tipoDoc", valor(expediente.getTipoDocumento()));
         values.put("numDocInforme", informeReferencia == null ? "" : valor(informeReferencia.getNumeroDocumento()));
         values.put("fechaDocInforme", informeReferencia == null ? "" : fecha(informeReferencia.getFechaDocumento()));
+        values.put("resAnalisis", valor(expediente.getUltimoResultadoAnalisis()));
         return values;
     }
 
@@ -395,5 +603,9 @@ public class AnalisisPlantillaDocumentoService {
 
     private static String valor(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

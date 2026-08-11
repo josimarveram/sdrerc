@@ -13,6 +13,26 @@ import java.util.Set;
 
 public class CatalogoLookupDAO {
 
+    /**
+     * Usado al registrar EXPEDIENTE_HISTORIAL: si quien ejecuta la accion (idUsuario) es
+     * ADMIN_SISTEMA, el autor real no debe quedar en el historial; se sustituye por el
+     * usuario asignado/responsable de esa misma accion (ver DAOs que llaman insertarHistorial).
+     */
+    public boolean tieneRolAdminSistema(Connection conn, Long idUsuario) throws SQLException {
+        if (idUsuario == null) {
+            return false;
+        }
+        String sql = "SELECT COUNT(*) FROM usuario_rol ur "
+                + "JOIN rol r ON r.id_rol = ur.id_rol AND r.activo = 1 "
+                + "WHERE ur.id_usuario = ? AND ur.activo = 1 AND UPPER(r.codigo) = 'ADMIN_SISTEMA'";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
     public Long obtenerEtapaId(Connection conn, String codigo) throws SQLException {
         return obtenerIdPorCodigo(conn, "etapa_expediente", "id_etapa", codigo);
     }

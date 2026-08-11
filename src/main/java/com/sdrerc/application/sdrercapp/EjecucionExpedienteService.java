@@ -55,12 +55,17 @@ public class EjecucionExpedienteService {
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
+        Long idUsuarioActual = resolverUsuarioActualSdrercApp();
+        boolean esAdmin = SessionContext.hasRole("ADMIN_SISTEMA");
         return ejecucionExpedienteDAO.buscarExpedientes(
                 textoLibre,
                 estadoCodigo,
                 fechaSolicitudDesde,
                 fechaSolicitudHasta,
-                limite);
+                limite,
+                esAdmin,
+                idUsuarioActual,
+                esAdmin ? null : usuarioAsignacionService.listarIdsEquipoDeUsuario(idUsuarioActual));
     }
 
     public List<CatalogoItemDTO> listarResultadosEjecucion() throws SQLException {

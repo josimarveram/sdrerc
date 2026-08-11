@@ -97,7 +97,7 @@ public class JPanelRegistroRecepcionV2 extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(12, 14));
         panel.setBackground(AppV2Theme.BACKGROUND);
 
-        metricasRegistro = new AppV2ResponsiveGridPanel(190, 2, 12, 0);
+        metricasRegistro = new AppV2ResponsiveGridPanel(190, 6, 12, 0);
         metricasRegistro.add(cardPotencialDuplicado);
         metricasRegistro.add(cardPosibleGrupoFamiliar);
         metricasRegistro.add(cardGrupoFamiliarConfirmado);

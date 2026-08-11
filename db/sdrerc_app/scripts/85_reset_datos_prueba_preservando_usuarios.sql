@@ -64,7 +64,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE ' || c.table_name || ' DISABLE CONSTRAINT ' || c.constraint_name;
   END LOOP;
 END;
-/
+
 
 /* ------------------------------------------------------------
    Paso 2: truncar todas las tablas EXCEPTO catalogos/maestros y usuarios
@@ -93,7 +93,7 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('Truncada: ' || t.table_name);
   END LOOP;
 END;
-/
+
 
 /* ------------------------------------------------------------
    Paso 3: reiniciar a 1 cada columna IDENTITY de las tablas truncadas
@@ -123,7 +123,7 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('IDENTITY reiniciada a 1: ' || ic.table_name || '.' || ic.column_name);
   END LOOP;
 END;
-/
+
 
 /* ------------------------------------------------------------
    Paso 4: volver a habilitar todas las foreign keys
@@ -138,7 +138,7 @@ BEGIN
     EXECUTE IMMEDIATE 'ALTER TABLE ' || c.table_name || ' ENABLE CONSTRAINT ' || c.constraint_name;
   END LOOP;
 END;
-/
+
 
 /* ============================================================
    Verificacion posterior

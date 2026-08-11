@@ -6,13 +6,20 @@
 |---|---|
 | Sistema | Sistema de Gestión de Expedientes SDRERC |
 | Componente | Aplicación SDRERC V2 |
-| Versión documental | 1.1 |
-| Fecha de línea base | 12/06/2026 |
+| Versión documental | 1.2 |
+| Fecha de línea base | 13/07/2026 |
 | Estado | Línea base para revisión de Ingeniería de Software, Infraestructura y Soporte Tecnológico |
 | Tecnología principal | Java 8, Swing, FlatLaf, JDBC, Oracle |
 | Artefacto desplegable | `SDRERC-V2.jar` |
 | Punto de entrada | `com.sdrerc.appv2.MainV2` |
 | Esquema de datos V2 | `SDRERC_APP` |
+
+### Historial de cambios
+
+| Versión | Fecha | Cambio |
+|---|---|---|
+| 1.1 | 12/06/2026 | Línea base inicial |
+| 1.2 | 13/07/2026 | Cierra ARQ-R01: incorpora autenticación V2 al arranque (`LoginFrameV2`) con doble factor TOTP obligatorio, y modelo de permisos por rol a nivel de módulo y bandeja |
 
 ## 1. Propósito
 
@@ -151,6 +158,12 @@ Los actores externos no poseen login, rol, equipo ni bandeja interna. Se represe
 
 ```mermaid
 flowchart TB
+    subgraph Acceso["Acceso y autenticación"]
+        LOGIN[LoginFrameV2]
+        AUTHSVC[AutenticacionService]
+        TOTP[TotpService / TotpSecretCipher]
+    end
+
     subgraph Presentacion["Presentación"]
         MAIN[MainV2]
         MENU[MenuPrincipalV2]
@@ -173,7 +186,7 @@ flowchart TB
     subgraph Infraestructura["Infraestructura"]
         DAO[DAOs JDBC sdrercapp]
         CONN[SdrercAppConnection]
-        SEC[BCrypt y política de contraseña]
+        SEC[BCrypt, cifrado AES-GCM de secretos TOTP]
     end
 
     subgraph Datos["Oracle SDRERC_APP"]
@@ -183,7 +196,11 @@ flowchart TB
         AUD[Historial y auditoría]
     end
 
-    MAIN --> MENU
+    MAIN --> LOGIN
+    LOGIN --> AUTHSVC
+    AUTHSVC --> TOTP
+    AUTHSVC --> DAO
+    LOGIN -->|sesión iniciada| MENU
     MENU --> MOD
     MOD --> CONS
     MOD --> COMP
@@ -198,6 +215,7 @@ flowchart TB
     DAO --> FLOW
     DAO --> AUD
     CAT --> SEC
+    TOTP --> SEC
     SVC --> CONST
 ```
 
@@ -213,14 +231,16 @@ flowchart TB
 | Contratos | `com.sdrerc.domain.dto.sdrercapp` | Transferencia tipada de datos entre DAO, servicio y UI |
 | Acceso a datos | `com.sdrerc.infrastructure.sdrercapp.dao` | SQL JDBC, mapeo, concurrencia y transacciones |
 | Conectividad | `com.sdrerc.infrastructure.database.SdrercAppConnection` | Resolución de configuración y creación de conexiones Oracle |
-| Seguridad | `com.sdrerc.infrastructure.security` | Hash BCrypt, generación y política de contraseñas |
-| Sesión | `com.sdrerc.shared.session.SessionContext` | Usuario autenticado y contexto de ejecución |
+| Seguridad | `com.sdrerc.infrastructure.security` | Hash BCrypt de contraseñas, generación/validación TOTP (RFC 6238) y cifrado AES-GCM del secreto TOTP |
+| Autenticación | `com.sdrerc.ui.appv2.login`, `com.sdrerc.application.sdrercapp.AutenticacionService` | Login con doble factor, cambio de contraseña obligatorio y enrolamiento/verificación TOTP antes de abrir el menú |
+| Sesión | `com.sdrerc.shared.session.SessionContext` | Usuario autenticado, permisos resueltos y contexto de ejecución |
 | Datos | `SDRERC_APP` | Persistencia, integridad, flujo, trazabilidad y vistas |
 
 ## 9. Módulos funcionales V2
 
 | Grupo | Módulo | Responsabilidad principal |
 |---|---|---|
+| Acceso | Login / Autenticación | Credenciales, cambio de contraseña obligatorio y doble factor (TOTP) antes de abrir el menú |
 | Portada | Inicio | Métricas, accesos y visualización del flujo |
 | Consulta | Bandeja de Expedientes | Búsqueda transversal y apertura de la consola única |
 | Operación | Registro / Recepción | Carga diaria, previsualización y registro manual |
@@ -392,6 +412,14 @@ La estrategia actual calcula el máximo correlativo existente para el año. Debe
 
 ### 14.1 Controles existentes
 
+- autenticación V2 obligatoria en el arranque: `MainV2` abre `LoginFrameV2` y solo tras autenticar con éxito construye `MenuPrincipalV2`;
+- doble factor obligatorio (TOTP, RFC 6238) para todos los usuarios sin excepción, con enrolamiento por código QR (ZXing) y clave manual de respaldo;
+- 8 códigos de respaldo de un solo uso por usuario (hasheados con BCrypt), mostrados una única vez al confirmar el enrolamiento;
+- bloqueo temporal de cuenta (5 intentos fallidos, 15 minutos) compartido entre fallos de contraseña y de código TOTP/respaldo, para mitigar fuerza bruta sobre un código de 6 dígitos;
+- secreto TOTP cifrado con AES-GCM antes de persistirse; nunca se guarda en claro en `USUARIO.TOTP_SECRET`;
+- primera contraseña asignada únicamente por el administrador (`Restablecer clave`), nunca por autoservicio de una cuenta sin contraseña;
+- mensajes de error de login deliberadamente genéricos; no revelan si un usuario existe;
+- autorización de menú y bandejas por permisos de rol, en dos niveles: módulo (botón de menú lateral) y bandeja (pestaña superior en Registro/Recepción, Asignación y Notificación);
 - contraseñas de usuario almacenadas como hash BCrypt;
 - política de contraseña temporal con longitud y complejidad;
 - tablas de usuarios, roles, permisos, equipos y supervisión;
@@ -405,19 +433,23 @@ La estrategia actual calcula el máximo correlativo existente para el año. Debe
 
 | Control | Estado observado |
 |---|---|
-| Autenticación de entrada V2 | Pendiente de integración explícita: `MainV2` abre el menú directamente |
-| Autorización de menú por rol/permiso | Parcial: existen catálogos y servicios, pero el menú V2 no filtra accesos |
+| Autorización por permiso a nivel de acción/botón específico | Pendiente: el modelo de permisos cubre módulo y bandeja; no existe un tercer nivel para acciones puntuales dentro de una bandeja ya autorizada |
+| Autorización fail-open mientras el catálogo de un rol está vacío | Diseño deliberado transitorio: `SessionContext.tienePermiso` retorna `true` si el rol no tiene permisos configurados, para no bloquear a todos antes de definir la matriz real; debe revisarse el criterio (fail-open vs. fail-closed) antes de operación productiva |
+| Gestión y rotación de la clave de cifrado TOTP | Pendiente: hoy es una única passphrase en `config/sdrerc-app.properties` o variable de entorno local, sin mecanismo institucional de rotación ni vault |
+| Bootstrap del primer administrador | Manual: requiere ejecutar un script SQL con un hash de contraseña generado fuera de banda (`PasswordHashCli`); no existe flujo asistido dentro de la aplicación |
 | Autorización central por caso de uso | Parcial: hay validaciones distribuidas en servicios/DAOs |
 | Protección del password de BD en cliente | Pendiente: properties/env siguen siendo secretos recuperables por el equipo |
 | Cifrado JDBC en tránsito | No confirmado |
 | Gestión centralizada de secretos | No implementada |
-| Bloqueo de cuenta, expiración y reintentos | No confirmado |
 | Registro de sesión y cierre seguro | Parcial |
 | Auditoría técnica automática | Modelo existente; cobertura efectiva debe validarse |
 
 ### 14.3 Reglas obligatorias
 
 - no documentar ni versionar contraseñas reales;
+- no documentar ni versionar la clave de cifrado de secretos TOTP (`security.totp.key`); verificar el diff de `config/sdrerc-app.properties` antes de cada commit;
+- no hardcodear la clave de cifrado TOTP en el código fuente; resolver siempre por configuración externa o variable de entorno;
+- no reexponer el secreto TOTP ni los códigos de respaldo después del enrolamiento inicial;
 - usar un usuario Oracle de mínimo privilegio;
 - restringir lectura del archivo de configuración mediante permisos del sistema operativo;
 - no usar `SYSTEM` como usuario de la aplicación;
@@ -439,7 +471,10 @@ SDRERC_APP_DB_URL
 SDRERC_APP_DB_USER
 SDRERC_APP_DB_PASSWORD
 SDRERC_APP_CONFIG
+SDRERC_APP_TOTP_KEY
 ```
+
+`SDRERC_APP_TOTP_KEY` (o la propiedad `security.totp.key` en `config/sdrerc-app.properties`) es la passphrase con la que se cifra/descifra el secreto TOTP de cada usuario; se resuelve con el mismo orden de precedencia que la conexión a BD y nunca está hardcodeada en el código fuente.
 
 No deben incluirse valores reales en documentación, repositorio, instalador ni ejemplos distribuidos.
 
@@ -496,6 +531,7 @@ Dependencias principales:
 | Apache POI | Importación y generación XLSX |
 | JCalendar | Calendario |
 | BCrypt | Hash de contraseñas |
+| ZXing (`core` + `javase`) | Generación de código QR para enrolamiento TOTP del login V2 |
 | Log4j 2 | Dependencia de logging, aún sin configuración operativa central observada |
 
 ## 17. Disponibilidad y operación
@@ -528,7 +564,7 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 | Trazabilidad | Historial funcional y modelo de auditoría técnica |
 | Usabilidad | Consola única, nombres amigables, badges y componentes reutilizables |
 | Compatibilidad | Java 8, JAR ejecutable, rutas relativas y despliegue LAN |
-| Seguridad | BCrypt, RBAC modelado, configuración externa y mínimo privilegio objetivo |
+| Seguridad | Login con doble factor TOTP, bloqueo por intentos, BCrypt, RBAC por módulo/bandeja, configuración externa y mínimo privilegio objetivo |
 | Rendimiento | Índices, límites de bandeja y consultas específicas; paginación real pendiente |
 | Concurrencia | Bloqueo `FOR UPDATE` y validación de estado |
 | Evolución | Flujo y catálogos configurables por código |
@@ -548,6 +584,10 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 | ADR-08 | Empaquetar fat JAR | El cliente no depende de Maven ni del IDE |
 | ADR-09 | Modelar actores externos fuera de seguridad | No poseen acceso interno al aplicativo |
 | ADR-10 | No crear etapa `VALIDACION` | Alineamiento funcional BPMN/SDRERC |
+| ADR-11 | Doble factor con TOTP (RFC 6238) en vez de SMS/correo | Las reglas del proyecto prohíben integraciones externas de mensajería; TOTP no depende de conectividad externa |
+| ADR-12 | Permisos por rol, no por equipo | Equipo es una dimensión de asignación de trabajo/datos, no de control de acceso a pantallas |
+| ADR-13 | Autorización fail-open mientras el catálogo de permisos de un rol está vacío | Evita bloquear a todos los usuarios antes de configurar la matriz real de permisos; decisión transitoria a revisar antes de producción |
+| ADR-14 | Bandejas sin permiso se deshabilitan (`setEnabledAt`), no se eliminan del `JTabbedPane` | Varias pantallas V2 asumen índices fijos de pestaña; eliminar pestañas arriesgaría desalinear esa lógica interna |
 
 ## 20. Estado de implementación
 
@@ -563,8 +603,11 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 | Escritura transaccional controlada | Implementada por módulos autorizados |
 | Flujo configurable y acciones permitidas | Implementado en modelo y consumo |
 | Empaquetado e instalador LAN | Implementado |
-| Autenticación V2 integrada al arranque | Pendiente |
-| Autorización uniforme de menú y casos de uso | Parcial |
+| Autenticación V2 integrada al arranque | Implementado (`LoginFrameV2`, `AutenticacionService`) |
+| Doble factor (TOTP) obligatorio para todos los usuarios | Implementado, con códigos de respaldo y bloqueo por intentos |
+| Permisos por módulo y bandeja | Implementado; fail-open hasta configurar la matriz real por rol |
+| Autorización uniforme de menú y casos de uso | Parcial: cubre módulo y bandeja; falta nivel de acción/botón específico |
+| Bootstrap automatizado del primer administrador | Pendiente: hoy es manual (script SQL + `PasswordHashCli`) |
 | Dos titulares para actas de matrimonio en V2 | Soportado conceptualmente por el modelo N:M; cobertura UI/persistencia debe verificarse |
 | Plazo configurable por tipo documental | Modelo disponible; Registro aún usa un plazo fijo transitorio |
 | Paginación real en todas las bandejas | Pendiente; existe límite de cantidad |
@@ -582,8 +625,8 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 
 | ID | Riesgo | Nivel | Tratamiento recomendado |
 |---|---|---:|---|
-| ARQ-R01 | V2 abre el menú sin autenticación explícita | Crítico | Integrar login V2 antes de producción y poblar `SessionContext` |
-| ARQ-R02 | Permisos no aplicados uniformemente en navegación y servicios | Alto | Crear guard central de autorización por usuario, rol, permiso y transición |
+| ARQ-R01 | *(Mitigado)* V2 abría el menú sin autenticación explícita | Bajo | Resuelto: `LoginFrameV2` con doble factor obligatorio antes de `MenuPrincipalV2`; queda pendiente automatizar el bootstrap del primer administrador (ver ARQ-R19) |
+| ARQ-R02 | Permisos no aplicados uniformemente en navegación y servicios | Medio | Implementado a nivel módulo/bandeja; falta autorización a nivel de acción específica dentro de una bandeja ya autorizada |
 | ARQ-R03 | Password de BD distribuido en cliente | Alto | Usar cuenta restringida, ACL del SO, rotación y mecanismo institucional de secretos |
 | ARQ-R04 | Correlativo calculado con `MAX + 1` | Alto | Usar secuencia/control correlativo transaccional y constraint único |
 | ARQ-R05 | Sin pruebas automatizadas ni CI | Alto | Incorporar pruebas de servicios/DAOs y pipeline de compilación/análisis |
@@ -599,6 +642,9 @@ Estas capacidades deben definirse con Infraestructura. Hasta entonces, Oracle y 
 | ARQ-R15 | Dos titulares de matrimonio no tienen cobertura V2 confirmada de extremo a extremo | Alto | Probar UI, DTO, DAO, consola e importador con dos relaciones TITULAR |
 | ARQ-R16 | Reportes y cargas masivas no tienen matrices definitivas | Medio | Aprobar contratos Excel antes de implementar escrituras |
 | ARQ-R17 | La asignación específica de Notificación no está definida | Medio | Acordar responsable, bandeja, transición y asignación masiva antes de implementar |
+| ARQ-R18 | La clave de cifrado de secretos TOTP es una única passphrase local sin rotación ni gestión centralizada | Alto | Definir mecanismo institucional de gestión de secretos (vault) y rotación periódica |
+| ARQ-R19 | El bootstrap del primer administrador requiere pasos manuales fuera de la aplicación (script SQL + hash generado por CLI) | Medio | Evaluar un flujo asistido o una operación única controlada para el primer arranque |
+| ARQ-R20 | La autorización por permisos es fail-open cuando el catálogo de permisos de un rol está vacío | Medio | Configurar la matriz real de permisos por rol antes de operación productiva; evaluar pasar a fail-closed una vez configurada |
 
 Se detectó además una credencial escrita en texto claro dentro de un script de creación de esquema. No se reproduce en este documento. Debe reemplazarse mediante un cambio SQL autorizado y rotarse si fue utilizada.
 
@@ -638,14 +684,16 @@ Antes de declarar un pase productivo:
 | Auditoría técnica separada | `AUDITORIA_EVENTO` |
 | Consola de seguimiento | `DlgConsolaExpedienteV2` y vistas de consola |
 | Despliegue LAN independiente del IDE | Maven Shade, launcher e instalador |
+| Doble factor obligatorio para todos los usuarios | `AutenticacionService`, `TotpService`, `TotpSecretCipher`, `USUARIO_TOTP_BACKUP_CODE` |
+| Permisos por módulo y por bandeja | `permiso`, `rol_permiso`, `SessionContext.tienePermiso`, `MenuPrincipalV2.resolverPermisosSesion` |
 
 ## 24. Próximas decisiones institucionales
 
 Requieren validación de las áreas competentes:
 
-1. mecanismo de autenticación y posible integración con directorio institucional;
-2. matriz final de roles, permisos y segregación de funciones;
-3. cifrado de conexión Oracle y gestión de secretos;
+1. el mecanismo de autenticación con doble factor ya está definido e implementado; queda pendiente decidir si se integra con directorio institucional (SSO) y si se automatiza el bootstrap del primer administrador;
+2. matriz final de roles, permisos y segregación de funciones (el mecanismo de permisos por módulo/bandeja ya existe; falta cargar la matriz real por rol y decidir el criterio fail-open/fail-closed);
+3. cifrado de conexión Oracle y gestión centralizada de secretos (incluye la clave de cifrado TOTP, hoy en configuración local sin rotación);
 4. topología productiva de Oracle y servidor documental;
 5. RPO, RTO, respaldos, restauración y contingencia;
 6. política de logs, monitoreo y mesa de ayuda;

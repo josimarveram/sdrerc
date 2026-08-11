@@ -6,11 +6,18 @@
 |---|---|
 | Sistema | Sistema de Gestión de Expedientes SDRERC |
 | Modelo | Esquema Oracle `SDRERC_APP` |
-| Versión documental | 1.1 |
-| Fecha de línea base | 12/06/2026 |
+| Versión documental | 1.2 |
+| Fecha de línea base | 13/07/2026 |
 | Estado | Línea base lógica y física para revisión |
 | Motor objetivo | Oracle XE / Oracle compatible con JDBC 8 |
-| Fuentes | Scripts `01` a `20`, DAOs V2, BPMN TO BE V2, Actas 011, 012 y 013-2026-DRC y `AGENTS.md` |
+| Fuentes | Scripts `01` a `62`, DAOs V2, BPMN TO BE V2, Actas 011, 012 y 013-2026-DRC y `AGENTS.md` |
+
+### Historial de cambios
+
+| Versión | Fecha | Cambio |
+|---|---|---|
+| 1.1 | 12/06/2026 | Línea base inicial |
+| 1.2 | 13/07/2026 | Incorpora modelo de datos de autenticación/2FA (`USUARIO` ampliado, `USUARIO_TOTP_BACKUP_CODE`) y de asignación de Notificación (`EXPEDIENTE_DOCUMENTO_ANALIZADO` ampliado, `TIPO_RESULTADO_VALIDACION`, equipo `EQ_VALIDACION`, estados `ASIGNADO`/`VALIDADO`) |
 
 ## 1. Propósito
 
@@ -140,15 +147,18 @@ erDiagram
 |---|---|---|
 | `AREA` | Unidad organizacional interna | `ID_AREA`, `CODIGO`, `NOMBRE` |
 | `ROL` | Perfil funcional | `ID_ROL`, `CODIGO`, `NOMBRE` |
-| `USUARIO` | Usuario interno del aplicativo | `USERNAME`, `PASSWORD_HASH`, `ESTADO`, `ACTIVO` |
+| `USUARIO` | Usuario interno del aplicativo | `USERNAME`, `PASSWORD_HASH`, `ESTADO`, `ACTIVO`, `DEBE_CAMBIAR_PASSWORD`, `TOTP_SECRET`, `TOTP_HABILITADO`, `TOTP_CONFIRMADO_EN`, `INTENTOS_FALLIDOS`, `BLOQUEADO_HASTA`, `PASSWORD_ACTUALIZADO_EN`, `ULTIMO_LOGIN_EN` |
 | `USUARIO_ROL` | Asociación usuario-rol | `ID_USUARIO`, `ID_ROL`, `ACTIVO` |
+| `USUARIO_TOTP_BACKUP_CODE` | Código de respaldo TOTP de un solo uso | `ID_USUARIO`, `CODIGO_HASH`, `USADO`, `USADO_EN` |
 | `EQUIPO` | Equipo operativo o jurídico | `ID_AREA`, `CODIGO`, `NOMBRE` |
 | `EQUIPO_USUARIO` | Miembro o responsable de equipo | `ID_EQUIPO`, `ID_USUARIO`, `ES_RESPONSABLE` |
 | `USUARIO_SUPERVISION` | Relación supervisor-abogado | `ID_SUPERVISOR`, `ID_ABOGADO` |
-| `PERMISO` | Acción autorizable por módulo | `CODIGO`, `NOMBRE`, `MODULO` |
+| `PERMISO` | Acción autorizable por módulo o bandeja | `CODIGO`, `NOMBRE`, `MODULO` |
 | `ROL_PERMISO` | Asociación rol-permiso | `ID_ROL`, `ID_PERMISO` |
 
 Solo los actores internos se registran como usuarios. Ciudadano/Entidad, OGD, SDPRC, municipalidades y similares se modelan como personas o entidades externas.
+
+`USUARIO.PASSWORD_HASH` guarda un hash BCrypt; `USUARIO.TOTP_SECRET` guarda el secreto TOTP cifrado con AES-GCM (nunca en claro), y `USUARIO_TOTP_BACKUP_CODE.CODIGO_HASH` guarda cada código de respaldo también hasheado con BCrypt. La clave de cifrado de `TOTP_SECRET` no forma parte del modelo de datos: vive en configuración externa (`config/sdrerc-app.properties` o variable de entorno), fuera del esquema y del repositorio. Ver sección 31 para el detalle de autenticación.
 
 ### 6.2 Entidades externas y recepción
 
@@ -179,6 +189,9 @@ Solo los actores internos se registran como usuarios. Ciudadano/Entidad, OGD, SD
 | `MOTIVO_NO_CORRESPONDE` | Motivo de no atención |
 | `MOTIVO_ARCHIVO` | Motivo de archivo |
 | `MOTIVO_CORRECCION` | Motivo de corrección |
+| `TIPO_RESULTADO_VALIDACION` | Resultado de validación en Notificación (`APROBADO`/`OBSERVADO`) |
+
+`ESTADO_DOCUMENTO` incorpora los códigos `ASIGNADO` y `VALIDADO` para el ciclo de asignación de Notificación (`ASIGNADO` quedó sembrado en el catálogo pero la aplicación actualmente no transiciona documentos a ese estado; `VALIDADO` sí se usa al aprobar en Bandeja Validación). `EQUIPO` incorpora el código `EQ_VALIDACION` (equipo de validadores de Notificación), además del ya existente `EQ_NOTIFICACION`.
 
 ### 6.4 Flujo
 
@@ -208,7 +221,7 @@ El flujo vigente se identifica por el código `SDRERC_TO_BE`.
 | Tabla | Propósito |
 |---|---|
 | `EXPEDIENTE_DOCUMENTO` | Metadata de documentos del expediente |
-| `EXPEDIENTE_DOCUMENTO_ANALIZADO` | Documentos evaluados durante análisis/ejecución |
+| `EXPEDIENTE_DOCUMENTO_ANALIZADO` | Documentos evaluados durante análisis/ejecución; incluye asignación de Notificación (`ID_EQUIPO_NOTIFICACION`, `ID_USUARIO_NOTIFICACION`, `NUMERO_HOJA_ENVIO_NOTIFICACION`) |
 | `EXPEDIENTE_EVALUACION` | Corresponde, incorporado, resultado y fundamento |
 | `EXPEDIENTE_OBSERVACION` | Observaciones y subsanación |
 | `EXPEDIENTE_RESOLUCION` | Número, fecha, firma y documento resolutivo |
@@ -550,6 +563,8 @@ Debe existir un evento para:
 
 El historial explica el proceso de negocio y no reemplaza la auditoría técnica.
 
+`TIPO_MOVIMIENTO` incorpora los códigos `ASIGNACION_NOTIFICACION` y `REASIGNACION_NOTIFICACION` para registrar en `EXPEDIENTE_HISTORIAL` la asignación/reasignación de documentos a equipos/usuarios de Notificación, reutilizando la tabla genérica en vez de crear una tabla de historial dedicada.
+
 ## 19. Auditoría técnica
 
 `AUDITORIA_EVENTO` contempla:
@@ -662,7 +677,7 @@ Las vistas son contratos de lectura. Los DAOs pueden consultar tablas cuando req
 |---|---|---|
 | Datos personales | nombres, documento, correo, teléfono, dirección | Acceso por rol, minimización y no exposición en logs |
 | Datos del expediente | acta, trámite, solicitud, estado | Acceso funcional y trazabilidad |
-| Datos sensibles de seguridad | hash de contraseña, credenciales de BD | Acceso restringido; nunca documentar secretos |
+| Datos sensibles de seguridad | hash de contraseña, secreto TOTP cifrado, códigos de respaldo hasheados, credenciales de BD, clave de cifrado TOTP | Acceso restringido; nunca documentar secretos; clave de cifrado TOTP vive fuera del esquema y del repositorio |
 | Documentos y rutas | nombres, número, ruta, enlace, hash | Control de acceso y validación de enlaces |
 | Auditoría | usuario, equipo, valores antes/después | Retención protegida e inmutabilidad operacional |
 
@@ -764,6 +779,8 @@ Como mínimo, Infraestructura debe definir:
 | DAT-R18 | Cargas masivas de Ejecución/Notificación carecen de contrato de datos | Alto | Aprobar matriz, validaciones, idempotencia y trazabilidad antes de escribir |
 | DAT-R19 | Las consultas con límite no implementan paginación estable | Medio | Definir estrategia por offset o clave de continuidad |
 | DAT-R20 | No está definido si Notificación requiere asignación propia | Medio | Acordar modelo operativo antes de usar `EXPEDIENTE_ASIGNACION` para esa etapa |
+| DAT-R21 | La clave que cifra `USUARIO.TOTP_SECRET` no forma parte del modelo de datos ni tiene rotación definida | Alto | Definir gestión institucional de secretos (vault) y política de rotación fuera del esquema |
+| DAT-R22 | `USUARIO_TOTP_BACKUP_CODE` no tiene política de expiración/purga para códigos ya usados | Bajo | Definir retención y purga periódica de códigos consumidos |
 
 La credencial detectada no se reproduce en este documento y el script no fue modificado porque la tarea no autorizó cambios SQL.
 
@@ -806,6 +823,7 @@ El script `11_validaciones.sql` contiene consultas funcionales de apoyo, pero no
 - La publicación solo procede mediante transición activa.
 - El expediente digital conserva metadata sin exigir asignación independiente.
 - Cierre y archivo son lógicos y trazables.
+- El secreto TOTP nunca se almacena en claro; solo cifrado (AES-GCM) o, en el caso de los códigos de respaldo, hasheado (BCrypt).
 - Las pruebas de integridad y restauración han sido ejecutadas.
 
 ## 30. Matriz módulo-entidad
@@ -823,3 +841,42 @@ El script `11_validaciones.sql` contiene consultas funcionales de apoyo, pero no
 | Expediente digital | `EXPEDIENTE_DIGITAL`, `EXPEDIENTE_DOCUMENTO` |
 | Cierre / Archivo | `EXPEDIENTE`, `EXPEDIENTE_HISTORIAL`, antecedentes del caso |
 | Administración | `USUARIO`, `ROL`, `PERMISO`, `EQUIPO` y tablas asociativas |
+| Login / Autenticación | `USUARIO`, `USUARIO_TOTP_BACKUP_CODE`, `USUARIO_ROL`, `ROL`, `PERMISO`, `ROL_PERMISO` |
+
+## 31. Autenticación y control de acceso (V2)
+
+Incorporado en la línea base 1.2. `MainV2` exige autenticación (`LoginFrameV2`) antes de abrir el menú; el detalle de flujo y componentes de aplicación vive en `DISENO_ARQUITECTURA_SDRERC_V2.md`. Esta sección documenta únicamente el modelo de datos correspondiente.
+
+```mermaid
+erDiagram
+    USUARIO ||--o{ USUARIO_ROL : tiene
+    USUARIO ||--o{ USUARIO_TOTP_BACKUP_CODE : respalda
+    ROL ||--o{ USUARIO_ROL : asignado_a
+    ROL ||--o{ ROL_PERMISO : otorga
+    PERMISO ||--o{ ROL_PERMISO : concedido_en
+```
+
+### 31.1 Columnas de autenticación en `USUARIO`
+
+| Columna | Propósito |
+|---|---|
+| `PASSWORD_HASH` | Hash BCrypt de la contraseña; `NULL` hasta que el administrador la asigna |
+| `DEBE_CAMBIAR_PASSWORD` | Fuerza el cambio de contraseña en el próximo login (activado por `Restablecer clave`) |
+| `TOTP_SECRET` | Secreto TOTP cifrado con AES-GCM; `NULL` si el usuario no inició enrolamiento |
+| `TOTP_HABILITADO` | Indica si el enrolamiento TOTP fue confirmado |
+| `TOTP_CONFIRMADO_EN` | Fecha de confirmación del enrolamiento |
+| `INTENTOS_FALLIDOS` | Contador compartido entre fallos de contraseña y de código TOTP/respaldo |
+| `BLOQUEADO_HASTA` | Fecha límite de bloqueo temporal por intentos fallidos |
+| `PASSWORD_ACTUALIZADO_EN` | Auditoría de último cambio de contraseña |
+| `ULTIMO_LOGIN_EN` | Auditoría de último login exitoso |
+
+### 31.2 `USUARIO_TOTP_BACKUP_CODE`
+
+Códigos de respaldo de un solo uso generados al confirmar el enrolamiento TOTP (8 por usuario, formato `XXXX-XXXX`). `CODIGO_HASH` guarda el hash BCrypt de cada código; nunca se persiste en claro. `USADO`/`USADO_EN` marcan el consumo; un código usado no vuelve a ser válido. El lote completo se reemplaza (`DELETE` + `INSERT` transaccional) cada vez que el usuario reinicia su verificación en dos pasos.
+
+### 31.3 Reglas de integridad
+
+- `USUARIO_TOTP_BACKUP_CODE.ID_USUARIO` referencia `USUARIO.ID_USUARIO`.
+- El secreto TOTP nunca se lee ni se escribe en claro fuera de la capa de aplicación (`TotpSecretCipher`); la base de datos solo almacena el resultado cifrado.
+- La clave de cifrado de `TOTP_SECRET` no es un dato de este esquema: se resuelve por configuración externa al proceso de la aplicación (ver `DISENO_ARQUITECTURA_SDRERC_V2.md`, sección 15).
+- `PERMISO`/`ROL_PERMISO` (inventariadas en 6.1) pasaron de existir sin consumo en tiempo de ejecución a estar activamente sembradas y consultadas por `SessionContext`/`MenuPrincipalV2` para autorizar módulos y bandejas.

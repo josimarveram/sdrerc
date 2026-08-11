@@ -147,7 +147,7 @@ END;
    ingreso — este INSERT reemplaza al bootstrap manual documentado al final
    de 61_login_2fa_usuario.sql (ya no hace falta repetir ese paso).
    ------------------------------------------------------------ */
-
+/*
 INSERT INTO usuario (
     username, password_hash, nombre_completo, tipo_documento, numero_documento,
     correo, estado, activo, debe_cambiar_password, totp_habilitado,
@@ -165,11 +165,11 @@ SELECT u.id_usuario, r.id_rol, 1, SYSTIMESTAMP
    AND UPPER(r.codigo) = 'ADMIN_SISTEMA';
 
 COMMIT;
-
+*/
 /* ============================================================
    Verificación posterior
    ============================================================ */
-
+/*
 SELECT id_usuario, username, nombre_completo, numero_documento, activo,
        debe_cambiar_password, totp_habilitado
   FROM usuario;
@@ -183,3 +183,4 @@ SELECT u.username, r.codigo AS rol
 SELECT table_name, num_rows FROM user_tables
  WHERE table_name IN ('EXPEDIENTE', 'EXPEDIENTE_SOLICITUD', 'PERSONA', 'USUARIO')
  ORDER BY table_name;
+/*

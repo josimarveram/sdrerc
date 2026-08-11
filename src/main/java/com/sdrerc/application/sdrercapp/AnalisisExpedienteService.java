@@ -58,12 +58,17 @@ public class AnalisisExpedienteService {
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
             int limite) throws SQLException {
+        Long idUsuarioActual = resolverUsuarioActualSdrercApp();
+        boolean esAdmin = SessionContext.hasRole("ADMIN_SISTEMA");
         return analisisExpedienteDAO.buscarExpedientes(
                 textoLibre,
                 estadoCodigo,
                 fechaSolicitudDesde,
                 fechaSolicitudHasta,
-                limite);
+                limite,
+                esAdmin,
+                idUsuarioActual,
+                esAdmin ? null : usuarioAsignacionService.listarIdsEquipoDeUsuario(idUsuarioActual));
     }
 
     public List<CatalogoItemDTO> listarResultadosAnalisis() throws SQLException {
@@ -125,6 +130,15 @@ public class AnalisisExpedienteService {
             throw new IllegalArgumentException(String.join("\n", errores));
         }
         return analisisExpedienteDAO.registrarAnalisis(registro, resolverUsuarioActualSdrercApp());
+    }
+
+    /**
+     * Permite validar el registro ANTES de pedir confirmacion al usuario, para no mostrar
+     * un dialogo de "¿desea continuar?" seguido inmediatamente de un error (p.ej. registrar
+     * sin seleccionar el resultado del analisis). Misma validacion que usa registrarAnalisis(...).
+     */
+    public List<String> validarRegistroAnalisis(AnalisisRegistroDTO registro) {
+        return validacionService.validarRegistroAnalisis(registro);
     }
 
     public AnalisisResultadoDTO guardarDocumentosAnalisis(

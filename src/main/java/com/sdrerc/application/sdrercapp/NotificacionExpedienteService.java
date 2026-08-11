@@ -58,6 +58,8 @@ public class NotificacionExpedienteService {
             String resultadoNotificacionCodigo,
             String requierePublicacionFiltro,
             int limite) throws SQLException {
+        Long idUsuarioActual = resolverUsuarioActualSdrercApp();
+        boolean esAdmin = SessionContext.hasRole("ADMIN_SISTEMA");
         return notificacionExpedienteDAO.buscarExpedientes(
                 textoLibre,
                 estadoCodigo,
@@ -66,7 +68,10 @@ public class NotificacionExpedienteService {
                 tipoNotificacionCodigo,
                 resultadoNotificacionCodigo,
                 requierePublicacionFiltro,
-                limite);
+                limite,
+                esAdmin,
+                idUsuarioActual,
+                esAdmin ? null : usuarioAsignacionService.listarIdsEquipoDeUsuario(idUsuarioActual));
     }
 
     public List<CatalogoItemDTO> listarTiposNotificacion() throws SQLException {

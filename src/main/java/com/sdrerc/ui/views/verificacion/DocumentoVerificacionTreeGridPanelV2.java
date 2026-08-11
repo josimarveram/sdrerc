@@ -57,13 +57,13 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
                 String numeroDocumento) throws Exception;
     }
 
-    private static final int PADRE_COL_TIPO = 0;
-    private static final int PADRE_COL_NUMERO = 1;
-    private static final int PADRE_COL_ESTADO_DOCUMENTO = 2;
-    private static final int PADRE_COL_FECHA = 3;
-    private static final int PADRE_COL_COMENTARIO = 4;
-    private static final int PADRE_COL_REQUIERE_RESPUESTA = 5;
-    private static final int PADRE_COL_GUARDAR = 6;
+    private static final int PADRE_COL_GUARDAR = 0;
+    private static final int PADRE_COL_TIPO = 1;
+    private static final int PADRE_COL_NUMERO = 2;
+    private static final int PADRE_COL_ESTADO_DOCUMENTO = 3;
+    private static final int PADRE_COL_FECHA = 4;
+    private static final int PADRE_COL_COMENTARIO = 5;
+    private static final int PADRE_COL_REQUIERE_RESPUESTA = 6;
 
     private static final int HIJO_COL_TIPO = 0;
     private static final int HIJO_COL_CONFIRMACION_RESPUESTA = 1;
@@ -181,9 +181,9 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
                 new RowActionEditor(new SaveDocumentIcon(), "Guardar documento revisado",
                         row -> guardarFila(padreModel.getRow(row))));
 
-        ajustarAnchos(tablaPadre, new int[]{200, 130, 150, 110, 240, 140});
+        ajustarAnchos(tablaPadre, PADRE_COL_TIPO, new int[]{200, 130, 150, 110, 240, 140});
         configurarColumnasAccion(tablaPadre, new int[]{PADRE_COL_GUARDAR});
-        ajustarAnchos(tablaHijo, new int[]{170, 210, 150, 110, 120, 120});
+        ajustarAnchos(tablaHijo, 0, new int[]{170, 210, 150, 110, 120, 120});
 
         scrollPadre.setBorder(BorderFactory.createLineBorder(AppV2Theme.BORDER));
         scrollPadre.setPreferredSize(new Dimension(820, 150));
@@ -225,9 +225,9 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
         scroll.setWheelScrollingEnabled(true);
     }
 
-    private void ajustarAnchos(JTable table, int[] widths) {
+    private void ajustarAnchos(JTable table, int startColumn, int[] widths) {
         for (int i = 0; i < widths.length; i++) {
-            TableColumn column = table.getColumnModel().getColumn(i);
+            TableColumn column = table.getColumnModel().getColumn(startColumn + i);
             column.setPreferredWidth(widths[i]);
             column.setMinWidth(Math.min(widths[i], 95));
         }
@@ -356,8 +356,8 @@ public class DocumentoVerificacionTreeGridPanelV2 extends JPanel {
     private static class PadreTableModel extends AbstractTableModel {
         private final List<DocumentoRow> rows = new ArrayList<DocumentoRow>();
         private final String[] columns = new String[]{
-            "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
-            "Comentario", "¿Requiere respuesta?", ""
+            "", "Tipo documento", "Número Documento", "Estado documento", "Fecha Emisión",
+            "Comentario", "¿Requiere respuesta?"
         };
 
         void setRows(List<DocumentoRow> nuevas) {

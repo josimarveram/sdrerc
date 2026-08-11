@@ -394,7 +394,7 @@ public class JPanelVerificacionV2 extends JPanel {
     }
 
     private AppV2SideActionPanel crearPanelDatosVerificacion() {
-        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de Verificación", new Runnable() {
+        AppV2SideActionPanel panel = new AppV2SideActionPanel("Panel de datos", new Runnable() {
             @Override
             public void run() {
                 cerrarPanelVerificacion();
@@ -1817,6 +1817,16 @@ public class JPanelVerificacionV2 extends JPanel {
         worker.execute();
     }
 
+    /**
+     * El combo "Equipo destino" del bloque "Destino operativo" de Verificacion solo debe
+     * ofrecer Analisis, Ejecucion y Supervision.
+     */
+    private static boolean esEquipoDestinoVerificacionValido(String codigo) {
+        return "EQ_ANALISIS".equalsIgnoreCase(codigo)
+                || "EQ_EJECUCION".equalsIgnoreCase(codigo)
+                || "EQ_SUPERVISION".equalsIgnoreCase(codigo);
+    }
+
     private void cargarEquiposDestino() {
         cargandoCombosDestino = true;
         cmbEquipoDestino.removeAllItems();
@@ -1834,7 +1844,9 @@ public class JPanelVerificacionV2 extends JPanel {
             protected void done() {
                 try {
                     for (com.sdrerc.domain.dto.sdrercapp.EquipoAsignacionDTO equipo : get()) {
-                        cmbEquipoDestino.addItem(new EquipoItem(equipo));
+                        if (esEquipoDestinoVerificacionValido(equipo.getCodigo())) {
+                            cmbEquipoDestino.addItem(new EquipoItem(equipo));
+                        }
                     }
                 } catch (Exception ex) {
                     mostrarError("No se pudieron cargar los equipos destino.", ex);
@@ -1858,7 +1870,7 @@ public class JPanelVerificacionV2 extends JPanel {
                 new SwingWorker<List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO>, Void>() {
             @Override
             protected List<com.sdrerc.domain.dto.sdrercapp.UsuarioAsignableDTO> doInBackground() throws Exception {
-                return verificacionService.listarAbogadosAsignables(idEquipo);
+                return verificacionService.listarUsuariosAsignablesPorEquipo(idEquipo);
             }
 
             @Override
