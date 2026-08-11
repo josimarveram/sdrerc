@@ -544,6 +544,11 @@ public class JPanelAsignacionV2 extends JPanel {
     private final List<AsignacionCartaRespuestaDTO> cartasRespuestaPendientes = new ArrayList<AsignacionCartaRespuestaDTO>();
     private final List<AsignacionCartaRespuestaDTO> cartasRespuestaVisibles = new ArrayList<AsignacionCartaRespuestaDTO>();
     private AsignacionCartaRespuestaDTO cartaRespuestaSeleccionada;
+    // Bloquea "Registrar Asignación" mientras la carta intermedia seleccionada arriba no tenga
+    // todavia una carta de respuesta agregada en la grilla inferior (documento hijo, nivel=1, con
+    // id_documento_padre = cartaRespuestaSeleccionada.getIdDocumentoAnalizado()); pedido explicito
+    // del usuario (09/08/2026). Default false (bloqueado) hasta que la carga async lo confirme.
+    private boolean cartaRespuestaSeleccionadaTieneRespuesta;
     private FiltroKpiBandeja kpiBandejaActiva = FiltroKpiBandeja.TODOS;
     private FiltroKpiCartas kpiCartasActiva = FiltroKpiCartas.TODOS;
     private FiltroKpiCarga kpiCargaActiva = FiltroKpiCarga.TODOS;
@@ -4416,6 +4421,7 @@ public class JPanelAsignacionV2 extends JPanel {
 
     private void cargarDetalleCartaRespuestaSeleccionada(final AsignacionCartaRespuestaDTO carta) {
         lblEstadoCartas.setText("Cargando detalle de la carta seleccionada...");
+        cartaRespuestaSeleccionadaTieneRespuesta = false;
         SwingWorker<AsignacionExpedienteDTO, Void> worker = new SwingWorker<AsignacionExpedienteDTO, Void>() {
             @Override
             protected AsignacionExpedienteDTO doInBackground() throws Exception {
@@ -4553,7 +4559,7 @@ public class JPanelAsignacionV2 extends JPanel {
                             ? abogadoActual.getNombreCompleto()
                             : "Sin asignar");
                     actualizarSupervisorCarta();
-                    btnRegistrarAsignacionCarta.setEnabled(cmbAbogadoCarta.getItemCount() > 0);
+                    actualizarEstadoBotonRegistrarAsignacionCarta();
                 } catch (Exception ex) {
                     cmbAbogadoCarta.removeAllItems();
                     cmbAbogadoCarta.addItem(UsuarioItem.placeholder("No se pudieron cargar los abogados"));
@@ -4587,6 +4593,10 @@ public class JPanelAsignacionV2 extends JPanel {
     private void registrarAsignacionCarta() {
         if (idExpedienteCartasRespuesta == null || equipoAnalisisCartaDTO == null) {
             mostrarInfo("Seleccione una carta de respuesta antes de registrar la asignación.");
+            return;
+        }
+        if (!cartaRespuestaSeleccionadaTieneRespuesta) {
+            mostrarInfo("Agregue la carta de respuesta en la grilla inferior antes de registrar la asignación.");
             return;
         }
         Object selected = cmbAbogadoCarta.getSelectedItem();
@@ -5082,6 +5092,11 @@ public class JPanelAsignacionV2 extends JPanel {
                     if (cartasRespuestaTreePanel != null) {
                         cartasRespuestaTreePanel.setDocumentos(idExpediente, documentosAnalisis, cartasRespuesta);
                     }
+                    Long idCartaIntermedia = cartaRespuestaSeleccionada != null
+                            ? cartaRespuestaSeleccionada.getIdDocumentoAnalizado() : null;
+                    cartaRespuestaSeleccionadaTieneRespuesta = idCartaIntermedia != null
+                            && contieneRespuestaDe(cartasRespuesta, idCartaIntermedia);
+                    actualizarEstadoBotonRegistrarAsignacionCarta();
                 } catch (Exception ex) {
                     lblEstadoCartas.setText("No se pudieron cargar cartas de respuesta.");
                 }
@@ -5090,9 +5105,24 @@ public class JPanelAsignacionV2 extends JPanel {
         worker.execute();
     }
 
+    private static boolean contieneRespuestaDe(List<DocumentoAnalizadoDTO> cartasRespuesta, Long idDocumentoPadre) {
+        for (DocumentoAnalizadoDTO hijo : cartasRespuesta) {
+            if (hijo != null && idDocumentoPadre.equals(hijo.getIdDocumentoPadre())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void actualizarEstadoBotonRegistrarAsignacionCarta() {
+        btnRegistrarAsignacionCarta.setEnabled(
+                cmbAbogadoCarta.getItemCount() > 0 && cartaRespuestaSeleccionadaTieneRespuesta);
+    }
+
     private void limpiarCartasRespuestaPanel() {
         idExpedienteCartasRespuesta = null;
         ++secuenciaCargaCartasRespuesta;
+        cartaRespuestaSeleccionadaTieneRespuesta = false;
         if (cartasRespuestaTreePanel != null) {
             cartasRespuestaTreePanel.setDocumentos(null, new ArrayList<DocumentoAnalizadoDTO>(), new ArrayList<DocumentoAnalizadoDTO>());
         }

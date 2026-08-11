@@ -2456,6 +2456,24 @@ Además, se agregó el icono de pausa solicitado junto al pill `Días`:
 - Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. Se re-verificó con `SELECT` de solo lectura que la condición corregida matchea el expediente de ejemplo (antes de compilar, no se pudo probar la UI interactivamente). Pendiente que el usuario confirme visualmente que "Días" ahora muestra 28 (congelado) y que el icono de pausa aparece junto al pill en Cartas de Respuesta, y recuerde que necesita el build/release nuevo (`mvn clean package` + publicar) para que el cliente LAN vea el cambio — el build local por sí solo no actualiza lo que el usuario tiene corriendo.
 - Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (además del `SELECT` de solo lectura de diagnóstico, ya autorizado).
 
+### Cartas de respuesta: bloquear "Registrar Asignación" si no se agregó la carta de respuesta (09/08/2026)
+
+Pedido del usuario: "en el panel de cartas de respuesta NO debería permitir registrar asignación hacia análisis si no se ha agregado la carta de respuesta (es necesario agregar la carta de respuesta en la grilla inferior del panel relacionado a la carta intermedia de la grilla superior)".
+
+Diagnóstico: `btnRegistrarAsignacionCarta` (lengueta "Cartas de respuesta") solo se habilitaba con `cmbAbogadoCarta.getItemCount() > 0` (`cargarAbogadosDestinoOperativoCarta`), sin ninguna validación de que la grilla inferior (`cartasRespuestaTreePanel`, poblada por `cargarCartasRespuestaPorDocumento`) ya tuviera un documento hijo "carta de respuesta" (`nivel=1`) agregado para la carta intermedia seleccionada en la grilla superior (`nivel=0`). `registrarAsignacionCarta()` tampoco validaba esto antes de derivar el expediente a `ANALISIS/DERIVADO`.
+
+Implementación:
+
+- Nuevo campo `cartaRespuestaSeleccionadaTieneRespuesta` (default `false`, bloqueado hasta confirmar). Reset síncrono a `false` al inicio de `cargarDetalleCartaRespuestaSeleccionada(...)` (nueva selección) y en `limpiarCartasRespuestaPanel()` (deselección).
+- `cargarCartasRespuestaPorDocumento(...)`: tras cargar y separar `documentosAnalisis`/`cartasRespuesta` (ya existente, por `nivel`), nuevo cálculo: `cartaRespuestaSeleccionadaTieneRespuesta = contieneRespuestaDe(cartasRespuesta, idCartaIntermedia)` — nuevo helper `contieneRespuestaDe(...)` recorre `cartasRespuesta` buscando algún documento cuyo `getIdDocumentoPadre()` coincida con `cartaRespuestaSeleccionada.getIdDocumentoAnalizado()` (la carta intermedia enfocada, no el parámetro `idDocumentoAnalizado` del método, que en el refresh tras guardar llega `null`). Este método corre tanto al seleccionar una carta como al guardar/agregar una respuesta en la grilla (mismo `refreshHandler`), así que el flag se recalcula automáticamente después de agregar la carta de respuesta.
+- Nuevo método `actualizarEstadoBotonRegistrarAsignacionCarta()`: `btnRegistrarAsignacionCarta.setEnabled(cmbAbogadoCarta.getItemCount() > 0 && cartaRespuestaSeleccionadaTieneRespuesta)`. Reemplaza la línea que solo miraba el combo de abogados (en `cargarAbogadosDestinoOperativoCarta`) y se invoca también desde `cargarCartasRespuestaPorDocumento` — las 2 cargas async independientes (abogados / cartas de respuesta) mantienen el botón consistente sin importar cuál termine primero.
+- `registrarAsignacionCarta()`: nueva validación explícita antes de llamar al service — si `!cartaRespuestaSeleccionadaTieneRespuesta`, muestra "Agregue la carta de respuesta en la grilla inferior antes de registrar la asignación." y no continúa. Defensa en profundidad por si el botón queda habilitado un instante por la carrera entre las 2 cargas async.
+- Alcance: solo la lengueta "Cartas de respuesta" (`btnRegistrarAsignacionCarta`/`cartasRespuestaTreePanel`). El botón equivalente del panel "Documentos" (`btnRegistrarAsignacionDocumento`/`documentosTreePanel`, mismo componente `CartaRespuestaTreeGridPanelV2` pero instancia separada) no se tocó — no fue parte de lo pedido.
+
+- Archivos: `JPanelAsignacionV2.java`, `CLAUDE.md`.
+- Validación: `mvn -o -q clean compile` y `mvn -o -q clean package -DskipTests` sin errores. No se pudo probar interactivamente (sin entorno Swing); pendiente que el usuario confirme que el botón permanece deshabilitado hasta agregar la carta de respuesta, y que se habilita justo después de guardarla.
+- Sin cambios de base de datos: no se creó ni ejecutó ningún script SQL nuevo (usa la misma jerarquía de documentos ya existente, `id_documento_padre`/`nivel`).
+
 ### Despliegue cliente-servidor
 
 - El modo vigente de actualizacion cliente-servidor es LAN por `FILE_SHARE`/UNC dentro de la misma red. El cliente no debe ejecutar el JAR desde la carpeta compartida; debe copiar/actualizar localmente y ejecutar desde `C:\SDRERC_CLIENTE`.
