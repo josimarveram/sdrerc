@@ -1,0 +1,13 @@
+/*
+ * Reset minimo: MuiCssBaseline (ver main.tsx) ya aplica el reset y el tema
+ * (colores/tipografia) definido en theme.ts (Anexo A del plan de migracion).
+ * No se fuerza dark mode ni ancho fijo de #root: el layout lo decide cada
+ * pantalla con MUI.
+ */
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
