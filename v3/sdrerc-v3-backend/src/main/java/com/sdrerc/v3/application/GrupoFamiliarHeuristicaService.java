@@ -1,0 +1,59 @@
+package com.sdrerc.v3.application;
+
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import org.springframework.stereotype.Service;
+
+/** Port literal de com.sdrerc.application.sdrercapp.GrupoFamiliarHeuristicaService (V2). */
+@Service
+public class GrupoFamiliarHeuristicaService {
+
+    private static final Set<String> PARTICULAS = new HashSet<>(Arrays.asList(
+            "DE", "DEL", "DELA", "LA", "LAS", "LOS", "Y", "DA", "DAS", "DO", "DOS"
+    ));
+
+    public String claveApellidosTitular(String titular) {
+        String normalizado = normalizar(titular);
+        if (normalizado.isEmpty()) {
+            return null;
+        }
+        String[] tokens = normalizado.split(" ");
+        List<String> significativos = new ArrayList<>();
+        for (String token : tokens) {
+            String limpio = token == null ? "" : token.trim();
+            if (limpio.length() <= 1 || PARTICULAS.contains(limpio)) {
+                continue;
+            }
+            significativos.add(limpio);
+        }
+        if (significativos.size() < 2) {
+            return null;
+        }
+        return significativos.get(0) + "|" + significativos.get(1);
+    }
+
+    public String normalizarTitular(String titular) {
+        return normalizar(titular);
+    }
+
+    public boolean coincideExactamente(String titularA, String titularB) {
+        return normalizarTitular(titularA).equals(normalizarTitular(titularB));
+    }
+
+    public String normalizar(String value) {
+        if (value == null) {
+            return "";
+        }
+        return Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toUpperCase(Locale.ROOT)
+                .replaceAll("[^A-Z0-9 ]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+}

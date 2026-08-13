@@ -1,0 +1,1188 @@
+package com.sdrerc.v3.infrastructure.dao;
+
+import com.sdrerc.v3.application.CalendarioLaboralService;
+import com.sdrerc.v3.application.CorrelativoExpedienteService;
+import com.sdrerc.v3.application.GrupoFamiliarHeuristicaService;
+import com.sdrerc.v3.domain.CargaDiariaPreviewDTO;
+import com.sdrerc.v3.domain.CargaDiariaResultadoDTO;
+import com.sdrerc.v3.domain.DatosActaDTO;
+import com.sdrerc.v3.domain.DatosPersonaRegistroDTO;
+import com.sdrerc.v3.domain.DatosSolicitudDTO;
+import com.sdrerc.v3.domain.RegistroManualExpedienteDTO;
+import com.sdrerc.v3.domain.RegistroManualResultadoDTO;
+import com.sdrerc.v3.domain.rules.ProcedimientoRegistralRules;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import javax.sql.DataSource;
+import org.springframework.stereotype.Repository;
+
+/**
+ * Subconjunto de com.sdrerc.infrastructure.sdrercapp.dao.ExpedienteRegistroDAO (V2): el camino de
+ * Registro manual ({@code registrarManual}) y el de Carga diaria ({@code registrarCarga} y su
+ * detección de duplicados/grupo familiar contra base asociada, alcance "pipeline básico" — sin
+ * edición de celdas en la previsualización). NO incluye Edición manual (fuera de alcance de este
+ * incremento de la Fase 2, se agrega después). Mismo SQL que V2 en cada método portado.
+ *
+ * <p>Único cambio de comportamiento real: {@code resolverUsuarioActual()} (que en V2 leía
+ * {@code SessionContext.getUserId()} estático) se reemplaza por un parámetro explícito
+ * {@code idUsuarioActual}, resuelto por el caller desde {@link com.sdrerc.v3.security.jwt.CurrentUser}
+ * (ver plan de migración, patrón ya aplicado en Fase 1 con VisibilidadBandejaSql).</p>
+ */
+@Repository
+public class ExpedienteRegistroDAO {
+
+    private static final String CODIGO_ETAPA_REGISTRO = "REGISTRO";
+    private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
+    private static final String CODIGO_MOVIMIENTO_REGISTRO_MANUAL = "RECEPCION_DOCUMENTO";
+    private static final String CODIGO_MOVIMIENTO_CARGA_DIARIA = "IMPORTACION_CARGA_DIARIA";
+
+    private final DataSource dataSource;
+    private final CatalogoLookupDAO catalogoLookupDAO;
+    private final CalendarioLaboralService calendarioLaboralService;
+    private final GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService;
+    private final ExpedienteAlertaDAO expedienteAlertaDAO;
+
+    public ExpedienteRegistroDAO(
+            DataSource dataSource,
+            CatalogoLookupDAO catalogoLookupDAO,
+            CalendarioLaboralService calendarioLaboralService,
+            GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService,
+            ExpedienteAlertaDAO expedienteAlertaDAO) {
+        this.dataSource = dataSource;
+        this.catalogoLookupDAO = catalogoLookupDAO;
+        this.calendarioLaboralService = calendarioLaboralService;
+        this.grupoFamiliarHeuristicaService = grupoFamiliarHeuristicaService;
+        this.expedienteAlertaDAO = expedienteAlertaDAO;
+    }
+
+    public String detectarDuplicadoPorActaYTitular(String numeroActa, String titular) throws SQLException {
+        return detectarDuplicadoPorActaYTitular(numeroActa, titular, null);
+    }
+
+    /**
+     * Igual que {@link #detectarDuplicadoPorActaYTitular(String, String)}, pero excluyendo al
+     * propio expediente de la búsqueda — usado por Edición manual para no marcarse a sí mismo como
+     * duplicado de su propia acta+titular actual (mismo patrón que
+     * {@link #detectarDuplicadoPorNumeroExpedienteSgd}).
+     */
+    public String detectarDuplicadoPorActaYTitular(String numeroActa, String titular, Long idExpedienteExcluir) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            return buscarPorActaYTitular(conn, numeroActa, titular, idExpedienteExcluir);
+        }
+    }
+
+    public String detectarDuplicadoPorNumeroExpedienteSgd(String numeroExpedienteSgd, Long idExpedienteExcluir) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            DuplicadoRegistro duplicado = buscarRegistroPorNumeroExpedienteSgd(conn, numeroExpedienteSgd, idExpedienteExcluir);
+            return duplicado == null ? null : duplicado.descripcion();
+        }
+    }
+
+    public String detectarPosibleGrupoFamiliarPorTitular(String titular, Long idExpedienteExcluir) throws SQLException {
+        String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(titular);
+        if (!hasText(clave)) {
+            return null;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            String valor = buscarClavesGrupoFamiliarExistentes(conn, idExpedienteExcluir).get(clave);
+            if (!hasText(valor)) {
+                return null;
+            }
+            String[] partes = valor.split("\\|\\|", 2);
+            if (partes.length < 2) {
+                return null;
+            }
+            String normalizadoExistente = partes[0];
+            String descripcion = partes[1];
+            if (grupoFamiliarHeuristicaService.coincideExactamente(titular, normalizadoExistente)) {
+                return null;
+            }
+            return "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + descripcion + ".";
+        }
+    }
+
+    public Map<Integer, String> detectarDuplicadosContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> duplicados = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return duplicados;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            for (CargaDiariaPreviewDTO item : registros) {
+                List<String> motivos = new ArrayList<>();
+                String porActaTitular = buscarPorActaYTitular(conn, item.getNumeroActa(), item.getTitular(), null);
+                if (porActaTitular != null) {
+                    motivos.add(porActaTitular);
+                }
+                if (!motivos.isEmpty()) {
+                    duplicados.put(item.getFila(), String.join("; ", motivos));
+                }
+            }
+        }
+        return duplicados;
+    }
+
+    public Map<Integer, String> detectarDuplicadosPorNumeroSgdContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> duplicados = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return duplicados;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            for (CargaDiariaPreviewDTO item : registros) {
+                DuplicadoRegistro duplicado = buscarRegistroPorNumeroExpedienteSgd(conn, item.getNumeroExpedienteSgd(), null);
+                if (duplicado != null) {
+                    duplicados.put(item.getFila(), duplicado.descripcion());
+                }
+            }
+        }
+        return duplicados;
+    }
+
+    public Map<Integer, String> detectarPosiblesGruposFamiliaresContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> coincidencias = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return coincidencias;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            Map<String, String> existentes = buscarClavesGrupoFamiliarExistentes(conn, null);
+            for (CargaDiariaPreviewDTO item : registros) {
+                String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(item.getTitular());
+                String valor = clave == null ? null : existentes.get(clave);
+                if (!hasText(valor)) {
+                    continue;
+                }
+                String[] partes = valor.split("\\|\\|", 2);
+                if (partes.length < 2) {
+                    continue;
+                }
+                if (!grupoFamiliarHeuristicaService.coincideExactamente(item.getTitular(), partes[0])) {
+                    coincidencias.put(
+                            item.getFila(),
+                            "Posible grupo familiar con solicitud existente por coincidencia de apellidos: " + partes[1] + ".");
+                }
+            }
+        }
+        return coincidencias;
+    }
+
+    public Map<Integer, String> detectarDuplicadosPorTitularExactoContraBase(List<CargaDiariaPreviewDTO> registros) throws SQLException {
+        Map<Integer, String> coincidencias = new LinkedHashMap<>();
+        if (registros == null || registros.isEmpty()) {
+            return coincidencias;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            Map<String, String> existentes = buscarTitularesExactosExistentes(conn, null);
+            for (CargaDiariaPreviewDTO item : registros) {
+                String clave = grupoFamiliarHeuristicaService.normalizarTitular(item.getTitular());
+                String descripcion = hasText(clave) ? existentes.get(clave) : null;
+                if (hasText(descripcion)) {
+                    coincidencias.put(
+                            item.getFila(),
+                            "Titular repetido exactamente en solicitudes existentes: " + descripcion + ".");
+                }
+            }
+        }
+        return coincidencias;
+    }
+
+    public int obtenerSiguienteCorrelativoExpediente(int anio) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            return obtenerUltimoCorrelativoExpediente(conn, anio) + 1;
+        }
+    }
+
+    public CargaDiariaResultadoDTO registrarCarga(List<CargaDiariaPreviewDTO> registros, Long idUsuarioActual) throws SQLException {
+        if (registros == null || registros.isEmpty()) {
+            return new CargaDiariaResultadoDTO(0, 0, "No hay registros para confirmar.", registros);
+        }
+
+        List<CargaDiariaPreviewDTO> candidatos = new ArrayList<>();
+        int omitidos = 0;
+        for (CargaDiariaPreviewDTO item : registros) {
+            if (item.isListoParaRegistrar() && !item.isRegistrado()) {
+                candidatos.add(item);
+            } else {
+                omitidos++;
+            }
+        }
+        if (candidatos.isEmpty()) {
+            return new CargaDiariaResultadoDTO(0, omitidos, "No hay filas listas para registrar.", registros);
+        }
+
+        List<RegistroConfirmado> confirmados = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
+                Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
+                Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_CARGA_DIARIA), "movimiento IMPORTACION_CARGA_DIARIA");
+                boolean soportaGrupoFamiliar = soportaGrupoFamiliarSolicitud(conn);
+
+                for (CargaDiariaPreviewDTO item : candidatos) {
+                    Long idTitular = insertarPersona(
+                            conn,
+                            item.getTitular(),
+                            item.getTipoDocumentoIdentidadTitular(),
+                            item.getNumeroDocumentoIdentidadTitular());
+                    Long idRemitente = hasText(item.getRemitente()) && !equalsIgnoreCase(item.getRemitente(), item.getTitular())
+                            ? insertarPersona(
+                                    conn,
+                                    item.getRemitente(),
+                                    item.getTipoDocumentoIdentidadSolicitante(),
+                                    item.getNumeroDocumentoIdentidadSolicitante())
+                            : null;
+                    Long idSolicitante = idRemitente == null ? idTitular : idRemitente;
+
+                    Long idExpediente = insertarExpedienteCarga(conn, item, idEtapaRegistro, idEstadoRegistrado);
+                    String numeroExpediente = item.getNumeroExpedienteGenerado();
+                    String motivoSinNumero = item.getMotivoSinNumero();
+                    if (hasText(numeroExpediente)) {
+                        actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
+                    }
+
+                    insertarSolicitudCarga(conn, item, idExpediente, idSolicitante, soportaGrupoFamiliar);
+                    insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
+                    if (idRemitente != null) {
+                        insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
+                    }
+                    insertarActaCarga(conn, item, idExpediente);
+                    insertarDocumentoCarga(conn, item, idExpediente);
+                    insertarHistorialCarga(conn, item, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado);
+                    registrarAlertasCargaDiaria(conn, idExpediente, item, idUsuarioActual);
+
+                    confirmados.add(new RegistroConfirmado(item, idExpediente, numeroExpediente, motivoSinNumero));
+                }
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+
+        int sinNumeroPorDuplicado = 0;
+        int sinNumeroPorProcedimiento = 0;
+        for (RegistroConfirmado confirmado : confirmados) {
+            confirmado.item.setRegistrado(true);
+            confirmado.item.setListoParaRegistrar(false);
+            confirmado.item.setEstadoValidacion("Registrado");
+            if (confirmado.motivoSinNumero != null) {
+                if (ProcedimientoRegistralRules.etiquetaSinNumero().equals(confirmado.motivoSinNumero)) {
+                    sinNumeroPorProcedimiento++;
+                    confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP sin número de expediente por procedimiento registral. Asignación decidirá si se asocia o genera número.");
+                    confirmado.item.setNumeroExpedienteGenerado("Sin número por procedimiento");
+                } else {
+                    sinNumeroPorDuplicado++;
+                    confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP sin número de expediente por duplicidad de acta y titular.");
+                    confirmado.item.setNumeroExpedienteGenerado("Sin número por duplicado");
+                }
+            } else {
+                confirmado.item.setMensajeValidacion("Registrado en SDRERC_APP.");
+                confirmado.item.setNumeroExpedienteGenerado(confirmado.numeroExpediente);
+            }
+            confirmado.item.setIdExpedienteRegistrado(confirmado.idExpediente);
+        }
+
+        String mensaje = confirmados.size() + " expediente(s) registrado(s) en SDRERC_APP.";
+        if (sinNumeroPorDuplicado > 0) {
+            mensaje += " " + sinNumeroPorDuplicado + " duplicado(s) quedaron sin número de expediente.";
+        }
+        if (sinNumeroPorProcedimiento > 0) {
+            mensaje += " " + sinNumeroPorProcedimiento + " registro(s) de Reconsideración/Apelación quedaron sin número para decisión en Asignación.";
+        }
+        return new CargaDiariaResultadoDTO(
+                confirmados.size(),
+                omitidos,
+                mensaje,
+                registros);
+    }
+
+    public RegistroManualResultadoDTO registrarManual(
+            RegistroManualExpedienteDTO registro,
+            CorrelativoExpedienteService correlativoService,
+            Long idUsuarioActual) throws SQLException {
+        if (registro == null) {
+            throw new IllegalArgumentException("Complete los datos del registro manual.");
+        }
+
+        try (Connection conn = dataSource.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                Long idEtapaRegistro = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_REGISTRO), "etapa REGISTRO");
+                Long idEstadoRegistrado = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, CODIGO_ESTADO_REGISTRADO), "estado REGISTRADO");
+                Long idTipoMovimiento = requerirId(catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_REGISTRO_MANUAL), "movimiento RECEPCION_DOCUMENTO");
+                boolean soportaGrupoFamiliar = soportaGrupoFamiliarSolicitud(conn);
+                DuplicadoRegistro duplicadoActaTitular = buscarRegistroPorActaYTitular(
+                        conn,
+                        registro.getActa().getNumeroActa(),
+                        registro.getTitular().getNombreCompleto(),
+                        null);
+                if (duplicadoActaTitular != null) {
+                    registro.setPosibleDuplicado(true);
+                    registro.setMotivoDuplicado(duplicadoActaTitular.mensajeDuplicado());
+                }
+
+                Long idTitular = insertarPersonaManual(conn, registro.getTitular());
+                Long idRemitente = insertarPersonaManual(conn, registro.getRemitente());
+                Long idExpediente = insertarExpedienteManual(conn, registro.getSolicitud(), idEtapaRegistro, idEstadoRegistrado);
+                String motivoSinNumero = motivoSinNumero(duplicadoActaTitular, registro.getSolicitud().getTipoProcedimientoNombre());
+                String numeroExpediente = null;
+                if (motivoSinNumero == null) {
+                    int anioCorrelativo = correlativoService.anioActual();
+                    int siguienteCorrelativo = obtenerUltimoCorrelativoExpediente(conn, anioCorrelativo) + 1;
+                    numeroExpediente = correlativoService.generar(anioCorrelativo, siguienteCorrelativo);
+                    actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
+                }
+
+                insertarSolicitudManual(conn, registro, idExpediente, idRemitente, soportaGrupoFamiliar);
+                insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
+                insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
+                insertarActaManual(conn, registro.getActa(), idExpediente);
+                insertarDocumentoManual(conn, registro.getSolicitud(), idExpediente);
+                insertarHistorialManual(conn, registro, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado, numeroExpediente);
+                registrarAlertasManual(conn, idExpediente, registro, idUsuarioActual);
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                if (duplicadoActaTitular != null) {
+                    return new RegistroManualResultadoDTO(
+                            idExpediente,
+                            "Sin número por duplicado",
+                            "Registro manual guardado sin número de expediente por duplicidad de acta y titular. "
+                                    + duplicadoActaTitular.mensajeDuplicado());
+                }
+                if (ProcedimientoRegistralRules.etiquetaSinNumero().equals(motivoSinNumero)) {
+                    return new RegistroManualResultadoDTO(
+                            idExpediente,
+                            "Sin número por procedimiento",
+                            "Registro manual guardado sin número de expediente por Reconsideración/Apelación. "
+                                    + "En Asignación se podrá asociar a un expediente principal o generar número.");
+                }
+                return new RegistroManualResultadoDTO(
+                        idExpediente,
+                        numeroExpediente,
+                        "Expediente " + numeroExpediente + " registrado en SDRERC_APP.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    private String buscarPorActaYTitular(Connection conn, String acta, String titular, Long idExpedienteExcluir) throws SQLException {
+        DuplicadoRegistro duplicado = buscarRegistroPorActaYTitular(conn, acta, titular, idExpedienteExcluir);
+        return duplicado == null ? null : duplicado.mensajeDuplicado();
+    }
+
+    private int obtenerUltimoCorrelativoExpediente(Connection conn, int anio) throws SQLException {
+        String sql = "SELECT NVL(MAX(TO_NUMBER(SUBSTR(numero_expediente, -6))), 0) AS correlativo "
+                + "FROM expediente "
+                + "WHERE numero_expediente IS NOT NULL "
+                + "AND activo = 1 "
+                + "AND (numero_expediente LIKE ? OR numero_expediente LIKE ?) "
+                + "AND REGEXP_LIKE(numero_expediente, '^SDRERC[-_]EXP[-_][0-9]{4}[-_][0-9]{6}$')";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, "SDRERC-EXP-" + anio + "-%");
+            ps.setString(2, "SDRERC_EXP_" + anio + "_%");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("correlativo");
+                }
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Detección de "Potencial duplicado" por acta+titular (mismo criterio que V2, ver
+     * documentación completa en CLAUDE.md sección Registro/Recepción): 1ra condicional
+     * (coincidencia exacta de titular normalizado sin tildes) y 2da/fallback (mismo acta, titular
+     * distinto).
+     */
+    private DuplicadoRegistro buscarRegistroPorActaYTitular(
+            Connection conn, String acta, String titular, Long idExpedienteExcluir) throws SQLException {
+        if (!hasText(acta) || !hasText(titular)) {
+            return null;
+        }
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + "COALESCE(NULLIF(TRIM(p.razon_social), ''), "
+                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
+                + "p.numero_documento) AS titular "
+                + "FROM expediente e "
+                + "JOIN expediente_acta a ON a.id_expediente = e.id_expediente "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                + "JOIN persona p ON p.id_persona = ep.id_persona "
+                + "WHERE e.activo = 1 AND a.activo = 1 AND ep.activo = 1 "
+                + "AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "AND UPPER(TRIM(a.numero_acta)) = ? "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ");
+        DuplicadoRegistro coincidenciaAproximada = null;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int idx = 1;
+            ps.setString(idx++, acta.trim().toUpperCase(Locale.ROOT));
+            if (idExpedienteExcluir != null) {
+                ps.setLong(idx++, idExpedienteExcluir);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String titularExistente = rs.getString("titular");
+                    long idExpediente = rs.getLong("id_expediente");
+                    String numeroExpediente = rs.getString("numero_expediente");
+                    if (grupoFamiliarHeuristicaService.coincideExactamente(titular, titularExistente)) {
+                        return new DuplicadoRegistro(idExpediente, numeroExpediente, true, titularExistente);
+                    }
+                    if (coincidenciaAproximada == null) {
+                        coincidenciaAproximada = new DuplicadoRegistro(idExpediente, numeroExpediente, false, titularExistente);
+                    }
+                }
+            }
+        }
+        return coincidenciaAproximada;
+    }
+
+    private DuplicadoRegistro buscarRegistroPorNumeroExpedienteSgd(
+            Connection conn, String numeroExpedienteSgd, Long idExpedienteExcluir) throws SQLException {
+        if (!hasText(numeroExpedienteSgd)) {
+            return null;
+        }
+        String sql = "SELECT e.id_expediente, e.numero_expediente FROM expediente e "
+                + "JOIN expediente_solicitud es ON es.id_expediente = e.id_expediente AND es.activo = 1 "
+                + "WHERE e.activo = 1 "
+                + "AND UPPER(TRIM(es.numero_expediente_sgd)) = ? "
+                + "AND NOT EXISTS (SELECT 1 FROM expediente_relacion r "
+                + "WHERE r.activo = 1 AND r.id_expediente_relacionado = e.id_expediente) "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
+                + "AND ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int idx = 1;
+            ps.setString(idx++, numeroExpedienteSgd.trim().toUpperCase(Locale.ROOT));
+            if (idExpedienteExcluir != null) {
+                ps.setLong(idx++, idExpedienteExcluir);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return new DuplicadoRegistro(rs.getLong("id_expediente"), rs.getString("numero_expediente"));
+            }
+        }
+    }
+
+    private String motivoSinNumero(DuplicadoRegistro duplicadoActaTitular, String procedimientoRegistral) {
+        if (duplicadoActaTitular != null) {
+            return "duplicado";
+        }
+        return ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(procedimientoRegistral)
+                ? ProcedimientoRegistralRules.etiquetaSinNumero()
+                : null;
+    }
+
+    private Map<String, String> buscarClavesGrupoFamiliarExistentes(Connection conn, Long idExpedienteExcluir) throws SQLException {
+        Map<String, String> existentes = new LinkedHashMap<>();
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + "COALESCE(NULLIF(TRIM(p.razon_social), ''), "
+                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
+                + "p.numero_documento) AS titular "
+                + "FROM expediente e "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                + "JOIN persona p ON p.id_persona = ep.id_persona "
+                + "LEFT JOIN expediente_solicitud es ON es.id_expediente = e.id_expediente AND es.activo = 1 "
+                + "WHERE e.activo = 1 AND ep.activo = 1 "
+                + "AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "AND (es.fecha_recepcion IS NULL OR es.fecha_recepcion >= ADD_MONTHS(TRUNC(SYSDATE), -12)) "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
+                + "AND ROWNUM <= 2000";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (idExpedienteExcluir != null) {
+                ps.setLong(1, idExpedienteExcluir);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String titular = rs.getString("titular");
+                    String clave = grupoFamiliarHeuristicaService.claveApellidosTitular(titular);
+                    if (!hasText(clave) || existentes.containsKey(clave)) {
+                        continue;
+                    }
+                    String normalizado = grupoFamiliarHeuristicaService.normalizarTitular(titular);
+                    String numero = rs.getString("numero_expediente");
+                    String descripcion = hasText(numero)
+                            ? numero
+                            : "expediente ID " + rs.getLong("id_expediente") + " sin número";
+                    existentes.put(clave, normalizado + "||" + descripcion);
+                }
+            }
+        }
+        return existentes;
+    }
+
+    private Map<String, String> buscarTitularesExactosExistentes(Connection conn, Long idExpedienteExcluir) throws SQLException {
+        Map<String, String> existentes = new LinkedHashMap<>();
+        String sql = "SELECT e.id_expediente, e.numero_expediente, "
+                + "COALESCE(NULLIF(TRIM(p.razon_social), ''), "
+                + "NULLIF(TRIM(TRIM(NVL(p.nombres, '')) || ' ' || TRIM(NVL(p.apellidos, ''))), ''), "
+                + "p.numero_documento) AS titular "
+                + "FROM expediente e "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente "
+                + "JOIN persona p ON p.id_persona = ep.id_persona "
+                + "WHERE e.activo = 1 AND ep.activo = 1 "
+                + "AND ep.tipo_relacion_persona = 'TITULAR' "
+                + (idExpedienteExcluir == null ? "" : "AND e.id_expediente <> ? ")
+                + "AND ROWNUM <= 3000";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (idExpedienteExcluir != null) {
+                ps.setLong(1, idExpedienteExcluir);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String titular = rs.getString("titular");
+                    String clave = grupoFamiliarHeuristicaService.normalizarTitular(titular);
+                    if (!hasText(clave) || existentes.containsKey(clave)) {
+                        continue;
+                    }
+                    String numero = rs.getString("numero_expediente");
+                    String descripcion = hasText(numero)
+                            ? numero
+                            : "expediente ID " + rs.getLong("id_expediente") + " sin número";
+                    existentes.put(clave, descripcion);
+                }
+            }
+        }
+        return existentes;
+    }
+
+    private Long insertarPersona(Connection conn, String nombre, String tipoDocumento, String numeroDocumento) throws SQLException {
+        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, activo) VALUES (?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
+            ps.setString(1, normalizarTipoDocumentoIdentidadParaBd(tipoDocumento));
+            ps.setString(2, normalizarDocumentoIdentidadParaBd(numeroDocumento));
+            ps.setString(3, nombre);
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "persona");
+        }
+    }
+
+    private Long insertarExpedienteCarga(Connection conn, CargaDiariaPreviewDTO item, Long idEtapa, Long idEstado) throws SQLException {
+        String sql = "INSERT INTO expediente ("
+                + "numero_expediente, numero_tramite_documentario, id_etapa_actual, id_estado_actual, "
+                + "fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, prioridad, requiere_publicacion, "
+                + "expediente_digital_completo, archivado, cerrado, activo"
+                + ") VALUES (NULL, ?, ?, ?, SYSTIMESTAMP, SYSTIMESTAMP, ?, 'NORMAL', 0, 0, 0, 0, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE"})) {
+            ps.setString(1, item.getNumeroTramite());
+            ps.setLong(2, idEtapa);
+            ps.setLong(3, idEstado);
+            ps.setDate(4, calcularFechaVencimiento(conn, item.getFechaRecepcion(), item.getTipoProcedimiento()));
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "expediente");
+        }
+    }
+
+    private void insertarSolicitudCarga(
+            Connection conn,
+            CargaDiariaPreviewDTO item,
+            Long idExpediente,
+            Long idPersonaSolicitante,
+            boolean soportaGrupoFamiliar) throws SQLException {
+        Long idCanal = null;
+        if (hasText(item.getCanalRecepcion())) {
+            String codigoCanal = resolverCodigoCanalRecepcion(item.getCanalRecepcion());
+            idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, codigoCanal), "canal " + nombreVisualCanal(codigoCanal));
+        }
+        String columnasGrupo = soportaGrupoFamiliar
+                ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
+                : "";
+        String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
+        String sql = "INSERT INTO expediente_solicitud ("
+                + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
+                + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
+                + "potencial_duplicado" + columnasGrupo + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?" + valoresGrupo + ", 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            setLongOrNull(ps, 2, idCanal);
+            setLongOrNull(ps, 3, idPersonaSolicitante);
+            ps.setString(4, item.getNumeroTramite());
+            ps.setString(5, item.getNumeroExpedienteSgd());
+            ps.setDate(6, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
+            ps.setString(7, item.getTipoProcedimiento());
+            ps.setString(8, limitar(observacionSolicitud(item), 1000));
+            ps.setInt(9, item.isPosibleDuplicado() ? 1 : 0);
+            if (soportaGrupoFamiliar) {
+                ps.setInt(10, item.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(11, limitar(resolverCriterioGrupoFamiliar(item.isGrupoFamiliar(), item.getCriterioGrupoFamiliar()), 80));
+                ps.setString(12, limitar(item.getObservacionGrupoFamiliar(), 500));
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarActaCarga(Connection conn, CargaDiariaPreviewDTO item, Long idExpediente) throws SQLException {
+        if (!hasText(item.getNumeroActa())) {
+            return;
+        }
+        Long idTipoActa = null;
+        if (hasText(item.getTipoActa())) {
+            idTipoActa = catalogoLookupDAO.obtenerTipoActaIdPorCodigoONombre(conn, item.getTipoActa());
+        }
+        String sql = "INSERT INTO expediente_acta (id_expediente, id_tipo_acta, numero_acta, anio_acta, activo) "
+                + "VALUES (?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            setLongOrNull(ps, 2, idTipoActa);
+            ps.setString(3, item.getNumeroActa());
+            if (item.getFechaRecepcion() == null) {
+                ps.setNull(4, Types.INTEGER);
+            } else {
+                ps.setInt(4, item.getFechaRecepcion().getYear());
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarDocumentoCarga(Connection conn, CargaDiariaPreviewDTO item, Long idExpediente) throws SQLException {
+        if (!hasText(item.getTipoDocumento())) {
+            return;
+        }
+        String sql = "INSERT INTO expediente_documento ("
+                + "id_expediente, nombre_documento, numero_documento, fecha_documento, activo"
+                + ") VALUES (?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, item.getTipoDocumento());
+            ps.setString(3, item.getNumeroDocumento());
+            ps.setDate(4, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarHistorialCarga(
+            Connection conn,
+            CargaDiariaPreviewDTO item,
+            Long idExpediente,
+            Long idTipoMovimiento,
+            Long idEtapaDestino,
+            Long idEstadoDestino) throws SQLException {
+        String sql = "INSERT INTO expediente_historial ("
+                + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_etapa_destino, id_estado_destino, "
+                + "tabla_relacionada, id_registro_relacionado, comentario, motivo, activo"
+                + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, 'EXPEDIENTE', ?, ?, 'CARGA_DIARIA', 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idTipoMovimiento);
+            ps.setLong(3, idEtapaDestino);
+            ps.setLong(4, idEstadoDestino);
+            ps.setLong(5, idExpediente);
+            ps.setString(6, "Registro inicial por carga diaria. Trámite: " + item.getNumeroTramite());
+            ps.executeUpdate();
+        }
+    }
+
+    private String observacionSolicitud(CargaDiariaPreviewDTO item) {
+        StringBuilder sb = new StringBuilder();
+        append(sb, "Tipo de solicitud", item.getTipoSolicitud());
+        append(sb, "Tipo de acta informado", item.getTipoActa());
+        append(sb, "Canal recepción", nombreVisualCanal(item.getCanalRecepcion()));
+        append(sb, "N° EXPEDIENTE SGD", item.getNumeroExpedienteSgd());
+        append(sb, "Tipo documento identidad solicitante", item.getTipoDocumentoIdentidadSolicitante());
+        append(sb, "Documento identidad solicitante", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadSolicitante()));
+        append(sb, "Tipo documento identidad titular", item.getTipoDocumentoIdentidadTitular());
+        append(sb, "Documento identidad titular", normalizarDocumentoIdentidadParaBd(item.getNumeroDocumentoIdentidadTitular()));
+        append(sb, "Grupo familiar", item.getGrupoFamiliarTexto());
+        append(sb, "Criterio grupo familiar", item.getCriterioGrupoFamiliar());
+        append(sb, "Observación grupo familiar", item.getObservacionGrupoFamiliar());
+        append(sb, "Observación inicial", item.getObservacionInicial());
+        if (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(item.getTipoProcedimiento())) {
+            append(sb, "Decisión de número", ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
+        }
+        if (!"Válido".equalsIgnoreCase(item.getEstadoValidacion())) {
+            append(sb, "Advertencias de validación", item.getMensajeValidacion());
+        }
+        append(sb, "Motivo duplicado", item.getMotivoDuplicado());
+        return sb.toString();
+    }
+
+    private String normalizarTipoDocumentoIdentidadParaBd(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if ("SIN DNI".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private String normalizarDocumentoIdentidadParaBd(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if ("SIN DNI".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private String resolverCodigoCanalRecepcion(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT)
+                .replace("Á", "A")
+                .replace("É", "E")
+                .replace("Í", "I")
+                .replace("Ó", "O")
+                .replace("Ú", "U")
+                .replaceAll("\\s+", " ");
+        if ("MPV".equals(normalized)
+                || "MESA PARTES VIRTUAL".equals(normalized)
+                || "MESA DE PARTES VIRTUAL".equals(normalized)) {
+            return "MESA_PARTES_VIRTUAL";
+        }
+        if ("MP PRESENCIAL".equals(normalized)
+                || "MESA PARTES PRESENCIAL".equals(normalized)
+                || "MESA DE PARTES PRESENCIAL".equals(normalized)) {
+            return "MESA_PARTES_PRESENCIAL";
+        }
+        if ("OR".equals(normalized) || "OR PRESENCIAL".equals(normalized)) {
+            return "OR_PRESENCIAL";
+        }
+        if ("OR PASIVO".equals(normalized)
+                || "OFICINA REGISTRAL PASIVO".equals(normalized)
+                || "PASIVO OR".equals(normalized)) {
+            return "OR_PASIVO";
+        }
+        return normalized.replace(' ', '_');
+    }
+
+    private String nombreVisualCanal(String codigo) {
+        if (!hasText(codigo)) {
+            return null;
+        }
+        String normalized = resolverCodigoCanalRecepcion(codigo);
+        if ("MESA_PARTES_VIRTUAL".equals(normalized)) {
+            return "Mesa de partes virtual";
+        }
+        if ("MESA_PARTES_PRESENCIAL".equals(normalized)) {
+            return "Mesa de partes presencial";
+        }
+        if ("OR_PRESENCIAL".equals(normalized)) {
+            return "OR Presencial";
+        }
+        if ("OR_PASIVO".equals(normalized)) {
+            return "OR Pasivo";
+        }
+        if ("INTERNO".equals(normalized)) {
+            return "Interno";
+        }
+        return codigo;
+    }
+
+    private void registrarAlertasCargaDiaria(
+            Connection conn,
+            Long idExpediente,
+            CargaDiariaPreviewDTO item,
+            Long idUsuarioActual) throws SQLException {
+        List<String> alertas = new ArrayList<>();
+        if (item.isPosibleDuplicado() || hasText(item.getMotivoDuplicado())) {
+            alertas.add("Potencial duplicado");
+        } else if (item.isGrupoFamiliar() || item.isPosibleGrupoFamiliar()
+                || hasText(item.getCriterioGrupoFamiliar())
+                || hasText(item.getObservacionGrupoFamiliar())) {
+            alertas.add("Posible Grupo Familiar");
+        }
+        expedienteAlertaDAO.registrarAlertas(conn, idExpediente, "REGISTRO_CARGA_DIARIA", "ALERTA", alertas, idUsuarioActual);
+    }
+
+    private static boolean equalsIgnoreCase(String a, String b) {
+        return a != null && b != null && a.trim().equalsIgnoreCase(b.trim());
+    }
+
+    private Long insertarPersonaManual(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
+        boolean soportaUbigeo = soportaUbigeoPersona(conn);
+        String columnasUbigeo = soportaUbigeo
+                ? ", id_ubigeo_distrito, departamento, provincia, distrito"
+                : "";
+        String valoresUbigeo = soportaUbigeo ? ", ?, ?, ?, ?" : "";
+        String sql = "INSERT INTO persona ("
+                + "tipo_documento, numero_documento, razon_social, correo_electronico, telefono, direccion"
+                + columnasUbigeo + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + ", 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
+            ps.setString(1, persona.getTipoDocumento());
+            ps.setString(2, persona.getNumeroDocumento());
+            ps.setString(3, persona.getNombreCompleto());
+            ps.setString(4, persona.getCorreo());
+            ps.setString(5, persona.getTelefono());
+            ps.setString(6, persona.getDireccion());
+            if (soportaUbigeo) {
+                setLongOrNull(ps, 7, persona.getIdDistrito());
+                ps.setString(8, persona.getDepartamento());
+                ps.setString(9, persona.getProvincia());
+                ps.setString(10, persona.getDistrito());
+            }
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "persona");
+        }
+    }
+
+    private Long insertarExpedienteManual(Connection conn, DatosSolicitudDTO solicitud, Long idEtapa, Long idEstado) throws SQLException {
+        String sql = "INSERT INTO expediente ("
+                + "numero_expediente, numero_tramite_documentario, id_etapa_actual, id_estado_actual, "
+                + "fecha_registro, fecha_ultimo_movimiento, fecha_vencimiento, prioridad, requiere_publicacion, "
+                + "expediente_digital_completo, archivado, cerrado, activo"
+                + ") VALUES (NULL, ?, ?, ?, SYSTIMESTAMP, SYSTIMESTAMP, ?, ?, 0, 0, 0, 0, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE"})) {
+            ps.setString(1, solicitud.getNumeroTramite());
+            ps.setLong(2, idEtapa);
+            ps.setLong(3, idEstado);
+            ps.setDate(4, calcularFechaVencimiento(conn, solicitud.getFechaRecepcion(), solicitud.getTipoProcedimientoNombre()));
+            ps.setString(5, hasText(solicitud.getPrioridad()) ? solicitud.getPrioridad() : "NORMAL");
+            ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "expediente");
+        }
+    }
+
+    private Date calcularFechaVencimiento(Connection conn, java.time.LocalDate fechaSolicitud, String procedimientoRegistral)
+            throws SQLException {
+        if (fechaSolicitud == null) {
+            return null;
+        }
+        return Date.valueOf(calendarioLaboralService.calcularFechaVencimientoSolicitud(conn, fechaSolicitud, procedimientoRegistral));
+    }
+
+    private void insertarSolicitudManual(
+            Connection conn,
+            RegistroManualExpedienteDTO registro,
+            Long idExpediente,
+            Long idPersonaSolicitante,
+            boolean soportaGrupoFamiliar) throws SQLException {
+        DatosSolicitudDTO solicitud = registro.getSolicitud();
+        Long idCanal = null;
+        if (hasText(solicitud.getCanalCodigo())) {
+            idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, solicitud.getCanalCodigo()), "canal " + solicitud.getCanalNombre());
+        }
+
+        String columnasGrupo = soportaGrupoFamiliar
+                ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
+                : "";
+        String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
+        String sql = "INSERT INTO expediente_solicitud ("
+                + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
+                + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
+                + "correo_electronico, potencial_duplicado" + columnasGrupo + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?" + valoresGrupo + ", 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            setLongOrNull(ps, 2, idCanal);
+            setLongOrNull(ps, 3, idPersonaSolicitante);
+            ps.setString(4, solicitud.getNumeroTramite());
+            ps.setString(5, solicitud.getNumeroExpedienteSgd());
+            ps.setDate(6, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
+            ps.setString(7, solicitud.getTipoProcedimientoNombre());
+            ps.setString(8, limitar(observacionSolicitud(registro), 1000));
+            ps.setNull(9, Types.VARCHAR);
+            ps.setInt(10, registro.isPosibleDuplicado() ? 1 : 0);
+            if (soportaGrupoFamiliar) {
+                ps.setInt(11, solicitud.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(12, limitar(resolverCriterioGrupoFamiliar(solicitud.isGrupoFamiliar(), solicitud.getCriterioGrupoFamiliar()), 80));
+                ps.setString(13, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarActaManual(Connection conn, DatosActaDTO acta, Long idExpediente) throws SQLException {
+        Long idTipoActa = null;
+        if (hasText(acta.getTipoActaCodigo())) {
+            idTipoActa = catalogoLookupDAO.obtenerTipoActaId(conn, acta.getTipoActaCodigo());
+        }
+        String sql = "INSERT INTO expediente_acta ("
+                + "id_expediente, id_tipo_acta, numero_acta, anio_acta, oficina_registral, libro, folio, activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            setLongOrNull(ps, 2, idTipoActa);
+            ps.setString(3, acta.getNumeroActa());
+            setIntegerOrNull(ps, 4, acta.getAnioActa());
+            ps.setString(5, acta.getUbicacionRegistral());
+            ps.setNull(6, Types.VARCHAR);
+            ps.setNull(7, Types.VARCHAR);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarDocumentoManual(Connection conn, DatosSolicitudDTO solicitud, Long idExpediente) throws SQLException {
+        String sql = "INSERT INTO expediente_documento ("
+                + "id_expediente, nombre_documento, numero_documento, fecha_documento, activo"
+                + ") VALUES (?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, solicitud.getTipoDocumentoNombre());
+            ps.setString(3, solicitud.getNumeroDocumento());
+            ps.setDate(4, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertarHistorialManual(
+            Connection conn,
+            RegistroManualExpedienteDTO registro,
+            Long idExpediente,
+            Long idTipoMovimiento,
+            Long idEtapaDestino,
+            Long idEstadoDestino,
+            String numeroExpediente) throws SQLException {
+        String sql = "INSERT INTO expediente_historial ("
+                + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_etapa_destino, id_estado_destino, "
+                + "tabla_relacionada, id_registro_relacionado, comentario, motivo, activo"
+                + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, 'EXPEDIENTE', ?, ?, 'REGISTRO_MANUAL', 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            String numeroVisual = hasText(numeroExpediente)
+                    ? numeroExpediente
+                    : (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(registro.getSolicitud().getTipoProcedimientoNombre())
+                            ? "sin número por procedimiento"
+                            : "sin número por duplicidad");
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idTipoMovimiento);
+            ps.setLong(3, idEtapaDestino);
+            ps.setLong(4, idEstadoDestino);
+            ps.setLong(5, idExpediente);
+            ps.setString(6, limitar("Registro manual inicial. Expediente: " + numeroVisual
+                    + ". Trámite: " + registro.getSolicitud().getNumeroTramite()
+                    + ". Titular: " + registro.getTitular().getNombreCompleto(), 2000));
+            ps.executeUpdate();
+        }
+    }
+
+    private void registrarAlertasManual(
+            Connection conn,
+            Long idExpediente,
+            RegistroManualExpedienteDTO registro,
+            Long idUsuarioActual) throws SQLException {
+        List<String> alertas = new ArrayList<>();
+        if (hasText(registro.getMotivoDuplicado())) {
+            alertas.add("Potencial duplicado");
+        } else if (registro.getSolicitud().isGrupoFamiliar()
+                || hasText(registro.getSolicitud().getCriterioGrupoFamiliar())
+                || hasText(registro.getSolicitud().getObservacionGrupoFamiliar())) {
+            alertas.add("Posible Grupo Familiar");
+        }
+        expedienteAlertaDAO.registrarAlertas(conn, idExpediente, "REGISTRO_MANUAL", "ALERTA", alertas, idUsuarioActual);
+    }
+
+    private String observacionSolicitud(RegistroManualExpedienteDTO registro) {
+        StringBuilder sb = new StringBuilder();
+        append(sb, "Validación inicial", registro.getSolicitud().getValidacionInicial());
+        append(sb, "Hoja de envío", registro.getSolicitud().getHojaEnvio());
+        append(sb, "Tipo de solicitud", registro.getSolicitud().getTipoSolicitudNombre());
+        append(sb, "Tipo de documento", registro.getSolicitud().getTipoDocumentoNombre());
+        append(sb, "N° EXPEDIENTE SGD", registro.getSolicitud().getNumeroExpedienteSgd());
+        append(sb, "Grupo familiar", registro.getSolicitud().getGrupoFamiliarTexto());
+        append(sb, "Criterio grupo familiar", registro.getSolicitud().getCriterioGrupoFamiliar());
+        append(sb, "Observación grupo familiar", registro.getSolicitud().getObservacionGrupoFamiliar());
+        if (ProcedimientoRegistralRules.requiereDecisionAsignacionParaNumero(registro.getSolicitud().getTipoProcedimientoNombre())) {
+            append(sb, "Decisión de número", ProcedimientoRegistralRules.mensajeSinNumeroRecepcion());
+        }
+        append(sb, "Tipo de acta", registro.getActa().getTipoActaNombre());
+        append(sb, "Observaciones de registro", registro.getObservacionesGenerales());
+        append(sb, "Motivo duplicado", registro.getMotivoDuplicado());
+        return sb.toString();
+    }
+
+    private void append(StringBuilder sb, String etiqueta, String valor) {
+        if (!hasText(valor)) {
+            return;
+        }
+        if (sb.length() > 0) {
+            sb.append(" | ");
+        }
+        sb.append(etiqueta).append(": ").append(valor.trim());
+    }
+
+    private String resolverCriterioGrupoFamiliar(boolean grupoFamiliar, String criterioActual) {
+        if (hasText(criterioActual)) {
+            return criterioActual;
+        }
+        return grupoFamiliar ? "MANUAL" : null;
+    }
+
+    private Long obtenerGeneratedKey(PreparedStatement ps, String entidad) throws SQLException {
+        try (ResultSet rs = ps.getGeneratedKeys()) {
+            if (rs.next()) {
+                long value = rs.getLong(1);
+                return rs.wasNull() ? null : value;
+            }
+        }
+        throw new SQLException("No se pudo obtener el identificador generado de " + entidad + ".");
+    }
+
+    private Long requerirId(Long value, String descripcion) throws SQLException {
+        if (value == null) {
+            throw new SQLException("No se encontró el catálogo requerido: " + descripcion + ".");
+        }
+        return value;
+    }
+
+    private void actualizarNumeroExpediente(Connection conn, Long idExpediente, String numeroExpediente) throws SQLException {
+        String sql = "UPDATE expediente SET numero_expediente = ?, modificado_en = SYSTIMESTAMP WHERE id_expediente = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, numeroExpediente);
+            ps.setLong(2, idExpediente);
+            int updated = ps.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("No se pudo registrar el número de expediente generado.");
+            }
+        }
+    }
+
+    private void insertarExpedientePersona(Connection conn, Long idExpediente, Long idPersona, String tipoRelacion) throws SQLException {
+        if (idPersona == null) {
+            return;
+        }
+        String sql = "INSERT INTO expediente_persona (id_expediente, id_persona, tipo_relacion_persona, activo) "
+                + "VALUES (?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setLong(2, idPersona);
+            ps.setString(3, tipoRelacion);
+            ps.executeUpdate();
+        }
+    }
+
+    private boolean soportaGrupoFamiliarSolicitud(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name = 'GRUPO_FAMILIAR'";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    private boolean soportaUbigeoPersona(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'PERSONA' "
+                + "AND column_name IN ('ID_UBIGEO_DISTRITO', 'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO')";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) == 4;
+        }
+    }
+
+    private void rollbackSilencioso(Connection conn) {
+        try {
+            conn.rollback();
+        } catch (SQLException ignored) {
+            // El error original se reporta al usuario; el rollback fallido no debe ocultarlo.
+        }
+    }
+
+    private static void setLongOrNull(PreparedStatement ps, int index, Long value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.NUMERIC);
+        } else {
+            ps.setLong(index, value);
+        }
+    }
+
+    private static void setIntegerOrNull(PreparedStatement ps, int index, Integer value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.INTEGER);
+        } else {
+            ps.setInt(index, value);
+        }
+    }
+
+    private String limitar(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        int low = 0;
+        int high = Math.min(value.length(), maxLength);
+        while (low < high) {
+            int mid = (low + high + 1) >>> 1;
+            if (value.substring(0, mid).getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= maxLength) {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return value.substring(0, low);
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private static class RegistroConfirmado {
+
+        private final CargaDiariaPreviewDTO item;
+        private final Long idExpediente;
+        private final String numeroExpediente;
+        private final String motivoSinNumero;
+
+        private RegistroConfirmado(CargaDiariaPreviewDTO item, Long idExpediente, String numeroExpediente, String motivoSinNumero) {
+            this.item = item;
+            this.idExpediente = idExpediente;
+            this.numeroExpediente = numeroExpediente;
+            this.motivoSinNumero = motivoSinNumero;
+        }
+    }
+
+    private static class DuplicadoRegistro {
+
+        private final long idExpediente;
+        private final String numeroExpediente;
+        private final boolean coincidenciaExactaTitular;
+        private final String titularExistente;
+
+        private DuplicadoRegistro(long idExpediente, String numeroExpediente) {
+            this(idExpediente, numeroExpediente, true, null);
+        }
+
+        private DuplicadoRegistro(
+                long idExpediente, String numeroExpediente, boolean coincidenciaExactaTitular, String titularExistente) {
+            this.idExpediente = idExpediente;
+            this.numeroExpediente = numeroExpediente;
+            this.coincidenciaExactaTitular = coincidenciaExactaTitular;
+            this.titularExistente = titularExistente;
+        }
+
+        private String descripcion() {
+            if (hasText(numeroExpediente)) {
+                return numeroExpediente;
+            }
+            return "expediente ID " + idExpediente + " sin número";
+        }
+
+        private String mensajeDuplicado() {
+            if (coincidenciaExactaTitular) {
+                return "Acta y titular ya existen en " + descripcion() + ".";
+            }
+            String titularTexto = hasText(titularExistente) ? titularExistente : "sin datos de titular";
+            return "El número de acta ya está registrado en " + descripcion() + " con un titular distinto (\""
+                    + titularTexto + "\"); se marca como potencial duplicado por coincidencia de número de acta.";
+        }
+    }
+}

@@ -31,6 +31,7 @@
         <ojdbc8.version>19.23.0.0</ojdbc8.version>
         <jbcrypt.version>0.4</jbcrypt.version>
         <jjwt.version>0.13.0</jjwt.version>
+        <poi.version>5.2.5</poi.version>
     </properties>
 
     <dependencies>
@@ -74,6 +75,13 @@
             <groupId>com.sun.mail</groupId>
             <artifactId>jakarta.mail</artifactId>
             <version>2.0.1</version>
+        </dependency>
+
+        <!-- Apache POI, misma version que V2 (CargaDiariaArchivoParserService se porta casi literal) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
         </dependency>
 
         <!-- JWT: nuevo en V3 (V2 no tenia concepto de sesion web), reemplaza al SessionContext estatico -->

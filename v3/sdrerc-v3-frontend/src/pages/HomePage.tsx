@@ -38,18 +38,33 @@ export function HomePage() {
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Fase 0 del plan de migración completa: login + 2FA reales contra la base de datos
-          compartida con V2. Los módulos de negocio (Dashboard, Registro, etc.) se agregan en las
-          fases siguientes.
+          compartida con V2. Los módulos de negocio se agregan en las fases siguientes.
         </Typography>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            logout()
-            navigate('/login')
-          }}
-        >
-          Cerrar sesión
-        </Button>
+        <Stack direction="row" spacing={2}>
+          {session.roles.includes('ADMIN_SISTEMA') && (
+            <Button variant="contained" onClick={() => navigate('/dashboard')}>
+              Ir al Dashboard
+            </Button>
+          )}
+          <Button variant="contained" onClick={() => navigate('/registro')}>
+            Bandeja Registro
+          </Button>
+          <Button variant="outlined" onClick={() => navigate('/registro/manual')}>
+            Registro manual
+          </Button>
+          <Button variant="contained" onClick={() => navigate('/asignacion')}>
+            Bandeja Asignación
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              logout()
+              navigate('/login')
+            }}
+          >
+            Cerrar sesión
+          </Button>
+        </Stack>
       </Paper>
     </Box>
   )

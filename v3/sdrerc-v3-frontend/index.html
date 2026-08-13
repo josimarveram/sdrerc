@@ -1,7 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="es" translate="no">
   <head>
     <meta charset="UTF-8" />
+    <!-- La app es 100% en español; sin esto, el traductor automático del navegador (activado por
+         el mismatch lang="en" vs. contenido en español) modifica el DOM por fuera de React y
+         provoca "Failed to execute 'removeChild'" al re-renderizar (ej. justo después del login). -->
+    <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>sdrerc-v3-frontend</title>

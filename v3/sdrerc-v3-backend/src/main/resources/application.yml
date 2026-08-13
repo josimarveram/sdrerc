@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: sdrerc-v3-backend
+  servlet:
+    multipart:
+      # Carga diaria (Registro): plantilla Excel/CSV subida por el usuario, mismo limite implicito
+      # que V2 (JFileChooser sin tope explicito); 20MB cubre archivos reales de la plantilla oficial.
+      max-file-size: 20MB
+      max-request-size: 20MB
   datasource:
     # Misma base Oracle SDRERC_APP que V2 (ver plan de migracion, seccion 3:
     # convivencia V2/V3). Sin credenciales reales en este archivo; se resuelven

@@ -1,0 +1,95 @@
+package com.sdrerc.v3.application;
+
+import com.sdrerc.v3.domain.DatosActaDTO;
+import com.sdrerc.v3.domain.DatosPersonaRegistroDTO;
+import com.sdrerc.v3.domain.DatosSolicitudDTO;
+import com.sdrerc.v3.domain.RegistroManualExpedienteDTO;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import org.springframework.stereotype.Service;
+
+/** Port literal de com.sdrerc.application.sdrercapp.RegistroManualValidacionService (V2). */
+@Service
+public class RegistroManualValidacionService {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9+()\\-\\s]{6,30}$");
+    private static final Pattern DOCUMENT_PATTERN = Pattern.compile("^[A-Za-z0-9\\-]{4,30}$");
+
+    public List<String> validar(RegistroManualExpedienteDTO registro) {
+        List<String> errores = new ArrayList<>();
+        if (registro == null) {
+            errores.add("Complete los datos del formulario antes de registrar.");
+            return errores;
+        }
+
+        validarSolicitud(registro.getSolicitud(), errores);
+        validarActa(registro.getActa(), errores);
+        validarPersona("Titular", registro.getTitular(), true, errores);
+        validarPersona("Solicitante", registro.getRemitente(), true, errores);
+        return errores;
+    }
+
+    private void validarSolicitud(DatosSolicitudDTO solicitud, List<String> errores) {
+        if (!hasText(solicitud.getValidacionInicial())) {
+            errores.add("Seleccione el resultado de validación inicial.");
+        }
+        if (esNoCorresponde(solicitud.getValidacionInicial()) && !hasText(solicitud.getHojaEnvio())) {
+            errores.add("Hoja de envío obligatoria cuando no corresponde a la SDRERC.");
+        }
+        if (!hasText(solicitud.getTipoSolicitudNombre())) {
+            errores.add("Tipo de solicitud obligatorio.");
+        }
+        if (solicitud.getFechaRecepcion() == null) {
+            errores.add("Fecha de recepción obligatoria o inválida.");
+        } else if (solicitud.getFechaRecepcion().isAfter(LocalDate.now())) {
+            errores.add("La fecha de recepción no puede ser futura.");
+        }
+        if (!hasText(solicitud.getTipoProcedimientoNombre())) {
+            errores.add("Tipo de procedimiento obligatorio.");
+        }
+        if (!hasText(solicitud.getTipoDocumentoNombre())) {
+            errores.add("Tipo de documento obligatorio.");
+        }
+        if (!hasText(solicitud.getNumeroExpedienteSgd())) {
+            errores.add("N° expediente SGD obligatorio.");
+        }
+    }
+
+    private void validarActa(DatosActaDTO acta, List<String> errores) {
+        if (!hasText(acta.getNumeroActa())) {
+            errores.add("Número de acta obligatorio.");
+        }
+        if (!hasText(acta.getTipoActaNombre())) {
+            errores.add("Tipo de acta obligatorio.");
+        }
+        if (acta.getAnioActa() != null && (acta.getAnioActa() < 1900 || acta.getAnioActa() > LocalDate.now().getYear() + 1)) {
+            errores.add("Año del acta fuera de rango.");
+        }
+    }
+
+    private void validarPersona(String etiqueta, DatosPersonaRegistroDTO persona, boolean obligatorio, List<String> errores) {
+        if (obligatorio && !hasText(persona.getNombreCompleto())) {
+            errores.add(etiqueta + " obligatorio.");
+        }
+        if (hasText(persona.getNumeroDocumento()) && !DOCUMENT_PATTERN.matcher(persona.getNumeroDocumento()).matches()) {
+            errores.add("Documento de " + etiqueta.toLowerCase() + " inválido.");
+        }
+        if (hasText(persona.getCorreo()) && !EMAIL_PATTERN.matcher(persona.getCorreo()).matches()) {
+            errores.add("Correo de " + etiqueta.toLowerCase() + " inválido.");
+        }
+        if (hasText(persona.getTelefono()) && !PHONE_PATTERN.matcher(persona.getTelefono()).matches()) {
+            errores.add("Teléfono de " + etiqueta.toLowerCase() + " inválido.");
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private static boolean esNoCorresponde(String value) {
+        return "No corresponde a la SDRERC".equalsIgnoreCase(value == null ? "" : value.trim());
+    }
+}
