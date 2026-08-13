@@ -1,0 +1,6 @@
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+.\diagnosticar-cert-smtp.ps1
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+cd C:\SDRERC_CLIENTE\launcher
+.\importar-cert-jre.ps1 -RutaJre "C:\Program Files\Java\jre1.8.0_491"
