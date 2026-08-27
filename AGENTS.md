@@ -42,6 +42,7 @@ D:\2026\FuentesRENIEC\sdrerc_CODIGOS
 - No crear etapa visual `VALIDACION`.
 - Mantener Java 8 y Swing.
 - Mantener FlatLaf/AppUiConfig si se reutiliza sin afectar legacy.
+- **Nomenclatura BD (OTI, desde 26/08/2026)**: todo objeto NUEVO en el esquema `SDRERC_APP` (tabla, vista, columna, funcion, procedimiento, secuencia, indice, constraint) debe seguir el estandar de nomenclatura de OTI con codigo de sistema `GS` (Sistema de Gestion de Expedientes) — ver mapeo completo y reglas en `docs/nomenclatura_bd/mapeo_nomenclatura_gs.md` (documento confidencial, uso interno). Ejemplos: tabla `GSTM_...`/`GSTC_...`/`GSTD_...` segun tipo de contenido, vista `GSVV_...`, columnas con prefijo semantico (`NU_`, `FE_`, `CO_`, `DE_`, `IN_`, `ID_`, etc.), constraints `PK_`/`FK_`/`UK_`/`CK_` seguidos del nombre de tabla ya con prefijo `GS`. **Ya ejecutado contra el esquema real (26/08/2026)**: los 72 objetos existentes YA tienen su nombre `GS...` real. Se creo una vista de compatibilidad por tabla con el nombre viejo para que V2/V3 sigan funcionando sin cambio de codigo mientras se actualizan los DAOs (~40 archivos, pendiente sin presion de fecha). Detalle completo en `v3/CLAUDE.md`, seccion "Estandarizacion de nomenclatura BD (OTI, codigo de sistema GS) — ejecucion real".
 
 ## 4. Reglas de SDRERC V2
 

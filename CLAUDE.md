@@ -656,6 +656,7 @@ Reglas:
 - Scripts se crean en `db/sdrerc_app/scripts` con numeracion correlativa.
 - No reejecutar scripts base sobre BD existente sin autorizacion.
 - No recalcular historicos masivamente.
+- **Nomenclatura BD (OTI, desde 26/08/2026)**: todo objeto NUEVO en `SDRERC_APP` (tabla, vista, columna, funcion, procedimiento, secuencia, indice, constraint) sigue el estandar de nomenclatura de OTI con codigo de sistema `GS` (Sistema de Gestion de Expedientes) — mapeo completo y reglas en `docs/nomenclatura_bd/mapeo_nomenclatura_gs.md` (documento confidencial, uso interno, no compartir fuera del equipo). **Ya ejecutado contra el esquema real (26/08/2026)**: los 72 objetos existentes YA tienen su nombre `GS...` real, con una vista de compatibilidad por tabla (nombre viejo) para que V2/V3 sigan funcionando sin cambio de codigo. Detalle completo en `v3/CLAUDE.md`.
 
 Tablas relevantes mencionadas por reglas vigentes:
 
