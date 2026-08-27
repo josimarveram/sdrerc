@@ -2,6 +2,7 @@ package com.sdrerc.v3.infrastructure.dao;
 
 import com.sdrerc.v3.application.GrupoFamiliarHeuristicaService;
 import com.sdrerc.v3.domain.GrupoFamiliarCandidatoDTO;
+import com.sdrerc.v3.domain.GrupoFamiliarEstadoAlertaDTO;
 import com.sdrerc.v3.domain.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.v3.domain.GrupoFamiliarResultadoDTO;
 import java.sql.Connection;
@@ -31,11 +32,16 @@ import org.springframework.stereotype.Repository;
  * {@link #listarIntegrantesGrupoFamiliar} (grupo ya confirmado), {@link #asociarGrupoFamiliar}
  * (confirmar) y {@link #eliminarDeGrupoFamiliar} (retirar un integrante, botón "x" en V2).
  *
- * <p>Quedan fuera de este port (atados a la baja lógica de un registro, funcionalidad todavía no
- * construida en V3): {@code limpiarAlertaPosibleGrupoFamiliarTrasEliminacion},
- * {@code retirarDeGrupoFamiliarSiCorresponde}, {@code limpiarAlertasGrupoFamiliarDeMiembrosRestantes},
- * {@code obtenerEstadoAlerta} y {@code eliminarAlertaPosibleGrupoFamiliar} (descartar la alerta sin
- * asociar) — ninguno de los 5 forma parte del flujo documentado del panel "Grupo Familiar" en sí.</p>
+ * <p>13/08/2026, pedido explícito del usuario: se portaron además {@link #limpiarAlertaPosibleGrupoFamiliarTrasEliminacion},
+ * {@link #retirarDeGrupoFamiliarSiCorresponde} y {@link #limpiarAlertasGrupoFamiliarDeMiembrosRestantes}
+ * (limpieza en cascada al eliminar/dar de baja un registro desde Registro/Recepción — ver
+ * {@code ExpedienteEdicionManualDAO#eliminar}).</p>
+ *
+ * <p>13/08/2026, mismo día, pedido explícito del usuario ("revisa bien el panel de grupo familiar de
+ * la v2 y replícalo... respetando el diseño de la v3"): se portaron también {@link #obtenerEstadoAlerta}
+ * y el overload público de {@link #eliminarAlertaPosibleGrupoFamiliar(Long, Long)} — botón "descartar
+ * alerta sin asociar" ("esto no es en realidad un posible integrante") del panel "Grupo Familiar" real
+ * de V2, que faltaba en el port inicial.</p>
  */
 @Repository
 public class GrupoFamiliarDAO {
@@ -324,6 +330,19 @@ public class GrupoFamiliarDAO {
         }
     }
 
+    /**
+     * Retira a la persona titular de idExpediente de su grupo familiar CONFIRMADO — botón "x" del
+     * panel "Grupo Familiar" ("Grupo familiar actual").
+     *
+     * <p>20/08/2026, pedido explícito del usuario (regla de tamaño mínimo, calculada dinámicamente en
+     * esta misma transacción — nunca con un valor cacheado): un grupo no tiene sentido con 1 solo
+     * integrante. Si el grupo tiene 2 integrantes activos ANTES de retirar a este (contando al
+     * propio), se disuelve por completo: el otro integrante también pierde el vínculo, aunque su
+     * propio expediente no se toque para nada más. Si tiene 3 o más, solo se retira a este; el resto
+     * conserva su pertenencia al grupo sin cambios. Ver {@link #retirarPersonaDeGrupoConReglaDeTamano}
+     * (mismo helper que usa {@link #retirarDeGrupoFamiliarSiCorresponde} en la cascada de baja lógica
+     * de un expediente — misma regla, un solo lugar donde está implementada).</p>
+     */
     public GrupoFamiliarResultadoDTO eliminarDeGrupoFamiliar(Long idExpediente, Long idUsuario) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione el expediente a retirar del grupo familiar.");
@@ -336,19 +355,19 @@ public class GrupoFamiliarDAO {
                 if (idPersona == null) {
                     throw new IllegalStateException("El expediente no tiene titular registrado.");
                 }
-                Long idGrupoFamiliar = bloquearYObtenerGrupoPersona(conn, idPersona);
-                if (idGrupoFamiliar == null) {
+                if (bloquearYObtenerGrupoPersona(conn, idPersona) == null) {
                     throw new IllegalStateException("Este expediente ya no pertenece a ningún grupo familiar.");
                 }
-                actualizarGrupoPersona(conn, idPersona, null, idUsuario);
-                desmarcarFlagExpedienteSolicitud(conn, idExpediente, idUsuario);
-                Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_ASOCIACION_GF);
-                if (idMovimiento != null) {
-                    insertarHistorial(conn, idExpediente, idMovimiento, idPersona, idUsuario, "Persona retirada del grupo familiar.");
-                }
+                int retirados = retirarPersonaDeGrupoConReglaDeTamano(
+                        conn, idPersona, idExpediente, idUsuario,
+                        "Persona retirada del grupo familiar.",
+                        "Persona retirada del grupo familiar (el grupo quedaba con menos de 2 integrantes, se disolvió por completo).");
                 conn.commit();
                 conn.setAutoCommit(previousAutoCommit);
-                return new GrupoFamiliarResultadoDTO(1, 0, 0, 1, "Se retiró la persona del grupo familiar.");
+                String mensaje = retirados > 1
+                        ? "El grupo familiar quedaba con menos de 2 integrantes: se disolvió por completo (" + retirados + " persona(s) retirada(s))."
+                        : "Se retiró la persona del grupo familiar.";
+                return new GrupoFamiliarResultadoDTO(1, 0, 0, retirados, mensaje);
             } catch (IllegalArgumentException | IllegalStateException ex) {
                 rollbackSilencioso(conn);
                 conn.setAutoCommit(previousAutoCommit);
@@ -361,6 +380,435 @@ public class GrupoFamiliarDAO {
                 }
                 throw new SQLException(ex.getMessage(), ex);
             }
+        }
+    }
+
+    /**
+     * Estado de la alerta "Posible Grupo Familiar" del expediente enfocado — si ya pertenece a un
+     * grupo familiar CONFIRMADO (flag {@code EXPEDIENTE_SOLICITUD.grupo_familiar}) y el mensaje de
+     * alerta activa (no atendida), si existe. Usado por el panel "Grupo Familiar" para mostrar el
+     * estado y habilitar el botón de descartar alerta sin asociar. Port literal de V2.
+     */
+    public GrupoFamiliarEstadoAlertaDTO obtenerEstadoAlerta(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return new GrupoFamiliarEstadoAlertaDTO(false, null, 0);
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            String sql = "SELECT "
+                    + "NVL((SELECT MAX(esol.grupo_familiar) FROM expediente_solicitud esol "
+                    + "  WHERE esol.id_expediente = ? AND esol.activo = 1), 0) AS grupo_familiar, "
+                    + "(SELECT MAX(eal.mensaje) FROM expediente_alerta eal "
+                    + "  WHERE eal.id_expediente = ? AND eal.activo = 1 AND eal.atendida = 0 "
+                    + "  AND UPPER(TRIM(eal.mensaje)) = '" + ALERTA_POSIBLE_GRUPO_FAMILIAR.toUpperCase(Locale.ROOT) + "') AS mensaje_alerta "
+                    + "FROM dual";
+            boolean confirmado;
+            String mensajeAlerta;
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                ps.setLong(2, idExpediente);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return new GrupoFamiliarEstadoAlertaDTO(false, null, 0);
+                    }
+                    confirmado = rs.getInt("grupo_familiar") == 1;
+                    mensajeAlerta = rs.getString("mensaje_alerta");
+                }
+            }
+            // 20/08/2026, pedido explícito del usuario: tamaño del vínculo calculado dinámicamente
+            // (no cacheado) en cada consulta — mismo criterio de conteo que usan los métodos de
+            // eliminación reales (`listarPersonasActivasDelGrupo`/`listarExpedientesActivosPorApellidos`),
+            // para que el frontend arme el texto de confirmación con el alcance real de la regla de
+            // tamaño mínimo antes de que el usuario elimine/descarte nada.
+            int tamanoGrupo = 0;
+            if (confirmado) {
+                Long idPersona = obtenerIdPersonaTitular(conn, idExpediente);
+                Long idGrupoFamiliar = idPersona == null ? null : obtenerGrupoFamiliarDePersona(conn, idPersona);
+                if (idGrupoFamiliar != null) {
+                    tamanoGrupo = listarPersonasActivasDelGrupo(conn, idGrupoFamiliar).size();
+                }
+            } else if (hasText(mensajeAlerta)) {
+                tamanoGrupo = 1 + listarExpedientesActivosPorApellidos(conn, idExpediente).size();
+            }
+            return new GrupoFamiliarEstadoAlertaDTO(confirmado, mensajeAlerta, tamanoGrupo);
+        }
+    }
+
+    /**
+     * Descarta la alerta "Posible Grupo Familiar" de un expediente SIN asociarlo a ningún grupo —
+     * "esto no es en realidad un posible integrante" (botón papelera junto a la alerta en V2, visible
+     * solo cuando hay alerta activa y el grupo todavía no está confirmado). Con conexión y
+     * transacción propia, fuera de cualquier transacción de baja lógica.
+     *
+     * <p>20/08/2026, pedido explícito del usuario (regla de tamaño mínimo): ya NO se limita a
+     * limpiar la alerta del propio expediente — delega en {@link #limpiarAlertaPosibleGrupoFamiliarTrasEliminacion},
+     * que aplica la misma regla que el resto de escenarios de eliminación de este vínculo: si, además
+     * de este expediente, solo queda 1 solicitud relacionada por apellidos (grupo de tamaño 2), se
+     * descarta la alerta de AMBAS (ya no tiene sentido que quede una sola marcada); si quedan 2 o más
+     * (grupo de tamaño 3+), se descarta únicamente la de este expediente y las demás conservan la
+     * suya sin cambios. El tamaño se calcula dinámicamente en esta misma llamada, nunca con un valor
+     * cacheado de una consulta previa (ver {@code GrupoFamiliarEstadoAlertaDTO#getTamanoGrupo}, que
+     * el frontend consulta antes de confirmar, con el mismo criterio).</p>
+     */
+    public void eliminarAlertaPosibleGrupoFamiliar(Long idExpediente, Long idUsuario) throws SQLException {
+        if (idExpediente == null) {
+            return;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                limpiarAlertaPosibleGrupoFamiliarTrasEliminacion(conn, idExpediente, idUsuario);
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    /**
+     * Ids de expedientes activos (excluyendo el propio) cuyo titular comparte la misma clave de
+     * apellidos ({@link GrupoFamiliarHeuristicaService#claveApellidosTitular}) que idExpediente,
+     * excluyendo coincidencias de titular EXACTO (esas son "Potencial duplicado", no "Posible Grupo
+     * Familiar" — mismo criterio de exclusión que {@link #listarPosiblesIntegrantes}). Usado al
+     * eliminar (baja lógica) un registro para decidir si la alerta de los demás relacionados también
+     * debe limpiarse (solo quedaba 1 solicitud activa relacionada) o si debe mantenerse (eran 2 o
+     * más). Port literal de V2.
+     */
+    private List<Long> listarExpedientesActivosPorApellidos(Connection conn, Long idExpediente) throws SQLException {
+        List<Long> ids = new ArrayList<>();
+        if (conn == null || idExpediente == null) {
+            return ids;
+        }
+        String titular = obtenerTitularTexto(conn, idExpediente);
+        String clave = heuristicaService.claveApellidosTitular(titular);
+        if (!hasText(clave)) {
+            return ids;
+        }
+        String sql = "SELECT e.id_expediente, " + TITULAR_SQL + " AS titular "
+                + "FROM expediente e "
+                + "JOIN expediente_persona ep ON ep.id_expediente = e.id_expediente AND ep.activo = 1 "
+                + "  AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "JOIN persona p ON p.id_persona = ep.id_persona AND p.activo = 1 "
+                + "WHERE e.activo = 1 AND e.id_expediente <> ? "
+                + "AND ROWNUM <= 3000";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String titularCandidato = rs.getString("titular");
+                    if (clave.equals(heuristicaService.claveApellidosTitular(titularCandidato))
+                            && !heuristicaService.coincideExactamente(titular, titularCandidato)) {
+                        ids.add(getLongOrNull(rs, "id_expediente"));
+                    }
+                }
+            }
+        }
+        return ids;
+    }
+
+    /** Overload privado con {@code Connection} recibida, para reutilizar dentro de la misma transacción de eliminación. */
+    private void eliminarAlertaPosibleGrupoFamiliar(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        expedienteAlertaDAO.marcarAtendidas(
+                conn, idExpediente, Collections.singletonList(ALERTA_POSIBLE_GRUPO_FAMILIAR), idUsuario);
+        limpiarCriterioGrupoFamiliar(conn, idExpediente, idUsuario);
+    }
+
+    /**
+     * Al descartar la alerta "Posible Grupo Familiar" también se limpian los campos heurísticos de
+     * detección (criterio_grupo_familiar/observacion_grupo_familiar) en la solicitud activa más
+     * reciente. Sin esto, la Bandeja Registro seguía contando el expediente como "Posible Grupo
+     * Familiar" en su KPI (revisa esos campos además de la alerta) aunque la alerta ya estuviera
+     * atendida. Port literal de V2.
+     */
+    private void limpiarCriterioGrupoFamiliar(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_solicitud SET criterio_grupo_familiar = NULL, "
+                + "observacion_grupo_familiar = NULL, "
+                + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente_solicitud = ("
+                + "  SELECT MAX(id_expediente_solicitud) FROM expediente_solicitud "
+                + "  WHERE id_expediente = ? AND activo = 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            setLongOrNull(ps, 1, idUsuario);
+            ps.setLong(2, idExpediente);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Limpia la alerta "Posible Grupo Familiar" (fila {@code EXPEDIENTE_ALERTA} + campos heurísticos
+     * de {@code EXPEDIENTE_SOLICITUD}) del propio idExpediente y, si tras eliminarlo solo queda 1
+     * solicitud activa relacionada por apellidos, también la de esa única sobreviviente (ya no hay
+     * con quién formar un "posible" grupo). Si quedan 2 o más relacionadas, esas se dejan intactas.
+     * No debe confundirse con {@link #limpiarAlertasGrupoFamiliarDeMiembrosRestantes}, que aplica al
+     * grupo YA CONFIRMADO ({@code PERSONA.id_grupo_familiar}), sin condición de cantidad. Debe
+     * llamarse dentro de una transacción ya abierta por el llamador (nunca abre/cierra la suya
+     * propia). Port literal de V2 (07/08/2026 allá, 13/08/2026 acá).
+     *
+     * <p>20/08/2026: dejó de ser exclusivo de la cascada de baja lógica — el nombre se conserva
+     * (evita renombrar sin necesidad) pero también lo invoca directamente
+     * {@link #eliminarAlertaPosibleGrupoFamiliar(Long, Long)} (botón "descartar alerta" del panel,
+     * sin que el expediente se elimine), con su propia transacción envolvente. Misma regla de tamaño
+     * mínimo en ambos casos.</p>
+     */
+    public void limpiarAlertaPosibleGrupoFamiliarTrasEliminacion(
+            Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        if (conn == null || idExpediente == null) {
+            return;
+        }
+        List<Long> relacionados = listarExpedientesActivosPorApellidos(conn, idExpediente);
+        eliminarAlertaPosibleGrupoFamiliar(conn, idExpediente, idUsuario);
+        if (relacionados.size() == 1) {
+            eliminarAlertaPosibleGrupoFamiliar(conn, relacionados.get(0), idUsuario);
+        }
+    }
+
+    /**
+     * Si el titular de idExpediente pertenece a un grupo familiar YA CONFIRMADO
+     * ({@code PERSONA.id_grupo_familiar}), lo retira del grupo al eliminar (baja lógica) su
+     * expediente: a diferencia de {@link #limpiarAlertasGrupoFamiliarDeMiembrosRestantes} (que solo
+     * limpia alertas remanentes de los DEMÁS integrantes), esto afecta al PROPIO integrante
+     * eliminado — si su expediente ya no existe, no debe seguir contando como miembro visible del
+     * grupo familiar. No lanza excepción si no pertenecía a ningún grupo (caso normal de la mayoría
+     * de bajas). Debe llamarse dentro de la misma transacción de la baja lógica, y después de
+     * {@link #limpiarAlertasGrupoFamiliarDeMiembrosRestantes} (que necesita leer el grupo todavía
+     * asignado a esta persona para encontrar a los demás integrantes).
+     *
+     * <p>20/08/2026, pedido explícito del usuario (regla de tamaño mínimo, misma que
+     * {@link #eliminarDeGrupoFamiliar}, calculada dinámicamente dentro de esta misma transacción): si
+     * el grupo tenía 2 integrantes activos antes de esta baja, el otro integrante también pierde el
+     * vínculo (el grupo se disuelve por completo, aunque su propio expediente no se toca para nada
+     * más); si tenía 3 o más, solo se retira al de idExpediente y el resto conserva su vínculo sin
+     * cambios. Ver {@link #retirarPersonaDeGrupoConReglaDeTamano}.</p>
+     */
+    public void retirarDeGrupoFamiliarSiCorresponde(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        if (conn == null || idExpediente == null) {
+            return;
+        }
+        Long idPersona = obtenerIdPersonaTitular(conn, idExpediente);
+        if (idPersona == null) {
+            return;
+        }
+        if (bloquearYObtenerGrupoPersona(conn, idPersona) == null) {
+            return;
+        }
+        retirarPersonaDeGrupoConReglaDeTamano(
+                conn, idPersona, idExpediente, idUsuario,
+                "Persona retirada del grupo familiar por eliminación (baja lógica) del expediente.",
+                "Persona retirada del grupo familiar por eliminación (baja lógica) del expediente "
+                        + "(el grupo quedaba con menos de 2 integrantes, se disolvió por completo).");
+    }
+
+    /**
+     * Núcleo compartido de la regla de tamaño mínimo del grupo familiar CONFIRMADO, usado tanto por
+     * {@link #eliminarDeGrupoFamiliar} (botón "x" directo del panel) como por
+     * {@link #retirarDeGrupoFamiliarSiCorresponde} (cascada al eliminar/dar de baja un expediente) —
+     * un solo lugar con la regla, para que ambos escenarios se comporten idénticamente (pedido
+     * explícito del usuario: "aplica esta misma lógica en los 3 escenarios de eliminación").
+     *
+     * <p>Debe llamarse DESPUÉS de que el llamador ya bloqueó (FOR UPDATE) la fila de {@code idPersona}
+     * en {@code PERSONA} (vía {@link #bloquearYObtenerGrupoPersona}), para que el conteo de
+     * integrantes se calcule con datos frescos dentro de la misma transacción — nunca con un valor
+     * cacheado de una consulta anterior. Cuenta los integrantes activos del grupo (incluyendo a
+     * idPersona): con 2 o menos, retira a TODOS (el grupo se disuelve, no tiene sentido un grupo de 1
+     * sola persona); con 3 o más, retira únicamente a idPersona. Cada persona retirada pierde su
+     * {@code PERSONA.id_grupo_familiar} y su flag {@code EXPEDIENTE_SOLICITUD.grupo_familiar}, con su
+     * propia fila de historial — ninguna de las demás ve tocado nada más de su expediente.</p>
+     *
+     * @return cantidad de personas efectivamente retiradas (1 si solo se retiró a idPersona, 2+ si el
+     *     grupo se disolvió por completo).
+     */
+    private int retirarPersonaDeGrupoConReglaDeTamano(
+            Connection conn,
+            Long idPersona,
+            Long idExpedienteDeIdPersona,
+            Long idUsuario,
+            String motivoRetiroSolo,
+            String motivoDisolucion) throws SQLException {
+        Long idGrupoFamiliar = obtenerGrupoFamiliarDePersona(conn, idPersona);
+        if (idGrupoFamiliar == null) {
+            return 0;
+        }
+        List<Long> personasGrupo = listarPersonasActivasDelGrupo(conn, idGrupoFamiliar);
+        List<Long> aRetirar;
+        String motivo;
+        if (personasGrupo.size() <= 2) {
+            aRetirar = new ArrayList<>(personasGrupo);
+            if (!aRetirar.contains(idPersona)) {
+                aRetirar.add(idPersona);
+            }
+            motivo = motivoDisolucion;
+        } else {
+            aRetirar = Collections.singletonList(idPersona);
+            motivo = motivoRetiroSolo;
+        }
+
+        Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_ASOCIACION_GF);
+        for (Long idPersonaRetirar : aRetirar) {
+            actualizarGrupoPersona(conn, idPersonaRetirar, null, idUsuario);
+            Long idExpedienteRetirar = idPersonaRetirar.equals(idPersona)
+                    ? idExpedienteDeIdPersona
+                    : obtenerExpedienteActivoDePersona(conn, idPersonaRetirar);
+            if (idExpedienteRetirar != null) {
+                desmarcarFlagExpedienteSolicitud(conn, idExpedienteRetirar, idUsuario);
+                if (idMovimiento != null) {
+                    insertarHistorial(conn, idExpedienteRetirar, idMovimiento, idPersonaRetirar, idUsuario, motivo);
+                }
+            }
+        }
+        return aRetirar.size();
+    }
+
+    /**
+     * Ids de persona (distintos) que integran hoy el grupo familiar dado, con expediente activo como
+     * titular — mismo criterio de "integrante visible" que {@link #listarIntegrantesGrupoFamiliar}, y
+     * mismo criterio de "restantes" que {@link #limpiarAlertasGrupoFamiliarDeMiembrosRestantes}, pero
+     * expuesto como helper reutilizable para calcular el TAMAÑO del grupo antes de decidir si se
+     * disuelve (regla de tamaño mínimo, 20/08/2026). Calculado siempre en el momento de la llamada,
+     * nunca cacheado.
+     */
+    private List<Long> listarPersonasActivasDelGrupo(Connection conn, Long idGrupoFamiliar) throws SQLException {
+        List<Long> ids = new ArrayList<>();
+        String sql = "SELECT DISTINCT p.id_persona "
+                + "FROM persona p "
+                + "JOIN expediente_persona ep ON ep.id_persona = p.id_persona AND ep.activo = 1 "
+                + "  AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "JOIN expediente e ON e.id_expediente = ep.id_expediente AND e.activo = 1 "
+                + "WHERE p.id_grupo_familiar = ? AND p.activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idGrupoFamiliar);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(getLongOrNull(rs, "id_persona"));
+                }
+            }
+        }
+        return ids;
+    }
+
+    /** Expediente activo donde idPersona figura como titular (el primero que encuentre) — reverso de {@link #obtenerIdPersonaTitular}. */
+    private Long obtenerExpedienteActivoDePersona(Connection conn, Long idPersona) throws SQLException {
+        String sql = "SELECT ep.id_expediente FROM expediente_persona ep "
+                + "JOIN expediente e ON e.id_expediente = ep.id_expediente AND e.activo = 1 "
+                + "WHERE ep.id_persona = ? AND ep.activo = 1 AND ep.tipo_relacion_persona = 'TITULAR' AND ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idPersona);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? getLongOrNull(rs, "id_expediente") : null;
+            }
+        }
+    }
+
+    /**
+     * Cuando se elimina (baja lógica) el expediente de un integrante de un grupo familiar, los demás
+     * integrantes que sigan con expediente activo en ese mismo grupo ({@code PERSONA.id_grupo_familiar})
+     * pueden quedar mostrando "Posible Grupo Familiar" en el KPI/columna Alertas de Registro y
+     * Asignación aunque ya estaban confirmados, porque esa columna solo lee si queda una alerta
+     * {@code EXPEDIENTE_ALERTA} activa (no si el grupo tiene 2+ miembros activos). Limpia esa alerta
+     * remanente en los integrantes que NO se eliminaron, sin tocar {@code PERSONA.id_grupo_familiar}
+     * (el vínculo de grupo se mantiene por si aparece otro familiar futuro). Debe llamarse en la
+     * MISMA transacción que la baja lógica del expediente eliminado. Port literal de V2.
+     */
+    public void limpiarAlertasGrupoFamiliarDeMiembrosRestantes(
+            Connection conn, Long idExpedienteEliminado, Long idUsuario) throws SQLException {
+        if (conn == null || idExpedienteEliminado == null) {
+            return;
+        }
+        Long idPersona = obtenerIdPersonaTitular(conn, idExpedienteEliminado);
+        if (idPersona == null) {
+            return;
+        }
+        Long idGrupoFamiliar = obtenerGrupoFamiliarDePersona(conn, idPersona);
+        if (idGrupoFamiliar == null) {
+            return;
+        }
+        String sql = "SELECT DISTINCT e.id_expediente "
+                + "FROM persona p "
+                + "JOIN expediente_persona ep ON ep.id_persona = p.id_persona AND ep.activo = 1 "
+                + "  AND ep.tipo_relacion_persona = 'TITULAR' "
+                + "JOIN expediente e ON e.id_expediente = ep.id_expediente AND e.activo = 1 "
+                + "WHERE p.id_grupo_familiar = ? AND p.activo = 1 AND e.id_expediente <> ?";
+        List<Long> idsRestantes = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idGrupoFamiliar);
+            ps.setLong(2, idExpedienteEliminado);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    idsRestantes.add(getLongOrNull(rs, "id_expediente"));
+                }
+            }
+        }
+        for (Long idExpedienteRestante : idsRestantes) {
+            eliminarAlertaPosibleGrupoFamiliar(conn, idExpedienteRestante, idUsuario);
+        }
+    }
+
+    /**
+     * Consulta de solo lectura (sin abrir transacción propia, no modifica nada) usada por el modal de
+     * confirmación de eliminación desde Registro/Recepción para advertir al usuario del impacto antes
+     * de confirmar: si el titular ya pertenece a un grupo familiar confirmado, y cuántos integrantes
+     * (además del propio) tiene ese grupo hoy con expediente activo. No forma parte del port de V2
+     * (ahí no existía un aviso previo de impacto); es un requisito nuevo explícito de V3.
+     */
+    public boolean perteneceGrupoFamiliarConfirmado(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return false;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            Long idPersona = obtenerIdPersonaTitular(conn, idExpediente);
+            if (idPersona == null) {
+                return false;
+            }
+            return obtenerGrupoFamiliarDePersona(conn, idPersona) != null;
+        }
+    }
+
+    /**
+     * Cantidad de integrantes activos que tiene HOY el grupo familiar confirmado de idExpediente (0
+     * si no pertenece a ninguno) — mismo conteo que decide la regla de tamaño mínimo al eliminar
+     * ({@link #retirarPersonaDeGrupoConReglaDeTamano}), expuesto de solo lectura para el modal de
+     * confirmación de eliminación de la bandeja (20/08/2026, pedido explícito del usuario). Calculado
+     * siempre al momento de la llamada, nunca cacheado.
+     */
+    public int contarIntegrantesGrupoFamiliarConfirmado(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return 0;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            Long idPersona = obtenerIdPersonaTitular(conn, idExpediente);
+            if (idPersona == null) {
+                return 0;
+            }
+            Long idGrupoFamiliar = obtenerGrupoFamiliarDePersona(conn, idPersona);
+            if (idGrupoFamiliar == null) {
+                return 0;
+            }
+            return listarPersonasActivasDelGrupo(conn, idGrupoFamiliar).size();
+        }
+    }
+
+    /**
+     * Cantidad de solicitudes que integran hoy la alerta "Posible Grupo Familiar" de idExpediente (1
+     * + relacionadas por apellidos, 0 si idExpediente no tiene la alerta activa) — mismo conteo que
+     * decide la regla de tamaño mínimo al descartar la alerta
+     * ({@link #limpiarAlertaPosibleGrupoFamiliarTrasEliminacion}), expuesto de solo lectura para el
+     * modal de confirmación de eliminación de la bandeja (20/08/2026, pedido explícito del usuario).
+     * Calculado siempre al momento de la llamada, nunca cacheado.
+     */
+    public int contarPosibleGrupoFamiliar(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            return 0;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            if (!expedienteAlertaDAO.tieneAlertaActiva(conn, idExpediente, ALERTA_POSIBLE_GRUPO_FAMILIAR)) {
+                return 0;
+            }
+            return 1 + listarExpedientesActivosPorApellidos(conn, idExpediente).size();
         }
     }
 
@@ -446,9 +894,23 @@ public class GrupoFamiliarDAO {
         }
     }
 
+    /**
+     * 20/08/2026, bug real corregido (pedido explícito del usuario, caso reportado con la titular
+     * ATEHORTUA HUANCACHOQUE IVANIA ISABELLA): al retirar/disolver un vínculo de grupo familiar
+     * confirmado esta actualización dejaba {@code observacion_grupo_familiar} SIN limpiar (solo
+     * limpiaba {@code criterio_grupo_familiar}) — a diferencia de {@link #limpiarCriterioGrupoFamiliar}
+     * (usada por el camino de la ALERTA), que sí limpia ambas columnas. Esa columna sobrante es
+     * justo la que {@code ExpedienteBandejaDAO.grupoFamiliar(...)} (Bandeja Registro) usa como
+     * segunda señal para derivar "Posible Grupo Familiar" cuando el flag de confirmado ya es 0 —
+     * por eso Registro seguía mostrando la alerta tras disolver el grupo, mientras Asignación (que
+     * deriva su alerta de una fila activa en {@code EXPEDIENTE_ALERTA}, no de este texto) ya
+     * mostraba "Sin Alerta" correctamente. Con las 2 columnas limpiadas, ambas bandejas quedan
+     * consistentes.
+     */
     private void desmarcarFlagExpedienteSolicitud(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
         String sql = "UPDATE expediente_solicitud SET grupo_familiar = 0, "
                 + "criterio_grupo_familiar = NULL, "
+                + "observacion_grupo_familiar = NULL, "
                 + "modificado_por = ?, modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente_solicitud = ("
                 + "  SELECT MAX(id_expediente_solicitud) FROM expediente_solicitud "

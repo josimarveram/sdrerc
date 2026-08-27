@@ -311,6 +311,7 @@ public class CargaDiariaPlantillaService {
             "TIPO DE ACTA y N° ACTA se usan para identificar el acta registral.",
             "TITULAR y N° ACTA se usan para detectar posibles duplicados.",
             "Los duplicados se registran para trazabilidad y no generan nuevo numero de expediente hasta su asociacion en Asignacion.",
+            "SOLICITADO POR admite el nombre de un ciudadano, de un Centro de Atencion o de una Unidad Organica: el sistema identifica automaticamente el tipo al validar el archivo, sin que haga falta indicarlo en una columna aparte.",
             "Despues de completar el archivo, subalo desde la pantalla Carga diaria en Registro / Recepcion."
         };
 

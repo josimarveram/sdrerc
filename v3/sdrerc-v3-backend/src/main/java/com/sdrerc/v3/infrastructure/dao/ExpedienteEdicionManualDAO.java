@@ -5,6 +5,7 @@ import com.sdrerc.v3.domain.DatosActaDTO;
 import com.sdrerc.v3.domain.DatosPersonaRegistroDTO;
 import com.sdrerc.v3.domain.DatosSolicitudDTO;
 import com.sdrerc.v3.domain.ExpedienteEdicionManualDTO;
+import com.sdrerc.v3.domain.ImpactoEliminacionRegistroDTO;
 import com.sdrerc.v3.domain.RegistroManualResultadoDTO;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -22,11 +23,18 @@ import org.springframework.stereotype.Repository;
 
 /**
  * Port de com.sdrerc.infrastructure.sdrercapp.dao.ExpedienteEdicionManualDAO (V2), acotado al
- * camino de edición desde Registro/Recepción ({@code obtenerParaEdicion}/{@code guardar}, siempre
- * con {@code validarEstadoRegistro=true}/{@code desdeAnalisis=false}). NO incluye
- * {@code obtenerParaEdicionDesdeAnalisis}/{@code guardarDesdeAnalisis} (el módulo Análisis no
- * existe todavía en V3) ni {@code eliminar} (baja lógica, fuera de alcance de este incremento —
- * ver v3/CLAUDE.md). Mismo SQL que V2 en cada método portado.
+ * camino de edición/baja desde Registro/Recepción ({@code obtenerParaEdicion}/{@code guardar}/
+ * {@code eliminar}, siempre con {@code validarEstadoRegistro=true}/{@code desdeAnalisis=false}) MÁS
+ * el camino de edición desde Análisis ({@code obtenerParaEdicionDesdeAnalisis}/
+ * {@code guardarDesdeAnalisis}, agregado 21/08/2026, pedido explícito del usuario — ver Javadoc de
+ * {@link #validarEditable(ExpedienteEstado, boolean, boolean)}). El punto de entrada equivalente
+ * desde Asignación (con sus propias reglas distintas en V2) sigue sin portar: ese módulo no expone
+ * hoy un botón "Editar" en V3. Mismo SQL que V2 en cada método portado.
+ *
+ * <p>13/08/2026, pedido explícito del usuario: {@link #eliminar} ahora SÍ replica la limpieza en
+ * cascada de alertas de solicitudes relacionadas que hace V2 (antes deliberadamente diferida, ver
+ * historial de este Javadoc) — delega en {@link ExpedienteRegistroDAO#limpiarAlertaPotencialDuplicadoTrasEliminacion}
+ * y en los 3 métodos de cascada portados en {@link GrupoFamiliarDAO}, en el mismo orden que V2.</p>
  */
 @Repository
 public class ExpedienteEdicionManualDAO {
@@ -34,24 +42,76 @@ public class ExpedienteEdicionManualDAO {
     private static final String CODIGO_ETAPA_REGISTRO = "REGISTRO";
     private static final String CODIGO_ESTADO_REGISTRADO = "REGISTRADO";
     private static final String CODIGO_MOVIMIENTO_EDICION = "RECEPCION_DOCUMENTO";
+    private static final String CODIGO_MOVIMIENTO_ELIMINACION = "BAJA_REGISTRO";
+    private static final String ALERTA_POTENCIAL_DUPLICADO = "Potencial duplicado";
+    private static final String ALERTA_POSIBLE_GRUPO_FAMILIAR = "Posible Grupo Familiar";
 
     private final DataSource dataSource;
     private final CatalogoLookupDAO catalogoLookupDAO;
     private final CalendarioLaboralService calendarioLaboralService;
     private final ExpedienteAlertaDAO expedienteAlertaDAO;
+    private final ExpedienteRegistroDAO expedienteRegistroDAO;
+    private final GrupoFamiliarDAO grupoFamiliarDAO;
 
     public ExpedienteEdicionManualDAO(
             DataSource dataSource,
             CatalogoLookupDAO catalogoLookupDAO,
             CalendarioLaboralService calendarioLaboralService,
-            ExpedienteAlertaDAO expedienteAlertaDAO) {
+            ExpedienteAlertaDAO expedienteAlertaDAO,
+            ExpedienteRegistroDAO expedienteRegistroDAO,
+            GrupoFamiliarDAO grupoFamiliarDAO) {
         this.dataSource = dataSource;
         this.catalogoLookupDAO = catalogoLookupDAO;
         this.calendarioLaboralService = calendarioLaboralService;
         this.expedienteAlertaDAO = expedienteAlertaDAO;
+        this.expedienteRegistroDAO = expedienteRegistroDAO;
+        this.grupoFamiliarDAO = grupoFamiliarDAO;
+    }
+
+    /**
+     * Info de impacto para el modal de confirmación de eliminación (13/08/2026, requisito nuevo de
+     * V3 sin equivalente en V2): si el propio expediente tiene hoy alertas "Potencial duplicado"/
+     * "Posible Grupo Familiar" activas, y si su titular pertenece a un grupo familiar ya confirmado.
+     * Solo lectura, no abre transacción de escritura.
+     *
+     * <p>20/08/2026, pedido explícito del usuario: además, cuando corresponde, el tamaño ACTUAL
+     * (dinámico, no cacheado) del vínculo — cuántas solicitudes tiene hoy la alerta "Posible Grupo
+     * Familiar"/el grupo familiar confirmado — para que el modal pueda anticipar si eliminar este
+     * expediente disolverá el vínculo por completo (2 o menos) o solo lo retirará a él (3 o más),
+     * misma regla que aplica {@code GrupoFamiliarDAO} al momento real de la baja.</p>
+     */
+    public ImpactoEliminacionRegistroDTO obtenerImpactoEliminacion(Long idExpediente) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente.");
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            boolean potencialDuplicado = expedienteAlertaDAO.tieneAlertaActiva(conn, idExpediente, ALERTA_POTENCIAL_DUPLICADO);
+            boolean posibleGrupoFamiliar = expedienteAlertaDAO.tieneAlertaActiva(conn, idExpediente, ALERTA_POSIBLE_GRUPO_FAMILIAR);
+            boolean grupoFamiliarConfirmado = grupoFamiliarDAO.perteneceGrupoFamiliarConfirmado(idExpediente);
+            int tamanoPosibleGrupoFamiliar = posibleGrupoFamiliar ? grupoFamiliarDAO.contarPosibleGrupoFamiliar(idExpediente) : 0;
+            int tamanoGrupoFamiliarConfirmado =
+                    grupoFamiliarConfirmado ? grupoFamiliarDAO.contarIntegrantesGrupoFamiliarConfirmado(idExpediente) : 0;
+            return new ImpactoEliminacionRegistroDTO(
+                    potencialDuplicado, posibleGrupoFamiliar, grupoFamiliarConfirmado,
+                    tamanoPosibleGrupoFamiliar, tamanoGrupoFamiliarConfirmado);
+        }
     }
 
     public ExpedienteEdicionManualDTO obtenerParaEdicion(Long idExpediente) throws SQLException {
+        return obtenerParaEdicionInterno(idExpediente, false);
+    }
+
+    /**
+     * Igual que {@link #obtenerParaEdicion}, pero sin exigir etapa REGISTRO/estado REGISTRADO/sin
+     * asignación — port de {@code obtenerParaEdicionDesdeAnalisis} (V2), usado cuando el lápiz de
+     * edición del panel "Datos" se abre desde el módulo Análisis (21/08/2026, pedido explícito del
+     * usuario). Ver Javadoc de {@link #validarEditable(ExpedienteEstado, boolean, boolean)}.
+     */
+    public ExpedienteEdicionManualDTO obtenerParaEdicionDesdeAnalisis(Long idExpediente) throws SQLException {
+        return obtenerParaEdicionInterno(idExpediente, true);
+    }
+
+    private ExpedienteEdicionManualDTO obtenerParaEdicionInterno(Long idExpediente, boolean desdeAnalisis) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para editar.");
         }
@@ -59,7 +119,7 @@ public class ExpedienteEdicionManualDAO {
             ExpedienteEdicionManualDTO dto = consultarDto(conn, idExpediente);
             validarEditable(new ExpedienteEstado(
                     null, null, dto.getEtapaCodigo(), dto.getEstadoCodigo(), dto.getNumeroExpediente(), null),
-                    tieneAsignacionActiva(conn, idExpediente));
+                    tieneAsignacionActiva(conn, idExpediente), desdeAnalisis);
             return dto;
         }
     }
@@ -82,16 +142,42 @@ public class ExpedienteEdicionManualDAO {
     private ExpedienteEdicionManualDTO consultarDto(Connection conn, Long idExpediente) throws SQLException {
             boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
             boolean soportaUbigeoPersona = soportaUbigeoPersona(conn);
+            boolean soportaTipoSolicitante = soportaTipoSolicitante(conn);
+            boolean soportaMunicipalidad = soportaMunicipalidad(conn);
+            String solicitanteTipoSelect = soportaTipoSolicitante
+                    ? "sol.tipo_solicitante, sol.id_centro_atencion, ca.denominacion AS centro_atencion_denominacion, "
+                            + "sol.id_unidad_organica, uo.nombre AS unidad_organica_nombre, "
+                    : "CAST(NULL AS VARCHAR2(20)) AS tipo_solicitante, CAST(NULL AS NUMBER) AS id_centro_atencion, "
+                            + "CAST(NULL AS VARCHAR2(200)) AS centro_atencion_denominacion, "
+                            + "CAST(NULL AS NUMBER) AS id_unidad_organica, CAST(NULL AS VARCHAR2(150)) AS unidad_organica_nombre, ";
+            String municipalidadSelect = soportaMunicipalidad
+                    ? "sol.id_municipalidad, muni.denominacion AS municipalidad_denominacion, "
+                    : "CAST(NULL AS NUMBER) AS id_municipalidad, CAST(NULL AS VARCHAR2(150)) AS municipalidad_denominacion, ";
             String grupoFamiliarSelect = soportaGrupoFamiliar
                     ? "NVL(sol.grupo_familiar, 0) AS grupo_familiar, sol.criterio_grupo_familiar, sol.observacion_grupo_familiar, "
                     : "0 AS grupo_familiar, CAST(NULL AS VARCHAR2(80)) AS criterio_grupo_familiar, "
                             + "CAST(NULL AS VARCHAR2(500)) AS observacion_grupo_familiar, ";
+            // 19/08/2026, pedido explícito del usuario: PERSONA solo guarda `id_ubigeo_distrito` (un
+            // distrito determina de forma unívoca su provincia/departamento en la jerarquía UBIGEO,
+            // ver v3/CLAUDE.md), nunca `id_ubigeo_provincia`/`id_ubigeo_departamento` por separado —
+            // por eso los combos "Provincia"/"Departamento" del panel de edición nunca mostraban el
+            // valor preseleccionado: el DTO recibía `idDistrito` pero `idDepartamento`/`idProvincia`
+            // siempre llegaban en `null`, y el frontend arma esos combos en cascada (Provincia
+            // depende de `idDepartamento`, Distrito depende de `idProvincia`) — sin esos 2 ids, ni
+            // siquiera el propio Distrito llegaba a mostrarse seleccionado, porque su lista de
+            // opciones (`listarDistritos`) nunca se cargaba. Fix: se resuelven ambos ids "hacia
+            // arriba" desde `id_ubigeo_distrito` vía los JOIN a `ubigeo_distrito`/`ubigeo_provincia`
+            // (ver más abajo, condicionados al mismo `soportaUbigeoPersona`).
             String ubigeoSelect = soportaUbigeoPersona
                     ? "NVL(remitente.id_ubigeo_distrito, solicitante.id_ubigeo_distrito) AS remitente_id_distrito, "
+                            + "ubp.id_ubigeo_provincia AS remitente_id_provincia, "
+                            + "ubp.id_ubigeo_departamento AS remitente_id_departamento, "
                             + "NVL(remitente.departamento, solicitante.departamento) AS remitente_departamento, "
                             + "NVL(remitente.provincia, solicitante.provincia) AS remitente_provincia, "
                             + "NVL(remitente.distrito, solicitante.distrito) AS remitente_distrito, "
                     : "CAST(NULL AS NUMBER) AS remitente_id_distrito, "
+                            + "CAST(NULL AS NUMBER) AS remitente_id_provincia, "
+                            + "CAST(NULL AS NUMBER) AS remitente_id_departamento, "
                             + "CAST(NULL AS VARCHAR2(120)) AS remitente_departamento, "
                             + "CAST(NULL AS VARCHAR2(120)) AS remitente_provincia, "
                             + "CAST(NULL AS VARCHAR2(120)) AS remitente_distrito, ";
@@ -119,7 +205,7 @@ public class ExpedienteEdicionManualDAO {
                     + "SELECT e.id_expediente, e.numero_expediente, e.numero_tramite_documentario, e.prioridad, "
                     + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo, "
                     + "sol.numero_tramite_documentario AS solicitud_tramite, sol.numero_expediente_sgd, sol.fecha_recepcion, "
-                    + "sol.asunto, sol.observacion, " + grupoFamiliarSelect
+                    + "sol.asunto, sol.observacion, " + grupoFamiliarSelect + solicitanteTipoSelect + municipalidadSelect
                     + "cr.codigo AS canal_codigo, cr.nombre AS canal_nombre, "
                     + "doc.nombre_documento, doc.numero_documento, "
                     + "act.numero_acta, act.anio_acta, ta.codigo AS tipo_acta_codigo, ta.nombre AS tipo_acta_nombre, "
@@ -138,11 +224,23 @@ public class ExpedienteEdicionManualDAO {
                     + "LEFT JOIN sol ON sol.id_expediente = e.id_expediente "
                     + "LEFT JOIN canal_recepcion cr ON cr.id_canal_recepcion = sol.id_canal_recepcion "
                     + "LEFT JOIN persona solicitante ON solicitante.id_persona = sol.id_persona_solicitante "
+                    + (soportaTipoSolicitante
+                            ? "LEFT JOIN centros_atencion ca ON ca.id_centro_atencion = sol.id_centro_atencion "
+                                    + "LEFT JOIN unidades_organicas uo ON uo.id_unidad_organica = sol.id_unidad_organica "
+                            : "")
+                    + (soportaMunicipalidad
+                            ? "LEFT JOIN municipalidades muni ON muni.id_municipalidad = sol.id_municipalidad "
+                            : "")
                     + "LEFT JOIN doc ON doc.id_expediente = e.id_expediente "
                     + "LEFT JOIN act ON act.id_expediente = e.id_expediente "
                     + "LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = act.id_tipo_acta "
                     + "LEFT JOIN titular ON titular.id_persona IS NOT NULL "
                     + "LEFT JOIN remitente ON remitente.id_persona IS NOT NULL "
+                    + (soportaUbigeoPersona
+                            ? "LEFT JOIN ubigeo_distrito ubd ON ubd.id_ubigeo_distrito = "
+                                    + "NVL(remitente.id_ubigeo_distrito, solicitante.id_ubigeo_distrito) "
+                                    + "LEFT JOIN ubigeo_provincia ubp ON ubp.id_ubigeo_provincia = ubd.id_ubigeo_provincia "
+                            : "")
                     + "WHERE e.id_expediente = ? AND e.activo = 1";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 for (int i = 1; i <= 5; i++) {
@@ -159,6 +257,22 @@ public class ExpedienteEdicionManualDAO {
     }
 
     public RegistroManualResultadoDTO guardar(ExpedienteEdicionManualDTO dto, Long idUsuarioActual) throws SQLException {
+        return guardarInterno(dto, idUsuarioActual, false);
+    }
+
+    /**
+     * Igual que {@link #guardar}, pero sin exigir etapa REGISTRO/estado REGISTRADO/sin asignación —
+     * port de {@code guardarDesdeAnalisis} (V2). Habilita el lápiz de edición del panel "Datos"
+     * dentro del módulo Análisis (21/08/2026, pedido explícito del usuario): un expediente ya
+     * recibido/en análisis nunca cumple esa condición de todas formas, así que sin este bypass el
+     * lápiz quedaba siempre deshabilitado ahí.
+     */
+    public RegistroManualResultadoDTO guardarDesdeAnalisis(ExpedienteEdicionManualDTO dto, Long idUsuarioActual) throws SQLException {
+        return guardarInterno(dto, idUsuarioActual, true);
+    }
+
+    private RegistroManualResultadoDTO guardarInterno(ExpedienteEdicionManualDTO dto, Long idUsuarioActual, boolean desdeAnalisis)
+            throws SQLException {
         if (dto == null || dto.getIdExpediente() == null) {
             throw new IllegalArgumentException("Seleccione un expediente para editar.");
         }
@@ -167,17 +281,27 @@ public class ExpedienteEdicionManualDAO {
             conn.setAutoCommit(false);
             try {
                 ExpedienteEstado estado = bloquearYObtenerEstado(conn, dto.getIdExpediente());
-                validarEditable(estado, tieneAsignacionActiva(conn, dto.getIdExpediente()));
+                validarEditable(estado, tieneAsignacionActiva(conn, dto.getIdExpediente()), desdeAnalisis);
 
+                boolean solicitanteEsCiudadano = "CIUDADANO".equals(dto.getSolicitud().getTipoSolicitanteEfectivo());
                 Long idTitular = upsertPersonaRelacion(conn, dto.getIdExpediente(), "TITULAR", dto.getTitular());
-                Long idRemitente = upsertPersonaRelacion(conn, dto.getIdExpediente(), "REMITENTE", dto.getRemitente());
-                Long idSolicitante = idRemitente == null ? idTitular : idRemitente;
+                Long idRemitente;
+                if (solicitanteEsCiudadano) {
+                    idRemitente = upsertPersonaRelacion(conn, dto.getIdExpediente(), "REMITENTE", dto.getRemitente());
+                } else {
+                    // El expediente pudo tener antes un Ciudadano como solicitante (o viceversa): al
+                    // cambiar de tipo, se desactiva la relación REMITENTE anterior en EXPEDIENTE_PERSONA
+                    // para que no quede una persona "fantasma" inconsistente con tipo_solicitante.
+                    desactivarPersonaRelacion(conn, dto.getIdExpediente(), "REMITENTE");
+                    idRemitente = null;
+                }
+                Long idSolicitante = idRemitente == null ? (solicitanteEsCiudadano ? idTitular : null) : idRemitente;
 
                 actualizarExpediente(conn, dto);
                 upsertSolicitud(conn, dto, idSolicitante);
                 upsertActa(conn, dto);
                 upsertDocumento(conn, dto);
-                insertarHistorial(conn, dto, estado);
+                insertarHistorial(conn, dto, estado, desdeAnalisis);
                 registrarAlertasEdicion(conn, dto, idUsuarioActual);
 
                 conn.commit();
@@ -186,6 +310,93 @@ public class ExpedienteEdicionManualDAO {
                         dto.getIdExpediente(),
                         textoNumeroExpediente(dto.getNumeroExpediente()),
                         "Datos de registro actualizados correctamente. No se modificó el número de expediente.");
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    /**
+     * Port de {@code ExpedienteEdicionManualDAO.eliminar} (V2): baja lógica (`activo=0`) de un
+     * registro desde Registro/Recepción, con la misma validación de editabilidad que {@link #guardar}
+     * (mismo lock {@code FOR UPDATE}, misma transacción) e historial ({@code tipo_movimiento
+     * BAJA_REGISTRO}, motivo {@code BAJA_REGISTRO_RECEPCION}).
+     *
+     * <p>13/08/2026, pedido explícito del usuario: se agregó la limpieza en cascada que hace V2
+     * después de la baja, en la MISMA transacción y mismo orden que allá — {@code
+     * expedienteRegistroDAO.limpiarAlertaPotencialDuplicadoTrasEliminacion} (alerta "Potencial
+     * duplicado" de la solicitud relacionada por acta, si solo queda 1), {@code
+     * grupoFamiliarDAO.limpiarAlertaPosibleGrupoFamiliarTrasEliminacion} (ídem "Posible Grupo
+     * Familiar" por apellidos), {@code grupoFamiliarDAO.limpiarAlertasGrupoFamiliarDeMiembrosRestantes}
+     * (limpia la alerta remanente de los DEMÁS integrantes de un grupo familiar YA CONFIRMADO — debe
+     * ir ANTES de retirar al propio integrante, porque necesita leer el grupo todavía asignado a su
+     * persona) y {@code grupoFamiliarDAO.retirarDeGrupoFamiliarSiCorresponde} (retira al PROPIO
+     * titular eliminado de su grupo familiar confirmado, al final).
+     */
+    public RegistroManualResultadoDTO eliminar(Long idExpediente, Long idUsuarioActual) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para eliminar.");
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteEstado estado = bloquearYObtenerEstado(conn, idExpediente);
+                validarEditable(estado, tieneAsignacionActiva(conn, idExpediente));
+
+                Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_ELIMINACION);
+                if (idMovimiento == null) {
+                    throw new SQLException("No se encontró el movimiento " + CODIGO_MOVIMIENTO_ELIMINACION
+                            + ". Ejecute el script de catálogo correspondiente.");
+                }
+                String sqlHistorial = "INSERT INTO expediente_historial ("
+                        + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_etapa_origen, id_estado_origen, "
+                        + "id_etapa_destino, id_estado_destino, tabla_relacionada, id_registro_relacionado, "
+                        + "comentario, motivo, activo, creado_por"
+                        + ") VALUES (?, ?, SYSTIMESTAMP, ?, ?, ?, ?, 'EXPEDIENTE', ?, ?, 'BAJA_REGISTRO_RECEPCION', 1, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sqlHistorial)) {
+                    ps.setLong(1, idExpediente);
+                    ps.setLong(2, idMovimiento);
+                    ps.setLong(3, estado.idEtapa);
+                    ps.setLong(4, estado.idEstado);
+                    ps.setLong(5, estado.idEtapa);
+                    ps.setLong(6, estado.idEstado);
+                    ps.setLong(7, idExpediente);
+                    ps.setString(8, limitar("Registro eliminado (baja lógica) desde Recepción. Expediente: "
+                            + textoNumeroExpediente(estado.numeroExpediente) + ".", 2000));
+                    setLongOrNull(ps, 9, idUsuarioActual);
+                    ps.executeUpdate();
+                }
+
+                String sqlBaja = "UPDATE expediente SET activo = 0, modificado_por = ?, modificado_en = SYSTIMESTAMP "
+                        + "WHERE id_expediente = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sqlBaja)) {
+                    setLongOrNull(ps, 1, idUsuarioActual);
+                    ps.setLong(2, idExpediente);
+                    if (ps.executeUpdate() != 1) {
+                        throw new SQLException("No se pudo eliminar el expediente seleccionado.");
+                    }
+                }
+
+                expedienteRegistroDAO.limpiarAlertaPotencialDuplicadoTrasEliminacion(conn, idExpediente, idUsuarioActual);
+                grupoFamiliarDAO.limpiarAlertaPosibleGrupoFamiliarTrasEliminacion(conn, idExpediente, idUsuarioActual);
+                // Grupo familiar YA CONFIRMADO: limpiar alertas remanentes de los demás integrantes
+                // primero (necesita leer el grupo todavía asignado a esta persona) y recién después
+                // retirar al propio integrante eliminado del grupo.
+                grupoFamiliarDAO.limpiarAlertasGrupoFamiliarDeMiembrosRestantes(conn, idExpediente, idUsuarioActual);
+                grupoFamiliarDAO.retirarDeGrupoFamiliarSiCorresponde(conn, idExpediente, idUsuarioActual);
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return new RegistroManualResultadoDTO(
+                        idExpediente,
+                        textoNumeroExpediente(estado.numeroExpediente),
+                        "El registro fue eliminado correctamente.");
             } catch (Exception ex) {
                 rollbackSilencioso(conn);
                 conn.setAutoCommit(previousAutoCommit);
@@ -226,6 +437,13 @@ public class ExpedienteEdicionManualDAO {
         solicitud.setGrupoFamiliar(rs.getInt("grupo_familiar") == 1);
         solicitud.setCriterioGrupoFamiliar(firstText(rs.getString("criterio_grupo_familiar"), extraerObservacion(observacion, "Criterio grupo familiar")));
         solicitud.setObservacionGrupoFamiliar(firstText(rs.getString("observacion_grupo_familiar"), extraerObservacion(observacion, "Observación grupo familiar")));
+        solicitud.setTipoSolicitante(rs.getString("tipo_solicitante"));
+        solicitud.setIdCentroAtencion(getLongOrNull(rs, "id_centro_atencion"));
+        solicitud.setCentroAtencionDenominacion(rs.getString("centro_atencion_denominacion"));
+        solicitud.setIdUnidadOrganica(getLongOrNull(rs, "id_unidad_organica"));
+        solicitud.setUnidadOrganicaNombre(rs.getString("unidad_organica_nombre"));
+        solicitud.setIdMunicipalidad(getLongOrNull(rs, "id_municipalidad"));
+        solicitud.setMunicipalidadDenominacion(rs.getString("municipalidad_denominacion"));
         dto.setSolicitud(solicitud);
 
         DatosActaDTO acta = new DatosActaDTO();
@@ -250,6 +468,8 @@ public class ExpedienteEdicionManualDAO {
         remitente.setTelefono(rs.getString("remitente_telefono"));
         remitente.setDireccion(rs.getString("remitente_direccion"));
         remitente.setIdDistrito(getLongOrNull(rs, "remitente_id_distrito"));
+        remitente.setIdProvincia(getLongOrNull(rs, "remitente_id_provincia"));
+        remitente.setIdDepartamento(getLongOrNull(rs, "remitente_id_departamento"));
         remitente.setDepartamento(rs.getString("remitente_departamento"));
         remitente.setProvincia(rs.getString("remitente_provincia"));
         remitente.setDistrito(rs.getString("remitente_distrito"));
@@ -278,6 +498,8 @@ public class ExpedienteEdicionManualDAO {
         Long idSolicitud = obtenerUltimoId(conn, "expediente_solicitud", "id_expediente_solicitud", dto.getIdExpediente());
         DatosSolicitudDTO solicitud = dto.getSolicitud();
         boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
+        boolean soportaTipoSolicitante = soportaTipoSolicitante(conn);
+        boolean soportaMunicipalidad = soportaMunicipalidad(conn);
         Long idCanal = null;
         if (hasText(solicitud.getCanalCodigo())) {
             idCanal = catalogoLookupDAO.obtenerCanalRecepcionId(conn, solicitud.getCanalCodigo());
@@ -287,25 +509,40 @@ public class ExpedienteEdicionManualDAO {
                     ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
                     : "";
             String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
+            String columnasSolicitante = soportaTipoSolicitante
+                    ? ", tipo_solicitante, id_centro_atencion, id_unidad_organica"
+                    : "";
+            String valoresSolicitante = soportaTipoSolicitante ? ", ?, ?, ?" : "";
+            String columnaMunicipalidad = soportaMunicipalidad ? ", id_municipalidad" : "";
+            String valorMunicipalidad = soportaMunicipalidad ? ", ?" : "";
             String insert = "INSERT INTO expediente_solicitud ("
                     + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                     + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
-                    + "correo_electronico, potencial_duplicado" + columnasGrupo + ", activo"
-                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?" + valoresGrupo + ", 1)";
+                    + "correo_electronico, potencial_duplicado" + columnasGrupo + columnasSolicitante + columnaMunicipalidad + ", activo"
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?" + valoresGrupo + valoresSolicitante + valorMunicipalidad + ", 1)";
             try (PreparedStatement ps = conn.prepareStatement(insert)) {
-                ps.setLong(1, dto.getIdExpediente());
-                setLongOrNull(ps, 2, idCanal);
-                setLongOrNull(ps, 3, idSolicitante);
-                ps.setString(4, solicitud.getNumeroTramite());
-                ps.setString(5, solicitud.getNumeroExpedienteSgd());
-                ps.setDate(6, toSqlDate(solicitud.getFechaRecepcion()));
-                ps.setString(7, solicitud.getTipoProcedimientoNombre());
-                ps.setString(8, limitar(observacionSolicitud(dto), 1000));
-                ps.setInt(9, dto.isPosibleDuplicado() ? 1 : 0);
+                int idx = 1;
+                ps.setLong(idx++, dto.getIdExpediente());
+                setLongOrNull(ps, idx++, idCanal);
+                setLongOrNull(ps, idx++, idSolicitante);
+                ps.setString(idx++, solicitud.getNumeroTramite());
+                ps.setString(idx++, solicitud.getNumeroExpedienteSgd());
+                ps.setDate(idx++, toSqlDate(solicitud.getFechaRecepcion()));
+                ps.setString(idx++, solicitud.getTipoProcedimientoNombre());
+                ps.setString(idx++, limitar(observacionSolicitud(dto), 1000));
+                ps.setInt(idx++, dto.isPosibleDuplicado() ? 1 : 0);
                 if (soportaGrupoFamiliar) {
-                    ps.setInt(10, solicitud.isGrupoFamiliar() ? 1 : 0);
-                    ps.setString(11, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
-                    ps.setString(12, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+                    ps.setInt(idx++, solicitud.isGrupoFamiliar() ? 1 : 0);
+                    ps.setString(idx++, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
+                    ps.setString(idx++, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+                }
+                if (soportaTipoSolicitante) {
+                    ps.setString(idx++, solicitud.getTipoSolicitanteEfectivo());
+                    setLongOrNull(ps, idx++, solicitud.getIdCentroAtencion());
+                    setLongOrNull(ps, idx++, solicitud.getIdUnidadOrganica());
+                }
+                if (soportaMunicipalidad) {
+                    setLongOrNull(ps, idx++, solicitud.getIdMunicipalidad());
                 }
                 ps.executeUpdate();
             }
@@ -314,29 +551,42 @@ public class ExpedienteEdicionManualDAO {
         String columnasGrupoUpdate = soportaGrupoFamiliar
                 ? "grupo_familiar = ?, criterio_grupo_familiar = ?, observacion_grupo_familiar = ?, "
                 : "";
+        String columnasSolicitanteUpdate = soportaTipoSolicitante
+                ? "tipo_solicitante = ?, id_centro_atencion = ?, id_unidad_organica = ?, "
+                : "";
+        String columnaMunicipalidadUpdate = soportaMunicipalidad ? "id_municipalidad = ?, " : "";
         String update = "UPDATE expediente_solicitud SET "
                 + "id_canal_recepcion = ?, id_persona_solicitante = ?, numero_tramite_documentario = ?, "
                 + "numero_expediente_sgd = ?, fecha_recepcion = ?, asunto = ?, observacion = ?, potencial_duplicado = ?, "
                 + columnasGrupoUpdate
+                + columnasSolicitanteUpdate
+                + columnaMunicipalidadUpdate
                 + "modificado_en = SYSTIMESTAMP "
                 + "WHERE id_expediente_solicitud = ?";
         try (PreparedStatement ps = conn.prepareStatement(update)) {
-            setLongOrNull(ps, 1, idCanal);
-            setLongOrNull(ps, 2, idSolicitante);
-            ps.setString(3, solicitud.getNumeroTramite());
-            ps.setString(4, solicitud.getNumeroExpedienteSgd());
-            ps.setDate(5, toSqlDate(solicitud.getFechaRecepcion()));
-            ps.setString(6, solicitud.getTipoProcedimientoNombre());
-            ps.setString(7, limitar(observacionSolicitud(dto), 1000));
-            ps.setInt(8, dto.isPosibleDuplicado() ? 1 : 0);
+            int idx = 1;
+            setLongOrNull(ps, idx++, idCanal);
+            setLongOrNull(ps, idx++, idSolicitante);
+            ps.setString(idx++, solicitud.getNumeroTramite());
+            ps.setString(idx++, solicitud.getNumeroExpedienteSgd());
+            ps.setDate(idx++, toSqlDate(solicitud.getFechaRecepcion()));
+            ps.setString(idx++, solicitud.getTipoProcedimientoNombre());
+            ps.setString(idx++, limitar(observacionSolicitud(dto), 1000));
+            ps.setInt(idx++, dto.isPosibleDuplicado() ? 1 : 0);
             if (soportaGrupoFamiliar) {
-                ps.setInt(9, solicitud.isGrupoFamiliar() ? 1 : 0);
-                ps.setString(10, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
-                ps.setString(11, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
-                ps.setLong(12, idSolicitud);
-            } else {
-                ps.setLong(9, idSolicitud);
+                ps.setInt(idx++, solicitud.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(idx++, limitar(resolverCriterioGrupoFamiliar(solicitud), 80));
+                ps.setString(idx++, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
             }
+            if (soportaTipoSolicitante) {
+                ps.setString(idx++, solicitud.getTipoSolicitanteEfectivo());
+                setLongOrNull(ps, idx++, solicitud.getIdCentroAtencion());
+                setLongOrNull(ps, idx++, solicitud.getIdUnidadOrganica());
+            }
+            if (soportaMunicipalidad) {
+                setLongOrNull(ps, idx++, solicitud.getIdMunicipalidad());
+            }
+            ps.setLong(idx, idSolicitud);
             ps.executeUpdate();
         }
     }
@@ -416,6 +666,21 @@ public class ExpedienteEdicionManualDAO {
         return idPersona;
     }
 
+    /**
+     * Desactiva (baja lógica) la relación activa de {@code tipoRelacion} de este expediente en
+     * EXPEDIENTE_PERSONA, si existe (14/08/2026, iniciativa "Solicitante con 3 tipos"). No borra la
+     * fila de PERSONA en sí (puede seguir en uso por otro rol/expediente), solo el vínculo.
+     */
+    private void desactivarPersonaRelacion(Connection conn, Long idExpediente, String tipoRelacion) throws SQLException {
+        String sql = "UPDATE expediente_persona SET activo = 0, modificado_en = SYSTIMESTAMP "
+                + "WHERE id_expediente = ? AND tipo_relacion_persona = ? AND activo = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, tipoRelacion);
+            ps.executeUpdate();
+        }
+    }
+
     private Long obtenerPersonaRelacion(Connection conn, Long idExpediente, String tipoRelacion) throws SQLException {
         String sql = "SELECT id_persona FROM (SELECT ep.id_persona FROM expediente_persona ep "
                 + "WHERE ep.id_expediente = ? AND ep.tipo_relacion_persona = ? AND ep.activo = 1 "
@@ -434,25 +699,34 @@ public class ExpedienteEdicionManualDAO {
 
     private Long insertarPersona(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
         boolean soportaUbigeo = soportaUbigeoPersona(conn);
+        boolean soportaApellidos = soportaApellidosPersona(conn);
         String columnasUbigeo = soportaUbigeo
                 ? ", id_ubigeo_distrito, departamento, provincia, distrito"
                 : "";
         String valoresUbigeo = soportaUbigeo ? ", ?, ?, ?, ?" : "";
+        String columnasApellidos = soportaApellidos ? ", apellido_paterno, apellido_materno, nombres" : "";
+        String valoresApellidos = soportaApellidos ? ", ?, ?, ?" : "";
         String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, "
-                + "correo_electronico, telefono, direccion" + columnasUbigeo + ", activo) "
-                + "VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + ", 1)";
+                + "correo_electronico, telefono, direccion" + columnasUbigeo + columnasApellidos + ", activo) "
+                + "VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + valoresApellidos + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
-            ps.setString(1, persona.getTipoDocumento());
-            ps.setString(2, persona.getNumeroDocumento());
-            ps.setString(3, persona.getNombreCompleto());
-            ps.setString(4, persona.getCorreo());
-            ps.setString(5, persona.getTelefono());
-            ps.setString(6, persona.getDireccion());
+            int idx = 1;
+            ps.setString(idx++, persona.getTipoDocumento());
+            ps.setString(idx++, persona.getNumeroDocumento());
+            ps.setString(idx++, persona.getNombreCompleto());
+            ps.setString(idx++, persona.getCorreo());
+            ps.setString(idx++, persona.getTelefono());
+            ps.setString(idx++, persona.getDireccion());
             if (soportaUbigeo) {
-                setLongOrNull(ps, 7, persona.getIdDistrito());
-                ps.setString(8, persona.getDepartamento());
-                ps.setString(9, persona.getProvincia());
-                ps.setString(10, persona.getDistrito());
+                setLongOrNull(ps, idx++, persona.getIdDistrito());
+                ps.setString(idx++, persona.getDepartamento());
+                ps.setString(idx++, persona.getProvincia());
+                ps.setString(idx++, persona.getDistrito());
+            }
+            if (soportaApellidos) {
+                ps.setString(idx++, persona.getApellidoPaterno());
+                ps.setString(idx++, persona.getApellidoMaterno());
+                ps.setString(idx++, persona.getNombres());
             }
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -466,29 +740,38 @@ public class ExpedienteEdicionManualDAO {
 
     private void actualizarPersona(Connection conn, Long idPersona, DatosPersonaRegistroDTO persona) throws SQLException {
         boolean soportaUbigeo = soportaUbigeoPersona(conn);
+        boolean soportaApellidos = soportaApellidosPersona(conn);
         String columnasUbigeo = soportaUbigeo
                 ? "id_ubigeo_distrito = ?, departamento = ?, provincia = ?, distrito = ?, "
+                : "";
+        String columnasApellidos = soportaApellidos
+                ? "apellido_paterno = ?, apellido_materno = ?, nombres = ?, "
                 : "";
         String sql = "UPDATE persona SET tipo_documento = ?, numero_documento = ?, razon_social = ?, "
                 + "correo_electronico = ?, telefono = ?, direccion = ?, "
                 + columnasUbigeo
+                + columnasApellidos
                 + "modificado_en = SYSTIMESTAMP WHERE id_persona = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, persona.getTipoDocumento());
-            ps.setString(2, persona.getNumeroDocumento());
-            ps.setString(3, persona.getNombreCompleto());
-            ps.setString(4, persona.getCorreo());
-            ps.setString(5, persona.getTelefono());
-            ps.setString(6, persona.getDireccion());
+            int idx = 1;
+            ps.setString(idx++, persona.getTipoDocumento());
+            ps.setString(idx++, persona.getNumeroDocumento());
+            ps.setString(idx++, persona.getNombreCompleto());
+            ps.setString(idx++, persona.getCorreo());
+            ps.setString(idx++, persona.getTelefono());
+            ps.setString(idx++, persona.getDireccion());
             if (soportaUbigeo) {
-                setLongOrNull(ps, 7, persona.getIdDistrito());
-                ps.setString(8, persona.getDepartamento());
-                ps.setString(9, persona.getProvincia());
-                ps.setString(10, persona.getDistrito());
-                ps.setLong(11, idPersona);
-            } else {
-                ps.setLong(7, idPersona);
+                setLongOrNull(ps, idx++, persona.getIdDistrito());
+                ps.setString(idx++, persona.getDepartamento());
+                ps.setString(idx++, persona.getProvincia());
+                ps.setString(idx++, persona.getDistrito());
             }
+            if (soportaApellidos) {
+                ps.setString(idx++, persona.getApellidoPaterno());
+                ps.setString(idx++, persona.getApellidoMaterno());
+                ps.setString(idx++, persona.getNombres());
+            }
+            ps.setLong(idx, idPersona);
             ps.executeUpdate();
         }
     }
@@ -504,11 +787,15 @@ public class ExpedienteEdicionManualDAO {
         }
     }
 
-    private void insertarHistorial(Connection conn, ExpedienteEdicionManualDTO dto, ExpedienteEstado estado) throws SQLException {
+    private void insertarHistorial(Connection conn, ExpedienteEdicionManualDTO dto, ExpedienteEstado estado, boolean desdeAnalisis)
+            throws SQLException {
         Long idMovimiento = catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_EDICION);
         if (idMovimiento == null) {
             throw new SQLException("No se encontró el movimiento RECEPCION_DOCUMENTO para registrar la edición manual.");
         }
+        String comentarioBase = desdeAnalisis
+                ? "Edición de datos desde Análisis. "
+                : "Edición manual de datos de recepción. ";
         String sql = "INSERT INTO expediente_historial ("
                 + "id_expediente, id_tipo_movimiento, fecha_movimiento, id_etapa_origen, id_estado_origen, "
                 + "id_etapa_destino, id_estado_destino, tabla_relacionada, id_registro_relacionado, "
@@ -522,7 +809,7 @@ public class ExpedienteEdicionManualDAO {
             ps.setLong(5, estado.idEtapa);
             ps.setLong(6, estado.idEstado);
             ps.setLong(7, dto.getIdExpediente());
-            ps.setString(8, limitar("Edición manual de datos de recepción. Expediente: "
+            ps.setString(8, limitar(comentarioBase + "Expediente: "
                     + textoNumeroExpediente(dto.getNumeroExpediente())
                     + ". No se modificó el número de expediente.", 2000));
             ps.executeUpdate();
@@ -554,6 +841,20 @@ public class ExpedienteEdicionManualDAO {
     }
 
     private void validarEditable(ExpedienteEstado estado, boolean tieneAsignacionActiva) throws SQLException {
+        validarEditable(estado, tieneAsignacionActiva, false);
+    }
+
+    /**
+     * Port de {@code validarEditable(estado, tieneAsignacionActiva, desdeAnalisis)} (V2): cuando
+     * {@code desdeAnalisis} es {@code true}, se omite por completo la exigencia de etapa
+     * REGISTRO/estado REGISTRADO/sin asignación — un expediente ya recibido en Análisis nunca
+     * cumple esa condición, así que V2 directamente no la aplica cuando la edición se abre desde ese
+     * módulo (mismo criterio replicado literal en V3, 21/08/2026, pedido explícito del usuario).
+     */
+    private void validarEditable(ExpedienteEstado estado, boolean tieneAsignacionActiva, boolean desdeAnalisis) throws SQLException {
+        if (desdeAnalisis) {
+            return;
+        }
         if (!CODIGO_ETAPA_REGISTRO.equalsIgnoreCase(safe(estado.etapaCodigo))
                 || !CODIGO_ESTADO_REGISTRADO.equalsIgnoreCase(safe(estado.estadoCodigo))) {
             throw new SQLException("Solo se permite editar expedientes en estado Registrado de Registro / Recepción.");
@@ -720,6 +1021,42 @@ public class ExpedienteEdicionManualDAO {
                 + "WHERE table_name = 'PERSONA' AND column_name IN ('ID_UBIGEO_DISTRITO', 'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO')";
         try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             return rs.next() && rs.getInt(1) == 4;
+        }
+    }
+
+    /**
+     * Mismo patrón que {@link #soportaUbigeoPersona(Connection)} (degradación elegante mientras el
+     * script {@code 100_persona_apellido_paterno_materno.sql} no se ejecute contra Oracle): ver
+     * Javadoc gemelo en {@code ExpedienteRegistroDAO}.
+     */
+    private boolean soportaApellidosPersona(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'PERSONA' AND column_name IN ('APELLIDO_PATERNO', 'APELLIDO_MATERNO')";
+        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 2;
+        }
+    }
+
+    /** Mismo patrón que {@link #soportaApellidosPersona(Connection)} — ver Javadoc gemelo en ExpedienteRegistroDAO. */
+    private boolean soportaTipoSolicitante(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name IN ('TIPO_SOLICITANTE', 'ID_CENTRO_ATENCION', 'ID_UNIDAD_ORGANICA')";
+        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 3;
+        }
+    }
+
+    /**
+     * Mismo patrón que {@link #soportaTipoSolicitante(Connection)}, independiente de ese chequeo: la
+     * columna {@code ID_MUNICIPALIDAD} viene de un script separado ({@code
+     * 105_municipalidad_tipo_solicitante.sql}), que puede ejecutarse en un momento distinto al 101.
+     */
+    private boolean soportaMunicipalidad(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' AND column_name = 'ID_MUNICIPALIDAD'";
+        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            return rs.next() && rs.getInt(1) == 1;
         }
     }
 

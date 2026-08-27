@@ -31,7 +31,7 @@ public class CargaLaboralAbogadoService {
         return cargaLaboralAbogadoDAO.listarDocumentosPorAbogado(idUsuario);
     }
 
-    public Set<Long> listarIdsUsuarioConVencimientoEnRango(LocalDate desde, LocalDate hasta) throws SQLException {
-        return cargaLaboralAbogadoDAO.listarIdsUsuarioConVencimientoEnRango(desde, hasta);
+    public Set<Long> listarIdsUsuarioConSolicitudEnRango(LocalDate desde, LocalDate hasta) throws SQLException {
+        return cargaLaboralAbogadoDAO.listarIdsUsuarioConSolicitudEnRango(desde, hasta);
     }
 }

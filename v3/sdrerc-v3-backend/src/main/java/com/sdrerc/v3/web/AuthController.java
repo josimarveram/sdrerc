@@ -2,6 +2,7 @@ package com.sdrerc.v3.web;
 
 import com.sdrerc.v3.application.AutenticacionService;
 import com.sdrerc.v3.domain.AuthenticatedUser;
+import com.sdrerc.v3.infrastructure.dao.PermisoRolDAO;
 import com.sdrerc.v3.security.jwt.JwtService;
 import com.sdrerc.v3.web.dto.ChallengeTokenRequest;
 import com.sdrerc.v3.web.dto.ChangePasswordRequest;
@@ -35,10 +36,12 @@ public class AuthController {
 
     private final AutenticacionService autenticacionService;
     private final JwtService jwtService;
+    private final PermisoRolDAO permisoRolDAO;
 
-    public AuthController(AutenticacionService autenticacionService, JwtService jwtService) {
+    public AuthController(AutenticacionService autenticacionService, JwtService jwtService, PermisoRolDAO permisoRolDAO) {
         this.autenticacionService = autenticacionService;
         this.jwtService = jwtService;
+        this.permisoRolDAO = permisoRolDAO;
     }
 
     @PostMapping("/login")
@@ -104,7 +107,8 @@ public class AuthController {
     private SessionResponse completarSesion(Long idUsuario, List<String> backupCodesOEnrolamiento) throws SQLException {
         AuthenticatedUser user = autenticacionService.completarLogin(idUsuario);
         String accessToken = jwtService.issueSessionToken(user);
-        return new SessionResponse(accessToken, user.username(), user.nombreCompleto(), user.roles(),
+        List<String> permisos = permisoRolDAO.listarCodigosPermisoDeRoles(user.roles());
+        return new SessionResponse(accessToken, user.username(), user.nombreCompleto(), user.roles(), permisos,
                 backupCodesOEnrolamiento);
     }
 

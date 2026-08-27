@@ -28,8 +28,39 @@ public class RegistroManualValidacionService {
         validarSolicitud(registro.getSolicitud(), errores);
         validarActa(registro.getActa(), errores);
         validarPersona("Titular", registro.getTitular(), true, errores);
-        validarPersona("Solicitante", registro.getRemitente(), true, errores);
+        validarTipoSolicitante(registro.getSolicitud(), registro.getRemitente(), errores);
         return errores;
+    }
+
+    /**
+     * Solicitante con 3 tipos (14/08/2026, ver v3/CLAUDE.md): solo CIUDADANO valida `remitente`
+     * (mismas reglas de siempre — nombre/documento/correo/teléfono). CENTRO_ATENCION/UNIDAD_ORGANICA
+     * no usan `remitente` en absoluto (el DAO ni siquiera crea una PERSONA para esos casos), así que
+     * exigir `remitente.nombreCompleto` ahí habría sido un falso obligatorio imposible de cumplir
+     * desde el formulario — bug real detectado y corregido en este mismo incremento (antes, la
+     * validación de "Solicitante obligatorio." se aplicaba siempre, sin importar el tipo).
+     */
+    private void validarTipoSolicitante(DatosSolicitudDTO solicitud, DatosPersonaRegistroDTO remitente, List<String> errores) {
+        String tipo = solicitud.getTipoSolicitanteEfectivo();
+        if ("CENTRO_ATENCION".equals(tipo)) {
+            if (solicitud.getIdCentroAtencion() == null) {
+                errores.add("Seleccione un centro de atención.");
+            }
+            return;
+        }
+        if ("UNIDAD_ORGANICA".equals(tipo)) {
+            if (solicitud.getIdUnidadOrganica() == null) {
+                errores.add("Seleccione una unidad orgánica.");
+            }
+            return;
+        }
+        if ("MUNICIPALIDAD".equals(tipo)) {
+            if (solicitud.getIdMunicipalidad() == null) {
+                errores.add("Seleccione una municipalidad.");
+            }
+            return;
+        }
+        validarPersona("Solicitante", remitente, true, errores);
     }
 
     private void validarSolicitud(DatosSolicitudDTO solicitud, List<String> errores) {
@@ -38,6 +69,12 @@ public class RegistroManualValidacionService {
         }
         if (esNoCorresponde(solicitud.getValidacionInicial()) && !hasText(solicitud.getHojaEnvio())) {
             errores.add("Hoja de envío obligatoria cuando no corresponde a la SDRERC.");
+        }
+        // Canal de ingreso obligatorio (18/08/2026, pedido explícito del usuario): a diferencia del
+        // resto de este método (port literal de V2, que nunca lo exigía), esta regla es nueva y
+        // exclusiva de V3 — no se replica en el V2 legacy (intocable).
+        if (!hasText(solicitud.getCanalNombre())) {
+            errores.add("Canal de ingreso obligatorio.");
         }
         if (!hasText(solicitud.getTipoSolicitudNombre())) {
             errores.add("Tipo de solicitud obligatorio.");

@@ -1,6 +1,7 @@
 package com.sdrerc.v3.application;
 
 import com.sdrerc.v3.domain.GrupoFamiliarCandidatoDTO;
+import com.sdrerc.v3.domain.GrupoFamiliarEstadoAlertaDTO;
 import com.sdrerc.v3.domain.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.v3.domain.GrupoFamiliarResultadoDTO;
 import com.sdrerc.v3.infrastructure.dao.GrupoFamiliarDAO;
@@ -43,5 +44,13 @@ public class GrupoFamiliarService {
 
     public GrupoFamiliarResultadoDTO eliminarDeGrupoFamiliar(Long idExpediente) throws SQLException {
         return grupoFamiliarDAO.eliminarDeGrupoFamiliar(idExpediente, CurrentUser.get().idUsuario());
+    }
+
+    public GrupoFamiliarEstadoAlertaDTO obtenerEstadoAlerta(Long idExpediente) throws SQLException {
+        return grupoFamiliarDAO.obtenerEstadoAlerta(idExpediente);
+    }
+
+    public void eliminarAlertaPosibleGrupoFamiliar(Long idExpediente) throws SQLException {
+        grupoFamiliarDAO.eliminarAlertaPosibleGrupoFamiliar(idExpediente, CurrentUser.get().idUsuario());
     }
 }

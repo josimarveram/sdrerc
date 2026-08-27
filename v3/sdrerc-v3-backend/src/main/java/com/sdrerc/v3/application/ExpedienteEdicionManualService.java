@@ -1,6 +1,7 @@
 package com.sdrerc.v3.application;
 
 import com.sdrerc.v3.domain.ExpedienteEdicionManualDTO;
+import com.sdrerc.v3.domain.ImpactoEliminacionRegistroDTO;
 import com.sdrerc.v3.domain.RegistroManualResultadoDTO;
 import com.sdrerc.v3.infrastructure.dao.ExpedienteEdicionManualDAO;
 import com.sdrerc.v3.infrastructure.dao.ExpedienteRegistroDAO;
@@ -11,12 +12,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * Port literal de com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService (V2), acotado al
- * camino de edición desde Registro/Recepción (sin {@code obtenerParaEdicionDesdeAnalisis}/
- * {@code guardarDesdeAnalisis}/{@code eliminar} — ver Javadoc de {@link ExpedienteEdicionManualDAO}).
- * Única diferencia real: {@code guardar()} resuelve el usuario actual desde {@link CurrentUser}
- * (JWT del request) en vez de {@code SessionContext} estático, mismo patrón ya aplicado en
- * Registro manual/Carga diaria.
+ * Port literal de com.sdrerc.application.sdrercapp.ExpedienteEdicionManualService (V2), con el
+ * camino de edición/baja desde Registro/Recepción MÁS el overload {@code desdeAnalisis} agregado
+ * 21/08/2026 (pedido explícito del usuario) — ver Javadoc de {@link ExpedienteEdicionManualDAO}.
+ * Única diferencia real: {@code guardar()}/{@code eliminar()} resuelven el usuario actual desde
+ * {@link CurrentUser} (JWT del request) en vez de {@code SessionContext} estático, mismo patrón ya
+ * aplicado en Registro manual/Carga diaria.
  */
 @Service
 public class ExpedienteEdicionManualService {
@@ -35,10 +36,21 @@ public class ExpedienteEdicionManualService {
     }
 
     public ExpedienteEdicionManualDTO obtenerParaEdicion(Long idExpediente) throws SQLException {
+        return obtenerParaEdicion(idExpediente, false);
+    }
+
+    /**
+     * {@code desdeAnalisis=true} omite la exigencia de etapa REGISTRO/estado REGISTRADO/sin
+     * asignación (21/08/2026, pedido explícito del usuario: habilitar el lápiz de edición del panel
+     * "Datos" dentro del módulo Análisis) — ver Javadoc de {@link ExpedienteEdicionManualDAO}.
+     */
+    public ExpedienteEdicionManualDTO obtenerParaEdicion(Long idExpediente, boolean desdeAnalisis) throws SQLException {
         if (idExpediente == null) {
             throw new IllegalArgumentException("Seleccione un expediente para editar.");
         }
-        return edicionManualDAO.obtenerParaEdicion(idExpediente);
+        return desdeAnalisis
+                ? edicionManualDAO.obtenerParaEdicionDesdeAnalisis(idExpediente)
+                : edicionManualDAO.obtenerParaEdicion(idExpediente);
     }
 
     /** Solo lectura, sin exigir editable — usado por el panel "Datos" (ver Javadoc del DAO). */
@@ -58,13 +70,26 @@ public class ExpedienteEdicionManualService {
         errores.addAll(validacionService.validar(dto));
         dto.setPosibleDuplicado(false);
         dto.setMotivoDuplicado(null);
+        dto.setNumeroExpedienteSgdDuplicado(false);
+        dto.setMotivoNumeroExpedienteSgdDuplicado(null);
 
         String numeroExpedienteSgd = dto.getSolicitud().getNumeroExpedienteSgd();
         if (hasText(numeroExpedienteSgd)) {
             String duplicado = expedienteRegistroDAO.detectarDuplicadoPorNumeroExpedienteSgd(
                     numeroExpedienteSgd, dto.getIdExpediente());
             if (hasText(duplicado)) {
-                errores.add("N° expediente SGD ya está registrado en " + duplicado + ". Ingrese un número distinto.");
+                // Bug corregido (13/08/2026, pedido explícito del usuario): antes solo se agregaba
+                // el mensaje a `errores` (texto genérico en el Alert superior), sin marcar
+                // `numeroExpedienteSgdDuplicado`/`motivoNumeroExpedienteSgdDuplicado` en el DTO —
+                // a diferencia de `RegistroManualExpedienteService.validarConDuplicados`, que sí
+                // marca esos 2 campos. Sin esto, `RegistroExpedienteForm` (compartido con
+                // Registro manual) nunca resaltaba el campo "N° expediente SGD" en rojo con su
+                // `helperText` para Edición manual/el panel de datos inline, aunque el backend ya
+                // detectaba el duplicado correctamente.
+                String motivo = "N° expediente SGD ya está registrado en " + duplicado + ".";
+                dto.setNumeroExpedienteSgdDuplicado(true);
+                dto.setMotivoNumeroExpedienteSgdDuplicado(motivo);
+                errores.add(motivo + " Ingrese un número distinto.");
             }
         }
 
@@ -82,11 +107,27 @@ public class ExpedienteEdicionManualService {
     }
 
     public RegistroManualResultadoDTO guardar(ExpedienteEdicionManualDTO dto) throws SQLException {
+        return guardar(dto, false);
+    }
+
+    /** {@code desdeAnalisis=true} — ver Javadoc de {@link #obtenerParaEdicion(Long, boolean)}. */
+    public RegistroManualResultadoDTO guardar(ExpedienteEdicionManualDTO dto, boolean desdeAnalisis) throws SQLException {
         List<String> errores = validar(dto);
         if (!errores.isEmpty()) {
             throw new IllegalArgumentException(String.join(" | ", errores));
         }
-        return edicionManualDAO.guardar(dto, CurrentUser.get().idUsuario());
+        return desdeAnalisis
+                ? edicionManualDAO.guardarDesdeAnalisis(dto, CurrentUser.get().idUsuario())
+                : edicionManualDAO.guardar(dto, CurrentUser.get().idUsuario());
+    }
+
+    public RegistroManualResultadoDTO eliminar(Long idExpediente) throws SQLException {
+        return edicionManualDAO.eliminar(idExpediente, CurrentUser.get().idUsuario());
+    }
+
+    /** Info de impacto para el modal de confirmación de eliminación — ver Javadoc del DAO. */
+    public ImpactoEliminacionRegistroDTO obtenerImpactoEliminacion(Long idExpediente) throws SQLException {
+        return edicionManualDAO.obtenerImpactoEliminacion(idExpediente);
     }
 
     private static boolean hasText(String value) {

@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +38,11 @@ import org.springframework.stereotype.Repository;
  * {@code SessionContext.getUserId()} estático) se reemplaza por un parámetro explícito
  * {@code idUsuarioActual}, resuelto por el caller desde {@link com.sdrerc.v3.security.jwt.CurrentUser}
  * (ver plan de migración, patrón ya aplicado en Fase 1 con VisibilidadBandejaSql).</p>
+ *
+ * <p>13/08/2026, pedido explícito del usuario: se agregó además {@link #limpiarAlertaPotencialDuplicadoTrasEliminacion}
+ * (limpieza en cascada de la alerta "Potencial duplicado" de las solicitudes relacionadas al eliminar
+ * un registro desde Registro/Recepción — ver {@code ExpedienteEdicionManualDAO#eliminar}), port
+ * literal del método homónimo de V2.</p>
  */
 @Repository
 public class ExpedienteRegistroDAO {
@@ -229,19 +235,28 @@ public class ExpedienteRegistroDAO {
                 boolean soportaGrupoFamiliar = soportaGrupoFamiliarSolicitud(conn);
 
                 for (CargaDiariaPreviewDTO item : candidatos) {
+                    boolean solicitanteEsCiudadano = "CIUDADANO".equals(item.getTipoSolicitanteEfectivo());
                     Long idTitular = insertarPersona(
                             conn,
                             item.getTitular(),
                             item.getTipoDocumentoIdentidadTitular(),
-                            item.getNumeroDocumentoIdentidadTitular());
-                    Long idRemitente = hasText(item.getRemitente()) && !equalsIgnoreCase(item.getRemitente(), item.getTitular())
+                            item.getNumeroDocumentoIdentidadTitular(),
+                            item.getApellidoPaternoTitular(),
+                            item.getApellidoMaternoTitular(),
+                            item.getNombresTitular());
+                    Long idRemitente = solicitanteEsCiudadano
+                                    && hasText(item.getRemitente())
+                                    && !equalsIgnoreCase(item.getRemitente(), item.getTitular())
                             ? insertarPersona(
                                     conn,
                                     item.getRemitente(),
                                     item.getTipoDocumentoIdentidadSolicitante(),
-                                    item.getNumeroDocumentoIdentidadSolicitante())
+                                    item.getNumeroDocumentoIdentidadSolicitante(),
+                                    item.getApellidoPaternoSolicitante(),
+                                    item.getApellidoMaternoSolicitante(),
+                                    item.getNombresSolicitante())
                             : null;
-                    Long idSolicitante = idRemitente == null ? idTitular : idRemitente;
+                    Long idSolicitante = idRemitente == null ? (solicitanteEsCiudadano ? idTitular : null) : idRemitente;
 
                     Long idExpediente = insertarExpedienteCarga(conn, item, idEtapaRegistro, idEstadoRegistrado);
                     String numeroExpediente = item.getNumeroExpedienteGenerado();
@@ -338,8 +353,9 @@ public class ExpedienteRegistroDAO {
                     registro.setMotivoDuplicado(duplicadoActaTitular.mensajeDuplicado());
                 }
 
+                boolean solicitanteEsCiudadano = "CIUDADANO".equals(registro.getSolicitud().getTipoSolicitanteEfectivo());
                 Long idTitular = insertarPersonaManual(conn, registro.getTitular());
-                Long idRemitente = insertarPersonaManual(conn, registro.getRemitente());
+                Long idRemitente = solicitanteEsCiudadano ? insertarPersonaManual(conn, registro.getRemitente()) : null;
                 Long idExpediente = insertarExpedienteManual(conn, registro.getSolicitud(), idEtapaRegistro, idEstadoRegistrado);
                 String motivoSinNumero = motivoSinNumero(duplicadoActaTitular, registro.getSolicitud().getTipoProcedimientoNombre());
                 String numeroExpediente = null;
@@ -352,7 +368,9 @@ public class ExpedienteRegistroDAO {
 
                 insertarSolicitudManual(conn, registro, idExpediente, idRemitente, soportaGrupoFamiliar);
                 insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
-                insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
+                if (idRemitente != null) {
+                    insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
+                }
                 insertarActaManual(conn, registro.getActa(), idExpediente);
                 insertarDocumentoManual(conn, registro.getSolicitud(), idExpediente);
                 insertarHistorialManual(conn, registro, idExpediente, idTipoMovimiento, idEtapaRegistro, idEstadoRegistrado, numeroExpediente);
@@ -411,6 +429,80 @@ public class ExpedienteRegistroDAO {
             }
         }
         return 0;
+    }
+
+    /**
+     * Ids de expedientes activos (excluyendo el propio) con el mismo número de acta que idExpediente.
+     * Usado al eliminar (baja lógica) un registro para decidir si la alerta "Potencial duplicado" de
+     * los demás relacionados también debe limpiarse (solo quedaba 1 solicitud activa relacionada) o
+     * si debe mantenerse (eran 2 o más). Port literal de V2.
+     */
+    private List<Long> listarExpedientesActivosPorActa(Connection conn, Long idExpediente) throws SQLException {
+        List<Long> ids = new ArrayList<>();
+        if (conn == null || idExpediente == null) {
+            return ids;
+        }
+        String acta = obtenerNumeroActaActivo(conn, idExpediente);
+        if (!hasText(acta)) {
+            return ids;
+        }
+        String sql = "SELECT e.id_expediente FROM expediente e "
+                + "JOIN expediente_acta a ON a.id_expediente = e.id_expediente "
+                + "WHERE e.activo = 1 AND a.activo = 1 "
+                + "AND UPPER(TRIM(a.numero_acta)) = ? "
+                + "AND e.id_expediente <> ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, acta.trim().toUpperCase(Locale.ROOT));
+            ps.setLong(2, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getLong("id_expediente"));
+                }
+            }
+        }
+        return ids;
+    }
+
+    private String obtenerNumeroActaActivo(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT numero_acta FROM (SELECT a.numero_acta FROM expediente_acta a "
+                + "WHERE a.id_expediente = ? AND a.activo = 1 "
+                + "ORDER BY a.creado_en DESC, a.id_expediente_acta DESC) WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("numero_acta") : null;
+            }
+        }
+    }
+
+    /**
+     * Limpia la alerta "Potencial duplicado" (flag {@code EXPEDIENTE_SOLICITUD.potencial_duplicado}
+     * + fila en {@code EXPEDIENTE_ALERTA}) del propio idExpediente y, si tras eliminarlo solo queda 1
+     * solicitud activa relacionada por número de acta, también la de esa única sobreviviente (ya no
+     * hay con quién ser "potencial duplicado"). Si quedan 2 o más relacionadas, esas se dejan
+     * intactas. Debe llamarse dentro de la misma transacción de la baja lógica del expediente
+     * eliminado. Port literal de V2 (07/08/2026 allá, 13/08/2026 acá).
+     */
+    public void limpiarAlertaPotencialDuplicadoTrasEliminacion(
+            Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        if (conn == null || idExpediente == null) {
+            return;
+        }
+        List<Long> relacionados = listarExpedientesActivosPorActa(conn, idExpediente);
+        limpiarAlertaPotencialDuplicado(conn, idExpediente, idUsuario);
+        if (relacionados.size() == 1) {
+            limpiarAlertaPotencialDuplicado(conn, relacionados.get(0), idUsuario);
+        }
+    }
+
+    private void limpiarAlertaPotencialDuplicado(Connection conn, Long idExpediente, Long idUsuario) throws SQLException {
+        String sql = "UPDATE expediente_solicitud SET potencial_duplicado = 0 "
+                + "WHERE id_expediente = ? AND activo = 1 AND potencial_duplicado = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.executeUpdate();
+        }
+        expedienteAlertaDAO.marcarAtendidas(conn, idExpediente, Collections.singletonList("Potencial duplicado"), idUsuario);
     }
 
     /**
@@ -571,11 +663,38 @@ public class ExpedienteRegistroDAO {
     }
 
     private Long insertarPersona(Connection conn, String nombre, String tipoDocumento, String numeroDocumento) throws SQLException {
-        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, activo) VALUES (?, ?, ?, 1)";
+        return insertarPersona(conn, nombre, tipoDocumento, numeroDocumento, null, null, null);
+    }
+
+    /**
+     * Overload con los 3 campos estructurados opcionales (14/08/2026, Fase 5 "híbrida" de Carga
+     * diaria) — mismo dual-write que {@code insertarPersonaManual}/{@code ExpedienteEdicionManualDAO}:
+     * si vienen null (caso normal hoy, la plantilla oficial no los tiene) o si las columnas todavía
+     * no existen en Oracle, se comporta idéntico al overload de 3 args (solo `razon_social`).
+     */
+    private Long insertarPersona(
+            Connection conn,
+            String nombre,
+            String tipoDocumento,
+            String numeroDocumento,
+            String apellidoPaterno,
+            String apellidoMaterno,
+            String nombres) throws SQLException {
+        boolean soportaApellidos = soportaApellidosPersona(conn) && (apellidoPaterno != null || apellidoMaterno != null || nombres != null);
+        String columnasApellidos = soportaApellidos ? ", apellido_paterno, apellido_materno, nombres" : "";
+        String valoresApellidos = soportaApellidos ? ", ?, ?, ?" : "";
+        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social" + columnasApellidos + ", activo) "
+                + "VALUES (?, ?, ?" + valoresApellidos + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
-            ps.setString(1, normalizarTipoDocumentoIdentidadParaBd(tipoDocumento));
-            ps.setString(2, normalizarDocumentoIdentidadParaBd(numeroDocumento));
-            ps.setString(3, nombre);
+            int idx = 1;
+            ps.setString(idx++, normalizarTipoDocumentoIdentidadParaBd(tipoDocumento));
+            ps.setString(idx++, normalizarDocumentoIdentidadParaBd(numeroDocumento));
+            ps.setString(idx++, nombre);
+            if (soportaApellidos) {
+                ps.setString(idx++, apellidoPaterno);
+                ps.setString(idx++, apellidoMaterno);
+                ps.setString(idx++, nombres);
+            }
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "persona");
         }
@@ -608,29 +727,46 @@ public class ExpedienteRegistroDAO {
             String codigoCanal = resolverCodigoCanalRecepcion(item.getCanalRecepcion());
             idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, codigoCanal), "canal " + nombreVisualCanal(codigoCanal));
         }
+        boolean soportaTipoSolicitante = soportaTipoSolicitante(conn);
+        boolean soportaMunicipalidad = soportaMunicipalidad(conn);
         String columnasGrupo = soportaGrupoFamiliar
                 ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
                 : "";
         String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
+        String columnasSolicitante = soportaTipoSolicitante
+                ? ", tipo_solicitante, id_centro_atencion, id_unidad_organica"
+                : "";
+        String valoresSolicitante = soportaTipoSolicitante ? ", ?, ?, ?" : "";
+        String columnaMunicipalidad = soportaMunicipalidad ? ", id_municipalidad" : "";
+        String valorMunicipalidad = soportaMunicipalidad ? ", ?" : "";
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                 + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
-                + "potencial_duplicado" + columnasGrupo + ", activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?" + valoresGrupo + ", 1)";
+                + "potencial_duplicado" + columnasGrupo + columnasSolicitante + columnaMunicipalidad + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?" + valoresGrupo + valoresSolicitante + valorMunicipalidad + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, idExpediente);
-            setLongOrNull(ps, 2, idCanal);
-            setLongOrNull(ps, 3, idPersonaSolicitante);
-            ps.setString(4, item.getNumeroTramite());
-            ps.setString(5, item.getNumeroExpedienteSgd());
-            ps.setDate(6, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
-            ps.setString(7, item.getTipoProcedimiento());
-            ps.setString(8, limitar(observacionSolicitud(item), 1000));
-            ps.setInt(9, item.isPosibleDuplicado() ? 1 : 0);
+            int idx = 1;
+            ps.setLong(idx++, idExpediente);
+            setLongOrNull(ps, idx++, idCanal);
+            setLongOrNull(ps, idx++, idPersonaSolicitante);
+            ps.setString(idx++, item.getNumeroTramite());
+            ps.setString(idx++, item.getNumeroExpedienteSgd());
+            ps.setDate(idx++, item.getFechaRecepcion() == null ? null : Date.valueOf(item.getFechaRecepcion()));
+            ps.setString(idx++, item.getTipoProcedimiento());
+            ps.setString(idx++, limitar(observacionSolicitud(item), 1000));
+            ps.setInt(idx++, item.isPosibleDuplicado() ? 1 : 0);
             if (soportaGrupoFamiliar) {
-                ps.setInt(10, item.isGrupoFamiliar() ? 1 : 0);
-                ps.setString(11, limitar(resolverCriterioGrupoFamiliar(item.isGrupoFamiliar(), item.getCriterioGrupoFamiliar()), 80));
-                ps.setString(12, limitar(item.getObservacionGrupoFamiliar(), 500));
+                ps.setInt(idx++, item.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(idx++, limitar(resolverCriterioGrupoFamiliar(item.isGrupoFamiliar(), item.getCriterioGrupoFamiliar()), 80));
+                ps.setString(idx++, limitar(item.getObservacionGrupoFamiliar(), 500));
+            }
+            if (soportaTipoSolicitante) {
+                ps.setString(idx++, item.getTipoSolicitanteEfectivo());
+                setLongOrNull(ps, idx++, item.getIdCentroAtencion());
+                setLongOrNull(ps, idx++, item.getIdUnidadOrganica());
+            }
+            if (soportaMunicipalidad) {
+                setLongOrNull(ps, idx++, item.getIdMunicipalidad());
             }
             ps.executeUpdate();
         }
@@ -820,26 +956,35 @@ public class ExpedienteRegistroDAO {
 
     private Long insertarPersonaManual(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
         boolean soportaUbigeo = soportaUbigeoPersona(conn);
+        boolean soportaApellidos = soportaApellidosPersona(conn);
         String columnasUbigeo = soportaUbigeo
                 ? ", id_ubigeo_distrito, departamento, provincia, distrito"
                 : "";
         String valoresUbigeo = soportaUbigeo ? ", ?, ?, ?, ?" : "";
+        String columnasApellidos = soportaApellidos ? ", apellido_paterno, apellido_materno, nombres" : "";
+        String valoresApellidos = soportaApellidos ? ", ?, ?, ?" : "";
         String sql = "INSERT INTO persona ("
                 + "tipo_documento, numero_documento, razon_social, correo_electronico, telefono, direccion"
-                + columnasUbigeo + ", activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + ", 1)";
+                + columnasUbigeo + columnasApellidos + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + valoresApellidos + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
-            ps.setString(1, persona.getTipoDocumento());
-            ps.setString(2, persona.getNumeroDocumento());
-            ps.setString(3, persona.getNombreCompleto());
-            ps.setString(4, persona.getCorreo());
-            ps.setString(5, persona.getTelefono());
-            ps.setString(6, persona.getDireccion());
+            int idx = 1;
+            ps.setString(idx++, persona.getTipoDocumento());
+            ps.setString(idx++, persona.getNumeroDocumento());
+            ps.setString(idx++, persona.getNombreCompleto());
+            ps.setString(idx++, persona.getCorreo());
+            ps.setString(idx++, persona.getTelefono());
+            ps.setString(idx++, persona.getDireccion());
             if (soportaUbigeo) {
-                setLongOrNull(ps, 7, persona.getIdDistrito());
-                ps.setString(8, persona.getDepartamento());
-                ps.setString(9, persona.getProvincia());
-                ps.setString(10, persona.getDistrito());
+                setLongOrNull(ps, idx++, persona.getIdDistrito());
+                ps.setString(idx++, persona.getDepartamento());
+                ps.setString(idx++, persona.getProvincia());
+                ps.setString(idx++, persona.getDistrito());
+            }
+            if (soportaApellidos) {
+                ps.setString(idx++, persona.getApellidoPaterno());
+                ps.setString(idx++, persona.getApellidoMaterno());
+                ps.setString(idx++, persona.getNombres());
             }
             ps.executeUpdate();
             return obtenerGeneratedKey(ps, "persona");
@@ -883,30 +1028,47 @@ public class ExpedienteRegistroDAO {
             idCanal = requerirId(catalogoLookupDAO.obtenerCanalRecepcionId(conn, solicitud.getCanalCodigo()), "canal " + solicitud.getCanalNombre());
         }
 
+        boolean soportaTipoSolicitante = soportaTipoSolicitante(conn);
+        boolean soportaMunicipalidad = soportaMunicipalidad(conn);
         String columnasGrupo = soportaGrupoFamiliar
                 ? ", grupo_familiar, criterio_grupo_familiar, observacion_grupo_familiar"
                 : "";
         String valoresGrupo = soportaGrupoFamiliar ? ", ?, ?, ?" : "";
+        String columnasSolicitante = soportaTipoSolicitante
+                ? ", tipo_solicitante, id_centro_atencion, id_unidad_organica"
+                : "";
+        String valoresSolicitante = soportaTipoSolicitante ? ", ?, ?, ?" : "";
+        String columnaMunicipalidad = soportaMunicipalidad ? ", id_municipalidad" : "";
+        String valorMunicipalidad = soportaMunicipalidad ? ", ?" : "";
         String sql = "INSERT INTO expediente_solicitud ("
                 + "id_expediente, id_canal_recepcion, id_persona_solicitante, numero_tramite_documentario, "
                 + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
-                + "correo_electronico, potencial_duplicado" + columnasGrupo + ", activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?" + valoresGrupo + ", 1)";
+                + "correo_electronico, potencial_duplicado" + columnasGrupo + columnasSolicitante + columnaMunicipalidad + ", activo"
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?" + valoresGrupo + valoresSolicitante + valorMunicipalidad + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, idExpediente);
-            setLongOrNull(ps, 2, idCanal);
-            setLongOrNull(ps, 3, idPersonaSolicitante);
-            ps.setString(4, solicitud.getNumeroTramite());
-            ps.setString(5, solicitud.getNumeroExpedienteSgd());
-            ps.setDate(6, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
-            ps.setString(7, solicitud.getTipoProcedimientoNombre());
-            ps.setString(8, limitar(observacionSolicitud(registro), 1000));
-            ps.setNull(9, Types.VARCHAR);
-            ps.setInt(10, registro.isPosibleDuplicado() ? 1 : 0);
+            int idx = 1;
+            ps.setLong(idx++, idExpediente);
+            setLongOrNull(ps, idx++, idCanal);
+            setLongOrNull(ps, idx++, idPersonaSolicitante);
+            ps.setString(idx++, solicitud.getNumeroTramite());
+            ps.setString(idx++, solicitud.getNumeroExpedienteSgd());
+            ps.setDate(idx++, solicitud.getFechaRecepcion() == null ? null : Date.valueOf(solicitud.getFechaRecepcion()));
+            ps.setString(idx++, solicitud.getTipoProcedimientoNombre());
+            ps.setString(idx++, limitar(observacionSolicitud(registro), 1000));
+            ps.setNull(idx++, Types.VARCHAR);
+            ps.setInt(idx++, registro.isPosibleDuplicado() ? 1 : 0);
             if (soportaGrupoFamiliar) {
-                ps.setInt(11, solicitud.isGrupoFamiliar() ? 1 : 0);
-                ps.setString(12, limitar(resolverCriterioGrupoFamiliar(solicitud.isGrupoFamiliar(), solicitud.getCriterioGrupoFamiliar()), 80));
-                ps.setString(13, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+                ps.setInt(idx++, solicitud.isGrupoFamiliar() ? 1 : 0);
+                ps.setString(idx++, limitar(resolverCriterioGrupoFamiliar(solicitud.isGrupoFamiliar(), solicitud.getCriterioGrupoFamiliar()), 80));
+                ps.setString(idx++, limitar(solicitud.getObservacionGrupoFamiliar(), 500));
+            }
+            if (soportaTipoSolicitante) {
+                ps.setString(idx++, solicitud.getTipoSolicitanteEfectivo());
+                setLongOrNull(ps, idx++, solicitud.getIdCentroAtencion());
+                setLongOrNull(ps, idx++, solicitud.getIdUnidadOrganica());
+            }
+            if (soportaMunicipalidad) {
+                setLongOrNull(ps, idx++, solicitud.getIdMunicipalidad());
             }
             ps.executeUpdate();
         }
@@ -1087,6 +1249,53 @@ public class ExpedienteRegistroDAO {
         try (Statement st = conn.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
             return rs.next() && rs.getInt(1) == 4;
+        }
+    }
+
+    /**
+     * Mismo patrón de degradación elegante que {@link #soportaUbigeoPersona(Connection)}: mientras
+     * el script {@code 100_persona_apellido_paterno_materno.sql} no se haya ejecutado contra Oracle,
+     * este método devuelve {@code false} y el dual-write de Fase 2 simplemente no escribe las 2
+     * columnas nuevas (sigue llenando {@code razon_social} exactamente como antes, sin romper nada);
+     * en cuanto el script corra, empieza a escribirlas sin requerir otro deploy.
+     */
+    /**
+     * Mismo patrón de degradación elegante (14/08/2026, iniciativa "Solicitante con 3 tipos", ver
+     * v3/CLAUDE.md y scripts 101/102): si las 3 columnas nuevas de EXPEDIENTE_SOLICITUD no existen
+     * todavía en el ambiente donde corre este código, el registro se guarda igual que antes (siempre
+     * como Ciudadano, sin tipo_solicitante/centro/unidad), sin romper nada.
+     */
+    private boolean soportaTipoSolicitante(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' "
+                + "AND column_name IN ('TIPO_SOLICITANTE', 'ID_CENTRO_ATENCION', 'ID_UNIDAD_ORGANICA')";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) == 3;
+        }
+    }
+
+    /**
+     * Mismo patrón que {@link #soportaTipoSolicitante(Connection)}, independiente de ese chequeo: la
+     * columna {@code ID_MUNICIPALIDAD} viene de un script separado ({@code
+     * 105_municipalidad_tipo_solicitante.sql}), que puede ejecutarse en un momento distinto al 101.
+     */
+    private boolean soportaMunicipalidad(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'EXPEDIENTE_SOLICITUD' AND column_name = 'ID_MUNICIPALIDAD'";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) == 1;
+        }
+    }
+
+    private boolean soportaApellidosPersona(Connection conn) throws SQLException {
+        String sql = "SELECT COUNT(1) FROM user_tab_columns "
+                + "WHERE table_name = 'PERSONA' "
+                + "AND column_name IN ('APELLIDO_PATERNO', 'APELLIDO_MATERNO')";
+        try (Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() && rs.getInt(1) == 2;
         }
     }
 

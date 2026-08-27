@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -115,6 +116,12 @@ public class CargaDiariaArchivoParserService {
                 dto.setNumeroActa(valorExcel(row, columnas.get("numeroActa"), formatter));
                 dto.setTitular(valorExcel(row, columnas.get("titular"), formatter));
                 dto.setRemitente(valorExcel(row, columnas.get("remitente"), formatter));
+                dto.setApellidoPaternoTitular(valorExcel(row, columnas.get("apellidoPaternoTitular"), formatter));
+                dto.setApellidoMaternoTitular(valorExcel(row, columnas.get("apellidoMaternoTitular"), formatter));
+                dto.setNombresTitular(valorExcel(row, columnas.get("nombresTitular"), formatter));
+                dto.setApellidoPaternoSolicitante(valorExcel(row, columnas.get("apellidoPaternoSolicitante"), formatter));
+                dto.setApellidoMaternoSolicitante(valorExcel(row, columnas.get("apellidoMaternoSolicitante"), formatter));
+                dto.setNombresSolicitante(valorExcel(row, columnas.get("nombresSolicitante"), formatter));
                 asignarFechaExcel(dto, row, columnas.get("fechaRecepcion"), formatter);
                 aplicarReglasDerivadas(dto);
                 dto.reiniciarValidacion();
@@ -170,6 +177,12 @@ public class CargaDiariaArchivoParserService {
                 dto.setNumeroActa(valorCsv(valores, columnas.get("numeroActa")));
                 dto.setTitular(valorCsv(valores, columnas.get("titular")));
                 dto.setRemitente(valorCsv(valores, columnas.get("remitente")));
+                dto.setApellidoPaternoTitular(valorCsv(valores, columnas.get("apellidoPaternoTitular")));
+                dto.setApellidoMaternoTitular(valorCsv(valores, columnas.get("apellidoMaternoTitular")));
+                dto.setNombresTitular(valorCsv(valores, columnas.get("nombresTitular")));
+                dto.setApellidoPaternoSolicitante(valorCsv(valores, columnas.get("apellidoPaternoSolicitante")));
+                dto.setApellidoMaternoSolicitante(valorCsv(valores, columnas.get("apellidoMaternoSolicitante")));
+                dto.setNombresSolicitante(valorCsv(valores, columnas.get("nombresSolicitante")));
                 asignarFechaTexto(dto, valorCsv(valores, columnas.get("fechaRecepcion")));
                 aplicarReglasDerivadas(dto);
                 dto.reiniciarValidacion();
@@ -333,6 +346,8 @@ public class CargaDiariaArchivoParserService {
         if (dto == null) {
             return;
         }
+        combinarNombreEstructurado(dto.getApellidoPaternoTitular(), dto.getApellidoMaternoTitular(), dto.getNombresTitular(), dto::setTitular);
+        combinarNombreEstructurado(dto.getApellidoPaternoSolicitante(), dto.getApellidoMaternoSolicitante(), dto.getNombresSolicitante(), dto::setRemitente);
         if (equalsNormalizado(dto.getTitular(), dto.getRemitente())) {
             if (!hasText(dto.getNumeroDocumentoIdentidadTitular())) {
                 dto.setNumeroDocumentoIdentidadTitular(dto.getNumeroDocumentoIdentidadSolicitante());
@@ -347,6 +362,46 @@ public class CargaDiariaArchivoParserService {
         } else {
             dto.setCanalRecepcion(resolverCanalRecepcion(dto));
         }
+        // Solicitante con 3 tipos (14/08/2026, ver v3/CLAUDE.md): NO se lee de una columna del
+        // Excel — el sistema lo identifica automáticamente a partir de "SOLICITADO POR"
+        // (dto.getRemitente()) contra CENTROS_ATENCION/UNIDADES_ORGANICAS, en
+        // CargaDiariaReglasService.validar (necesita acceso a BD, que este parser no tiene).
+    }
+
+    /**
+     * Si al menos apellido paterno o nombres viene con texto, recalcula el campo de texto libre
+     * (titular/remitente) como "PATERNO MATERNO, Nombres" — mismo formato exacto que
+     * {@code combinarNombreCompleto} en {@code RegistroExpedienteForm.tsx} (frontend) y que el
+     * dual-write del backend (Fase 2), para que un mismo nombre produzca siempre la misma cadena
+     * sin importar por qué flujo entró al sistema. Si ninguno de los 3 campos estructurados trae
+     * texto (caso de hoy, plantilla oficial sin estas columnas), no hace nada — el valor ya leído
+     * de la columna "Titular"/"Remitente" de texto libre queda intacto.
+     */
+    private void combinarNombreEstructurado(String apellidoPaterno, String apellidoMaterno, String nombres, Consumer<String> asignar) {
+        boolean paternoTieneTexto = hasText(apellidoPaterno);
+        boolean nombresTieneTexto = hasText(nombres);
+        if (!paternoTieneTexto && !nombresTieneTexto) {
+            return;
+        }
+        String apellidos = String.join(" ", listaSinVacios(apellidoPaterno, apellidoMaterno));
+        String nombresLimpio = nombres == null ? "" : nombres.trim();
+        if (apellidos.isEmpty()) {
+            asignar.accept(nombresLimpio);
+        } else if (nombresLimpio.isEmpty()) {
+            asignar.accept(apellidos);
+        } else {
+            asignar.accept(apellidos + ", " + nombresLimpio);
+        }
+    }
+
+    private List<String> listaSinVacios(String... valores) {
+        List<String> resultado = new ArrayList<>();
+        for (String valor : valores) {
+            if (hasText(valor)) {
+                resultado.add(valor.trim());
+            }
+        }
+        return resultado;
     }
 
     private String resolverCanalRecepcion(CargaDiariaPreviewDTO dto) {
@@ -625,6 +680,22 @@ public class CargaDiariaArchivoParserService {
                 "SOLICITANTE",
                 "ORIGEN",
                 "SOLICITADO POR"));
+        // Columnas opcionales (14/08/2026, Fase 5 "híbrida"): NO están en REQUIRED_COLUMNS, así que
+        // la plantilla oficial actual (solo "Titular"/"Remitente" de texto libre) sigue funcionando
+        // sin cambios. Si un archivo las trae, aplicarReglasDerivadas() las combina y sobrescribe
+        // titular/remitente — el resto del pipeline no necesita saber que existen.
+        aliases.put("apellidoPaternoTitular", normalizarLista(
+                "APELLIDO PATERNO TITULAR", "APELLIDO PATERNO DEL TITULAR"));
+        aliases.put("apellidoMaternoTitular", normalizarLista(
+                "APELLIDO MATERNO TITULAR", "APELLIDO MATERNO DEL TITULAR"));
+        aliases.put("nombresTitular", normalizarLista(
+                "NOMBRES TITULAR", "NOMBRES DEL TITULAR"));
+        aliases.put("apellidoPaternoSolicitante", normalizarLista(
+                "APELLIDO PATERNO SOLICITANTE", "APELLIDO PATERNO DEL SOLICITANTE"));
+        aliases.put("apellidoMaternoSolicitante", normalizarLista(
+                "APELLIDO MATERNO SOLICITANTE", "APELLIDO MATERNO DEL SOLICITANTE"));
+        aliases.put("nombresSolicitante", normalizarLista(
+                "NOMBRES SOLICITANTE", "NOMBRES DEL SOLICITANTE"));
         aliases.put("fechaRecepcion", normalizarLista(
                 "FECHA_RECEPCION",
                 "FECHA RECEPCION",

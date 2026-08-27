@@ -20,11 +20,18 @@ import org.springframework.stereotype.Repository;
  * Port literal de com.sdrerc.infrastructure.sdrercapp.dao.ExpedienteBandejaDAO (V2), mismo SQL,
  * misma vista {@code vw_expediente_bandeja} (ya existe en la BD compartida). Único cambio real:
  * la conexión se obtiene de un {@link DataSource} inyectado por Spring.
+ *
+ * <p>18/08/2026, pedido explícito del usuario: la Bandeja Registro dejó de tener un límite de
+ * resultados por defecto — el campo "Límite" se quitó del buscador y `limite` ahora es un
+ * {@link Integer} nullable; cuando es {@code null} (caso normal desde que el frontend ya no lo
+ * envía), el `SELECT * FROM (...)` NO se envuelve con `WHERE ROWNUM <= ?`, así que devuelve todas
+ * las filas que califiquen por los demás filtros (texto/estado/rango de fechas), sin tope. Se
+ * conserva la capacidad de acotar (`MAX_LIMIT`) únicamente para el caso en que un futuro llamador
+ * SÍ pase un `limite` explícito — no para el camino por defecto de esta bandeja.</p>
  */
 @Repository
 public class ExpedienteBandejaDAO {
 
-    private static final int DEFAULT_LIMIT = 200;
     private static final int MAX_LIMIT = 1000;
 
     private final DataSource dataSource;
@@ -41,7 +48,7 @@ public class ExpedienteBandejaDAO {
             String estadoCodigo,
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
-            int limite) throws SQLException {
+            Integer limite) throws SQLException {
         List<Object> params = new ArrayList<>();
         boolean soportaGrupoFamiliar;
         try (Connection conn = dataSource.getConnection()) {
@@ -110,9 +117,41 @@ public class ExpedienteBandejaDAO {
             sql.append("AND UPPER(ept.tipo_relacion_persona) = 'TITULAR' ");
             sql.append("AND (UPPER(NVL(").append(nombrePersona("pt")).append(", '')) LIKE ? ");
             sql.append("OR UPPER(NVL(pt.numero_documento, '')) LIKE ?)) ");
+            // 19/08/2026, pedido explícito del usuario: si el texto buscado coincide con un
+            // expediente que hoy es "hijo" (duplicado confirmado, ya no visible como fila raíz —
+            // ver es_relacionado_hijo más arriba), se incluye a su PRINCIPAL en el resultado en vez
+            // de devolver nada. Mismo bloque de predicados que arriba, repetido contra la fila del
+            // hijo (alias cb/css/caa/cept/cpt) vía expediente_relacion; b.id_expediente = principal
+            // solo si algún hijo suyo matchea. Sin filtro de tipo_relacion (mismo criterio, sin
+            // filtrar por tipo, que ya usa es_relacionado_hijo más arriba en esta misma clase).
+            sql.append("OR b.id_expediente IN (");
+            sql.append("SELECT r.id_expediente_principal FROM expediente_relacion r ");
+            sql.append("WHERE r.activo = 1 AND r.id_expediente_principal IS NOT NULL ");
+            sql.append("AND EXISTS (SELECT 1 FROM vw_expediente_bandeja cb WHERE cb.id_expediente = r.id_expediente_relacionado ");
+            sql.append("AND (");
+            sql.append("UPPER(cb.numero_expediente) LIKE ? ");
+            sql.append("OR UPPER(cb.numero_tramite_documentario) LIKE ? ");
+            sql.append("OR UPPER(cb.etapa_codigo) LIKE ? ");
+            sql.append("OR UPPER(cb.estado_codigo) LIKE ? ");
+            sql.append("OR UPPER(NVL(cb.abogado_inicial, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cb.responsable_actual, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cb.equipo_actual, '')) LIKE ? ");
+            sql.append("OR EXISTS (SELECT 1 FROM expediente_solicitud css ");
+            sql.append("WHERE css.id_expediente = cb.id_expediente AND css.activo = 1 ");
+            sql.append("AND UPPER(NVL(css.numero_expediente_sgd, '')) LIKE ?) ");
+            sql.append("OR EXISTS (SELECT 1 FROM expediente_acta caa ");
+            sql.append("WHERE caa.id_expediente = cb.id_expediente AND caa.activo = 1 ");
+            sql.append("AND UPPER(NVL(caa.numero_acta, '')) LIKE ?) ");
+            sql.append("OR EXISTS (SELECT 1 FROM expediente_persona cept JOIN persona cpt ON cpt.id_persona = cept.id_persona ");
+            sql.append("WHERE cept.id_expediente = cb.id_expediente AND cept.activo = 1 ");
+            sql.append("AND UPPER(cept.tipo_relacion_persona) = 'TITULAR' ");
+            sql.append("AND (UPPER(NVL(").append(nombrePersona("cpt")).append(", '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cpt.numero_documento, '')) LIKE ?)) ");
+            sql.append(")) ");
+            sql.append(") ");
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase(Locale.ROOT) + "%";
-            for (int i = 0; i < 11; i++) {
+            for (int i = 0; i < 22; i++) {
                 params.add(pattern);
             }
         }
@@ -142,8 +181,12 @@ public class ExpedienteBandejaDAO {
         }
 
         sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, titular ASC NULLS LAST, id_expediente ASC");
-        sql.append(") WHERE ROWNUM <= ?");
-        params.add(normalizarLimite(limite));
+        if (limite != null && limite > 0) {
+            sql.append(") WHERE ROWNUM <= ?");
+            params.add(Math.min(limite, MAX_LIMIT));
+        } else {
+            sql.append(")");
+        }
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -246,13 +289,6 @@ public class ExpedienteBandejaDAO {
 
     private static boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
-    }
-
-    private static int normalizarLimite(int limite) {
-        if (limite <= 0) {
-            return DEFAULT_LIMIT;
-        }
-        return Math.min(limite, MAX_LIMIT);
     }
 
     private static Long getLongOrNull(ResultSet rs, String column) throws SQLException {

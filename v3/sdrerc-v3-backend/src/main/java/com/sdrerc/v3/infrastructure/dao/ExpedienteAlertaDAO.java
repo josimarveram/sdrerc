@@ -58,6 +58,28 @@ public class ExpedienteAlertaDAO {
         return total;
     }
 
+    /**
+     * Si {@code idExpediente} tiene una alerta activa (no atendida) con ese mensaje exacto — usado
+     * por el modal de confirmación de eliminación desde Registro/Recepción (13/08/2026, requisito
+     * nuevo de V3, sin equivalente directo en V2) para advertir el impacto antes de confirmar la
+     * baja. No existe en V2: reutiliza {@link #existeAlertaActiva} (privado, mismo criterio) vía un
+     * envoltorio público sin exigir {@code tipoAlerta}.
+     */
+    public boolean tieneAlertaActiva(Connection conn, Long idExpediente, String mensaje) throws SQLException {
+        if (conn == null || idExpediente == null || mensaje == null) {
+            return false;
+        }
+        String sql = "SELECT 1 FROM expediente_alerta "
+                + "WHERE id_expediente = ? AND activo = 1 AND atendida = 0 AND UPPER(mensaje) = ? AND ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            ps.setString(2, mensaje.toUpperCase(Locale.ROOT));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     public String obtenerResumenAlertas(Connection conn, Long idExpediente) throws SQLException {
         if (conn == null || idExpediente == null) {
             return null;

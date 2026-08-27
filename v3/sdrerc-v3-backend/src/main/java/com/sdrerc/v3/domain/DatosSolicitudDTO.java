@@ -25,6 +25,22 @@ public class DatosSolicitudDTO {
     private boolean grupoFamiliar;
     private String criterioGrupoFamiliar;
     private String observacionGrupoFamiliar;
+    // Tipo de solicitante (14/08/2026, iniciativa "Solicitante con 3 tipos", ver v3/CLAUDE.md):
+    // CIUDADANO (por defecto, usa los campos ya existentes en DatosPersonaRegistroDTO remitente),
+    // CENTRO_ATENCION o UNIDAD_ORGANICA. idCentroAtencion/idUnidadOrganica solo aplican para su tipo
+    // correspondiente, quedan null en cualquier otro caso — mismo criterio que expediente_solicitud
+    // en la base de datos. centroAtencionDenominacion/unidadOrganicaNombre son de solo lectura (para
+    // mostrar sin tener que resolver el catálogo de nuevo en el frontend), no se usan al guardar.
+    private String tipoSolicitante;
+    private Long idCentroAtencion;
+    private String centroAtencionDenominacion;
+    private Long idUnidadOrganica;
+    private String unidadOrganicaNombre;
+    // 4to tipo de solicitante "Municipalidad" (14/08/2026, ver v3/CLAUDE.md), mismo criterio que
+    // los 2 anteriores: idMunicipalidad solo aplica cuando tipoSolicitante=MUNICIPALIDAD,
+    // municipalidadDenominacion es de solo lectura.
+    private Long idMunicipalidad;
+    private String municipalidadDenominacion;
 
     public String getNumeroTramite() {
         return numeroTramite;
@@ -176,6 +192,67 @@ public class DatosSolicitudDTO {
 
     public void setObservacionGrupoFamiliar(String observacionGrupoFamiliar) {
         this.observacionGrupoFamiliar = trimToNull(observacionGrupoFamiliar);
+    }
+
+    public String getTipoSolicitante() {
+        return tipoSolicitante;
+    }
+
+    public void setTipoSolicitante(String tipoSolicitante) {
+        this.tipoSolicitante = trimToNull(tipoSolicitante);
+    }
+
+    public Long getIdCentroAtencion() {
+        return idCentroAtencion;
+    }
+
+    public void setIdCentroAtencion(Long idCentroAtencion) {
+        this.idCentroAtencion = idCentroAtencion;
+    }
+
+    public String getCentroAtencionDenominacion() {
+        return centroAtencionDenominacion;
+    }
+
+    public void setCentroAtencionDenominacion(String centroAtencionDenominacion) {
+        this.centroAtencionDenominacion = trimToNull(centroAtencionDenominacion);
+    }
+
+    public Long getIdUnidadOrganica() {
+        return idUnidadOrganica;
+    }
+
+    public void setIdUnidadOrganica(Long idUnidadOrganica) {
+        this.idUnidadOrganica = idUnidadOrganica;
+    }
+
+    public String getUnidadOrganicaNombre() {
+        return unidadOrganicaNombre;
+    }
+
+    public void setUnidadOrganicaNombre(String unidadOrganicaNombre) {
+        this.unidadOrganicaNombre = trimToNull(unidadOrganicaNombre);
+    }
+
+    public Long getIdMunicipalidad() {
+        return idMunicipalidad;
+    }
+
+    public void setIdMunicipalidad(Long idMunicipalidad) {
+        this.idMunicipalidad = idMunicipalidad;
+    }
+
+    public String getMunicipalidadDenominacion() {
+        return municipalidadDenominacion;
+    }
+
+    public void setMunicipalidadDenominacion(String municipalidadDenominacion) {
+        this.municipalidadDenominacion = trimToNull(municipalidadDenominacion);
+    }
+
+    /** CIUDADANO cuando no se especifica (compatibilidad con expedientes/formularios previos a esta iniciativa). */
+    public String getTipoSolicitanteEfectivo() {
+        return hasText(tipoSolicitante) ? tipoSolicitante : "CIUDADANO";
     }
 
     public boolean isPosibleGrupoFamiliar() {

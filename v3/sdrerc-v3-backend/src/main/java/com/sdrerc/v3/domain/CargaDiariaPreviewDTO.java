@@ -21,6 +21,45 @@ public class CargaDiariaPreviewDTO {
     private String acta;
     private String titular;
     private String remitente;
+    // Campos opcionales estructurados (14/08/2026, Fase 5 "híbrida" de la iniciativa separar
+    // Titular/Solicitante en 3 campos, ver v3/CLAUDE.md): la plantilla oficial distribuida hoy NO
+    // los tiene — solo se llenan si el archivo cargado trae columnas adicionales reconocidas por
+    // alias (CargaDiariaArchivoParserService). Cuando están presentes, `titular`/`remitente` se
+    // recalculan a partir de ellos (misma combinación "PATERNO MATERNO, Nombres" que el resto del
+    // sistema), así que todo el resto del pipeline (duplicados, grupo familiar, validación) sigue
+    // funcionando exactamente igual sin tocar ningún otro campo.
+    private String apellidoPaternoTitular;
+    private String apellidoMaternoTitular;
+    private String nombresTitular;
+    private String apellidoPaternoSolicitante;
+    private String apellidoMaternoSolicitante;
+    private String nombresSolicitante;
+    // Solicitante con 3 tipos (14/08/2026, Fase 3 de la iniciativa "Solicitante con 3 tipos", ver
+    // v3/CLAUDE.md) — REDISEÑADO el mismo día (pedido explícito del usuario): no hay columna de
+    // Excel para el tipo/centro/unidad. "SOLICITADO POR" (remitente) sigue siendo el único campo de
+    // entrada; el sistema IDENTIFICA AUTOMÁTICAMENTE el tipo comparando ese texto contra
+    // CENTROS_ATENCION.denominacion/UNIDADES_ORGANICAS.nombre (coincidencia por contención,
+    // normalizada, ver CargaDiariaReglasService.clasificarTipoSolicitante) durante "Validar" — nunca
+    // durante el parseo del archivo (el parser no tiene acceso a BD). Si no matchea con ninguna de
+    // las 2 tablas, tipoSolicitante queda CIUDADANO por defecto y remitente se guarda tal cual se
+    // escribió en el Excel, sin ninguna alteración.
+    private String tipoSolicitante;
+    // 18/08/2026, pedido explícito del usuario: combo editable de "Tipo solicitante" en la
+    // previsualización, para corregir manualmente una clasificación automática incorrecta. Sin este
+    // flag, el siguiente "Validar" volvería a ejecutar `clasificarTipoSolicitante` desde cero (que
+    // corre incondicionalmente en cada validación, ver CargaDiariaReglasService) y descartaría la
+    // elección manual del usuario. `false` por defecto: el parseo inicial y `clasificarTipoSolicitante`
+    // nunca lo tocan a `true`, solo lo hace el cliente cuando edita esta columna a mano.
+    private boolean tipoSolicitanteManual;
+    private Long idCentroAtencion;
+    private String centroAtencionDenominacion;
+    private Long idUnidadOrganica;
+    private String unidadOrganicaNombre;
+    // 4to tipo de solicitante "Municipalidad" (14/08/2026, Fase 3, ver v3/CLAUDE.md), mismo criterio
+    // que Centro de Atención/Unidad Orgánica: calculado por CargaDiariaReglasService.clasificarTipoSolicitante,
+    // nunca leído del Excel.
+    private Long idMunicipalidad;
+    private String municipalidadDenominacion;
     private String canalRecepcion;
     private String numeroExpedienteSgd;
     private String tipoDocumentoIdentidadSolicitante;
@@ -124,12 +163,129 @@ public class CargaDiariaPreviewDTO {
         this.titular = trimToNull(titular);
     }
 
+    public String getApellidoPaternoTitular() {
+        return apellidoPaternoTitular;
+    }
+
+    public void setApellidoPaternoTitular(String apellidoPaternoTitular) {
+        this.apellidoPaternoTitular = trimToNull(apellidoPaternoTitular);
+    }
+
+    public String getApellidoMaternoTitular() {
+        return apellidoMaternoTitular;
+    }
+
+    public void setApellidoMaternoTitular(String apellidoMaternoTitular) {
+        this.apellidoMaternoTitular = trimToNull(apellidoMaternoTitular);
+    }
+
+    public String getNombresTitular() {
+        return nombresTitular;
+    }
+
+    public void setNombresTitular(String nombresTitular) {
+        this.nombresTitular = trimToNull(nombresTitular);
+    }
+
+    public String getApellidoPaternoSolicitante() {
+        return apellidoPaternoSolicitante;
+    }
+
+    public void setApellidoPaternoSolicitante(String apellidoPaternoSolicitante) {
+        this.apellidoPaternoSolicitante = trimToNull(apellidoPaternoSolicitante);
+    }
+
+    public String getApellidoMaternoSolicitante() {
+        return apellidoMaternoSolicitante;
+    }
+
+    public void setApellidoMaternoSolicitante(String apellidoMaternoSolicitante) {
+        this.apellidoMaternoSolicitante = trimToNull(apellidoMaternoSolicitante);
+    }
+
+    public String getNombresSolicitante() {
+        return nombresSolicitante;
+    }
+
+    public void setNombresSolicitante(String nombresSolicitante) {
+        this.nombresSolicitante = trimToNull(nombresSolicitante);
+    }
+
     public String getRemitente() {
         return remitente;
     }
 
     public void setRemitente(String remitente) {
         this.remitente = trimToNull(remitente);
+    }
+
+    public String getTipoSolicitante() {
+        return tipoSolicitante;
+    }
+
+    public void setTipoSolicitante(String tipoSolicitante) {
+        this.tipoSolicitante = trimToNull(tipoSolicitante);
+    }
+
+    /** CIUDADANO por defecto antes de que CargaDiariaReglasService calcule la clasificación real. */
+    public String getTipoSolicitanteEfectivo() {
+        return tipoSolicitante == null ? "CIUDADANO" : tipoSolicitante;
+    }
+
+    public boolean isTipoSolicitanteManual() {
+        return tipoSolicitanteManual;
+    }
+
+    public void setTipoSolicitanteManual(boolean tipoSolicitanteManual) {
+        this.tipoSolicitanteManual = tipoSolicitanteManual;
+    }
+
+    public Long getIdCentroAtencion() {
+        return idCentroAtencion;
+    }
+
+    public void setIdCentroAtencion(Long idCentroAtencion) {
+        this.idCentroAtencion = idCentroAtencion;
+    }
+
+    public String getCentroAtencionDenominacion() {
+        return centroAtencionDenominacion;
+    }
+
+    public void setCentroAtencionDenominacion(String centroAtencionDenominacion) {
+        this.centroAtencionDenominacion = trimToNull(centroAtencionDenominacion);
+    }
+
+    public Long getIdUnidadOrganica() {
+        return idUnidadOrganica;
+    }
+
+    public void setIdUnidadOrganica(Long idUnidadOrganica) {
+        this.idUnidadOrganica = idUnidadOrganica;
+    }
+
+    public String getUnidadOrganicaNombre() {
+        return unidadOrganicaNombre;
+    }
+
+    public void setUnidadOrganicaNombre(String unidadOrganicaNombre) {
+        this.unidadOrganicaNombre = trimToNull(unidadOrganicaNombre);
+    }
+
+    public Long getIdMunicipalidad() {
+        return idMunicipalidad;
+    }
+
+    public void setIdMunicipalidad(Long idMunicipalidad) {
+        this.idMunicipalidad = idMunicipalidad;
+    }
+
+    public String getMunicipalidadDenominacion() {
+        return municipalidadDenominacion;
+    }
+
+    public void setMunicipalidadDenominacion(String municipalidadDenominacion) {
+        this.municipalidadDenominacion = trimToNull(municipalidadDenominacion);
     }
 
     public String getCanalRecepcion() {

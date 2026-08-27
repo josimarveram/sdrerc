@@ -27,6 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
  * actualizarMetricasAlertasRegistro/filtrarPorAlertaRegistro — filtro en memoria, no una consulta
  * aparte). La expansión de expedientes asociados/duplicados y el panel "Asociar" quedan para un
  * incremento posterior.</p>
+ *
+ * <p>18/08/2026, pedido explícito del usuario: {@code limite} es opcional y, si no se envía
+ * (caso normal — el buscador ya no tiene ese campo), la consulta devuelve TODAS las filas que
+ * califiquen por los demás filtros, sin tope — ver {@link ExpedienteBandejaDAO#buscar} para el
+ * detalle de cómo se omite el `ROWNUM` cuando `limite` es {@code null}.</p>
  */
 @RestController
 @RequestMapping("/api/registro/bandeja")
@@ -50,7 +55,7 @@ public class RegistroBandejaController {
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @RequestParam(required = false, defaultValue = "200") int limite) throws SQLException {
+            @RequestParam(required = false) Integer limite) throws SQLException {
         LocalDate hastaEfectiva = hasta != null ? hasta : LocalDate.now();
         LocalDate desdeEfectiva = desde != null ? desde : hastaEfectiva.minusMonths(5).withDayOfMonth(1);
         return expedienteConsultaService.buscarBandeja(texto, ETAPA_REGISTRO, estado, desdeEfectiva, hastaEfectiva, limite);

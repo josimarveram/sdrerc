@@ -858,10 +858,26 @@ public class ExpedienteRelacionadoDAO {
                 rs.getString("usuario_relacion"));
     }
 
+    /**
+     * 19/08/2026, pedido explícito del usuario (bug real reportado con capturas de pantalla): antes
+     * solo hacía `UPPER(TRIM(...))` — sin quitar tildes/diéresis — a diferencia de
+     * {@code GrupoFamiliarHeuristicaService} (Java, usado para detectar "Potencial duplicado" al
+     * validar/registrar), que sí normaliza con descomposición Unicode NFD. Esa inconsistencia hacía
+     * que el panel "Asociar" nunca encontrara al otro miembro del par cuando el titular tenía el
+     * mismo nombre escrito con tilde/diéresis distinta en cada solicitud (ej. "AGUERO" vs "AGÜERO")
+     * — ni el expediente principal veía a su duplicado, ni el duplicado veía a su principal, aunque
+     * la alerta "Potencial duplicado" ya los hubiera detectado correctamente como coincidencia (esa
+     * detección sí usa el comparador Java robusto). `TRANSLATE` no puede hacer una descomposición
+     * Unicode genérica en SQL, así que se listan explícitamente las vocales acentuadas/diéresis/eñe/
+     * cedilla más comunes en nombres reales (incluye variantes de origen extranjero frecuentes en
+     * Perú: italiano, alemán, francés/portugués vía cedilla) — mismo criterio de fondo que el NFD de
+     * Java, aplicado de la única forma disponible en SQL puro.
+     */
     private static String normalizarPersona(String alias) {
-        return "NULLIF(UPPER(TRIM(REGEXP_REPLACE(NVL(" + alias + ".razon_social, "
+        return "NULLIF(TRANSLATE(UPPER(TRIM(REGEXP_REPLACE(NVL(" + alias + ".razon_social, "
                 + "TRIM(NVL(" + alias + ".nombres, '') || ' ' || NVL(" + alias + ".apellidos, ''))), "
-                + "'[[:space:]]+', ' '))), '')";
+                + "'[[:space:]]+', ' '))), "
+                + "'ÁÀÄÂÃÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÇ', 'AAAAAEEEEIIIIOOOOOUUUUNC'), '')";
     }
 
     private static String nombrePersona(String alias) {

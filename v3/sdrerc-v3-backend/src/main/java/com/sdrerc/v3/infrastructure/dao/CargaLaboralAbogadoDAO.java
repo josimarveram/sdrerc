@@ -203,11 +203,17 @@ public class CargaLaboralAbogadoDAO {
 
     /**
      * IDs de abogado con al menos un expediente de carga de Análisis (mismo alcance que
-     * {@link #listarDocumentosPorAbogado}) cuya fecha de vencimiento cae en [desde, hasta].
+     * {@link #listarDocumentosPorAbogado}) cuya Fecha Solicitud (`EXPEDIENTE_SOLICITUD.fecha_recepcion`,
+     * mismo campo que ya usa "Fecha Solicitud" en Registro/Asignación) cae en [desde, hasta].
      * Cualquiera de los dos límites puede ser nulo (rango abierto de ese lado). Usado por el
      * filtro de fecha del buscador de la bandeja Carga Abogados.
+     *
+     * <p>25/08/2026, pedido explícito del usuario: reemplaza el filtro anterior sobre
+     * {@code EXPEDIENTE.fecha_vencimiento} — ese campo es por naturaleza futuro (vence semanas/meses
+     * adelante), incompatible con el default "01 del mes actual → hoy" que sí tiene sentido para un
+     * campo de Fecha Solicitud (orientado al pasado, igual que en el resto de bandejas).</p>
      */
-    public Set<Long> listarIdsUsuarioConVencimientoEnRango(LocalDate desde, LocalDate hasta) throws SQLException {
+    public Set<Long> listarIdsUsuarioConSolicitudEnRango(LocalDate desde, LocalDate hasta) throws SQLException {
         Set<Long> ids = new HashSet<>();
         if (desde == null && hasta == null) {
             return ids;
@@ -218,16 +224,17 @@ public class CargaLaboralAbogadoDAO {
         sql.append("JOIN expediente_asignacion ea ON ea.id_expediente = e.id_expediente AND ea.activa = 1 AND ea.activo = 1 ");
         sql.append("JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual ");
         sql.append("JOIN estado_expediente es ON es.id_estado = e.id_estado_actual ");
+        sql.append("JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 ");
         sql.append("WHERE e.activo = 1 AND NVL(e.cerrado, 0) = 0 AND NVL(e.archivado, 0) = 0 ");
         sql.append("AND ((et.codigo = 'ASIGNACION' AND es.codigo = 'ASIGNADO') ");
         sql.append("     OR et.codigo = 'ANALISIS') ");
-        sql.append("AND e.fecha_vencimiento IS NOT NULL ");
+        sql.append("AND esol.fecha_recepcion IS NOT NULL ");
         if (desde != null) {
-            sql.append("AND TRUNC(e.fecha_vencimiento) >= ? ");
+            sql.append("AND TRUNC(esol.fecha_recepcion) >= ? ");
             params.add(Date.valueOf(desde));
         }
         if (hasta != null) {
-            sql.append("AND TRUNC(e.fecha_vencimiento) <= ? ");
+            sql.append("AND TRUNC(esol.fecha_recepcion) <= ? ");
             params.add(Date.valueOf(hasta));
         }
         try (Connection conn = dataSource.getConnection();

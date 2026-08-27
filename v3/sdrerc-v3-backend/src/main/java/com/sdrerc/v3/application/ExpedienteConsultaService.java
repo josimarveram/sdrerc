@@ -23,7 +23,7 @@ public class ExpedienteConsultaService {
             String estadoCodigo,
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
-            int limite) throws SQLException {
+            Integer limite) throws SQLException {
         return expedienteBandejaDAO.buscar(
                 textoLibre,
                 etapaCodigo,

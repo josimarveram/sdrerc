@@ -64,7 +64,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class AsignacionExpedienteDAO {
 
-    private static final int DEFAULT_LIMIT = 200;
     private static final int MAX_LIMIT = 1000;
     private static final String CODIGO_FLUJO = "SDRERC_TO_BE";
     private static final String CODIGO_ETAPA_ORIGEN = "REGISTRO";
@@ -76,6 +75,9 @@ public class AsignacionExpedienteDAO {
     private static final String TIPO_RELACION_DOCUMENTO_DUPLICADO_ASOCIADO = "DOCUMENTO_DUPLICADO_ASOCIADO";
     private static final String TIPO_RELACION_MISMA_ACTA_TITULAR = "MISMA_ACTA_TITULAR";
     private static final String CODIGO_MOVIMIENTO_GENERACION_NUMERO = "GENERACION_CODIGO_EXPEDIENTE";
+    private static final String CODIGO_ETAPA_ANALISIS = "ANALISIS";
+    private static final String CODIGO_ESTADO_DERIVADO = "DERIVADO";
+    private static final String CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS = "DEVOLUCION_A_ANALISIS";
 
     private final DataSource dataSource;
     private final CatalogoLookupDAO catalogoLookupDAO;
@@ -280,13 +282,19 @@ public class AsignacionExpedienteDAO {
      * funcione) en vez de repetir el join completo en Java. Los filtros dinámicos por request
      * (texto libre, estado, rango de fechas, límite) se aplican sobre la vista, igual patrón que
      * {@link ExpedienteBandejaDAO#buscar} sobre {@code vw_expediente_bandeja}.
+     *
+     * <p>19/08/2026, pedido explícito del usuario (paridad con Bandeja Registro): {@code limite} es
+     * opcional. Si no se envía, el {@code SELECT * FROM (...)} NO se envuelve con
+     * {@code WHERE ROWNUM <= ?}, así que devuelve todas las filas que califiquen por los demás
+     * filtros. Se conserva {@code MAX_LIMIT} únicamente para el caso en que un futuro llamador SÍ
+     * pase un {@code limite} explícito.</p>
      */
     public List<AsignacionExpedienteDTO> buscarExpedientes(
             String textoLibre,
             String estadoCodigo,
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
-            int limite) throws SQLException {
+            Integer limite) throws SQLException {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT * FROM (");
@@ -319,16 +327,49 @@ public class AsignacionExpedienteDAO {
             sql.append("OR UPPER(NVL(observacion_solicitud, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(numero_expediente_sgd, '')) LIKE ? ");
             sql.append("OR UPPER(NVL(observacion_grupo_familiar, '')) LIKE ? ");
+            // 19/08/2026, pedido explícito del usuario: si el texto buscado coincide con un
+            // expediente que es "hijo" (duplicado confirmado — vw_expediente_asignacion_detalle ya
+            // los excluye por definición, ver script 99) se incluye a su PRINCIPAL en el resultado
+            // en vez de no devolver nada. No se puede reusar la vista para leer los campos del hijo
+            // (la vista los excluye a propósito), así que se rearman los mismos campos contra las
+            // tablas base, mismo criterio de tipo_relacion que ya usa la vista para "es hijo".
+            sql.append("OR id_expediente IN (");
+            sql.append("SELECT r.id_expediente_principal FROM expediente_relacion r ");
+            sql.append("JOIN expediente ce ON ce.id_expediente = r.id_expediente_relacionado AND ce.activo = 1 ");
+            sql.append("LEFT JOIN expediente_solicitud cesol ON cesol.id_expediente = ce.id_expediente AND cesol.activo = 1 ");
+            sql.append("LEFT JOIN expediente_acta cea ON cea.id_expediente = ce.id_expediente AND cea.activo = 1 ");
+            sql.append("LEFT JOIN expediente_persona cep ON cep.id_expediente = ce.id_expediente AND cep.activo = 1 ");
+            sql.append("AND UPPER(cep.tipo_relacion_persona) = 'TITULAR' ");
+            sql.append("LEFT JOIN persona ctp ON ctp.id_persona = cep.id_persona AND ctp.activo = 1 ");
+            sql.append("LEFT JOIN persona csp ON csp.id_persona = cesol.id_persona_solicitante AND csp.activo = 1 ");
+            sql.append("WHERE r.activo = 1 ");
+            sql.append("AND UPPER(r.tipo_relacion) IN ('DOCUMENTO_DUPLICADO_ASOCIADO', 'MISMA_ACTA_TITULAR') ");
+            sql.append("AND (");
+            sql.append("UPPER(NVL(ce.numero_expediente, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(ce.numero_tramite_documentario, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cesol.asunto, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cea.numero_acta, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(TRIM(NVL(ctp.razon_social, TRIM(NVL(ctp.nombres, '') || ' ' || NVL(ctp.apellidos, '')))), '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(TRIM(NVL(csp.razon_social, TRIM(NVL(csp.nombres, '') || ' ' || NVL(csp.apellidos, '')))), '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(ctp.numero_documento, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cesol.observacion, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cesol.numero_expediente_sgd, '')) LIKE ? ");
+            sql.append("OR UPPER(NVL(cesol.observacion_grupo_familiar, '')) LIKE ? ");
+            sql.append(")) ");
             sql.append(") ");
             String pattern = "%" + textoLibre.trim().toUpperCase(Locale.ROOT) + "%";
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
                 params.add(pattern);
             }
         }
 
         sql.append("ORDER BY fecha_vencimiento ASC NULLS LAST, orden_titular ASC, id_expediente ASC");
-        sql.append(") WHERE ROWNUM <= ?");
-        params.add(normalizarLimite(limite));
+        if (limite != null) {
+            sql.append(") WHERE ROWNUM <= ?");
+            params.add(Math.min(limite, MAX_LIMIT));
+        } else {
+            sql.append(")");
+        }
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -591,6 +632,222 @@ public class AsignacionExpedienteDAO {
             }
         }
         return items;
+    }
+
+    /**
+     * Port literal de {@code obtenerIdAbogadoActivoPorEquipo} (V2): abogado con asignación activa
+     * al equipo indicado para este expediente (ej. EQ_ANALISIS) — usado por "Cartas de respuesta"
+     * para preseleccionar el mismo abogado que ya tiene el expediente en Análisis.
+     */
+    public Long obtenerIdAbogadoActivoPorEquipo(Long idExpediente, String codigoEquipo) throws SQLException {
+        if (idExpediente == null || !hasText(codigoEquipo)) {
+            return null;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            String sql = "SELECT axa.id_usuario_asignado FROM expediente_asignacion axa "
+                    + "JOIN equipo eq ON eq.id_equipo = axa.id_equipo_asignado "
+                    + "WHERE axa.id_expediente = ? AND UPPER(eq.codigo) = ? AND axa.activa = 1 AND axa.activo = 1 "
+                    + "ORDER BY axa.fecha_asignacion DESC, axa.id_expediente_asignacion DESC "
+                    + "FETCH FIRST 1 ROW ONLY";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, idExpediente);
+                ps.setString(2, codigoEquipo.trim().toUpperCase(Locale.ROOT));
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? getLongOrNull(rs, "id_usuario_asignado") : null;
+                }
+            }
+        }
+    }
+
+    /**
+     * Port de {@code reasignarDesdeCartaRespuesta} (V2): botón "Registrar Asignación" de la
+     * sub-pestaña "Cartas de respuesta" — deriva el expediente de vuelta a Análisis (estado
+     * {@code codigoEstadoDestino}, "DERIVADO" para este flujo) reasignando responsable, cuando la
+     * carta intermedia seleccionada ya tiene su carta de respuesta registrada (validado por el
+     * caller antes de invocar este método, igual que V2). Si el expediente YA está en etapa
+     * ANALISIS (derivado/observado por otra vía), solo reasigna responsable sin exigir una
+     * transición nueva — mismo criterio que V2, evita "no existe transición ANALISIS/X ->
+     * ANALISIS/&lt;estadoDestino&gt;" al usar este botón sobre un expediente ya derivado antes.
+     * {@code codigoEstadoDestino} generalizado a propósito (no hardcoded a "DERIVADO"): V2 también
+     * reutiliza este mismo método con destino "OBSERVADO" desde Notificación-Supervisión, camino
+     * todavía no portado a V3.
+     */
+    public AsignacionResultadoDTO reasignarDesdeCartaRespuesta(
+            Long idExpediente,
+            Long idEquipoNuevo,
+            Long idAbogadoNuevo,
+            String comentario,
+            Long idUsuarioAsignador,
+            boolean actorEsAdminSistema,
+            String codigoEstadoDestino) throws SQLException {
+        if (idExpediente == null) {
+            throw new IllegalArgumentException("Seleccione un expediente para reasignar.");
+        }
+        if (idEquipoNuevo == null) {
+            throw new IllegalArgumentException("Seleccione el equipo destino.");
+        }
+        if (idAbogadoNuevo == null) {
+            throw new IllegalArgumentException("Seleccione el abogado responsable.");
+        }
+        String estadoDestinoCodigo = hasText(codigoEstadoDestino) ? codigoEstadoDestino : CODIGO_ESTADO_DERIVADO;
+
+        try (Connection conn = dataSource.getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                ExpedienteCartaRespuestaEstado expediente = bloquearExpedienteParaCartaRespuesta(conn, idExpediente);
+                validarEquipoActivo(conn, idEquipoNuevo);
+                validarAbogadoAsignable(conn, idAbogadoNuevo, idEquipoNuevo);
+
+                Long idEtapaDestino;
+                Long idEstadoDestino;
+                if (CODIGO_ETAPA_ANALISIS.equalsIgnoreCase(expediente.etapaCodigo)) {
+                    idEtapaDestino = expediente.idEtapa;
+                    idEstadoDestino = expediente.idEstado;
+                } else {
+                    Transicion destino = resolverTransicionDevolucionAnalisis(
+                            conn, expediente.etapaCodigo, expediente.estadoCodigo, estadoDestinoCodigo);
+                    idEtapaDestino = destino.idEtapa;
+                    idEstadoDestino = destino.idEstado;
+                }
+
+                desactivarAsignacionesActivas(conn, idExpediente, idUsuarioAsignador);
+
+                Long idAsignacion = insertarAsignacion(
+                        conn,
+                        idExpediente,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idEtapaDestino,
+                        null,
+                        comentario,
+                        idUsuarioAsignador,
+                        true);
+
+                actualizarExpediente(
+                        conn,
+                        idExpediente,
+                        idEtapaDestino,
+                        idEstadoDestino,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idUsuarioAsignador);
+
+                Long idMovimiento = requerirId(
+                        catalogoLookupDAO.obtenerTipoMovimientoId(conn, CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS),
+                        "movimiento " + CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS);
+                insertarHistorial(
+                        conn,
+                        idExpediente,
+                        idMovimiento,
+                        expediente.idEtapa,
+                        expediente.idEstado,
+                        idEtapaDestino,
+                        idEstadoDestino,
+                        idUsuarioAsignador,
+                        actorEsAdminSistema,
+                        idAbogadoNuevo,
+                        idEquipoNuevo,
+                        idAsignacion,
+                        hasText(comentario) ? comentario : "Derivado a Análisis desde Cartas de respuesta.");
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return AsignacionResultadoDTO.exito(
+                        1,
+                        expediente.numeroExpediente + " derivado a Análisis correctamente.",
+                        java.util.Collections.singletonList(expediente.numeroExpediente + " derivado."));
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                throw ex;
+            } catch (Exception ex) {
+                rollbackSilencioso(conn);
+                conn.setAutoCommit(previousAutoCommit);
+                if (ex instanceof SQLException) {
+                    throw (SQLException) ex;
+                }
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    private ExpedienteCartaRespuestaEstado bloquearExpedienteParaCartaRespuesta(Connection conn, Long idExpediente) throws SQLException {
+        String sql = "SELECT e.numero_expediente, e.id_etapa_actual, e.id_estado_actual, "
+                + "et.codigo AS etapa_codigo, est.codigo AS estado_codigo "
+                + "FROM expediente e "
+                + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
+                + "JOIN estado_expediente est ON est.id_estado = e.id_estado_actual "
+                + "WHERE e.id_expediente = ? AND e.activo = 1 FOR UPDATE OF e.id_etapa_actual";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idExpediente);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new IllegalStateException("El expediente seleccionado no existe o no está activo.");
+                }
+                return new ExpedienteCartaRespuestaEstado(
+                        rs.getString("numero_expediente"),
+                        getLongOrNull(rs, "id_etapa_actual"),
+                        getLongOrNull(rs, "id_estado_actual"),
+                        rs.getString("etapa_codigo"),
+                        rs.getString("estado_codigo"));
+            }
+        }
+    }
+
+    private Transicion resolverTransicionDevolucionAnalisis(
+            Connection conn, String etapaOrigenCodigo, String estadoOrigenCodigo, String estadoDestinoCodigo) throws SQLException {
+        Long idEtapaDestino = requerirId(catalogoLookupDAO.obtenerEtapaId(conn, CODIGO_ETAPA_ANALISIS), "etapa ANALISIS");
+        Long idEstadoDestino = requerirId(catalogoLookupDAO.obtenerEstadoId(conn, estadoDestinoCodigo), "estado " + estadoDestinoCodigo);
+        String sql = "SELECT 1 FROM flujo f "
+                + "JOIN flujo_transicion ft ON ft.id_flujo = f.id_flujo "
+                + "JOIN etapa_expediente eo ON eo.id_etapa = ft.id_etapa_origen "
+                + "JOIN estado_expediente so ON so.id_estado = ft.id_estado_origen "
+                + "WHERE f.codigo = ? AND f.activo = 1 AND ft.activo = 1 "
+                + "AND ft.codigo_accion = ? AND eo.codigo = ? AND so.codigo = ? "
+                + "AND ft.id_etapa_destino = ? AND ft.id_estado_destino = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, CODIGO_FLUJO);
+            ps.setString(2, CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS);
+            ps.setString(3, etapaOrigenCodigo);
+            ps.setString(4, estadoOrigenCodigo);
+            ps.setLong(5, idEtapaDestino);
+            ps.setLong(6, idEstadoDestino);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new IllegalStateException("No existe transición activa " + etapaOrigenCodigo + "/" + estadoOrigenCodigo
+                            + " -> ANALISIS/" + estadoDestinoCodigo + " para " + CODIGO_MOVIMIENTO_DEVOLUCION_ANALISIS + ".");
+                }
+            }
+        }
+        return new Transicion(idEtapaDestino, idEstadoDestino);
+    }
+
+    private static class ExpedienteCartaRespuestaEstado {
+        private final String numeroExpediente;
+        private final Long idEtapa;
+        private final Long idEstado;
+        private final String etapaCodigo;
+        private final String estadoCodigo;
+
+        private ExpedienteCartaRespuestaEstado(
+                String numeroExpediente, Long idEtapa, Long idEstado, String etapaCodigo, String estadoCodigo) {
+            this.numeroExpediente = numeroExpediente == null ? "" : numeroExpediente;
+            this.idEtapa = idEtapa;
+            this.idEstado = idEstado;
+            this.etapaCodigo = etapaCodigo == null ? "" : etapaCodigo;
+            this.estadoCodigo = estadoCodigo == null ? "" : estadoCodigo;
+        }
+    }
+
+    private static class Transicion {
+        private final Long idEtapa;
+        private final Long idEstado;
+
+        private Transicion(Long idEtapa, Long idEstado) {
+            this.idEtapa = idEtapa;
+            this.idEstado = idEstado;
+        }
     }
 
     private AsignacionExpedienteDTO mapPendiente(Connection conn, ResultSet rs) throws SQLException {
@@ -1017,13 +1274,6 @@ public class AsignacionExpedienteDAO {
 
     private static boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
-    }
-
-    private static int normalizarLimite(int limite) {
-        if (limite <= 0) {
-            return DEFAULT_LIMIT;
-        }
-        return Math.min(limite, MAX_LIMIT);
     }
 
     private static Long getLongOrNull(ResultSet rs, String column) throws SQLException {

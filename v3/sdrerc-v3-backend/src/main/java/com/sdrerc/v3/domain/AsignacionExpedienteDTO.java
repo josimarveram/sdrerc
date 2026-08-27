@@ -327,12 +327,17 @@ public class AsignacionExpedienteDTO {
         return "No";
     }
 
-    public boolean tieneObservacionRegistro() {
-        String observacion = observacionSolicitud.toUpperCase();
-        return observacion.contains("ADVERTENCIAS DE VALIDACIÓN")
-                || observacion.contains("MOTIVO DUPLICADO");
-    }
-
+    /**
+     * 19/08/2026, pedido explícito del usuario: mismos 3 criterios/mensajes que la columna
+     * "Alertas" de fila principal en Bandeja Registro (ver {@code ExpedienteBandejaDAO
+     * #alertaCategoriaDesdeTexto}, V3) — Potencial duplicado &gt; Posible Grupo Familiar &gt; "Sin
+     * Alerta" (antes "Normal", sin equivalente en Registro). El estado "Con observaciones" que
+     * tenía esta bandeja (vía {@code tieneObservacionRegistro()}, heurística sobre
+     * {@code observacionSolicitud}) se retiró: en V2, "Con observaciones" solo aplica a filas
+     * ASOCIADAS/hijas (ver {@code ExpedienteRelacionadoDTO#getAlertaIngreso}, sin tocar), nunca a
+     * la fila principal — Registro tampoco lo mostraba para su fila raíz, así que mantenerlo acá
+     * era la inconsistencia real, no al revés.
+     */
     public String getAlertaIngreso() {
         if (potencialDuplicado) {
             return "Potencial duplicado";
@@ -340,10 +345,7 @@ public class AsignacionExpedienteDTO {
         if (alertaGrupoFamiliarActiva) {
             return "Posible Grupo Familiar";
         }
-        if (tieneObservacionRegistro()) {
-            return "Con observaciones";
-        }
-        return "Normal";
+        return "Sin Alerta";
     }
 
     public Long getDiasDesdeRegistro() {

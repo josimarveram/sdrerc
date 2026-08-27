@@ -60,7 +60,7 @@ public class AsignacionController {
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @RequestParam(required = false, defaultValue = "200") int limite) throws SQLException {
+            @RequestParam(required = false) Integer limite) throws SQLException {
         return asignacionExpedienteService.buscarExpedientes(texto, estado, desde, hasta, limite);
     }
 
@@ -129,6 +129,28 @@ public class AsignacionController {
         return cartaRespuestaService.listarCartasRespuestaPendientes();
     }
 
+    @GetMapping("/cartas-respuesta/abogados")
+    public List<UsuarioAsignableDTO> listarAbogadosCartasRespuesta() throws SQLException {
+        return asignacionExpedienteService.listarAbogadosAnalisis();
+    }
+
+    @GetMapping("/cartas-respuesta/{idExpediente}/abogado-actual")
+    public AbogadoActualResponse obtenerAbogadoActualCartaRespuesta(@PathVariable Long idExpediente) throws SQLException {
+        return new AbogadoActualResponse(asignacionExpedienteService.obtenerAbogadoActualAnalisis(idExpediente));
+    }
+
+    public record AbogadoActualResponse(Long idAbogado) {
+    }
+
+    @PostMapping("/cartas-respuesta/registrar-asignacion")
+    public AsignacionResultadoDTO registrarAsignacionCartaRespuesta(@RequestBody RegistrarAsignacionCartaRequest request) throws SQLException {
+        return asignacionExpedienteService.registrarAsignacionCartaRespuesta(
+                request.idExpediente(), request.idAbogado(), request.comentario());
+    }
+
+    public record RegistrarAsignacionCartaRequest(Long idExpediente, Long idAbogado, String comentario) {
+    }
+
     @GetMapping("/carga-abogados")
     public List<CargaLaboralAbogadoDTO> listarCargaAbogados(@RequestParam(required = false) Long idEquipo) throws SQLException {
         return cargaLaboralAbogadoService.listarCargaLaboralAbogados(idEquipo);
@@ -139,10 +161,10 @@ public class AsignacionController {
         return cargaLaboralAbogadoService.listarDocumentosPorAbogado(idUsuario);
     }
 
-    @GetMapping("/carga-abogados/vencimiento")
-    public Set<Long> listarIdsUsuarioConVencimientoEnRango(
+    @GetMapping("/carga-abogados/solicitud")
+    public Set<Long> listarIdsUsuarioConSolicitudEnRango(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) throws SQLException {
-        return cargaLaboralAbogadoService.listarIdsUsuarioConVencimientoEnRango(desde, hasta);
+        return cargaLaboralAbogadoService.listarIdsUsuarioConSolicitudEnRango(desde, hasta);
     }
 }

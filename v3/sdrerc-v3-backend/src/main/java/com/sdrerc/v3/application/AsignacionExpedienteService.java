@@ -46,7 +46,7 @@ public class AsignacionExpedienteService {
             String estadoCodigo,
             LocalDate fechaSolicitudDesde,
             LocalDate fechaSolicitudHasta,
-            int limite) throws SQLException {
+            Integer limite) throws SQLException {
         return asignacionExpedienteDAO.buscarExpedientes(textoLibre, estadoCodigo, fechaSolicitudDesde, fechaSolicitudHasta, limite);
     }
 
@@ -109,5 +109,48 @@ public class AsignacionExpedienteService {
             throw new IllegalArgumentException("Seleccione un expediente para generar número.");
         }
         return asignacionExpedienteDAO.generarNumeroExpediente(idExpediente, CurrentUser.get().idUsuario());
+    }
+
+    private static final String EQUIPO_ANALISIS = "EQ_ANALISIS";
+
+    /** Combo "Abogado responsable" de "Cartas de respuesta": equipo fijo EQ_ANALISIS, resuelto server-side (sin combo de equipo en el frontend). */
+    public List<UsuarioAsignableDTO> listarAbogadosAnalisis() throws SQLException {
+        Long idEquipoAnalisis = resolverIdEquipoAnalisis();
+        if (idEquipoAnalisis == null) {
+            return List.of();
+        }
+        return usuarioAsignacionDAO.listarAbogadosAsignables(idEquipoAnalisis);
+    }
+
+    /** Abogado que ya tiene el expediente en Análisis hoy — preselección del combo de "Cartas de respuesta". */
+    public Long obtenerAbogadoActualAnalisis(Long idExpediente) throws SQLException {
+        return asignacionExpedienteDAO.obtenerIdAbogadoActivoPorEquipo(idExpediente, EQUIPO_ANALISIS);
+    }
+
+    /** "Registrar Asignación" de "Cartas de respuesta": deriva el expediente a Análisis/Derivado, resolviendo EQ_ANALISIS internamente. */
+    public AsignacionResultadoDTO registrarAsignacionCartaRespuesta(Long idExpediente, Long idAbogado, String comentario) throws SQLException {
+        if (idAbogado == null) {
+            throw new IllegalArgumentException("Seleccione el abogado responsable.");
+        }
+        Long idEquipoAnalisis = resolverIdEquipoAnalisis();
+        if (idEquipoAnalisis == null) {
+            throw new IllegalStateException("El equipo EQ_ANALISIS no está configurado.");
+        }
+        return asignacionExpedienteDAO.reasignarDesdeCartaRespuesta(
+                idExpediente,
+                idEquipoAnalisis,
+                idAbogado,
+                comentario,
+                CurrentUser.get().idUsuario(),
+                CurrentUser.get().hasRole("ADMIN_SISTEMA"),
+                "DERIVADO");
+    }
+
+    private Long resolverIdEquipoAnalisis() throws SQLException {
+        return equipoAsignacionDAO.listarEquiposActivos().stream()
+                .filter(eq -> EQUIPO_ANALISIS.equalsIgnoreCase(eq.getCodigo()))
+                .map(EquipoAsignacionDTO::getIdEquipo)
+                .findFirst()
+                .orElse(null);
     }
 }

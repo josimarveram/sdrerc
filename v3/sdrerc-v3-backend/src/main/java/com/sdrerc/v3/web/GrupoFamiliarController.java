@@ -2,6 +2,7 @@ package com.sdrerc.v3.web;
 
 import com.sdrerc.v3.application.GrupoFamiliarService;
 import com.sdrerc.v3.domain.GrupoFamiliarCandidatoDTO;
+import com.sdrerc.v3.domain.GrupoFamiliarEstadoAlertaDTO;
 import com.sdrerc.v3.domain.GrupoFamiliarIntegranteDTO;
 import com.sdrerc.v3.domain.GrupoFamiliarResultadoDTO;
 import com.sdrerc.v3.web.dto.AsociarGrupoFamiliarRequest;
@@ -22,12 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
  * mismo criterio que {@code ExpedienteRelacionadoController}/"Asociar": un solo recurso REST, un
  * solo componente React ({@code GrupoFamiliarPanel.tsx}) importado desde ambas bandejas.
  *
- * <p>Alcance de este incremento: candidatos por heurística de apellidos
- * ({@link #listarPosiblesIntegrantes}) + búsqueda manual de respaldo
- * ({@link #buscarPosiblesIntegrantesManual}), confirmar asociación ({@link #asociar}), listar el
- * grupo ya confirmado ({@link #listarIntegrantes}) y retirar un integrante ({@link #eliminar},
- * botón "x" en V2). Queda fuera: todo lo atado a la baja lógica de un registro (limpieza de
- * alertas remanentes al eliminar un expediente), funcionalidad todavía no construida en V3.</p>
+ * <p>Alcance: candidatos por heurística de apellidos ({@link #listarPosiblesIntegrantes}) +
+ * búsqueda manual de respaldo ({@link #buscarPosiblesIntegrantesManual}), confirmar asociación
+ * ({@link #asociar}), listar el grupo ya confirmado ({@link #listarIntegrantes}), retirar un
+ * integrante ({@link #eliminar}, botón "x" en V2), y (13/08/2026, pedido explícito del usuario)
+ * consultar el estado de la alerta "Posible Grupo Familiar" ({@link #obtenerEstadoAlerta}) y
+ * descartarla sin asociar ({@link #eliminarAlerta}, botón papelera en V2).</p>
  */
 @RestController
 @RequestMapping("/api/grupo-familiar")
@@ -64,5 +65,15 @@ public class GrupoFamiliarController {
     @DeleteMapping("/{idExpediente}")
     public GrupoFamiliarResultadoDTO eliminar(@PathVariable Long idExpediente) throws SQLException {
         return grupoFamiliarService.eliminarDeGrupoFamiliar(idExpediente);
+    }
+
+    @GetMapping("/{idExpediente}/estado-alerta")
+    public GrupoFamiliarEstadoAlertaDTO obtenerEstadoAlerta(@PathVariable Long idExpediente) throws SQLException {
+        return grupoFamiliarService.obtenerEstadoAlerta(idExpediente);
+    }
+
+    @DeleteMapping("/{idExpediente}/alerta")
+    public void eliminarAlerta(@PathVariable Long idExpediente) throws SQLException {
+        grupoFamiliarService.eliminarAlertaPosibleGrupoFamiliar(idExpediente);
     }
 }

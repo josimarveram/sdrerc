@@ -30,6 +30,8 @@ public class AsignacionCartaRespuestaDTO {
     private final Integer diasPlazoVencimiento;
     private final LocalDate fechaVencimiento;
     private final String tipoAlertaVencimiento;
+    private final boolean tieneRespuestaRegistrada;
+    private final LocalDate fechaSolicitud;
 
     public AsignacionCartaRespuestaDTO(
             Long idDocumentoAnalizado,
@@ -56,7 +58,9 @@ public class AsignacionCartaRespuestaDTO {
             Long diasVencimiento,
             Integer diasPlazoVencimiento,
             LocalDate fechaVencimiento,
-            String tipoAlertaVencimiento) {
+            String tipoAlertaVencimiento,
+            boolean tieneRespuestaRegistrada,
+            LocalDate fechaSolicitud) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
@@ -82,6 +86,8 @@ public class AsignacionCartaRespuestaDTO {
         this.diasPlazoVencimiento = diasPlazoVencimiento;
         this.fechaVencimiento = fechaVencimiento;
         this.tipoAlertaVencimiento = safe(tipoAlertaVencimiento);
+        this.tieneRespuestaRegistrada = tieneRespuestaRegistrada;
+        this.fechaSolicitud = fechaSolicitud;
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -182,6 +188,28 @@ public class AsignacionCartaRespuestaDTO {
 
     public String getTipoAlertaVencimiento() {
         return tipoAlertaVencimiento;
+    }
+
+    /**
+     * Mejora explícita de V3 (sin equivalente en la lista de V2, que solo lo muestra al abrir el
+     * detalle de una fila): indica si esta carta intermedia ya tiene al menos un documento hijo
+     * (nivel=1, {@code id_documento_padre} = este documento) activo registrado — mismo criterio que
+     * habilita "Registrar Asignación" en V2 (ver {@code contieneRespuestaDe}, JPanelAsignacionV2).
+     * Permite mostrar de un vistazo, en la propia grilla, qué cartas ya están listas para derivar.
+     */
+    public boolean isTieneRespuestaRegistrada() {
+        return tieneRespuestaRegistrada;
+    }
+
+    /**
+     * 25/08/2026, pedido explícito del usuario: Fecha Solicitud del expediente
+     * (`EXPEDIENTE_SOLICITUD.fecha_recepcion`, mismo campo que "Fecha Solicitud" en
+     * Registro/Asignación) — usada por el filtro de fecha del buscador de esta bandeja en vez de
+     * {@link #getFechaVencimiento()} (que es el plazo propio de la carta, no un dato del
+     * expediente en sí, y por naturaleza futuro/incompatible con un default de rango pasado).
+     */
+    public LocalDate getFechaSolicitud() {
+        return fechaSolicitud;
     }
 
     /**

@@ -56,6 +56,11 @@ public class CargaDiariaExportService {
         "TITULAR",
         "TIPO DOCUMENTO IDENTIDAD TITULAR",
         "N° DOCUMENTO IDENTIDAD TITULAR",
+        // Solicitante con 3 tipos (14/08/2026, ver v3/CLAUDE.md): columna calculada por el sistema
+        // (identificación automática desde SOLICITADO POR contra CENTROS_ATENCION/UNIDADES_ORGANICAS,
+        // ver CargaDiariaReglasService), no es un dato capturado en el Excel — por eso va junto a las
+        // demás columnas calculadas (RESULTADO DEL SISTEMA en adelante), no junto a las de captura.
+        "TIPO DE SOLICITANTE",
         "RESULTADO DEL SISTEMA",
         "DUPLICIDAD",
         "NÚMERO EXPEDIENTE",
@@ -125,6 +130,7 @@ public class CargaDiariaExportService {
             safe(item.getTitular()),
             safe(item.getTipoDocumentoIdentidadTitular()),
             documentoVisual(item.getNumeroDocumentoIdentidadTitular()),
+            nombreVisualTipoSolicitante(item.getTipoSolicitanteEfectivo()),
             safe(item.getEstadoValidacion()),
             item.isPosibleDuplicado() ? "Sí" : "No",
             numeroExpedientePreview(item),
@@ -172,6 +178,20 @@ public class CargaDiariaExportService {
 
     private static String documentoVisual(String value) {
         return value == null || value.trim().isEmpty() || "SIN DNI".equalsIgnoreCase(value.trim()) ? "" : value.trim();
+    }
+
+    /** CIUDADANO/CENTRO_ATENCION/UNIDAD_ORGANICA/MUNICIPALIDAD -> texto legible, igual que la lista desplegable de la plantilla. */
+    private static String nombreVisualTipoSolicitante(String codigo) {
+        if ("CENTRO_ATENCION".equals(codigo)) {
+            return "Centro de Atención";
+        }
+        if ("UNIDAD_ORGANICA".equals(codigo)) {
+            return "Unidad Orgánica";
+        }
+        if ("MUNICIPALIDAD".equals(codigo)) {
+            return "Municipalidad";
+        }
+        return "Ciudadano";
     }
 
     private static String canalVisual(String value) {
@@ -257,8 +277,28 @@ public class CargaDiariaExportService {
             return null;
         }
         String lower = mensaje.trim().toLowerCase(Locale.ROOT);
+        // N° expediente SGD duplicado (13/08/2026, pedido explícito del usuario): ni "ya está
+        // registrado en..." (duplicado contra la base) ni "repetido en el archivo..." (duplicado
+        // dentro del mismo Excel) contienen ninguna de las palabras clave del guard de abajo, así
+        // que la fila quedaba mostrando "Sin observación" pese a bloquear el registro por SGD
+        // duplicado — mismo bug que la grilla en vivo (`RegistroCargaDiariaPage.tsx`, corregido
+        // igual ahí). Chequeo aparte, antes del guard genérico, porque estos mensajes no tienen
+        // "obligatorio"/"inválida"/"determinar".
+        if (lower.contains("expediente sgd") && (lower.contains("ya está registrado") || lower.contains("repetido en el archivo"))) {
+            return "N° expediente SGD ya registrado";
+        }
         if (!lower.contains("obligatorio") && !lower.contains("inválida") && !lower.contains("invalida") && !lower.contains("determinar")) {
             return null;
+        }
+        if (lower.contains("expediente sgd")) {
+            return "Dato incompleto: N° expediente SGD";
+        }
+        // "Solicitado por" (18/08/2026, pedido explícito del usuario, nuevo campo obligatorio de
+        // Carga diaria) — antes de "número de trámite" (que ya no es obligatorio, ver
+        // CargaDiariaReglasService, se deja el mapeo existente sin quitar por si el mensaje
+        // reaparece por otra vía).
+        if (lower.contains("solicitado por")) {
+            return "Dato incompleto: Solicitado por";
         }
         if (lower.contains("número de trámite")) {
             return "Dato incompleto: Número de trámite";

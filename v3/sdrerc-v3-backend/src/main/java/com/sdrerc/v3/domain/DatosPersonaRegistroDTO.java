@@ -1,9 +1,21 @@
 package com.sdrerc.v3.domain;
 
-/** Port literal de com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO (V2). */
+/**
+ * Port literal de com.sdrerc.domain.dto.sdrercapp.DatosPersonaRegistroDTO (V2), extendido
+ * (14/08/2026, Fase 2 de la iniciativa "separar Titular/Solicitante en 3 campos", ver
+ * v3/CLAUDE.md) con {@code apellidoPaterno}/{@code apellidoMaterno}/{@code nombres}: campos
+ * estructurados opcionales, solo para persona natural (Titular siempre; Remitente cuando no es
+ * RUC). {@code nombreCompleto} se conserva como el campo autoritativo para validación/lectura ya
+ * existente — el frontend lo sigue calculando y enviando ("PATERNO MATERNO, Nombres") a partir de
+ * los 3 campos nuevos, para no romper ningún consumidor actual. Persona jurídica (RUC) sigue
+ * usando únicamente {@code nombreCompleto} (razón social), los 3 campos nuevos quedan null.
+ */
 public class DatosPersonaRegistroDTO {
 
     private String nombreCompleto;
+    private String apellidoPaterno;
+    private String apellidoMaterno;
+    private String nombres;
     private String tipoDocumento;
     private String numeroDocumento;
     private String telefono;
@@ -24,6 +36,30 @@ public class DatosPersonaRegistroDTO {
 
     public void setNombreCompleto(String nombreCompleto) {
         this.nombreCompleto = trimToNull(nombreCompleto);
+    }
+
+    public String getApellidoPaterno() {
+        return apellidoPaterno;
+    }
+
+    public void setApellidoPaterno(String apellidoPaterno) {
+        this.apellidoPaterno = trimToNull(apellidoPaterno);
+    }
+
+    public String getApellidoMaterno() {
+        return apellidoMaterno;
+    }
+
+    public void setApellidoMaterno(String apellidoMaterno) {
+        this.apellidoMaterno = trimToNull(apellidoMaterno);
+    }
+
+    public String getNombres() {
+        return nombres;
+    }
+
+    public void setNombres(String nombres) {
+        this.nombres = trimToNull(nombres);
     }
 
     public String getTipoDocumento() {

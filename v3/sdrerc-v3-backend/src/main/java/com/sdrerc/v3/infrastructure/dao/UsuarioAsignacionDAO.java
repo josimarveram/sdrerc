@@ -76,6 +76,50 @@ public class UsuarioAsignacionDAO {
         }
     }
 
+    /**
+     * Port de {@code UsuarioAsignacionService.listarUsuariosAsignablesPorEquipo} (V2) — a
+     * diferencia de {@link #listarAbogadosAsignables}, filtra SOLO por pertenencia activa al
+     * equipo, sin restricción de rol (`ABOGADO`/`ANALISTA`). Usado por combos "Usuario destino"
+     * cuyo equipo puede tener miembros con otros roles (ej. `EQ_SUPERVISION`, `EQ_VALIDACION`,
+     * `EQ_NOTIFICACION`) — ver CLAUDE.md raíz, sección Verificación/Notificación.
+     */
+    public List<UsuarioAsignableDTO> listarUsuariosAsignablesPorEquipo(Long idEquipo) throws SQLException {
+        if (idEquipo == null) {
+            return new ArrayList<>();
+        }
+        String sql = "SELECT u.id_usuario, u.username, u.nombre_completo, "
+                + "eu.id_equipo, eq.nombre AS equipo_nombre, "
+                + "(SELECT LISTAGG(r.codigo, ', ') WITHIN GROUP (ORDER BY r.codigo) "
+                + "   FROM usuario_rol ur JOIN rol r ON r.id_rol = ur.id_rol AND r.activo = 1 "
+                + "  WHERE ur.id_usuario = u.id_usuario AND ur.activo = 1) AS rol_codigo, "
+                + "(SELECT MAX(sup.nombre_completo) FROM usuario_supervision us "
+                + "   JOIN usuario sup ON sup.id_usuario = us.id_supervisor AND sup.activo = 1 "
+                + "  WHERE us.id_abogado = u.id_usuario AND us.activo = 1) AS supervisor_nombre "
+                + "FROM usuario u "
+                + "JOIN equipo_usuario eu ON eu.id_usuario = u.id_usuario AND eu.activo = 1 AND eu.id_equipo = ? "
+                + "LEFT JOIN equipo eq ON eq.id_equipo = eu.id_equipo AND eq.activo = 1 "
+                + "WHERE u.activo = 1 AND UPPER(u.estado) = 'ACTIVO' "
+                + "ORDER BY u.nombre_completo";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idEquipo);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<UsuarioAsignableDTO> usuarios = new ArrayList<>();
+                while (rs.next()) {
+                    usuarios.add(new UsuarioAsignableDTO(
+                            getLongOrNull(rs, "id_usuario"),
+                            rs.getString("username"),
+                            rs.getString("nombre_completo"),
+                            getLongOrNull(rs, "id_equipo"),
+                            rs.getString("equipo_nombre"),
+                            rs.getString("rol_codigo"),
+                            rs.getString("supervisor_nombre")));
+                }
+                return usuarios;
+            }
+        }
+    }
+
     private static Long getLongOrNull(ResultSet rs, String column) throws SQLException {
         long value = rs.getLong(column);
         return rs.wasNull() ? null : value;
