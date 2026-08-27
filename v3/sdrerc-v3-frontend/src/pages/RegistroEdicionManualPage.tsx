@@ -1,25 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Box, Button, CircularProgress, Stack, TextField, Typography } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   guardarEdicionManual,
   listarCanalesRecepcion,
+  listarCentrosAtencion,
   listarDepartamentos,
   listarDistritos,
+  listarMunicipalidades,
   listarProcedimientosRegistrales,
   listarProvincias,
   listarTiposActa,
   listarTiposDocumento,
+  listarUnidadesOrganicas,
   obtenerExpedienteParaEdicion,
   validarEdicionManual,
   type CatalogoItem,
+  type CentroAtencion,
   type ExpedienteEdicionManual,
+  type Municipalidad,
   type RegistroManualResultado,
   type UbigeoItem,
+  type UnidadOrganica,
 } from '../api/registroApi'
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
-import { RegistroExpedienteForm, SectionCard } from '../components/RegistroExpedienteForm'
+import { RegistroExpedienteForm, SectionCard, resumenMensajesFormulario } from '../components/RegistroExpedienteForm'
 
 /**
  * Equivalente web de JPanelRegistroManualRecepcionV2 (V2) en modo edición, accesible desde el
@@ -39,6 +45,9 @@ export function RegistroEdicionManualPage() {
   const [procedimientos, setProcedimientos] = useState<CatalogoItem[]>([])
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([])
   const [tiposActa, setTiposActa] = useState<CatalogoItem[]>([])
+  const [centrosAtencion, setCentrosAtencion] = useState<CentroAtencion[]>([])
+  const [unidadesOrganicas, setUnidadesOrganicas] = useState<UnidadOrganica[]>([])
+  const [municipalidades, setMunicipalidades] = useState<Municipalidad[]>([])
   const [departamentos, setDepartamentos] = useState<UbigeoItem[]>([])
   const [provincias, setProvincias] = useState<UbigeoItem[]>([])
   const [distritos, setDistritos] = useState<UbigeoItem[]>([])
@@ -47,6 +56,12 @@ export function RegistroEdicionManualPage() {
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
   const [loading, setLoading] = useState(false)
+  // Fuerza a mostrar en rojo los campos obligatorios vacíos al intentar Validar/Guardar (18/08/2026,
+  // pedido explícito del usuario) — ver Javadoc de `RegistroExpedienteFormProps.mostrarErrores`.
+  const [mostrarErrores, setMostrarErrores] = useState(false)
+  // Texto + resaltado del cuadro "Errores / advertencias del formulario" — ver Javadoc de
+  // `resumenMensajesFormulario` (18/08/2026, pedido explícito del usuario).
+  const resumenFormulario = useMemo(() => resumenMensajesFormulario(mensajes), [mensajes])
 
   useEffect(() => {
     if (!idExpediente) return
@@ -58,14 +73,20 @@ export function RegistroEdicionManualPage() {
       listarTiposDocumento(),
       listarTiposActa(),
       listarDepartamentos(),
+      listarCentrosAtencion(),
+      listarUnidadesOrganicas(),
+      listarMunicipalidades(),
     ])
-      .then(([exp, c, p, d, a, dep]) => {
+      .then(([exp, c, p, d, a, dep, ca, uo, muni]) => {
         setRegistro(exp)
         setCanales(c)
         setProcedimientos(p)
         setTiposDocumento(d)
         setTiposActa(a)
         setDepartamentos(dep)
+        setCentrosAtencion(ca)
+        setUnidadesOrganicas(uo)
+        setMunicipalidades(muni)
       })
       .catch((e) => setError(describeError(e)))
       .finally(() => setCargando(false))
@@ -126,6 +147,7 @@ export function RegistroEdicionManualPage() {
       const resp = await validarEdicionManual(registro)
       setMensajes(resp.mensajes)
       setRegistro(resp.registro)
+      setMostrarErrores(true)
     } catch (e) {
       setError(describeError(e))
     } finally {
@@ -137,9 +159,24 @@ export function RegistroEdicionManualPage() {
     if (!registro) return
     setLoading(true)
     setError(null)
+    setMostrarErrores(true)
     try {
-      const resp = await guardarEdicionManual(registro)
-      setResultado(resp)
+      // Revalida con los datos actuales antes de guardar (18/08/2026, pedido explícito del usuario:
+      // no debería permitir grabar con campos obligatorios vacíos) — mismo patrón que ya usaba
+      // `PanelDatosExpediente.guardarEdicion` (edición inline): si queda cualquier mensaje (de campo
+      // o de formulario), se bloquea el guardado — a diferencia de Registro manual (alta), en
+      // Edición manual TODO mensaje bloquea, ya que `ExpedienteEdicionManualService.guardar` en el
+      // backend ya rechaza igual con una excepción; esto solo adelanta el mismo resultado al cliente
+      // con mensajes claros y los campos resaltados en rojo.
+      const resp = await validarEdicionManual(registro)
+      setMensajes(resp.mensajes)
+      setRegistro(resp.registro)
+      if (resp.mensajes.length > 0) {
+        setError('Corrija los campos marcados en rojo antes de guardar.')
+        return
+      }
+      const resultado = await guardarEdicionManual(resp.registro)
+      setResultado(resultado)
       setMensajes([])
     } catch (e) {
       setError(describeError(e))
@@ -150,7 +187,7 @@ export function RegistroEdicionManualPage() {
 
   if (cargando) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault, p: 4, display: 'flex', justifyContent: 'center', mt: 8 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />
       </Box>
     )
@@ -158,7 +195,7 @@ export function RegistroEdicionManualPage() {
 
   if (resultado) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault, p: 4, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <SectionCard title="">
           <Alert severity="success" sx={{ mb: 2 }}>
             {resultado.mensaje}
@@ -173,7 +210,7 @@ export function RegistroEdicionManualPage() {
 
   if (!registro) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault, p: 4 }}>
+      <Box>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -187,7 +224,7 @@ export function RegistroEdicionManualPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault, p: 4 }}>
+    <Box>
       <Typography variant="h6" sx={{ color: sdrercColors.primary }}>
         Edición manual
       </Typography>
@@ -220,10 +257,14 @@ export function RegistroEdicionManualPage() {
           procedimientos={procedimientos}
           tiposDocumento={tiposDocumento}
           tiposActa={tiposActa}
+          centrosAtencion={centrosAtencion}
+          unidadesOrganicas={unidadesOrganicas}
+          municipalidades={municipalidades}
           departamentos={departamentos}
           provincias={provincias}
           distritos={distritos}
           numeroExpedienteLabel={registro.numeroExpediente || registro.numeroExpedienteVistaPrevia || 'Sin número'}
+          mostrarErrores={mostrarErrores}
         />
 
         <SectionCard title="Resumen y confirmación">
@@ -231,14 +272,18 @@ export function RegistroEdicionManualPage() {
             <Typography variant="body2">
               <strong>Número expediente:</strong> {registro.numeroExpediente || registro.numeroExpedienteVistaPrevia}
             </Typography>
+            {/* Mensajes de nivel de FORMULARIO — ver Javadoc de `resumenMensajesFormulario`
+                (18/08/2026, pedido explícito del usuario): los de campo individual ya se muestran
+                inline junto a cada campo; si TODOS los mensajes eran de campo, se muestra un aviso
+                genérico en vez de dar a entender que no hay ningún problema. */}
             <TextField
-              label="Errores / advertencias"
+              label="Errores / advertencias del formulario"
               multiline
               minRows={2}
               fullWidth
               disabled
-              value={mensajes.length > 0 ? mensajes.join('\n') : 'Sin advertencias (valide primero).'}
-              sx={mensajes.length > 0 ? { '& .MuiInputBase-root': { bgcolor: sdrercColors.softRed } } : undefined}
+              value={resumenFormulario.texto}
+              sx={resumenFormulario.resaltado ? { '& .MuiInputBase-root': { bgcolor: sdrercColors.softRed } } : undefined}
             />
           </Stack>
         </SectionCard>

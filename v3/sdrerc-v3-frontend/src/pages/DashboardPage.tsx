@@ -9,17 +9,9 @@ import { BarChartCard } from '../charts/BarChartCard'
 import { DonutChartCard } from '../charts/DonutChartCard'
 import { TrendLineChartCard } from '../charts/TrendLineChartCard'
 import { createCategoricalColorAssigner, estadoNotificacionColors } from '../charts/chartPalette'
+import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
 
 const ROL_ADMIN_SISTEMA = 'ADMIN_SISTEMA'
-
-function primerDiaMesActualISO(): string {
-  const hoy = new Date()
-  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-01`
-}
-
-function hoyISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function formatearMes(mesIso: string): string {
   const [anio, mes] = mesIso.split('-').map(Number)
@@ -68,7 +60,7 @@ export function DashboardPage() {
   const resultadoAnalisisColor = createCategoricalColorAssigner()
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault, p: 4 }}>
+    <Box>
       <Typography variant="h6" sx={{ color: sdrercColors.primary }}>
         Dashboard gerencial
       </Typography>

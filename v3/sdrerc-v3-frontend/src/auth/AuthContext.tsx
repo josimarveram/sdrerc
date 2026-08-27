@@ -6,6 +6,7 @@ export interface Session {
   username: string
   nombreCompleto: string
   roles: string[]
+  permisos: string[]
 }
 
 interface AuthContextValue {
@@ -23,7 +24,12 @@ function readStoredSession(): Session | null {
   const raw = sessionStorage.getItem(STORAGE_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as Session
+    const parsed = JSON.parse(raw) as Session
+    // Migracion defensiva: una sesion guardada antes de agregar `permisos` (20/08/2026) no trae ese
+    // campo - sin este fallback, session.permisos.length revienta con "Cannot read properties of
+    // undefined" hasta que el usuario vuelve a loguearse. Fail-open (lista vacia) es el mismo criterio
+    // que ya se aplica cuando el backend SI devuelve `permisos: []`.
+    return { ...parsed, permisos: parsed.permisos ?? [] }
   } catch {
     return null
   }
@@ -43,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: response.username,
           nombreCompleto: response.nombreCompleto,
           roles: response.roles,
+          permisos: response.permisos,
         }
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next))
         setSessionState(next)

@@ -18,6 +18,8 @@ export interface SessionResponse {
   username: string
   nombreCompleto: string
   roles: string[]
+  /** Códigos PERMISO (MENU_* / BANDEJA_*) resueltos para los roles del usuario. Vacío = fail-open (mismo criterio que V2: sin restricciones conocidas, mostrar todo). */
+  permisos: string[]
   backupCodes: string[] | null
 }
 

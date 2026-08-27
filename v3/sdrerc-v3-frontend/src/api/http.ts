@@ -51,9 +51,10 @@ export async function apiPost<TResponse>(path: string, body: unknown): Promise<T
 }
 
 /** Igual que apiPost, pero PUT (ej. guardar cambios de Edición manual). */
-export async function apiPut<TResponse>(path: string, body: unknown): Promise<TResponse> {
+export async function apiPut<TResponse>(path: string, body: unknown, params?: Record<string, string>): Promise<TResponse> {
   const token = currentAccessToken()
-  const response = await fetch(path, {
+  const query = params ? `?${new URLSearchParams(params).toString()}` : ''
+  const response = await fetch(`${path}${query}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

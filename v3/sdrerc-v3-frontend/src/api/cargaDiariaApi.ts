@@ -19,6 +19,24 @@ export interface CargaDiariaPreview {
   numeroDocumentoIdentidadSolicitante: string | null
   tipoDocumentoIdentidadTitular: string | null
   numeroDocumentoIdentidadTitular: string | null
+  // Solicitante con 4 tipos (14/08/2026, ver v3/CLAUDE.md) — sin columna propia en el Excel: el
+  // backend identifica el tipo automáticamente a partir de `remitente` ("SOLICITADO POR") contra
+  // los catálogos CENTROS_ATENCION/UNIDADES_ORGANICAS/MUNICIPALIDADES durante "Validar" (coincidencia
+  // por contención normalizada). `tipoSolicitante` SÍ es editable manualmente (combo, 18/08/2026,
+  // pedido explícito del usuario) para corregir una clasificación automática incorrecta — al editarlo
+  // se debe marcar `tipoSolicitanteManual=true` para que el backend no lo recalcule en el siguiente
+  // "Validar" (ver CargaDiariaReglasService.clasificarTipoSolicitante). Los demás campos de este
+  // bloque (idCentroAtencion/centroAtencionDenominacion/idUnidadOrganica/unidadOrganicaNombre/
+  // idMunicipalidad/municipalidadDenominacion) siguen siendo de SOLO LECTURA — no hay forma de elegir
+  // manualmente la entidad específica desde esta grilla, solo la categoría.
+  tipoSolicitante: string | null
+  tipoSolicitanteManual: boolean
+  idCentroAtencion: number | null
+  centroAtencionDenominacion: string | null
+  idUnidadOrganica: number | null
+  unidadOrganicaNombre: string | null
+  idMunicipalidad: number | null
+  municipalidadDenominacion: string | null
   grupoFamiliar: boolean
   posibleGrupoFamiliar: boolean
   criterioGrupoFamiliar: string | null

@@ -13,10 +13,16 @@ interface MetricCardProps {
  * Sentence case sin dos puntos finales, valor en cifras proporcionales (nunca tabular-nums en un
  * numero grande y aislado, ver skill dataviz), color solo en el valor — la etiqueta y el
  * subtitulo siempre en tinta de texto, nunca en el color de la serie.
+ *
+ * Padding vertical reducido (13/08/2026, pedido explícito del usuario: "achica el padding vertical
+ * interno... para que ocupen menos espacio vertical, manteniendo la legibilidad") — `py` bajó de
+ * 2.5 a 1.5, `px` sin cambios. Cambio en el componente compartido: se refleja automáticamente en
+ * TODAS las bandejas que ya usan `MetricCard` (Registro, Asignación, Carga Abogados, Cartas de
+ * Respuesta, Dashboard), no solo en la que lo pidió.
  */
 export function MetricCard({ label, value, caption, color }: MetricCardProps) {
   return (
-    <Paper elevation={1} sx={{ p: 2.5, borderRadius: 2, flex: 1, minWidth: 160 }}>
+    <Paper elevation={1} sx={{ px: 2.5, py: 1.5, borderRadius: 2, flex: 1, minWidth: 160 }}>
       <Typography variant="body2" color="text.secondary">
         {label}
       </Typography>

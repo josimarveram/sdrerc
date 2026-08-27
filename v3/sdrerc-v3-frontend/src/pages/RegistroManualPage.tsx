@@ -1,25 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import {
   listarCanalesRecepcion,
+  listarCentrosAtencion,
   listarDepartamentos,
   listarDistritos,
+  listarMunicipalidades,
   listarProcedimientosRegistrales,
   listarProvincias,
   listarTiposActa,
   listarTiposDocumento,
+  listarUnidadesOrganicas,
   registrarManual,
   registroVacio,
   validarRegistroManual,
   type CatalogoItem,
+  type CentroAtencion,
+  type Municipalidad,
   type RegistroManualExpediente,
   type RegistroManualResultado,
   type UbigeoItem,
+  type UnidadOrganica,
 } from '../api/registroApi'
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
-import { RegistroExpedienteForm, SectionCard } from '../components/RegistroExpedienteForm'
+import { RegistroExpedienteForm, SectionCard, resumenMensajesFormulario, tieneErroresDeCampo } from '../components/RegistroExpedienteForm'
+import { PageHeaderSticky } from '../layout/PageHeaderSticky'
+import { REGISTRO_TABS } from '../layout/moduleTabs'
 
 /**
  * Equivalente web de JPanelRegistroManualRecepcionV2 (V2) en modo alta, mismos campos y misma
@@ -38,6 +46,9 @@ export function RegistroManualPage() {
   const [procedimientos, setProcedimientos] = useState<CatalogoItem[]>([])
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([])
   const [tiposActa, setTiposActa] = useState<CatalogoItem[]>([])
+  const [centrosAtencion, setCentrosAtencion] = useState<CentroAtencion[]>([])
+  const [unidadesOrganicas, setUnidadesOrganicas] = useState<UnidadOrganica[]>([])
+  const [municipalidades, setMunicipalidades] = useState<Municipalidad[]>([])
   const [departamentos, setDepartamentos] = useState<UbigeoItem[]>([])
   const [provincias, setProvincias] = useState<UbigeoItem[]>([])
   const [distritos, setDistritos] = useState<UbigeoItem[]>([])
@@ -45,6 +56,13 @@ export function RegistroManualPage() {
   const [resultado, setResultado] = useState<RegistroManualResultado | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // Fuerza a mostrar en rojo los campos obligatorios vacíos al intentar Validar/Registrar, aunque el
+  // usuario nunca los haya tocado (18/08/2026, pedido explícito del usuario) — ver Javadoc de
+  // `RegistroExpedienteFormProps.mostrarErrores`.
+  const [mostrarErrores, setMostrarErrores] = useState(false)
+  // Texto + resaltado del cuadro "Errores / advertencias del formulario" — ver Javadoc de
+  // `resumenMensajesFormulario` (18/08/2026, pedido explícito del usuario).
+  const resumenFormulario = useMemo(() => resumenMensajesFormulario(mensajes), [mensajes])
 
   useEffect(() => {
     Promise.all([
@@ -53,13 +71,19 @@ export function RegistroManualPage() {
       listarTiposDocumento(),
       listarTiposActa(),
       listarDepartamentos(),
+      listarCentrosAtencion(),
+      listarUnidadesOrganicas(),
+      listarMunicipalidades(),
     ])
-      .then(([c, p, d, a, dep]) => {
+      .then(([c, p, d, a, dep, ca, uo, muni]) => {
         setCanales(c)
         setProcedimientos(p)
         setTiposDocumento(d)
         setTiposActa(a)
         setDepartamentos(dep)
+        setCentrosAtencion(ca)
+        setUnidadesOrganicas(uo)
+        setMunicipalidades(muni)
       })
       .catch((e) => setError(describeError(e)))
   }, [])
@@ -119,6 +143,7 @@ export function RegistroManualPage() {
       const resp = await validarRegistroManual(registro)
       setMensajes(resp.mensajes)
       setRegistro(resp.registro)
+      setMostrarErrores(true)
     } catch (e) {
       setError(describeError(e))
     } finally {
@@ -129,9 +154,23 @@ export function RegistroManualPage() {
   async function handleRegistrar() {
     setLoading(true)
     setError(null)
+    setMostrarErrores(true)
     try {
-      const resp = await registrarManual(registro)
-      setResultado(resp)
+      // Revalida con los datos actuales antes de registrar (18/08/2026, pedido explícito del
+      // usuario: "al hacer clic en el botón Registrar no debería permitir grabar" si faltan campos
+      // obligatorios) — `tieneErroresDeCampo` bloquea solo por mensajes de campo (obligatorio/
+      // formato); advertencias de nivel de formulario (posible duplicado, posible grupo familiar,
+      // "requiere decisión de asignación") siguen sin bloquear, igual que V2: el expediente se
+      // registra y queda marcado para revisión/asociación posterior.
+      const resp = await validarRegistroManual(registro)
+      setMensajes(resp.mensajes)
+      setRegistro(resp.registro)
+      if (tieneErroresDeCampo(resp.mensajes)) {
+        setError('Corrija los campos obligatorios marcados en rojo antes de registrar.')
+        return
+      }
+      const resultado = await registrarManual(resp.registro)
+      setResultado(resultado)
       setMensajes([])
     } catch (e) {
       setError(describeError(e))
@@ -142,7 +181,7 @@ export function RegistroManualPage() {
 
   if (resultado) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault, p: 4, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Paper elevation={1} sx={{ p: 4, borderRadius: 2, maxWidth: 480, alignSelf: 'flex-start', mt: 8 }}>
           <Alert severity="success" sx={{ mb: 2 }}>
             {resultado.mensaje}
@@ -156,6 +195,7 @@ export function RegistroManualPage() {
               onClick={() => {
                 setRegistro(registroVacio())
                 setResultado(null)
+                setMostrarErrores(false)
               }}
             >
               Registrar otro
@@ -170,14 +210,7 @@ export function RegistroManualPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault, p: 4 }}>
-      <Typography variant="h6" sx={{ color: sdrercColors.primary }}>
-        Registro manual
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Alta de un expediente nuevo en SDRERC_APP.
-      </Typography>
-
+    <PageHeaderSticky titulo="Registro manual" subtitulo="Alta de un expediente nuevo en SDRERC_APP." tabs={REGISTRO_TABS}>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -203,10 +236,14 @@ export function RegistroManualPage() {
           procedimientos={procedimientos}
           tiposDocumento={tiposDocumento}
           tiposActa={tiposActa}
+          centrosAtencion={centrosAtencion}
+          unidadesOrganicas={unidadesOrganicas}
+          municipalidades={municipalidades}
           departamentos={departamentos}
           provincias={provincias}
           distritos={distritos}
           numeroExpedienteLabel={registro.numeroExpedienteVistaPrevia ?? 'Se genera al registrar'}
+          mostrarErrores={mostrarErrores}
         />
 
         {/* 7. Resumen y confirmación */}
@@ -215,14 +252,21 @@ export function RegistroManualPage() {
             <Typography variant="body2">
               <strong>Número expediente:</strong> {registro.numeroExpedienteVistaPrevia ?? 'Se genera al registrar'}
             </Typography>
+            {/* Mensajes de nivel de FORMULARIO (13/08/2026, pedido explícito del usuario): los de
+                campo individual (obligatorio/formato) ya se muestran inline junto a cada campo vía
+                `ValidatedTextField`, así que no se repiten acá — solo duplicados por acta+titular/
+                SGD contra la base, posible grupo familiar, "requiere decisión de asignación",
+                errores de conexión. Si TODOS los mensajes eran de campo, `resumenMensajesFormulario`
+                muestra un aviso genérico en vez de dar a entender que no hay ningún problema
+                (18/08/2026, pedido explícito del usuario). */}
             <TextField
-              label="Errores / advertencias"
+              label="Errores / advertencias del formulario"
               multiline
               minRows={2}
               fullWidth
               disabled
-              value={mensajes.length > 0 ? mensajes.join('\n') : 'Sin advertencias (valide primero).'}
-              sx={mensajes.length > 0 ? { '& .MuiInputBase-root': { bgcolor: sdrercColors.softRed } } : undefined}
+              value={resumenFormulario.texto}
+              sx={resumenFormulario.resaltado ? { '& .MuiInputBase-root': { bgcolor: sdrercColors.softRed } } : undefined}
             />
           </Stack>
         </SectionCard>
@@ -239,13 +283,14 @@ export function RegistroManualPage() {
             onClick={() => {
               setRegistro(registroVacio())
               setMensajes([])
+              setMostrarErrores(false)
             }}
           >
             Limpiar
           </Button>
         </Stack>
       </Stack>
-    </Box>
+    </PageHeaderSticky>
   )
 }
 

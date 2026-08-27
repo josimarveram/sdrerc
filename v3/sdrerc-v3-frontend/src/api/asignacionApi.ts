@@ -5,6 +5,11 @@ export interface AsignacionExpediente {
   numeroExpediente: string
   numeroExpedienteSgd: string
   numeroHojaEnvioAsignacion: string
+  // Ya venían en el JSON (getters existentes en AsignacionExpedienteDTO, backend) pero no estaban
+  // tipados acá (19/08/2026): necesarios para adaptar una fila de esta bandeja al "Panel de datos"
+  // compartido con Registro (`PanelDatosExpediente.tsx`, espera `ExpedienteBandeja`).
+  numeroTramiteDocumentario: string
+  canalIngreso: string
   fechaRecepcion: string | null
   fechaVencimiento: string | null
   diasRestantes: number | null
@@ -16,6 +21,12 @@ export interface AsignacionExpediente {
   etapaCodigo: string
   estadoCodigo: string
   asignacionActiva: boolean
+  // Duplicados/asociados ya confirmados contra este expediente como principal (19/08/2026): mismo
+  // significado que `relacionesConfirmadasComoPrincipal` en `ExpedienteBandeja` (Registro) — habilita
+  // el ícono "+" de expandir en la grilla. `vw_expediente_asignacion_detalle` ya excluye del listado
+  // cualquier expediente que sea el LADO DUPLICADO de una relación confirmada (no hace falta un
+  // `relacionadoComoHijo` acá como en Registro: nunca aparece como fila raíz).
+  asociadosConfirmados: number
   potencialDuplicado: boolean
   posibleGrupoFamiliar: boolean
   grupoFamiliar: boolean
@@ -31,13 +42,17 @@ export interface BuscarBandejaAsignacionParams {
   limite?: number
 }
 
+// 19/08/2026, pedido explícito del usuario (paridad con Bandeja Registro): sin límite de resultados
+// por defecto — antes esta función siempre mandaba `limite=200`. Ahora solo se envía `limite` si el
+// llamador lo pasa explícitamente (`AsignacionBandejaPage.tsx` ya no lo pasa); si no, el backend
+// devuelve todas las filas que califiquen por los demás filtros.
 export function buscarBandejaAsignacion(params: BuscarBandejaAsignacionParams) {
   const query: Record<string, string> = {}
   if (params.texto) query.texto = params.texto
   if (params.estado) query.estado = params.estado
   if (params.desde) query.desde = params.desde
   if (params.hasta) query.hasta = params.hasta
-  query.limite = String(params.limite ?? 200)
+  if (params.limite) query.limite = String(params.limite)
   return apiGet<AsignacionExpediente[]>('/api/asignacion/bandeja', query)
 }
 
@@ -143,10 +158,37 @@ export interface AsignacionCartaRespuesta {
   fechaVencimiento: string | null
   tipoAlertaVencimiento: string
   estadoCarta: string
+  // Mejora V3 (24/08/2026): ya visible en la propia grilla, sin tener que abrir el detalle —
+  // ver Javadoc de AsignacionCartaRespuestaDTO#isTieneRespuestaRegistrada (backend).
+  tieneRespuestaRegistrada: boolean
+  // 25/08/2026, pedido explícito del usuario: Fecha Solicitud del expediente (no la carta), usada
+  // por el filtro de fecha del buscador — ver Javadoc de AsignacionCartaRespuestaDTO#getFechaSolicitud.
+  fechaSolicitud: string | null
 }
 
 export function listarCartasRespuestaPendientes() {
   return apiGet<AsignacionCartaRespuesta[]>('/api/asignacion/cartas-respuesta')
+}
+
+/** Combo "Abogado responsable" de "Cartas de respuesta": equipo fijo EQ_ANALISIS, resuelto server-side. */
+export function listarAbogadosCartasRespuesta() {
+  return apiGet<UsuarioAsignable[]>('/api/asignacion/cartas-respuesta/abogados')
+}
+
+/** Abogado que ya tiene el expediente en Análisis hoy — preselección del combo. */
+export function obtenerAbogadoActualCartaRespuesta(idExpediente: number) {
+  return apiGet<{ idAbogado: number | null }>(`/api/asignacion/cartas-respuesta/${idExpediente}/abogado-actual`)
+}
+
+export interface RegistrarAsignacionCartaRequest {
+  idExpediente: number
+  idAbogado: number
+  comentario: string
+}
+
+/** "Registrar Asignación": deriva el expediente de vuelta a Análisis (estado DERIVADO). */
+export function registrarAsignacionCartaRespuesta(request: RegistrarAsignacionCartaRequest) {
+  return apiPost<AsignacionResultado>('/api/asignacion/cartas-respuesta/registrar-asignacion', request)
 }
 
 export interface CargaLaboralAbogado {
@@ -188,11 +230,11 @@ export function listarDocumentosPorAbogado(idUsuario: number) {
   return apiGet<CargaLaboralDocumento[]>(`/api/asignacion/carga-abogados/${idUsuario}/documentos`)
 }
 
-export function listarIdsUsuarioConVencimientoEnRango(desde: string, hasta: string) {
+export function listarIdsUsuarioConSolicitudEnRango(desde: string, hasta: string) {
   const params: Record<string, string> = {}
   if (desde) params.desde = desde
   if (hasta) params.hasta = hasta
-  return apiGet<number[]>('/api/asignacion/carga-abogados/vencimiento', params)
+  return apiGet<number[]>('/api/asignacion/carga-abogados/solicitud', params)
 }
 
 /** "Decisión de número" del panel "Asociar" (V2): genera número independiente para una solicitud sin número. */

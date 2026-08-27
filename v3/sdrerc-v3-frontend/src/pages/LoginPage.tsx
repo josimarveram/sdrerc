@@ -22,6 +22,7 @@ import {
   verifyEmailCode,
   verifyTotpCode,
   type NextLoginStep,
+  type SessionResponse,
 } from '../api/authApi'
 import { ApiError } from '../api/http'
 import { useAuth } from '../auth/AuthContext'
@@ -131,7 +132,7 @@ export function LoginPage() {
     if (!challenge) return
     runStep(
       () => verifyEmailCode(challenge.token, code),
-      (session) => finishLogin(session.accessToken, session.username, session.nombreCompleto, session.roles, null),
+      (session) => finishLogin(session),
     )
   }
 
@@ -139,7 +140,7 @@ export function LoginPage() {
     if (!challenge) return
     runStep(
       () => verifyTotpCode(challenge.token, code),
-      (session) => finishLogin(session.accessToken, session.username, session.nombreCompleto, session.roles, null),
+      (session) => finishLogin(session),
     )
   }
 
@@ -147,27 +148,18 @@ export function LoginPage() {
     if (!challenge) return
     runStep(
       () => confirmTotpEnrollment(challenge.token, code),
-      (session) =>
-        finishLogin(
-          session.accessToken,
-          session.username,
-          session.nombreCompleto,
-          session.roles,
-          session.backupCodes,
-        ),
+      (session) => finishLogin(session),
     )
   }
 
-  function finishLogin(
-    accessToken: string,
-    respUsername: string,
-    nombreCompleto: string,
-    roles: string[],
-    backupCodes: string[] | null,
-  ) {
-    setSession({ accessToken, username: respUsername, nombreCompleto, roles, backupCodes })
-    if (backupCodes && backupCodes.length > 0) {
-      setPendingBackupCodes(backupCodes)
+  // Recibe el SessionResponse completo (incluye `permisos`, ver AuthContext.tsx) en vez de
+  // desarmarlo en parametros sueltos - una version anterior reconstruia el objeto a mano en este
+  // punto y se olvido de `permisos`, dejando session.permisos en `undefined` para cualquier login
+  // fresco (bug real: "Cannot read properties of undefined (reading 'length')" en Sidebar/HomePage).
+  function finishLogin(session: SessionResponse) {
+    setSession(session)
+    if (session.backupCodes && session.backupCodes.length > 0) {
+      setPendingBackupCodes(session.backupCodes)
       setPhase('BACKUP_CODES')
     } else {
       navigate('/')

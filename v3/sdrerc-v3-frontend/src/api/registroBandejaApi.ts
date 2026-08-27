@@ -38,13 +38,18 @@ export interface BuscarBandejaRegistroParams {
   limite?: number
 }
 
+// 18/08/2026, pedido explícito del usuario: sin límite de resultados por defecto — antes esta
+// función siempre mandaba `limite=200` aunque el campo ya no estuviera en el buscador (la UI lo
+// quitó, pero el wrapper seguía forzando el default). Ahora solo se envía `limite` si el llamador
+// lo pasa explícitamente; si no, el backend devuelve todas las filas que califiquen por los demás
+// filtros (ver Javadoc de `RegistroBandejaController`/`ExpedienteBandejaDAO.buscar`, backend).
 export function buscarBandejaRegistro(params: BuscarBandejaRegistroParams) {
   const query: Record<string, string> = {}
   if (params.texto) query.texto = params.texto
   if (params.estado) query.estado = params.estado
   if (params.desde) query.desde = params.desde
   if (params.hasta) query.hasta = params.hasta
-  query.limite = String(params.limite ?? 200)
+  if (params.limite) query.limite = String(params.limite)
   return apiGet<ExpedienteBandeja[]>('/api/registro/bandeja', query)
 }
 

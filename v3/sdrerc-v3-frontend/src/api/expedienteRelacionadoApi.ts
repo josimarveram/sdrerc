@@ -12,6 +12,8 @@ export interface ExpedienteRelacionado {
   solicitante: string
   equipoAsignado: string
   abogadoAsignado: string
+  etapaCodigo: string
+  estadoCodigo: string
   etapaEstado: string
   fechaRecepcion: string | null
   fechaVencimiento: string | null

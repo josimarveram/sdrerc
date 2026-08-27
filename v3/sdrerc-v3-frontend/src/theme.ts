@@ -11,9 +11,22 @@ export const sdrercColors = {
   primary: '#154775',
   primaryDark: '#0C2F52',
   primaryHover: '#1F5B91',
+  // Oscuro, reservado para la barra superior del panel de workspaces tipo Salesforce Console
+  // (`WorkspaceTabsDrawer.tsx`) — NO es el sidebar de navegación principal, ver `navSidebar*` abajo.
   sidebarBg: '#11314E',
   sidebarHover: '#163C5E',
   sidebarActive: '#0A2239',
+  // Sidebar de navegación principal (`layout/Sidebar.tsx`): claro y de bajo contraste, estilo
+  // SaaS moderno (Linear/Notion/Vercel) — un solo color de acento (`primary`) para estados
+  // interactivos en vez de fondo invertido oscuro. Rediseño 13/08/2026, pedido explícito del usuario.
+  navSidebarBg: '#FAFBFC',
+  navSidebarHoverBg: '#F0F2F5',
+  navSidebarActiveBg: '#EAF1FB',
+  navSidebarActiveBar: '#2F6FB0',
+  navSidebarTextPrimary: '#33414F',
+  navSidebarTextSecondary: '#95A1AC',
+  navSidebarTextMuted: '#B9C1C9',
+  navSidebarIcon: '#66747F',
   backgroundDefault: '#F4F6F9',
   backgroundPaper: '#FFFFFF',
   backgroundPaperAlt: '#FAFBFD',
