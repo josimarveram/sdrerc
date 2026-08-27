@@ -17,10 +17,32 @@ nbdist/
 # Archivos de OS
 .DS_Store
 Thumbs.db
+desktop.ini
+~$*.doc
+~$*.docx
+~$*.xls
+~$*.xlsx
 
 # Logs
 *.log
+*.log.err
+*.log.txt
 logs/
+v3/*.log
+v3/*.log.err
 
 # IDE
 .idea/
+
+# Sincronizacion accidental de Google Drive dentro del repo
+**/Google Drive/
+
+# Confidencial: claves/PDF del estandar OTI (ver docs/nomenclatura_bd, no versionar)
+docs/nomenclatura_bd/clave_dnidigital.txt
+docs/nomenclatura_bd/*.pdf
+
+# Directivas internas OTI/RENIEC (material de referencia, no versionar)
+docs/directivas/
+
+# Carga Inicial: Excel fuente con datos reales de ciudadanos (no versionar, ver regla de confidencialidad)
+docs/carga_inicial/*.xlsx
