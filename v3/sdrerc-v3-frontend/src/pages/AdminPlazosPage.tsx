@@ -5,8 +5,11 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { sdrercColors } from '../theme'
 import { buscarPlazos, cambiarActivoPlazo, obtenerPlazoSolicitud, type PlazoConfiguracion } from '../api/adminPlazosApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge } from '../components/StatusBadge'
 import { DlgPlazo } from '../components/DlgPlazo'
@@ -20,12 +23,14 @@ const COLOR_TOTAL = '#154775'
  * bandeja+diálogo que Feriados. Ver `DlgPlazo.tsx` para la mejora de umbrales de color sobre V2.
  */
 export function AdminPlazosPage() {
+  const { confirm: confirmDialog } = useAppDialog()
   const [plazos, setPlazos] = useState<PlazoConfiguracion[]>([])
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [texto, setTexto] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState<'' | 'true' | 'false'>('')
+  const [soloSolicitud, setSoloSolicitud] = useState(false)
 
   const [dlgPlazo, setDlgPlazo] = useState<{ abierto: boolean; plazo: PlazoConfiguracion | null }>({ abierto: false, plazo: null })
   const [mensaje, setMensaje] = useState<string | null>(null)
@@ -57,6 +62,7 @@ export function AdminPlazosPage() {
   function limpiar() {
     setTexto('')
     setEstadoFiltro('')
+    setSoloSolicitud(false)
   }
 
   const kpis = useMemo(() => {
@@ -64,8 +70,19 @@ export function AdminPlazosPage() {
     return { total: plazos.length, activos, inactivos: plazos.length - activos }
   }, [plazos])
 
+  const filasMostradas = useMemo(
+    () =>
+      soloSolicitud && plazoSolicitud
+        ? plazos.filter((p) => p.idPlazoConfiguracion === plazoSolicitud.idPlazoConfiguracion)
+        : plazos,
+    [plazos, soloSolicitud, plazoSolicitud],
+  )
+
   async function alternarActivo(plazo: PlazoConfiguracion) {
-    const confirmado = window.confirm(plazo.activo ? `¿Inactivar el plazo ${plazo.nombre}?` : `¿Activar el plazo ${plazo.nombre}?`)
+    const confirmado = await confirmDialog(plazo.activo ? `¿Inactivar el plazo ${plazo.nombre}?` : `¿Activar el plazo ${plazo.nombre}?`, {
+      tone: 'warning',
+      confirmLabel: plazo.activo ? 'Inactivar' : 'Activar',
+    })
     if (!confirmado || plazo.idPlazoConfiguracion === null) return
     try {
       await cambiarActivoPlazo(plazo.idPlazoConfiguracion, !plazo.activo)
@@ -175,26 +192,38 @@ export function AdminPlazosPage() {
             {mensaje}
           </Typography>
         )}
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 2 }}>
-          <MetricCard label="Total de plazos" value={kpis.total} caption="Según filtros activos" color={COLOR_TOTAL} />
-          <MetricCard label="Activos" value={kpis.activos} caption="Vigentes en el sistema" color="#1F9254" />
-          <MetricCard
-            label="Solicitud SDRERC"
-            value={plazoSolicitud ? plazoSolicitud.diasPlazo : 0}
-            caption={plazoSolicitud ? `${plazoSolicitud.nombre} (${plazoSolicitud.unidadPlazo === 'HABILES' ? 'hábiles' : 'calendario'})` : 'No configurado'}
-            color="#B8860B"
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2 }}>
+          <Box onClick={() => { setEstadoFiltro(''); setSoloSolicitud(false) }} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Total de plazos" value={kpis.total} caption="Según filtros activos" color={COLOR_TOTAL} active={estadoFiltro === '' && !soloSolicitud} />
+          </Box>
+          <Box onClick={() => { setEstadoFiltro((prev) => (prev === 'true' ? '' : 'true')); setSoloSolicitud(false) }} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Activos" value={kpis.activos} caption="Vigentes en el sistema" color="#1F9254" active={estadoFiltro === 'true' && !soloSolicitud} />
+          </Box>
+          <Box onClick={() => setSoloSolicitud((prev) => !prev)} sx={{ cursor: 'pointer' }}>
+            <MetricCard
+              label="Solicitud SDRERC"
+              value={plazoSolicitud ? plazoSolicitud.diasPlazo : 0}
+              caption={plazoSolicitud ? `${plazoSolicitud.nombre} (${plazoSolicitud.unidadPlazo === 'HABILES' ? 'hábiles' : 'calendario'})` : 'No configurado'}
+              color="#B8860B"
+              active={soloSolicitud}
+            />
+          </Box>
+        </Box>
+        <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
+          <DataGrid
+            rows={filasMostradas}
+            columns={columnas}
+            getRowId={(row) => row.idPlazoConfiguracion ?? row.codigo}
+            loading={cargando}
+            onRowDoubleClick={(params) => setDlgPlazo({ abierto: true, plazo: params.row })}
+            density="compact"
+            autoHeight
+            showToolbar
+            pageSizeOptions={[10, 25, 50, 100]}
+            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+            sx={dataGridBaseSx}
           />
         </Box>
-        <DataGrid
-          rows={plazos}
-          columns={columnas}
-          getRowId={(row) => row.idPlazoConfiguracion ?? row.codigo}
-          loading={cargando}
-          onRowDoubleClick={(params) => setDlgPlazo({ abierto: true, plazo: params.row })}
-          autoHeight
-          pageSizeOptions={[10, 25, 50, 100]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-        />
       </Stack>
 
       {dlgPlazo.abierto && (

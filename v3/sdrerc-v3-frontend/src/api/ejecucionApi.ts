@@ -73,6 +73,21 @@ export function registrarResultadoEjecucion(idExpediente: number, resultadoCodig
   return apiPost<EjecucionResultado>('/api/ejecucion/resultado', { idExpediente, resultadoCodigo, resultadoNombre, fechaEjecucion, comentario })
 }
 
+/**
+ * Último resultado de ejecución ya registrado (01/09/2026) — lectura de solo consulta contra el
+ * historial, usada para mostrar de forma PERSISTENTE (sobrevive al remount de la subpestaña al
+ * cambiar de tab) qué resultado quedó registrado, en vez de depender del mensaje efímero de la
+ * última acción. `resultadoNombre` es `null` si el expediente nunca registró un resultado.
+ */
+export interface EjecucionUltimoResultado {
+  resultadoNombre: string | null
+  fechaRegistro: string | null
+}
+
+export function obtenerUltimoResultadoEjecucion(idExpediente: number) {
+  return apiGet<EjecucionUltimoResultado>(`/api/ejecucion/${idExpediente}/ultimo-resultado`)
+}
+
 /** "Enviar a Supervisión" — ejecuta solo DERIVACION_A_NOTIFICACION; sin idEquipoDestino (V2 lo hardcodea a EQ_SUPERVISION). */
 export function enviarSupervision(idExpediente: number, comentario: string, idUsuarioDestino: number) {
   return apiPost<EjecucionResultado>('/api/ejecucion/enviar-supervision', { idExpediente, comentario, idUsuarioDestino })

@@ -25,6 +25,7 @@ import {
   listarDocumentosAnalizados,
   listarEstadosDocumentoAnalisis,
   listarTiposDocumentoAdjuntoAnalisis,
+  listarTiposDocumentoAdjuntoCartaRespuesta,
   type DocumentoAnalizado,
 } from '../api/analisisApi'
 import {
@@ -36,6 +37,8 @@ import {
 } from '../api/asignacionApi'
 import type { CatalogoItem } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
+import { DATA_GRID_ROW_ICON_DELETE_CLASS, DATA_GRID_ROW_ICON_SAVE_CLASS } from '../dataGridTheme'
 import { hoyISO } from '../utils/fechas'
 import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
@@ -45,8 +48,17 @@ interface CartaRespuestaContentProps {
   onActualizado?: () => void
 }
 
-const TIPO_CARTA_RESPUESTA_CODIGO = 'ANALISIS_DOC_20_CARTA_RESPUESTA'
+// 28/08/2026: código real actualizado de 'ANALISIS_DOC_20_CARTA_RESPUESTA' (ya no existe como fila
+// activa del catálogo) a 'ASIGNACION_CARTA_RESPUESTA_RESPUESTA' — mismo prefijo propio que ya
+// distingue este tipo de documento del resto (ver `listarTiposDocumentoAdjuntoCartaRespuesta`).
+const TIPO_CARTA_RESPUESTA_CODIGO = 'ASIGNACION_CARTA_RESPUESTA_RESPUESTA'
 const TIPO_CARTA_RESPUESTA_NOMBRE = 'Carta de Respuesta'
+
+function formatearFecha(iso: string | null): string {
+  if (!iso) return ''
+  const [anio, mes, dia] = iso.slice(0, 10).split('-')
+  return `${dia}/${mes}/${anio}`
+}
 
 function documentoVacio(idExpediente: number, nivel: 0 | 1, idDocumentoPadre: number | null, idTemporal: number): DocumentoAnalizado {
   return {
@@ -83,6 +95,7 @@ function documentoVacio(idExpediente: number, nivel: 0 | 1, idDocumentoPadre: nu
     fechaRegistro: null,
     fechaModificacion: null,
     existeOposicion: null,
+    clasificacion: '',
   }
 }
 
@@ -106,6 +119,7 @@ function documentoVacio(idExpediente: number, nivel: 0 | 1, idDocumentoPadre: nu
  * pero el botón solo confirma que la carta que abrió el panel ya tiene su respuesta.
  */
 export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [documentos, setDocumentos] = useState<DocumentoAnalizado[]>([])
   const [documentosLoading, setDocumentosLoading] = useState(false)
   const [padreFocoId, setPadreFocoId] = useState<number | null>(carta.idDocumentoAnalizado)
@@ -114,6 +128,7 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
   const tempIdRef = useRef(-1)
 
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([])
+  const [tiposDocumentoCartaRespuesta, setTiposDocumentoCartaRespuesta] = useState<CatalogoItem[]>([])
   const [estadosDocumento, setEstadosDocumento] = useState<CatalogoItem[]>([])
 
   const [abogados, setAbogados] = useState<UsuarioAsignable[]>([])
@@ -125,9 +140,15 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
   const [errorAsignacion, setErrorAsignacion] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([listarTiposDocumentoAdjuntoAnalisis(), listarEstadosDocumentoAnalisis(), listarAbogadosCartasRespuesta()])
-      .then(([t, e, a]) => {
+    Promise.all([
+      listarTiposDocumentoAdjuntoAnalisis(),
+      listarTiposDocumentoAdjuntoCartaRespuesta(),
+      listarEstadosDocumentoAnalisis(),
+      listarAbogadosCartasRespuesta(),
+    ])
+      .then(([t, tcr, e, a]) => {
         setTiposDocumento(t)
+        setTiposDocumentoCartaRespuesta(tcr)
         setEstadosDocumento(e)
         setAbogados(a)
       })
@@ -221,7 +242,10 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
       setDocumentos((prev) => prev.filter((d) => d.idDocumentoAnalizado !== doc.idDocumentoAnalizado))
       return
     }
-    const confirmado = window.confirm('Se dará de baja el documento (baja lógica, no física).\n¿Desea continuar?')
+    const confirmado = await confirmDialog('Se dará de baja el documento (baja lógica, no física).', {
+      tone: 'danger',
+      confirmLabel: 'Dar de baja',
+    })
     if (!confirmado) return
     setGuardandoId(doc.idDocumentoAnalizado)
     setErrorDocumentos(null)
@@ -248,8 +272,9 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
       setErrorAsignacion('Seleccione el abogado responsable.')
       return
     }
-    const confirmado = window.confirm(
-      `Se derivará el expediente ${carta.numeroExpediente} de vuelta a Análisis (Derivado).\n¿Desea continuar?`,
+    const confirmado = await confirmDialog(
+      `Se derivará el expediente ${carta.numeroExpediente} de vuelta a Análisis (Derivado).`,
+      { tone: 'info', confirmLabel: 'Derivar' },
     )
     if (!confirmado) return
     setProcesando(true)
@@ -328,18 +353,24 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
                       onClick={() => setPadreFocoId(doc.idDocumentoAnalizado)}
                       sx={{ cursor: 'pointer', bgcolor: doc.idDocumentoAnalizado === carta.idDocumentoAnalizado ? 'action.hover' : undefined }}
                     >
+                      {/* 28/08/2026, pedido explícito del usuario: "Documentos que requieren
+                          respuesta" es de SOLO LECTURA — estos documentos pertenecen a Análisis, no
+                          se editan ni se eliminan desde este panel. Se mantienen los mismos controles
+                          (íconos + inputs/combos) que el resto del sistema, todos bloqueados
+                          (`disabled`) — pedido explícito: "no los quites solo bloquealos... no los
+                          cambies a label déjalo como estaba solo que sin la opción de editar". */}
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row">
-                          <Tooltip title="Guardar">
+                          <Tooltip title="Solo lectura: estos documentos pertenecen a Análisis.">
                             <span>
-                              <IconButton size="small" disabled={guardandoId === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
+                              <IconButton size="small" className={DATA_GRID_ROW_ICON_SAVE_CLASS} disabled>
                                 <SaveOutlinedIcon fontSize="small" />
                               </IconButton>
                             </span>
                           </Tooltip>
-                          <Tooltip title="Eliminar">
+                          <Tooltip title="Solo lectura: estos documentos pertenecen a Análisis.">
                             <span>
-                              <IconButton size="small" onClick={() => handleEliminarFila(doc)}>
+                              <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} disabled>
                                 <DeleteOutlineOutlinedIcon fontSize="small" />
                               </IconButton>
                             </span>
@@ -347,19 +378,7 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
                         </Stack>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()} sx={{ minWidth: 180 }}>
-                        <TextField
-                          select
-                          size="small"
-                          fullWidth
-                          value={doc.tipoDocumentoCodigo}
-                          onChange={(e) => {
-                            const t = tiposDocumento.find((x) => x.codigo === e.target.value)
-                            actualizarDocumento(doc.idDocumentoAnalizado as number, {
-                              tipoDocumentoCodigo: e.target.value,
-                              tipoDocumentoNombre: t?.nombre || '',
-                            })
-                          }}
-                        >
+                        <TextField select size="small" fullWidth disabled value={doc.tipoDocumentoCodigo}>
                           <MenuItem value="">Seleccione</MenuItem>
                           {tiposDocumento.map((t) => (
                             <MenuItem key={t.codigo} value={t.codigo ?? ''}>
@@ -369,26 +388,10 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
                         </TextField>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <TextField
-                          size="small"
-                          value={doc.numeroDocumento}
-                          onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { numeroDocumento: e.target.value })}
-                        />
+                        <TextField size="small" disabled value={doc.numeroDocumento} />
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()} sx={{ minWidth: 150 }}>
-                        <TextField
-                          select
-                          size="small"
-                          fullWidth
-                          value={doc.estadoDocumentoCodigo}
-                          onChange={(e) => {
-                            const est = estadosDocumento.find((x) => x.codigo === e.target.value)
-                            actualizarDocumento(doc.idDocumentoAnalizado as number, {
-                              estadoDocumentoCodigo: e.target.value,
-                              estadoDocumentoNombre: est?.nombre || '',
-                            })
-                          }}
-                        >
+                        <TextField select size="small" fullWidth disabled value={doc.estadoDocumentoCodigo}>
                           <MenuItem value="">Seleccione</MenuItem>
                           {estadosDocumento.map((e2) => (
                             <MenuItem key={e2.codigo} value={e2.codigo ?? ''}>
@@ -398,21 +401,14 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
                         </TextField>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <TextField
-                          size="small"
-                          type="date"
-                          value={doc.fechaDocumento ?? ''}
-                          onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { fechaDocumento: e.target.value || null })}
-                        />
+                        <TextField size="small" type="date" disabled value={doc.fechaDocumento ?? ''} />
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <TextField
-                          size="small"
-                          value={doc.descripcion}
-                          onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { descripcion: e.target.value })}
-                        />
+                        <TextField size="small" disabled value={doc.descripcion} />
                       </TableCell>
-                      <TableCell>{doc.fechaAcuse || '-'}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TextField size="small" disabled value={formatearFecha(doc.fechaAcuse)} />
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -471,14 +467,19 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
                               <Stack direction="row">
                                 <Tooltip title="Guardar">
                                   <span>
-                                    <IconButton size="small" disabled={guardandoId === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
+                                    <IconButton
+                                      size="small"
+                                      className={DATA_GRID_ROW_ICON_SAVE_CLASS}
+                                      disabled={guardandoId === doc.idDocumentoAnalizado}
+                                      onClick={() => handleGuardarFila(doc)}
+                                    >
                                       <SaveOutlinedIcon fontSize="small" />
                                     </IconButton>
                                   </span>
                                 </Tooltip>
                                 <Tooltip title="Eliminar">
                                   <span>
-                                    <IconButton size="small" onClick={() => handleEliminarFila(doc)}>
+                                    <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => handleEliminarFila(doc)}>
                                       <DeleteOutlineOutlinedIcon fontSize="small" />
                                     </IconButton>
                                   </span>
@@ -492,7 +493,7 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
                                 fullWidth
                                 value={doc.tipoDocumentoCodigo}
                                 onChange={(e) => {
-                                  const t = tiposDocumento.find((x) => x.codigo === e.target.value)
+                                  const t = tiposDocumentoCartaRespuesta.find((x) => x.codigo === e.target.value)
                                   actualizarDocumento(doc.idDocumentoAnalizado as number, {
                                     tipoDocumentoCodigo: e.target.value,
                                     tipoDocumentoNombre: t?.nombre || '',
@@ -501,14 +502,14 @@ export function CartaRespuestaContent({ carta, onActualizado }: CartaRespuestaCo
                               >
                                 {/* 25/08/2026, pedido explícito del usuario: esta grilla es
                                     exclusivamente de cartas de respuesta — no se debe poder elegir
-                                    ningún otro tipo de documento acá. */}
-                                {tiposDocumento
-                                  .filter((t) => t.codigo === TIPO_CARTA_RESPUESTA_CODIGO)
-                                  .map((t) => (
-                                    <MenuItem key={t.codigo} value={t.codigo ?? ''}>
-                                      {t.nombre}
-                                    </MenuItem>
-                                  ))}
+                                    ningún otro tipo de documento acá. 28/08/2026: el catálogo ya viene
+                                    filtrado desde el backend (`ASIGNACION_CARTA_RESPUESTA_*`), sin
+                                    necesidad de filtrar de nuevo acá. */}
+                                {tiposDocumentoCartaRespuesta.map((t) => (
+                                  <MenuItem key={t.codigo} value={t.codigo ?? ''}>
+                                    {t.nombre}
+                                  </MenuItem>
+                                ))}
                               </TextField>
                             </TableCell>
                             <TableCell sx={{ minWidth: 140 }}>

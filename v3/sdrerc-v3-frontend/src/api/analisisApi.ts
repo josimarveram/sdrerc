@@ -109,6 +109,10 @@ export interface DocumentoAnalizado {
   fechaRegistro: string | null
   fechaModificacion: string | null
   existeOposicion: boolean | null
+  /** `TIPO_DOCUMENTO_ADJUNTO.clasificacion` ('FINAL'/'INTERMEDIO'/'' para informes sin clasificar) —
+   * 30/08/2026, agregado para que las nested grid de Bandeja de supervisión/Validación (Notificación)
+   * puedan filtrar solo cartas intermedias/finales. */
+  clasificacion: string
 }
 
 export function listarDocumentosAnalizados(idExpediente: number) {
@@ -197,6 +201,16 @@ export function enviarVerificacion(idExpediente: number, comentario: string) {
 // Catálogos de la subpestaña "Análisis"
 export function listarTiposDocumentoAdjuntoAnalisis() {
   return apiGet<CatalogoItem[]>('/api/catalogos/tipos-documento-adjunto-analisis')
+}
+
+/** Combo "Tipo documento" de la subpestaña "Ejecutar" (Bandeja Ejecución), 28/08/2026, pedido explícito del usuario. */
+export function listarTiposDocumentoAdjuntoEjecucion() {
+  return apiGet<CatalogoItem[]>('/api/catalogos/tipos-documento-adjunto-ejecucion')
+}
+
+/** Combo "Tipo documento" del panel "Registrar Asignación" (Bandeja Cartas de Respuesta), 28/08/2026, pedido explícito del usuario. */
+export function listarTiposDocumentoAdjuntoCartaRespuesta() {
+  return apiGet<CatalogoItem[]>('/api/catalogos/tipos-documento-adjunto-carta-respuesta')
 }
 
 export function listarEstadosDocumentoAnalisis() {

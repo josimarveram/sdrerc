@@ -7,6 +7,7 @@ import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
 import { ValidatedTextField, type CampoValidator } from './ValidatedTextField'
 import { sdrercColors } from '../theme'
+import { DATA_GRID_ROW_ICON_DELETE_CLASS } from '../dataGridTheme'
 import type { AreaAdmin, EquipoMiembroAdmin, UsuarioAsignableEquipo } from '../api/adminEquipoJuridicoApi'
 
 function requerido(mensaje: string): CampoValidator {
@@ -264,8 +265,8 @@ export function EquipoJuridicoAdminContent({
               <StatusBadge label={m.relacionActiva ? 'Activo' : 'Inactivo'} tone={m.relacionActiva ? 'success' : 'neutral'} />
               {m.relacionActiva && (
                 <Tooltip title="Quitar del equipo">
-                  <Box component="button" onClick={() => onQuitarMiembro(m.idUsuario, m.nombreCompleto || m.username)} sx={{ border: 'none', bgcolor: 'transparent', cursor: 'pointer', display: 'flex' }}>
-                    <CloseIcon fontSize="small" sx={{ color: sdrercColors.error }} />
+                  <Box component="button" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => onQuitarMiembro(m.idUsuario, m.nombreCompleto || m.username)} sx={{ border: 'none', bgcolor: 'transparent', cursor: 'pointer', display: 'flex' }}>
+                    <CloseIcon fontSize="small" />
                   </Box>
                 </Tooltip>
               )}

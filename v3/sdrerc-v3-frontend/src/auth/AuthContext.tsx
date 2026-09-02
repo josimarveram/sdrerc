@@ -18,8 +18,8 @@ interface AuthContextValue {
 const STORAGE_KEY = 'sdrerc.v3.session'
 
 // sessionStorage (no localStorage): la sesion no debe sobrevivir mas alla de la pestana/ventana,
-// coherente con que el accessToken vence en minutos (ver JwtService, sesion 15-30 min por diseno,
-// sin refresh token todavia - plan de migracion, seccion 2).
+// coherente con que el accessToken vence en minutos (ver JwtService, sesion 10 min por diseno
+// desde el 01/09/2026 -antes 30-, sin refresh token todavia - plan de migracion, seccion 2).
 function readStoredSession(): Session | null {
   const raw = sessionStorage.getItem(STORAGE_KEY)
   if (!raw) return null

@@ -6,12 +6,15 @@ import { obtenerDatosExpediente, type ExpedienteBandeja } from '../api/registroB
 import type { ExpedienteEdicionManual } from '../api/registroApi'
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { DataGridStandardToolbar } from '../components/DataGridStandardToolbar'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge, diasBadgeTone } from '../components/StatusBadge'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
+import { TrazabilidadContent } from '../components/TrazabilidadContent'
 import { CartaRespuestaContent } from '../components/CartaRespuestaContent'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { ASIGNACION_TABS } from '../layout/moduleTabs'
 
@@ -26,6 +29,7 @@ function formatearFecha(iso: string | null): string {
 
 const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B', '#16A085', '#D35400', '#2C3E50']
 const COLOR_DATOS = '#2370A8'
+const COLOR_TRAZABILIDAD = '#8E44AD'
 const COLOR_REGISTRAR = 'rgb(10, 118, 145)'
 
 /** Adapta una fila de esta bandeja (documento) al tipo que espera el "Panel de datos" compartido con Registro. */
@@ -85,7 +89,7 @@ export function AsignacionCartasRespuestaPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [estado, setEstado] = useState<FiltroEstado>('')
   const [filtroKpi, setFiltroKpi] = useState<FiltroKpi>(null)
@@ -130,7 +134,7 @@ export function AsignacionCartasRespuestaPage() {
 
   function handleLimpiar() {
     setTexto('')
-    setDesde(primerDiaMesActualISO())
+    setDesde(primerDiaMesAnteriorISO())
     setHasta(hoyISO())
     setEstado('')
     setFiltroKpi(null)
@@ -272,6 +276,12 @@ export function AsignacionCartasRespuestaPage() {
               ),
             },
             {
+              id: 'trazabilidad',
+              label: 'Trazabilidad',
+              color: COLOR_TRAZABILIDAD,
+              content: <TrazabilidadContent idExpediente={w.carta.idExpediente} />,
+            },
+            {
               id: 'registrar-asignacion',
               label: 'Registrar Asignación',
               color: COLOR_REGISTRAR,
@@ -397,26 +407,31 @@ export function AsignacionCartasRespuestaPage() {
         </Alert>
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 2, mb: 2 }}>
+      {/* 28/08/2026, pedido explícito del usuario en 2 pasadas: 1ra "que no sean 2 filas" (repeat(N,1fr)
+          fijo -- desbordaba horizontalmente en vez de envolver al angostar la ventana, "se ve fatal");
+          2da, tras verlo roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` -- mismo
+          130px que el nuevo `minWidth` de MetricCard (ver su Javadoc), permite que las tarjetas quepan
+          en 1 sola fila en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
         <MetricCard label="Cartas" value={kpis.total} caption="Con respuesta requerida" color={sdrercColors.info} />
         <Box onClick={() => alternarFiltro('CON_ACUSE')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Con acuse" value={kpis.conAcuse} caption="Listas para respuesta" color={sdrercColors.success} />
+          <MetricCard label="Con acuse" value={kpis.conAcuse} caption="Listas para respuesta" color={sdrercColors.success} active={filtroKpi === 'CON_ACUSE'} />
         </Box>
         <Box onClick={() => alternarFiltro('PENDIENTES')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Pendientes" value={kpis.pendientes} caption="Sin confirmación final" color={sdrercColors.warning} />
+          <MetricCard label="Pendientes" value={kpis.pendientes} caption="Sin confirmación final" color={sdrercColors.warning} active={filtroKpi === 'PENDIENTES'} />
         </Box>
         <Box onClick={() => alternarFiltro('PUBLICACION')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Publicación" value={kpis.publicacion} caption="Preparadas para publicar" color={sdrercColors.primary} />
+          <MetricCard label="Publicación" value={kpis.publicacion} caption="Preparadas para publicar" color={sdrercColors.primary} active={filtroKpi === 'PUBLICACION'} />
         </Box>
         <Box onClick={() => alternarFiltro('VENCIMIENTO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Vencimiento" value={kpis.vencimiento} caption="Plazo de respuesta o publicación activo" color={sdrercColors.warning} />
+          <MetricCard label="Vencimiento" value={kpis.vencimiento} caption="Plazo de respuesta o publicación activo" color={sdrercColors.warning} active={filtroKpi === 'VENCIMIENTO'} />
         </Box>
         <Box onClick={() => alternarFiltro('LISTAS_PARA_ASIGNAR')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Listas para asignar" value={kpis.listasParaAsignar} caption="Con carta de respuesta registrada" color={sdrercColors.success} />
+          <MetricCard label="Listas para asignar" value={kpis.listasParaAsignar} caption="Con carta de respuesta registrada" color={sdrercColors.success} active={filtroKpi === 'LISTAS_PARA_ASIGNAR'} />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filas}
           columns={columnas}
@@ -426,9 +441,11 @@ export function AsignacionCartasRespuestaPage() {
           autoHeight
           disableRowSelectionOnClick
           showToolbar
+          slots={{ toolbar: DataGridStandardToolbar }}
           pageSizeOptions={[25, 50, 100]}
           initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
           onRowDoubleClick={(params) => abrirWorkspace(params.row)}
+          sx={dataGridBaseSx}
         />
       </Box>
 

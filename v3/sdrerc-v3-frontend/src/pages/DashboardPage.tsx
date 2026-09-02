@@ -9,7 +9,7 @@ import { BarChartCard } from '../charts/BarChartCard'
 import { DonutChartCard } from '../charts/DonutChartCard'
 import { TrendLineChartCard } from '../charts/TrendLineChartCard'
 import { createCategoricalColorAssigner, estadoNotificacionColors } from '../charts/chartPalette'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 
 const ROL_ADMIN_SISTEMA = 'ADMIN_SISTEMA'
 
@@ -27,7 +27,7 @@ function formatearMes(mesIso: string): string {
  */
 export function DashboardPage() {
   const { session } = useAuth()
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [datos, setDatos] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -101,13 +101,15 @@ export function DashboardPage() {
       {datos && (
         // Opacidad reducida mientras refresca en vez de un skeleton (evita el salto de layout).
         <Box sx={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s' }}>
-          <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap', gap: 2 }}>
+          {/* 28/08/2026, pedido explícito del usuario ("que no sean 2 filas"): grid `repeat(auto-fit, minmax(130px, 1fr))`
+              en vez de `Stack flexWrap` (envolvía a una 2da fila en ventanas no muy anchas). */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 3 }}>
             <MetricCard label="Expedientes activos" value={datos.resumen.activos} caption="En trámite" color={sdrercColors.info} />
             <MetricCard label="Vencidos" value={datos.resumen.vencidos} caption="Plazo excedido" color={sdrercColors.error} />
             <MetricCard label="Por vencer" value={datos.resumen.porVencer} caption="0 a 5 días" color={sdrercColors.warning} />
             <MetricCard label="Ingresados" value={datos.resumen.ingresadosPeriodo} caption="En el periodo" color={sdrercColors.primary} />
             <MetricCard label="Cerrados" value={datos.resumen.cerradosPeriodo} caption="En el periodo" color={sdrercColors.success} />
-          </Stack>
+          </Box>
 
           <Box
             sx={{
@@ -126,7 +128,7 @@ export function DashboardPage() {
               title="Carga por abogado (top 10)"
               data={datos.cargaAbogados.map((c) => ({
                 etiqueta: c.abogado,
-                total: c.analisisPorRecibir + c.analisisEnProceso + c.analisisObservado + c.analisisCartaIntermedia + c.enVerificacion + c.enEjecucion,
+                total: c.analisisPorRecibir + c.analisisEnProceso + c.analisisObservado + c.analisisDerivado + c.enVerificacion + c.enEjecucion,
               }))}
               horizontal
             />

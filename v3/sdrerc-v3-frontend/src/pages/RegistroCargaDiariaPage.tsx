@@ -18,6 +18,7 @@ import {
   type CatalogoItem,
 } from '../api/registroApi'
 import { ApiError, descargarBlob } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { sdrercColors } from '../theme'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge } from '../components/StatusBadge'
@@ -355,6 +356,7 @@ const CAMPOS_EDITABLES = new Set<keyof CargaDiariaPreview>([
  * la grilla ya no deja hueco vacío con pocas filas.
  */
 export function RegistroCargaDiariaPage() {
+  const { confirm: confirmDialog } = useAppDialog()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [nombreArchivo, setNombreArchivo] = useState<string | null>(null)
   const [registros, setRegistros] = useState<CargaDiariaPreview[]>([])
@@ -478,16 +480,16 @@ export function RegistroCargaDiariaPage() {
    * simplemente quesa "en curso" (spinner) hasta que la respuesta llegue — nunca se muestra el 100%
    * antes de que el registro haya terminado de verdad en la base de datos.
    */
-  function handleConfirmar() {
+  async function handleConfirmar() {
     const listos = registros.filter((r) => r.listoParaRegistrar && !r.registrado).length
     if (listos === 0) {
       setError('No hay registros listos para registrar.')
       return
     }
-    const confirmado = window.confirm(
+    const confirmado = await confirmDialog(
       `Se registrarán ${listos} expediente(s) en SDRERC_APP.\n` +
-        'Los registros con observaciones o duplicidad también se registrarán y quedarán marcados.\n\n' +
-        '¿Desea confirmar la carga?',
+        'Los registros con observaciones o duplicidad también se registrarán y quedarán marcados.',
+      { tone: 'warning', confirmLabel: 'Confirmar' },
     )
     if (!confirmado) return
 

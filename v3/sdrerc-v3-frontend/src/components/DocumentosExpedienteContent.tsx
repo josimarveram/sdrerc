@@ -10,10 +10,11 @@ import {
   Typography,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
+import { WordFileIcon } from './icons/FileTypeIcons'
 import { descargarDocumentoWord, listarDocumentosAnalizados, type DocumentoAnalizado } from '../api/analisisApi'
 import { ApiError } from '../api/http'
 import { StatusBadge } from './StatusBadge'
+import { DATA_GRID_ROW_ICON_WORD_CLASS } from '../dataGridTheme'
 
 interface DocumentosExpedienteContentProps {
   idExpediente: number
@@ -130,8 +131,10 @@ export function DocumentosExpedienteContent({ idExpediente, numeroExpediente }: 
                     <Button
                       size="small"
                       variant="outlined"
-                      startIcon={<DescriptionOutlinedIcon />}
+                      className={DATA_GRID_ROW_ICON_WORD_CLASS}
+                      startIcon={<WordFileIcon />}
                       onClick={() => handleDescargar(doc)}
+                      sx={{ borderColor: 'currentColor' }}
                     >
                       Descargar Word
                     </Button>

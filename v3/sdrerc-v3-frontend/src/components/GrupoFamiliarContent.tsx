@@ -30,6 +30,8 @@ import {
   type GrupoFamiliarIntegrante,
 } from '../api/grupoFamiliarApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
+import { DATA_GRID_ROW_ICON_DELETE_CLASS } from '../dataGridTheme'
 
 interface GrupoFamiliarContentProps {
   idExpedientePrincipal: number
@@ -84,6 +86,7 @@ interface GrupoFamiliarContentProps {
  * antes NO pedía confirmación en absoluto — se agregó en este mismo cambio.
  */
 export function GrupoFamiliarContent({ idExpedientePrincipal, numeroExpediente, titular, onAsociado }: GrupoFamiliarContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [candidatos, setCandidatos] = useState<GrupoFamiliarCandidato[]>([])
   const [integrantes, setIntegrantes] = useState<GrupoFamiliarIntegrante[]>([])
   const [estadoAlerta, setEstadoAlerta] = useState<GrupoFamiliarEstadoAlerta | null>(null)
@@ -146,7 +149,7 @@ export function GrupoFamiliarContent({ idExpedientePrincipal, numeroExpediente, 
 
   async function handleDescartarAlerta() {
     if (!estadoAlerta?.tieneAlerta) return
-    const confirmado = window.confirm(mensajeConfirmarDescartarAlerta())
+    const confirmado = await confirmDialog(mensajeConfirmarDescartarAlerta(), { tone: 'danger', confirmLabel: 'Descartar' })
     if (!confirmado) return
     setProcesando(true)
     setError(null)
@@ -213,7 +216,7 @@ export function GrupoFamiliarContent({ idExpedientePrincipal, numeroExpediente, 
 
   async function handleRetirar(integrante: GrupoFamiliarIntegrante) {
     if (!integrante.idExpediente) return
-    const confirmado = window.confirm(mensajeConfirmarRetirar(integrante))
+    const confirmado = await confirmDialog(mensajeConfirmarRetirar(integrante), { tone: 'danger', confirmLabel: 'Retirar' })
     if (!confirmado) return
     setProcesando(true)
     setError(null)
@@ -260,7 +263,7 @@ export function GrupoFamiliarContent({ idExpedientePrincipal, numeroExpediente, 
             !estadoAlerta.grupoFamiliarConfirmado && (
               <Tooltip title="Eliminar alerta de Posible Grupo Familiar">
                 <span>
-                  <IconButton size="small" disabled={procesando} onClick={handleDescartarAlerta} aria-label="Eliminar alerta">
+                  <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} disabled={procesando} onClick={handleDescartarAlerta} aria-label="Eliminar alerta">
                     <DeleteOutlinedIcon fontSize="small" />
                   </IconButton>
                 </span>
@@ -358,7 +361,7 @@ export function GrupoFamiliarContent({ idExpedientePrincipal, numeroExpediente, 
                   <TableCell padding="checkbox">
                     <Tooltip title="Retirar del grupo familiar">
                       <span>
-                        <IconButton size="small" disabled={procesando || !i.idExpediente} onClick={() => handleRetirar(i)}>
+                        <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} disabled={procesando || !i.idExpediente} onClick={() => handleRetirar(i)}>
                           <CloseIcon fontSize="small" />
                         </IconButton>
                       </span>

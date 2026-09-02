@@ -37,6 +37,11 @@ export function listarTiposConPlantilla() {
   return apiGet<PlantillaDocumentoAdmin[]>('/api/admin/plantillas')
 }
 
+/** Config firmada lista para pasarle a `new DocsAPI.DocEditor(id, config)` — ver VistaPreviaPlantillaDialog para la vista previa de solo lectura, este es el modo edición real. */
+export function obtenerConfigOnlyOffice(idPlantillaDocumento: number) {
+  return apiGet<Record<string, unknown>>(`/api/admin/plantillas/onlyoffice/${idPlantillaDocumento}/config`)
+}
+
 export function listarHistorial(idTipoDocumentoAdjunto: number) {
   return apiGet<PlantillaDocumentoAdmin[]>(`/api/admin/plantillas/${idTipoDocumentoAdjunto}/historial`)
 }

@@ -9,13 +9,16 @@ import { obtenerDatosExpediente, type ExpedienteBandeja } from '../api/registroB
 import type { ExpedienteEdicionManual } from '../api/registroApi'
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { DataGridStandardToolbar } from '../components/DataGridStandardToolbar'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge, diasBadgeTone } from '../components/StatusBadge'
 import { EjecucionContent } from '../components/EjecucionContent'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
+import { TrazabilidadContent } from '../components/TrazabilidadContent'
 import { GrupoFamiliarConfirmadoContent } from '../components/GrupoFamiliarConfirmadoContent'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { EJECUCION_TABS } from '../layout/moduleTabs'
 
@@ -53,6 +56,7 @@ const COLUMNA_FIJA_INICIO_SX = {
 
 const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B', '#16A085', '#D35400', '#2C3E50']
 const COLOR_DATOS = '#2370A8'
+const COLOR_TRAZABILIDAD = '#8E44AD'
 const COLOR_EJECUCION = 'rgb(198, 111, 21)'
 // Mismo color que "Grupo Familiar" en Registro/Asignación (RegistroBandejaPage.tsx), para
 // consistencia visual entre todos los módulos que muestran esta subpestaña.
@@ -138,7 +142,7 @@ function adaptarParaPanelDatos(row: EjecucionExpediente): ExpedienteBandeja {
  */
 export function EjecucionBandejaPage() {
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [estado, setEstado] = useState('')
   const [expedientes, setExpedientes] = useState<EjecucionExpediente[]>([])
@@ -190,7 +194,7 @@ export function EjecucionBandejaPage() {
   }
 
   function handleLimpiar() {
-    const desdeDefault = primerDiaMesActualISO()
+    const desdeDefault = primerDiaMesAnteriorISO()
     const hastaDefault = hoyISO()
     setTexto('')
     setDesde(desdeDefault)
@@ -378,6 +382,12 @@ export function EjecucionBandejaPage() {
               ),
             },
             {
+              id: 'trazabilidad',
+              label: 'Trazabilidad',
+              color: COLOR_TRAZABILIDAD,
+              content: <TrazabilidadContent idExpediente={w.row.idExpediente} />,
+            },
+            {
               id: 'ejecutar',
               label: 'Ejecutar',
               color: COLOR_EJECUCION,
@@ -484,8 +494,8 @@ export function EjecucionBandejaPage() {
         <MenuItem value="EN_EJECUCION">En ejecución</MenuItem>
         <MenuItem value="INDAGATORIO">Indagatorio</MenuItem>
         <MenuItem value="EJECUTADO">Ejecutado</MenuItem>
-        <MenuItem value="DOCUMENTO_INCONSISTENTE">Documento inconsistente</MenuItem>
-        <MenuItem value="REQUIERE_CORRECCION">Requiere corrección</MenuItem>
+        <MenuItem value="DOCUMENTO_INCONSISTENTE_EJECUCION">Documento inconsistente</MenuItem>
+        <MenuItem value="REQUIERE_CORRECCION_EJECUCION">Requiere corrección</MenuItem>
       </TextField>
     </Stack>
   )
@@ -503,28 +513,33 @@ export function EjecucionBandejaPage() {
         </Alert>
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 2 }}>
+      {/* 28/08/2026, pedido explícito del usuario en 2 pasadas: 1ra "que no sean 2 filas" (repeat(N,1fr)
+          fijo -- desbordaba horizontalmente en vez de envolver al angostar la ventana, "se ve fatal");
+          2da, tras verlo roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` -- mismo
+          130px que el nuevo `minWidth` de MetricCard (ver su Javadoc), permite que las tarjetas quepan
+          en 1 sola fila en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
         <Box onClick={() => alternarFiltro('PENDIENTES')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Pendientes" value={kpis.pendientes} caption="En ejecución / Indagatorio" color={sdrercColors.info} />
+          <MetricCard label="Pendientes" value={kpis.pendientes} caption="En ejecución / Indagatorio" color={sdrercColors.info} active={filtroKpi === 'PENDIENTES'} />
         </Box>
         <Box onClick={() => alternarFiltro('EN_REVISION')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="En revisión" value={kpis.enRevision} caption="Con resolución numerada" color={sdrercColors.info} />
+          <MetricCard label="En revisión" value={kpis.enRevision} caption="Con resolución numerada" color={sdrercColors.info} active={filtroKpi === 'EN_REVISION'} />
         </Box>
         <Box onClick={() => alternarFiltro('ERROR_MATERIAL')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Error material" value={kpis.errorMaterial} caption="Inconsistente / Requiere corrección" color={sdrercColors.error} />
+          <MetricCard label="Error material" value={kpis.errorMaterial} caption="Inconsistente / Requiere corrección" color={sdrercColors.error} active={filtroKpi === 'ERROR_MATERIAL'} />
         </Box>
         <Box onClick={() => alternarFiltro('EJECUTADOS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Ejecutados" value={kpis.ejecutados} caption="Resultado registrado" color={sdrercColors.success} />
+          <MetricCard label="Ejecutados" value={kpis.ejecutados} caption="Resultado registrado" color={sdrercColors.success} active={filtroKpi === 'EJECUTADOS'} />
         </Box>
         <Box onClick={() => alternarFiltro('LISTOS_NOTIFICACION')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Listos para notificación" value={kpis.listosNotificacion} caption="Puede enviarse a Supervisión" color={sdrercColors.success} />
+          <MetricCard label="Listos para notificación" value={kpis.listosNotificacion} caption="Puede enviarse a Supervisión" color={sdrercColors.success} active={filtroKpi === 'LISTOS_NOTIFICACION'} />
         </Box>
         <Box onClick={() => alternarFiltro('PLAZO_CRITICO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Plazo crítico" value={kpis.plazoCritico} caption="Por vencer o vencidos" color={sdrercColors.warning} />
+          <MetricCard label="Plazo crítico" value={kpis.plazoCritico} caption="Por vencer o vencidos" color={sdrercColors.warning} active={filtroKpi === 'PLAZO_CRITICO'} />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filasConHijos}
           columns={columnasConAgrupacion}
@@ -534,12 +549,14 @@ export function EjecucionBandejaPage() {
           autoHeight
           disableVirtualization
           showToolbar
+          slots={{ toolbar: DataGridStandardToolbar }}
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
           getRowClassName={(params) =>
             params.row.esFilaAsociada ? 'fila-asociada' : expandidoId === params.row.idExpediente ? 'fila-principal-expandida' : ''
           }
           sx={{
+            ...dataGridBaseSx,
             '& .fila-asociada': { bgcolor: ASSOCIATED_ROW_BACKGROUND, color: sdrercColors.textSecondary, fontSize: '0.8125rem' },
             '& .fila-principal-expandida': { bgcolor: EXPANDED_PARENT_BACKGROUND },
             ...COLUMNA_FIJA_INICIO_SX,

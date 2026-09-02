@@ -18,6 +18,7 @@ import {
 import { asociarRelacionados, listarSolicitudesDelGrupo, type ExpedienteRelacionado } from '../api/expedienteRelacionadoApi'
 import { generarNumeroExpediente } from '../api/asignacionApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 
 interface AsociarDuplicadosContentProps {
   idExpedientePrincipal: number
@@ -121,6 +122,7 @@ const BG_SELECCIONADO = '#DBF4F9'
  * confirmación con `JOptionPane` antes de ejecutar la asociación real.
  */
 export function AsociarDuplicadosContent({ idExpedientePrincipal, onAsociado }: AsociarDuplicadosContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [candidatos, setCandidatos] = useState<ExpedienteRelacionado[]>([])
   const [seleccionados, setSeleccionados] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
@@ -199,8 +201,9 @@ export function AsociarDuplicadosContent({ idExpedientePrincipal, onAsociado }: 
   async function ejecutarAsociacion() {
     if (!puedeAsociar || idPrincipalElegido === null) return
     const filaPrincipal = candidatos.find((c) => c.idExpediente === idPrincipalElegido)
-    const confirmado = window.confirm(
-      `Se asociarán ${idsMarcados.length} expediente(s) sin número como duplicados del expediente principal ${textoExpediente(filaPrincipal)}.\n¿Desea continuar?`,
+    const confirmado = await confirmDialog(
+      `Se asociarán ${idsMarcados.length} expediente(s) sin número como duplicados del expediente principal ${textoExpediente(filaPrincipal)}.`,
+      { tone: 'info', confirmLabel: 'Asociar' },
     )
     if (!confirmado) return
     setProcesando(true)

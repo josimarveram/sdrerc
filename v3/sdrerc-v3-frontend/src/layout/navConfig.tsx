@@ -8,7 +8,6 @@ import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined'
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined'
-import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -74,10 +73,6 @@ export const NAV_GROUPS: NavGroup[] = [
       // restringido a una sola pestaña de Notificación (ej. VALIDACION) debe aterrizar directo en la
       // suya, no siempre en "Bandeja Asignación" (ver `NotificacionIndexPage.tsx`).
       { label: 'Notificación', path: '/notificacion', icon: <NotificationsOutlinedIcon fontSize="small" />, built: true, requiredPermiso: 'MENU_NOTIFICACION' },
-      // Sin MENU_PUBLICACION propio en el catálogo real (confirmado: solo 15 códigos MENU_* activos,
-      // ninguno para Publicación) — en V2 es la 4ª pestaña interna de Notificación, no un módulo
-      // aparte con permiso propio; se gatea con el mismo permiso que Notificación.
-      { label: 'Publicación', icon: <CampaignOutlinedIcon fontSize="small" />, built: false, requiredPermiso: 'MENU_NOTIFICACION' },
       { label: 'Expediente digital', icon: <DescriptionOutlinedIcon fontSize="small" />, built: false, requiredPermiso: 'MENU_EXPEDIENTE_DIGITAL' },
     ],
   },

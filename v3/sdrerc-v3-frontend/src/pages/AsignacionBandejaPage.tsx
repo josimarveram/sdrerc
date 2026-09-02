@@ -22,10 +22,6 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import {
   DataGrid,
   GridToolbarContainer,
-  GridToolbarColumnsButton,
-  GridToolbarFilterButton,
-  GridToolbarExport,
-  GridToolbarQuickFilter,
   useGridApiContext,
   type GridColDef,
   type GridComparatorFn,
@@ -42,7 +38,10 @@ import {
 } from '../api/registroApi'
 import { obtenerDatosExpediente, type ExpedienteBandeja } from '../api/registroBandejaApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { sdrercColors } from '../theme'
+import { dataGridBaseSx, DATA_GRID_ROW_ICON_DELETE_CLASS } from '../dataGridTheme'
+import { DataGridStandardToolbarControls } from '../components/DataGridStandardToolbar'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge, alertaBadgeTone, diasBadgeTone } from '../components/StatusBadge'
 import { AsociarDuplicadosContent } from '../components/AsociarDuplicadosContent'
@@ -50,7 +49,8 @@ import { GrupoFamiliarContent } from '../components/GrupoFamiliarContent'
 import { AsignacionSeleccionContent } from '../components/AsignacionSeleccionContent'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { TrazabilidadContent } from '../components/TrazabilidadContent'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { ASIGNACION_TABS } from '../layout/moduleTabs'
 
@@ -124,6 +124,7 @@ const COLOR_DATOS = '#2370A8'
 // ver v3/CLAUDE.md) — mismo verde-azulado (`new Color(10, 118, 145)`) que usa
 // `crearPanelAsignacionOperativa` en JPanelAsignacionV2.java para acentuar esa lengueta específica.
 const COLOR_ASIGNACION = 'rgb(10, 118, 145)'
+const COLOR_TRAZABILIDAD = '#8E44AD'
 const COLOR_ASOCIAR = '#B86910'
 const COLOR_GRUPO_FAMILIAR = '#7B4FA0'
 
@@ -271,10 +272,7 @@ function ToolbarBandejaAsignacion({
         </Stack>
       )}
       <Box sx={{ flex: 1 }} />
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarExport />
-      <GridToolbarQuickFilter />
+      <DataGridStandardToolbarControls />
     </GridToolbarContainer>
   )
 }
@@ -339,8 +337,9 @@ function ToolbarBandejaAsignacion({
  * multipestañas): las 3 acciones viven en las subpestañas de alguno de los 2 orígenes de arriba.
  */
 export function AsignacionBandejaPage() {
+  const { confirm: confirmDialog } = useAppDialog()
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [estado, setEstado] = useState('')
   const [expedientes, setExpedientes] = useState<AsignacionExpediente[]>([])
@@ -434,7 +433,7 @@ export function AsignacionBandejaPage() {
   }
 
   function handleLimpiar() {
-    const desdeDefault = primerDiaMesActualISO()
+    const desdeDefault = primerDiaMesAnteriorISO()
     const hastaDefault = hoyISO()
     setTexto('')
     setDesde(desdeDefault)
@@ -560,9 +559,10 @@ export function AsignacionBandejaPage() {
   // principal del grupo, el resto se asocia contra él.
   async function asociarSeleccionadosGrupoFamiliar() {
     if (idsSeleccionados.length < 2) return
-    const confirmado = window.confirm(
+    const confirmado = await confirmDialog(
       `Se asociarán ${idsSeleccionados.length} expedientes marcados como un mismo grupo familiar.\n` +
-        'Solo se marca "Sí" en Grupo Familiar; no se asocian expedientes entre sí.\n\n¿Desea continuar?',
+        'Solo se marca "Sí" en Grupo Familiar; no se asocian expedientes entre sí.',
+      { tone: 'warning', confirmLabel: 'Asociar' },
     )
     if (!confirmado) return
     const [idPrincipal, ...resto] = idsSeleccionados
@@ -855,6 +855,12 @@ export function AsignacionBandejaPage() {
               ),
             },
             {
+              id: 'trazabilidad',
+              label: 'Trazabilidad',
+              color: COLOR_TRAZABILIDAD,
+              content: <TrazabilidadContent idExpediente={w.row.idExpediente} />,
+            },
+            {
               id: 'asociar',
               label: 'Asociar',
               color: COLOR_ASOCIAR,
@@ -918,7 +924,7 @@ export function AsignacionBandejaPage() {
             )}
             <Tooltip title={puedeEliminar ? 'Eliminar' : 'Solo se puede eliminar mientras el expediente esté en Registro, sin asignar'}>
               <span>
-                <IconButton size="small" onClick={() => setExpedienteAEliminar(row)} disabled={!puedeEliminar} aria-label="Eliminar">
+                <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => setExpedienteAEliminar(row)} disabled={!puedeEliminar} aria-label="Eliminar">
                   <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>
               </span>
@@ -1039,16 +1045,21 @@ export function AsignacionBandejaPage() {
       )}
 
       {/* KPIs en grid de columnas iguales (19/08/2026, mismo patrón que RegistroBandejaPage.tsx —
-          antes era un Stack flexWrap que los agrupaba a la izquierda dejando espacio vacío). */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 2 }}>
+          antes era un Stack flexWrap que los agrupaba a la izquierda dejando espacio vacío).
+          28/08/2026, 2 pasadas: 1ra "que no sean 2 filas" (`repeat(7,1fr)` fijo — desbordaba
+          horizontalmente en vez de envolver al angostar la ventana, "se ve fatal"); 2da, tras verlo
+          roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` — mismo 130px que el nuevo
+          `minWidth` de `MetricCard` (ver su Javadoc), permite que las tarjetas quepan en 1 sola fila
+          en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
         <Box onClick={() => setFiltroKpi(null)} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Total de expedientes" value={kpis.total} caption="Según filtros aplicados" color={sdrercColors.primary} />
+          <MetricCard label="Total de expedientes" value={kpis.total} caption="Según filtros aplicados" color={sdrercColors.primary} active={filtroKpi === null} />
         </Box>
         <Box onClick={() => alternarFiltro('PENDIENTES')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Pendientes" value={kpis.pendientes} caption="Para asignación" color={sdrercColors.info} />
+          <MetricCard label="Pendientes" value={kpis.pendientes} caption="Para asignación" color={sdrercColors.info} active={filtroKpi === 'PENDIENTES'} />
         </Box>
         <Box onClick={() => alternarFiltro('POTENCIAL_DUPLICADO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Potencial duplicado" value={kpis.potencialDuplicado} caption="Acta + titular" color={sdrercColors.warning} />
+          <MetricCard label="Potencial duplicado" value={kpis.potencialDuplicado} caption="Acta + titular" color={sdrercColors.warning} active={filtroKpi === 'POTENCIAL_DUPLICADO'} />
         </Box>
         <Box onClick={() => alternarFiltro('POSIBLE_GRUPO_FAMILIAR')} sx={{ cursor: 'pointer' }}>
           <MetricCard
@@ -1056,20 +1067,21 @@ export function AsignacionBandejaPage() {
             value={kpis.posibleGrupoFamiliar}
             caption="Apellidos coincidentes"
             color={sdrercColors.primary}
+            active={filtroKpi === 'POSIBLE_GRUPO_FAMILIAR'}
           />
         </Box>
         <Box onClick={() => alternarFiltro('GRUPO_FAMILIAR_CONFIRMADO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Grupo Familiar Confirmado" value={kpis.grupoFamiliarConfirmado} caption="Registrado" color={sdrercColors.success} />
+          <MetricCard label="Grupo Familiar Confirmado" value={kpis.grupoFamiliarConfirmado} caption="Registrado" color={sdrercColors.success} active={filtroKpi === 'GRUPO_FAMILIAR_CONFIRMADO'} />
         </Box>
         <Box onClick={() => alternarFiltro('POR_VENCER')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por vencer" value={kpis.porVencer} caption="0 a 5 días hábiles" color={sdrercColors.warning} />
+          <MetricCard label="Por vencer" value={kpis.porVencer} caption="0 a 5 días hábiles" color={sdrercColors.warning} active={filtroKpi === 'POR_VENCER'} />
         </Box>
         <Box onClick={() => alternarFiltro('VENCIDOS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} />
+          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} active={filtroKpi === 'VENCIDOS'} />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filasConHijos}
           columns={columnasConAgrupacion}
@@ -1125,6 +1137,7 @@ export function AsignacionBandejaPage() {
             params.row.esFilaAsociada ? 'fila-asociada' : expandidoId === params.row.idExpediente ? 'fila-principal-expandida' : ''
           }
           sx={{
+            ...dataGridBaseSx,
             '& .fila-asociada': { bgcolor: ASSOCIATED_ROW_BACKGROUND, color: sdrercColors.textSecondary, fontSize: '0.8125rem' },
             '& .fila-principal-expandida': { bgcolor: EXPANDED_PARENT_BACKGROUND },
             ...COLUMNAS_FIJAS_INICIO_SX,

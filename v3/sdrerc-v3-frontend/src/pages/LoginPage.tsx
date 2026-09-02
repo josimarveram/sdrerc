@@ -6,12 +6,19 @@ import {
   Button,
   Chip,
   CircularProgress,
+  IconButton,
+  InputAdornment,
   Link,
   Paper,
   Stack,
   TextField,
   Typography,
+  alpha,
 } from '@mui/material'
+import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   changePassword,
@@ -27,6 +34,7 @@ import {
 import { ApiError } from '../api/http'
 import { useAuth } from '../auth/AuthContext'
 import { sdrercColors } from '../theme'
+import logoReniec from '../assets/reniec-logo.jpeg'
 
 type Phase = 'CREDENTIALS' | NextLoginStep | 'BACKUP_CODES'
 
@@ -52,9 +60,17 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingBackupCodes, setPendingBackupCodes] = useState<string[] | null>(null)
+  // 01/09/2026: http.ts#manejarSesionVencida redirige aquí con este parámetro cuando el JWT
+  // vence/es inválido — evita que el usuario llegue al login sin ninguna explicación de por qué
+  // fue expulsado de la página en la que estaba.
+  const [sesionVencida] = useState(() => new URLSearchParams(window.location.search).get('sesionVencida') === '1')
+  // 01/09/2026: distinto del anterior — lo dispara `InactivityGuard.tsx` cuando cierra la sesión
+  // de forma PROACTIVA tras 10 minutos sin actividad (antes de que el JWT llegue a vencer solo).
+  const [cierreInactividad] = useState(() => new URLSearchParams(window.location.search).get('cierreInactividad') === '1')
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [mostrarPassword, setMostrarPassword] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [code, setCode] = useState('')
   const [enrollment, setEnrollment] = useState<{ secretBase32: string; enrollmentUri: string } | null>(null)
@@ -178,45 +194,128 @@ export function LoginPage() {
       sx={{
         minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: sdrercColors.backgroundDefault,
+        gap: 2,
+        p: 2,
+        background: `linear-gradient(135deg, ${sdrercColors.primaryDark} 0%, ${sdrercColors.primary} 55%, ${sdrercColors.info} 100%)`,
       }}
     >
-      <Paper elevation={1} sx={{ width: 400, p: 4, borderRadius: 2 }}>
-        <Typography variant="h6" sx={{ color: sdrercColors.primary, mb: 0.5 }}>
-          SDRERC
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Sistema de Diligencias Registrales - Acceso V3
-        </Typography>
+      <Paper
+        elevation={3}
+        sx={{
+          width: 420,
+          maxWidth: '100%',
+          borderRadius: 4,
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            px: 4,
+            pt: 4,
+            pb: 3,
+            textAlign: 'center',
+            background: `linear-gradient(135deg, ${sdrercColors.primaryDark} 0%, ${sdrercColors.primary} 100%)`,
+          }}
+        >
+          <Box
+            component="img"
+            src={logoReniec}
+            alt="RENIEC"
+            sx={{
+              height: 56,
+              width: 'auto',
+              borderRadius: 2,
+              bgcolor: '#FFFFFF',
+              p: '6px',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+              mb: 1.5,
+            }}
+          />
+          <Typography variant="h5" sx={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: 1 }}>
+            SGE
+          </Typography>
+          <Typography variant="body2" sx={{ color: alpha('#FFFFFF', 0.85), mt: 0.5 }}>
+            Sistema de Gestión de Expedientes - Acceso
+          </Typography>
+        </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+        <Box sx={{ px: 4, py: 4 }}>
+          {!error && sesionVencida && phase === 'CREDENTIALS' && (
+            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+              Su sesión expiró por inactividad. Inicie sesión nuevamente.
+            </Alert>
+          )}
 
-        {phase === 'CREDENTIALS' && (
-          <Stack spacing={2}>
-            <TextField
-              label="Usuario"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoFocus
-              fullWidth
-            />
-            <TextField
-              label="Contraseña"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCredentialsSubmit()}
-              fullWidth
-            />
-            <SubmitButton loading={loading} onClick={handleCredentialsSubmit} label="Ingresar" />
-          </Stack>
-        )}
+          {!error && cierreInactividad && phase === 'CREDENTIALS' && (
+            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+              Su sesión se cerró automáticamente por inactividad. Inicie sesión nuevamente.
+            </Alert>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          {phase === 'CREDENTIALS' && (
+            <Stack spacing={2.5}>
+              <TextField
+                label="Usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoFocus
+                fullWidth
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonOutlineOutlinedIcon fontSize="small" sx={{ color: sdrercColors.textSecondary }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <TextField
+                label="Contraseña"
+                type={mostrarPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCredentialsSubmit()}
+                fullWidth
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlinedIcon fontSize="small" sx={{ color: sdrercColors.textSecondary }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          edge="end"
+                          tabIndex={-1}
+                          onClick={() => setMostrarPassword((v) => !v)}
+                          aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                        >
+                          {mostrarPassword ? (
+                            <VisibilityOffOutlinedIcon fontSize="small" />
+                          ) : (
+                            <VisibilityOutlinedIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <SubmitButton loading={loading} onClick={handleCredentialsSubmit} label="Ingresar" />
+            </Stack>
+          )}
 
         {phase === 'CAMBIO_PASSWORD' && (
           <Stack spacing={2}>
@@ -322,14 +421,31 @@ export function LoginPage() {
             </Button>
           </Stack>
         )}
+        </Box>
       </Paper>
+
+      <Typography variant="caption" sx={{ color: alpha('#FFFFFF', 0.75) }}>
+        Acceso restringido a personal autorizado.
+      </Typography>
     </Box>
   )
 }
 
 function SubmitButton({ loading, onClick, label }: { loading: boolean; onClick: () => void; label: string }) {
   return (
-    <Button variant="contained" onClick={onClick} disabled={loading} fullWidth>
+    <Button
+      variant="contained"
+      onClick={onClick}
+      disabled={loading}
+      fullWidth
+      sx={{
+        py: 1.2,
+        borderRadius: 2,
+        fontWeight: 600,
+        boxShadow: '0 6px 16px rgba(21,71,117,0.28)',
+        '&:hover': { boxShadow: '0 8px 20px rgba(21,71,117,0.36)' },
+      }}
+    >
       {loading ? <CircularProgress size={22} color="inherit" /> : label}
     </Button>
   )

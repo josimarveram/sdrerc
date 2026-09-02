@@ -23,7 +23,7 @@ import {
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
+import { WordFileIcon } from './icons/FileTypeIcons'
 import {
   descargarDocumentoWord,
   eliminarDocumentoAnalizado,
@@ -47,6 +47,8 @@ import {
 import { listarConfirmados, type ExpedienteRelacionado } from '../api/expedienteRelacionadoApi'
 import type { CatalogoItem } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
+import { DATA_GRID_ROW_ICON_DELETE_CLASS, DATA_GRID_ROW_ICON_SAVE_CLASS, DATA_GRID_ROW_ICON_WORD_CLASS } from '../dataGridTheme'
 import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
 
@@ -89,6 +91,7 @@ function documentoVacio(idExpediente: number, nivel: 0 | 1, idDocumentoPadre: nu
     fechaRegistro: null,
     fechaModificacion: null,
     existeOposicion: null,
+    clasificacion: '',
   }
 }
 
@@ -122,6 +125,7 @@ function documentoVacio(idExpediente: number, nivel: 0 | 1, idDocumentoPadre: nu
  * que suavizar ahí).
  */
 export function AnalisisContent({ expediente, onActualizado }: AnalisisContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [comentario, setComentario] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [mensaje, setMensaje] = useState<string | null>(null)
@@ -178,6 +182,11 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
   const enAnalisis = transicionPendiente ? false : enAnalisisReal
   const esNoCorresponde = resultadoCodigo === 'NO_CORRESPONDE'
   const requiereObservacion = resultadoCodigo === 'OBSERVADO' || resultadoCodigo === 'OBSERVACION_ADMINISTRATIVA'
+  // 01/09/2026, pedido explícito del usuario: estandarizar el mismo patrón ya usado en Verificación/
+  // Ejecución — `expediente.registrable` ya viene recalculado en cada remount (sin depender de un
+  // mensaje efímero de la última acción), así que sirve como gate durable de "¿ya se registró un
+  // resultado de análisis que no admite reemplazo inmediato?".
+  const puedeRegistrarAnalisis = expediente.registrable
   const enviableAhora = expediente.estadoCodigo === 'ATENDIDO' || expediente.estadoCodigo === 'SUBSANADO'
 
   function cerrarSnackbarRecepcion() {
@@ -250,8 +259,9 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
   }
 
   async function handleRecibir() {
-    const confirmado = window.confirm(
-      `Se recibirá el expediente ${expediente.numeroExpediente} para análisis.\n¿Desea continuar?`,
+    const confirmado = await confirmDialog(
+      `Se recibirá el expediente ${expediente.numeroExpediente} para análisis.`,
+      { tone: 'info', confirmLabel: 'Recibir' },
     )
     if (!confirmado) return
     setProcesando(true)
@@ -271,8 +281,9 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
   }
 
   async function handleRecibirAsociado(asociado: ExpedienteRelacionado) {
-    const confirmado = window.confirm(
-      `Se recibirá la solicitud asociada ${asociado.numeroExpediente || asociado.numeroExpedienteSgd} para análisis.\n¿Desea continuar?`,
+    const confirmado = await confirmDialog(
+      `Se recibirá la solicitud asociada ${asociado.numeroExpediente || asociado.numeroExpedienteSgd} para análisis.`,
+      { tone: 'info', confirmLabel: 'Recibir' },
     )
     if (!confirmado) return
     setRecibiendoAsociadoId(asociado.idExpediente)
@@ -347,7 +358,10 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
       setDocumentos((prev) => prev.filter((d) => d.idDocumentoAnalizado !== doc.idDocumentoAnalizado))
       return;
     }
-    const confirmado = window.confirm('Se dará de baja el documento (baja lógica, no física).\n¿Desea continuar?')
+    const confirmado = await confirmDialog('Se dará de baja el documento (baja lógica, no física).', {
+      tone: 'danger',
+      confirmLabel: 'Dar de baja',
+    })
     if (!confirmado) return
     setGuardandoId(doc.idDocumentoAnalizado)
     setError(null)
@@ -418,7 +432,10 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
       setErrorResultado(e instanceof ApiError ? e.message : 'No se pudo validar el resultado del análisis.')
       return
     }
-    const confirmado = window.confirm('Se registrará el resultado del análisis.\n¿Desea continuar?')
+    const confirmado = await confirmDialog('Se registrará el resultado del análisis.', {
+      tone: 'info',
+      confirmLabel: 'Registrar',
+    })
     if (!confirmado) return
     setRegistrando(true)
     try {
@@ -434,8 +451,9 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
   }
 
   async function handleEnviarVerificacion() {
-    const confirmado = window.confirm(
-      `Se enviará el expediente ${expediente.numeroExpediente} a Verificación.\n¿Desea continuar?`,
+    const confirmado = await confirmDialog(
+      `Se enviará el expediente ${expediente.numeroExpediente} a Verificación.`,
+      { tone: 'info', confirmLabel: 'Enviar' },
     )
     if (!confirmado) return
     setEnviandoVerificacion(true)
@@ -616,21 +634,31 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                           <Stack direction="row">
                             <Tooltip title="Guardar">
                               <span>
-                                <IconButton size="small" disabled={guardandoId === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
+                                <IconButton
+                                  size="small"
+                                  className={DATA_GRID_ROW_ICON_SAVE_CLASS}
+                                  disabled={guardandoId === doc.idDocumentoAnalizado}
+                                  onClick={() => handleGuardarFila(doc)}
+                                >
                                   <SaveOutlinedIcon fontSize="small" />
                                 </IconButton>
                               </span>
                             </Tooltip>
                             <Tooltip title={(doc.idDocumentoAnalizado ?? 0) < 0 ? 'Guarde el documento antes de descargar' : 'Descargar Word'}>
                               <span>
-                                <IconButton size="small" disabled={(doc.idDocumentoAnalizado ?? 0) < 0} onClick={() => handleDescargarWord(doc)}>
-                                  <DescriptionOutlinedIcon fontSize="small" />
+                                <IconButton
+                                  size="small"
+                                  className={DATA_GRID_ROW_ICON_WORD_CLASS}
+                                  disabled={(doc.idDocumentoAnalizado ?? 0) < 0}
+                                  onClick={() => handleDescargarWord(doc)}
+                                >
+                                  <WordFileIcon fontSize="small" />
                                 </IconButton>
                               </span>
                             </Tooltip>
                             <Tooltip title="Eliminar">
                               <span>
-                                <IconButton size="small" onClick={() => handleEliminarFila(doc)}>
+                                <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => handleEliminarFila(doc)}>
                                   <DeleteOutlineOutlinedIcon fontSize="small" />
                                 </IconButton>
                               </span>
@@ -774,14 +802,19 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                                 <Stack direction="row">
                                   <Tooltip title="Guardar">
                                     <span>
-                                      <IconButton size="small" disabled={guardandoId === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
+                                      <IconButton
+                                        size="small"
+                                        className={DATA_GRID_ROW_ICON_SAVE_CLASS}
+                                        disabled={guardandoId === doc.idDocumentoAnalizado}
+                                        onClick={() => handleGuardarFila(doc)}
+                                      >
                                         <SaveOutlinedIcon fontSize="small" />
                                       </IconButton>
                                     </span>
                                   </Tooltip>
                                   <Tooltip title="Eliminar">
                                     <span>
-                                      <IconButton size="small" onClick={() => handleEliminarFila(doc)}>
+                                      <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => handleEliminarFila(doc)}>
                                         <DeleteOutlineOutlinedIcon fontSize="small" />
                                       </IconButton>
                                     </span>
@@ -875,7 +908,26 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                 </Stack>
               </Alert>
             )}
-            <TextField select label="Resultado" size="small" fullWidth value={resultadoCodigo} onChange={(e) => setResultadoCodigo(e.target.value)}>
+            {!puedeRegistrarAnalisis && (
+              // Mismo patrón ya estandarizado en Verificación/Ejecución: alerta VERDE persistida
+              // (deriva de `expediente.registrable`/`resultadoCodigo` ya releídos en cada remount de
+              // la subpestaña, no de un mensaje efímero) — se mantiene visible aunque el usuario
+              // cambie de subpestaña y vuelva, mostrando cuál fue el resultado registrado.
+              <Alert severity="success">
+                Ya se registró el resultado del análisis
+                {resultadoCodigo ? `: ${resultados.find((r) => r.codigo === resultadoCodigo)?.nombre || resultadoCodigo}` : ''}. Use "Enviar a
+                Verificación" para continuar.
+              </Alert>
+            )}
+            <TextField
+              select
+              label="Resultado"
+              size="small"
+              fullWidth
+              disabled={!puedeRegistrarAnalisis}
+              value={resultadoCodigo}
+              onChange={(e) => setResultadoCodigo(e.target.value)}
+            >
               <MenuItem value="">Seleccione resultado</MenuItem>
               {resultados.map((r) => (
                 <MenuItem key={r.codigo} value={r.codigo ?? ''}>
@@ -891,6 +943,7 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                   label="¿Acta incorporada?"
                   size="small"
                   fullWidth
+                  disabled={!puedeRegistrarAnalisis}
                   value={incorporado}
                   onChange={(e) => setIncorporado(e.target.value as '' | 'SI' | 'NO')}
                 >
@@ -900,15 +953,17 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                 </TextField>
                 <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
                   <FormControlLabel
-                    control={<Checkbox checked={reconstitucion} onChange={(e) => setReconstitucion(e.target.checked)} />}
+                    control={<Checkbox checked={reconstitucion} disabled={!puedeRegistrarAnalisis} onChange={(e) => setReconstitucion(e.target.checked)} />}
                     label="Requiere reconstitución"
                   />
                   <FormControlLabel
-                    control={<Checkbox checked={legitimidad} onChange={(e) => setLegitimidad(e.target.checked)} />}
+                    control={<Checkbox checked={legitimidad} disabled={!puedeRegistrarAnalisis} onChange={(e) => setLegitimidad(e.target.checked)} />}
                     label="Tiene legitimidad"
                   />
                   <FormControlLabel
-                    control={<Checkbox checked={mediosProbatorios} onChange={(e) => setMediosProbatorios(e.target.checked)} />}
+                    control={
+                      <Checkbox checked={mediosProbatorios} disabled={!puedeRegistrarAnalisis} onChange={(e) => setMediosProbatorios(e.target.checked)} />
+                    }
                     label="Cumple medios probatorios"
                   />
                 </Stack>
@@ -922,6 +977,7 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                   label="Motivo no corresponde"
                   size="small"
                   fullWidth
+                  disabled={!puedeRegistrarAnalisis}
                   value={motivoNoCorresponde}
                   onChange={(e) => setMotivoNoCorresponde(e.target.value)}
                 >
@@ -937,6 +993,7 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                   label="Tipo Documento"
                   size="small"
                   fullWidth
+                  disabled={!puedeRegistrarAnalisis}
                   value={tipoDocNoCorresponde}
                   onChange={(e) => setTipoDocNoCorresponde(e.target.value)}
                 >
@@ -951,6 +1008,7 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                   label="N° Documento proveído"
                   size="small"
                   fullWidth
+                  disabled={!puedeRegistrarAnalisis}
                   value={numeroDocProveido}
                   onChange={(e) => setNumeroDocProveido(e.target.value)}
                 />
@@ -963,13 +1021,22 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
               fullWidth
               multiline
               minRows={2}
+              disabled={!puedeRegistrarAnalisis}
               value={fundamento}
               onChange={(e) => setFundamento(e.target.value)}
             />
 
             {requiereObservacion && (
               <Stack spacing={2}>
-                <TextField select label="Tipo de observación" size="small" fullWidth value={obsTipo} onChange={(e) => setObsTipo(e.target.value)}>
+                <TextField
+                  select
+                  label="Tipo de observación"
+                  size="small"
+                  fullWidth
+                  disabled={!puedeRegistrarAnalisis}
+                  value={obsTipo}
+                  onChange={(e) => setObsTipo(e.target.value)}
+                >
                   <MenuItem value="">Seleccione tipo</MenuItem>
                   {tiposObservacion.map((t) => (
                     <MenuItem key={t.codigo} value={t.codigo ?? ''}>
@@ -983,6 +1050,7 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
                   fullWidth
                   multiline
                   minRows={2}
+                  disabled={!puedeRegistrarAnalisis}
                   value={obsDescripcion}
                   onChange={(e) => setObsDescripcion(e.target.value)}
                 />
@@ -990,7 +1058,12 @@ export function AnalisisContent({ expediente, onActualizado }: AnalisisContentPr
             )}
 
             <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-              <Button variant="contained" onClick={handleRegistrarResultado} disabled={registrando} sx={{ alignSelf: 'flex-start' }}>
+              <Button
+                variant="contained"
+                onClick={handleRegistrarResultado}
+                disabled={registrando || !puedeRegistrarAnalisis}
+                sx={{ alignSelf: 'flex-start' }}
+              >
                 Registrar análisis
               </Button>
               {errorResultado && (

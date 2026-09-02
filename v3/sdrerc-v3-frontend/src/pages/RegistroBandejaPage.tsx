@@ -22,10 +22,6 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import {
   DataGrid,
   GridToolbarContainer,
-  GridToolbarColumnsButton,
-  GridToolbarFilterButton,
-  GridToolbarExport,
-  GridToolbarQuickFilter,
   useGridApiContext,
   type GridColDef,
   type GridColumnVisibilityModel,
@@ -42,16 +38,20 @@ import {
   type ImpactoEliminacionRegistro,
 } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { sdrercColors } from '../theme'
+import { dataGridBaseSx, DATA_GRID_ROW_ICON_DELETE_CLASS } from '../dataGridTheme'
+import { DataGridStandardToolbarControls } from '../components/DataGridStandardToolbar'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge, alertaBadgeTone, diasBadgeTone } from '../components/StatusBadge'
 import { AsociarDuplicadosContent } from '../components/AsociarDuplicadosContent'
 import { GrupoFamiliarContent } from '../components/GrupoFamiliarContent'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
+import { TrazabilidadContent } from '../components/TrazabilidadContent'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { REGISTRO_TABS } from '../layout/moduleTabs'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 
 // Mismos 10 tonos que GROUP_STRIPE_COLORS (JPanelBandejaExpedientesNueva, V2): rotación
 // determinística por id del expediente principal (id % 10), no aleatoria.
@@ -119,6 +119,7 @@ const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B',
 // Color fijo por tipo de subpestaña — consistente entre todos los expedientes abiertos, para que
 // "Datos" siempre se identifique con el mismo color sin importar de quién sea la pestaña.
 const COLOR_DATOS = '#2370A8'
+const COLOR_TRAZABILIDAD = '#8E44AD'
 const COLOR_ASOCIAR = '#B86910'
 const COLOR_GRUPO_FAMILIAR = '#7B4FA0'
 
@@ -277,10 +278,7 @@ function ToolbarBandejaRegistro({
         </Stack>
       )}
       <Box sx={{ flex: 1 }} />
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarExport />
-      <GridToolbarQuickFilter />
+      <DataGridStandardToolbarControls />
     </GridToolbarContainer>
   )
 }
@@ -315,8 +313,9 @@ const SIN_SELECCION: GridRowSelectionModel = { type: 'include', ids: new Set() }
  * (`docs/arquitectura_app/screen-multipestañas.jpeg`).
  */
 export function RegistroBandejaPage() {
+  const { confirm: confirmDialog } = useAppDialog()
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [estado, setEstado] = useState('')
   const [expedientes, setExpedientes] = useState<ExpedienteBandeja[]>([])
@@ -459,6 +458,12 @@ export function RegistroBandejaPage() {
               ),
             },
             {
+              id: 'trazabilidad',
+              label: 'Trazabilidad',
+              color: COLOR_TRAZABILIDAD,
+              content: <TrazabilidadContent idExpediente={w.row.idExpediente} />,
+            },
+            {
               id: 'asociar',
               label: 'Asociar',
               color: COLOR_ASOCIAR,
@@ -511,7 +516,7 @@ export function RegistroBandejaPage() {
   }
 
   function handleLimpiar() {
-    const desdeDefault = primerDiaMesActualISO()
+    const desdeDefault = primerDiaMesAnteriorISO()
     const hastaDefault = hoyISO()
     setTexto('')
     setDesde(desdeDefault)
@@ -608,9 +613,10 @@ export function RegistroBandejaPage() {
   // para el flujo de "posibles integrantes" — es el mismo servicio, solo cambia el origen de los ids.
   async function asociarSeleccionadosGrupoFamiliar() {
     if (idsSeleccionados.length < 2) return
-    const confirmado = window.confirm(
+    const confirmado = await confirmDialog(
       `Se asociarán ${idsSeleccionados.length} expedientes marcados como un mismo grupo familiar.\n` +
-        'Solo se marca "Sí" en Grupo Familiar; no se asocian expedientes entre sí.\n\n¿Desea continuar?',
+        'Solo se marca "Sí" en Grupo Familiar; no se asocian expedientes entre sí.',
+      { tone: 'warning', confirmLabel: 'Asociar' },
     )
     if (!confirmado) return
     const [idPrincipal, ...resto] = idsSeleccionados
@@ -745,7 +751,7 @@ export function RegistroBandejaPage() {
             )}
             <Tooltip title={puedeEliminar ? 'Eliminar' : 'Solo se puede eliminar mientras el expediente esté en Registro, sin asignar'}>
               <span>
-                <IconButton size="small" onClick={() => setExpedienteAEliminar(row)} disabled={!puedeEliminar} aria-label="Eliminar">
+                <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => setExpedienteAEliminar(row)} disabled={!puedeEliminar} aria-label="Eliminar">
                   <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>
               </span>
@@ -878,12 +884,14 @@ export function RegistroBandejaPage() {
       {/* KPIs (filtro en memoria sobre la lista ya cargada, igual que V2) — ya no comparten Paper
           con el buscador: el buscador quedó sticky en la Fila 3 del header, los KPIs se desplazan
           con el resto del cuerpo (13/08/2026, pedido explícito del usuario). Distribución en grid de
-          columnas iguales (13/08/2026, mismo día, pedido explícito del usuario: antes era un
-          `Stack flexWrap` que las agrupaba a la izquierda dejando espacio vacío a la derecha) —
-          `repeat(auto-fit, minmax(200px,1fr))` reparte el ancho completo disponible en partes
-          iguales entre las 4 tarjetas, y en pantallas angostas las reacomoda en más filas en vez de
-          desbordar (cada celda nunca baja de 200px). */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 2 }}>
+          columnas iguales (13/08/2026, mismo día — antes era un `Stack flexWrap` que las agrupaba a
+          la izquierda dejando espacio vacío a la derecha).
+          28/08/2026, 2 pasadas: 1ra "que no sean 2 filas" (`repeat(4,1fr)` fijo — desbordaba
+          horizontalmente en vez de envolver al angostar la ventana, "se ve fatal"); 2da, tras verlo
+          roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` — mismo 130px que el nuevo
+          `minWidth` de `MetricCard` (ver su Javadoc), permite que las tarjetas quepan en 1 sola fila
+          en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
         {/* "Total de expedientes" (reemplaza el indicador suelto agregado en el incremento
             anterior): primer KPI de la fila, mismo componente/estilo que el resto — no clicable (no
             filtra nada, es el universo completo bajo los filtros activos). Refleja
@@ -892,13 +900,16 @@ export function RegistroBandejaPage() {
             ya confirmados como hijos de otro expediente, que ahora dejaron de listarse como fila
             independiente; ver `expedientesRaiz` más arriba). Coincide con el total que muestra el
             paginador del DataGrid mientras no haya un KPI de alerta clicado como filtro adicional. */}
-        <MetricCard label="Total de expedientes" value={kpis.total} caption="Según filtros aplicados" color={sdrercColors.primary} />
+        <Box onClick={() => setFiltroAlerta(null)} sx={{ cursor: 'pointer' }}>
+          <MetricCard label="Total de expedientes" value={kpis.total} caption="Según filtros aplicados" color={sdrercColors.primary} active={filtroAlerta === null} />
+        </Box>
         <Box onClick={() => alternarFiltro('POTENCIAL_DUPLICADO')} sx={{ cursor: 'pointer' }}>
           <MetricCard
             label="Potencial duplicado"
             value={kpis.potencialDuplicado}
             caption="Acta + titular"
             color={sdrercColors.warning}
+            active={filtroAlerta === 'POTENCIAL_DUPLICADO'}
           />
         </Box>
         <Box onClick={() => alternarFiltro('POSIBLE_GRUPO_FAMILIAR')} sx={{ cursor: 'pointer' }}>
@@ -907,6 +918,7 @@ export function RegistroBandejaPage() {
             value={kpis.posibleGrupoFamiliar}
             caption="Apellidos coincidentes"
             color={sdrercColors.info}
+            active={filtroAlerta === 'POSIBLE_GRUPO_FAMILIAR'}
           />
         </Box>
         <Box onClick={() => alternarFiltro('GRUPO_FAMILIAR_CONFIRMADO')} sx={{ cursor: 'pointer' }}>
@@ -915,11 +927,15 @@ export function RegistroBandejaPage() {
             value={kpis.grupoFamiliarConfirmado}
             caption="Registrado"
             color={sdrercColors.primary}
+            active={filtroAlerta === 'GRUPO_FAMILIAR_CONFIRMADO'}
           />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2 }}>
+      {/* 28/08/2026, sistema de diseño premium — Incremento 2: la tabla pasa a verse como una
+          superficie propia (mismo elevation1 que MetricCard/SectionCard, ver theme.ts) en vez de
+          un Box liso sin borde — antes se fundía con el canvas gris de fondo por falta de sombra. */}
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filasConHijos}
           columns={columnasConAgrupacion}
@@ -966,6 +982,7 @@ export function RegistroBandejaPage() {
             params.row.esFilaAsociada ? 'fila-asociada' : expandidoId === params.row.idExpediente ? 'fila-principal-expandida' : ''
           }
           sx={{
+            ...dataGridBaseSx,
             '& .fila-asociada': { bgcolor: ASSOCIATED_ROW_BACKGROUND, color: sdrercColors.textSecondary, fontSize: '0.8125rem' },
             '& .fila-principal-expandida': { bgcolor: EXPANDED_PARENT_BACKGROUND },
             ...COLUMNAS_FIJAS_INICIO_SX,

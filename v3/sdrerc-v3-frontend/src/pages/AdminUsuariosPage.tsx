@@ -5,6 +5,8 @@ import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined'
 import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { sdrercColors } from '../theme'
 import {
   buscarUsuarios,
   cambiarActivoUsuario,
@@ -17,6 +19,7 @@ import {
   type UsuarioAdmin,
 } from '../api/adminUsuariosApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge } from '../components/StatusBadge'
 import { DlgRestablecerClave } from '../components/DlgRestablecerClave'
@@ -26,7 +29,10 @@ import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { ADMIN_USUARIOS_TABS } from '../layout/moduleTabs'
 
 const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B', '#16A085', '#D35400', '#2C3E50']
-const COLOR_DATOS = '#154775'
+// 28/08/2026, sistema de diseño premium: unificado a `#2370A8` (mismo azul que "Datos" en las 12
+// bandejas operativas — antes esta subpestaña usaba el azul institucional `#154775`, un 2do azul
+// distinto para el mismo rol de identidad, detectado como inconsistencia real en el diagnóstico).
+const COLOR_DATOS = '#2370A8'
 const COLOR_ROLES = '#0B8E97'
 
 interface WorkspaceAbierto {
@@ -44,6 +50,7 @@ interface WorkspaceAbierto {
  * a V2 (nombre completo único, multi-equipo).
  */
 export function AdminUsuariosPage() {
+  const { confirm: confirmDialog } = useAppDialog()
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([])
   const [roles, setRoles] = useState<RolResumen[]>([])
   const [equipos, setEquipos] = useState<EquipoAsignacion[]>([])
@@ -207,8 +214,9 @@ export function AdminUsuariosPage() {
   }
 
   async function alternarActivo(usuario: UsuarioAdmin) {
-    const confirmado = window.confirm(
+    const confirmado = await confirmDialog(
       usuario.activo ? `¿Inactivar al usuario ${usuario.username}?` : `¿Activar al usuario ${usuario.username}?`,
+      { tone: 'warning', confirmLabel: usuario.activo ? 'Inactivar' : 'Activar' },
     )
     if (!confirmado) return
     try {
@@ -366,21 +374,32 @@ export function AdminUsuariosPage() {
             {error}
           </Typography>
         )}
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 2 }}>
-          <MetricCard label="Total de usuarios" value={kpis.total} caption="Según filtros activos" color={COLOR_DATOS} />
-          <MetricCard label="Activos" value={kpis.activos} caption="Pueden iniciar sesión" color="#1F9254" />
-          <MetricCard label="Inactivos" value={kpis.inactivos} caption="Acceso bloqueado" color="#8A94A6" />
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2 }}>
+          <Box onClick={() => setEstadoFiltro('')} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Total de usuarios" value={kpis.total} caption="Según filtros activos" color={COLOR_DATOS} active={estadoFiltro === ''} />
+          </Box>
+          <Box onClick={() => setEstadoFiltro((prev) => (prev === 'true' ? '' : 'true'))} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Activos" value={kpis.activos} caption="Pueden iniciar sesión" color="#1F9254" active={estadoFiltro === 'true'} />
+          </Box>
+          <Box onClick={() => setEstadoFiltro((prev) => (prev === 'false' ? '' : 'false'))} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Inactivos" value={kpis.inactivos} caption="Acceso bloqueado" color="#8A94A6" active={estadoFiltro === 'false'} />
+          </Box>
         </Box>
-        <DataGrid
-          rows={usuarios}
-          columns={columnas}
-          getRowId={(row) => row.idUsuario}
-          loading={cargando}
-          onRowDoubleClick={(params) => abrirWorkspace(params.row)}
-          autoHeight
-          pageSizeOptions={[10, 25, 50, 100]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-        />
+        <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
+          <DataGrid
+            rows={usuarios}
+            columns={columnas}
+            getRowId={(row) => row.idUsuario}
+            loading={cargando}
+            onRowDoubleClick={(params) => abrirWorkspace(params.row)}
+            density="compact"
+            autoHeight
+            showToolbar
+            pageSizeOptions={[10, 25, 50, 100]}
+            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+            sx={dataGridBaseSx}
+          />
+        </Box>
       </Stack>
 
       <WorkspaceTabsDrawer

@@ -31,6 +31,12 @@ export interface NotificacionAsignacionDocumento {
   estadoFinalNotificacionCodigo: string
   estadoFinalNotificacion: string
   fechaPublicacionNotif: string | null
+  /** Fecha de solicitud del expediente — columna "Fecha solicitud" de Bandeja de supervisión (29/08/2026). */
+  fechaSolicitud: string | null
+  /** Abogado responsable actual del expediente — columna "Abogado" de Bandeja de supervisión (29/08/2026). */
+  abogado: string
+  /** Resultado de Análisis (mismo criterio que "Resultado" en Ejecución/Verificación) — columna "Resultado" de Bandeja de supervisión (29/08/2026). */
+  resultadoAnalisis: string
   /** KPI "Pendientes de asignación". */
   pendienteAsignacion: boolean
   /** KPI "Listos para firma": documento FINAL ya validado, a la espera de firma. */
@@ -100,4 +106,29 @@ export function listarUsuariosDestinoNotificacion(idEquipo: number) {
 /** Combo "Estado documento" de esta bandeja (incluye VALIDADO, a diferencia del de Análisis/Ejecución). */
 export function listarEstadosDocumentoNotificacion() {
   return apiGet<CatalogoItem[]>('/api/catalogos/estados-documento-notificacion')
+}
+
+/**
+ * "Registrar Supervisión" (resultado Observado, 02/09/2026, pedido explícito del usuario) — deriva
+ * el documento a Equipo Análisis o Equipo Ejecución para su corrección.
+ */
+export function registrarSupervisionObservada(request: {
+  idExpediente: number
+  idDocumentoAnalizado: number
+  idEquipoDestino: number
+  idUsuarioDestino: number
+  motivoCorreccionNombre: string
+  comentario: string
+}) {
+  return apiPost<void>('/api/notificacion/asignacion/supervision-observada', request)
+}
+
+/** Combo "Equipo destino" exclusivo del resultado Observado (Análisis/Ejecución, distinto de "Asignar"). */
+export function listarEquiposDestinoObservado() {
+  return apiGet<EquipoAsignacion[]>('/api/notificacion/asignacion/equipos-destino-observado')
+}
+
+/** Combo "Motivo de corrección" del resultado Observado (mismo catálogo que ya usa Ejecución). */
+export function listarMotivosCorreccionSupervision() {
+  return apiGet<CatalogoItem[]>('/api/notificacion/asignacion/catalogos/motivos-correccion')
 }

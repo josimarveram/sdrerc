@@ -9,13 +9,16 @@ import { obtenerDatosExpediente, type ExpedienteBandeja } from '../api/registroB
 import type { ExpedienteEdicionManual } from '../api/registroApi'
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { DataGridStandardToolbar } from '../components/DataGridStandardToolbar'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge, diasBadgeTone } from '../components/StatusBadge'
 import { AnalisisContent } from '../components/AnalisisContent'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
+import { TrazabilidadContent } from '../components/TrazabilidadContent'
 import { GrupoFamiliarConfirmadoContent } from '../components/GrupoFamiliarConfirmadoContent'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { ANALISIS_TABS } from '../layout/moduleTabs'
 
@@ -57,6 +60,7 @@ const COLUMNA_FIJA_INICIO_SX = {
 
 const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B', '#16A085', '#D35400', '#2C3E50']
 const COLOR_DATOS = '#2370A8'
+const COLOR_TRAZABILIDAD = '#8E44AD'
 const COLOR_ANALISIS = 'rgb(10, 118, 145)'
 // Mismo color que "Grupo Familiar" en Registro/Asignación (RegistroBandejaPage.tsx), para
 // consistencia visual entre todos los módulos que muestran esta subpestaña.
@@ -162,7 +166,7 @@ function adaptarParaPanelDatos(row: AnalisisExpediente): ExpedienteBandeja {
  */
 export function AnalisisBandejaPage() {
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [estado, setEstado] = useState('')
   const [expedientes, setExpedientes] = useState<AnalisisExpediente[]>([])
@@ -214,7 +218,7 @@ export function AnalisisBandejaPage() {
   }
 
   function handleLimpiar() {
-    const desdeDefault = primerDiaMesActualISO()
+    const desdeDefault = primerDiaMesAnteriorISO()
     const hastaDefault = hoyISO()
     setTexto('')
     setDesde(desdeDefault)
@@ -406,6 +410,12 @@ export function AnalisisBandejaPage() {
               ),
             },
             {
+              id: 'trazabilidad',
+              label: 'Trazabilidad',
+              color: COLOR_TRAZABILIDAD,
+              content: <TrazabilidadContent idExpediente={w.row.idExpediente} />,
+            },
+            {
               id: 'analisis',
               label: 'Análisis',
               color: COLOR_ANALISIS,
@@ -540,28 +550,33 @@ export function AnalisisBandejaPage() {
         </Alert>
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 2 }}>
+      {/* 28/08/2026, pedido explícito del usuario en 2 pasadas: 1ra "que no sean 2 filas" (repeat(N,1fr)
+          fijo -- desbordaba horizontalmente en vez de envolver al angostar la ventana, "se ve fatal");
+          2da, tras verlo roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` -- mismo
+          130px que el nuevo `minWidth` de MetricCard (ver su Javadoc), permite que las tarjetas quepan
+          en 1 sola fila en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
         <Box onClick={() => alternarFiltro('POR_RECIBIR')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por recibir" value={kpis.porRecibir} caption="Asignación / Asignado" color={sdrercColors.info} />
+          <MetricCard label="Por recibir" value={kpis.porRecibir} caption="Asignación / Asignado" color={sdrercColors.info} active={filtroKpi === 'POR_RECIBIR'} />
         </Box>
         <Box onClick={() => alternarFiltro('EN_ANALISIS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="En análisis" value={kpis.enAnalisis} caption="Recibidos y observados" color={sdrercColors.primary} />
+          <MetricCard label="En análisis" value={kpis.enAnalisis} caption="Recibidos y observados" color={sdrercColors.primary} active={filtroKpi === 'EN_ANALISIS'} />
         </Box>
         <Box onClick={() => alternarFiltro('DERIVADO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Derivado" value={kpis.derivado} caption="Desde Cartas de respuesta" color={sdrercColors.primary} />
+          <MetricCard label="Derivado" value={kpis.derivado} caption="Desde Cartas de respuesta" color={sdrercColors.primary} active={filtroKpi === 'DERIVADO'} />
         </Box>
         <Box onClick={() => alternarFiltro('OBSERVADOS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Observados" value={kpis.observados} caption="Requieren subsanación" color={sdrercColors.warning} />
+          <MetricCard label="Observados" value={kpis.observados} caption="Requieren subsanación" color={sdrercColors.warning} active={filtroKpi === 'OBSERVADOS'} />
         </Box>
         <Box onClick={() => alternarFiltro('POR_VENCER_VENCIDO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por vencer / vencidos" value={kpis.porVencerVencido} caption="Días hábiles críticos" color={sdrercColors.error} />
+          <MetricCard label="Por vencer / vencidos" value={kpis.porVencerVencido} caption="Días hábiles críticos" color={sdrercColors.error} active={filtroKpi === 'POR_VENCER_VENCIDO'} />
         </Box>
         <Box onClick={() => alternarFiltro('GRUPO_FAMILIAR_CONFIRMADO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Grupo Familiar Confirmado" value={kpis.grupoFamiliarConfirmado} caption="Registrado" color={sdrercColors.success} />
+          <MetricCard label="Grupo Familiar Confirmado" value={kpis.grupoFamiliarConfirmado} caption="Registrado" color={sdrercColors.success} active={filtroKpi === 'GRUPO_FAMILIAR_CONFIRMADO'} />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filasConHijos}
           columns={columnasConAgrupacion}
@@ -571,12 +586,14 @@ export function AnalisisBandejaPage() {
           autoHeight
           disableVirtualization
           showToolbar
+          slots={{ toolbar: DataGridStandardToolbar }}
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
           getRowClassName={(params) =>
             params.row.esFilaAsociada ? 'fila-asociada' : expandidoId === params.row.idExpediente ? 'fila-principal-expandida' : ''
           }
           sx={{
+            ...dataGridBaseSx,
             '& .fila-asociada': { bgcolor: ASSOCIATED_ROW_BACKGROUND, color: sdrercColors.textSecondary, fontSize: '0.8125rem' },
             '& .fila-principal-expandida': { bgcolor: EXPANDED_PARENT_BACKGROUND },
             ...COLUMNA_FIJA_INICIO_SX,

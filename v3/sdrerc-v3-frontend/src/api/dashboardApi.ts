@@ -26,7 +26,7 @@ export interface CargaLaboralAbogado {
   analisisPorRecibir: number
   analisisEnProceso: number
   analisisObservado: number
-  analisisCartaIntermedia: number
+  analisisDerivado: number
   enVerificacion: number
   enEjecucion: number
   porVencer: number

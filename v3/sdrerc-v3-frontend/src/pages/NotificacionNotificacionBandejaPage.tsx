@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Chip,
@@ -8,22 +9,26 @@ import {
   IconButton,
   MenuItem,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Tooltip,
+  Typography,
 } from '@mui/material'
 import {
   DataGrid,
-  GridToolbarColumnsButton,
   GridToolbarContainer,
-  GridToolbarExport,
-  GridToolbarFilterButton,
-  GridToolbarQuickFilter,
   useGridApiContext,
   type GridColDef,
   type GridRowSelectionModel,
 } from '@mui/x-data-grid'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlined'
-import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutlined'
+import PersonPinCircleOutlinedIcon from '@mui/icons-material/PersonPinCircleOutlined'
+import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircle'
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
@@ -40,12 +45,21 @@ import {
 import { obtenerDatosExpediente, type ExpedienteBandeja } from '../api/registroBandejaApi'
 import type { ExpedienteEdicionManual } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { sdrercColors } from '../theme'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import {
+  dataGridBaseSx,
+  DATA_GRID_ROW_ICON_DELETE_CLASS,
+  DATA_GRID_ROW_ICON_SAVE_CLASS,
+  DATA_GRID_ROW_ICON_NOTIFICACION_CLASS,
+} from '../dataGridTheme'
+import { DataGridStandardToolbarControls } from '../components/DataGridStandardToolbar'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge } from '../components/StatusBadge'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
+import { TrazabilidadContent } from '../components/TrazabilidadContent'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { NOTIFICACION_TABS } from '../layout/moduleTabs'
 
@@ -84,8 +98,18 @@ function estadoNotifColumna(estadoNotificacionCodigo: string): '' | 'FALLIDA' | 
 
 const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B', '#16A085', '#D35400', '#2C3E50']
 const COLOR_DATOS = '#2370A8'
+const COLOR_TRAZABILIDAD = '#8E44AD'
 
 type FilaPadre = { id: string; tipo: 'padre'; doc: NotificacionAsignacionDocumento }
+// 30/08/2026, pedido explícito del usuario: "replica el diseño de nested grid de la Bandeja de
+// supervisión". Antes cada intento/borrador era su PROPIA fila del DataGrid (fusionada por colSpan,
+// mostrando un formulario horizontal plano) — se reemplaza por una única fila 'intentos' por
+// documento expandido, que renderiza una tabla real (Table/TableHead/TableBody) con TODOS los
+// intentos + borradores del documento adentro, dentro de la misma "tarjeta con acento lateral" ya
+// usada en `NotificacionAsignacionBandejaPage.tsx`. `FilaHijo`/`FilaBorrador` se conservan como
+// formas de objeto (no como tipos de fila del grid) — se siguen construyendo al vuelo dentro del
+// render para pasarlos, sin cambios, a `guardarIntento`/`eliminarIntento`/`guardarBorrador`/
+// `cancelarBorrador`.
 type FilaHijo = { id: string; tipo: 'hijo'; idDocumentoAnalizado: number; intento: NotificacionIntento }
 type FilaBorrador = {
   id: string
@@ -95,7 +119,8 @@ type FilaBorrador = {
   tempId: number
   numeroIntento: number
 }
-type FilaNotif = FilaPadre | FilaHijo | FilaBorrador
+type FilaIntentos = { id: string; tipo: 'intentos'; idDocumentoAnalizado: number; idExpediente: number }
+type FilaNotif = FilaPadre | FilaIntentos
 
 interface EdicionIntento {
   modalidad: 'VIRTUAL' | 'PRESENCIAL'
@@ -195,10 +220,7 @@ function ToolbarBandejaNotificacion({ seleccionados, onAgregarIntento }: { selec
         )}
       </Stack>
       <Box sx={{ flex: 1 }} />
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarExport />
-      <GridToolbarQuickFilter />
+      <DataGridStandardToolbarControls />
     </GridToolbarContainer>
   )
 }
@@ -265,12 +287,15 @@ type FiltroKpi = 'POR_NOTIFICAR' | 'PENDIENTE' | 'ATENDIDO' | 'POR_PUBLICAR' | '
  * documento padre. Bloque de iconos de acción (Guardar/Cancelar/Eliminar) al inicio de las columnas,
  * mismo criterio que Análisis.
  *
- * Al hacer doble clic en una fila padre, se abre ÚNICAMENTE la subpestaña "Datos" (pedido explícito
- * del usuario: sin subpestaña de acción/asignación en esta bandeja ni en la futura Bandeja de
- * publicación) — se reutiliza `WorkspaceTabsDrawer` con un solo `subTabs`, mismo componente
+ * Al hacer doble clic en una fila padre, se abre el panel con las subpestañas "Datos" y
+ * "Trazabilidad" (esta última agregada el 01/09/2026, pedido explícito del usuario: "replicar el
+ * panel de Trazabilidad... en todas las bandejas desde Recepción hasta Publicación") — sin
+ * subpestaña de acción/asignación (pedido explícito original: "sin subpestaña de
+ * acción/asignación en esta bandeja"), se reutiliza `WorkspaceTabsDrawer`, mismo componente
  * compartido que las demás bandejas de este módulo.
  */
 export function NotificacionNotificacionBandejaPage() {
+  const { confirm: confirmDialog, alert: alertDialog } = useAppDialog()
   const [documentos, setDocumentos] = useState<NotificacionAsignacionDocumento[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -286,14 +311,14 @@ export function NotificacionNotificacionBandejaPage() {
 
   const [filtroKpi, setFiltroKpi] = useState<FiltroKpi>(null)
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [estadoFinalFiltro, setEstadoFinalFiltro] = useState('')
 
   const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() })
   const [idPadreEnfocado, setIdPadreEnfocado] = useState<number | null>(null)
 
-  type WorkspaceAbierto = { id: string; doc: NotificacionAsignacionDocumento; color: string }
+  type WorkspaceAbierto = { id: string; doc: NotificacionAsignacionDocumento; color: string; activeSubTabId: string }
   const [workspacesAbiertos, setWorkspacesAbiertos] = useState<WorkspaceAbierto[]>([])
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
   const [datosPorExpediente, setDatosPorExpediente] = useState<
@@ -389,13 +414,13 @@ export function NotificacionNotificacionBandejaPage() {
 
   function handleLimpiar() {
     setTexto('')
-    setDesde(primerDiaMesActualISO())
+    setDesde(primerDiaMesAnteriorISO())
     setHasta(hoyISO())
     setEstadoFinalFiltro('')
   }
 
-  async function asegurarIntentosCargados(idDocumento: number): Promise<NotificacionIntento[]> {
-    if (intentosPorDocumento[idDocumento]) return intentosPorDocumento[idDocumento]
+  /** Fuerza una relectura contra el backend, sin usar la caché — ver `asegurarIntentosCargados`. */
+  async function cargarIntentosFrescos(idDocumento: number): Promise<NotificacionIntento[]> {
     setCargandoIntentos((prev) => new Set(prev).add(idDocumento))
     try {
       const intentos = await listarIntentosNotificacion(idDocumento)
@@ -415,6 +440,11 @@ export function NotificacionNotificacionBandejaPage() {
         return next
       })
     }
+  }
+
+  async function asegurarIntentosCargados(idDocumento: number): Promise<NotificacionIntento[]> {
+    if (intentosPorDocumento[idDocumento]) return intentosPorDocumento[idDocumento]
+    return cargarIntentosFrescos(idDocumento)
   }
 
   async function alternarExpansion(doc: NotificacionAsignacionDocumento) {
@@ -452,7 +482,7 @@ export function NotificacionNotificacionBandejaPage() {
       objetivos.add(idPadreEnfocado)
     }
     if (objetivos.size === 0) {
-      window.alert('Seleccione uno o varios documentos de la bandeja de notificación.')
+      await alertDialog('Seleccione uno o varios documentos de la bandeja de notificación.', { tone: 'warning' })
       return
     }
     // 23/08/2026, bug real corregido (pedido explícito del usuario: "el mensaje aparece 2 veces"):
@@ -463,11 +493,16 @@ export function NotificacionNotificacionBandejaPage() {
     // efecto secundario (el alert) se ejecutaba dos veces por cada click, aunque el estado final
     // aplicado fuera correcto ("y luego me agrega"). Fix: primero se calcula todo de forma pura
     // (sin tocar estado ni mostrar diálogos) leyendo directamente los resultados de
-    // `asegurarIntentosCargados` (no del closure de `intentosPorDocumento`, para no depender de que
+    // `cargarIntentosFrescos` (no del closure de `intentosPorDocumento`, para no depender de que
     // ya se haya re-renderizado) y el `borradoresPorDocumento` actual del closure (no cambia entre el
     // `await` de arriba y este punto); recién después se aplican los `setState` (con actualizadores
     // puros, sin alerts adentro) y se muestra el `alert` una sola vez, fuera de cualquier actualizador.
-    const cargas = await Promise.all([...objetivos].map(async (id) => [id, await asegurarIntentosCargados(id)] as const))
+    // 30/08/2026, bug real corregido (pedido explícito del usuario: "se queda pegado el mensaje...
+    // ya fue ubicado"): usar `asegurarIntentosCargados` (que confía en la caché si ya está poblada)
+    // podía evaluar la regla contra un `intentosPorDocumento` desactualizado justo después de guardar
+    // o eliminar un intento del mismo documento — se fuerza siempre una relectura fresca del backend
+    // (`cargarIntentosFrescos`) antes de decidir si corresponde agregar el siguiente intento.
+    const cargas = await Promise.all([...objetivos].map(async (id) => [id, await cargarIntentosFrescos(id)] as const))
     const intentosPorId = new Map(cargas)
 
     const borradoresNuevosPorDoc = new Map<number, FilaBorrador>()
@@ -506,7 +541,7 @@ export function NotificacionNotificacionBandejaPage() {
         'sin-resolver': 'Registre el resultado del intento actual (Estado y Estado Notificación) antes de agregar el siguiente.',
         maximo: 'Ya se alcanzó el máximo de 2 intentos de notificación para este documento.',
       }
-      window.alert([...motivos].map((m) => mensajes[m]).join('\n') || 'No se pudo agregar el intento.')
+      await alertDialog([...motivos].map((m) => mensajes[m]).join('\n') || 'No se pudo agregar el intento.', { tone: 'warning' })
       return
     }
 
@@ -651,7 +686,7 @@ export function NotificacionNotificacionBandejaPage() {
   }
 
   async function eliminarIntento(fila: FilaHijo) {
-    if (!window.confirm(`¿Desea eliminar el intento ${fila.intento.numeroIntento} de notificación?`)) return
+    if (!(await confirmDialog(`¿Desea eliminar el intento ${fila.intento.numeroIntento} de notificación?`, { tone: 'danger', confirmLabel: 'Eliminar' }))) return
     setProcesandoFila(fila.id)
     setError(null)
     try {
@@ -666,26 +701,25 @@ export function NotificacionNotificacionBandejaPage() {
     }
   }
 
+  // 30/08/2026: una sola fila 'intentos' por documento expandido (en vez de una fila por cada
+  // intento/borrador) — el contenido real (intentos + borradores) se lee directo de
+  // `intentosPorDocumento`/`borradoresPorDocumento` dentro del propio `renderCell`, así que esta
+  // fila sintética no necesita cargar esos datos en su identidad.
   const filasConHijos = useMemo<FilaNotif[]>(() => {
     const resultado: FilaNotif[] = []
     for (const doc of documentosFiltrados) {
       resultado.push({ id: `doc-${doc.idDocumentoAnalizado}`, tipo: 'padre', doc })
       if (expandidos.has(doc.idDocumentoAnalizado)) {
-        for (const intento of intentosPorDocumento[doc.idDocumentoAnalizado] ?? []) {
-          resultado.push({
-            id: `hijo-${intento.idExpedienteNotificacion}`,
-            tipo: 'hijo',
-            idDocumentoAnalizado: doc.idDocumentoAnalizado,
-            intento,
-          })
-        }
-        for (const borrador of borradoresPorDocumento[doc.idDocumentoAnalizado] ?? []) {
-          resultado.push(borrador)
-        }
+        resultado.push({
+          id: `intentos-${doc.idDocumentoAnalizado}`,
+          tipo: 'intentos',
+          idDocumentoAnalizado: doc.idDocumentoAnalizado,
+          idExpediente: doc.idExpediente,
+        })
       }
     }
     return resultado
-  }, [documentosFiltrados, expandidos, intentosPorDocumento, borradoresPorDocumento])
+  }, [documentosFiltrados, expandidos])
 
   function abrirWorkspace(doc: NotificacionAsignacionDocumento) {
     const id = `ws-${doc.idExpediente}`
@@ -695,10 +729,14 @@ export function NotificacionNotificacionBandejaPage() {
         return prev.map((w) => (w.id === id ? { ...w, doc } : w))
       }
       const color = WORKSPACE_COLORS[prev.length % WORKSPACE_COLORS.length]
-      return [...prev, { id, doc, color }]
+      return [...prev, { id, doc, color, activeSubTabId: 'datos' }]
     })
     if (datosPorExpediente[doc.idExpediente]) return
     recargarDatosExpediente(doc.idExpediente)
+  }
+
+  function seleccionarSubTab(workspaceId: string, subTabId: string) {
+    setWorkspacesAbiertos((prev) => prev.map((w) => (w.id === workspaceId ? { ...w, activeSubTabId: subTabId } : w)))
   }
 
   function recargarDatosExpediente(idExpediente: number) {
@@ -738,7 +776,7 @@ export function NotificacionNotificacionBandejaPage() {
           id: w.id,
           label: w.doc.titular || w.doc.numeroExpediente || `Expediente ${w.doc.idExpediente}`,
           color: w.color,
-          activeSubTabId: 'datos',
+          activeSubTabId: w.activeSubTabId,
           subTabs: [
             {
               id: 'datos',
@@ -755,6 +793,12 @@ export function NotificacionNotificacionBandejaPage() {
                 />
               ),
             },
+            {
+              id: 'trazabilidad',
+              label: 'Trazabilidad',
+              color: COLOR_TRAZABILIDAD,
+              content: <TrazabilidadContent idExpediente={w.doc.idExpediente} />,
+            },
           ],
         }
       }),
@@ -763,6 +807,9 @@ export function NotificacionNotificacionBandejaPage() {
 
   const columnas: GridColDef<FilaNotif>[] = [
     {
+      // 30/08/2026: con la fila 'intentos' única (nested grid, ver columna 'numeroExpediente'), los
+      // íconos de Guardar/Cancelar/Eliminar de cada intento/borrador viven DENTRO de la propia tabla
+      // anidada, no en esta columna — acá solo queda el ícono de expandir/colapsar de la fila padre.
       field: 'expandir',
       headerName: '',
       width: 56,
@@ -774,63 +821,50 @@ export function NotificacionNotificacionBandejaPage() {
         if (cargandoIntentos.has(row.doc.idDocumentoAnalizado)) {
           return <CircularProgress size={16} />
         }
-        const puedeExpandir = row.doc.totalIntentos > 0
-        if (!puedeExpandir) return null
         const expandido = expandidos.has(row.doc.idDocumentoAnalizado)
+        // 30/08/2026, bug real corregido (pedido explícito del usuario: "al eliminar el 1er intento
+        // desaparece el ícono para contraer"): antes el ícono solo se mostraba si `totalIntentos > 0`
+        // — al eliminar el único intento de un documento ya expandido, `totalIntentos` bajaba a 0 tras
+        // el refresco de la bandeja y el ícono desaparecía por completo, dejando la fila expandida
+        // (con la nested grid vacía) sin ninguna forma de volver a colapsarla. Ahora también se
+        // muestra mientras el documento ya está expandido, para poder colapsarlo siempre.
+        const puedeExpandir = row.doc.totalIntentos > 0 || expandido
+        if (!puedeExpandir) return null
+        // 30/08/2026, pedido explícito del usuario (3er ajuste, elegido explícitamente entre 4
+        // opciones vía AskUserQuestion): `PersonPinCircle` (pin de ubicación con silueta de persona)
+        // — encaja mejor semánticamente que los 2 intentos anteriores (`ContactMail`/
+        // `MarkunreadMailbox`): el objetivo real de cada intento es "ubicar" al ciudadano, virtual o
+        // presencial — el propio sistema ya usa el término "Ubicado"/"No ubicado" para el resultado
+        // (ver `estadoNotif`/`NotificacionIntento.ubicado`). Mismo criterio ya usado para el ícono de
+        // carpeta de la Bandeja de supervisión: outline mientras está colapsado, versión "llena" al
+        // expandir, con un `Badge` mostrando cuántos intentos tiene el documento.
         return (
-          <IconButton size="small" onClick={() => alternarExpansion(row.doc)} aria-label={expandido ? 'Colapsar intentos' : 'Expandir intentos'}>
-            {expandido ? <RemoveCircleOutlineIcon fontSize="small" /> : <AddCircleOutlineIcon fontSize="small" />}
-          </IconButton>
-        )
-      },
-    },
-    {
-      field: 'accion',
-      headerName: '',
-      width: 90,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => {
-        const row = params.row
-        if (row.tipo === 'padre') return null
-        const procesando = procesandoFila === row.id
-        if (row.tipo === 'borrador') {
-          return (
-            <Stack direction="row">
-              <Tooltip title="Guardar">
-                <span>
-                  <IconButton size="small" disabled={procesando} onClick={() => guardarBorrador(row)}>
-                    <SaveOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Cancelar">
-                <span>
-                  <IconButton size="small" disabled={procesando} onClick={() => cancelarBorrador(row)}>
-                    <CloseOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Stack>
-          )
-        }
-        return (
-          <Stack direction="row">
-            <Tooltip title="Guardar">
-              <span>
-                <IconButton size="small" disabled={procesando} onClick={() => guardarIntento(row)}>
-                  <SaveOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Eliminar">
-              <span>
-                <IconButton size="small" disabled={procesando} onClick={() => eliminarIntento(row)}>
-                  <DeleteOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
+          <Tooltip title={expandido ? 'Colapsar intentos de notificación' : 'Ver intentos de notificación'}>
+            <IconButton
+              size="small"
+              className={DATA_GRID_ROW_ICON_NOTIFICACION_CLASS}
+              onClick={() => alternarExpansion(row.doc)}
+              aria-label={expandido ? 'Colapsar intentos' : 'Ver intentos de notificación'}
+            >
+              <Badge
+                badgeContent={row.doc.totalIntentos}
+                overlap="circular"
+                max={9}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    backgroundColor: '#6A4C93',
+                    color: '#fff',
+                    fontSize: '0.55rem',
+                    minWidth: 14,
+                    height: 14,
+                    padding: '0 2px',
+                  },
+                }}
+              >
+                {expandido ? <PersonPinCircleIcon fontSize="small" /> : <PersonPinCircleOutlinedIcon fontSize="small" />}
+              </Badge>
+            </IconButton>
+          </Tooltip>
         )
       },
     },
@@ -839,156 +873,294 @@ export function NotificacionNotificacionBandejaPage() {
       headerName: 'N° expediente',
       width: 190,
       sortable: false,
-      filterable: false,
-      // 23/08/2026, pedido explícito del usuario: las columnas de intento (Nro./Modalidad/.../Estado
-      // Notificación) aparecían "a la derecha" del resto, obligando a hacer scroll horizontal para
-      // verlas — deben mostrarse DEBAJO de la fila principal, como su propia sección. `colSpan`
-      // (feature de Community, no requiere DataGrid Pro) fusiona esta celda con el resto de columnas
-      // de datos cuando la fila es hijo/borrador, y el formulario de intento se renderiza completo
-      // dentro de esa única celda ancha — mismo patrón visual "debajo del padre" que las filas
-      // asociadas de `RegistroBandejaPage.tsx`, pero con controles editables en vez de solo texto.
+      // 28/08/2026, bug real corregido (pedido explícito del usuario: "el icono de Filters no está
+      // funcionando"): esta columna (y las 7 siguientes) leen `row.doc.x` en vez de un campo plano —
+      // sin `valueGetter`, el filtro no tiene ningún valor sobre el que operar, por eso `filterable`
+      // se había puesto en `false` desde el port inicial. `valueGetter` extrae el valor real solo
+      // para la fila padre (la fila 'intentos' no tiene `numeroExpediente` propio, vuelve '').
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.numeroExpediente : ''),
+      // 30/08/2026, pedido explícito del usuario: "replica el diseño de nested grid de la Bandeja de
+      // supervisión" — mismo mecanismo `colSpan` (Community, no requiere DataGrid Pro) que ya fusiona
+      // esta celda con el resto de columnas de datos cuando la fila es 'intentos', pero ahora renderiza
+      // una tabla real (Table/TableHead/TableBody) con TODOS los intentos + borradores del documento,
+      // dentro de la misma "tarjeta con acento lateral" (fondo `softGray`, borde izquierdo `info`) ya
+      // usada en `NotificacionAsignacionBandejaPage.tsx` — en vez del formulario horizontal plano
+      // anterior, uno por cada fila de intento/borrador.
       colSpan: (_value, row) => (row.tipo !== 'padre' ? 100 : undefined),
       renderCell: (params) => {
         const row = params.row
         if (row.tipo === 'padre') return row.doc.numeroExpediente
-        if (row.tipo === 'hijo') {
-          const edicion = edicionesIntento[row.intento.idExpedienteNotificacion]
-          if (!edicion) return null
-          const setCampo = (cambios: Partial<EdicionIntento>) =>
-            setEdicionesIntento((prev) => ({ ...prev, [row.intento.idExpedienteNotificacion]: { ...edicion, ...cambios } }))
-          return (
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap', py: 1, width: '100%' }}>
-              <Chip label={`Intento ${row.intento.numeroIntento}`} size="small" color="primary" variant="outlined" />
-              <TextField
-                select
-                label="Modalidad"
-                size="small"
-                sx={{ minWidth: 130 }}
-                value={edicion.modalidad}
-                onChange={(e) => setCampo({ modalidad: e.target.value as 'VIRTUAL' | 'PRESENCIAL' })}
-              >
-                <MenuItem value="VIRTUAL">Virtual</MenuItem>
-                <MenuItem value="PRESENCIAL">Presencial</MenuItem>
-              </TextField>
-              <TextField
-                label="Fecha Envío"
-                type="date"
-                size="small"
-                sx={{ minWidth: 150 }}
-                slotProps={{ inputLabel: { shrink: true } }}
-                value={edicion.fechaEnvio}
-                onChange={(e) => setCampo({ fechaEnvio: e.target.value })}
-              />
-              <TextField
-                select
-                label="Estado"
-                size="small"
-                sx={{ minWidth: 130 }}
-                value={edicion.estado}
-                onChange={(e) => setCampo({ estado: e.target.value as 'PENDIENTE' | 'ENVIADA' | 'EXITOSA' })}
-              >
-                <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                <MenuItem value="ENVIADA">Enviado</MenuItem>
-                <MenuItem value="EXITOSA">Atendido</MenuItem>
-              </TextField>
-              <TextField
-                label="Código/Usuario Notif."
-                size="small"
-                sx={{ minWidth: 170 }}
-                value={edicion.codigo}
-                onChange={(e) => setCampo({ codigo: e.target.value })}
-              />
-              <TextField
-                label="Fecha Acuse"
-                type="date"
-                size="small"
-                sx={{ minWidth: 150 }}
-                slotProps={{ inputLabel: { shrink: true } }}
-                value={edicion.fechaRecepcion}
-                onChange={(e) => setCampo({ fechaRecepcion: e.target.value })}
-              />
-              <TextField
-                select
-                label="Estado Notificación"
-                size="small"
-                sx={{ minWidth: 160 }}
-                value={edicion.estadoNotif}
-                onChange={(e) => setCampo({ estadoNotif: e.target.value as '' | 'FALLIDA' | 'EXITOSA' })}
-              >
-                <MenuItem value="">(sin definir)</MenuItem>
-                <MenuItem value="FALLIDA">No ubicado</MenuItem>
-                <MenuItem value="EXITOSA">Ubicado</MenuItem>
-              </TextField>
-            </Stack>
-          )
-        }
-        const edicion = edicionesBorrador[row.tempId]
-        if (!edicion) return null
-        const setCampo = (cambios: Partial<EdicionBorrador>) => setEdicionesBorrador((prev) => ({ ...prev, [row.tempId]: { ...edicion, ...cambios } }))
+        const intentos = intentosPorDocumento[row.idDocumentoAnalizado]
+        const borradores = borradoresPorDocumento[row.idDocumentoAnalizado] ?? []
+        const totalFilas = (intentos?.length ?? 0) + borradores.length
         return (
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap', py: 1, width: '100%' }}>
-            <Chip label={`Intento ${row.numeroIntento} (nuevo)`} size="small" color="warning" variant="outlined" />
-            <TextField
-              select
-              label="Modalidad"
-              size="small"
-              sx={{ minWidth: 130 }}
-              value={edicion.modalidad}
-              onChange={(e) => setCampo({ modalidad: e.target.value as 'VIRTUAL' | 'PRESENCIAL' })}
+          <Box
+            sx={{
+              width: 'fit-content',
+              maxWidth: '100%',
+              my: 0.75,
+              py: 1,
+              pl: 1.5,
+              pr: 2,
+              bgcolor: sdrercColors.softGray,
+              borderLeft: `4px solid ${sdrercColors.info}`,
+              borderRadius: '0 8px 8px 0',
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                mb: 0.75,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: sdrercColors.textSecondary,
+              }}
             >
-              <MenuItem value="VIRTUAL">Virtual</MenuItem>
-              <MenuItem value="PRESENCIAL">Presencial</MenuItem>
-            </TextField>
-            <TextField
-              label="Fecha Envío"
-              type="date"
-              size="small"
-              sx={{ minWidth: 150 }}
-              slotProps={{ inputLabel: { shrink: true } }}
-              value={edicion.fechaEnvio}
-              onChange={(e) => setCampo({ fechaEnvio: e.target.value })}
-            />
-            <TextField
-              select
-              label="Estado"
-              size="small"
-              sx={{ minWidth: 130 }}
-              value={edicion.estado}
-              onChange={(e) => setCampo({ estado: e.target.value as 'PENDIENTE' | 'ENVIADA' | 'EXITOSA' })}
-            >
-              <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-              <MenuItem value="ENVIADA">Enviado</MenuItem>
-              <MenuItem value="EXITOSA">Atendido</MenuItem>
-            </TextField>
-            <TextField
-              label="Código/Usuario Notif."
-              size="small"
-              sx={{ minWidth: 170 }}
-              value={edicion.codigo}
-              onChange={(e) => setCampo({ codigo: e.target.value })}
-            />
-            <TextField
-              label="Fecha Acuse"
-              type="date"
-              size="small"
-              sx={{ minWidth: 150 }}
-              slotProps={{ inputLabel: { shrink: true } }}
-              value={edicion.fechaRecepcion}
-              onChange={(e) => setCampo({ fechaRecepcion: e.target.value })}
-            />
-            <TextField
-              select
-              label="Estado Notificación"
-              size="small"
-              sx={{ minWidth: 160 }}
-              value={edicion.estadoNotif}
-              onChange={(e) => setCampo({ estadoNotif: e.target.value as '' | 'FALLIDA' | 'EXITOSA' })}
-            >
-              <MenuItem value="">(sin definir)</MenuItem>
-              <MenuItem value="FALLIDA">No ubicado</MenuItem>
-              <MenuItem value="EXITOSA">Ubicado</MenuItem>
-            </TextField>
-          </Stack>
+              Intentos de notificación del documento{intentos ? ` (${totalFilas})` : ''}
+            </Typography>
+            {!intentos ? (
+              <Typography variant="caption" color="text.secondary">
+                Cargando intentos de notificación…
+              </Typography>
+            ) : totalFilas === 0 ? (
+              <Typography variant="caption" color="text.secondary">
+                Este documento no tiene intentos de notificación registrados.
+              </Typography>
+            ) : (
+              <TableContainer
+                sx={{
+                  width: 'auto',
+                  maxWidth: '100%',
+                  bgcolor: sdrercColors.backgroundPaper,
+                  borderRadius: 1.5,
+                  border: `1px solid ${sdrercColors.divider}`,
+                  boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+                }}
+              >
+                <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ borderBottom: `1px solid ${sdrercColors.divider}` }} />
+                      {['Nro.', 'Modalidad', 'Fecha Envío', 'Estado', 'Código/Usuario Notif.', 'Fecha Acuse', 'Estado Notificación'].map(
+                        (titulo) => (
+                          <TableCell
+                            key={titulo}
+                            sx={{
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              color: sdrercColors.textSecondary,
+                              whiteSpace: 'nowrap',
+                              borderBottom: `1px solid ${sdrercColors.divider}`,
+                            }}
+                          >
+                            {titulo}
+                          </TableCell>
+                        ),
+                      )}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {intentos.map((intento) => {
+                      const filaHijo: FilaHijo = {
+                        id: `hijo-${intento.idExpedienteNotificacion}`,
+                        tipo: 'hijo',
+                        idDocumentoAnalizado: row.idDocumentoAnalizado,
+                        intento,
+                      }
+                      const edicion = edicionesIntento[intento.idExpedienteNotificacion]
+                      if (!edicion) return null
+                      const setCampo = (cambios: Partial<EdicionIntento>) =>
+                        setEdicionesIntento((prev) => ({ ...prev, [intento.idExpedienteNotificacion]: { ...edicion, ...cambios } }))
+                      const procesando = procesandoFila === filaHijo.id
+                      return (
+                        <TableRow key={intento.idExpedienteNotificacion} hover>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <Stack direction="row">
+                              <Tooltip title="Guardar">
+                                <span>
+                                  <IconButton size="small" className={DATA_GRID_ROW_ICON_SAVE_CLASS} disabled={procesando} onClick={() => guardarIntento(filaHijo)}>
+                                    <SaveOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title="Eliminar">
+                                <span>
+                                  <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} disabled={procesando} onClick={() => eliminarIntento(filaHijo)}>
+                                    <DeleteOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <Chip label={intento.numeroIntento} size="small" color="primary" variant="outlined" />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              select
+                              size="small"
+                              sx={{ minWidth: 120 }}
+                              value={edicion.modalidad}
+                              onChange={(e) => setCampo({ modalidad: e.target.value as 'VIRTUAL' | 'PRESENCIAL' })}
+                            >
+                              <MenuItem value="VIRTUAL">Virtual</MenuItem>
+                              <MenuItem value="PRESENCIAL">Presencial</MenuItem>
+                            </TextField>
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              type="date"
+                              size="small"
+                              sx={{ minWidth: 145 }}
+                              slotProps={{ inputLabel: { shrink: true } }}
+                              value={edicion.fechaEnvio}
+                              onChange={(e) => setCampo({ fechaEnvio: e.target.value })}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              select
+                              size="small"
+                              sx={{ minWidth: 120 }}
+                              value={edicion.estado}
+                              onChange={(e) => setCampo({ estado: e.target.value as 'PENDIENTE' | 'ENVIADA' | 'EXITOSA' })}
+                            >
+                              <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                              <MenuItem value="ENVIADA">Enviado</MenuItem>
+                              <MenuItem value="EXITOSA">Atendido</MenuItem>
+                            </TextField>
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField size="small" sx={{ minWidth: 160 }} value={edicion.codigo} onChange={(e) => setCampo({ codigo: e.target.value })} />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              type="date"
+                              size="small"
+                              sx={{ minWidth: 145 }}
+                              slotProps={{ inputLabel: { shrink: true } }}
+                              value={edicion.fechaRecepcion}
+                              onChange={(e) => setCampo({ fechaRecepcion: e.target.value })}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              select
+                              size="small"
+                              sx={{ minWidth: 150 }}
+                              value={edicion.estadoNotif}
+                              onChange={(e) => setCampo({ estadoNotif: e.target.value as '' | 'FALLIDA' | 'EXITOSA' })}
+                            >
+                              <MenuItem value="">(sin definir)</MenuItem>
+                              <MenuItem value="FALLIDA">No ubicado</MenuItem>
+                              <MenuItem value="EXITOSA">Ubicado</MenuItem>
+                            </TextField>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {borradores.map((borrador) => {
+                      const edicion = edicionesBorrador[borrador.tempId]
+                      if (!edicion) return null
+                      const setCampo = (cambios: Partial<EdicionBorrador>) =>
+                        setEdicionesBorrador((prev) => ({ ...prev, [borrador.tempId]: { ...edicion, ...cambios } }))
+                      const procesando = procesandoFila === borrador.id
+                      return (
+                        <TableRow key={borrador.tempId} hover>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <Stack direction="row">
+                              <Tooltip title="Guardar">
+                                <span>
+                                  <IconButton size="small" className={DATA_GRID_ROW_ICON_SAVE_CLASS} disabled={procesando} onClick={() => guardarBorrador(borrador)}>
+                                    <SaveOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title="Cancelar">
+                                <span>
+                                  <IconButton size="small" disabled={procesando} onClick={() => cancelarBorrador(borrador)}>
+                                    <CloseOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <Chip label={`${borrador.numeroIntento} (nuevo)`} size="small" color="warning" variant="outlined" />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              select
+                              size="small"
+                              sx={{ minWidth: 120 }}
+                              value={edicion.modalidad}
+                              onChange={(e) => setCampo({ modalidad: e.target.value as 'VIRTUAL' | 'PRESENCIAL' })}
+                            >
+                              <MenuItem value="VIRTUAL">Virtual</MenuItem>
+                              <MenuItem value="PRESENCIAL">Presencial</MenuItem>
+                            </TextField>
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              type="date"
+                              size="small"
+                              sx={{ minWidth: 145 }}
+                              slotProps={{ inputLabel: { shrink: true } }}
+                              value={edicion.fechaEnvio}
+                              onChange={(e) => setCampo({ fechaEnvio: e.target.value })}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              select
+                              size="small"
+                              sx={{ minWidth: 120 }}
+                              value={edicion.estado}
+                              onChange={(e) => setCampo({ estado: e.target.value as 'PENDIENTE' | 'ENVIADA' | 'EXITOSA' })}
+                            >
+                              <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                              <MenuItem value="ENVIADA">Enviado</MenuItem>
+                              <MenuItem value="EXITOSA">Atendido</MenuItem>
+                            </TextField>
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField size="small" sx={{ minWidth: 160 }} value={edicion.codigo} onChange={(e) => setCampo({ codigo: e.target.value })} />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              type="date"
+                              size="small"
+                              sx={{ minWidth: 145 }}
+                              slotProps={{ inputLabel: { shrink: true } }}
+                              value={edicion.fechaRecepcion}
+                              onChange={(e) => setCampo({ fechaRecepcion: e.target.value })}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <TextField
+                              select
+                              size="small"
+                              sx={{ minWidth: 150 }}
+                              value={edicion.estadoNotif}
+                              onChange={(e) => setCampo({ estadoNotif: e.target.value as '' | 'FALLIDA' | 'EXITOSA' })}
+                            >
+                              <MenuItem value="">(sin definir)</MenuItem>
+                              <MenuItem value="FALLIDA">No ubicado</MenuItem>
+                              <MenuItem value="EXITOSA">Ubicado</MenuItem>
+                            </TextField>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
         )
       },
     },
@@ -997,7 +1169,7 @@ export function NotificacionNotificacionBandejaPage() {
       headerName: 'Clas. Documentos',
       width: 130,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.clasificacion : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.clasificacion : ''),
     },
     {
@@ -1005,7 +1177,7 @@ export function NotificacionNotificacionBandejaPage() {
       headerName: 'Tipo documento',
       width: 190,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.tipoDocumento : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.tipoDocumento : ''),
     },
     {
@@ -1013,7 +1185,7 @@ export function NotificacionNotificacionBandejaPage() {
       headerName: 'N° Documento',
       width: 140,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.numeroDocumento : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.numeroDocumento : ''),
     },
     {
@@ -1021,7 +1193,11 @@ export function NotificacionNotificacionBandejaPage() {
       headerName: 'Fecha Emisión',
       width: 130,
       sortable: false,
-      filterable: false,
+      // Devuelve el texto ya formateado (dd/MM/yyyy) para que el operador de filtro por defecto
+      // ("contiene") funcione contra lo mismo que el usuario ve en pantalla — mismo criterio simple
+      // ya usado en `numeroExpediente`/`titular` de esta grilla, sin introducir `type:'date'` (exigiría
+      // devolver un `Date` real y perdería el "-" que se muestra hoy para filas sin fecha).
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? formatearFecha(row.doc.fechaDocumento) : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? formatearFecha(params.row.doc.fechaDocumento) : ''),
     },
     {
@@ -1030,7 +1206,7 @@ export function NotificacionNotificacionBandejaPage() {
       flex: 1,
       minWidth: 180,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.titular : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.titular : ''),
     },
     {
@@ -1038,7 +1214,7 @@ export function NotificacionNotificacionBandejaPage() {
       headerName: 'Estado Final',
       width: 150,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.estadoFinalNotificacion || 'Por notificar' : ''),
       renderCell: (params) => {
         if (params.row.tipo !== 'padre') return null
         const doc = params.row.doc
@@ -1058,7 +1234,7 @@ export function NotificacionNotificacionBandejaPage() {
       headerName: 'Estado doc.',
       width: 130,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.estadoDocumento : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.estadoDocumento : ''),
     },
   ]
@@ -1125,28 +1301,33 @@ export function NotificacionNotificacionBandejaPage() {
         </Alert>
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 2, mb: 2 }}>
+      {/* 28/08/2026, pedido explícito del usuario en 2 pasadas: 1ra "que no sean 2 filas" (repeat(N,1fr)
+          fijo -- desbordaba horizontalmente en vez de envolver al angostar la ventana, "se ve fatal");
+          2da, tras verlo roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` -- mismo
+          130px que el nuevo `minWidth` de MetricCard (ver su Javadoc), permite que las tarjetas quepan
+          en 1 sola fila en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
         <Box onClick={() => alternarFiltroKpi('POR_NOTIFICAR')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por notificar" value={kpis.porNotificar} caption="Sin intentos aún" color={sdrercColors.info} />
+          <MetricCard label="Por notificar" value={kpis.porNotificar} caption="Sin intentos aún" color={sdrercColors.info} active={filtroKpi === 'POR_NOTIFICAR'} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('PENDIENTE')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Pendiente" value={kpis.pendiente} caption="Intento en curso" color={sdrercColors.warning} />
+          <MetricCard label="Pendiente" value={kpis.pendiente} caption="Intento en curso" color={sdrercColors.warning} active={filtroKpi === 'PENDIENTE'} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('ATENDIDO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Atendido" value={kpis.atendido} caption="Ciudadano ubicado" color={sdrercColors.success} />
+          <MetricCard label="Atendido" value={kpis.atendido} caption="Ciudadano ubicado" color={sdrercColors.success} active={filtroKpi === 'ATENDIDO'} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('POR_PUBLICAR')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por publicar" value={kpis.porPublicar} caption="Ambos intentos fallidos" color={sdrercColors.error} />
+          <MetricCard label="Por publicar" value={kpis.porPublicar} caption="Ambos intentos fallidos" color={sdrercColors.error} active={filtroKpi === 'POR_PUBLICAR'} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('POR_VENCER')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por vencer" value={kpis.porVencer} caption="0 a 5 días hábiles" color={sdrercColors.warning} />
+          <MetricCard label="Por vencer" value={kpis.porVencer} caption="0 a 5 días hábiles" color={sdrercColors.warning} active={filtroKpi === 'POR_VENCER'} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('VENCIDOS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} />
+          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} active={filtroKpi === 'VENCIDOS'} />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filasConHijos}
           columns={columnas}
@@ -1177,6 +1358,7 @@ export function NotificacionNotificacionBandejaPage() {
           getRowHeight={() => 'auto'}
           getRowClassName={(params) => ((params.row as FilaNotif).tipo !== 'padre' ? 'fila-intento' : '')}
           sx={{
+            ...dataGridBaseSx,
             '& .fila-intento': { bgcolor: sdrercColors.softBlue },
             '& .fila-intento .MuiDataGrid-cell': { py: 1 },
           }}
@@ -1188,7 +1370,7 @@ export function NotificacionNotificacionBandejaPage() {
         activeWorkspaceId={activeWorkspaceId}
         onSelectWorkspace={setActiveWorkspaceId}
         onCloseWorkspace={cerrarWorkspace}
-        onSelectSubTab={() => {}}
+        onSelectSubTab={seleccionarSubTab}
       />
     </PageHeaderSticky>
   )

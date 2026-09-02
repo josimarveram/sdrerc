@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Box } from '@mui/material'
 import { Outlet } from 'react-router-dom'
 import { Sidebar, SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from './Sidebar'
+import { InactivityGuard } from '../components/InactivityGuard'
 import { useAuth } from '../auth/AuthContext'
+import { sdrercColors } from '../theme'
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sdrerc.v3.sidebarCollapsed'
 
@@ -32,10 +34,18 @@ function leerColapsadoGuardado(): boolean {
  * NO lo usan (Dashboard, Home, formularios de edición) ahora arrancan su contenido directo en
  * `y:0` del área de `<main>` — antes tenían igual una franja vacía encima sin ningún propósito.
  *
- * El área de contenido es blanca (no `backgroundDefault`), a diferencia del sidebar (`navSidebarBg`,
- * gris muy claro): la separación entre ambos es solo un cambio de fondo + sombra difusa del
- * `Drawer`, sin borde sólido. El estado colapsado/expandido del sidebar se persiste en
- * `localStorage` para sobrevivir recargas.
+ * El área de contenido usa `sdrercColors.backgroundDefault` (gris muy claro, 28/08/2026 — antes
+ * hardcodeada a `#FFFFFF` blanco puro, pisando el token que el propio `theme.ts` ya definía para
+ * este propósito: sin este fix, las tarjetas/tablas —también blancas— se fundían con el fondo sin
+ * ninguna separación visual, la causa raíz real del reporte "todo se ve muy blanco/plano" — ver
+ * plan "necesito-un-plan-de-cuddly-wombat.md", Incremento 0). El sidebar (`navSidebarBg`) usa un
+ * gris ligeramente distinto a propósito, para diferenciarse tanto del canvas como del contenido; la
+ * separación sigue siendo solo de fondo + sombra difusa del `Drawer`, sin borde sólido. El estado
+ * colapsado/expandido del sidebar se persiste en `localStorage` para sobrevivir recargas.
+ *
+ * `<InactivityGuard/>` (01/09/2026) se monta acá una sola vez — es el único lugar del árbol
+ * autenticado, y `AppLayout` ya garantiza `session != null` en este punto (ver el `return null`
+ * de arriba), así que el guard no necesita repetir esa validación.
  */
 export function AppLayout() {
   const { session } = useAuth()
@@ -57,7 +67,8 @@ export function AppLayout() {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#FFFFFF' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: sdrercColors.backgroundDefault }}>
+      <InactivityGuard />
       <Sidebar collapsed={collapsed} onToggle={alternarColapsado} />
       <Box
         component="main"
@@ -65,7 +76,7 @@ export function AppLayout() {
           flexGrow: 1,
           minWidth: 0,
           width: `calc(100% - ${sidebarWidth}px)`,
-          bgcolor: '#FFFFFF',
+          bgcolor: sdrercColors.backgroundDefault,
         }}
       >
         <Box sx={{ p: 4 }}>

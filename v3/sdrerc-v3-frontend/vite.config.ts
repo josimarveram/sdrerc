@@ -21,6 +21,11 @@ export default defineConfig({
         target: 'http://localhost:8081',
         changeOrigin: true,
       },
+      // NOTA: el proxy /onlyoffice (con reescritura de ruta) que existió acá se retiró — rompía la
+      // carga interna del editor de OnlyOffice (pide sus propios módulos con rutas absolutas
+      // ancladas a la raíz de SU servidor, no al prefijo /onlyoffice). El frontend ahora habla
+      // directo con el contenedor por el puerto 8082 (ver OnlyOfficeEditorDialog.tsx), que requiere
+      // su propia regla de firewall — ver v3/CLAUDE.md, sección Plantillas.
     },
   },
 })

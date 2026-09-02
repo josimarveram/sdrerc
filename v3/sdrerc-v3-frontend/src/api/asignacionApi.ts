@@ -198,7 +198,7 @@ export interface CargaLaboralAbogado {
   analisisPorRecibir: number
   analisisEnProceso: number
   analisisObservado: number
-  analisisCartaIntermedia: number
+  analisisDerivado: number
   enVerificacion: number
   enEjecucion: number
   porVencer: number
@@ -206,7 +206,7 @@ export interface CargaLaboralAbogado {
 }
 
 export function enAnalisis(item: CargaLaboralAbogado): number {
-  return item.analisisPorRecibir + item.analisisEnProceso + item.analisisObservado + item.analisisCartaIntermedia
+  return item.analisisPorRecibir + item.analisisEnProceso + item.analisisObservado + item.analisisDerivado
 }
 
 export function cargaTotal(item: CargaLaboralAbogado): number {

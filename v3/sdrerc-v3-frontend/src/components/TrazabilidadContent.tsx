@@ -135,9 +135,14 @@ export function TrazabilidadContent({ idExpediente }: TrazabilidadContentProps) 
                     {evento.usuarioDestino ? `Realizado por: ${evento.usuarioDestino}` : evento.usuarioOrigen ? `Realizado por: ${evento.usuarioOrigen}` : 'Sin usuario registrado'}
                     {evento.equipoDestino ? ` · Equipo: ${evento.equipoDestino}` : ''}
                   </Typography>
-                  {(evento.comentario || evento.motivo) && (
+                  {evento.comentario && (
                     <Typography variant="body2" sx={{ mt: 0.5, fontStyle: 'italic' }}>
-                      {evento.comentario || evento.motivo}
+                      {evento.comentario}
+                    </Typography>
+                  )}
+                  {evento.motivo && evento.motivo !== evento.comentario && (
+                    <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
+                      Resultado registrado: {evento.motivo}
                     </Typography>
                   )}
                 </Paper>

@@ -21,10 +21,32 @@ function currentAccessToken(): string | null {
   }
 }
 
+/**
+ * 01/09/2026: causa raíz real de "Ocurrió un error inesperado." apareciendo a los pocos minutos
+ * de iniciar sesión — el JWT de sesión dura 10 minutos (`sdrerc.v3.jwt.session-ttl-minutes`,
+ * bajado de 30 el 01/09/2026 junto con `InactivityGuard.tsx`) y,
+ * al vencer, cualquier request quedaba sin manejo específico: se mostraba el error genérico en
+ * la página donde el usuario estuviera, sin indicar que debía volver a iniciar sesión. Ahora se
+ * limpia la sesión guardada y se redirige a /login con un aviso, en vez de dejar la página
+ * mostrando un error sin salida. El backend (`JsonAuthenticationEntryPoint`, ver v3/CLAUDE.md)
+ * ya devuelve 401 con un mensaje real en este caso — antes devolvía 403 con cuerpo vacío.
+ */
+function manejarSesionVencida() {
+  try {
+    sessionStorage.removeItem(SESSION_STORAGE_KEY)
+  } catch {
+    // sessionStorage no disponible (modo privado extremo); igual se intenta redirigir.
+  }
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.assign('/login?sesionVencida=1')
+  }
+}
+
 async function handleResponse<TResponse>(response: Response): Promise<TResponse> {
   const text = await response.text()
   const data = text ? JSON.parse(text) : null
   if (!response.ok) {
+    if (response.status === 401) manejarSesionVencida()
     const message = data && typeof data.message === 'string' ? data.message : 'Ocurrió un error inesperado.'
     throw new ApiError(message, response.status)
   }
@@ -99,6 +121,7 @@ export async function apiPostForm<TResponse>(path: string, form: FormData): Prom
 
 async function handleBlobResponse(response: Response): Promise<Blob> {
   if (!response.ok) {
+    if (response.status === 401) manejarSesionVencida()
     const text = await response.text()
     let message = 'Ocurrió un error inesperado.'
     try {

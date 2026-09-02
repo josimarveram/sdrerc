@@ -25,6 +25,7 @@ import {
   type UsuarioAsignable,
 } from '../api/asignacionApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
 
@@ -86,6 +87,7 @@ function formatearFechaHora(iso: string | null): string {
  * resto del sistema), acá se envía como cadena vacía.
  */
 export function AsignacionSeleccionContent({ expedientes, mostrarHistorial, onAsignado }: AsignacionSeleccionContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [equipos, setEquipos] = useState<EquipoAsignacion[]>([])
   const [abogados, setAbogados] = useState<UsuarioAsignable[]>([])
   const [idEquipo, setIdEquipo] = useState<number | ''>('')
@@ -155,8 +157,9 @@ export function AsignacionSeleccionContent({ expedientes, mostrarHistorial, onAs
         setError('Ingrese la hoja de envío para cada expediente a reasignar (es obligatoria en reasignación, a diferencia de una asignación nueva).')
         return
       }
-      const confirmado = window.confirm(
-        `Va a reasignar ${idsReasignar.length} expediente(s) que ya tienen un abogado asignado. Se conservará el historial de la asignación anterior.\n¿Desea continuar?`,
+      const confirmado = await confirmDialog(
+        `Va a reasignar ${idsReasignar.length} expediente(s) que ya tienen un abogado asignado. Se conservará el historial de la asignación anterior.`,
+        { tone: 'warning', confirmLabel: 'Reasignar' },
       )
       if (!confirmado) return
     }

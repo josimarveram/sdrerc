@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from '@mui/material'
+import { Alert, Button, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
 import {
   generarAsignacionNotificacion,
   listarEquiposDestinoNotificacion,
+  listarHistorialAsignacionNotificacion,
   listarUsuariosDestinoNotificacion,
   type NotificacionAsignacionDocumento,
 } from '../api/notificacionAsignacionApi'
-import type { EquipoAsignacion, UsuarioAsignable } from '../api/asignacionApi'
+import type { AsignacionHistorial, EquipoAsignacion, UsuarioAsignable } from '../api/asignacionApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
+
+function formatearFechaHora(iso: string | null): string {
+  if (!iso) return '-'
+  const [fecha, hora] = iso.split('T')
+  const [anio, mes, dia] = fecha.split('-')
+  const hhmm = hora ? hora.slice(0, 5) : '00:00'
+  return `${dia}/${mes}/${anio} ${hhmm}`
+}
 
 interface NotificacionAsignacionMultipleContentProps {
   documentos: NotificacionAsignacionDocumento[]
@@ -24,13 +34,16 @@ interface NotificacionAsignacionMultipleContentProps {
  * fila de su grilla YA ES un expediente; acá cada fila de la bandeja es un documento
  * (`NotificacionAsignacionDocumentoDTO`), así que la mini-grilla lista documentos, no expedientes).
  *
- * Se abre (`NotificacionAsignacionBandejaPage.tsx#handleAsignarSeleccion`) cuando la selección por
- * checkbox del toolbar ("Asignar") abarca documentos de 2+ expedientes distintos — con 1 solo
- * expediente representado en la selección, se abre en cambio el workspace "individual" ya existente
- * (mismo por-expediente que el doble clic, `NotificacionAsignacionContent.tsx`).
+ * 28/08/2026, pedido explícito del usuario (Parte 3): ahora es el ÚNICO contenido que abre el botón
+ * azul "Asignar" (`NotificacionAsignacionBandejaPage.tsx#handleAsignarSeleccion`), sin importar si la
+ * selección representa 1 o 2+ expedientes — ya era genérico para cualquier cantidad de documentos
+ * desde su construcción original, no hizo falta un componente nuevo. El doble clic abre en cambio
+ * `NotificacionSupervisionContent.tsx` (Datos/Supervisión), completamente separado de este panel.
  *
- * **Sin Historial** (mismo criterio que `AsignacionSeleccionContent` con `mostrarHistorial=false`):
- * cada documento tiene su propio historial, se consulta entrando a su propio expediente.
+ * **Historial de asignación / reasignación** (28/08/2026, agregado): visible SOLO cuando la
+ * selección es de un único documento (`documentos.length === 1`, mismo criterio que
+ * `mostrarHistorial` en `AsignacionSeleccionContent.tsx`) — con 2+ documentos cada uno tiene su
+ * propio historial, se consulta abriendo su expediente individual (doble clic).
  *
  * **Rediseño (21/08/2026, mismo día, pedido explícito del usuario)**: se retiró el checkbox manual
  * "Habilitar reasignación" — el flag `reasignacion` que viaja al backend ahora se deriva solo
@@ -45,6 +58,7 @@ interface NotificacionAsignacionMultipleContentProps {
  * fila (`doc.asignado`).
  */
 export function NotificacionAsignacionMultipleContent({ documentos, onAsignado }: NotificacionAsignacionMultipleContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [equipos, setEquipos] = useState<EquipoAsignacion[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioAsignable[]>([])
   const [idEquipoDestino, setIdEquipoDestino] = useState('')
@@ -53,10 +67,22 @@ export function NotificacionAsignacionMultipleContent({ documentos, onAsignado }
   const [procesando, setProcesando] = useState(false)
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [historial, setHistorial] = useState<AsignacionHistorial[]>([])
+
+  const mostrarHistorial = documentos.length === 1
+  const idDocumentoUnico = mostrarHistorial ? documentos[0].idDocumentoAnalizado : null
 
   useEffect(() => {
     listarEquiposDestinoNotificacion().then(setEquipos).catch(() => setEquipos([]))
   }, [])
+
+  useEffect(() => {
+    if (idDocumentoUnico == null) {
+      setHistorial([])
+      return
+    }
+    listarHistorialAsignacionNotificacion(idDocumentoUnico).then(setHistorial).catch(() => setHistorial([]))
+  }, [idDocumentoUnico])
 
   useEffect(() => {
     if (!idEquipoDestino) {
@@ -85,7 +111,7 @@ export function NotificacionAsignacionMultipleContent({ documentos, onAsignado }
       setError('Seleccione equipo y usuario destino.')
       return
     }
-    if (!window.confirm(`¿Generar asignación de ${documentos.length} documento(s)?`)) return
+    if (!(await confirmDialog(`¿Generar asignación de ${documentos.length} documento(s)?`, { tone: 'info', confirmLabel: 'Generar' }))) return
     setProcesando(true)
     try {
       await generarAsignacionNotificacion({
@@ -99,6 +125,9 @@ export function NotificacionAsignacionMultipleContent({ documentos, onAsignado }
       setMensaje(`${documentos.length} documento(s) asignado(s) correctamente.`)
       limpiar()
       onAsignado?.()
+      if (idDocumentoUnico != null) {
+        listarHistorialAsignacionNotificacion(idDocumentoUnico).then(setHistorial).catch(() => {})
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo generar la asignación.')
     } finally {
@@ -208,6 +237,48 @@ export function NotificacionAsignacionMultipleContent({ documentos, onAsignado }
           </TextField>
         </Stack>
       </SectionCard>
+
+      {mostrarHistorial && (
+        <SectionCard title="Historial de asignación / reasignación">
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Usuario</TableCell>
+                  <TableCell>Equipo</TableCell>
+                  <TableCell>Hoja de envío</TableCell>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>Asignado por</TableCell>
+                  <TableCell>Estado</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {historial.map((h) => (
+                  <TableRow key={h.idExpedienteAsignacion}>
+                    <TableCell>{h.reasignacionExcepcional ? 'Reasignación' : 'Asignación inicial'}</TableCell>
+                    <TableCell>{h.abogado || '-'}</TableCell>
+                    <TableCell>{h.equipo || '-'}</TableCell>
+                    <TableCell>{h.numeroHojaEnvio || '-'}</TableCell>
+                    <TableCell>{formatearFechaHora(h.fechaAsignacion)}</TableCell>
+                    <TableCell>{h.asignadoPor || '-'}</TableCell>
+                    <TableCell>{h.activa ? 'Activa' : 'Histórica'}</TableCell>
+                  </TableRow>
+                ))}
+                {historial.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7}>
+                      <Typography variant="body2" color="text.secondary">
+                        Sin historial de asignación registrado.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </SectionCard>
+      )}
 
       <Stack direction="row" spacing={1}>
         <Button

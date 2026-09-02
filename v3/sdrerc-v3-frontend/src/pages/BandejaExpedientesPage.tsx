@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, Box, Button, MenuItem, Stack, TextField } from '@mui/material'
-import { DataGrid, type GridColDef } from '@mui/x-data-grid'
+import { Alert, Box, Button, CircularProgress, IconButton, MenuItem, Stack, TextField, Tooltip } from '@mui/material'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlined'
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutlined'
+import { DataGrid, type GridColDef, type GridComparatorFn } from '@mui/x-data-grid'
 import { buscarBandejaExpedientes, ETAPAS_EXPEDIENTE } from '../api/expedienteConsolaApi'
 import { obtenerDatosExpediente, type ExpedienteBandeja } from '../api/registroBandejaApi'
+import { listarConfirmados, type ExpedienteRelacionado } from '../api/expedienteRelacionadoApi'
 import type { ExpedienteEdicionManual } from '../api/registroApi'
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { DataGridStandardToolbar } from '../components/DataGridStandardToolbar'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge, diasBadgeTone, alertaBadgeTone } from '../components/StatusBadge'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
@@ -14,7 +19,7 @@ import { TrazabilidadContent } from '../components/TrazabilidadContent'
 import { AsociadosExpedienteContent } from '../components/AsociadosExpedienteContent'
 import { GrupoFamiliarConfirmadoContent } from '../components/GrupoFamiliarConfirmadoContent'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { BANDEJA_TABS } from '../layout/moduleTabs'
 
@@ -32,6 +37,63 @@ const COLOR_DOCUMENTOS = 'rgb(10, 118, 145)'
 const COLOR_TRAZABILIDAD = '#8E44AD'
 const COLOR_ASOCIADOS = '#B8860B'
 const COLOR_GRUPO_FAMILIAR = '#7B4FA0'
+
+// Misma paleta/mecanismo ya usado en RegistroBandejaPage.tsx/AsignacionBandejaPage.tsx/AnalisisBandejaPage.tsx
+// (franja de color por grupo de filas asociadas — cada bandeja duplica este helper/paleta, no hay
+// componente de tabla compartido en el proyecto, ver v3/CLAUDE.md).
+const GROUP_STRIPE_COLORS = [
+  'rgb(30, 59, 97)', 'rgb(56, 88, 128)', 'rgb(77, 132, 164)', 'rgb(94, 154, 183)', 'rgb(147, 186, 210)',
+  'rgb(10, 118, 145)', 'rgb(11, 142, 151)', 'rgb(65, 164, 181)', 'rgb(63, 95, 135)', 'rgb(84, 110, 154)',
+]
+function acentoGrupo(idPrincipal: number): string {
+  return GROUP_STRIPE_COLORS[Math.abs(idPrincipal) % GROUP_STRIPE_COLORS.length]
+}
+const EXPANDED_PARENT_BACKGROUND = 'rgb(205, 236, 244)'
+const ASSOCIATED_ROW_BACKGROUND = 'rgb(238, 250, 252)'
+
+// Columna "expandir" fija al inicio (mismo mecanismo `disableVirtualization` + `position: sticky`
+// que RegistroBandejaPage.tsx/AsignacionBandejaPage.tsx/AnalisisBandejaPage.tsx — el "column pinning"
+// nativo de MUI X Community no aplica acá igual, ver Javadoc de esas páginas y v3/CLAUDE.md).
+const COLUMNA_FIJA_INICIO_SX = {
+  '& .MuiDataGrid-columnHeader[data-field="expandir"], & .MuiDataGrid-cell[data-field="expandir"]': {
+    position: 'sticky',
+    left: 0,
+    zIndex: 2,
+    bgcolor: sdrercColors.backgroundPaper,
+  },
+  '& .MuiDataGrid-columnHeader[data-field="expandir"]': { zIndex: 3 },
+  '& .fila-asociada .MuiDataGrid-cell[data-field="expandir"]': { bgcolor: ASSOCIATED_ROW_BACKGROUND },
+  '& .fila-principal-expandida .MuiDataGrid-cell[data-field="expandir"]': { bgcolor: EXPANDED_PARENT_BACKGROUND },
+} as const
+
+interface FilaExpediente extends ExpedienteBandeja {
+  esFilaAsociada?: boolean
+  idPrincipal?: number
+}
+
+function alertaAsociada(asociado: ExpedienteRelacionado): string {
+  const alerta = (asociado.alertaIngreso ?? '').toLowerCase()
+  if (alerta.includes('potencial duplicado')) return 'Potencial duplicado'
+  if (alerta.includes('posible grupo familiar')) return 'Posible Grupo Familiar'
+  if (alerta.includes('con observaciones')) return 'Con observaciones'
+  return 'Duplicado confirmado'
+}
+
+function agruparHijosBajoPadre(comparadorOriginal?: GridComparatorFn<unknown>): GridComparatorFn<unknown> {
+  return (v1, v2, params1, params2) => {
+    const fila1 = params1.api.getRow(params1.id) as FilaExpediente | null
+    const fila2 = params2.api.getRow(params2.id) as FilaExpediente | null
+    const valor1 = fila1?.esFilaAsociada && fila1.idPrincipal != null ? params1.api.getCellValue(fila1.idPrincipal, params1.field) : v1
+    const valor2 = fila2?.esFilaAsociada && fila2.idPrincipal != null ? params2.api.getCellValue(fila2.idPrincipal, params2.field) : v2
+    if (comparadorOriginal) return comparadorOriginal(valor1, valor2, params1, params2)
+    if (valor1 == null && valor2 == null) return 0
+    if (valor1 == null) return -1
+    if (valor2 == null) return 1
+    if (valor1 < valor2) return -1
+    if (valor1 > valor2) return 1
+    return 0
+  }
+}
 
 /**
  * Equivalente web del módulo "Bandeja de Expedientes" (V2: `JPanelBandejaExpedientesNueva`, perfil
@@ -58,12 +120,16 @@ export function BandejaExpedientesPage() {
   const [texto, setTexto] = useState('')
   const [etapa, setEtapa] = useState('')
   const [estado, setEstado] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [expedientes, setExpedientes] = useState<ExpedienteBandeja[]>([])
   const [filtroKpi, setFiltroKpi] = useState<FiltroKpi>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [expandidoId, setExpandidoId] = useState<number | null>(null)
+  const [asociadosPorPrincipal, setAsociadosPorPrincipal] = useState<Record<number, ExpedienteRelacionado[]>>({})
+  const [cargandoExpansion, setCargandoExpansion] = useState<number | null>(null)
 
   type WorkspaceAbierto = { id: string; row: ExpedienteBandeja; color: string; activeSubTabId: string }
   const [workspacesAbiertos, setWorkspacesAbiertos] = useState<WorkspaceAbierto[]>([])
@@ -83,7 +149,11 @@ export function BandejaExpedientesPage() {
         desde: params?.desde ?? desde,
         hasta: params?.hasta ?? hasta,
       })
-        .then(setExpedientes)
+        .then((data) => {
+          setExpedientes(data)
+          setExpandidoId(null)
+          setAsociadosPorPrincipal({})
+        })
         .catch((e) => setError(e instanceof ApiError ? e.message : 'Ocurrió un error inesperado.'))
         .finally(() => setLoading(false))
     },
@@ -102,7 +172,7 @@ export function BandejaExpedientesPage() {
   }
 
   function handleLimpiar() {
-    const desdeDefault = primerDiaMesActualISO()
+    const desdeDefault = primerDiaMesAnteriorISO()
     const hastaDefault = hoyISO()
     setTexto('')
     setEtapa('')
@@ -130,6 +200,12 @@ export function BandejaExpedientesPage() {
     }
   }
 
+  // `expedientesRaiz` excluye los expedientes que ya son "duplicado confirmado" (hijo) de otro
+  // principal (`relacionadoComoHijo`, ya calculado por el backend) — evita que una misma solicitud
+  // se muestre dos veces: como fila raíz independiente y, al expandir, como fila hija de su
+  // principal. Mismo fix ya aplicado en RegistroBandejaPage.tsx (19/08/2026), ver v3/CLAUDE.md.
+  const expedientesRaiz = useMemo(() => expedientes.filter((e) => !e.relacionadoComoHijo), [expedientes])
+
   const kpis = useMemo(() => {
     let porVencer = 0
     let vencidos = 0
@@ -143,10 +219,54 @@ export function BandejaExpedientesPage() {
       if (item.alertas === 'Posible Grupo Familiar') posibleGrupoFamiliar++
       if (item.grupoFamiliarConfirmado) grupoFamiliarConfirmado++
     }
-    return { total: expedientes.length, porVencer, vencidos, potencialDuplicado, posibleGrupoFamiliar, grupoFamiliarConfirmado }
-  }, [expedientes])
+    return { total: expedientesRaiz.length, porVencer, vencidos, potencialDuplicado, posibleGrupoFamiliar, grupoFamiliarConfirmado }
+  }, [expedientes, expedientesRaiz])
 
-  const filas = useMemo(() => expedientes.filter(coincideFiltroKpi), [expedientes, filtroKpi])
+  const filas = useMemo(() => expedientesRaiz.filter(coincideFiltroKpi), [expedientesRaiz, filtroKpi])
+
+  const filasConHijos = useMemo<FilaExpediente[]>(() => {
+    const resultado: FilaExpediente[] = []
+    for (const item of filas) {
+      resultado.push(item)
+      if (expandidoId === item.idExpediente) {
+        const asociados = asociadosPorPrincipal[item.idExpediente] ?? []
+        for (const asoc of asociados) {
+          resultado.push({
+            ...item,
+            idExpediente: -asoc.idExpediente,
+            numeroExpedienteSgd: asoc.numeroExpedienteSgd,
+            fechaRecepcion: asoc.fechaRecepcion,
+            fechaVencimiento: asoc.fechaVencimiento,
+            diasRestantes: null,
+            titular: asoc.titular,
+            responsableActual: asoc.abogadoAsignado || '',
+            etapaCodigo: asoc.etapaCodigo || '-',
+            estadoCodigo: asoc.estadoCodigo || alertaAsociada(asoc),
+            alertas: alertaAsociada(asoc),
+            esFilaAsociada: true,
+            idPrincipal: item.idExpediente,
+          })
+        }
+      }
+    }
+    return resultado
+  }, [filas, expandidoId, asociadosPorPrincipal])
+
+  function alternarExpansion(principal: ExpedienteBandeja) {
+    if (principal.relacionesConfirmadasComoPrincipal <= 0) return
+    if (expandidoId === principal.idExpediente) {
+      setExpandidoId(null)
+      return
+    }
+    setExpandidoId(principal.idExpediente)
+    if (!asociadosPorPrincipal[principal.idExpediente]) {
+      setCargandoExpansion(principal.idExpediente)
+      listarConfirmados(principal.idExpediente)
+        .then((asociados) => setAsociadosPorPrincipal((prev) => ({ ...prev, [principal.idExpediente]: asociados })))
+        .catch((e) => setError(e instanceof ApiError ? e.message : 'No se pudieron cargar los expedientes asociados.'))
+        .finally(() => setCargandoExpansion(null))
+    }
+  }
 
   function alternarFiltro(valor: FiltroKpi) {
     setFiltroKpi((prev) => (prev === valor ? null : valor))
@@ -270,17 +390,46 @@ export function BandejaExpedientesPage() {
     [workspacesAbiertos, datosPorExpediente],
   )
 
-  const columnas: GridColDef<ExpedienteBandeja>[] = [
+  const columnas: GridColDef<FilaExpediente>[] = [
+    {
+      field: 'expandir',
+      headerName: '',
+      width: 44,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const row = params.row
+        if (row.esFilaAsociada) {
+          return <Box sx={{ height: '100%', borderLeft: `5px solid ${acentoGrupo(row.idPrincipal ?? 0)}` }} />
+        }
+        const puedeExpandir = row.relacionesConfirmadasComoPrincipal > 0
+        const expandido = expandidoId === row.idExpediente
+        if (cargandoExpansion === row.idExpediente) {
+          return <CircularProgress size={16} sx={{ ml: 1.5 }} />
+        }
+        if (!puedeExpandir) return null
+        return (
+          <IconButton size="small" onClick={() => alternarExpansion(row)} aria-label={expandido ? 'Colapsar asociados' : 'Expandir asociados'}>
+            {expandido ? <RemoveCircleOutlineIcon fontSize="small" /> : <AddCircleOutlineIcon fontSize="small" />}
+          </IconButton>
+        )
+      },
+    },
     {
       field: 'diasRestantes',
       headerName: 'Días',
       width: 90,
-      renderCell: (params) => (
-        <StatusBadge
-          label={params.value === null || params.value === undefined ? '-' : String(params.value)}
-          tone={diasBadgeTone(params.value as number | null)}
-        />
-      ),
+      renderCell: (params) =>
+        params.row.esFilaAsociada ? (
+          <Tooltip title="La alerta de días aplica al expediente principal.">
+            <span>-</span>
+          </Tooltip>
+        ) : (
+          <StatusBadge
+            label={params.value === null || params.value === undefined ? '-' : String(params.value)}
+            tone={diasBadgeTone(params.value as number | null)}
+          />
+        ),
     },
     { field: 'numeroExpediente', headerName: 'Expediente', width: 190 },
     { field: 'numeroExpedienteSgd', headerName: 'N° expediente SGD', width: 160 },
@@ -297,6 +446,12 @@ export function BandejaExpedientesPage() {
       renderCell: (params) => (params.value ? <StatusBadge label={params.value as string} tone={alertaBadgeTone(params.value as string)} /> : '-'),
     },
   ]
+
+  const columnasConAgrupacion = useMemo<GridColDef<FilaExpediente>[]>(
+    () => columnas.map((col) => ({ ...col, sortComparator: agruparHijosBajoPadre(col.sortComparator) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [columnas],
+  )
 
   const filtrosHeader = (
     <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1.5 }}>
@@ -349,38 +504,60 @@ export function BandejaExpedientesPage() {
         </Alert>
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 2 }}>
-        <MetricCard label="Total" value={kpis.total} caption="Según filtros activos" color={sdrercColors.info} />
+      {/* 28/08/2026, pedido explícito del usuario en 2 pasadas: 1ra "que no sean 2 filas" (repeat(N,1fr)
+          fijo -- desbordaba horizontalmente en vez de envolver al angostar la ventana, "se ve fatal");
+          2da, tras verlo roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` -- mismo
+          130px que el nuevo `minWidth` de MetricCard (ver su Javadoc), permite que las tarjetas quepan
+          en 1 sola fila en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
+        <Box onClick={() => setFiltroKpi(null)} sx={{ cursor: 'pointer' }}>
+          <MetricCard label="Total" value={kpis.total} caption="Según filtros activos" color={sdrercColors.info} active={filtroKpi === null} />
+        </Box>
         <Box onClick={() => alternarFiltro('POR_VENCER')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por vencer" value={kpis.porVencer} caption="0 a 5 días hábiles" color={sdrercColors.warning} />
+          <MetricCard label="Por vencer" value={kpis.porVencer} caption="0 a 5 días hábiles" color={sdrercColors.warning} active={filtroKpi === 'POR_VENCER'} />
         </Box>
         <Box onClick={() => alternarFiltro('VENCIDOS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} />
+          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} active={filtroKpi === 'VENCIDOS'} />
         </Box>
         <Box onClick={() => alternarFiltro('POTENCIAL_DUPLICADO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Potencial duplicado" value={kpis.potencialDuplicado} caption="Pendiente de resolver" color={sdrercColors.warning} />
+          <MetricCard label="Potencial duplicado" value={kpis.potencialDuplicado} caption="Pendiente de resolver" color={sdrercColors.warning} active={filtroKpi === 'POTENCIAL_DUPLICADO'} />
         </Box>
         <Box onClick={() => alternarFiltro('POSIBLE_GRUPO_FAMILIAR')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Posible Grupo Familiar" value={kpis.posibleGrupoFamiliar} caption="Coincidencia por apellidos" color={sdrercColors.info} />
+          <MetricCard label="Posible Grupo Familiar" value={kpis.posibleGrupoFamiliar} caption="Coincidencia por apellidos" color={sdrercColors.info} active={filtroKpi === 'POSIBLE_GRUPO_FAMILIAR'} />
         </Box>
         <Box onClick={() => alternarFiltro('GRUPO_FAMILIAR_CONFIRMADO')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Grupo Familiar Confirmado" value={kpis.grupoFamiliarConfirmado} caption="Registrado" color={sdrercColors.success} />
+          <MetricCard label="Grupo Familiar Confirmado" value={kpis.grupoFamiliarConfirmado} caption="Registrado" color={sdrercColors.success} active={filtroKpi === 'GRUPO_FAMILIAR_CONFIRMADO'} />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
-          rows={filas}
-          columns={columnas}
+          rows={filasConHijos}
+          columns={columnasConAgrupacion}
           getRowId={(row) => row.idExpediente}
           loading={loading}
           density="compact"
           autoHeight
+          disableVirtualization
           disableRowSelectionOnClick
           showToolbar
-          onRowDoubleClick={(params) => abrirWorkspace(params.row as ExpedienteBandeja)}
+          slots={{ toolbar: DataGridStandardToolbar }}
+          getRowClassName={(params) =>
+            params.row.esFilaAsociada ? 'fila-asociada' : expandidoId === params.row.idExpediente ? 'fila-principal-expandida' : ''
+          }
+          onRowDoubleClick={(params) => {
+            const row = params.row as FilaExpediente
+            if (row.esFilaAsociada) return
+            abrirWorkspace(row)
+          }}
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+          sx={{
+            ...dataGridBaseSx,
+            '& .fila-asociada': { bgcolor: ASSOCIATED_ROW_BACKGROUND, color: sdrercColors.textSecondary, fontSize: '0.8125rem' },
+            '& .fila-principal-expandida': { bgcolor: EXPANDED_PARENT_BACKGROUND },
+            ...COLUMNA_FIJA_INICIO_SX,
+          }}
         />
       </Box>
 

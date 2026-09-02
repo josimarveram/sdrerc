@@ -16,6 +16,7 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import {
   activarVersion,
   cargarNuevaVersion,
@@ -25,8 +26,10 @@ import {
   type PlantillaDocumentoAdmin,
 } from '../api/adminPlantillasApi'
 import { ApiError, descargarBlob } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
+import { VistaPreviaPlantillaDialog } from './VistaPreviaPlantillaDialog'
 
 function formatearFecha(iso: string | null): string {
   if (!iso) return '-'
@@ -41,18 +44,25 @@ function formatearTamano(bytes: number): string {
 }
 
 /**
- * Subpestaña "Plantilla actual" del tipo de documento seleccionado: historial de versiones
- * (mismo criterio que V2, `JPanelPlantillasDocumentoV2` — 1 sola versión activa a la vez, nunca se
- * borra físicamente) + "Generar documento de prueba" (mejora explícita de V3, ver Javadoc de
- * `AnalisisPlantillaDocumentoService#generarDocumentoPrueba`).
+ * Subpestaña "Plantilla" del tipo de documento seleccionado: historial de versiones (mismo
+ * criterio que V2, `JPanelPlantillasDocumentoV2` — 1 sola versión activa a la vez, nunca se borra
+ * físicamente) + "Generar documento de prueba" (mejora explícita de V3, ver Javadoc de
+ * `AnalisisPlantillaDocumentoService#generarDocumentoPrueba`). La edición en línea real (OnlyOffice)
+ * vive en su propia subpestaña ("Editor en línea", ver `PlantillaEditorEnLineaContent.tsx`), no acá
+ * — editar siempre opera sobre la versión VIGENTE, mismo criterio que "Cargar nueva versión" (que
+ * también reemplaza la vigente de inmediato); para editar una versión histórica hay que activarla
+ * primero desde esta misma tabla.
  */
 export function PlantillaVersionPanel({ tipo, onCambio }: { tipo: PlantillaDocumentoAdmin; onCambio: () => void }) {
+  const { confirm: confirmDialog } = useAppDialog()
   const inputRef = useRef<HTMLInputElement>(null)
   const [historial, setHistorial] = useState<PlantillaDocumentoAdmin[]>([])
   const [comentario, setComentario] = useState('')
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null)
+  const [versionEnPrevia, setVersionEnPrevia] = useState<PlantillaDocumentoAdmin | null>(null)
 
   async function cargar() {
     try {
@@ -69,16 +79,27 @@ export function PlantillaVersionPanel({ tipo, onCambio }: { tipo: PlantillaDocum
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo.idTipoDocumentoAdjunto])
 
-  async function subirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
+  function seleccionarArchivo(e: React.ChangeEvent<HTMLInputElement>) {
     const archivo = e.target.files?.[0]
     if (!archivo) return
+    setError(null)
+    setMensaje(null)
+    // No se sube todavía: primero se muestra la vista previa, la carga real ocurre recién al
+    // confirmar desde ahí (ver `confirmarCarga`) — antes se subía y activaba a ciegas apenas se
+    // elegía el archivo, sin forma de revisarlo.
+    setArchivoSeleccionado(archivo)
+  }
+
+  async function confirmarCarga() {
+    if (!archivoSeleccionado) return
     setCargando(true)
     setError(null)
     setMensaje(null)
     try {
-      await cargarNuevaVersion(tipo.idTipoDocumentoAdjunto, archivo, comentario)
+      await cargarNuevaVersion(tipo.idTipoDocumentoAdjunto, archivoSeleccionado, comentario)
       setMensaje('Nueva versión cargada y activada correctamente.')
       setComentario('')
+      setArchivoSeleccionado(null)
       await cargar()
       onCambio()
     } catch (err) {
@@ -87,6 +108,11 @@ export function PlantillaVersionPanel({ tipo, onCambio }: { tipo: PlantillaDocum
       setCargando(false)
       if (inputRef.current) inputRef.current.value = ''
     }
+  }
+
+  function cancelarSeleccion() {
+    setArchivoSeleccionado(null)
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   async function descargar(version: PlantillaDocumentoAdmin) {
@@ -101,7 +127,10 @@ export function PlantillaVersionPanel({ tipo, onCambio }: { tipo: PlantillaDocum
 
   async function activar(version: PlantillaDocumentoAdmin) {
     if (!version.idPlantillaDocumento) return
-    const confirmado = window.confirm(`¿Activar la versión ${version.version}? Reemplazará a la versión actualmente activa.`)
+    const confirmado = await confirmDialog(`¿Activar la versión ${version.version}? Reemplazará a la versión actualmente activa.`, {
+      tone: 'warning',
+      confirmLabel: 'Activar',
+    })
     if (!confirmado) return
     setError(null)
     try {
@@ -142,12 +171,16 @@ export function PlantillaVersionPanel({ tipo, onCambio }: { tipo: PlantillaDocum
           <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
             <Button variant="contained" component="label" startIcon={<UploadFileOutlinedIcon />} disabled={cargando}>
               Seleccionar archivo .docx
-              <input ref={inputRef} type="file" accept=".docx" hidden onChange={subirArchivo} />
+              <input ref={inputRef} type="file" accept=".docx" hidden onChange={seleccionarArchivo} />
             </Button>
             <Button variant="outlined" startIcon={<PlayCircleOutlineIcon />} onClick={generarPrueba}>
               Generar documento de prueba
             </Button>
           </Stack>
+          <Typography variant="caption" color="text.secondary">
+            Al elegir un archivo se abre primero su vista previa (con las variables resaltadas) — la carga y
+            activación recién ocurren si confirma desde ahí.
+          </Typography>
           {mensaje && <Alert severity="success">{mensaje}</Alert>}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
@@ -186,6 +219,11 @@ export function PlantillaVersionPanel({ tipo, onCambio }: { tipo: PlantillaDocum
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                      <Tooltip title="Vista previa">
+                        <Button size="small" onClick={() => setVersionEnPrevia(v)}>
+                          <VisibilityOutlinedIcon fontSize="small" />
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Descargar">
                         <Button size="small" onClick={() => descargar(v)}>
                           <DownloadOutlinedIcon fontSize="small" />
@@ -206,6 +244,27 @@ export function PlantillaVersionPanel({ tipo, onCambio }: { tipo: PlantillaDocum
           </Table>
         )}
       </SectionCard>
+
+      {archivoSeleccionado && (
+        <VistaPreviaPlantillaDialog
+          open
+          onClose={cancelarSeleccion}
+          titulo={archivoSeleccionado.name}
+          obtenerArchivo={async () => archivoSeleccionado}
+          accionConfirmar={{ etiqueta: 'Cargar y activar', onConfirmar: confirmarCarga, procesando: cargando }}
+        />
+      )}
+      {versionEnPrevia && (
+        <VistaPreviaPlantillaDialog
+          open
+          onClose={() => setVersionEnPrevia(null)}
+          titulo={`${versionEnPrevia.nombreArchivo ?? 'plantilla'} (v${versionEnPrevia.version})`}
+          obtenerArchivo={async () => {
+            const { blob } = await descargarPlantilla(versionEnPrevia.idPlantillaDocumento!, versionEnPrevia.nombreArchivo ?? 'plantilla.docx')
+            return blob
+          }}
+        />
+      )}
     </Stack>
   )
 }

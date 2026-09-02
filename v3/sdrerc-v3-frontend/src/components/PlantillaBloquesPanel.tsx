@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  Autocomplete,
+  type AutocompleteRenderValueGetItemProps,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -25,10 +28,15 @@ import {
   eliminarBloque,
   guardarOrdenBloques,
   listarBloques,
+  listarVariablesDisponibles,
   type PlantillaBloqueAdmin,
   type PlantillaDocumentoAdmin,
+  type PlantillaVariable,
 } from '../api/adminPlantillasApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
+import { DATA_GRID_ROW_ICON_DELETE_CLASS } from '../dataGridTheme'
+import { InsertarVariablePopover } from './InsertarVariablePopover'
 import { SectionCard } from './RegistroExpedienteForm'
 import { sdrercColors } from '../theme'
 
@@ -55,7 +63,9 @@ function bloqueVacio(idTipo: number): PlantillaBloqueAdmin {
  * bloques por tipo de documento).
  */
 export function PlantillaBloquesPanel({ tipo }: { tipo: PlantillaDocumentoAdmin }) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [bloques, setBloques] = useState<PlantillaBloqueAdmin[]>([])
+  const [variables, setVariables] = useState<PlantillaVariable[]>([])
   const [editando, setEditando] = useState<PlantillaBloqueAdmin | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -72,6 +82,10 @@ export function PlantillaBloquesPanel({ tipo }: { tipo: PlantillaDocumentoAdmin 
     setError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo.idTipoDocumentoAdjunto])
+
+  useEffect(() => {
+    listarVariablesDisponibles().then(setVariables).catch(() => setVariables([]))
+  }, [])
 
   async function guardar(bloque: PlantillaBloqueAdmin) {
     setError(null)
@@ -99,7 +113,10 @@ export function PlantillaBloquesPanel({ tipo }: { tipo: PlantillaDocumentoAdmin 
   }
 
   async function eliminar(bloque: PlantillaBloqueAdmin) {
-    const confirmado = window.confirm(`¿Eliminar el bloque "${bloque.titulo || bloque.contenido.slice(0, 40)}"?`)
+    const confirmado = await confirmDialog(`¿Eliminar el bloque "${bloque.titulo || bloque.contenido.slice(0, 40)}"?`, {
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    })
     if (!confirmado) return
     try {
       await eliminarBloque(bloque.idPlantillaBloque)
@@ -173,8 +190,8 @@ export function PlantillaBloquesPanel({ tipo }: { tipo: PlantillaDocumentoAdmin 
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Eliminar">
-                  <IconButton size="small" onClick={() => eliminar(b)}>
-                    <DeleteOutlineOutlinedIcon fontSize="small" sx={{ color: sdrercColors.error }} />
+                  <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => eliminar(b)}>
+                    <DeleteOutlineOutlinedIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               </Stack>
@@ -197,22 +214,56 @@ export function PlantillaBloquesPanel({ tipo }: { tipo: PlantillaDocumentoAdmin 
         )}
       </SectionCard>
 
-      {editando && <DlgEditarBloque bloque={editando} onClose={() => setEditando(null)} onGuardar={guardar} />}
+      {editando && (
+        <DlgEditarBloque bloque={editando} variables={variables} onClose={() => setEditando(null)} onGuardar={guardar} />
+      )}
     </Stack>
   )
 }
 
+function coincideCondicion(valorPrueba: string, operador: 'COINCIDE' | 'NO_COINCIDE', valores: string[]): boolean {
+  const normalizado = valorPrueba.trim().toLowerCase()
+  const coincide = valores.some((v) => v.trim().toLowerCase() === normalizado)
+  return operador === 'NO_COINCIDE' ? !coincide : coincide
+}
+
+/**
+ * Réplica exacta de `AnalisisPlantillaDocumentoService#normalizarNombreVariable` (backend): minúsculas
+ * y se descarta todo lo que no sea letra/dígito ASCII (espacios, puntos, guiones, tildes —esta
+ * función NO hace NFD, una tilde simplemente se elimina, no se convierte a su letra base—, etc.) —
+ * para que el "Sección" del bloque solo empareje con el marcador `[[CONTENIDO:seccion]]` de la
+ * plantilla si ambos normalizan al MISMO texto, sin importar mayúsculas.
+ * Bug real diagnosticado el 27/08/2026 (SDRERC-EXP-2026-000011, Informe Rectificación): un bloque con
+ * Sección "I. ANTECEDENTES" normaliza a "iantecedentes" — NO coincide con el marcador real de la
+ * plantilla `[[CONTENIDO:antecedentes]]` (normaliza a "antecedentes"), así que el bloque nunca se
+ * insertaba. Esta vista previa expone el valor normalizado para que el usuario pueda compararlo
+ * visualmente contra el marcador real del Word antes de guardar.
+ */
+function normalizarSeccionPreview(valor: string): string {
+  return valor.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 function DlgEditarBloque({
   bloque,
+  variables,
   onClose,
   onGuardar,
 }: {
   bloque: PlantillaBloqueAdmin
+  variables: PlantillaVariable[]
   onClose: () => void
   onGuardar: (bloque: PlantillaBloqueAdmin) => void
 }) {
   const [form, setForm] = useState<PlantillaBloqueAdmin>(bloque)
+  const [valorPrueba, setValorPrueba] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const tituloRef = useRef<HTMLInputElement>(null)
+  const contenidoRef = useRef<HTMLTextAreaElement>(null)
+
+  const valoresCondicion = useMemo(
+    () => (form.valoresCondicion ?? '').split('|').map((v) => v.trim()).filter(Boolean),
+    [form.valoresCondicion],
+  )
 
   function confirmar() {
     if (!form.contenido.trim()) {
@@ -234,23 +285,66 @@ function DlgEditarBloque({
             onChange={(e) => setForm({ ...form, seccion: e.target.value })}
             helperText='Deje vacío para el marcador [[CONTENIDO]] sin nombre, o indique un nombre para usar [[CONTENIDO:nombre]].'
           />
-          <TextField label="Título (opcional)" size="small" value={form.titulo ?? ''} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, fontFamily: 'monospace' }}>
+            Este bloque busca exactamente{' '}
+            <strong>
+              {form.seccion?.trim() ? `[[CONTENIDO:${normalizarSeccionPreview(form.seccion)}]]` : '[[CONTENIDO]]'}
+            </strong>{' '}
+            en el Word (sin distinguir mayúsculas, espacios ni puntuación) — copie el texto del marcador tal cual
+            aparece en la plantilla si no coincide.
+          </Typography>
+          <TextField
+            label="Título (opcional)"
+            size="small"
+            value={form.titulo ?? ''}
+            onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+            slotProps={{
+              input: {
+                inputRef: tituloRef,
+                endAdornment: (
+                  <InsertarVariablePopover
+                    variables={variables}
+                    campoRef={tituloRef}
+                    valorActual={form.titulo ?? ''}
+                    onInsertar={(nuevoValor) => setForm({ ...form, titulo: nuevoValor })}
+                  />
+                ),
+              },
+            }}
+          />
           <TextField
             label="Contenido"
             multiline
             minRows={4}
             value={form.contenido}
             onChange={(e) => setForm({ ...form, contenido: e.target.value })}
+            helperText="Use el ícono de lupa para buscar e insertar una variable en la posición del cursor."
+            slotProps={{
+              input: {
+                inputRef: contenidoRef,
+                endAdornment: (
+                  <InsertarVariablePopover
+                    variables={variables}
+                    campoRef={contenidoRef}
+                    valorActual={form.contenido}
+                    onInsertar={(nuevoValor) => setForm({ ...form, contenido: nuevoValor })}
+                  />
+                ),
+                sx: { alignItems: 'flex-start' },
+              },
+            }}
           />
           <Typography variant="subtitle2">Condición (opcional)</Typography>
           <Stack direction="row" spacing={2}>
-            <TextField
-              label="Variable"
-              size="small"
+            <Autocomplete
+              freeSolo
               fullWidth
+              options={variables.map((v) => v.nombre)}
               value={form.variableCondicion ?? ''}
-              onChange={(e) => setForm({ ...form, variableCondicion: e.target.value })}
-              placeholder="Ej. canalRecepcion"
+              onInputChange={(_e, valor) => setForm({ ...form, variableCondicion: valor })}
+              renderInput={(params) => (
+                <TextField {...params} label="Variable" size="small" placeholder="Ej. canalRecepcion" />
+              )}
             />
             <TextField
               select
@@ -265,14 +359,51 @@ function DlgEditarBloque({
               <MenuItem value="NO_COINCIDE">No coincide con</MenuItem>
             </TextField>
           </Stack>
-          <TextField
-            label="Valores esperados (separados por |)"
+          <Autocomplete<string, true, false, true>
+            multiple
+            freeSolo
             size="small"
-            value={form.valoresCondicion ?? ''}
-            onChange={(e) => setForm({ ...form, valoresCondicion: e.target.value })}
-            placeholder="Ej. PROCEDENTE|PROCEDENTE_EN_PARTE"
+            options={[] as string[]}
+            value={valoresCondicion}
+            onChange={(_e, valores) => setForm({ ...form, valoresCondicion: valores.join('|') })}
             disabled={!form.variableCondicion}
+            renderValue={(value: string[], getItemProps: AutocompleteRenderValueGetItemProps<true>) =>
+              value.map((valor, index) => {
+                const { key, ...rest } = getItemProps({ index })
+                return <Chip key={key} label={valor} size="small" {...rest} />
+              })
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Valores esperados"
+                placeholder="Escriba un valor y presione Enter"
+                helperText="Uno o más valores que activan la condición — cada Enter agrega un valor nuevo."
+              />
+            )}
           />
+          {form.variableCondicion && valoresCondicion.length > 0 && (
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ p: 1.5, borderRadius: 1.5, bgcolor: sdrercColors.backgroundPaperAlt }}>
+              <TextField
+                label="Probar con este valor"
+                size="small"
+                value={valorPrueba}
+                onChange={(e) => setValorPrueba(e.target.value)}
+                sx={{ minWidth: 220 }}
+              />
+              {valorPrueba && (
+                <Chip
+                  label={
+                    coincideCondicion(valorPrueba, form.operadorCondicion ?? 'COINCIDE', valoresCondicion)
+                      ? 'Se activaría'
+                      : 'No se activaría'
+                  }
+                  color={coincideCondicion(valorPrueba, form.operadorCondicion ?? 'COINCIDE', valoresCondicion) ? 'success' : 'default'}
+                  size="small"
+                />
+              )}
+            </Stack>
+          )}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
       </DialogContent>

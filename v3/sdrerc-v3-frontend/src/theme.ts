@@ -16,13 +16,25 @@ export const sdrercColors = {
   sidebarBg: '#11314E',
   sidebarHover: '#163C5E',
   sidebarActive: '#0A2239',
-  // Sidebar de navegación principal (`layout/Sidebar.tsx`): claro y de bajo contraste, estilo
-  // SaaS moderno (Linear/Notion/Vercel) — un solo color de acento (`primary`) para estados
-  // interactivos en vez de fondo invertido oscuro. Rediseño 13/08/2026, pedido explícito del usuario.
-  navSidebarBg: '#FAFBFC',
-  navSidebarHoverBg: '#F0F2F5',
-  navSidebarActiveBg: '#EAF1FB',
-  navSidebarActiveBar: '#2F6FB0',
+  // Sidebar de navegación principal (`layout/Sidebar.tsx`): claro (no fondo invertido oscuro, esa
+  // opción ya se descartó explícitamente el 13/08/2026), pero con más peso visual que el rediseño
+  // original — 28/08/2026, sistema de diseño premium, pedido explícito del usuario ("sigo viendo
+  // muy blanco el menú de módulos"). El valor anterior (`#FAFBFC`) era MÁS claro que el propio canvas
+  // de contenido (`backgroundDefault`, `#F4F6F9`) — el sidebar se distinguía menos que el área de
+  // trabajo, al revés de lo esperado. Opción elegida explícitamente por el usuario ("C: tinte azul
+  // sutil"): gris con tinte azul (conecta con `primary` sin ser oscuro/saturado) + fondo activo más
+  // saturado, en vez de un gris neutro genérico.
+  navSidebarBg: '#EEF3FA',
+  navSidebarHoverBg: '#E1EAF5',
+  navSidebarActiveBg: '#D6E6F7',
+  // 28/08/2026, mismo día: antes era un 3er azul independiente (`#2F6FB0`), distinto de `primary`
+  // (#154775, institucional) y de `info` (#2370A8, ya la identidad de la subpestaña "Datos" en
+  // TODAS las bandejas operativas) — 3 azules casi iguales para roles muy parecidos ("azul de
+  // marca/identidad") se leía como paleta descoordinada, no como decisión deliberada. Unificado a
+  // `info` (ver `sdrercColors.info` más abajo) — el mismo azul que ya usa el sistema para su
+  // "identidad neutra", sin agregar un token nuevo. Diagnóstico + propuesta confirmados
+  // explícitamente por el usuario antes de aplicar.
+  navSidebarActiveBar: '#2370A8',
   navSidebarTextPrimary: '#33414F',
   navSidebarTextSecondary: '#95A1AC',
   navSidebarTextMuted: '#B9C1C9',
@@ -95,8 +107,24 @@ export const sdrercTheme = createTheme({
         root: {
           backgroundImage: 'none',
         },
+        // Escala de elevación real (28/08/2026, Incremento 0 del sistema de diseño — ver plan
+        // "necesito-un-plan-de-cuddly-wombat.md"): la sombra anterior (`0 1px 2px rgba(...,0.06)`)
+        // era casi imperceptible sobre un canvas que además era blanco puro (ver fix en
+        // `AppLayout.tsx`, mismo incremento) — tarjeta y fondo se fundían en una sola superficie sin
+        // separación visual. 3 niveles con nombre semántico, centralizados acá para que
+        // `MetricCard`/`SectionCard`/el wrapper de cualquier `DataGrid` los hereden gratis sin tocar
+        // cada página: reposo (elevation1, el default de `Paper` sin prop explícito), hover/activo
+        // (elevation2), modal/drawer/popover (elevation3 — MUI ya usa elevation8/16/24 internamente
+        // para `Menu`/`Dialog`, pero se deja el mismo valor de elevation3 disponible para quien lo
+        // pida explícito).
         elevation1: {
-          boxShadow: '0 1px 2px rgba(16,24,40,0.06)',
+          boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)',
+        },
+        elevation2: {
+          boxShadow: '0 4px 12px rgba(16,24,40,0.08)',
+        },
+        elevation3: {
+          boxShadow: '0 12px 32px rgba(16,24,40,0.14)',
         },
       },
     },
@@ -121,6 +149,22 @@ export const sdrercTheme = createTheme({
         root: {
           border: `1px solid ${sdrercColors.divider}`,
           boxShadow: 'none',
+        },
+      },
+    },
+    // Estados interactivos consolidados (28/08/2026, Incremento 0): antes cada página que usaba
+    // `ListItemButton` (menús contextuales, listas de selección en diálogos, etc. — el Sidebar
+    // principal ya define su propio hover/selected inline y no se ve afectado, solo se beneficia
+    // cualquier `ListItemButton` fuera de él) reinventaba su propio hover en `sx` suelto o no tenía
+    // ninguno. Con esto, cualquier `ListItemButton` nuevo hereda un hover/selected consistente sin
+    // trabajo adicional.
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+          '&:hover': { backgroundColor: sdrercColors.navSidebarHoverBg },
+          '&.Mui-selected': { backgroundColor: sdrercColors.navSidebarActiveBg },
+          '&.Mui-selected:hover': { backgroundColor: sdrercColors.navSidebarActiveBg },
         },
       },
     },

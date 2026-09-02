@@ -11,3 +11,251 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/*
+ * 28/08/2026, sistema de diseño premium: estandariza los botones legacy del toolbar de DataGrid
+ * (GridToolbarColumnsButton/GridToolbarFilterButton/GridToolbarExport, ver dataGridTheme.ts) a
+ * icono-solo, igual que el toolbar por defecto (showToolbar) de Bandeja de Expedientes. Se usa una
+ * clase real (no `sx`) porque el tipo declarado de `slotProps.button` en esta version de MUI X no
+ * expone `sx` (aunque en runtime SI es un Button de MUI real que lo soportaria) -- este archivo, antes
+ * sin usar (import agregado en main.tsx en este mismo cambio), es la via mas simple y sin `any` para
+ * aplicar el estilo con seguridad de tipos.
+ *
+ * `!important` en las 3 reglas siguientes es deliberado, no un descuido (28/08/2026, 2do intento,
+ * bug real: el primer intento sin `!important` no cambiaba nada visible, ver v3/CLAUDE.md): MUI
+ * inyecta el CSS real de `Button` en tiempo de ejecucion via Emotion, en un `<style>` que Emotion
+ * agrega al `<head>` recien cuando el primer `Button` se monta -- DESPUES del `<style>` que Vite ya
+ * habia insertado para este archivo al cargar `main.tsx`. Con la MISMA especificidad (una sola clase,
+ * `.MuiButton-root{...}` vs `.sdrerc-toolbar-icon-btn{...}`), gana la regla que llega despues en el
+ * documento -- es decir, siempre gana MUI, sin importar el orden del `import` en el código fuente.
+ * `!important` es la unica forma confiable de garantizar el override contra una libreria de terceros
+ * cuyo orden de inyeccion no controlamos.
+ */
+.sdrerc-toolbar-icon-btn {
+  min-width: 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 0 !important;
+  /* Mismo gris que el resto de iconos "neutros" del sistema (campana de notificaciones en
+     PageHeaderSticky, iconos del sidebar) -- sdrercColors.textSecondary de theme.ts, valor
+     duplicado acá porque este es un archivo CSS plano sin acceso a las variables de TS. El Button
+     de estos 3 botones legacy no recibe `color` explícito, así que por defecto de MUI toma
+     `color="primary"` (azul institucional) -- de ahí el ícono azul reportado, no un bug de este
+     archivo sino el color por defecto de la librería para un `Button` sin `color` seteado. */
+  color: #525f6e !important;
+}
+
+.sdrerc-toolbar-icon-btn .MuiButton-startIcon {
+  margin: 0 !important;
+}
+
+.sdrerc-toolbar-icon-btn .MuiSvgIcon-root {
+  font-size: 1.25rem !important;
+}
+
+/*
+ * 28/08/2026, mismo día — sistema de diseño premium, 2da pasada (pedido explícito del usuario:
+ * "iconos más premium... con colorcito bonito para que el usuario los identifique fácilmente" +
+ * "un solo ícono de Excel verdecito en vez del menú de imprimir/CSV").
+ *
+ * Mismo mecanismo de siempre (clase real + `!important`, ver nota de arriba) para 2 familias de
+ * íconos que hoy son todos grises/monocromos:
+ *
+ * 1. Los 4 controles superiores del `DataGrid` (Columnas/Filtros/Exportar/Buscar) — un color propio
+ *    por función, sin reutilizar los 5 colores semánticos ya reservados para KPIs (éxito/alerta/
+ *    error/info/primario), para no generar una falsa asociación de significado. La única excepción
+ *    deliberada es Exportar = verde Excel real (#217346, el color de marca de Microsoft Excel), tal
+ *    como pidió el usuario explícitamente.
+ * 2. Las acciones de fila más repetidas en las grillas de "documentos analizados" (Word/Guardar/
+ *    Eliminar, ver `DATA_GRID_ROW_ICON_*_CLASS` en `dataGridTheme.ts`) — mismos 3 colores en TODA
+ *    la app (Análisis/Verificación/Ejecución/Notificación/Cartas de Respuesta/Grupo Familiar/
+ *    Plantillas), para que el usuario aprenda una sola asociación color→acción y no una por módulo.
+ *
+ * Estado deshabilitado (`.Mui-disabled`) explícito para las 3 acciones de fila, con el MISMO color
+ * gris apagado que ya usa el resto del sistema para elementos inactivos (`sdrercColors.
+ * navSidebarTextMuted`) — necesario porque, al combinar `!important` en la regla base, el color
+ * "encendido" ganaría también en el estado deshabilitado si no se declara una regla `!important`
+ * aparte para `.Mui-disabled` (con más especificidad por combinar 2 clases): sin esto, el ícono ya
+ * NO se apagaría visualmente al deshabilitarse, perdiendo la señal de "esta acción no está disponible
+ * ahora" que ya existía antes de este cambio — pedido explícito del usuario: "se debe mantener el
+ * efecto y/o color cuando se desactiva algún ícono".
+ */
+
+/*
+ * 28/08/2026, mismo día, 3ra pasada — "chip" premium (pedido explícito del usuario, con captura:
+ * "se pueden mejorar el diseño de esos iconos de cabecera y el icono del tachito los veo demasiado
+ * simples"). El color solo (2da pasada, arriba) ya distinguía cada ícono, pero seguía siendo un
+ * glifo plano flotando sobre fondo blanco, sin ningún peso visual — el mismo problema que ya motivó
+ * todo el "sistema de diseño premium" de esta sesión (bordes/sombras casi imperceptibles). Fix:
+ * cada ícono gana una pastilla circular con tinte MUY suave de su propio color en reposo, que se
+ * profundiza + levanta con una sombra del mismo tono al pasar el mouse — mismo lenguaje que ya usan
+ * las tarjetas KPI (`MetricCard.tsx`, borde + hover + estado activo con brillo, misma sesión).
+ *
+ * Los valores rgba() son la descomposición manual de cada hex ya elegido en la 2da pasada (este
+ * archivo no tiene acceso a `color-mix()`/variables de TS) — mismo color final, solo con alpha
+ * variable para el tinte de fondo/sombra en vez de sólido.
+ */
+.sdrerc-icon-columns,
+.sdrerc-icon-filters,
+.sdrerc-icon-export,
+.MuiDataGrid-toolbarQuickFilterTrigger,
+.sdrerc-icon-word,
+.sdrerc-icon-save,
+.sdrerc-icon-delete,
+.sdrerc-icon-folder,
+.sdrerc-icon-notificacion {
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease !important;
+}
+
+/* --- Controles del toolbar (Columnas/Filtros/Exportar) --- */
+.sdrerc-icon-columns {
+  color: #5c6bc0 !important; /* índigo */
+  background-color: rgba(92, 107, 192, 0.12) !important;
+  border: 1px solid rgba(92, 107, 192, 0.24) !important;
+}
+.sdrerc-icon-columns:hover {
+  background-color: rgba(92, 107, 192, 0.22) !important;
+  border-color: rgba(92, 107, 192, 0.45) !important;
+  box-shadow: 0 3px 10px rgba(92, 107, 192, 0.35) !important;
+  transform: translateY(-1px);
+}
+.sdrerc-icon-filters {
+  color: #00897b !important; /* verde azulado (teal) */
+  background-color: rgba(0, 137, 123, 0.12) !important;
+  border: 1px solid rgba(0, 137, 123, 0.24) !important;
+}
+.sdrerc-icon-filters:hover {
+  background-color: rgba(0, 137, 123, 0.22) !important;
+  border-color: rgba(0, 137, 123, 0.45) !important;
+  box-shadow: 0 3px 10px rgba(0, 137, 123, 0.35) !important;
+  transform: translateY(-1px);
+}
+.sdrerc-icon-export {
+  color: #217346 !important; /* verde Excel */
+  background-color: rgba(33, 115, 70, 0.12) !important;
+  border: 1px solid rgba(33, 115, 70, 0.24) !important;
+}
+.sdrerc-icon-export:hover {
+  background-color: rgba(33, 115, 70, 0.22) !important;
+  border-color: rgba(33, 115, 70, 0.45) !important;
+  box-shadow: 0 3px 10px rgba(33, 115, 70, 0.35) !important;
+  transform: translateY(-1px);
+}
+/* Buscar: selector global de MUI X (no una clase propia nuestra) — mismo ícono en TODAS las
+   bandejas por igual, con o sin toolbar custom, sin tocar ningún archivo de página. */
+.MuiDataGrid-toolbarQuickFilterTrigger {
+  color: #8e24aa !important; /* magenta/morado */
+  background-color: rgba(142, 36, 170, 0.12) !important;
+  border: 1px solid rgba(142, 36, 170, 0.24) !important;
+  border-radius: 50% !important;
+}
+.MuiDataGrid-toolbarQuickFilterTrigger:hover {
+  background-color: rgba(142, 36, 170, 0.22) !important;
+  border-color: rgba(142, 36, 170, 0.45) !important;
+  box-shadow: 0 3px 10px rgba(142, 36, 170, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+/* --- Acciones de fila (grillas de documentos analizados) ---
+   `border-radius`/`padding` explícitos SOLO en Guardar/Eliminar (siempre íconos solos: `IconButton`
+   de MUI, ya circular por defecto, o el `Box component="button"` de
+   `EquipoJuridicoAdminContent.tsx`/`PlantillaBloquesPanel.tsx`, sin esa forma propia — con esta
+   regla, la pastilla se ve idéntica sin importar el elemento HTML real detrás). Word queda AFUERA
+   de esta regla a propósito: `DocumentosExpedienteContent.tsx` usa esta misma clase sobre un
+   `Button variant="outlined"` con texto visible ("Descargar Word", no solo ícono) — forzar un
+   círculo de 50% ahí recortaría el texto; ese caso hereda la forma de píldora normal del `Button`
+   (radio del tema, no un círculo) y el tinte de fondo igual se nota dentro de ese contorno. */
+.sdrerc-icon-save,
+.sdrerc-icon-delete,
+.sdrerc-icon-folder,
+.sdrerc-icon-notificacion {
+  border-radius: 50% !important;
+  padding: 5px !important;
+}
+.sdrerc-icon-word {
+  color: #2b579a !important; /* azul Word */
+  background-color: rgba(43, 87, 154, 0.10) !important;
+}
+.sdrerc-icon-word:hover {
+  background-color: rgba(43, 87, 154, 0.20) !important;
+  box-shadow: 0 3px 8px rgba(43, 87, 154, 0.35) !important;
+  transform: translateY(-1px) scale(1.06);
+}
+.sdrerc-icon-word.Mui-disabled {
+  color: #b9c1c9 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.sdrerc-icon-save {
+  color: #1e88e5 !important; /* azul guardar, distinto del azul Word */
+  background-color: rgba(30, 136, 229, 0.10) !important;
+}
+.sdrerc-icon-save:hover {
+  background-color: rgba(30, 136, 229, 0.20) !important;
+  box-shadow: 0 3px 8px rgba(30, 136, 229, 0.35) !important;
+  transform: translateY(-1px) scale(1.06);
+}
+.sdrerc-icon-save.Mui-disabled {
+  color: #b9c1c9 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.sdrerc-icon-delete {
+  color: #b23434 !important; /* mismo rojo que sdrercColors.error */
+  background-color: rgba(178, 52, 52, 0.10) !important;
+}
+.sdrerc-icon-delete:hover {
+  background-color: rgba(178, 52, 52, 0.20) !important;
+  box-shadow: 0 3px 8px rgba(178, 52, 52, 0.35) !important;
+  transform: translateY(-1px) scale(1.06);
+}
+.sdrerc-icon-delete.Mui-disabled {
+  color: #b9c1c9 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/*
+ * 29/08/2026 — ícono "agrupar documentos por expediente" (Bandeja de supervisión de Notificación,
+ * pedido explícito del usuario: carpeta con "+" premium). Originalmente ámbar/naranja (#ef6c00);
+ * cambiado a azul el 30/08/2026 (Parte 8, pedido explícito del usuario tras evaluar la coherencia de
+ * diseño) para que coincida con `sdrercColors.info` (#2370A8) — el mismo azul del acento lateral de
+ * la "tarjeta" de la nested grid que este ícono abre (ver Parte 6) y de la subpestaña "Datos" en
+ * todas las bandejas del sistema: "el color del disparador = el color de lo que revela". El naranja
+ * quedaba además coincidiendo sin relación semántica con el KPI "Pendientes de asignación"
+ * (`sdrercColors.warning`) de esta misma página.
+ */
+.sdrerc-icon-folder {
+  color: #2370a8 !important;
+  background-color: rgba(35, 112, 168, 0.1) !important;
+}
+.sdrerc-icon-folder:hover {
+  background-color: rgba(35, 112, 168, 0.2) !important;
+  box-shadow: 0 3px 8px rgba(35, 112, 168, 0.35) !important;
+  transform: translateY(-1px) scale(1.06);
+}
+
+/*
+ * 30/08/2026 — ícono "ver intentos de notificación" (Bandeja Notificación y Bandeja Publicación,
+ * pedido explícito del usuario: reemplazar el "+"/"-" genérico por uno que represente la
+ * notificación al ciudadano, virtual y/o presencial). 2 pasadas de color: primero `sdrercColors.
+ * warning` (`#B86910`, ámbar institucional) reemplazando un ámbar brillante ad-hoc — el usuario
+ * reportó que ese tono "seguía viéndose naranja". Segunda pasada (elegida explícitamente entre 4
+ * opciones vía `AskUserQuestion`): violeta institucional (`#6A4C93`) — tono nuevo, sin usar por
+ * ningún otro ícono de la paleta (índigo/columnas, magenta/buscar y los 3 azules ya reservados
+ * quedan claramente distinguibles), sin la connotación de alerta que traía el ámbar.
+ */
+.sdrerc-icon-notificacion {
+  color: #6a4c93 !important;
+  background-color: rgba(106, 76, 147, 0.1) !important;
+}
+.sdrerc-icon-notificacion:hover {
+  background-color: rgba(106, 76, 147, 0.2) !important;
+  box-shadow: 0 3px 8px rgba(106, 76, 147, 0.35) !important;
+  transform: translateY(-1px) scale(1.06);
+}

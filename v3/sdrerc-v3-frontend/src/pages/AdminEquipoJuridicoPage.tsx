@@ -4,6 +4,8 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlined'
 import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { sdrercColors } from '../theme'
 import {
   agregarMiembro,
   buscarEquipos,
@@ -22,6 +24,7 @@ import {
   type UsuarioAsignableEquipo,
 } from '../api/adminEquipoJuridicoApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge } from '../components/StatusBadge'
 import { EquipoJuridicoAdminContent, equipoFormVacio, type EquipoFormState } from '../components/EquipoJuridicoAdminContent'
@@ -30,7 +33,9 @@ import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { ADMIN_EQUIPO_JURIDICO_TABS } from '../layout/moduleTabs'
 
 const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B', '#16A085', '#D35400', '#2C3E50']
-const COLOR_DATOS = '#154775'
+// 28/08/2026, sistema de diseño premium: unificado a `#2370A8` (mismo azul que "Datos" en las 12
+// bandejas operativas).
+const COLOR_DATOS = '#2370A8'
 const COLOR_MIEMBROS = '#0B8E97'
 
 interface WorkspaceAbierto {
@@ -47,6 +52,7 @@ interface WorkspaceAbierto {
  * nivel superior del módulo, no una subpestaña del workspace).
  */
 export function AdminEquipoJuridicoPage() {
+  const { confirm: confirmDialog } = useAppDialog()
   const [equipos, setEquipos] = useState<EquipoJuridicoAdmin[]>([])
   const [areas, setAreas] = useState<AreaAdmin[]>([])
   const [supervisoresAsignables, setSupervisoresAsignables] = useState<UsuarioAsignableEquipo[]>([])
@@ -203,7 +209,7 @@ export function AdminEquipoJuridicoPage() {
   }
 
   async function handleQuitarMiembro(workspaceId: string, idEquipo: number, idUsuario: number, nombre: string) {
-    const confirmado = window.confirm(`¿Quitar a ${nombre} del equipo?`)
+    const confirmado = await confirmDialog(`¿Quitar a ${nombre} del equipo?`, { tone: 'danger', confirmLabel: 'Quitar' })
     if (!confirmado) return
     setErrorMiembrosPorWorkspace((prev) => ({ ...prev, [workspaceId]: null }))
     try {
@@ -227,7 +233,10 @@ export function AdminEquipoJuridicoPage() {
   }
 
   async function alternarActivo(equipo: EquipoJuridicoAdmin) {
-    const confirmado = window.confirm(equipo.activo ? `¿Inactivar el equipo ${equipo.nombre}?` : `¿Activar el equipo ${equipo.nombre}?`)
+    const confirmado = await confirmDialog(
+      equipo.activo ? `¿Inactivar el equipo ${equipo.nombre}?` : `¿Activar el equipo ${equipo.nombre}?`,
+      { tone: 'warning', confirmLabel: equipo.activo ? 'Inactivar' : 'Activar' },
+    )
     if (!confirmado) return
     try {
       await cambiarActivoEquipo(equipo.idEquipo, !equipo.activo)
@@ -349,21 +358,32 @@ export function AdminEquipoJuridicoPage() {
             {error}
           </Typography>
         )}
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 2 }}>
-          <MetricCard label="Total de equipos" value={kpis.total} caption="Según filtros activos" color={COLOR_DATOS} />
-          <MetricCard label="Activos" value={kpis.activos} caption="Operativos" color="#1F9254" />
-          <MetricCard label="Inactivos" value={kpis.inactivos} caption="Sin uso" color="#8A94A6" />
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2 }}>
+          <Box onClick={() => setEstadoFiltro('')} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Total de equipos" value={kpis.total} caption="Según filtros activos" color={COLOR_DATOS} active={estadoFiltro === ''} />
+          </Box>
+          <Box onClick={() => setEstadoFiltro((prev) => (prev === 'true' ? '' : 'true'))} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Activos" value={kpis.activos} caption="Operativos" color="#1F9254" active={estadoFiltro === 'true'} />
+          </Box>
+          <Box onClick={() => setEstadoFiltro((prev) => (prev === 'false' ? '' : 'false'))} sx={{ cursor: 'pointer' }}>
+            <MetricCard label="Inactivos" value={kpis.inactivos} caption="Sin uso" color="#8A94A6" active={estadoFiltro === 'false'} />
+          </Box>
         </Box>
-        <DataGrid
-          rows={equipos}
-          columns={columnas}
-          getRowId={(row) => row.idEquipo}
-          loading={cargando}
-          onRowDoubleClick={(params) => abrirWorkspace(params.row)}
-          autoHeight
-          pageSizeOptions={[10, 25, 50, 100]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-        />
+        <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
+          <DataGrid
+            rows={equipos}
+            columns={columnas}
+            getRowId={(row) => row.idEquipo}
+            loading={cargando}
+            onRowDoubleClick={(params) => abrirWorkspace(params.row)}
+            density="compact"
+            autoHeight
+            showToolbar
+            pageSizeOptions={[10, 25, 50, 100]}
+            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+            sx={dataGridBaseSx}
+          />
+        </Box>
       </Stack>
 
       <WorkspaceTabsDrawer

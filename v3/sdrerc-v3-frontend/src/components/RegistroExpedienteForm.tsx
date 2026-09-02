@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Alert, Autocomplete, Box, FormControl, FormControlLabel, Grid, MenuItem, Paper, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material'
+import { alpha, Alert, Autocomplete, Box, FormControl, FormControlLabel, Grid, MenuItem, Paper, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material'
 import type {
   CatalogoItem,
   CentroAtencion,
@@ -20,11 +20,20 @@ const TIPOS_SOLICITUD = [
   { codigo: 'PARTE', nombre: 'Parte' },
   { codigo: 'OFICIO', nombre: 'Oficio' },
 ]
-const PRIORIDADES = [
+// 31/08/2026, pedido explícito del usuario: opciones cambiadas de Normal/Alta/Urgente (réplica de
+// V2) a Normal/Urgente/Muy urgente — divergencia deliberada de V2 en este campo puntual. Exportado
+// para que `PanelDatosExpediente.tsx` (solo lectura) traduzca el código guardado en
+// `EXPEDIENTE.PRIORIDAD` al mismo nombre visible, sin duplicar la lista.
+export const PRIORIDADES = [
   { codigo: 'NORMAL', nombre: 'Normal' },
-  { codigo: 'ALTA', nombre: 'Alta' },
   { codigo: 'URGENTE', nombre: 'Urgente' },
+  { codigo: 'MUY_URGENTE', nombre: 'Muy urgente' },
 ]
+
+export function nombrePrioridad(codigo: string | null | undefined): string | null {
+  if (!codigo) return null
+  return PRIORIDADES.find((p) => p.codigo === codigo)?.nombre ?? codigo
+}
 const TIPOS_DOC_TITULAR = ['DNI', 'CE', 'PASAPORTE']
 const TIPOS_DOC_REMITENTE = ['DNI', 'CE', 'RUC', 'PASAPORTE']
 const CORRESPONDE = 'Sí corresponde a la SDRERC'
@@ -880,9 +889,43 @@ export function RegistroExpedienteForm({
   )
 }
 
-export function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * Barra de acento superior (28/08/2026, sistema de diseño premium — Incremento 1, ver plan
+ * "necesito-un-plan-de-cuddly-wombat.md"): mismo espíritu que la de `MetricCard` — refuerza la
+ * identidad visual de cada sección en vez de una tarjeta blanca plana. `accentColor` es opcional
+ * (default `sdrercColors.primary`, el azul institucional) para no romper ninguno de los 16 archivos
+ * que ya usan `SectionCard` sin ese prop; queda listo para que el Incremento 2 (acento por módulo)
+ * lo sobrescriba página por página sin tocar este componente de nuevo.
+ *
+ * Borde completo + hover (28/08/2026, mismo día, mismo pedido que `MetricCard` — "que el mismo
+ * lenguaje de acento se extienda a los paneles"): mismo tratamiento de borde (`alpha(accentColor,
+ * 0.25)` en reposo, `0.5` en hover) que ya se aplicó a `MetricCard` — SIN el estado "activo"
+ * (fondo tintado + brillo) porque `SectionCard` no es clicable/filtrable, ese lenguaje es exclusivo
+ * de una tarjeta que representa una selección posible.
+ */
+export function SectionCard({
+  title,
+  children,
+  accentColor = sdrercColors.primary,
+}: {
+  title: string
+  children: React.ReactNode
+  accentColor?: string
+}) {
   return (
-    <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
+    <Paper
+      elevation={1}
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        p: 3,
+        borderRadius: 2,
+        border: `1px solid ${alpha(accentColor, 0.25)}`,
+        transition: 'border-color 150ms ease, box-shadow 150ms ease',
+        '&:hover': { borderColor: alpha(accentColor, 0.5), boxShadow: '0 4px 12px rgba(16,24,40,0.08)' },
+      }}
+    >
+      <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, bgcolor: accentColor }} />
       <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: sdrercColors.textPrimary }}>
         {title}
       </Typography>

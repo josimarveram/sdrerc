@@ -28,12 +28,27 @@ import {
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
 import { StatusBadge, diasBadgeTone } from './StatusBadge'
-import { filtrarMensajesFormulario, RegistroExpedienteForm, SectionCard } from './RegistroExpedienteForm'
+import { filtrarMensajesFormulario, nombrePrioridad, RegistroExpedienteForm, SectionCard } from './RegistroExpedienteForm'
 
 function formatearFecha(iso: string | null): string {
   if (!iso) return '-'
   const [anio, mes, dia] = iso.slice(0, 10).split('-')
   return `${dia}/${mes}/${anio}`
+}
+
+/**
+ * Prioriza `detalle` (siempre completo — misma consulta genérica `GET /api/registro/bandeja/{id}/datos`
+ * para cualquier bandeja) sobre `bandeja` (adaptada de forma distinta por cada módulo vía su propio
+ * `adaptarParaPanelDatos`, con huecos reales cuando el DTO de esa bandeja no expone el campo — ver
+ * bug real diagnosticado 28/08/2026: "N° trámite"/"Canal"/"Tipo de acta"/"N° acta"/"Procedimiento
+ * registral"/"Fecha de recepción" venían vacíos en Asignación/Cartas de respuesta/Análisis/Ejecución/
+ * Verificación/Notificación pese a que `detalle` ya los traía completos en todas). Trata `''` igual
+ * que `null`/`undefined` (no solo nullish-coalescing) porque varios adaptadores usan `''` como
+ * relleno explícito para "este DTO no trae este campo".
+ */
+function conFallback(principal: string | null | undefined, respaldo: string | null | undefined): string | null {
+  if (principal && principal.trim() !== '') return principal
+  return respaldo ?? null
 }
 
 function Dato({ label, value }: { label: string; value: string | null | undefined }) {
@@ -362,16 +377,16 @@ export function PanelDatosExpediente({
                 <Dato label="N° expediente SGD" value={bandeja.numeroExpedienteSgd} />
               </Grid>
               <Grid size={6}>
-                <Dato label="N° trámite" value={bandeja.numeroTramiteDocumentario} />
+                <Dato label="N° trámite" value={conFallback(bandeja.numeroTramiteDocumentario, detalle?.solicitud.numeroTramite)} />
               </Grid>
               <Grid size={6}>
-                <Dato label="Canal" value={bandeja.canal} />
+                <Dato label="Canal" value={conFallback(bandeja.canal, detalle?.solicitud.canalNombre)} />
               </Grid>
               <Grid size={6}>
-                <Dato label="Etapa" value={bandeja.etapaCodigo} />
+                <Dato label="Etapa" value={conFallback(bandeja.etapaCodigo, detalle?.etapaCodigo)} />
               </Grid>
               <Grid size={6}>
-                <Dato label="Estado" value={bandeja.estadoCodigo} />
+                <Dato label="Estado" value={conFallback(bandeja.estadoCodigo, detalle?.estadoCodigo)} />
               </Grid>
             </Grid>
           </SectionCard>
@@ -379,10 +394,10 @@ export function PanelDatosExpediente({
           <SectionCard title="Datos del acta">
             <Grid container spacing={2}>
               <Grid size={6}>
-                <Dato label="Tipo de acta" value={bandeja.tipoActa} />
+                <Dato label="Tipo de acta" value={conFallback(bandeja.tipoActa, detalle?.acta.tipoActaNombre)} />
               </Grid>
               <Grid size={6}>
-                <Dato label="N° acta" value={bandeja.numeroActa} />
+                <Dato label="N° acta" value={conFallback(bandeja.numeroActa, detalle?.acta.numeroActa)} />
               </Grid>
             </Grid>
           </SectionCard>
@@ -390,10 +405,10 @@ export function PanelDatosExpediente({
           <SectionCard title="Datos de solicitud">
             <Grid container spacing={2}>
               <Grid size={6}>
-                <Dato label="Procedimiento registral" value={bandeja.procedimiento} />
+                <Dato label="Procedimiento registral" value={conFallback(bandeja.procedimiento, detalle?.solicitud.tipoProcedimientoNombre)} />
               </Grid>
               <Grid size={6}>
-                <Dato label="Fecha de recepción" value={formatearFecha(bandeja.fechaRecepcion)} />
+                <Dato label="Fecha de recepción" value={formatearFecha(conFallback(bandeja.fechaRecepcion, detalle?.solicitud.fechaRecepcion))} />
               </Grid>
               <Grid size={6}>
                 <Dato label="Tipo de solicitud" value={detalle?.solicitud.tipoSolicitudNombre} />
@@ -408,7 +423,7 @@ export function PanelDatosExpediente({
                 <Dato label="Validación inicial" value={detalle?.solicitud.validacionInicial} />
               </Grid>
               <Grid size={6}>
-                <Dato label="Hoja de envío" value={detalle?.solicitud.hojaEnvio} />
+                <Dato label="Prioridad" value={nombrePrioridad(detalle?.solicitud.prioridad)} />
               </Grid>
             </Grid>
           </SectionCard>

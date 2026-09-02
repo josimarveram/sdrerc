@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Chip,
@@ -14,17 +15,14 @@ import {
 } from '@mui/material'
 import {
   DataGrid,
-  GridToolbarColumnsButton,
   GridToolbarContainer,
-  GridToolbarExport,
-  GridToolbarFilterButton,
-  GridToolbarQuickFilter,
   useGridApiContext,
   type GridColDef,
   type GridRowSelectionModel,
 } from '@mui/x-data-grid'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlined'
-import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutlined'
+import PersonPinCircleOutlinedIcon from '@mui/icons-material/PersonPinCircleOutlined'
+import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircle'
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
@@ -40,12 +38,21 @@ import {
 import { obtenerDatosExpediente, type ExpedienteBandeja } from '../api/registroBandejaApi'
 import type { ExpedienteEdicionManual } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { sdrercColors } from '../theme'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import {
+  dataGridBaseSx,
+  DATA_GRID_ROW_ICON_DELETE_CLASS,
+  DATA_GRID_ROW_ICON_SAVE_CLASS,
+  DATA_GRID_ROW_ICON_NOTIFICACION_CLASS,
+} from '../dataGridTheme'
+import { DataGridStandardToolbarControls } from '../components/DataGridStandardToolbar'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge } from '../components/StatusBadge'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
 import { PanelDatosExpediente } from '../components/PanelDatosExpediente'
+import { TrazabilidadContent } from '../components/TrazabilidadContent'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { NOTIFICACION_TABS } from '../layout/moduleTabs'
 
@@ -84,6 +91,7 @@ function textoEstadoFinalPublicacion(doc: NotificacionAsignacionDocumento): stri
 
 const WORKSPACE_COLORS = ['#154775', '#0B8E97', '#B8860B', '#8E44AD', '#C0392B', '#16A085', '#D35400', '#2C3E50']
 const COLOR_DATOS = '#2370A8'
+const COLOR_TRAZABILIDAD = '#8E44AD'
 
 type FilaPadre = { id: string; tipo: 'padre'; doc: NotificacionAsignacionDocumento }
 /** Intento directo (1 o 2) — SIEMPRE de solo lectura en esta bandeja (mismo criterio que V2: "sin ícono de acción, sin editores"). */
@@ -145,10 +153,7 @@ function ToolbarBandejaPublicacion({ seleccionados, onAgregarPublicacion }: { se
         )}
       </Stack>
       <Box sx={{ flex: 1 }} />
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarExport />
-      <GridToolbarQuickFilter />
+      <DataGridStandardToolbarControls />
     </GridToolbarContainer>
   )
 }
@@ -191,8 +196,8 @@ type FiltroKpi = 'SIN_PUBLICACION' | 'PUBLICACION_REGISTRADA' | 'VENCIDOS' | nul
  * explícito del usuario: "sería casi lo mismo que la bandeja de notificación, solo que sería 1 sola
  * notificación de tipo publicación"). Mismo diseño/patrón que `NotificacionNotificacionBandejaPage.tsx`
  * (KPIs clicables, buscador de 3 filas, grilla árbol sobre un único `DataGrid` con filas sintéticas
- * fusionadas vía `colSpan`, doble clic abre ÚNICAMENTE el Panel de datos) — ver Javadoc de esa página
- * para el detalle de esas decisiones de diseño, no repetido acá.
+ * fusionadas vía `colSpan`, doble clic abre el panel con "Datos"/"Trazabilidad") — ver Javadoc de
+ * esa página para el detalle de esas decisiones de diseño, no repetido acá.
  *
  * Diferencias reales de negocio contra Bandeja Notificación (investigación previa contra la sección
  * "Bandeja Publicacion" ya documentada en el `CLAUDE.md` raíz — implementada en V2 el 05/08/2026):
@@ -216,6 +221,7 @@ type FiltroKpi = 'SIN_PUBLICACION' | 'PUBLICACION_REGISTRADA' | 'VENCIDOS' | nul
  *   "Vencidos".
  */
 export function NotificacionPublicacionBandejaPage() {
+  const { confirm: confirmDialog, alert: alertDialog } = useAppDialog()
   const [documentos, setDocumentos] = useState<NotificacionAsignacionDocumento[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -231,14 +237,14 @@ export function NotificacionPublicacionBandejaPage() {
 
   const [filtroKpi, setFiltroKpi] = useState<FiltroKpi>(null)
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [estadoFinalFiltro, setEstadoFinalFiltro] = useState('')
 
   const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() })
   const [idPadreEnfocado, setIdPadreEnfocado] = useState<number | null>(null)
 
-  type WorkspaceAbierto = { id: string; doc: NotificacionAsignacionDocumento; color: string }
+  type WorkspaceAbierto = { id: string; doc: NotificacionAsignacionDocumento; color: string; activeSubTabId: string }
   const [workspacesAbiertos, setWorkspacesAbiertos] = useState<WorkspaceAbierto[]>([])
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
   const [datosPorExpediente, setDatosPorExpediente] = useState<
@@ -311,7 +317,7 @@ export function NotificacionPublicacionBandejaPage() {
 
   function handleLimpiar() {
     setTexto('')
-    setDesde(primerDiaMesActualISO())
+    setDesde(primerDiaMesAnteriorISO())
     setHasta(hoyISO())
     setEstadoFinalFiltro('')
   }
@@ -375,7 +381,7 @@ export function NotificacionPublicacionBandejaPage() {
       objetivos.add(idPadreEnfocado)
     }
     if (objetivos.size === 0) {
-      window.alert('Seleccione uno o varios documentos de la bandeja de publicación.')
+      await alertDialog('Seleccione uno o varios documentos de la bandeja de publicación.', { tone: 'warning' })
       return
     }
     const cargas = await Promise.all([...objetivos].map(async (id) => [id, await asegurarIntentosCargados(id)] as const))
@@ -408,7 +414,7 @@ export function NotificacionPublicacionBandejaPage() {
         'ya-registrada': 'Este documento ya tiene una publicación registrada.',
         maximo: 'Ya se alcanzó el máximo de 3 intentos (2 directos + publicación) para este documento.',
       }
-      window.alert([...motivos].map((m) => mensajes[m]).join('\n') || 'No se pudo agregar la publicación.')
+      await alertDialog([...motivos].map((m) => mensajes[m]).join('\n') || 'No se pudo agregar la publicación.', { tone: 'warning' })
       return
     }
 
@@ -506,7 +512,7 @@ export function NotificacionPublicacionBandejaPage() {
   }
 
   async function handleEliminarPublicacion(fila: FilaPublicacion) {
-    if (!window.confirm('¿Desea eliminar el registro de publicación?')) return
+    if (!(await confirmDialog('¿Desea eliminar el registro de publicación?', { tone: 'danger', confirmLabel: 'Eliminar' }))) return
     setProcesandoFila(fila.id)
     setError(null)
     try {
@@ -549,10 +555,14 @@ export function NotificacionPublicacionBandejaPage() {
         return prev.map((w) => (w.id === id ? { ...w, doc } : w))
       }
       const color = WORKSPACE_COLORS[prev.length % WORKSPACE_COLORS.length]
-      return [...prev, { id, doc, color }]
+      return [...prev, { id, doc, color, activeSubTabId: 'datos' }]
     })
     if (datosPorExpediente[doc.idExpediente]) return
     recargarDatosExpediente(doc.idExpediente)
+  }
+
+  function seleccionarSubTab(workspaceId: string, subTabId: string) {
+    setWorkspacesAbiertos((prev) => prev.map((w) => (w.id === workspaceId ? { ...w, activeSubTabId: subTabId } : w)))
   }
 
   function recargarDatosExpediente(idExpediente: number) {
@@ -592,7 +602,7 @@ export function NotificacionPublicacionBandejaPage() {
           id: w.id,
           label: w.doc.titular || w.doc.numeroExpediente || `Expediente ${w.doc.idExpediente}`,
           color: w.color,
-          activeSubTabId: 'datos',
+          activeSubTabId: w.activeSubTabId,
           subTabs: [
             {
               id: 'datos',
@@ -609,6 +619,12 @@ export function NotificacionPublicacionBandejaPage() {
                 />
               ),
             },
+            {
+              id: 'trazabilidad',
+              label: 'Trazabilidad',
+              color: COLOR_TRAZABILIDAD,
+              content: <TrazabilidadContent idExpediente={w.doc.idExpediente} />,
+            },
           ],
         }
       }),
@@ -617,43 +633,71 @@ export function NotificacionPublicacionBandejaPage() {
 
   const columnas: GridColDef<FilaNotif>[] = [
     {
+      // 30/08/2026, pedido explícito del usuario (mismo fix ya aplicado en
+      // `NotificacionNotificacionBandejaPage.tsx`): antes existían 2 columnas separadas
+      // ('expandir'/'accion') que nunca aplicaban a la vez sobre la misma fila (una fila padre
+      // solo usa el ícono de expandir, una fila borrador/publicación solo usa los íconos de
+      // acción) — la columna 'accion' quedaba permanentemente en blanco en cada fila padre y
+      // 'directo', dejando un hueco vacío de 90px entre el ícono de expandir y "N° expediente".
+      // Se fusionan en una sola columna que decide qué renderizar según el tipo de fila.
       field: 'expandir',
-      headerName: '',
-      width: 56,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => {
-        const row = params.row
-        if (row.tipo !== 'padre') return null
-        if (cargandoIntentos.has(row.doc.idDocumentoAnalizado)) {
-          return <CircularProgress size={16} />
-        }
-        const puedeExpandir = row.doc.totalIntentos > 0
-        if (!puedeExpandir) return null
-        const expandido = expandidos.has(row.doc.idDocumentoAnalizado)
-        return (
-          <IconButton size="small" onClick={() => alternarExpansion(row.doc)} aria-label={expandido ? 'Colapsar intentos' : 'Expandir intentos'}>
-            {expandido ? <RemoveCircleOutlineIcon fontSize="small" /> : <AddCircleOutlineIcon fontSize="small" />}
-          </IconButton>
-        )
-      },
-    },
-    {
-      field: 'accion',
       headerName: '',
       width: 90,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
         const row = params.row
+        if (row.tipo === 'padre') {
+          if (cargandoIntentos.has(row.doc.idDocumentoAnalizado)) {
+            return <CircularProgress size={16} />
+          }
+          const puedeExpandir = row.doc.totalIntentos > 0
+          if (!puedeExpandir) return null
+          const expandido = expandidos.has(row.doc.idDocumentoAnalizado)
+          // 30/08/2026, pedido explícito del usuario (mismo criterio ya aplicado en
+          // `NotificacionNotificacionBandejaPage.tsx`, 3er ajuste, elegido explícitamente entre 4
+          // opciones vía AskUserQuestion): `PersonPinCircle` (pin de ubicación con silueta de
+          // persona) — el objetivo real de cada intento es "ubicar" al ciudadano, virtual o
+          // presencial, mismo término ("Ubicado"/"No ubicado") que ya usa el sistema. `Badge`
+          // mostrando cuántos registros tiene el documento (los 2 intentos directos + la fila de
+          // Publicación, si ya existe).
+          return (
+            <Tooltip title={expandido ? 'Colapsar intentos de notificación' : 'Ver intentos de notificación'}>
+              <IconButton
+                size="small"
+                className={DATA_GRID_ROW_ICON_NOTIFICACION_CLASS}
+                onClick={() => alternarExpansion(row.doc)}
+                aria-label={expandido ? 'Colapsar intentos' : 'Ver intentos de notificación'}
+              >
+                <Badge
+                  badgeContent={row.doc.totalIntentos}
+                  overlap="circular"
+                  max={9}
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      backgroundColor: '#6A4C93',
+                      color: '#fff',
+                      fontSize: '0.55rem',
+                      minWidth: 14,
+                      height: 14,
+                      padding: '0 2px',
+                    },
+                  }}
+                >
+                  {expandido ? <PersonPinCircleIcon fontSize="small" /> : <PersonPinCircleOutlinedIcon fontSize="small" />}
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )
+        }
+        if (row.tipo === 'directo') return null
         const procesando = procesandoFila === row.id
-        if (row.tipo === 'padre' || row.tipo === 'directo') return null
         if (row.tipo === 'borrador') {
           return (
             <Stack direction="row">
               <Tooltip title="Guardar">
                 <span>
-                  <IconButton size="small" disabled={procesando} onClick={() => guardarBorrador(row)}>
+                  <IconButton size="small" className={DATA_GRID_ROW_ICON_SAVE_CLASS} disabled={procesando} onClick={() => guardarBorrador(row)}>
                     <SaveOutlinedIcon fontSize="small" />
                   </IconButton>
                 </span>
@@ -672,14 +716,14 @@ export function NotificacionPublicacionBandejaPage() {
           <Stack direction="row">
             <Tooltip title="Guardar">
               <span>
-                <IconButton size="small" disabled={procesando} onClick={() => guardarPublicacion(row)}>
+                <IconButton size="small" className={DATA_GRID_ROW_ICON_SAVE_CLASS} disabled={procesando} onClick={() => guardarPublicacion(row)}>
                   <SaveOutlinedIcon fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="Eliminar">
               <span>
-                <IconButton size="small" disabled={procesando} onClick={() => handleEliminarPublicacion(row)}>
+                <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} disabled={procesando} onClick={() => handleEliminarPublicacion(row)}>
                   <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>
               </span>
@@ -693,7 +737,13 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'N° expediente',
       width: 190,
       sortable: false,
-      filterable: false,
+      // 28/08/2026, bug real corregido (pedido explícito del usuario: "el icono de Filters no está
+      // funcionando"): esta columna (y las 8 siguientes) leen `row.doc.x` en vez de un campo plano —
+      // sin `valueGetter`, el filtro no tiene ningún valor sobre el que operar, por eso `filterable`
+      // se había puesto en `false` desde el port inicial (mismo bug/mismo fix ya aplicado en
+      // `NotificacionNotificacionBandejaPage.tsx`). `valueGetter` extrae el valor real solo para la
+      // fila padre (las filas hijo/publicación/borrador no tienen `numeroExpediente` propio).
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.numeroExpediente : ''),
       // Mismo criterio ya establecido en Bandeja Notificación (ver Javadoc de esa página): las
       // columnas de intento se muestran DEBAJO de la fila principal (colSpan sobre toda la sección de
       // datos), no como columnas adicionales a la derecha.
@@ -811,7 +861,7 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'Clas. Documentos',
       width: 130,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.clasificacion : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.clasificacion : ''),
     },
     {
@@ -819,7 +869,7 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'Tipo documento',
       width: 190,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.tipoDocumento : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.tipoDocumento : ''),
     },
     {
@@ -827,7 +877,7 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'N° Documento',
       width: 140,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.numeroDocumento : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.numeroDocumento : ''),
     },
     {
@@ -835,7 +885,7 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'Fecha Emisión',
       width: 130,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? formatearFecha(row.doc.fechaDocumento) : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? formatearFecha(params.row.doc.fechaDocumento) : ''),
     },
     {
@@ -844,7 +894,7 @@ export function NotificacionPublicacionBandejaPage() {
       flex: 1,
       minWidth: 180,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.titular : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.titular : ''),
     },
     {
@@ -852,7 +902,7 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'Estado Final',
       width: 150,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? textoEstadoFinalPublicacion(row.doc) : ''),
       renderCell: (params) => {
         if (params.row.tipo !== 'padre') return null
         const doc = params.row.doc
@@ -865,7 +915,7 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'Estado doc.',
       width: 130,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? row.doc.estadoDocumento : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? params.row.doc.estadoDocumento : ''),
     },
     {
@@ -873,7 +923,7 @@ export function NotificacionPublicacionBandejaPage() {
       headerName: 'Fecha Publicación',
       width: 160,
       sortable: false,
-      filterable: false,
+      valueGetter: (_value, row) => (row.tipo === 'padre' ? formatearFecha(row.doc.fechaPublicacionNotif) : ''),
       renderCell: (params) => (params.row.tipo === 'padre' ? formatearFecha(params.row.doc.fechaPublicacionNotif) : ''),
     },
   ]
@@ -938,22 +988,27 @@ export function NotificacionPublicacionBandejaPage() {
         </Alert>
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 2, mb: 2 }}>
+      {/* 28/08/2026, pedido explícito del usuario en 2 pasadas: 1ra "que no sean 2 filas" (repeat(N,1fr)
+          fijo -- desbordaba horizontalmente en vez de envolver al angostar la ventana, "se ve fatal");
+          2da, tras verlo roto, "responsive real": `repeat(auto-fit, minmax(130px, 1fr))` -- mismo
+          130px que el nuevo `minWidth` de MetricCard (ver su Javadoc), permite que las tarjetas quepan
+          en 1 sola fila en pantallas normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
         <Box onClick={() => alternarFiltroKpi(null)} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Documentos" value={kpis.documentos} caption="Total en la bandeja" color={sdrercColors.info} />
+          <MetricCard label="Documentos" value={kpis.documentos} caption="Total en la bandeja" color={sdrercColors.info} active={filtroKpi === null} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('SIN_PUBLICACION')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Sin publicación registrar" value={kpis.sinPublicacion} caption="Aún no registrada" color={sdrercColors.warning} />
+          <MetricCard label="Sin publicación registrar" value={kpis.sinPublicacion} caption="Aún no registrada" color={sdrercColors.warning} active={filtroKpi === 'SIN_PUBLICACION'} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('PUBLICACION_REGISTRADA')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Publicación registrada" value={kpis.publicacionRegistrada} caption="Ya publicado" color={sdrercColors.success} />
+          <MetricCard label="Publicación registrada" value={kpis.publicacionRegistrada} caption="Ya publicado" color={sdrercColors.success} active={filtroKpi === 'PUBLICACION_REGISTRADA'} />
         </Box>
         <Box onClick={() => alternarFiltroKpi('VENCIDOS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} />
+          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} active={filtroKpi === 'VENCIDOS'} />
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, mb: 3, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filasConHijos}
           columns={columnas}
@@ -984,6 +1039,7 @@ export function NotificacionPublicacionBandejaPage() {
           getRowHeight={() => 'auto'}
           getRowClassName={(params) => ((params.row as FilaNotif).tipo !== 'padre' ? 'fila-intento' : '')}
           sx={{
+            ...dataGridBaseSx,
             '& .fila-intento': { bgcolor: sdrercColors.softBlue },
             '& .fila-intento .MuiDataGrid-cell': { py: 1 },
           }}
@@ -995,7 +1051,7 @@ export function NotificacionPublicacionBandejaPage() {
         activeWorkspaceId={activeWorkspaceId}
         onSelectWorkspace={setActiveWorkspaceId}
         onCloseWorkspace={cerrarWorkspace}
-        onSelectSubTab={() => {}}
+        onSelectSubTab={seleccionarSubTab}
       />
     </PageHeaderSticky>
   )

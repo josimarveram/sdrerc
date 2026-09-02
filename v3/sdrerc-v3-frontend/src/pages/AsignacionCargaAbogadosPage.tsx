@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Alert, Box, Button, LinearProgress, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import {
-  cargaTotal,
   enAnalisis,
   listarCargaAbogados,
   listarDocumentosPorAbogado,
@@ -12,10 +11,12 @@ import {
 } from '../api/asignacionApi'
 import { ApiError } from '../api/http'
 import { sdrercColors } from '../theme'
+import { dataGridBaseSx } from '../dataGridTheme'
+import { DataGridStandardToolbar } from '../components/DataGridStandardToolbar'
 import { MetricCard } from '../components/MetricCard'
 import { StatusBadge, diasBadgeTone } from '../components/StatusBadge'
 import { WorkspaceTabsDrawer, type Workspace } from '../components/WorkspaceTabsDrawer'
-import { primerDiaMesActualISO, hoyISO } from '../utils/fechas'
+import { primerDiaMesAnteriorISO, hoyISO } from '../utils/fechas'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { ASIGNACION_TABS } from '../layout/moduleTabs'
 
@@ -44,9 +45,9 @@ const COLOR_DETALLE = 'rgb(10, 118, 145)'
  *    de Análisis de cada abogado (`enAnalisis(item)`) contra el máximo del conjunto ya filtrado —
  *    permite ver de un vistazo quién está más cargado sin tener que leer/sumar las 4 subcolumnas
  *    numéricas fila por fila.
- * 3. **KPI "Carga promedio"** (7mo KPI, sin equivalente en V2): `solicitudes / abogados` — punto de
- *    referencia rápido para que el supervisor juzgue si un abogado puntual está por encima/debajo
- *    del promedio del equipo, sin tener que calcularlo mentalmente.
+ * 3. ~~KPI "Carga promedio" (7mo KPI, sin equivalente en V2): `solicitudes / abogados`~~ — **eliminado
+ *    por completo el 31/08/2026, pedido explícito del usuario** (ver bloque de abajo); se deja esta
+ *    entrada tachada por el valor histórico de por qué se había agregado, no porque siga existiendo.
  * 4. **Resaltado de fila con vencidos** (`getRowClassName`, mismo mecanismo ya usado para filas
  *    asociadas en otras bandejas): un abogado con `vencidos > 0` se ve en rojo suave de entrada, sin
  *    tener que hacer clic en el KPI "Vencidos" primero para notarlo. Orden inicial de la grilla
@@ -63,6 +64,37 @@ const COLOR_DETALLE = 'rgb(10, 118, 145)'
  * Registro/Asignación), no a Fecha Vencimiento — al ser un campo orientado al pasado, el default
  * "01 del mes actual → hoy" vuelve a tener sentido y se restauró (`listarIdsUsuarioConSolicitudEnRango`,
  * antes `...ConVencimientoEnRango`).
+ *
+ * **31/08/2026, 3 pedidos explícitos del usuario, sobre esta misma bandeja:**
+ * 1. **KPIs renombrados para que la unidad de medida sea inequívoca** (reclamo puntual: "Con Carga"
+ *    no aclaraba si contaba abogados o solicitudes) — aplicado a los 7 originales, no solo al que se
+ *    reclamó: "Abogados"→"Total de abogados", "Con carga"/"Sin carga"→"Abogados con carga"/"Abogados
+ *    sin carga" (ambos ya eran conteos de abogados, solo faltaba decirlo), "Solicitudes"→"Total de
+ *    solicitudes", "Por vencer"/"Vencidos"→"Expedientes por vencer"/"Expedientes vencidos" (el VALOR
+ *    mostrado en estas 2 últimas es un conteo de EXPEDIENTES, suma de `item.porVencer`/
+ *    `item.vencidos` entre abogados — pero el clic filtra ABOGADOS con al menos 1; el nombre nuevo
+ *    más el caption "· filtra abogados" hacen explícita esa distinción de unidad).
+ * 2. **Los KPIs que antes no hacían nada al hacer clic ya filtran algo real**: "Total de
+ *    abogados"/"Total de solicitudes" limpian cualquier filtro activo (`setFiltroKpi(null)`, mismo
+ *    gesto de "reset" ya usado como convención para tarjetas de tipo "Total" en el resto del
+ *    sistema — 2 tarjetas distintas ejecutando la misma acción no es un problema, solo 2 puntos de
+ *    entrada al mismo estado "sin filtro").
+ *    **Corrección, mismo día, pedido explícito del usuario**: el 7mo KPI de esta pasada ("Carga
+ *    promedio por abogado", con un filtro `SOBRE_PROMEDIO`) se **eliminó por completo** — el usuario
+ *    lo consideró innecesario. De paso, "Total de solicitudes" pasó de sumar la carga TOTAL
+ *    (Análisis+Verificación+Ejecución) a sumar ÚNICAMENTE la carga de **Análisis**
+ *    (`enAnalisis(item)`, mismo alcance que las 4 subcolumnas visibles de la grilla y que el panel
+ *    "Detalle de carga") — quedan 6 KPIs en total, no 7.
+ * 3. **"Duplicados confirmados" ya no se cuentan como carga aparte** (el usuario reportó, con razón,
+ *    que un expediente duplicado ya asociado a un principal no debería sumar una unidad más de carga
+ *    al abogado — es el mismo caso, no un expediente adicional): fix real en el backend
+ *    (`CargaLaboralAbogadoDAO#CONDICION_CARGA_REAL`, ver Javadoc de esa constante), no en este
+ *    archivo — las 4 subcolumnas de Análisis, Por vencer/Vencidos, y el panel "Detalle de carga" ya
+ *    excluyen tanto (a) el lado "duplicado ya asociado" de un `EXPEDIENTE_RELACION` confirmado como
+ *    (b) cualquier expediente sin su propia hoja de envío registrada en Asignación (pedido explícito
+ *    del usuario: "debería contabilizar los que tienen su hoja de envío... esa sería la carga real
+ *    de los abogados") — verificado con `SELECT` de solo lectura contra datos reales antes de
+ *    aplicar el fix, ver `v3/CLAUDE.md` para las cifras exactas del antes/después por etapa.
  */
 export function AsignacionCargaAbogadosPage() {
   const [cargas, setCargas] = useState<CargaLaboralAbogado[]>([])
@@ -70,7 +102,7 @@ export function AsignacionCargaAbogadosPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [texto, setTexto] = useState('')
-  const [desde, setDesde] = useState(primerDiaMesActualISO())
+  const [desde, setDesde] = useState(primerDiaMesAnteriorISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [abogado, setAbogado] = useState('')
   const [supervisor, setSupervisor] = useState('')
@@ -125,7 +157,7 @@ export function AsignacionCargaAbogadosPage() {
   }
 
   function handleLimpiar() {
-    const desdeDefault = primerDiaMesActualISO()
+    const desdeDefault = primerDiaMesAnteriorISO()
     const hastaDefault = hoyISO()
     setTexto('')
     setDesde(desdeDefault)
@@ -142,6 +174,28 @@ export function AsignacionCargaAbogadosPage() {
     () => Array.from(new Set(cargas.map((c) => c.supervisor).filter(Boolean))).sort(),
     [cargas],
   )
+
+  // 31/08/2026, mismo día, corrección pedida explícitamente por el usuario sobre la pasada anterior:
+  // "Total de solicitudes" pasa de sumar la carga total (Análisis+Verificación+Ejecución) a sumar
+  // ÚNICAMENTE la carga de Análisis (`enAnalisis`) — mismo alcance que las 4 subcolumnas visibles de
+  // la grilla y que el panel "Detalle de carga". El KPI "Carga promedio por abogado" (y su filtro
+  // `SOBRE_PROMEDIO`, agregado en la pasada anterior del mismo día) se eliminó por completo, pedido
+  // explícito del usuario.
+  const kpis = useMemo(() => {
+    let conCarga = 0
+    let sinCarga = 0
+    let solicitudes = 0
+    let porVencer = 0
+    let vencidos = 0
+    for (const item of cargas) {
+      solicitudes += enAnalisis(item)
+      porVencer += item.porVencer
+      vencidos += item.vencidos
+      if (enAnalisis(item) > 0) conCarga++
+      else sinCarga++
+    }
+    return { abogados: cargas.length, conCarga, sinCarga, solicitudes, porVencer, vencidos }
+  }, [cargas])
 
   const filas = useMemo(() => {
     const textoNorm = texto.trim().toUpperCase()
@@ -160,23 +214,6 @@ export function AsignacionCargaAbogadosPage() {
   }, [cargas, texto, abogado, supervisor, idsRangoFecha, filtroKpi, limite])
 
   const maxEnAnalisisFiltrado = useMemo(() => Math.max(1, ...filas.map((f) => enAnalisis(f))), [filas])
-
-  const kpis = useMemo(() => {
-    let conCarga = 0
-    let sinCarga = 0
-    let solicitudes = 0
-    let porVencer = 0
-    let vencidos = 0
-    for (const item of cargas) {
-      solicitudes += cargaTotal(item)
-      porVencer += item.porVencer
-      vencidos += item.vencidos
-      if (enAnalisis(item) > 0) conCarga++
-      else sinCarga++
-    }
-    const promedio = cargas.length > 0 ? Math.round((solicitudes / cargas.length) * 10) / 10 : 0
-    return { abogados: cargas.length, conCarga, sinCarga, solicitudes, porVencer, vencidos, promedio }
-  }, [cargas])
 
   function alternarFiltro(valor: FiltroKpi) {
     setFiltroKpi((prev) => (prev === valor ? null : valor))
@@ -245,7 +282,7 @@ export function AsignacionCargaAbogadosPage() {
                       Supervisor: <strong>{w.abogado.supervisor || '-'}</strong>
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Carga total: <strong>{cargaTotal(w.abogado)}</strong>
+                      Carga total (Análisis): <strong>{enAnalisis(w.abogado)}</strong>
                     </Typography>
                   </Stack>
                   {estado?.cargando ? (
@@ -304,7 +341,20 @@ export function AsignacionCargaAbogadosPage() {
     { field: 'analisisPorRecibir', headerName: 'Por recibir', width: 110 },
     { field: 'analisisEnProceso', headerName: 'En análisis', width: 110 },
     { field: 'analisisObservado', headerName: 'Observado', width: 110 },
-    { field: 'analisisCartaIntermedia', headerName: 'Carta intermedia', width: 150 },
+    // 31/08/2026, pedido explícito del usuario: "Carta intermedia" (heurística sobre documentos
+    // INTERMEDIO ya respondidos) pasa a ser "Derivado", contando directamente el estado real
+    // ANALISIS/DERIVADO (ver Javadoc de `CargaLaboralAbogadoDAO#subconsultaAnalisisDerivado`).
+    { field: 'analisisDerivado', headerName: 'Derivado', width: 110 },
+    // 31/08/2026, pedido explícito del usuario: columna "Totales" nueva, entre "Derivado" y "Carga
+    // relativa" — suma numérica simple de las 4 subcolumnas de Análisis (mismo valor que ya calcula
+    // `enAnalisis(row)` para la barra de "Carga relativa" de al lado, ahora también visible como
+    // número propio, sin tener que sumar mentalmente las 4 columnas).
+    {
+      field: 'totales',
+      headerName: 'Totales',
+      width: 100,
+      valueGetter: (_value, row) => enAnalisis(row),
+    },
     {
       field: 'cargaRelativa',
       headerName: 'Carga relativa',
@@ -412,26 +462,47 @@ export function AsignacionCargaAbogadosPage() {
 
       {/* KPIs (filtro en memoria sobre la lista ya cargada, igual que V2) — ya no comparten Paper
           con el buscador: el buscador quedó sticky en la Fila 3 del header, los KPIs se desplazan
-          con el resto del cuerpo (13/08/2026, pedido explícito del usuario). */}
-      <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <MetricCard label="Abogados" value={kpis.abogados} caption="Activos" color={sdrercColors.info} />
+          con el resto del cuerpo (13/08/2026, pedido explícito del usuario).
+          28/08/2026, 2 pasadas: 1ra "que no sean 2 filas" (`Stack flexWrap` reemplazado por `Box`
+          grid con `repeat(7,1fr)` fijo — desbordaba horizontalmente en vez de envolver al angostar
+          la ventana, "se ve fatal"); 2da, tras verlo roto, "responsive real":
+          `repeat(auto-fit, minmax(130px, 1fr))` — mismo 130px que el nuevo `minWidth` de
+          `MetricCard` (ver su Javadoc), permite que las tarjetas quepan en 1 sola fila en pantallas
+          normales Y envuelvan (no desborden) en pantallas angostas. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mb: 2 }}>
+        <Box onClick={() => setFiltroKpi(null)} sx={{ cursor: 'pointer' }}>
+          <MetricCard label="Total de abogados" value={kpis.abogados} caption="Activos (rol Abogado/Analista)" color={sdrercColors.info} active={filtroKpi === null} />
+        </Box>
         <Box onClick={() => alternarFiltro('CON_CARGA')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Con carga" value={kpis.conCarga} caption="Con solicitudes en Análisis" color={sdrercColors.success} />
+          <MetricCard label="Abogados con carga" value={kpis.conCarga} caption="Con solicitudes en Análisis" color={sdrercColors.success} active={filtroKpi === 'CON_CARGA'} />
         </Box>
         <Box onClick={() => alternarFiltro('SIN_CARGA')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Sin carga" value={kpis.sinCarga} caption="Sin solicitudes en Análisis" color={sdrercColors.warning} />
+          <MetricCard label="Abogados sin carga" value={kpis.sinCarga} caption="Sin solicitudes en Análisis" color={sdrercColors.warning} active={filtroKpi === 'SIN_CARGA'} />
         </Box>
-        <MetricCard label="Solicitudes" value={kpis.solicitudes} caption="Carga total asignada" color={sdrercColors.primary} />
-        <MetricCard label="Carga promedio" value={kpis.promedio} caption="Solicitudes por abogado" color={sdrercColors.info} />
+        <Box onClick={() => setFiltroKpi(null)} sx={{ cursor: 'pointer' }}>
+          <MetricCard label="Total de solicitudes" value={kpis.solicitudes} caption="En Análisis" color={sdrercColors.primary} active={filtroKpi === null} />
+        </Box>
         <Box onClick={() => alternarFiltro('POR_VENCER')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Por vencer" value={kpis.porVencer} caption="0 a 5 días hábiles" color={sdrercColors.warning} />
+          <MetricCard
+            label="Expedientes por vencer"
+            value={kpis.porVencer}
+            caption="0-5 días hábiles · filtra abogados"
+            color={sdrercColors.warning}
+            active={filtroKpi === 'POR_VENCER'}
+          />
         </Box>
         <Box onClick={() => alternarFiltro('VENCIDOS')} sx={{ cursor: 'pointer' }}>
-          <MetricCard label="Vencidos" value={kpis.vencidos} caption="Plazo excedido" color={sdrercColors.error} />
+          <MetricCard
+            label="Expedientes vencidos"
+            value={kpis.vencidos}
+            caption="Plazo excedido · filtra abogados"
+            color={sdrercColors.error}
+            active={filtroKpi === 'VENCIDOS'}
+          />
         </Box>
-      </Stack>
+      </Box>
 
-      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2 }}>
+      <Box sx={{ bgcolor: sdrercColors.backgroundPaper, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 3px rgba(16,24,40,0.08), 0 1px 2px rgba(16,24,40,0.04)' }}>
         <DataGrid
           rows={filas}
           columns={columnas}
@@ -441,6 +512,7 @@ export function AsignacionCargaAbogadosPage() {
           autoHeight
           disableRowSelectionOnClick
           showToolbar
+          slots={{ toolbar: DataGridStandardToolbar }}
           onRowDoubleClick={(params) => abrirWorkspace(params.row as CargaLaboralAbogado)}
           pageSizeOptions={[25, 50, 100]}
           initialState={{
@@ -448,7 +520,7 @@ export function AsignacionCargaAbogadosPage() {
             sorting: { sortModel: [{ field: 'analisisEnProceso', sort: 'desc' }] },
           }}
           getRowClassName={(params) => (params.row.vencidos > 0 ? 'fila-vencida' : '')}
-          sx={{ '& .fila-vencida': { bgcolor: sdrercColors.softRed } }}
+          sx={{ ...dataGridBaseSx, '& .fila-vencida': { bgcolor: sdrercColors.softRed } }}
         />
       </Box>
 

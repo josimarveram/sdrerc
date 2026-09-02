@@ -33,6 +33,7 @@ import {
   type UsuarioAsignableEquipo,
 } from '../api/adminEquipoJuridicoApi'
 import { ApiError, descargarBlob } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
 import { StatusBadge } from '../components/StatusBadge'
 import { PageHeaderSticky } from '../layout/PageHeaderSticky'
 import { ADMIN_EQUIPO_JURIDICO_TABS } from '../layout/moduleTabs'
@@ -173,6 +174,7 @@ export function AdminPersonalPorSupervisorPage() {
 }
 
 function DlgExcelSupervision({ onClose, onImportado }: { onClose: () => void; onImportado: () => void }) {
+  const { confirm: confirmDialog } = useAppDialog()
   const inputRef = useRef<HTMLInputElement>(null)
   const [previsualizacion, setPrevisualizacion] = useState<EquipoSupervisionImportItem[] | null>(null)
   const [resultado, setResultado] = useState<EquipoSupervisionImportResultado[] | null>(null)
@@ -216,7 +218,10 @@ function DlgExcelSupervision({ onClose, onImportado }: { onClose: () => void; on
     if (!previsualizacion) return
     const incluirAdvertencias =
       resumen && resumen.advertencias > 0
-        ? window.confirm(`Hay ${resumen.advertencias} fila(s) con advertencia. ¿Desea incluirlas en la importación?`)
+        ? await confirmDialog(`Hay ${resumen.advertencias} fila(s) con advertencia. ¿Desea incluirlas en la importación?`, {
+            tone: 'warning',
+            confirmLabel: 'Incluir',
+          })
         : true
     setCargando(true)
     setError(null)

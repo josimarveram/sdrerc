@@ -61,7 +61,10 @@ export const EJECUCION_TABS: PageHeaderTab[] = [{ label: 'Bandeja Ejecución', p
  * incluya).
  */
 export const NOTIFICACION_TABS: PageHeaderTab[] = [
-  { label: 'Bandeja Asignación', path: '/notificacion/asignacion', requiredPermiso: 'BANDEJA_NOTIFICACION_ASIGNACION' },
+  // 28/08/2026, pedido explícito del usuario: renombrada de "Bandeja Asignación" a "Bandeja de
+  // supervisión" — el código/ruta/permiso NO cambian (siguen siendo *_ASIGNACION), solo el texto
+  // visible; el rol real de esta pestaña es la supervisión de notificaciones, no solo asignar.
+  { label: 'Bandeja de supervisión', path: '/notificacion/asignacion', requiredPermiso: 'BANDEJA_NOTIFICACION_ASIGNACION' },
   { label: 'Bandeja Validación', path: '/notificacion/validacion', requiredPermiso: 'BANDEJA_NOTIFICACION_VALIDACION' },
   { label: 'Bandeja Notificación', path: '/notificacion/notificacion', requiredPermiso: 'BANDEJA_NOTIFICACION_NOTIFICACION' },
   { label: 'Bandeja de publicación', path: '/notificacion/publicacion', requiredPermiso: 'BANDEJA_NOTIFICACION_PUBLICACION' },

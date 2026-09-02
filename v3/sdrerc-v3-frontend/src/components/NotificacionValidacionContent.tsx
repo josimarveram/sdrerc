@@ -24,8 +24,12 @@ import {
   registrarResultadoValidacion,
   type NotificacionAsignacionDocumento,
 } from '../api/notificacionValidacionApi'
+import { listarEstadosDocumentoNotificacion } from '../api/notificacionAsignacionApi'
 import type { EquipoAsignacion, UsuarioAsignable } from '../api/asignacionApi'
+import type { CatalogoItem } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
+import { DATA_GRID_ROW_ICON_SAVE_CLASS } from '../dataGridTheme'
 import { SectionCard } from './RegistroExpedienteForm'
 
 interface NotificacionValidacionContentProps {
@@ -46,13 +50,21 @@ interface NotificacionValidacionContentProps {
  * referencia de diseño, pedido explícito del usuario): grilla de documentos → resultado → envío al
  * siguiente responsable**:
  * 1. **"Documentos a validar"** — MISMAS columnas que "Documentos para emitir" de
- *    `NotificacionAsignacionContent.tsx` (ícono Guardar al inicio, Tipo documento, N° Documento,
- *    Estado documento, Fecha Emisión), pero únicamente "Estado documento" es editable (pedido
- *    explícito del usuario) — combo con una sola opción real ("Validado", el único cambio de estado
- *    válido desde acá); N° Documento/Fecha Emisión se muestran de solo lectura para mantener la
- *    misma forma visual sin habilitar una edición que no aplica en esta bandeja. Guardar llama
- *    `registrarResultadoValidacion` con `APROBADO` directo, atajo rápido sin pasar por el bloque de
- *    abajo.
+ *    `NotificacionSupervisionContent.tsx` (ícono Guardar al inicio, Tipo documento, N° Documento,
+ *    Estado documento, Fecha Emisión); únicamente "Estado documento" es editable (pedido explícito
+ *    del usuario). **02/09/2026, pedido explícito del usuario, corrige un bug real**: el combo mostraba
+ *    siempre el valor fijo "Validado" sin importar el estado real del documento (ej. "En despacho"),
+ *    con una sola opción seleccionable — se reemplazó por el mismo patrón "valor actual + catálogo"
+ *    ya usado en `NotificacionSupervisionContent.tsx` (`listarEstadosDocumentoNotificacion`), acotado
+ *    a `EN_DESPACHO`/`VALIDADO`/`OBSERVADO` (sin `EMITIDO`, exclusivo del panel de Supervisión — acá
+ *    nunca se emite, solo se valida u observa). N° Documento/Fecha Emisión se mantienen de solo
+ *    lectura (mismo motivo original: no aplican a esta bandeja). Guardar mapea la selección de la
+ *    fila a la acción real: `VALIDADO`→`registrarResultadoValidacion(...,'APROBADO','')` (atajo
+ *    rápido sin pasar por "Registro de la validación"); `OBSERVADO`→misma llamada con `'OBSERVADO'`
+ *    y el motivo tomado del campo "Comentario" de "Registro de la validación" (exige llenarlo primero,
+ *    mismo mensaje de validación que ya usa `handleRegistrarValidacion`); `EN_DESPACHO` es puramente
+ *    informativo (el estado de llegada, antes de cualquier decisión) — Guardar avisa que no es una
+ *    acción válida en vez de intentar una transición que no existe en el backend.
  * 2. **"Registro de la validación"**: combo Resultado (`Validado`/`Observado`, códigos reales
  *    `APROBADO`/`OBSERVADO`) + Comentario obligatorio si Observado + botón "Registrar Validación".
  * 3. **"Enviar a supervisión"** (NUEVO, 22/08/2026 — pedido explícito del usuario, no existe en V2
@@ -64,10 +76,12 @@ interface NotificacionValidacionContentProps {
  *    supervisión se deriva el documento, en vez de dejarlo sin responsable puntual.
  */
 export function NotificacionValidacionContent({ idExpediente, documentoFoco, onActualizado }: NotificacionValidacionContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [documentos, setDocumentos] = useState<NotificacionAsignacionDocumento[]>([])
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [procesandoFila, setProcesandoFila] = useState<number | null>(null)
+  const [estadosDocumento, setEstadosDocumento] = useState<CatalogoItem[]>([])
 
   const [resultado, setResultado] = useState<'APROBADO' | 'OBSERVADO'>('APROBADO')
   const [comentario, setComentario] = useState('')
@@ -106,6 +120,7 @@ export function NotificacionValidacionContent({ idExpediente, documentoFoco, onA
 
   useEffect(() => {
     listarEquipoSupervision().then(setEquipos).catch(() => setEquipos([]))
+    listarEstadosDocumentoNotificacion().then(setEstadosDocumento).catch(() => setEstadosDocumento([]))
   }, [])
 
   const equipoSupervision = equipos[0] ?? null
@@ -127,11 +142,24 @@ export function NotificacionValidacionContent({ idExpediente, documentoFoco, onA
 
   const usuarioSeleccionado = useMemo(() => usuarios.find((u) => String(u.idUsuario) === idUsuarioDestino) ?? null, [usuarios, idUsuarioDestino])
 
+  function actualizarDocumentoLocal(id: number, cambios: Partial<NotificacionAsignacionDocumento>) {
+    setDocumentos((prev) => prev.map((d) => (d.idDocumentoAnalizado === id ? { ...d, ...cambios } : d)))
+  }
+
   async function handleGuardarFila(doc: NotificacionAsignacionDocumento) {
-    setProcesandoFila(doc.idDocumentoAnalizado)
     setError(null)
+    if (doc.estadoDocumentoCodigo === 'EN_DESPACHO') {
+      setError('"En despacho" es solo informativo — elija "Validado" u "Observado" para registrar un resultado.')
+      return
+    }
+    if (doc.estadoDocumentoCodigo === 'OBSERVADO' && !comentario.trim()) {
+      setError('Ingrese el motivo en el campo "Comentario" de "Registro de la validación" antes de guardar como Observado.')
+      return
+    }
+    setProcesandoFila(doc.idDocumentoAnalizado)
     try {
-      await registrarResultadoValidacion(doc.idDocumentoAnalizado, 'APROBADO', '')
+      const resultadoFila = doc.estadoDocumentoCodigo === 'OBSERVADO' ? 'OBSERVADO' : 'APROBADO'
+      await registrarResultadoValidacion(doc.idDocumentoAnalizado, resultadoFila, resultadoFila === 'OBSERVADO' ? comentario : '')
       cargar()
       onActualizado()
     } catch (e) {
@@ -148,7 +176,13 @@ export function NotificacionValidacionContent({ idExpediente, documentoFoco, onA
       setErrorRegistro('Ingrese un comentario con el motivo de la observación.')
       return
     }
-    if (!window.confirm(`¿Registrar la validación como "${resultado === 'APROBADO' ? 'Validado' : 'Observado'}"?`)) return
+    if (
+      !(await confirmDialog(`¿Registrar la validación como "${resultado === 'APROBADO' ? 'Validado' : 'Observado'}"?`, {
+        tone: 'info',
+        confirmLabel: 'Registrar',
+      }))
+    )
+      return
     setProcesando(true)
     try {
       await registrarResultadoValidacion(documentoFoco.idDocumentoAnalizado, resultado, comentario)
@@ -174,7 +208,7 @@ export function NotificacionValidacionContent({ idExpediente, documentoFoco, onA
       setErrorSupervision('Seleccione un usuario destino.')
       return
     }
-    if (!window.confirm('¿Enviar este documento a supervisión?')) return
+    if (!(await confirmDialog('¿Enviar este documento a supervisión?', { tone: 'info', confirmLabel: 'Enviar' }))) return
     setProcesandoSupervision(true)
     try {
       await enviarASupervision(documentoFoco.idDocumentoAnalizado, Number(idEquipoDestino), Number(idUsuarioDestino))
@@ -214,7 +248,12 @@ export function NotificacionValidacionContent({ idExpediente, documentoFoco, onA
                   <TableCell>
                     <Tooltip title="Guardar">
                       <span>
-                        <IconButton size="small" disabled={procesandoFila === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
+                        <IconButton
+                          size="small"
+                          className={DATA_GRID_ROW_ICON_SAVE_CLASS}
+                          disabled={procesandoFila === doc.idDocumentoAnalizado}
+                          onClick={() => handleGuardarFila(doc)}
+                        >
                           <SaveOutlinedIcon fontSize="small" />
                         </IconButton>
                       </span>
@@ -223,8 +262,26 @@ export function NotificacionValidacionContent({ idExpediente, documentoFoco, onA
                   <TableCell>{doc.tipoDocumento}</TableCell>
                   <TableCell>{doc.numeroDocumento || '-'}</TableCell>
                   <TableCell sx={{ minWidth: 160 }}>
-                    <TextField select size="small" fullWidth value="VALIDADO" disabled={procesandoFila === doc.idDocumentoAnalizado}>
-                      <MenuItem value="VALIDADO">Validado</MenuItem>
+                    <TextField
+                      select
+                      size="small"
+                      fullWidth
+                      disabled={procesandoFila === doc.idDocumentoAnalizado}
+                      value={doc.estadoDocumentoCodigo}
+                      onChange={(e) => {
+                        const nuevoCodigo = e.target.value
+                        const nombre = estadosDocumento.find((op) => op.codigo === nuevoCodigo)?.nombre || nuevoCodigo
+                        actualizarDocumentoLocal(doc.idDocumentoAnalizado, { estadoDocumentoCodigo: nuevoCodigo, estadoDocumento: nombre })
+                      }}
+                    >
+                      <MenuItem value={doc.estadoDocumentoCodigo}>{doc.estadoDocumento || doc.estadoDocumentoCodigo}</MenuItem>
+                      {estadosDocumento
+                        .filter((op) => op.codigo !== doc.estadoDocumentoCodigo && op.codigo !== 'EMITIDO')
+                        .map((op) => (
+                          <MenuItem key={op.codigo} value={op.codigo ?? ''}>
+                            {op.nombre}
+                          </MenuItem>
+                        ))}
                     </TextField>
                   </TableCell>
                   <TableCell>{doc.fechaDocumento ?? '-'}</TableCell>

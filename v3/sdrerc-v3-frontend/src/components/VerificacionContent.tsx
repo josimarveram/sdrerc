@@ -31,6 +31,9 @@ import type { EquipoAsignacion, UsuarioAsignable } from '../api/asignacionApi'
 import { listarEstadosDocumentoAnalisis, type DocumentoAnalizado } from '../api/analisisApi'
 import type { CatalogoItem } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
+import { hoyISO } from '../utils/fechas'
+import { DATA_GRID_ROW_ICON_SAVE_CLASS } from '../dataGridTheme'
 import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
 
@@ -46,6 +49,20 @@ const ETIQUETA_DESTINO: Record<string, string> = {
   EQ_EJECUCION: 'Enviar a Ejecución',
   EQ_SUPERVISION: 'Enviar a Supervisión',
 }
+
+// 01/09/2026, bug real corregido (pedido explícito del usuario): `WorkspaceTabsDrawer` solo
+// renderiza el `content` de la subpestaña ACTIVA — al cambiar a "Datos" y volver a "Verificar",
+// este componente se DESMONTA y se vuelve a MONTAR desde cero, así que un `useState` local nunca
+// puede sobrevivir ese viaje. La fotografía "documentos ya emitidos al abrir" (`idsYaEmitidosAlAbrir`,
+// ver su Javadoc más abajo) necesita sobrevivir exactamente ese remount para no volver a capturar,
+// como si fueran "ya emitidos desde antes", documentos que el propio usuario acaba de guardar como
+// Emitido en la sesión actual (ej. una Resolución) — antes de este fix, cualquier ida y vuelta entre
+// subpestañas bloqueaba también esos documentos recién tocados, no solo los que de verdad ya venían
+// cerrados de un módulo anterior (ej. el Informe de Análisis). Cache a nivel de MÓDULO (no de
+// componente): sobrevive al desmontaje de React porque vive en memoria del proceso del navegador,
+// no en el árbol de componentes — se descarta solo si el usuario recarga la página completa (mismo
+// costo aceptado que otros cachés en memoria de este proyecto, acotado por expediente).
+const idsYaEmitidosAlAbrirPorExpediente = new Map<number, Set<number>>()
 
 /**
  * Contenido de la subpestaña "Verificar" del workspace multipestañas de la Bandeja Verificación.
@@ -119,8 +136,17 @@ const ETIQUETA_DESTINO: Record<string, string> = {
  * documento es de solo lectura acá (a diferencia de Análisis, donde es editable); "Comentario"
  * escribe en la misma columna `descripcion` que en Análisis. La tabla hija "Documentos de respuesta"
  * es enteramente de solo lectura, sin ícono Guardar, igual que V2.
+ *
+ * **2 fixes reales, 01/09/2026, pedido explícito del usuario**: (1) el combo "Estado documento" ya
+ * autocompleta "Fecha Emisión" con la fecha de hoy al elegir "Emitido" (y la limpia con cualquier
+ * otro valor) — mismo criterio ya vigente en Análisis/Ejecución, que faltaba acá. (2) el bloqueo de
+ * fila (`docEmitido`) ya NO se recalcula en cada remount del componente al cambiar de subpestaña —
+ * ver `idsYaEmitidosAlAbrirPorExpediente` (cache a nivel de módulo, arriba) — y además se combina
+ * con `!puedeRegistrar` (todo se bloquea sin excepción recién cuando la verificación YA fue
+ * registrada, nunca antes).
  */
 export function VerificacionContent({ expediente, onActualizado }: VerificacionContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [resultado, setResultado] = useState<'APROBADO' | 'OBSERVADO'>('APROBADO')
   const [comentario, setComentario] = useState('')
   const [descripcionObservacion, setDescripcionObservacion] = useState('')
@@ -198,7 +224,7 @@ export function VerificacionContent({ expediente, onActualizado }: VerificacionC
     setErrorResultado(null)
     setMensajeDestino(null)
     setErrorDestino(null)
-    recargarDocumentos()
+    recargarDocumentos(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expediente.idExpediente])
 
@@ -222,10 +248,42 @@ export function VerificacionContent({ expediente, onActualizado }: VerificacionC
       .catch(() => setUsuarios([]))
   }, [idEquipoDestino])
 
-  function recargarDocumentos() {
+  // 28/08/2026, pedido explícito del usuario, corrige el fix anterior (mismo día): bloquear por
+  // `estadoDocumentoCodigo === 'EMITIDO'` en vivo bloqueaba la fila EN EL MOMENTO de elegir "Emitido"
+  // en el combo, antes incluso de completar los datos y sin haber presionado Guardar — dentro de ESTE
+  // módulo, mientras el usuario sigue trabajando el documento, nunca debe bloquearse, sin importar el
+  // valor que tenga el combo en ese instante. Solo debe bloquearse un documento que YA estaba
+  // `EMITIDO` cuando el panel se abrió (ej. el Informe que Análisis, un módulo anterior, ya cerró
+  // antes de que el expediente llegara a Verificación) — nunca uno que el propio usuario recién marcó
+  // así en la sesión actual. `idsYaEmitidosAlAbrir` es una fotografía que se toma UNA SOLA VEZ por
+  // expediente (cacheada en `idsYaEmitidosAlAbrirPorExpediente`, ver Javadoc del módulo arriba — NO
+  // en un `useState` local, que no sobrevive el remount al cambiar de subpestaña); los recargos
+  // posteriores tras Guardar (`recargarDocumentos()`, sin el flag) refrescan `documentos` pero NUNCA
+  // vuelven a calcular esa fotografía, así que un documento recién emitido en esta misma sesión de
+  // verificación (ej. una Resolución) sigue editable hasta que se registre la verificación — ver
+  // `docEmitido` más abajo, que además bloquea TODO sin excepción una vez que `!puedeRegistrar`
+  // (verificación ya registrada), momento en el que la fotografía deja de importar.
+  const [idsYaEmitidosAlAbrir, setIdsYaEmitidosAlAbrir] = useState<Set<number>>(new Set())
+
+  function recargarDocumentos(actualizarFotografiaInicial = false) {
     setDocumentosLoading(true)
     listarDocumentosVerificados(expediente.idExpediente)
-      .then(setDocumentos)
+      .then((data) => {
+        setDocumentos(data)
+        if (actualizarFotografiaInicial) {
+          if (!idsYaEmitidosAlAbrirPorExpediente.has(expediente.idExpediente)) {
+            idsYaEmitidosAlAbrirPorExpediente.set(
+              expediente.idExpediente,
+              new Set(
+                data
+                  .filter((d) => d.nivel === 0 && d.estadoDocumentoCodigo === 'EMITIDO')
+                  .map((d) => d.idDocumentoAnalizado as number),
+              ),
+            )
+          }
+          setIdsYaEmitidosAlAbrir(idsYaEmitidosAlAbrirPorExpediente.get(expediente.idExpediente) ?? new Set())
+        }
+      })
       .catch(() => setDocumentos([]))
       .finally(() => setDocumentosLoading(false))
   }
@@ -265,7 +323,10 @@ export function VerificacionContent({ expediente, onActualizado }: VerificacionC
       return
     }
 
-    const confirmado = window.confirm('Se registrará el resultado de la verificación. El expediente no se moverá todavía: use "Destino operativo" después para enviarlo.\n¿Desea continuar?')
+    const confirmado = await confirmDialog(
+      'Se registrará el resultado de la verificación. El expediente no se moverá todavía: use "Destino operativo" después para enviarlo.',
+      { tone: 'info', confirmLabel: 'Registrar' },
+    )
     if (!confirmado) return
 
     setProcesando(true)
@@ -275,6 +336,11 @@ export function VerificacionContent({ expediente, onActualizado }: VerificacionC
           ? await registrarObservado(expediente.idExpediente, comentario, descripcionObservacion)
           : await registrarAprobado(expediente.idExpediente, comentario)
       setMensajeResultado(resp.mensaje)
+      // La verificación ya quedó registrada (`puedeRegistrar` pasará a `false`, bloqueando todo el
+      // bloque sin excepción vía `docEmitido`) — se descarta la fotografía cacheada para que, si este
+      // expediente vuelve a pasar por Verificación más adelante (ej. devuelto de nuevo desde otro
+      // módulo), la próxima visita tome una fotografía fresca en vez de reutilizar esta ya vencida.
+      idsYaEmitidosAlAbrirPorExpediente.delete(expediente.idExpediente)
       onActualizado?.()
     } catch (e) {
       setErrorResultado(e instanceof ApiError ? e.message : 'No se pudo registrar la verificación.')
@@ -292,8 +358,9 @@ export function VerificacionContent({ expediente, onActualizado }: VerificacionC
       return
     }
 
-    const confirmado = window.confirm(
-      `Se ${ETIQUETA_DESTINO[equipoDestinoSeleccionado.codigo].toLowerCase()} el expediente ${expediente.numeroExpediente}.\n¿Desea continuar?`,
+    const confirmado = await confirmDialog(
+      `Se ${ETIQUETA_DESTINO[equipoDestinoSeleccionado.codigo].toLowerCase()} el expediente ${expediente.numeroExpediente}.`,
+      { tone: 'info', confirmLabel: 'Enviar' },
     )
     if (!confirmado) return
 
@@ -367,71 +434,95 @@ export function VerificacionContent({ expediente, onActualizado }: VerificacionC
                     </TableCell>
                   </TableRow>
                 ) : (
-                  padres.map((doc) => (
-                    <TableRow
-                      key={doc.idDocumentoAnalizado}
-                      hover
-                      selected={padreFocoId === doc.idDocumentoAnalizado}
-                      onClick={() => setPadreFocoId(doc.idDocumentoAnalizado)}
-                      sx={{ cursor: 'pointer' }}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Tooltip title="Guardar">
-                          <span>
-                            <IconButton size="small" disabled={guardandoId === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
-                              <SaveOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>{doc.tipoDocumentoNombre || '-'}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <TextField
-                          size="small"
-                          value={doc.numeroDocumento}
-                          onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { numeroDocumento: e.target.value })}
-                        />
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()} sx={{ minWidth: 150 }}>
-                        <TextField
-                          select
-                          size="small"
-                          fullWidth
-                          value={doc.estadoDocumentoCodigo}
-                          onChange={(e) => {
-                            const est = estadosDocumento.find((x) => x.codigo === e.target.value)
-                            actualizarDocumento(doc.idDocumentoAnalizado as number, {
-                              estadoDocumentoCodigo: e.target.value,
-                              estadoDocumentoNombre: est?.nombre || '',
-                            })
-                          }}
-                        >
-                          <MenuItem value="">Seleccione</MenuItem>
-                          {estadosDocumento.map((e2) => (
-                            <MenuItem key={e2.codigo} value={e2.codigo ?? ''}>
-                              {e2.nombre}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <TextField
-                          size="small"
-                          type="date"
-                          value={doc.fechaDocumento ?? ''}
-                          onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { fechaDocumento: e.target.value || null })}
-                        />
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <TextField
-                          size="small"
-                          value={doc.descripcion}
-                          onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { descripcion: e.target.value })}
-                        />
-                      </TableCell>
-                      <TableCell align="center">{doc.requiereRespuesta ? 'Sí' : 'No'}</TableCell>
-                    </TableRow>
-                  ))
+                  padres.map((doc) => {
+                    // Ver Javadoc de `idsYaEmitidosAlAbrir` arriba: bloqueado si YA estaba `EMITIDO`
+                    // al abrir este workspace (documento cerrado por un módulo anterior, nunca por un
+                    // cambio hecho en la sesión actual de este mismo panel) — O si la verificación de
+                    // este expediente YA fue registrada (`!puedeRegistrar`), caso en el que todo el
+                    // bloque queda de solo lectura sin excepción (01/09/2026, pedido explícito del
+                    // usuario: "una vez que registre la verificación recién se debería bloquear").
+                    const docEmitido = !puedeRegistrar || idsYaEmitidosAlAbrir.has(doc.idDocumentoAnalizado as number)
+                    return (
+                      <TableRow
+                        key={doc.idDocumentoAnalizado}
+                        hover
+                        selected={padreFocoId === doc.idDocumentoAnalizado}
+                        onClick={() => setPadreFocoId(doc.idDocumentoAnalizado)}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Tooltip title={docEmitido ? 'Documento ya emitido: solo lectura' : 'Guardar'}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                className={DATA_GRID_ROW_ICON_SAVE_CLASS}
+                                disabled={docEmitido || guardandoId === doc.idDocumentoAnalizado}
+                                onClick={() => handleGuardarFila(doc)}
+                              >
+                                <SaveOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>{doc.tipoDocumentoNombre || '-'}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TextField
+                            size="small"
+                            disabled={docEmitido}
+                            value={doc.numeroDocumento}
+                            onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { numeroDocumento: e.target.value })}
+                          />
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()} sx={{ minWidth: 150 }}>
+                          <TextField
+                            select
+                            size="small"
+                            fullWidth
+                            disabled={docEmitido}
+                            value={doc.estadoDocumentoCodigo}
+                            onChange={(e) => {
+                              const est = estadosDocumento.find((x) => x.codigo === e.target.value)
+                              // 01/09/2026, pedido explícito del usuario: mismo criterio ya usado en
+                              // Análisis/Ejecución — "Fecha Emisión" se autocompleta con la fecha de
+                              // hoy solo al pasar el combo Estado a "Emitido"; con cualquier otro
+                              // valor, la fecha se limpia (sigue editable a mano en cualquier momento).
+                              const emitido = e.target.value === 'EMITIDO'
+                              actualizarDocumento(doc.idDocumentoAnalizado as number, {
+                                estadoDocumentoCodigo: e.target.value,
+                                estadoDocumentoNombre: est?.nombre || '',
+                                fechaDocumento: emitido ? hoyISO() : null,
+                              })
+                            }}
+                          >
+                            <MenuItem value="">Seleccione</MenuItem>
+                            {estadosDocumento.map((e2) => (
+                              <MenuItem key={e2.codigo} value={e2.codigo ?? ''}>
+                                {e2.nombre}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TextField
+                            size="small"
+                            type="date"
+                            disabled={docEmitido}
+                            value={doc.fechaDocumento ?? ''}
+                            onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { fechaDocumento: e.target.value || null })}
+                          />
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TextField
+                            size="small"
+                            disabled={docEmitido}
+                            value={doc.descripcion}
+                            onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { descripcion: e.target.value })}
+                          />
+                        </TableCell>
+                        <TableCell align="center">{doc.requiereRespuesta ? 'Sí' : 'No'}</TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
@@ -495,7 +586,11 @@ export function VerificacionContent({ expediente, onActualizado }: VerificacionC
         <SectionCard title="Resultado de la verificación">
           <Stack spacing={2}>
             {!puedeRegistrar && (
-              <Alert severity="info">
+              // 01/09/2026, pedido explícito del usuario: estandarizar en verde (success) el aviso
+              // de "resultado ya registrado" en los 4 paneles (Análisis/Verificación/Ejecución/
+              // Notificación) — antes era severity="info" (azul), aunque el dato ya era persistido
+              // (deriva de `expediente.aprobado`/`observado`, no de un mensaje efímero).
+              <Alert severity="success">
                 Ya se registró el resultado de la verificación ({expediente.aprobado ? 'Aprobado' : expediente.observado ? 'Observado' : expediente.estadoCodigo}). Use "Destino operativo" para enviarlo.
               </Alert>
             )}

@@ -20,7 +20,7 @@ import {
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
+import { WordFileIcon } from './icons/FileTypeIcons'
 import {
   descargarDocumentoWordEjecucion,
   eliminarDocumentoEjecucion,
@@ -29,13 +29,18 @@ import {
   listarDocumentosEjecucion,
   listarResultadosEjecucion,
   listarUsuariosSupervision,
+  obtenerUltimoResultadoEjecucion,
   registrarResultadoEjecucion,
   type EjecucionExpediente,
+  type EjecucionUltimoResultado,
 } from '../api/ejecucionApi'
 import type { UsuarioAsignable } from '../api/asignacionApi'
-import { listarEstadosDocumentoAnalisis, listarTiposDocumentoAdjuntoAnalisis, type DocumentoAnalizado } from '../api/analisisApi'
+import { listarEstadosDocumentoAnalisis, listarTiposDocumentoAdjuntoEjecucion, type DocumentoAnalizado } from '../api/analisisApi'
 import type { CatalogoItem } from '../api/registroApi'
 import { ApiError } from '../api/http'
+import { useAppDialog } from '../dialogs/AppDialogProvider'
+import { DATA_GRID_ROW_ICON_DELETE_CLASS, DATA_GRID_ROW_ICON_SAVE_CLASS, DATA_GRID_ROW_ICON_WORD_CLASS } from '../dataGridTheme'
+import { hoyISO } from '../utils/fechas'
 import { SectionCard } from './RegistroExpedienteForm'
 import { StatusBadge } from './StatusBadge'
 
@@ -74,14 +79,26 @@ function documentoVacio(idExpediente: number, nivel: 0 | 1, idDocumentoPadre: nu
     fechaRegistro: null,
     fechaModificacion: null,
     existeOposicion: null,
+    clasificacion: '',
   }
 }
 
-/** Los 3 códigos de carta de notificación cuyo "Tipo documento" V2 permite editar en esta grilla (el resto queda de solo lectura, igual que Verificación). */
+/**
+ * Los códigos de carta de notificación cuyo "Tipo documento" V2 permite editar/elegir en esta
+ * grilla (el resto queda de solo lectura, igual que Verificación). 28/08/2026, pedido explícito del
+ * usuario: se amplió de 3 a las 6 cartas finales reales que trae hoy el catálogo `EJECUCION_DOC_*`
+ * (todas con `clasificacion=FINAL` en `tipo_documento_adjunto`) — antes solo estaban Improcedente/
+ * Procedente/Procedente en Parte; faltaban Abandono/Desistimiento/Infundado, así que el combo de
+ * "+Documento" siempre mostraba menos opciones de las que el catálogo (ya correctamente filtrado
+ * por `listarTiposDocumentoAdjuntoEjecucion`) realmente ofrece.
+ */
 const TIPOS_CARTA_NOTIFICACION = new Set([
-  'ANALISIS_DOC_17_CARTA_IMPROCEDENTE',
-  'ANALISIS_DOC_18_CARTA_PROCEDENTE',
-  'ANALISIS_DOC_19_CARTA_PROCEDENTE_EN_PARTE',
+  'EJECUCION_DOC_01_CARTA_ABANDONO',
+  'EJECUCION_DOC_17_CARTA_IMPROCEDENTE',
+  'EJECUCION_DOC_18_CARTA_PROCEDENTE',
+  'EJECUCION_DOC_19_CARTA_PROCEDENTE_EN_PARTE',
+  'EJECUCION_DOC_22_CARTA_DESISTIMIENTO',
+  'EJECUCION_DOC_23_CARTA_INFUNDADO',
 ])
 
 /**
@@ -137,6 +154,7 @@ const TIPOS_CARTA_NOTIFICACION = new Set([
  * (sin restricción de etapa) para la variable `#resAnalisis#`, igual que Análisis.
  */
 export function EjecucionContent({ expediente, onActualizado }: EjecucionContentProps) {
+  const { confirm: confirmDialog } = useAppDialog()
   const [comentarioResultado, setComentarioResultado] = useState('')
   const [resultadoCodigo, setResultadoCodigo] = useState('')
   const [fechaEjecucion, setFechaEjecucion] = useState<string | null>(null)
@@ -146,6 +164,13 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
   const [usuarios, setUsuarios] = useState<UsuarioAsignable[]>([])
   const [idUsuarioDestino, setIdUsuarioDestino] = useState('')
   const [enviandoSupervision, setEnviandoSupervision] = useState(false)
+
+  // Lectura persistida del último resultado ya registrado (01/09/2026, pedido explícito del
+  // usuario: que "Registrar resultado de ejecución" quede pregrabado y visible en verde aunque se
+  // cambie de subpestaña y se vuelva — WorkspaceTabsDrawer desmonta este componente al cambiar de
+  // tab, así que cualquier estado puramente local como `mensajeResultado` se pierde; este valor en
+  // cambio se relee del backend en cada montaje, igual que `expediente.ejecutado`).
+  const [ultimoResultado, setUltimoResultado] = useState<EjecucionUltimoResultado | null>(null)
 
   const [resultados, setResultados] = useState<CatalogoItem[]>([])
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([])
@@ -168,9 +193,14 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
   const [errorSupervision, setErrorSupervision] = useState<string | null>(null)
 
   const enEjecucion = expediente.etapaCodigo === 'EJECUCION'
+  // 02/09/2026, corrección de un fix anterior a pedido explícito del usuario: `expediente.ejecutado`
+  // solo gatea la alerta verde persistida — a diferencia de Verificación/Análisis, este bloque NO se
+  // deshabilita al registrar el resultado (el usuario debe poder seguir corrigiéndolo). El bloqueo
+  // real ya ocurre solo, sin código adicional: en cuanto "Enviar a Supervisión" mueve la etapa fuera
+  // de EJECUCION, `enEjecucion` pasa a `false` y esta `SectionCard` completa deja de renderizarse.
 
   useEffect(() => {
-    Promise.all([listarResultadosEjecucion(), listarTiposDocumentoAdjuntoAnalisis(), listarEstadosDocumentoAnalisis()])
+    Promise.all([listarResultadosEjecucion(), listarTiposDocumentoAdjuntoEjecucion(), listarEstadosDocumentoAnalisis()])
       .then(([r, td, ed]) => {
         setResultados(r)
         setTiposDocumento(td)
@@ -195,8 +225,33 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
     setMensajeSupervision(null)
     setErrorSupervision(null)
     recargarDocumentos()
+    recargarUltimoResultado()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expediente.idExpediente])
+
+  function recargarUltimoResultado() {
+    obtenerUltimoResultadoEjecucion(expediente.idExpediente)
+      .then(setUltimoResultado)
+      .catch(() => setUltimoResultado(null))
+  }
+
+  // 02/09/2026, pedido explícito del usuario: precargar "Resultado"/"Fecha Ejecución" con lo ya
+  // registrado (antes solo se mencionaba el nombre dentro del texto de la alerta, los campos
+  // quedaban vacíos). `ultimoResultado` solo trae `resultadoNombre` (persistido en `motivo` de
+  // `EXPEDIENTE_HISTORIAL`, pensado para Trazabilidad) — se resuelve el código real cruzando contra
+  // el catálogo `resultados` ya cargado, sin necesitar un campo nuevo en el backend. Se ejecuta
+  // recién cuando ambas piezas de datos ya llegaron (no hay orden garantizado entre los 2 fetch
+  // async que las traen) y solo si el campo sigue vacío, para no pisar una edición del usuario.
+  useEffect(() => {
+    if (!ultimoResultado?.resultadoNombre || resultadoCodigo || resultados.length === 0) return
+    const codigo = resultados.find((r) => r.nombre === ultimoResultado.resultadoNombre)?.codigo
+    if (!codigo) return
+    setResultadoCodigo(codigo)
+    if (codigo === 'EJECUTADO') {
+      setFechaEjecucion(ultimoResultado.fechaRegistro ? ultimoResultado.fechaRegistro.slice(0, 10) : hoyISO())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ultimoResultado, resultados])
 
   function recargarDocumentos() {
     setDocumentosLoading(true)
@@ -261,7 +316,10 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
       setDocumentos((prev) => prev.filter((d) => d.idDocumentoAnalizado !== doc.idDocumentoAnalizado))
       return
     }
-    const confirmado = window.confirm('Se dará de baja el documento (baja lógica, no física).\n¿Desea continuar?')
+    const confirmado = await confirmDialog('Se dará de baja el documento (baja lógica, no física).', {
+      tone: 'danger',
+      confirmLabel: 'Dar de baja',
+    })
     if (!confirmado) return
     setGuardandoId(doc.idDocumentoAnalizado)
     setError(null)
@@ -297,13 +355,14 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
       setErrorResultado('Seleccione el resultado de ejecución.')
       return
     }
-    const confirmado = window.confirm('Se registrará el resultado de ejecución.\n¿Desea continuar?')
+    const confirmado = await confirmDialog('Se registrará el resultado de ejecución.', { tone: 'info', confirmLabel: 'Registrar' })
     if (!confirmado) return
     setRegistrandoResultado(true)
     try {
       const resultadoNombre = resultados.find((r) => r.codigo === resultadoCodigo)?.nombre || ''
       const resp = await registrarResultadoEjecucion(expediente.idExpediente, resultadoCodigo, resultadoNombre, fechaEjecucion, comentarioResultado)
       setMensajeResultado(resp.mensaje)
+      recargarUltimoResultado()
       onActualizado?.()
     } catch (e) {
       setErrorResultado(e instanceof ApiError ? e.message : 'No se pudo registrar el resultado de ejecución.')
@@ -319,7 +378,10 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
       setErrorSupervision('Seleccione el usuario destino en Supervisión.')
       return
     }
-    const confirmado = window.confirm(`Se enviará el expediente ${expediente.numeroExpediente} a Supervisión.\n¿Desea continuar?`)
+    const confirmado = await confirmDialog(`Se enviará el expediente ${expediente.numeroExpediente} a Supervisión.`, {
+      tone: 'info',
+      confirmLabel: 'Enviar',
+    })
     if (!confirmado) return
     setEnviandoSupervision(true)
     try {
@@ -417,23 +479,38 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
                         >
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <Stack direction="row">
-                              <Tooltip title="Guardar">
+                              <Tooltip title={tipoEditable ? 'Guardar' : 'Documento de otra área, ya emitido: solo lectura'}>
                                 <span>
-                                  <IconButton size="small" disabled={guardandoId === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
+                                  <IconButton
+                                    size="small"
+                                    className={DATA_GRID_ROW_ICON_SAVE_CLASS}
+                                    disabled={!tipoEditable || guardandoId === doc.idDocumentoAnalizado}
+                                    onClick={() => handleGuardarFila(doc)}
+                                  >
                                     <SaveOutlinedIcon fontSize="small" />
                                   </IconButton>
                                 </span>
                               </Tooltip>
                               <Tooltip title={(doc.idDocumentoAnalizado ?? 0) < 0 ? 'Guarde el documento antes de descargar' : 'Descargar Word'}>
                                 <span>
-                                  <IconButton size="small" disabled={(doc.idDocumentoAnalizado ?? 0) < 0} onClick={() => handleDescargarWord(doc)}>
-                                    <DescriptionOutlinedIcon fontSize="small" />
+                                  <IconButton
+                                    size="small"
+                                    className={DATA_GRID_ROW_ICON_WORD_CLASS}
+                                    disabled={(doc.idDocumentoAnalizado ?? 0) < 0}
+                                    onClick={() => handleDescargarWord(doc)}
+                                  >
+                                    <WordFileIcon fontSize="small" />
                                   </IconButton>
                                 </span>
                               </Tooltip>
-                              <Tooltip title={puedeEliminar ? 'Eliminar' : 'Solo pueden eliminarse cartas finales (Procedente/Improcedente/Procedente en parte) agregadas desde Ejecución'}>
+                              <Tooltip title={puedeEliminar ? 'Eliminar' : 'Solo pueden eliminarse cartas finales de notificación agregadas desde Ejecución'}>
                                 <span>
-                                  <IconButton size="small" disabled={!puedeEliminar} onClick={() => handleEliminarFila(doc)}>
+                                  <IconButton
+                                    size="small"
+                                    className={DATA_GRID_ROW_ICON_DELETE_CLASS}
+                                    disabled={!puedeEliminar}
+                                    onClick={() => handleEliminarFila(doc)}
+                                  >
                                     <DeleteOutlineOutlinedIcon fontSize="small" />
                                   </IconButton>
                                 </span>
@@ -441,38 +518,40 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
                             </Stack>
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()} sx={{ minWidth: 160 }}>
-                            {tipoEditable ? (
-                              <TextField
-                                select
-                                size="small"
-                                fullWidth
-                                value={doc.tipoDocumentoCodigo}
-                                onChange={(e) => {
-                                  const t = tiposDocumento.find((x) => x.codigo === e.target.value)
-                                  actualizarDocumento(doc.idDocumentoAnalizado as number, {
-                                    tipoDocumentoCodigo: e.target.value,
-                                    tipoDocumentoNombre: t?.nombre || '',
-                                  })
-                                }}
-                              >
-                                <MenuItem value="">Seleccione</MenuItem>
-                                {tiposDocumento
-                                  .filter((t) => TIPOS_CARTA_NOTIFICACION.has(t.codigo ?? ''))
-                                  .map((t) => (
-                                    <MenuItem key={t.codigo} value={t.codigo ?? ''}>
-                                      {t.nombre}
-                                    </MenuItem>
-                                  ))}
-                              </TextField>
-                            ) : (
-                              <Tooltip title="Solo las cartas de notificación (Improcedente/Procedente/Procedente en parte) permiten cambiar el tipo aquí.">
-                                <span>{doc.tipoDocumentoNombre || '-'}</span>
-                              </Tooltip>
-                            )}
+                            <TextField
+                              select
+                              size="small"
+                              fullWidth
+                              disabled={!tipoEditable}
+                              value={doc.tipoDocumentoCodigo}
+                              onChange={(e) => {
+                                const t = tiposDocumento.find((x) => x.codigo === e.target.value)
+                                actualizarDocumento(doc.idDocumentoAnalizado as number, {
+                                  tipoDocumentoCodigo: e.target.value,
+                                  tipoDocumentoNombre: t?.nombre || '',
+                                })
+                              }}
+                            >
+                              <MenuItem value="">Seleccione</MenuItem>
+                              {tipoEditable
+                                ? tiposDocumento
+                                    .filter((t) => TIPOS_CARTA_NOTIFICACION.has(t.codigo ?? ''))
+                                    .map((t) => (
+                                      <MenuItem key={t.codigo} value={t.codigo ?? ''}>
+                                        {t.nombre}
+                                      </MenuItem>
+                                    ))
+                                : [
+                                    <MenuItem key={doc.tipoDocumentoCodigo} value={doc.tipoDocumentoCodigo}>
+                                      {doc.tipoDocumentoNombre || '-'}
+                                    </MenuItem>,
+                                  ]}
+                            </TextField>
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <TextField
                               size="small"
+                              disabled={!tipoEditable}
                               value={doc.numeroDocumento}
                               onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { numeroDocumento: e.target.value })}
                             />
@@ -482,6 +561,7 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
                               select
                               size="small"
                               fullWidth
+                              disabled={!tipoEditable}
                               value={doc.estadoDocumentoCodigo}
                               onChange={(e) => {
                                 const est = estadosDocumento.find((x) => x.codigo === e.target.value)
@@ -494,17 +574,24 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
                               }}
                             >
                               <MenuItem value="">Seleccione</MenuItem>
-                              {estadosDocumento.map((e2) => (
-                                <MenuItem key={e2.codigo} value={e2.codigo ?? ''}>
-                                  {e2.nombre}
-                                </MenuItem>
-                              ))}
+                              {tipoEditable
+                                ? estadosDocumento.map((e2) => (
+                                    <MenuItem key={e2.codigo} value={e2.codigo ?? ''}>
+                                      {e2.nombre}
+                                    </MenuItem>
+                                  ))
+                                : [
+                                    <MenuItem key={doc.estadoDocumentoCodigo} value={doc.estadoDocumentoCodigo}>
+                                      {doc.estadoDocumentoNombre || '-'}
+                                    </MenuItem>,
+                                  ]}
                             </TextField>
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <TextField
                               size="small"
                               type="date"
+                              disabled={!tipoEditable}
                               value={doc.fechaDocumento ?? ''}
                               onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { fechaDocumento: e.target.value || null })}
                             />
@@ -512,12 +599,14 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <TextField
                               size="small"
+                              disabled={!tipoEditable}
                               value={doc.descripcion}
                               onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { descripcion: e.target.value })}
                             />
                           </TableCell>
                           <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
+                              disabled={!tipoEditable}
                               checked={doc.requiereRespuesta}
                               onChange={(e) => actualizarDocumento(doc.idDocumentoAnalizado as number, { requiereRespuesta: e.target.checked })}
                             />
@@ -586,14 +675,19 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
                               <Stack direction="row">
                                 <Tooltip title="Guardar">
                                   <span>
-                                    <IconButton size="small" disabled={guardandoId === doc.idDocumentoAnalizado} onClick={() => handleGuardarFila(doc)}>
+                                    <IconButton
+                                      size="small"
+                                      className={DATA_GRID_ROW_ICON_SAVE_CLASS}
+                                      disabled={guardandoId === doc.idDocumentoAnalizado}
+                                      onClick={() => handleGuardarFila(doc)}
+                                    >
                                       <SaveOutlinedIcon fontSize="small" />
                                     </IconButton>
                                   </span>
                                 </Tooltip>
                                 <Tooltip title="Eliminar">
                                   <span>
-                                    <IconButton size="small" onClick={() => handleEliminarFila(doc)}>
+                                    <IconButton size="small" className={DATA_GRID_ROW_ICON_DELETE_CLASS} onClick={() => handleEliminarFila(doc)}>
                                       <DeleteOutlineOutlinedIcon fontSize="small" />
                                     </IconButton>
                                   </span>
@@ -675,7 +769,29 @@ export function EjecucionContent({ expediente, onActualizado }: EjecucionContent
       {enEjecucion && (
         <SectionCard title="Resultado de ejecución">
           <Stack spacing={2}>
-            <TextField select label="Resultado" size="small" fullWidth value={resultadoCodigo} onChange={(e) => setResultadoCodigo(e.target.value)}>
+            {expediente.ejecutado && (
+              <Alert severity="success">
+                Ya se registró el resultado de ejecución
+                {ultimoResultado?.resultadoNombre ? `: ${ultimoResultado.resultadoNombre}` : ''}. Puede corregirlo aquí mismo mientras no envíe el
+                expediente a Supervisión.
+              </Alert>
+            )}
+            <TextField
+              select
+              label="Resultado"
+              size="small"
+              fullWidth
+              value={resultadoCodigo}
+              onChange={(e) => {
+                const valor = e.target.value
+                setResultadoCodigo(valor)
+                // 28/08/2026, pedido explícito del usuario: al elegir "EJECUTADO", la Fecha Ejecución
+                // se autocompleta con la fecha de hoy — mismo criterio ya usado en Análisis/Ejecución
+                // para "Fecha Emisión" al pasar el Estado documento a "Emitido"; con cualquier otro
+                // resultado el campo se limpia (queda oculto de todas formas, ver condicional abajo).
+                setFechaEjecucion(valor === 'EJECUTADO' ? hoyISO() : null)
+              }}
+            >
               <MenuItem value="">Seleccione resultado</MenuItem>
               {resultados.map((r) => (
                 <MenuItem key={r.codigo} value={r.codigo ?? ''}>
