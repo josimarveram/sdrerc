@@ -5,6 +5,7 @@ import com.sdrerc.v3.domain.CatalogoItemDTO;
 import com.sdrerc.v3.domain.DocumentoAnalizadoDTO;
 import com.sdrerc.v3.domain.EjecucionExpedienteDTO;
 import com.sdrerc.v3.domain.EjecucionResultadoDTO;
+import com.sdrerc.v3.domain.EjecucionUltimoResultadoDTO;
 import com.sdrerc.v3.domain.UsuarioAsignableDTO;
 import com.sdrerc.v3.web.dto.DocumentoWordDTO;
 import com.sdrerc.v3.web.dto.EjecucionEnviarSupervisionRequest;
@@ -61,7 +62,17 @@ public class EjecucionController {
     /** "Registrar resultado de ejecución" — ejecuta SOLO INICIO_EJECUCION. */
     @PostMapping("/resultado")
     public EjecucionResultadoDTO registrarResultado(@RequestBody EjecucionResultadoRequest request) throws SQLException {
-        return ejecucionExpedienteService.registrarResultado(request.idExpediente(), request.comentario());
+        return ejecucionExpedienteService.registrarResultado(request.idExpediente(), request.resultadoNombre(), request.comentario());
+    }
+
+    /**
+     * Lectura de solo consulta del último resultado de ejecución ya registrado (01/09/2026, pedido
+     * explícito del usuario) — permite que el panel lo muestre de forma persistente sin depender del
+     * mensaje efímero de la última acción, que se pierde al remontar la subpestaña.
+     */
+    @GetMapping("/{idExpediente}/ultimo-resultado")
+    public EjecucionUltimoResultadoDTO obtenerUltimoResultadoRegistrado(@PathVariable Long idExpediente) throws SQLException {
+        return ejecucionExpedienteService.obtenerUltimoResultadoRegistrado(idExpediente);
     }
 
     /** "Enviar a Supervisión" — ejecuta SOLO DERIVACION_A_NOTIFICACION, validando carta final en despacho. */

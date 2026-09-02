@@ -36,6 +36,9 @@ public class NotificacionAsignacionDocumentoDTO {
     private final String estadoFinalNotificacionCodigo;
     private final String estadoFinalNotificacion;
     private final LocalDate fechaPublicacionNotif;
+    private final LocalDate fechaSolicitud;
+    private final String abogado;
+    private final String resultadoAnalisis;
 
     public NotificacionAsignacionDocumentoDTO(
             Long idDocumentoAnalizado,
@@ -60,7 +63,10 @@ public class NotificacionAsignacionDocumentoDTO {
             int totalIntentos,
             String estadoFinalNotificacionCodigo,
             String estadoFinalNotificacion,
-            LocalDate fechaPublicacionNotif) {
+            LocalDate fechaPublicacionNotif,
+            LocalDate fechaSolicitud,
+            String abogado,
+            String resultadoAnalisis) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.numeroExpediente = safe(numeroExpediente);
@@ -84,6 +90,9 @@ public class NotificacionAsignacionDocumentoDTO {
         this.estadoFinalNotificacionCodigo = safe(estadoFinalNotificacionCodigo);
         this.estadoFinalNotificacion = safe(estadoFinalNotificacion);
         this.fechaPublicacionNotif = fechaPublicacionNotif;
+        this.fechaSolicitud = fechaSolicitud;
+        this.abogado = safe(abogado);
+        this.resultadoAnalisis = safe(resultadoAnalisis);
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -176,6 +185,21 @@ public class NotificacionAsignacionDocumentoDTO {
 
     public LocalDate getFechaPublicacionNotif() {
         return fechaPublicacionNotif;
+    }
+
+    /** Fecha de solicitud del expediente (`EXPEDIENTE_SOLICITUD.fecha_recepcion`) — columna "Fecha solicitud" de Bandeja de supervisión (29/08/2026). */
+    public LocalDate getFechaSolicitud() {
+        return fechaSolicitud;
+    }
+
+    /** Abogado responsable actual del expediente — columna "Abogado" de Bandeja de supervisión (29/08/2026). */
+    public String getAbogado() {
+        return abogado;
+    }
+
+    /** Resultado de Análisis (`EXPEDIENTE_EVALUACION`, mismo criterio que "Resultado" en Ejecución/Verificación) — columna "Resultado" de Bandeja de supervisión (29/08/2026). */
+    public String getResultadoAnalisis() {
+        return resultadoAnalisis;
     }
 
     /** KPI "Pendientes de asignación" (Bandeja Asignación de Notificación). */

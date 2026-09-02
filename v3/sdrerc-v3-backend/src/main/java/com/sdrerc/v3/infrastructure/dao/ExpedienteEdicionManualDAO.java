@@ -52,6 +52,7 @@ public class ExpedienteEdicionManualDAO {
     private final ExpedienteAlertaDAO expedienteAlertaDAO;
     private final ExpedienteRegistroDAO expedienteRegistroDAO;
     private final GrupoFamiliarDAO grupoFamiliarDAO;
+    private final ExpedienteSolicitudUbicacionDAO expedienteSolicitudUbicacionDAO;
 
     public ExpedienteEdicionManualDAO(
             DataSource dataSource,
@@ -59,13 +60,15 @@ public class ExpedienteEdicionManualDAO {
             CalendarioLaboralService calendarioLaboralService,
             ExpedienteAlertaDAO expedienteAlertaDAO,
             ExpedienteRegistroDAO expedienteRegistroDAO,
-            GrupoFamiliarDAO grupoFamiliarDAO) {
+            GrupoFamiliarDAO grupoFamiliarDAO,
+            ExpedienteSolicitudUbicacionDAO expedienteSolicitudUbicacionDAO) {
         this.dataSource = dataSource;
         this.catalogoLookupDAO = catalogoLookupDAO;
         this.calendarioLaboralService = calendarioLaboralService;
         this.expedienteAlertaDAO = expedienteAlertaDAO;
         this.expedienteRegistroDAO = expedienteRegistroDAO;
         this.grupoFamiliarDAO = grupoFamiliarDAO;
+        this.expedienteSolicitudUbicacionDAO = expedienteSolicitudUbicacionDAO;
     }
 
     /**
@@ -144,6 +147,7 @@ public class ExpedienteEdicionManualDAO {
             boolean soportaUbigeoPersona = soportaUbigeoPersona(conn);
             boolean soportaTipoSolicitante = soportaTipoSolicitante(conn);
             boolean soportaMunicipalidad = soportaMunicipalidad(conn);
+            boolean soportaUbicacionSolicitud = expedienteSolicitudUbicacionDAO.soportado(conn);
             String solicitanteTipoSelect = soportaTipoSolicitante
                     ? "sol.tipo_solicitante, sol.id_centro_atencion, ca.denominacion AS centro_atencion_denominacion, "
                             + "sol.id_unidad_organica, uo.nombre AS unidad_organica_nombre, "
@@ -181,6 +185,40 @@ public class ExpedienteEdicionManualDAO {
                             + "CAST(NULL AS VARCHAR2(120)) AS remitente_departamento, "
                             + "CAST(NULL AS VARCHAR2(120)) AS remitente_provincia, "
                             + "CAST(NULL AS VARCHAR2(120)) AS remitente_distrito, ";
+            // 28/08/2026, pedido explícito del usuario: "Datos de Notificación y Ubicación" (correo/
+            // teléfono/dirección/ubigeo) se separan de PERSONA hacia GSTD_EXPEDIENTE_SOLICITUD_UBICACION
+            // (script 120, NO ejecutado) — cuando el solicitante es Centro de Atención/Unidad
+            // Orgánica/Municipalidad, NUNCA existe una fila PERSONA como remitente (ver
+            // `soportaTipoSolicitante` más abajo), así que este dato jamás podía guardarse para esos 3
+            // tipos mientras dependiera de esa persona. Mientras el script no se ejecute, se mantiene el
+            // comportamiento histórico (leer de PERSONA vía remitente/solicitante) sin ninguna regresión.
+            String remitenteContactoSelect;
+            String remitenteContactoJoin;
+            if (soportaUbicacionSolicitud) {
+                remitenteContactoSelect = "ubic.correo_electronico AS remitente_correo, "
+                        + "ubic.telefono AS remitente_telefono, "
+                        + "ubic.di_direccion AS remitente_direccion, "
+                        + "ubic.id_ubigeo_distrito AS remitente_id_distrito, "
+                        + "ubpu.id_ubigeo_provincia AS remitente_id_provincia, "
+                        + "ubpu.id_ubigeo_departamento AS remitente_id_departamento, "
+                        + "ubic.departamento AS remitente_departamento, "
+                        + "ubic.provincia AS remitente_provincia, "
+                        + "ubic.distrito AS remitente_distrito, ";
+                remitenteContactoJoin = "LEFT JOIN gstd_expediente_solicitud_ubicacion ubic "
+                        + "ON ubic.id_expediente_solicitud = sol.id_expediente_solicitud AND ubic.in_activo = 1 "
+                        + "LEFT JOIN ubigeo_distrito ubdu ON ubdu.id_ubigeo_distrito = ubic.id_ubigeo_distrito "
+                        + "LEFT JOIN ubigeo_provincia ubpu ON ubpu.id_ubigeo_provincia = ubdu.id_ubigeo_provincia ";
+            } else {
+                remitenteContactoSelect = "NVL(remitente.correo_electronico, solicitante.correo_electronico) AS remitente_correo, "
+                        + "NVL(remitente.telefono, solicitante.telefono) AS remitente_telefono, "
+                        + "NVL(remitente.direccion, solicitante.direccion) AS remitente_direccion, "
+                        + ubigeoSelect;
+                remitenteContactoJoin = soportaUbigeoPersona
+                        ? "LEFT JOIN ubigeo_distrito ubd ON ubd.id_ubigeo_distrito = "
+                                + "NVL(remitente.id_ubigeo_distrito, solicitante.id_ubigeo_distrito) "
+                                + "LEFT JOIN ubigeo_provincia ubp ON ubp.id_ubigeo_provincia = ubd.id_ubigeo_provincia "
+                        : "";
+            }
             String sql = ""
                     + "WITH sol AS ("
                     + "  SELECT * FROM (SELECT s.* FROM expediente_solicitud s "
@@ -213,10 +251,7 @@ public class ExpedienteEdicionManualDAO {
                     + nombrePersona("titular") + " AS titular_nombre, "
                     + "NVL(remitente.tipo_documento, solicitante.tipo_documento) AS remitente_tipo_documento, "
                     + "NVL(remitente.numero_documento, solicitante.numero_documento) AS remitente_numero_documento, "
-                    + "NVL(remitente.correo_electronico, solicitante.correo_electronico) AS remitente_correo, "
-                    + "NVL(remitente.telefono, solicitante.telefono) AS remitente_telefono, "
-                    + "NVL(remitente.direccion, solicitante.direccion) AS remitente_direccion, "
-                    + ubigeoSelect
+                    + remitenteContactoSelect
                     + "COALESCE(" + nombrePersona("remitente") + ", " + nombrePersona("solicitante") + ") AS remitente_nombre "
                     + "FROM expediente e "
                     + "JOIN etapa_expediente et ON et.id_etapa = e.id_etapa_actual "
@@ -236,11 +271,7 @@ public class ExpedienteEdicionManualDAO {
                     + "LEFT JOIN tipo_acta ta ON ta.id_tipo_acta = act.id_tipo_acta "
                     + "LEFT JOIN titular ON titular.id_persona IS NOT NULL "
                     + "LEFT JOIN remitente ON remitente.id_persona IS NOT NULL "
-                    + (soportaUbigeoPersona
-                            ? "LEFT JOIN ubigeo_distrito ubd ON ubd.id_ubigeo_distrito = "
-                                    + "NVL(remitente.id_ubigeo_distrito, solicitante.id_ubigeo_distrito) "
-                                    + "LEFT JOIN ubigeo_provincia ubp ON ubp.id_ubigeo_provincia = ubd.id_ubigeo_provincia "
-                            : "")
+                    + remitenteContactoJoin
                     + "WHERE e.id_expediente = ? AND e.activo = 1";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 for (int i = 1; i <= 5; i++) {
@@ -283,11 +314,17 @@ public class ExpedienteEdicionManualDAO {
                 ExpedienteEstado estado = bloquearYObtenerEstado(conn, dto.getIdExpediente());
                 validarEditable(estado, tieneAsignacionActiva(conn, dto.getIdExpediente()), desdeAnalisis);
 
+                boolean soportaUbicacionSolicitud = expedienteSolicitudUbicacionDAO.soportado(conn);
                 boolean solicitanteEsCiudadano = "CIUDADANO".equals(dto.getSolicitud().getTipoSolicitanteEfectivo());
-                Long idTitular = upsertPersonaRelacion(conn, dto.getIdExpediente(), "TITULAR", dto.getTitular());
+                Long idTitular = upsertPersonaRelacion(conn, dto.getIdExpediente(), "TITULAR", dto.getTitular(), true);
                 Long idRemitente;
                 if (solicitanteEsCiudadano) {
-                    idRemitente = upsertPersonaRelacion(conn, dto.getIdExpediente(), "REMITENTE", dto.getRemitente());
+                    // Mientras GSTD_EXPEDIENTE_SOLICITUD_UBICACION no exista, REMITENTE sigue guardando
+                    // su contacto/ubicación en PERSONA (comportamiento histórico, sin regresión); una vez
+                    // que la tabla nueva exista, PERSONA deja de recibir esos campos para el remitente —
+                    // la fuente de verdad pasa a ser la tabla nueva, ver más abajo.
+                    idRemitente = upsertPersonaRelacion(
+                            conn, dto.getIdExpediente(), "REMITENTE", dto.getRemitente(), !soportaUbicacionSolicitud);
                 } else {
                     // El expediente pudo tener antes un Ciudadano como solicitante (o viceversa): al
                     // cambiar de tipo, se desactiva la relación REMITENTE anterior en EXPEDIENTE_PERSONA
@@ -298,7 +335,23 @@ public class ExpedienteEdicionManualDAO {
                 Long idSolicitante = idRemitente == null ? (solicitanteEsCiudadano ? idTitular : null) : idRemitente;
 
                 actualizarExpediente(conn, dto);
-                upsertSolicitud(conn, dto, idSolicitante);
+                Long idExpedienteSolicitud = upsertSolicitud(conn, dto, idSolicitante);
+                if (soportaUbicacionSolicitud) {
+                    // Se guarda para los 4 tipos de solicitante por igual (no solo CIUDADANO): es
+                    // justamente el caso Centro de Atención/Unidad Orgánica/Municipalidad — sin una
+                    // PERSONA remitente que enlazar — el que este cambio vino a resolver.
+                    DatosPersonaRegistroDTO remitente = dto.getRemitente();
+                    expedienteSolicitudUbicacionDAO.guardar(
+                            conn,
+                            idExpedienteSolicitud,
+                            remitente == null ? null : remitente.getCorreo(),
+                            remitente == null ? null : remitente.getTelefono(),
+                            remitente == null ? null : remitente.getDireccion(),
+                            remitente == null ? null : remitente.getIdDistrito(),
+                            remitente == null ? null : remitente.getDepartamento(),
+                            remitente == null ? null : remitente.getProvincia(),
+                            remitente == null ? null : remitente.getDistrito());
+                }
                 upsertActa(conn, dto);
                 upsertDocumento(conn, dto);
                 insertarHistorial(conn, dto, estado, desdeAnalisis);
@@ -494,7 +547,12 @@ public class ExpedienteEdicionManualDAO {
         }
     }
 
-    private void upsertSolicitud(Connection conn, ExpedienteEdicionManualDTO dto, Long idSolicitante) throws SQLException {
+    /**
+     * @return el {@code id_expediente_solicitud} (recién generado o el ya existente) — 28/08/2026,
+     * necesario para {@link ExpedienteSolicitudUbicacionDAO#guardar}, que cuelga de este id en vez
+     * de depender de una persona.
+     */
+    private Long upsertSolicitud(Connection conn, ExpedienteEdicionManualDTO dto, Long idSolicitante) throws SQLException {
         Long idSolicitud = obtenerUltimoId(conn, "expediente_solicitud", "id_expediente_solicitud", dto.getIdExpediente());
         DatosSolicitudDTO solicitud = dto.getSolicitud();
         boolean soportaGrupoFamiliar = soportaGrupoFamiliar(conn);
@@ -520,7 +578,7 @@ public class ExpedienteEdicionManualDAO {
                     + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
                     + "correo_electronico, potencial_duplicado" + columnasGrupo + columnasSolicitante + columnaMunicipalidad + ", activo"
                     + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?" + valoresGrupo + valoresSolicitante + valorMunicipalidad + ", 1)";
-            try (PreparedStatement ps = conn.prepareStatement(insert)) {
+            try (PreparedStatement ps = conn.prepareStatement(insert, new String[] {"ID_EXPEDIENTE_SOLICITUD"})) {
                 int idx = 1;
                 ps.setLong(idx++, dto.getIdExpediente());
                 setLongOrNull(ps, idx++, idCanal);
@@ -545,8 +603,10 @@ public class ExpedienteEdicionManualDAO {
                     setLongOrNull(ps, idx++, solicitud.getIdMunicipalidad());
                 }
                 ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    return rs.next() ? rs.getLong(1) : null;
+                }
             }
-            return;
         }
         String columnasGrupoUpdate = soportaGrupoFamiliar
                 ? "grupo_familiar = ?, criterio_grupo_familiar = ?, observacion_grupo_familiar = ?, "
@@ -589,6 +649,7 @@ public class ExpedienteEdicionManualDAO {
             ps.setLong(idx, idSolicitud);
             ps.executeUpdate();
         }
+        return idSolicitud;
     }
 
     private void upsertActa(Connection conn, ExpedienteEdicionManualDTO dto) throws SQLException {
@@ -648,20 +709,27 @@ public class ExpedienteEdicionManualDAO {
         }
     }
 
+    /**
+     * @param incluirContacto si {@code false}, correo/teléfono/dirección/ubigeo NO se escriben en
+     * PERSONA (ni al insertar ni al actualizar) — usado para REMITENTE una vez que {@code
+     * GSTD_EXPEDIENTE_SOLICITUD_UBICACION} existe, porque esos datos pasan a vivir ahí. TITULAR
+     * siempre pasa {@code true}, sin cambios de comportamiento.
+     */
     private Long upsertPersonaRelacion(
             Connection conn,
             Long idExpediente,
             String tipoRelacion,
-            DatosPersonaRegistroDTO persona) throws SQLException {
+            DatosPersonaRegistroDTO persona,
+            boolean incluirContacto) throws SQLException {
         if (persona == null || !hasText(persona.getNombreCompleto())) {
             return null;
         }
         Long idPersona = obtenerPersonaRelacion(conn, idExpediente, tipoRelacion);
         if (idPersona == null) {
-            idPersona = insertarPersona(conn, persona);
+            idPersona = insertarPersona(conn, persona, incluirContacto);
             insertarExpedientePersona(conn, idExpediente, idPersona, tipoRelacion);
         } else {
-            actualizarPersona(conn, idPersona, persona);
+            actualizarPersona(conn, idPersona, persona, incluirContacto);
         }
         return idPersona;
     }
@@ -697,26 +765,39 @@ public class ExpedienteEdicionManualDAO {
         }
     }
 
-    private Long insertarPersona(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
-        boolean soportaUbigeo = soportaUbigeoPersona(conn);
+    private Long insertarPersona(Connection conn, DatosPersonaRegistroDTO persona, boolean incluirContacto)
+            throws SQLException {
+        // 28/08/2026, pedido explícito del usuario: no duplicar la misma PERSONA (por documento, o
+        // por nombre cuando no hay documento) al editar/completar un expediente — reutiliza el
+        // mismo helper ya construido en ExpedienteRegistroDAO (Registro manual/Carga diaria), ver su
+        // Javadoc para el criterio completo de coincidencia.
+        Long idExistente = expedienteRegistroDAO.buscarPersonaExistente(conn, persona.getTipoDocumento(), persona.getNumeroDocumento(), persona.getNombreCompleto());
+        if (idExistente != null) {
+            return idExistente;
+        }
+        boolean soportaUbigeo = incluirContacto && soportaUbigeoPersona(conn);
         boolean soportaApellidos = soportaApellidosPersona(conn);
+        String columnasContacto = incluirContacto ? ", correo_electronico, telefono, direccion" : "";
+        String valoresContacto = incluirContacto ? ", ?, ?, ?" : "";
         String columnasUbigeo = soportaUbigeo
                 ? ", id_ubigeo_distrito, departamento, provincia, distrito"
                 : "";
         String valoresUbigeo = soportaUbigeo ? ", ?, ?, ?, ?" : "";
         String columnasApellidos = soportaApellidos ? ", apellido_paterno, apellido_materno, nombres" : "";
         String valoresApellidos = soportaApellidos ? ", ?, ?, ?" : "";
-        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social, "
-                + "correo_electronico, telefono, direccion" + columnasUbigeo + columnasApellidos + ", activo) "
-                + "VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + valoresApellidos + ", 1)";
+        String sql = "INSERT INTO persona (tipo_documento, numero_documento, razon_social"
+                + columnasContacto + columnasUbigeo + columnasApellidos + ", activo) "
+                + "VALUES (?, ?, ?" + valoresContacto + valoresUbigeo + valoresApellidos + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
             int idx = 1;
             ps.setString(idx++, persona.getTipoDocumento());
             ps.setString(idx++, persona.getNumeroDocumento());
             ps.setString(idx++, persona.getNombreCompleto());
-            ps.setString(idx++, persona.getCorreo());
-            ps.setString(idx++, persona.getTelefono());
-            ps.setString(idx++, persona.getDireccion());
+            if (incluirContacto) {
+                ps.setString(idx++, persona.getCorreo());
+                ps.setString(idx++, persona.getTelefono());
+                ps.setString(idx++, persona.getDireccion());
+            }
             if (soportaUbigeo) {
                 setLongOrNull(ps, idx++, persona.getIdDistrito());
                 ps.setString(idx++, persona.getDepartamento());
@@ -738,9 +819,13 @@ public class ExpedienteEdicionManualDAO {
         throw new SQLException("No se pudo registrar la persona del expediente.");
     }
 
-    private void actualizarPersona(Connection conn, Long idPersona, DatosPersonaRegistroDTO persona) throws SQLException {
-        boolean soportaUbigeo = soportaUbigeoPersona(conn);
+    private void actualizarPersona(Connection conn, Long idPersona, DatosPersonaRegistroDTO persona, boolean incluirContacto)
+            throws SQLException {
+        boolean soportaUbigeo = incluirContacto && soportaUbigeoPersona(conn);
         boolean soportaApellidos = soportaApellidosPersona(conn);
+        String columnasContacto = incluirContacto
+                ? "correo_electronico = ?, telefono = ?, direccion = ?, "
+                : "";
         String columnasUbigeo = soportaUbigeo
                 ? "id_ubigeo_distrito = ?, departamento = ?, provincia = ?, distrito = ?, "
                 : "";
@@ -748,7 +833,7 @@ public class ExpedienteEdicionManualDAO {
                 ? "apellido_paterno = ?, apellido_materno = ?, nombres = ?, "
                 : "";
         String sql = "UPDATE persona SET tipo_documento = ?, numero_documento = ?, razon_social = ?, "
-                + "correo_electronico = ?, telefono = ?, direccion = ?, "
+                + columnasContacto
                 + columnasUbigeo
                 + columnasApellidos
                 + "modificado_en = SYSTIMESTAMP WHERE id_persona = ?";
@@ -757,9 +842,11 @@ public class ExpedienteEdicionManualDAO {
             ps.setString(idx++, persona.getTipoDocumento());
             ps.setString(idx++, persona.getNumeroDocumento());
             ps.setString(idx++, persona.getNombreCompleto());
-            ps.setString(idx++, persona.getCorreo());
-            ps.setString(idx++, persona.getTelefono());
-            ps.setString(idx++, persona.getDireccion());
+            if (incluirContacto) {
+                ps.setString(idx++, persona.getCorreo());
+                ps.setString(idx++, persona.getTelefono());
+                ps.setString(idx++, persona.getDireccion());
+            }
             if (soportaUbigeo) {
                 setLongOrNull(ps, idx++, persona.getIdDistrito());
                 ps.setString(idx++, persona.getDepartamento());

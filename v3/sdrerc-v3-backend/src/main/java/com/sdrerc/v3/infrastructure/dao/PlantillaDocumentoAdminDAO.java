@@ -16,8 +16,11 @@ import org.springframework.stereotype.Repository;
 /**
  * Port literal de {@code com.sdrerc.infrastructure.sdrercapp.dao.PlantillaDocumentoDAO} (V2):
  * versiones de plantilla Word (BLOB) por {@code TIPO_DOCUMENTO_ADJUNTO}, solo 1 activa a la vez
- * por tipo. Mismo alcance que V2: acotado a los tipos {@code ANALISIS_%} (los únicos con
- * generación de Word real hoy en V3, vía Análisis/Ejecución).
+ * por tipo. Acotado a los tipos con generación de Word real hoy en V3 — 28/08/2026, pedido
+ * explícito del usuario: códigos que contienen {@code ANALISIS_DOC} o {@code EJECUCION_DOC}
+ * (Análisis/Ejecución), activos. El catálogo real ya distingue por módulo (ver
+ * {@code CatalogoLookupDAO}); antes de este ajuste, el filtro era {@code codigo LIKE 'ANALISIS\_%'},
+ * que ya no incluye las cartas de Ejecución (renombradas a {@code EJECUCION_DOC_*}).
  */
 @Repository
 public class PlantillaDocumentoAdminDAO {
@@ -38,7 +41,7 @@ public class PlantillaDocumentoAdminDAO {
                 + "FROM tipo_documento_adjunto tda "
                 + "LEFT JOIN plantilla_documento pd ON pd.id_tipo_documento_adjunto = tda.id_tipo_documento_adjunto AND pd.activo = 1 "
                 + "LEFT JOIN usuario u ON u.id_usuario = pd.creado_por "
-                + "WHERE tda.activo = 1 AND tda.codigo LIKE 'ANALISIS\\_%' ESCAPE '\\' "
+                + "WHERE tda.activo = 1 AND (tda.codigo LIKE '%ANALISIS_DOC%' OR tda.codigo LIKE '%EJECUCION_DOC%') "
                 + "ORDER BY tda.codigo";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -177,6 +180,13 @@ public class PlantillaDocumentoAdminDAO {
             } finally {
                 conn.setAutoCommit(previousAutoCommit);
             }
+        }
+    }
+
+    /** Overload público con conexión propia — usado por la edición en línea (OnlyOffice) para resolver a qué tipo pertenece una versión antes de guardar la próxima. */
+    public Long obtenerIdTipoDocumento(Long idPlantillaDocumento) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            return obtenerIdTipoDocumento(conn, idPlantillaDocumento);
         }
     }
 

@@ -132,7 +132,7 @@ public class DocumentoAnalisisDAO {
         String sql = "SELECT da.id_documento_analizado, da.id_expediente, "
                 + "da.id_documento_padre, NVL(da.nivel, 0) AS nivel, NVL(da.orden, 0) AS orden, "
                 + "da.estado_respuesta, da.creado_en, da.modificado_en, "
-                + "td.codigo AS tipo_documento_codigo, td.nombre AS tipo_documento_nombre, "
+                + "td.codigo AS tipo_documento_codigo, td.nombre AS tipo_documento_nombre, td.clasificacion, "
                 + "ed.codigo AS estado_documento_codigo, ed.nombre AS estado_documento_nombre, "
                 + "da.fecha_documento, da.numero_documento, da.detalle_observacion, da.descripcion, "
                 + "NVL(da.notificado, 0) AS notificado, da.fecha_acuse, "
@@ -183,7 +183,8 @@ public class DocumentoAnalisisDAO {
                             true,
                             toLocalDateTime(rs.getTimestamp("creado_en")),
                             toLocalDateTime(rs.getTimestamp("modificado_en")),
-                            getBooleanOrNull(rs, "existe_oposicion")));
+                            getBooleanOrNull(rs, "existe_oposicion"),
+                            rs.getString("clasificacion")));
                 }
             }
         }
@@ -783,7 +784,10 @@ public class DocumentoAnalisisDAO {
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
                     + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
                     + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre, "
-                    + "e.fecha_vencimiento "
+                    + "e.fecha_vencimiento, esol.fecha_recepcion, ur.nombre_completo AS responsable, "
+                    + "(SELECT MAX(NVL(tre.nombre, tre.codigo)) KEEP (DENSE_RANK LAST ORDER BY ev.fecha_evaluacion NULLS FIRST, ev.creado_en) "
+                    + " FROM expediente_evaluacion ev LEFT JOIN tipo_resultado_evaluacion tre ON tre.id_tipo_resultado_evaluacion = ev.id_tipo_resultado_evaluacion "
+                    + " WHERE ev.id_expediente = e.id_expediente AND ev.activo = 1) AS resultado_analisis "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -793,6 +797,7 @@ public class DocumentoAnalisisDAO {
                     + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                     + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                     + "LEFT JOIN usuario un ON un.id_usuario = da.id_usuario_notificacion "
+                    + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
                     + "LEFT JOIN estado_expediente eest ON eest.id_estado = e.id_estado_actual "
                     + "WHERE da.activo = 1 AND " + CONDICION_ASIGNACION_NOTIFICACION + " "
                     + "ORDER BY da.fecha_documento DESC NULLS LAST, da.id_documento_analizado DESC";
@@ -812,6 +817,16 @@ public class DocumentoAnalisisDAO {
      * de la Bandeja Asignación que pasa {@code false}) — el validador solo ve lo asignado a sí mismo
      * o a su equipo (`EQ_VALIDACION`), vía {@code id_usuario_notificacion`/`id_equipo_notificacion}
      * (mismas columnas que ya usa {@code asignarNotificacionMultiple} para fijar el responsable).
+     *
+     * <p>30/08/2026, fix real (encontrado al replicar el diseño de columnas de Bandeja de
+     * supervisión aquí): este método usa el mismo mapper compartido {@link #mapNotificacionAsignacion}
+     * que {@link #listarDocumentosAsignacionNotificacion()} — al extender ese mapper en la Parte 2
+     * para leer {@code fecha_recepcion}/{@code responsable}/{@code resultado_analisis}, este SQL se
+     * quedó sin esas 3 columnas, lo que hacía fallar esta bandeja completa con
+     * {@code SQLException: columna inválida} en cuanto se ejercitaba. Se agregan acá los mismos JOIN/
+     * subconsulta ya usados ahí (copiados verbatim, mismo patrón Oracle {@code KEEP (DENSE_RANK LAST
+     * ORDER BY ...)}), corrigiendo el bug y poblando de paso las 3 columnas nuevas para el mismo
+     * rediseño de "Fecha solicitud"/"Abogado"/"Resultado" pedido para esta bandeja.
      */
     public List<NotificacionAsignacionDocumentoDTO> listarDocumentosValidacion(
             boolean esAdmin, Long idUsuarioActual, List<Long> idsEquipoActual) throws SQLException {
@@ -829,7 +844,10 @@ public class DocumentoAnalisisDAO {
                     + "CASE WHEN da.id_usuario_notificacion IS NOT NULL THEN 1 ELSE 0 END AS asignado, "
                     + "da.numero_hoja_envio_notificacion, un.nombre_completo AS usuario_notificacion_actual, "
                     + "eest.codigo AS estado_expediente_codigo, eest.nombre AS estado_expediente_nombre, "
-                    + "e.fecha_vencimiento "
+                    + "e.fecha_vencimiento, esol.fecha_recepcion, ur.nombre_completo AS responsable, "
+                    + "(SELECT MAX(NVL(tre.nombre, tre.codigo)) KEEP (DENSE_RANK LAST ORDER BY ev.fecha_evaluacion NULLS FIRST, ev.creado_en) "
+                    + " FROM expediente_evaluacion ev LEFT JOIN tipo_resultado_evaluacion tre ON tre.id_tipo_resultado_evaluacion = ev.id_tipo_resultado_evaluacion "
+                    + " WHERE ev.id_expediente = e.id_expediente AND ev.activo = 1) AS resultado_analisis "
                     + "FROM expediente_documento_analizado da "
                     + "JOIN expediente e ON e.id_expediente = da.id_expediente AND e.activo = 1 "
                     + "LEFT JOIN expediente_solicitud esol ON esol.id_expediente = e.id_expediente AND esol.activo = 1 "
@@ -839,6 +857,7 @@ public class DocumentoAnalisisDAO {
                     + "LEFT JOIN tipo_documento_adjunto tda ON tda.id_tipo_documento_adjunto = da.id_tipo_documento_adjunto "
                     + "LEFT JOIN estado_documento ed ON ed.id_estado_documento = da.id_estado_documento "
                     + "LEFT JOIN usuario un ON un.id_usuario = da.id_usuario_notificacion "
+                    + "LEFT JOIN usuario ur ON ur.id_usuario = e.id_usuario_responsable_actual "
                     + "LEFT JOIN estado_expediente eest ON eest.id_estado = e.id_estado_actual "
                     + "WHERE da.activo = 1 AND " + CONDICION_VALIDACION_NOTIFICACION + " ");
             sql.append(VisibilidadBandejaSql.construirCondicion(
@@ -943,7 +962,7 @@ public class DocumentoAnalisisDAO {
                 rs.getInt("total_intentos"),
                 estadoFinalCodigo,
                 nombreEstadoFinalNotificacion(estadoFinalCodigo),
-                null);
+                null, null, null, null);
     }
 
     /** Port literal de {@code nombreEstadoFinalNotificacion} (V2) — nombre visible de los 4 estados finales. */
@@ -1061,7 +1080,8 @@ public class DocumentoAnalisisDAO {
                 rs.getInt("total_intentos"),
                 estadoFinalCodigo,
                 estadoFinalNombre,
-                toLocalDate(rs.getDate("fecha_publicacion_notif")));
+                toLocalDate(rs.getDate("fecha_publicacion_notif")),
+                null, null, null);
     }
 
     /**
@@ -1540,7 +1560,8 @@ public class DocumentoAnalisisDAO {
                                 rs.getString("estado_documento_nombre"),
                                 0, false, "", "", "", "",
                                 toLocalDate(rs.getDate("fecha_vencimiento")),
-                                null, 0, null, null, null));
+                                null, 0, null, null, null,
+                                null, null, null));
                     }
                 }
             }
@@ -1571,7 +1592,10 @@ public class DocumentoAnalisisDAO {
                 rs.getString("estado_expediente_nombre"),
                 toLocalDate(fechaVencimiento),
                 calendarioLaboralService.calcularDiasHabilesRestantes(conn, idExpediente, fechaVencimiento),
-                0, null, null, null);
+                0, null, null, null,
+                toLocalDate(rs.getDate("fecha_recepcion")),
+                rs.getString("responsable"),
+                rs.getString("resultado_analisis"));
     }
 
     /**

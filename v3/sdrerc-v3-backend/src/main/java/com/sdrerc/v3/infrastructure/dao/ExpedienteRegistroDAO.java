@@ -57,18 +57,21 @@ public class ExpedienteRegistroDAO {
     private final CalendarioLaboralService calendarioLaboralService;
     private final GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService;
     private final ExpedienteAlertaDAO expedienteAlertaDAO;
+    private final ExpedienteSolicitudUbicacionDAO expedienteSolicitudUbicacionDAO;
 
     public ExpedienteRegistroDAO(
             DataSource dataSource,
             CatalogoLookupDAO catalogoLookupDAO,
             CalendarioLaboralService calendarioLaboralService,
             GrupoFamiliarHeuristicaService grupoFamiliarHeuristicaService,
-            ExpedienteAlertaDAO expedienteAlertaDAO) {
+            ExpedienteAlertaDAO expedienteAlertaDAO,
+            ExpedienteSolicitudUbicacionDAO expedienteSolicitudUbicacionDAO) {
         this.dataSource = dataSource;
         this.catalogoLookupDAO = catalogoLookupDAO;
         this.calendarioLaboralService = calendarioLaboralService;
         this.grupoFamiliarHeuristicaService = grupoFamiliarHeuristicaService;
         this.expedienteAlertaDAO = expedienteAlertaDAO;
+        this.expedienteSolicitudUbicacionDAO = expedienteSolicitudUbicacionDAO;
     }
 
     public String detectarDuplicadoPorActaYTitular(String numeroActa, String titular) throws SQLException {
@@ -353,9 +356,12 @@ public class ExpedienteRegistroDAO {
                     registro.setMotivoDuplicado(duplicadoActaTitular.mensajeDuplicado());
                 }
 
+                boolean soportaUbicacionSolicitud = expedienteSolicitudUbicacionDAO.soportado(conn);
                 boolean solicitanteEsCiudadano = "CIUDADANO".equals(registro.getSolicitud().getTipoSolicitanteEfectivo());
-                Long idTitular = insertarPersonaManual(conn, registro.getTitular());
-                Long idRemitente = solicitanteEsCiudadano ? insertarPersonaManual(conn, registro.getRemitente()) : null;
+                Long idTitular = insertarPersonaManual(conn, registro.getTitular(), true);
+                Long idRemitente = solicitanteEsCiudadano
+                        ? insertarPersonaManual(conn, registro.getRemitente(), !soportaUbicacionSolicitud)
+                        : null;
                 Long idExpediente = insertarExpedienteManual(conn, registro.getSolicitud(), idEtapaRegistro, idEstadoRegistrado);
                 String motivoSinNumero = motivoSinNumero(duplicadoActaTitular, registro.getSolicitud().getTipoProcedimientoNombre());
                 String numeroExpediente = null;
@@ -366,7 +372,22 @@ public class ExpedienteRegistroDAO {
                     actualizarNumeroExpediente(conn, idExpediente, numeroExpediente);
                 }
 
-                insertarSolicitudManual(conn, registro, idExpediente, idRemitente, soportaGrupoFamiliar);
+                Long idExpedienteSolicitud = insertarSolicitudManual(conn, registro, idExpediente, idRemitente, soportaGrupoFamiliar);
+                if (soportaUbicacionSolicitud) {
+                    // Se guarda para los 4 tipos de solicitante por igual (no solo CIUDADANO) — ver
+                    // ExpedienteSolicitudUbicacionDAO, mismo criterio que ExpedienteEdicionManualDAO#guardar.
+                    DatosPersonaRegistroDTO remitente = registro.getRemitente();
+                    expedienteSolicitudUbicacionDAO.guardar(
+                            conn,
+                            idExpedienteSolicitud,
+                            remitente == null ? null : remitente.getCorreo(),
+                            remitente == null ? null : remitente.getTelefono(),
+                            remitente == null ? null : remitente.getDireccion(),
+                            remitente == null ? null : remitente.getIdDistrito(),
+                            remitente == null ? null : remitente.getDepartamento(),
+                            remitente == null ? null : remitente.getProvincia(),
+                            remitente == null ? null : remitente.getDistrito());
+                }
                 insertarExpedientePersona(conn, idExpediente, idTitular, "TITULAR");
                 if (idRemitente != null) {
                     insertarExpedientePersona(conn, idExpediente, idRemitente, "REMITENTE");
@@ -667,10 +688,82 @@ public class ExpedienteRegistroDAO {
     }
 
     /**
+     * Busca una PERSONA activa ya registrada para no duplicar el mismo documento/nombre en un
+     * expediente nuevo (28/08/2026, pedido explícito del usuario: "que no me permita duplicar...
+     * tanto para la carga diaria, registro manual o edición manual").
+     *
+     * <p>Prioridad: documento (tipo + número, normalizado) si viene informado — en ese caso NUNCA
+     * cae a comparar por nombre, para no arriesgar mezclar con otra persona de nombre parecido pero
+     * documento real distinto. Sin documento (vacío o "SIN DNI"), compara por nombre completo
+     * normalizado (mismo criterio anti-tildes que {@code ExpedienteRelacionadoDAO#normalizarPersona})
+     * ÚNICAMENTE contra otras personas que TAMPOCO tengan documento — decisión explícita del
+     * usuario: evita fusionar a alguien con DNI real con un registro anónimo de mismo nombre.</p>
+     *
+     * <p>Al encontrar coincidencia se reutiliza el id tal cual, sin tocar los datos ya guardados
+     * (decisión explícita del usuario) — el llamador simplemente omite el INSERT y enlaza la
+     * relación (EXPEDIENTE_PERSONA) a este id existente.</p>
+     *
+     * <p>Visibilidad de paquete (no privado): reutilizado también por {@link ExpedienteEdicionManualDAO}
+     * (que ya inyecta esta clase para la cascada de eliminación), para no duplicar esta misma
+     * consulta/normalización en 2 archivos.</p>
+     */
+    Long buscarPersonaExistente(Connection conn, String tipoDocumentoBruto, String numeroDocumentoBruto, String nombreCompleto)
+            throws SQLException {
+        String tipoDocumento = normalizarTipoDocumentoIdentidadParaBd(tipoDocumentoBruto);
+        String numeroDocumento = normalizarDocumentoIdentidadParaBd(numeroDocumentoBruto);
+        if (hasText(numeroDocumento)) {
+            String sql = "SELECT id_persona FROM (SELECT p.id_persona FROM persona p "
+                    + "WHERE p.activo = 1 AND UPPER(TRIM(p.numero_documento)) = UPPER(TRIM(?)) "
+                    + "AND NVL(UPPER(TRIM(p.tipo_documento)), '-') = NVL(UPPER(TRIM(?)), '-') "
+                    + "ORDER BY p.creado_en DESC, p.id_persona DESC) WHERE ROWNUM = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, numeroDocumento);
+                ps.setString(2, tipoDocumento);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        long id = rs.getLong(1);
+                        if (!rs.wasNull()) {
+                            return id;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        if (!hasText(nombreCompleto)) {
+            return null;
+        }
+        String sql = "SELECT id_persona FROM (SELECT p.id_persona FROM persona p "
+                + "WHERE p.activo = 1 AND (p.numero_documento IS NULL OR TRIM(p.numero_documento) = '') "
+                + "AND " + normalizarNombreParaComparar("p.razon_social") + " = " + normalizarNombreParaComparar("?")
+                + " ORDER BY p.creado_en DESC, p.id_persona DESC) WHERE ROWNUM = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, nombreCompleto);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    long id = rs.getLong(1);
+                    if (!rs.wasNull()) {
+                        return id;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String normalizarNombreParaComparar(String expresion) {
+        return "TRANSLATE(UPPER(TRIM(REGEXP_REPLACE(" + expresion + ", '[[:space:]]+', ' '))), "
+                + "'ÁÀÄÂÃÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÇ', 'AAAAAEEEEIIIIOOOOOUUUUNC')";
+    }
+
+    /**
      * Overload con los 3 campos estructurados opcionales (14/08/2026, Fase 5 "híbrida" de Carga
      * diaria) — mismo dual-write que {@code insertarPersonaManual}/{@code ExpedienteEdicionManualDAO}:
      * si vienen null (caso normal hoy, la plantilla oficial no los tiene) o si las columnas todavía
      * no existen en Oracle, se comporta idéntico al overload de 3 args (solo `razon_social`).
+     *
+     * <p>28/08/2026: antes de insertar, reutiliza una PERSONA ya existente si coincide por
+     * documento/nombre — ver {@link #buscarPersonaExistente}.</p>
      */
     private Long insertarPersona(
             Connection conn,
@@ -680,6 +773,10 @@ public class ExpedienteRegistroDAO {
             String apellidoPaterno,
             String apellidoMaterno,
             String nombres) throws SQLException {
+        Long idExistente = buscarPersonaExistente(conn, tipoDocumento, numeroDocumento, nombre);
+        if (idExistente != null) {
+            return idExistente;
+        }
         boolean soportaApellidos = soportaApellidosPersona(conn) && (apellidoPaterno != null || apellidoMaterno != null || nombres != null);
         String columnasApellidos = soportaApellidos ? ", apellido_paterno, apellido_materno, nombres" : "";
         String valoresApellidos = soportaApellidos ? ", ?, ?, ?" : "";
@@ -954,9 +1051,21 @@ public class ExpedienteRegistroDAO {
         return a != null && b != null && a.trim().equalsIgnoreCase(b.trim());
     }
 
-    private Long insertarPersonaManual(Connection conn, DatosPersonaRegistroDTO persona) throws SQLException {
-        boolean soportaUbigeo = soportaUbigeoPersona(conn);
+    /**
+     * @param incluirContacto si {@code false}, correo/teléfono/dirección/ubigeo NO se escriben en
+     * PERSONA — usado para REMITENTE una vez que {@code GSTD_EXPEDIENTE_SOLICITUD_UBICACION} existe
+     * (28/08/2026), porque esos datos pasan a vivir ahí. TITULAR siempre pasa {@code true}.
+     */
+    private Long insertarPersonaManual(Connection conn, DatosPersonaRegistroDTO persona, boolean incluirContacto)
+            throws SQLException {
+        Long idExistente = buscarPersonaExistente(conn, persona.getTipoDocumento(), persona.getNumeroDocumento(), persona.getNombreCompleto());
+        if (idExistente != null) {
+            return idExistente;
+        }
+        boolean soportaUbigeo = incluirContacto && soportaUbigeoPersona(conn);
         boolean soportaApellidos = soportaApellidosPersona(conn);
+        String columnasContacto = incluirContacto ? ", correo_electronico, telefono, direccion" : "";
+        String valoresContacto = incluirContacto ? ", ?, ?, ?" : "";
         String columnasUbigeo = soportaUbigeo
                 ? ", id_ubigeo_distrito, departamento, provincia, distrito"
                 : "";
@@ -964,17 +1073,19 @@ public class ExpedienteRegistroDAO {
         String columnasApellidos = soportaApellidos ? ", apellido_paterno, apellido_materno, nombres" : "";
         String valoresApellidos = soportaApellidos ? ", ?, ?, ?" : "";
         String sql = "INSERT INTO persona ("
-                + "tipo_documento, numero_documento, razon_social, correo_electronico, telefono, direccion"
-                + columnasUbigeo + columnasApellidos + ", activo"
-                + ") VALUES (?, ?, ?, ?, ?, ?" + valoresUbigeo + valoresApellidos + ", 1)";
+                + "tipo_documento, numero_documento, razon_social"
+                + columnasContacto + columnasUbigeo + columnasApellidos + ", activo"
+                + ") VALUES (?, ?, ?" + valoresContacto + valoresUbigeo + valoresApellidos + ", 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_PERSONA"})) {
             int idx = 1;
             ps.setString(idx++, persona.getTipoDocumento());
             ps.setString(idx++, persona.getNumeroDocumento());
             ps.setString(idx++, persona.getNombreCompleto());
-            ps.setString(idx++, persona.getCorreo());
-            ps.setString(idx++, persona.getTelefono());
-            ps.setString(idx++, persona.getDireccion());
+            if (incluirContacto) {
+                ps.setString(idx++, persona.getCorreo());
+                ps.setString(idx++, persona.getTelefono());
+                ps.setString(idx++, persona.getDireccion());
+            }
             if (soportaUbigeo) {
                 setLongOrNull(ps, idx++, persona.getIdDistrito());
                 ps.setString(idx++, persona.getDepartamento());
@@ -1016,7 +1127,11 @@ public class ExpedienteRegistroDAO {
         return Date.valueOf(calendarioLaboralService.calcularFechaVencimientoSolicitud(conn, fechaSolicitud, procedimientoRegistral));
     }
 
-    private void insertarSolicitudManual(
+    /**
+     * @return el {@code id_expediente_solicitud} recién generado — 28/08/2026, necesario para
+     * {@link ExpedienteSolicitudUbicacionDAO#guardar}.
+     */
+    private Long insertarSolicitudManual(
             Connection conn,
             RegistroManualExpedienteDTO registro,
             Long idExpediente,
@@ -1045,7 +1160,7 @@ public class ExpedienteRegistroDAO {
                 + "numero_expediente_sgd, fecha_recepcion, asunto, observacion, es_tramite_virtual, "
                 + "correo_electronico, potencial_duplicado" + columnasGrupo + columnasSolicitante + columnaMunicipalidad + ", activo"
                 + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?" + valoresGrupo + valoresSolicitante + valorMunicipalidad + ", 1)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql, new String[]{"ID_EXPEDIENTE_SOLICITUD"})) {
             int idx = 1;
             ps.setLong(idx++, idExpediente);
             setLongOrNull(ps, idx++, idCanal);
@@ -1071,6 +1186,7 @@ public class ExpedienteRegistroDAO {
                 setLongOrNull(ps, idx++, solicitud.getIdMunicipalidad());
             }
             ps.executeUpdate();
+            return obtenerGeneratedKey(ps, "expediente_solicitud");
         }
     }
 

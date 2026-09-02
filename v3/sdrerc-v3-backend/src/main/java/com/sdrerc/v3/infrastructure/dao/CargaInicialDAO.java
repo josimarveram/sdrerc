@@ -60,7 +60,11 @@ public class CargaInicialDAO {
     private static final String CODIGO_ETAPA_EJECUCION = "EJECUCION";
     private static final String CODIGO_ESTADO_EN_EJECUCION = "EN_EJECUCION";
     private static final String CODIGO_ESTADO_EJECUTADO = "EJECUTADO";
-    private static final String CODIGO_ESTADO_REQUIERE_CORRECCION = "REQUIERE_CORRECCION";
+    // 31/08/2026: actualizado al código propio de Ejecución (script 121) — batch ya cerrado
+    // ("Plan de Carga Inicial: completo", ver v3/CLAUDE.md), no se re-ejecuta; se corrige solo por
+    // consistencia con EjecucionExpedienteDAO, para que ningún código del proyecto quede apuntando
+    // al código viejo compartido con Verificación.
+    private static final String CODIGO_ESTADO_REQUIERE_CORRECCION = "REQUIERE_CORRECCION_EJECUCION";
     private static final String CODIGO_ACCION_RECEPCION_ASIGNACION = "RECEPCION_ASIGNACION";
     private static final String CODIGO_ACCION_REGISTRO_RESULTADO_ANALISIS = "REGISTRO_RESULTADO_ANALISIS";
     private static final String CODIGO_ACCION_ENVIO_VERIFICACION = "ENVIO_VERIFICACION";

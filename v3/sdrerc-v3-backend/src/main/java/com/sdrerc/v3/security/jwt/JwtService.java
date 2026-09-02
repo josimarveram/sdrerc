@@ -27,8 +27,10 @@ import org.springframework.stereotype.Component;
  *   2FA. Vida corta (5 min por defecto). Solo sirve contra los endpoints de
  *   {@code /api/auth/2fa/*} y {@code /api/auth/change-password} - no es un token de sesion.</li>
  *   <li>{@code SESSION}: emitido tras completar el 2FA exitosamente ({@code AutenticacionService
- *   .completarLogin}). Vida corta (30 min por defecto, ver plan seccion 2 punto 3), sin refresh
- *   token todavia (pendiente, no bloqueante para la Fase 0).</li>
+ *   .completarLogin}). Vida corta (10 min por defecto desde el 01/09/2026 — antes 30, bajado a
+ *   pedido explicito del usuario junto con el cierre de sesion proactivo por inactividad del lado
+ *   del cliente, ver {@code InactivityGuard.tsx}), sin refresh token todavia (pendiente, no
+ *   bloqueante para la Fase 0).</li>
  * </ul>
  */
 @Component
@@ -51,7 +53,7 @@ public class JwtService {
     public JwtService(
             @Value("${sdrerc.v3.jwt.secret:}") String secret,
             @Value("${sdrerc.v3.jwt.challenge-ttl-minutes:5}") long challengeTtlMinutes,
-            @Value("${sdrerc.v3.jwt.session-ttl-minutes:30}") long sessionTtlMinutes) {
+            @Value("${sdrerc.v3.jwt.session-ttl-minutes:10}") long sessionTtlMinutes) {
         if (secret == null || secret.trim().isEmpty()) {
             throw new IllegalStateException(
                     "Debe configurar sdrerc.v3.jwt.secret (o la variable de entorno "

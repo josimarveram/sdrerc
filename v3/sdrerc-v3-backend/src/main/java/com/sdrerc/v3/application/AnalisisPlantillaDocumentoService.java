@@ -122,6 +122,8 @@ public class AnalisisPlantillaDocumentoService {
         values.put("NUMERO_ACTA", valor(acta == null ? null : acta.getNumeroActa()));
         values.put("PROCEDIMIENTO_REGISTRAL", valor(solicitud == null ? null : solicitud.getTipoProcedimientoNombre()));
         values.put("FECHA_SOLICITUD", fecha(solicitud == null ? null : solicitud.getFechaRecepcion()));
+        values.put("TIPO_DOCUMENTO_SOLICITUD", valor(solicitud == null ? null : solicitud.getTipoDocumentoNombre()));
+        values.put("NUMERO_DOCUMENTO_SOLICITUD", valor(solicitud == null ? null : solicitud.getNumeroDocumento()));
         values.put("TIPO_DOCUMENTO", valor(documento == null ? null : documento.getTipoDocumentoNombre()));
         values.put("ESTADO_DOCUMENTO", valor(documento == null ? null : documento.getEstadoDocumentoNombre()));
         values.put("FECHA_DOCUMENTO", fecha(documento == null ? null : documento.getFechaDocumento()));
@@ -144,6 +146,8 @@ public class AnalisisPlantillaDocumentoService {
         values.put("tipoProcedimiento", values.get("PROCEDIMIENTO_REGISTRAL"));
         values.put("fechaSolicitud", values.get("FECHA_SOLICITUD"));
         values.put("nroTramiteWeb", values.get("TRAMITE_WEB"));
+        values.put("tipoDocumentoSolicitud", values.get("TIPO_DOCUMENTO_SOLICITUD"));
+        values.put("numeroDocumentoSolicitud", values.get("NUMERO_DOCUMENTO_SOLICITUD"));
         values.put("canalRecepcion", valor(solicitud == null ? null : solicitud.getCanalNombre()));
         values.put("fechaActual", fecha(LocalDate.now()));
         values.put("resAnalisis", valor(resultadoAnalisisNombre));
@@ -164,6 +168,8 @@ public class AnalisisPlantillaDocumentoService {
         values.put("NUMERO_ACTA", "1234-2020");
         values.put("PROCEDIMIENTO_REGISTRAL", "RECTIFICACIÓN ADMINISTRATIVA");
         values.put("FECHA_SOLICITUD", fecha(LocalDate.now().minusDays(20)));
+        values.put("TIPO_DOCUMENTO_SOLICITUD", "COPIA DE DNI");
+        values.put("NUMERO_DOCUMENTO_SOLICITUD", "12345678");
         values.put("TIPO_DOCUMENTO", "INFORME");
         values.put("ESTADO_DOCUMENTO", "EN PROYECTO");
         values.put("FECHA_DOCUMENTO", fecha(LocalDate.now()));
@@ -186,6 +192,8 @@ public class AnalisisPlantillaDocumentoService {
         values.put("tipoProcedimiento", values.get("PROCEDIMIENTO_REGISTRAL"));
         values.put("fechaSolicitud", values.get("FECHA_SOLICITUD"));
         values.put("nroTramiteWeb", values.get("TRAMITE_WEB"));
+        values.put("tipoDocumentoSolicitud", values.get("TIPO_DOCUMENTO_SOLICITUD"));
+        values.put("numeroDocumentoSolicitud", values.get("NUMERO_DOCUMENTO_SOLICITUD"));
         values.put("canalRecepcion", "MESA DE PARTES VIRTUAL");
         values.put("fechaActual", fecha(LocalDate.now()));
         values.put("resAnalisis", "PROCEDENTE");
@@ -358,6 +366,13 @@ public class AnalisisPlantillaDocumentoService {
             if (bloquesSeccion == null || bloquesSeccion.isEmpty()) {
                 continue;
             }
+            // Mismo estilo de párrafo que el propio marcador (normalmente el estilo de cuerpo de
+            // texto de la plantilla, ej. "Default") — así el título/contenido insertados usan la
+            // misma tipografía/tamaño que el resto del Word en vez del default de Word ("Normal",
+            // Calibri) que resultaría de un párrafo sin estilo asignado. `getStyle()` puede devolver
+            // `null` si el marcador tampoco tenía estilo explícito; en ese caso se deja sin asignar,
+            // mismo comportamiento que antes de este ajuste.
+            String estiloReferencia = marcador.getStyle();
             List<XWPFParagraph> nuevosParrafos = new ArrayList<>();
             for (PlantillaBloqueAdminDTO bloque : bloquesSeccion) {
                 if (!coincideCondicionBloque(bloque, valores)) {
@@ -365,6 +380,9 @@ public class AnalisisPlantillaDocumentoService {
                 }
                 if (hasText(bloque.getTitulo())) {
                     XWPFParagraph pTitulo = document.createParagraph();
+                    if (estiloReferencia != null) {
+                        pTitulo.setStyle(estiloReferencia);
+                    }
                     XWPFRun runTitulo = pTitulo.createRun();
                     runTitulo.setBold(true);
                     runTitulo.setText(bloque.getTitulo());
@@ -372,6 +390,9 @@ public class AnalisisPlantillaDocumentoService {
                 }
                 if (hasText(bloque.getContenido())) {
                     XWPFParagraph pContenido = document.createParagraph();
+                    if (estiloReferencia != null) {
+                        pContenido.setStyle(estiloReferencia);
+                    }
                     pContenido.createRun().setText(bloque.getContenido());
                     nuevosParrafos.add(pContenido);
                 }

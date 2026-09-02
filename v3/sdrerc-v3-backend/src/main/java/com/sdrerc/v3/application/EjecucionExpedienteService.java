@@ -4,6 +4,7 @@ import com.sdrerc.v3.domain.CatalogoItemDTO;
 import com.sdrerc.v3.domain.DocumentoAnalizadoDTO;
 import com.sdrerc.v3.domain.EjecucionExpedienteDTO;
 import com.sdrerc.v3.domain.EjecucionResultadoDTO;
+import com.sdrerc.v3.domain.EjecucionUltimoResultadoDTO;
 import com.sdrerc.v3.domain.ExpedienteEdicionManualDTO;
 import com.sdrerc.v3.domain.UsuarioAsignableDTO;
 import com.sdrerc.v3.infrastructure.dao.AnalisisExpedienteDAO;
@@ -35,14 +36,24 @@ public class EjecucionExpedienteService {
     private static final String EQUIPO_SUPERVISION = "EQ_SUPERVISION";
 
     /**
-     * Las 3 cartas finales de notificación (mismos códigos que {@code TIPOS_CARTA_NOTIFICACION} en
+     * Las cartas finales de notificación (mismos códigos que {@code TIPOS_CARTA_NOTIFICACION} en
      * `EjecucionContent.tsx`) — únicos tipos que pueden eliminarse desde Ejecución (21/08/2026,
      * pedido explícito del usuario: "no me debería permitir eliminar documentos que vienen de
      * análisis o verificación o de otras áreas"). Validado acá (no solo en el frontend) porque la
      * baja lógica es una escritura real contra la BD compartida con V2.
+     *
+     * <p>28/08/2026: ampliado de 3 a las 6 cartas finales reales del catálogo {@code EJECUCION_DOC_*}
+     * (todas con {@code clasificacion=FINAL}) — antes solo Improcedente/Procedente/Procedente en
+     * Parte; faltaban Abandono/Desistimiento/Infundado. Mismos 6 códigos que
+     * {@code CatalogoLookupDAO#listarTiposDocumentoAdjuntoEjecucion} ya devuelve.</p>
      */
     private static final Set<String> TIPOS_CARTA_NOTIFICACION = Set.of(
-            "ANALISIS_DOC_17_CARTA_IMPROCEDENTE", "ANALISIS_DOC_18_CARTA_PROCEDENTE", "ANALISIS_DOC_19_CARTA_PROCEDENTE_EN_PARTE");
+            "EJECUCION_DOC_01_CARTA_ABANDONO",
+            "EJECUCION_DOC_17_CARTA_IMPROCEDENTE",
+            "EJECUCION_DOC_18_CARTA_PROCEDENTE",
+            "EJECUCION_DOC_19_CARTA_PROCEDENTE_EN_PARTE",
+            "EJECUCION_DOC_22_CARTA_DESISTIMIENTO",
+            "EJECUCION_DOC_23_CARTA_INFUNDADO");
 
     private final EjecucionExpedienteDAO ejecucionExpedienteDAO;
     private final CatalogoLookupDAO catalogoLookupDAO;
@@ -82,8 +93,17 @@ public class EjecucionExpedienteService {
     }
 
     /** "Registrar resultado de ejecución" — ejecuta SOLO INICIO_EJECUCION. */
-    public EjecucionResultadoDTO registrarResultado(Long idExpediente, String comentario) throws SQLException {
-        return ejecucionExpedienteDAO.registrarResultado(idExpediente, comentario, CurrentUser.get().idUsuario());
+    public EjecucionResultadoDTO registrarResultado(Long idExpediente, String resultadoNombre, String comentario) throws SQLException {
+        return ejecucionExpedienteDAO.registrarResultado(idExpediente, resultadoNombre, comentario, CurrentUser.get().idUsuario());
+    }
+
+    /**
+     * Lectura de solo consulta del último resultado de ejecución ya registrado (01/09/2026, pedido
+     * explícito del usuario: que el panel muestre de forma persistente qué resultado quedó
+     * registrado, aunque la subpestaña se haya desmontado/remontado por un cambio de tab).
+     */
+    public EjecucionUltimoResultadoDTO obtenerUltimoResultadoRegistrado(Long idExpediente) throws SQLException {
+        return ejecucionExpedienteDAO.obtenerUltimoResultadoRegistrado(idExpediente);
     }
 
     /** "Enviar a Supervisión" — resuelve internamente el id de EQ_SUPERVISION, sin combo de equipo en el frontend. */
@@ -153,7 +173,7 @@ public class EjecucionExpedienteService {
                 .orElseThrow(() -> new IllegalArgumentException("El documento seleccionado ya no existe."));
         if (!TIPOS_CARTA_NOTIFICACION.contains(documento.getTipoDocumentoCodigo())) {
             throw new IllegalStateException(
-                    "Solo pueden eliminarse desde Ejecución las cartas finales de notificación (Procedente/Improcedente/Procedente en parte).");
+                    "Solo pueden eliminarse desde Ejecución las cartas finales de notificación agregadas en esta bandeja.");
         }
         documentoAnalisisDAO.darBajaDocumentoAnalizado(idExpediente, idDocumentoAnalizado, CurrentUser.get().idUsuario());
     }

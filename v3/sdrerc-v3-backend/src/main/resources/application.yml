@@ -44,4 +44,22 @@ sdrerc:
       # valor por defecto (JwtService falla rapido al arrancar si falta).
       secret: ${SDRERC_V3_JWT_SECRET:}
       challenge-ttl-minutes: ${SDRERC_V3_JWT_CHALLENGE_TTL_MIN:5}
-      session-ttl-minutes: ${SDRERC_V3_JWT_SESSION_TTL_MIN:30}
+      # 01/09/2026: bajado de 30 a 10 minutos (pedido explícito del usuario), acompañado del
+      # cierre de sesión proactivo por inactividad del lado del cliente (ver InactivityGuard.tsx,
+      # v3/sdrerc-v3-frontend/src/components) — mismos 10 minutos, para que el aviso de
+      # inactividad aparezca justo cuando el JWT ya está por vencer, no antes.
+      session-ttl-minutes: ${SDRERC_V3_JWT_SESSION_TTL_MIN:10}
+    onlyoffice:
+      # Edicion en linea de plantillas de documento (Administracion > Plantillas de documento) via
+      # OnlyOffice Document Server (contenedor Docker local, ver v3/CLAUDE.md). Secreto propio,
+      # distinto de sdrerc.v3.jwt.secret (proposito distinto: firma la comunicacion con el
+      # contenedor OnlyOffice, no las sesiones de la app) - se configura tambien, con el MISMO
+      # valor, como variable de entorno JWT_SECRET del propio contenedor. Opcional (no falla el
+      # arranque si falta): la edicion en linea es una funcionalidad adicional, no un requisito
+      # para que el resto de la app funcione.
+      jwt-secret: ${SDRERC_V3_ONLYOFFICE_JWT_SECRET:}
+      # URL con la que el CONTENEDOR de OnlyOffice alcanza a este backend (no la que usa el
+      # navegador) - host.docker.internal es el nombre especial que Docker Desktop resuelve al
+      # host real, funciona sin importar si el navegador llego por localhost o por Tailscale.
+      backend-callback-base-url: ${SDRERC_V3_ONLYOFFICE_BACKEND_URL:http://host.docker.internal:8081}
+      document-download-token-ttl-minutes: ${SDRERC_V3_ONLYOFFICE_TOKEN_TTL_MIN:10}

@@ -40,6 +40,11 @@ public class DocumentoAnalizadoDTO {
     private final LocalDateTime fechaRegistro;
     private final LocalDateTime fechaModificacion;
     private final Boolean existeOposicion;
+    /** `TIPO_DOCUMENTO_ADJUNTO.clasificacion` (`FINAL`/`INTERMEDIO`/`NULL` para informes sin clasificar
+     * — ver `CLAUDE.md` raíz, sección Análisis) — 30/08/2026, agregado para que las nested grid de
+     * Bandeja de supervisión/Validación (Notificación) puedan filtrar solo cartas intermedias/finales,
+     * excluyendo informes/resoluciones sin clasificación. */
+    private final String clasificacion;
 
     public DocumentoAnalizadoDTO(
             Long idDocumentoAnalizado,
@@ -68,7 +73,8 @@ public class DocumentoAnalizadoDTO {
             boolean activo,
             LocalDateTime fechaRegistro,
             LocalDateTime fechaModificacion,
-            Boolean existeOposicion) {
+            Boolean existeOposicion,
+            String clasificacion) {
         this.idDocumentoAnalizado = idDocumentoAnalizado;
         this.idExpediente = idExpediente;
         this.idExpedienteAnalisis = idExpedienteAnalisis;
@@ -96,6 +102,7 @@ public class DocumentoAnalizadoDTO {
         this.fechaRegistro = fechaRegistro;
         this.fechaModificacion = fechaModificacion;
         this.existeOposicion = existeOposicion;
+        this.clasificacion = safe(clasificacion);
     }
 
     public Long getIdDocumentoAnalizado() {
@@ -204,6 +211,10 @@ public class DocumentoAnalizadoDTO {
 
     public Boolean getExisteOposicion() {
         return existeOposicion;
+    }
+
+    public String getClasificacion() {
+        return clasificacion;
     }
 
     private static String safe(String value) {

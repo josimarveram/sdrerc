@@ -54,6 +54,14 @@ public class CatalogoLookupService {
         return catalogoLookupDAO.listarTiposDocumentoAdjuntoAnalisis();
     }
 
+    public List<CatalogoItemDTO> listarTiposDocumentoAdjuntoEjecucion() throws SQLException {
+        return catalogoLookupDAO.listarTiposDocumentoAdjuntoEjecucion();
+    }
+
+    public List<CatalogoItemDTO> listarTiposDocumentoAdjuntoCartaRespuesta() throws SQLException {
+        return catalogoLookupDAO.listarTiposDocumentoAdjuntoCartaRespuesta();
+    }
+
     public List<CatalogoItemDTO> listarEstadosDocumentoAnalisis() throws SQLException {
         return catalogoLookupDAO.listarEstadosDocumentoAnalisis();
     }

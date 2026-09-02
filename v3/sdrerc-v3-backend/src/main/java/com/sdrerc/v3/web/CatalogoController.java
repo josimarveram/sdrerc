@@ -66,6 +66,18 @@ public class CatalogoController {
         return catalogoLookupService.listarTiposDocumentoAdjuntoAnalisis();
     }
 
+    /** Catálogo "Tipo documento" de la subpestaña "Ejecutar" (Bandeja Ejecución), 28/08/2026. */
+    @GetMapping("/tipos-documento-adjunto-ejecucion")
+    public List<CatalogoItemDTO> tiposDocumentoAdjuntoEjecucion() throws SQLException {
+        return catalogoLookupService.listarTiposDocumentoAdjuntoEjecucion();
+    }
+
+    /** Catálogo "Tipo documento" del panel "Registrar Asignación" (Bandeja Cartas de Respuesta), 28/08/2026. */
+    @GetMapping("/tipos-documento-adjunto-carta-respuesta")
+    public List<CatalogoItemDTO> tiposDocumentoAdjuntoCartaRespuesta() throws SQLException {
+        return catalogoLookupService.listarTiposDocumentoAdjuntoCartaRespuesta();
+    }
+
     @GetMapping("/estados-documento-analisis")
     public List<CatalogoItemDTO> estadosDocumentoAnalisis() throws SQLException {
         return catalogoLookupService.listarEstadosDocumentoAnalisis();

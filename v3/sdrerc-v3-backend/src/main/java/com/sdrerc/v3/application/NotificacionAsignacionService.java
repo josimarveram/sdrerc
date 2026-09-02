@@ -1,9 +1,11 @@
 package com.sdrerc.v3.application;
 
 import com.sdrerc.v3.domain.AsignacionHistorialDTO;
+import com.sdrerc.v3.domain.CatalogoItemDTO;
 import com.sdrerc.v3.domain.EquipoAsignacionDTO;
 import com.sdrerc.v3.domain.NotificacionAsignacionDocumentoDTO;
 import com.sdrerc.v3.domain.UsuarioAsignableDTO;
+import com.sdrerc.v3.infrastructure.dao.AsignacionExpedienteDAO;
 import com.sdrerc.v3.infrastructure.dao.CatalogoLookupDAO;
 import com.sdrerc.v3.infrastructure.dao.DocumentoAnalisisDAO;
 import com.sdrerc.v3.infrastructure.dao.EquipoAsignacionDAO;
@@ -35,21 +37,35 @@ public class NotificacionAsignacionService {
     /** Equipos válidos para "Destino operativo" en este incremento (EQ_ANALISIS diferido). */
     private static final Set<String> EQUIPOS_DESTINO_VALIDOS = Set.of("EQ_VALIDACION", "EQ_NOTIFICACION", "EQ_EJECUCION");
     private static final String EQUIPO_EJECUCION = "EQ_EJECUCION";
+    private static final String EQUIPO_ANALISIS = "EQ_ANALISIS";
+    /**
+     * Equipos válidos para el "Destino operativo" del resultado Observado del panel de Supervisión
+     * (02/09/2026, pedido explícito del usuario — restaura el flujo real de V2/diseño previo al
+     * 28/08/2026: al observar, el documento se deriva a Análisis o Ejecución para su corrección,
+     * distinto del "Destino operativo" de {@link #EQUIPOS_DESTINO_VALIDOS} usado por "Asignar", que
+     * envía a Validación/Notificación). {@code EQ_ANALISIS} exige la transición
+     * {@code DEVOLUCION_A_ANALISIS: NOTIFICACION/POR_ASIGNAR → ANALISIS/OBSERVADO} — script
+     * {@code 122_transicion_notificacion_supervision_observado_analisis.sql}, creado, no ejecutado.
+     */
+    private static final Set<String> EQUIPOS_DESTINO_OBSERVADO = Set.of(EQUIPO_ANALISIS, EQUIPO_EJECUCION);
 
     private final DocumentoAnalisisDAO documentoAnalisisDAO;
     private final EquipoAsignacionDAO equipoAsignacionDAO;
     private final UsuarioAsignacionDAO usuarioAsignacionDAO;
     private final CatalogoLookupDAO catalogoLookupDAO;
+    private final AsignacionExpedienteDAO asignacionExpedienteDAO;
 
     public NotificacionAsignacionService(
             DocumentoAnalisisDAO documentoAnalisisDAO,
             EquipoAsignacionDAO equipoAsignacionDAO,
             UsuarioAsignacionDAO usuarioAsignacionDAO,
-            CatalogoLookupDAO catalogoLookupDAO) {
+            CatalogoLookupDAO catalogoLookupDAO,
+            AsignacionExpedienteDAO asignacionExpedienteDAO) {
         this.documentoAnalisisDAO = documentoAnalisisDAO;
         this.equipoAsignacionDAO = equipoAsignacionDAO;
         this.usuarioAsignacionDAO = usuarioAsignacionDAO;
         this.catalogoLookupDAO = catalogoLookupDAO;
+        this.asignacionExpedienteDAO = asignacionExpedienteDAO;
     }
 
     /** Bandeja Asignación — sin filtro de visibilidad por fila (ver Javadoc del DAO). */
@@ -110,6 +126,50 @@ public class NotificacionAsignacionService {
     /** "Registrar Supervisión" (resultado Aprobado) — solo auditoría, ver Javadoc del DAO. */
     public void registrarSupervisionAprobada(Long idExpediente, Long idDocumentoAnalizado) throws SQLException {
         documentoAnalisisDAO.registrarSupervisionEmisionAprobada(idExpediente, idDocumentoAnalizado, CurrentUser.get().idUsuario());
+    }
+
+    /**
+     * "Registrar Supervisión" (resultado Observado) — 02/09/2026, pedido explícito del usuario.
+     * Deriva el documento/expediente a {@code EQ_ANALISIS} (vía {@link
+     * AsignacionExpedienteDAO#reasignarDesdeCartaRespuesta}, mismo método ya usado por "Cartas de
+     * respuesta" con destino "DERIVADO", acá con destino "OBSERVADO" — el propio Javadoc de ese
+     * método ya anticipaba este reuso) o {@code EQ_EJECUCION} (vía {@link
+     * DocumentoAnalisisDAO#derivarDocumentoNotificacionAEjecucion}, ya existente). El nombre del
+     * motivo de corrección se antepone al comentario libre del usuario (sin columna nueva —
+     * `motivo_correccion` no tiene una columna dedicada en `EXPEDIENTE_HISTORIAL` para esta acción,
+     * a diferencia del fix de Ejecución que sí usa la columna `motivo`).
+     */
+    public void registrarSupervisionObservada(
+            Long idExpediente, Long idDocumentoAnalizado, Long idEquipoDestino, Long idUsuarioDestino,
+            String motivoCorreccionNombre, String comentario) throws SQLException {
+        String codigoEquipo = resolverCodigoEquipo(idEquipoDestino);
+        if (codigoEquipo == null || !EQUIPOS_DESTINO_OBSERVADO.contains(codigoEquipo)) {
+            throw new IllegalArgumentException("Seleccione Equipo Análisis o Equipo Ejecución como destino de la observación.");
+        }
+        var actor = CurrentUser.get();
+        String comentarioCompleto = (motivoCorreccionNombre != null && !motivoCorreccionNombre.isBlank() ? "Motivo: " + motivoCorreccionNombre + ". " : "")
+                + (comentario != null ? comentario : "");
+        if (EQUIPO_EJECUCION.equalsIgnoreCase(codigoEquipo)) {
+            documentoAnalisisDAO.derivarDocumentoNotificacionAEjecucion(
+                    idDocumentoAnalizado, idEquipoDestino, idUsuarioDestino, comentarioCompleto,
+                    actor.idUsuario(), actor.hasRole("ADMIN_SISTEMA"));
+            return;
+        }
+        asignacionExpedienteDAO.reasignarDesdeCartaRespuesta(
+                idExpediente, idEquipoDestino, idUsuarioDestino, comentarioCompleto,
+                actor.idUsuario(), actor.hasRole("ADMIN_SISTEMA"), "OBSERVADO");
+    }
+
+    /** Combo "Equipo destino" exclusivo del resultado Observado del panel de Supervisión (Análisis/Ejecución). */
+    public List<EquipoAsignacionDTO> listarEquiposDestinoObservado() throws SQLException {
+        return equipoAsignacionDAO.listarEquiposActivos().stream()
+                .filter(eq -> EQUIPOS_DESTINO_OBSERVADO.contains(eq.getCodigo()))
+                .toList();
+    }
+
+    /** Combo "Motivo de corrección" del resultado Observado (mismo catálogo `motivo_correccion` que ya usa Ejecución). */
+    public List<CatalogoItemDTO> listarMotivosCorreccion() throws SQLException {
+        return catalogoLookupDAO.listarMotivosCorreccion();
     }
 
     public boolean existeSupervisionAprobada(Long idDocumentoAnalizado) throws SQLException {

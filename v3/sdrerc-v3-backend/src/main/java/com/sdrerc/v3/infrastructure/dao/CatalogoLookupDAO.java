@@ -56,23 +56,43 @@ public class CatalogoLookupDAO {
      * <p>Bug real corregido (20/08/2026, mismo día, reportado por el usuario: "la lista del combo
      * Tipo... no me está cargando la data actualizada"): este método delegaba en el genérico
      * {@code listarCatalogo("tipo_documento_adjunto")} (sin filtro, trae TODOS los tipos de
-     * documento del sistema — Verificación/Ejecución/Notificación incluidos). El combo real de V2
-     * (`cmbTipoDocumento` en `JPanelAnalisisV2`/`DocumentoAnalisisTreeGridPanelV2`) usa
-     * {@code CatalogoLookupDAO#listarTiposDocumentoAdjuntoAnalisis} (V2), que filtra
-     * {@code codigo LIKE 'ANALISIS_%'} y ordena por `codigo` (no por `nombre`) — port literal ahora
-     * mismo, mismo filtro/orden exactos.</p>
+     * documento del sistema — Verificación/Ejecución/Notificación incluidos).</p>
+     *
+     * <p>28/08/2026, pedido explícito del usuario: el catálogo real de {@code tipo_documento_adjunto}
+     * ya distingue por módulo con códigos propios ({@code ANALISIS_DOC_*}/{@code EJECUCION_DOC_*}/
+     * {@code ASIGNACION_CARTA_RESPUESTA_*}) — este método se acota a códigos que CONTIENEN
+     * {@code ANALISIS_DOC} (no solo que empiecen con {@code ANALISIS_}, para no volver a mezclar con
+     * ningún otro prefijo), activos, ordenados por código. Ver
+     * {@link #listarTiposDocumentoAdjuntoEjecucion()}/{@link #listarTiposDocumentoAdjuntoCartaRespuesta()}
+     * para los combos equivalentes de Ejecución/Cartas de Respuesta.</p>
      */
     public List<CatalogoItemDTO> listarTiposDocumentoAdjuntoAnalisis() throws SQLException {
+        return listarTiposDocumentoAdjuntoPorSubcadena("ANALISIS_DOC");
+    }
+
+    /** Combo "Tipo documento" de la subpestaña "Ejecutar" (Bandeja Ejecución), 28/08/2026, pedido explícito del usuario. */
+    public List<CatalogoItemDTO> listarTiposDocumentoAdjuntoEjecucion() throws SQLException {
+        return listarTiposDocumentoAdjuntoPorSubcadena("EJECUCION_DOC");
+    }
+
+    /** Combo "Tipo documento" del panel "Registrar Asignación" (Bandeja Cartas de Respuesta), 28/08/2026, pedido explícito del usuario. */
+    public List<CatalogoItemDTO> listarTiposDocumentoAdjuntoCartaRespuesta() throws SQLException {
+        return listarTiposDocumentoAdjuntoPorSubcadena("ASIGNACION_CARTA_RESPUESTA");
+    }
+
+    private List<CatalogoItemDTO> listarTiposDocumentoAdjuntoPorSubcadena(String subcadena) throws SQLException {
         String sql = "SELECT codigo, nombre, clasificacion FROM tipo_documento_adjunto "
-                + "WHERE activo = 1 AND codigo LIKE 'ANALISIS_%' ORDER BY codigo";
+                + "WHERE activo = 1 AND codigo LIKE ? ORDER BY codigo";
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            List<CatalogoItemDTO> items = new ArrayList<>();
-            while (rs.next()) {
-                items.add(new CatalogoItemDTO(rs.getString("codigo"), rs.getString("nombre"), rs.getString("clasificacion")));
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, "%" + subcadena + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                List<CatalogoItemDTO> items = new ArrayList<>();
+                while (rs.next()) {
+                    items.add(new CatalogoItemDTO(rs.getString("codigo"), rs.getString("nombre"), rs.getString("clasificacion")));
+                }
+                return items;
             }
-            return items;
         }
     }
 

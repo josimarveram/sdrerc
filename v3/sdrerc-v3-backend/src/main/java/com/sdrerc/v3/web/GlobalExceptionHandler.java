@@ -1,6 +1,7 @@
 package com.sdrerc.v3.web;
 
 import com.sdrerc.v3.security.jwt.JwtService;
+import com.sdrerc.v3.security.jwt.OnlyOfficeJwtService;
 import com.sdrerc.v3.web.dto.ApiError;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -39,6 +40,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(JwtService.InvalidTokenException.class)
     public ResponseEntity<ApiError> handleInvalidToken(JwtService.InvalidTokenException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(ex.getMessage()));
+    }
+
+    @ExceptionHandler(OnlyOfficeJwtService.InvalidOnlyOfficeTokenException.class)
+    public ResponseEntity<ApiError> handleInvalidOnlyOfficeToken(OnlyOfficeJwtService.InvalidOnlyOfficeTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(ex.getMessage()));
     }
 

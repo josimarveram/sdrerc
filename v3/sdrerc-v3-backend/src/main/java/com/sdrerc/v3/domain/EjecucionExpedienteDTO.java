@@ -193,9 +193,10 @@ public class EjecucionExpedienteDTO {
         return "EJECUCION".equalsIgnoreCase(etapaCodigo) && "EJECUTADO".equalsIgnoreCase(estadoCodigo);
     }
 
+    /** 31/08/2026: estados propios de Ejecución (script 121), ya no comparten ID con Verificación. */
     public boolean isCorregible() {
         return "EJECUCION".equalsIgnoreCase(etapaCodigo)
-                && ("DOCUMENTO_INCONSISTENTE".equalsIgnoreCase(estadoCodigo) || "REQUIERE_CORRECCION".equalsIgnoreCase(estadoCodigo));
+                && ("DOCUMENTO_INCONSISTENTE_EJECUCION".equalsIgnoreCase(estadoCodigo) || "REQUIERE_CORRECCION_EJECUCION".equalsIgnoreCase(estadoCodigo));
     }
 
     /** KPI "Pendientes" (mismo criterio que V2: EN_EJECUCION o INDAGATORIO). */

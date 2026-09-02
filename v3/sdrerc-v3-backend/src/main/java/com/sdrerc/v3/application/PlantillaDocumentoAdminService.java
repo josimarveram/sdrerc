@@ -77,33 +77,32 @@ public class PlantillaDocumentoAdminService {
 
     /**
      * Catálogo de referencia de variables — mejora explícita sobre V2 (bloque de texto fijo en un
-     * diálogo), ver Javadoc de {@link PlantillaVariableDTO}. Mismas claves exactas que
-     * {@code AnalisisPlantillaDocumentoService#valores(...)} resuelve hoy.
+     * diálogo), ver Javadoc de {@link PlantillaVariableDTO}. Muestra solo la forma CANÓNICA de cada
+     * variable (una fila por dato real) — los alias camelCase (`nroTramiteWeb`, `tipoActa`,
+     * `nomTitular`, etc.) siguen funcionando igual en {@code AnalisisPlantillaDocumentoService#valores}
+     * (compatibilidad con plantillas Word reales ya escritas con esa forma, ver ese método), pero
+     * se retiraron de ESTE catálogo (27/08/2026, pedido explícito del usuario: "veo que hay
+     * variables duplicadas... elimina las que son alias para evitar cualquier confusión") — mostrar
+     * ambas formas como si fueran 2 variables distintas confundía, dando a entender que existían el
+     * doble de datos disponibles de los que realmente hay.
      */
     public List<PlantillaVariableDTO> listarVariablesDisponibles() {
         return List.of(
                 new PlantillaVariableDTO("NUMERO_EXPEDIENTE", "Número de expediente SDRERC (ej. SDRERC-EXP-2026-000123)", "Expediente"),
                 new PlantillaVariableDTO("NUMERO_EXPEDIENTE_SGD", "Número de expediente SGD", "Expediente"),
                 new PlantillaVariableDTO("TRAMITE_WEB", "Número de trámite web (Mesa de partes virtual)", "Expediente"),
-                new PlantillaVariableDTO("nroTramiteWeb", "Alias camelCase de TRAMITE_WEB", "Expediente"),
                 new PlantillaVariableDTO("PROCEDIMIENTO_REGISTRAL", "Nombre del procedimiento registral", "Expediente"),
-                new PlantillaVariableDTO("tipoProcedimiento", "Alias camelCase de PROCEDIMIENTO_REGISTRAL", "Expediente"),
                 new PlantillaVariableDTO("FECHA_SOLICITUD", "Fecha de recepción de la solicitud (dd/MM/yyyy)", "Expediente"),
-                new PlantillaVariableDTO("fechaSolicitud", "Alias camelCase de FECHA_SOLICITUD", "Expediente"),
                 new PlantillaVariableDTO("canalRecepcion", "Canal de ingreso (Mesa de partes virtual, presencial, etc.)", "Expediente"),
+                new PlantillaVariableDTO("TIPO_DOCUMENTO_SOLICITUD", "Tipo del documento adjunto a la solicitud (ej. Copia de DNI, Oficio, Memorando) — distinto de TIPO_DOCUMENTO, que es el documento que se está generando", "Expediente"),
+                new PlantillaVariableDTO("NUMERO_DOCUMENTO_SOLICITUD", "Número del documento adjunto a la solicitud", "Expediente"),
                 new PlantillaVariableDTO("fechaActual", "Fecha de hoy (dd/MM/yyyy), al momento de generar el documento", "Expediente"),
                 new PlantillaVariableDTO("TITULAR", "Nombre completo del titular del acta", "Titular"),
-                new PlantillaVariableDTO("nomTitular", "Alias camelCase de TITULAR", "Titular"),
                 new PlantillaVariableDTO("DOCUMENTO_IDENTIDAD_TITULAR", "N° de documento de identidad del titular", "Titular"),
-                new PlantillaVariableDTO("dniTitular", "Alias camelCase de DOCUMENTO_IDENTIDAD_TITULAR", "Titular"),
                 new PlantillaVariableDTO("TIPO_ACTA", "Nombre del tipo de acta (nacimiento, matrimonio, defunción)", "Titular"),
-                new PlantillaVariableDTO("tipoActa", "Alias camelCase de TIPO_ACTA", "Titular"),
                 new PlantillaVariableDTO("NUMERO_ACTA", "Número de acta registral", "Titular"),
-                new PlantillaVariableDTO("nroActa", "Alias camelCase de NUMERO_ACTA", "Titular"),
                 new PlantillaVariableDTO("SOLICITANTE", "Nombre completo del solicitante", "Solicitante"),
-                new PlantillaVariableDTO("nomSolicitante", "Alias camelCase de SOLICITANTE", "Solicitante"),
                 new PlantillaVariableDTO("DOCUMENTO_IDENTIDAD_SOLICITANTE", "N° de documento de identidad del solicitante", "Solicitante"),
-                new PlantillaVariableDTO("dniSolicitante", "Alias camelCase de DOCUMENTO_IDENTIDAD_SOLICITANTE", "Solicitante"),
                 new PlantillaVariableDTO("direccion", "Dirección del solicitante", "Solicitante"),
                 new PlantillaVariableDTO("correo", "Correo electrónico del solicitante", "Solicitante"),
                 new PlantillaVariableDTO("TIPO_DOCUMENTO", "Tipo del documento que se está generando (carta, informe, resolución)", "Documento"),

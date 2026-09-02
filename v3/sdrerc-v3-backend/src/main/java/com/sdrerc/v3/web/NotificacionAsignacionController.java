@@ -2,11 +2,13 @@ package com.sdrerc.v3.web;
 
 import com.sdrerc.v3.application.NotificacionAsignacionService;
 import com.sdrerc.v3.domain.AsignacionHistorialDTO;
+import com.sdrerc.v3.domain.CatalogoItemDTO;
 import com.sdrerc.v3.domain.EquipoAsignacionDTO;
 import com.sdrerc.v3.domain.NotificacionAsignacionDocumentoDTO;
 import com.sdrerc.v3.domain.UsuarioAsignableDTO;
 import com.sdrerc.v3.web.dto.NotificacionAsignacionGenerarRequest;
 import com.sdrerc.v3.web.dto.NotificacionFirmaRequest;
+import com.sdrerc.v3.web.dto.NotificacionSupervisionObservadaRequest;
 import com.sdrerc.v3.web.dto.NotificacionSupervisionRequest;
 import java.sql.SQLException;
 import java.util.List;
@@ -62,6 +64,26 @@ public class NotificacionAsignacionController {
     @PostMapping("/supervision")
     public void registrarSupervision(@RequestBody NotificacionSupervisionRequest request) throws SQLException {
         notificacionAsignacionService.registrarSupervisionAprobada(request.idExpediente(), request.idDocumentoAnalizado());
+    }
+
+    /** "Registrar Supervisión" (resultado Observado) — deriva a Equipo Análisis o Equipo Ejecución. */
+    @PostMapping("/supervision-observada")
+    public void registrarSupervisionObservada(@RequestBody NotificacionSupervisionObservadaRequest request) throws SQLException {
+        notificacionAsignacionService.registrarSupervisionObservada(
+                request.idExpediente(), request.idDocumentoAnalizado(), request.idEquipoDestino(), request.idUsuarioDestino(),
+                request.motivoCorreccionNombre(), request.comentario());
+    }
+
+    /** Combo "Equipo destino" exclusivo del resultado Observado (Análisis/Ejecución). */
+    @GetMapping("/equipos-destino-observado")
+    public List<EquipoAsignacionDTO> listarEquiposDestinoObservado() throws SQLException {
+        return notificacionAsignacionService.listarEquiposDestinoObservado();
+    }
+
+    /** Combo "Motivo de corrección" del resultado Observado. */
+    @GetMapping("/catalogos/motivos-correccion")
+    public List<CatalogoItemDTO> listarMotivosCorreccion() throws SQLException {
+        return notificacionAsignacionService.listarMotivosCorreccion();
     }
 
     @GetMapping("/{idDocumentoAnalizado}/supervision")
