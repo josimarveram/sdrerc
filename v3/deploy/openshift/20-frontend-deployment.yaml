@@ -1,0 +1,66 @@
+# EJEMPLO de referencia - mismo criterio que 10-backend-deployment.yaml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdrerc-v3-frontend
+  namespace: sdrerc-v3
+  labels:
+    app: sdrerc-v3
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sdrerc-v3
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: sdrerc-v3
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: quay.io/CAMBIAR-ORGANIZACION/sdrerc-v3-frontend:CAMBIAR-TAG
+          ports:
+            - containerPort: 8080
+          env:
+            # Nombre del Service del backend dentro del mismo namespace - DNS
+            # interno de Kubernetes, no necesita IP ni Route.
+            - name: BACKEND_URL
+              value: "http://sdrerc-v3-backend:8081"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdrerc-v3-frontend
+  namespace: sdrerc-v3
+  labels:
+    app: sdrerc-v3
+    component: frontend
+spec:
+  selector:
+    app: sdrerc-v3
+    component: frontend
+  ports:
+    - port: 8080
+      targetPort: 8080

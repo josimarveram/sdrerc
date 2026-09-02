@@ -1,0 +1,18 @@
+# EJEMPLO de referencia - Route de OpenShift (equivalente a un Ingress) que
+# expone el frontend hacia afuera del clúster. El backend NO necesita su
+# propia Route: el navegador solo habla con el frontend, que internamente
+# reenvía /api/* al Service del backend (ver nginx.conf.template).
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: sdrerc-v3
+  namespace: sdrerc-v3
+spec:
+  to:
+    kind: Service
+    name: sdrerc-v3-frontend
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

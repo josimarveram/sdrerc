@@ -1,0 +1,43 @@
+# Composición local para VALIDAR los 2 contenedores (backend + frontend) antes
+# de llevarlos a OpenShift - no reemplaza los manifiestos de Kubernetes reales
+# (ver deploy/openshift/), es solo para probar en una laptop/PC con Docker
+# Desktop que las imágenes arrancan y se comunican bien entre sí.
+#
+# Oracle NO se containeriza aquí a propósito (ver v3/CLAUDE.md, sección
+# "Contenedores y despliegue"): el backend se conecta a una instancia Oracle
+# YA EXISTENTE (la del entorno donde se corra esto), vía las variables de
+# entorno de abajo - ajústalas a la instancia real disponible.
+#
+# Uso:
+#   cd v3
+#   docker compose up --build
+#   abrir http://localhost:8080
+
+services:
+  backend:
+    build: ./sdrerc-v3-backend
+    ports:
+      - "8081:8081"
+    environment:
+      # Oracle real: ajustar host/puerto/servicio a la instancia disponible.
+      SDRERC_V3_DB_URL: "jdbc:oracle:thin:@host.docker.internal:1521/XEPDB1"
+      SDRERC_V3_DB_USER: "${SDRERC_V3_DB_USER}"
+      SDRERC_V3_DB_PASSWORD: "${SDRERC_V3_DB_PASSWORD}"
+      SDRERC_V3_JWT_SECRET: "${SDRERC_V3_JWT_SECRET}"
+      # Opcionales (2FA por correo, TOTP, edición en línea de plantillas) -
+      # sin valor por defecto, la app arranca igual sin ellos (ver application.yml).
+      SDRERC_APP_TOTP_KEY: "${SDRERC_APP_TOTP_KEY:-}"
+      SDRERC_APP_SMTP_HOST: "${SDRERC_APP_SMTP_HOST:-}"
+      SDRERC_APP_SMTP_PORT: "${SDRERC_APP_SMTP_PORT:-}"
+      SDRERC_APP_SMTP_USER: "${SDRERC_APP_SMTP_USER:-}"
+      SDRERC_APP_SMTP_PASSWORD: "${SDRERC_APP_SMTP_PASSWORD:-}"
+      SDRERC_APP_SMTP_FROM: "${SDRERC_APP_SMTP_FROM:-}"
+
+  frontend:
+    build: ./sdrerc-v3-frontend
+    ports:
+      - "8080:8080"
+    environment:
+      BACKEND_URL: "http://backend:8081"
+    depends_on:
+      - backend

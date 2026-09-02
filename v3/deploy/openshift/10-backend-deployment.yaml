@@ -1,0 +1,88 @@
+# EJEMPLO de referencia para el equipo de plataforma - ajustar namespace, nombre
+# de imagen (image: apunta hoy a un placeholder de Quay, reemplazar por la ruta
+# real una vez que el pipeline la publique), límites de recursos y réplicas
+# según lo que defina la OTI para este proyecto.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdrerc-v3-backend
+  namespace: sdrerc-v3
+  labels:
+    app: sdrerc-v3
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sdrerc-v3
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: sdrerc-v3
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: quay.io/CAMBIAR-ORGANIZACION/sdrerc-v3-backend:CAMBIAR-TAG
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SDRERC_V3_DB_URL
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: DB_URL } }
+            - name: SDRERC_V3_DB_USER
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: DB_USER } }
+            - name: SDRERC_V3_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: DB_PASSWORD } }
+            - name: SDRERC_V3_JWT_SECRET
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: JWT_SECRET } }
+            - name: SDRERC_APP_TOTP_KEY
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: TOTP_KEY } }
+            - name: SDRERC_APP_SMTP_HOST
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: SMTP_HOST } }
+            - name: SDRERC_APP_SMTP_PORT
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: SMTP_PORT } }
+            - name: SDRERC_APP_SMTP_USER
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: SMTP_USER } }
+            - name: SDRERC_APP_SMTP_PASSWORD
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: SMTP_PASSWORD } }
+            - name: SDRERC_APP_SMTP_FROM
+              valueFrom: { secretKeyRef: { name: sdrerc-v3-backend-secret, key: SMTP_FROM } }
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          # Reutiliza el endpoint de Spring Boot Actuator ya expuesto
+          # (management.endpoints.web.exposure.include: health,info en
+          # application.yml) - sin necesidad de agregar nada al código.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 40
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdrerc-v3-backend
+  namespace: sdrerc-v3
+  labels:
+    app: sdrerc-v3
+    component: backend
+spec:
+  selector:
+    app: sdrerc-v3
+    component: backend
+  ports:
+    - port: 8081
+      targetPort: 8081
