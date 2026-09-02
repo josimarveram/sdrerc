@@ -10,6 +10,18 @@
 #     (si hiciste cambios de codigo Java, hay que volver a compilar antes de correr este script:
 #      ver comando de build al final de este archivo, comentado)
 #
+# SMTP (envio del OTP de 2FA por correo, 28/08/2026, bug real corregido):
+#   config/sdrerc-app.properties esta commiteado con mail.smtp.user/mail.smtp.password EN BLANCO a
+#   proposito (nunca se debe commitear una credencial real ahi, ver el propio comentario del
+#   archivo) -- por eso, sin nada mas, el envio de OTP por correo siempre falla con "Debe configurar
+#   mail.smtp.host, mail.smtp.user y mail.smtp.password...", no es un bug nuevo ni una credencial que
+#   "se borro". Para que funcione de verdad, configura una sola vez (nunca se commitea, vive solo en
+#   esta maquina) las variables de entorno de USUARIO reales:
+#       [Environment]::SetEnvironmentVariable("SDRERC_APP_SMTP_USER", "<correo>", "User")
+#       [Environment]::SetEnvironmentVariable("SDRERC_APP_SMTP_PASSWORD", "<clave de aplicacion>", "User")
+#   Este script las prioriza sobre config/sdrerc-app.properties (antes las pisaba siempre con el
+#   valor en blanco del archivo, aunque ya estuvieran configuradas -- ver Resolve-SmtpValue abajo).
+#
 # Uso:
 #   powershell -ExecutionPolicy Bypass -File v3\start-dev.ps1
 
@@ -38,11 +50,34 @@ $env:SDRERC_V3_DB_URL = [Environment]::GetEnvironmentVariable("SDRERC_V3_DB_URL"
 $env:SDRERC_V3_DB_USER = [Environment]::GetEnvironmentVariable("SDRERC_V3_DB_USER", "User")
 $env:SDRERC_V3_DB_PASSWORD = [Environment]::GetEnvironmentVariable("SDRERC_V3_DB_PASSWORD", "User")
 $env:SDRERC_V3_JWT_SECRET = [Environment]::GetEnvironmentVariable("SDRERC_V3_JWT_SECRET", "User")
-$env:SDRERC_APP_SMTP_HOST = $smtp['mail.smtp.host']
-$env:SDRERC_APP_SMTP_PORT = $smtp['mail.smtp.port']
-$env:SDRERC_APP_SMTP_USER = $smtp['mail.smtp.user']
-$env:SDRERC_APP_SMTP_PASSWORD = $smtp['mail.smtp.password']
-$env:SDRERC_APP_SMTP_FROM = $smtp['mail.smtp.from']
+
+# Bug real corregido (28/08/2026): antes esta seccion pisaba SIEMPRE las 5 variables SMTP con el
+# valor (en blanco) de config/sdrerc-app.properties, incluso si ya habia una variable de entorno de
+# USUARIO persistida con la credencial real -- el backend nunca llegaba a verla, porque
+# Start-Process hereda el entorno de ESTE proceso powershell, y aqui ya habia quedado sobreescrita
+# a "" antes de lanzar java. Ahora se prioriza la variable de entorno de usuario ya configurada
+# (si existe) y solo se cae al archivo de properties cuando no hay ninguna -- mismo orden de
+# prioridad que ya usa EmailOtpMailer.java en el backend (system property > env var > archivo).
+function Resolve-SmtpValue {
+    param([string]$EnvName, [string]$ValorDelArchivo)
+    $persistido = [Environment]::GetEnvironmentVariable($EnvName, "User")
+    if ($persistido) { return $persistido }
+    return $ValorDelArchivo
+}
+
+$env:SDRERC_APP_SMTP_HOST = Resolve-SmtpValue "SDRERC_APP_SMTP_HOST" $smtp['mail.smtp.host']
+$env:SDRERC_APP_SMTP_PORT = Resolve-SmtpValue "SDRERC_APP_SMTP_PORT" $smtp['mail.smtp.port']
+$env:SDRERC_APP_SMTP_USER = Resolve-SmtpValue "SDRERC_APP_SMTP_USER" $smtp['mail.smtp.user']
+$env:SDRERC_APP_SMTP_PASSWORD = Resolve-SmtpValue "SDRERC_APP_SMTP_PASSWORD" $smtp['mail.smtp.password']
+$env:SDRERC_APP_SMTP_FROM = Resolve-SmtpValue "SDRERC_APP_SMTP_FROM" $smtp['mail.smtp.from']
+
+if (-not $env:SDRERC_APP_SMTP_USER -or -not $env:SDRERC_APP_SMTP_PASSWORD) {
+    Write-Output "AVISO: SDRERC_APP_SMTP_USER/SDRERC_APP_SMTP_PASSWORD no estan configurados (ni como"
+    Write-Output "variable de entorno de usuario ni en config/sdrerc-app.properties) - el envio de"
+    Write-Output "OTP por correo fallara con 'Debe configurar mail.smtp.host...'. Para habilitarlo:"
+    Write-Output '  [Environment]::SetEnvironmentVariable("SDRERC_APP_SMTP_USER", "<correo>", "User")'
+    Write-Output '  [Environment]::SetEnvironmentVariable("SDRERC_APP_SMTP_PASSWORD", "<clave app>", "User")'
+}
 
 if (-not $env:SDRERC_V3_DB_URL -or -not $env:SDRERC_V3_DB_PASSWORD -or -not $env:SDRERC_V3_JWT_SECRET) {
     Write-Output "ERROR: faltan variables de entorno de usuario (SDRERC_V3_DB_URL / SDRERC_V3_DB_PASSWORD / SDRERC_V3_JWT_SECRET)."
